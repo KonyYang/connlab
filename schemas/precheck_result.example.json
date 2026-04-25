@@ -1,0 +1,15 @@
+{
+  "status": "WARNING",
+  "checker_version": "precheck-v1",
+  "issues": [
+    {
+      "level": "WARNING",
+      "category": "TESTING",
+      "field": "description_of_requested_testing",
+      "message": "Testing description references an attachment, but no attachment has been registered.",
+      "expected": "Referenced attachment registered in project assets",
+      "actual": "No attachment registered",
+      "suggestion": "Register the product specification, customer matrix, or requirement attachment before continuing."
+    }
+  ]
+}

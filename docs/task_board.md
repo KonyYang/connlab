@@ -1,0 +1,259 @@
+# ConnLab Task Board
+
+> Status: active
+> Last Updated: 2026-04-25
+> Current Source Of Truth: `docs/task_board.md`
+> Current Active Task: `TASK_002_CONFIG_LOGGING`
+> Current Phase: `Phase 1 - Backend MVP Foundation`
+
+---
+
+## 1. Purpose
+
+This board is stricter than a normal TODO list.
+
+It is the shared execution control document for both humans and AI tools. It defines:
+
+- required read order
+- current mainline
+- allowed active task
+- phase status
+- acceptance gates
+- what must be updated after each completed task
+
+If conversational memory conflicts with this board, this board wins.
+
+---
+
+## 2. Required Read Order For AI
+
+Every new execution turn must read and obey documents in this order:
+
+1. `AGENTS.md`
+2. `docs/task_board.md`
+3. current active task file in `tasks/`
+4. only then expand any additional referenced docs if the task requires them
+
+Control meaning:
+
+- `AGENTS.md` defines stable rules, MVP boundaries, forbidden scope, and architecture constraints.
+- `docs/task_board.md` defines what task is allowed right now.
+- `tasks/TASK_XXX_*.md` defines the implementation target and acceptance criteria for that task.
+
+Minimum operator prompt:
+
+```text
+Read AGENTS.md first, then docs/task_board.md, then only the current active task file.
+Implement only the active task allowed by docs/task_board.md.
+Do not skip ahead.
+Before coding, state the current phase and active task ID.
+After finishing, update docs/task_board.md with status, validation, and next step.
+```
+
+---
+
+## 3. Execution Rules
+
+1. Only one active implementation task is allowed at a time unless the board explicitly opens parallel work.
+2. A task may move to `done` only after code, tests, and board update are all completed.
+3. If a requested task is ahead of the current active task, AI must stop and report the mismatch.
+4. If a task uncovers missing prerequisite work, the board must be updated before moving on.
+5. Future-scope work is forbidden even if related files already exist in the repository.
+
+---
+
+## 4. Current Mainline
+
+Current judgment as of 2026-04-25:
+
+- Repository scaffold is complete.
+- The project is still in backend foundation stage.
+- The next required step is configuration and logging foundation.
+- No Matrix, Report, AI review, or future-lifecycle work is allowed.
+
+Current stop point:
+
+- `TASK_001_REPOSITORY_SCAFFOLD` is complete.
+- `TASK_002_CONFIG_LOGGING` is the current active task.
+
+---
+
+## 5. Phase Status
+
+### Phase 0 - Repository Initialization
+
+Goal:
+
+- establish repository structure
+- make FastAPI app importable
+- add a passing smoke test
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T0-1 | `TASK_001_REPOSITORY_SCAFFOLD` | done | Scaffold, package init files, `/health`, smoke test completed on 2026-04-25 |
+
+Acceptance gate:
+
+- backend package exists
+- minimal FastAPI app imports
+- `/health` returns `{"status": "ok"}`
+- smoke test passes
+
+### Phase 1 - Backend MVP Foundation
+
+Goal:
+
+- establish configuration, logging, storage foundation, domain skeleton, and application-facing API flow for MVP
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T1-1 | `TASK_002_CONFIG_LOGGING` | active | Next required foundation task |
+| T1-2 | `TASK_003_SQLITE_DATABASE` | ready-after-T1-1 | Depends on settings path strategy from TASK_002 |
+| T1-3 | `TASK_004_DOMAIN_MODELS_MVP` | blocked | Wait for storage/config baseline |
+| T1-4 | `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` | blocked | Wait for domain models and DB foundation |
+| T1-5 | `TASK_006_PROJECT_SERVICE_AND_API` | blocked | Wait for repositories and domain objects |
+
+Acceptance gate:
+
+- settings and logger are explicit
+- database location comes from settings
+- MVP domain objects exist as structured records
+- project service and thin API route layer are established
+
+### Phase 2 - Intake And Precheck Flow
+
+Goal:
+
+- parse application form
+- run deterministic precheck
+- expose intake/precheck API path
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | blocked | Wait for project/application foundations |
+| T2-2 | `TASK_008_PRECHECK_ENGINE` | blocked | Wait for parser/domain structures |
+| T2-3 | `TASK_009_INTAKE_PRECHECK_API` | blocked | Wait for parser + precheck |
+
+Acceptance gate:
+
+- application form fields are parsed into structured records
+- precheck is deterministic
+- route layer stays thin
+
+### Phase 3 - LTR And Folder Flow
+
+Goal:
+
+- support LTR registration/tracking
+- support folder preview and safe generation
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T3-1 | `TASK_010_LTR_MODULE` | blocked | Wait for core project flow |
+| T3-2 | `TASK_011_FOLDER_PREVIEW` | blocked | Wait for project data model |
+| T3-3 | `TASK_012_FOLDER_GENERATION` | blocked | Wait for preview rules and template handling |
+
+Acceptance gate:
+
+- LTR is structured and persisted
+- folder generation is previewable
+- no unsafe overwrite behavior
+
+### Phase 4 - Shell Integration And Packaging
+
+Goal:
+
+- add minimal frontend shell
+- connect MVP workflow
+- document packaging notes
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T4-1 | `TASK_013_MINIMAL_FRONTEND_SHELL` | blocked | Not allowed before backend MVP path exists |
+| T4-2 | `TASK_014_MVP_WORKFLOW_INTEGRATION` | blocked | Depends on all MVP backend modules |
+| T4-3 | `TASK_015_PACKAGING_NOTES` | blocked | Finalization task |
+
+Acceptance gate:
+
+- frontend remains minimal
+- integration only covers MVP flow
+- packaging notes reflect real repository state
+
+---
+
+## 6. Completion Update Protocol
+
+After finishing any task, AI must update this board in the same turn.
+
+Minimum required updates:
+
+1. change task status
+2. update `Last Updated`
+3. record validation result
+4. record current stop point
+5. activate the next allowed task or explain why the next task is blocked
+
+Recommended completion note format:
+
+```text
+Completed:
+- TASK_XXX_NAME
+
+Validation:
+- tests run
+- key result
+
+Next:
+- next active task
+- prerequisites or known limits
+```
+
+---
+
+## 7. Current Validation Snapshot
+
+Latest completed task:
+
+- `TASK_001_REPOSITORY_SCAFFOLD`
+
+Validation result:
+
+- `py -m pytest tests/unit/test_health.py -p no:cacheprovider`
+- result: `1 passed`
+
+Known limits:
+
+- repository is still at scaffold stage
+- no configuration layer yet
+- no database foundation yet
+- no MVP business modules implemented yet
+
+---
+
+## 8. Next Recommended Action
+
+Current recommendation:
+
+- execute `TASK_002_CONFIG_LOGGING`
+
+Why this is next:
+
+- `TASK_003` depends on a stable settings path for SQLite
+- later tasks need explicit data/template/projects directory rules
+- logger and settings are foundational and low risk
+
+Do not start yet:
+
+- `TASK_003+` before `TASK_002` is done
+- any frontend shell work before the backend MVP path exists
+- any Matrix, Report, AI, or future-scope feature

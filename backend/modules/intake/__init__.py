@@ -1,0 +1,1 @@
+"""Application intake module."""
