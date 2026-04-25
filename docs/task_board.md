@@ -1,9 +1,9 @@
 # ConnLab Task Board
 
 > Status: active
-> Last Updated: 2026-04-25
+> Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_002_CONFIG_LOGGING`
+> Current Active Task: `TASK_004_DOMAIN_MODELS_MVP`
 > Current Phase: `Phase 1 - Backend MVP Foundation`
 
 ---
@@ -64,17 +64,21 @@ After finishing, update docs/task_board.md with status, validation, and next ste
 
 ## 4. Current Mainline
 
-Current judgment as of 2026-04-25:
+Current judgment as of 2026-04-26:
 
 - Repository scaffold is complete.
+- Configuration and logging foundation is complete.
+- SQLite persistence foundation is complete.
 - The project is still in backend foundation stage.
-- The next required step is configuration and logging foundation.
+- The next required step is MVP domain model definition.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
 
 - `TASK_001_REPOSITORY_SCAFFOLD` is complete.
-- `TASK_002_CONFIG_LOGGING` is the current active task.
+- `TASK_002_CONFIG_LOGGING` is complete.
+- `TASK_003_SQLITE_DATABASE` is complete.
+- `TASK_004_DOMAIN_MODELS_MVP` is the current active task.
 
 ---
 
@@ -111,9 +115,9 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T1-1 | `TASK_002_CONFIG_LOGGING` | active | Next required foundation task |
-| T1-2 | `TASK_003_SQLITE_DATABASE` | ready-after-T1-1 | Depends on settings path strategy from TASK_002 |
-| T1-3 | `TASK_004_DOMAIN_MODELS_MVP` | blocked | Wait for storage/config baseline |
+| T1-1 | `TASK_002_CONFIG_LOGGING` | done | `Settings.load()` and `configure_logging()` landed with tests on 2026-04-25 |
+| T1-2 | `TASK_003_SQLITE_DATABASE` | done | SQLite engine, session factory, Base, `init_db()`, and tests completed on 2026-04-26 |
+| T1-3 | `TASK_004_DOMAIN_MODELS_MVP` | active | Storage/config baseline is available |
 | T1-4 | `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` | blocked | Wait for domain models and DB foundation |
 | T1-5 | `TASK_006_PROJECT_SERVICE_AND_API` | blocked | Wait for repositories and domain objects |
 
@@ -224,19 +228,17 @@ Next:
 
 Latest completed task:
 
-- `TASK_001_REPOSITORY_SCAFFOLD`
+- `TASK_003_SQLITE_DATABASE`
 
 Validation result:
 
-- `py -m pytest tests/unit/test_health.py -p no:cacheprovider`
-- result: `1 passed`
+- `py -m pytest tests\unit\test_config.py tests\unit\test_database.py tests\unit\test_logging.py tests\unit\test_health.py -p no:cacheprovider`
+- result: `8 passed`
 
 Known limits:
 
-- repository is still at scaffold stage
-- no configuration layer yet
-- no database foundation yet
 - no MVP business modules implemented yet
+- no SQLAlchemy business tables or repositories implemented yet
 
 ---
 
@@ -244,16 +246,16 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_002_CONFIG_LOGGING`
+- execute `TASK_004_DOMAIN_MODELS_MVP`
 
 Why this is next:
 
-- `TASK_003` depends on a stable settings path for SQLite
-- later tasks need explicit data/template/projects directory rules
-- logger and settings are foundational and low risk
+- `TASK_003` established the SQLite engine, session factory, Base, and `init_db()`
+- domain models are the next prerequisite before database models and repositories
+- later repository and API tasks depend on the MVP domain objects
 
 Do not start yet:
 
-- `TASK_003+` before `TASK_002` is done
+- `TASK_005+` before `TASK_004` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature

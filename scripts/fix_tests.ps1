@@ -2,17 +2,26 @@ param(
     [string]$task
 )
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+. "$PSScriptRoot\_codex_runtime.ps1"
+
 Write-Host "===================================="
 Write-Host " Auto Fix Failed Tests"
 Write-Host " Task: $task"
 Write-Host "===================================="
 
+$taskBoard = "docs/task_board.md"
 $taskFile = "tasks/$task.md"
 $logFile = "logs/pytest_last.log"
 
+if (!(Test-Path $taskBoard)) {
+    Write-Host "❌ Task board not found: $taskBoard"
+    exit 1
+}
+
 if (!(Test-Path $taskFile)) {
     Write-Host "❌ Task file not found: $taskFile"
-    Write-Host "Example: .\scripts\fix_tests.ps1 TASK_002_DATABASE"
+    Write-Host "Example: .\scripts\fix_tests.ps1 TASK_002_CONFIG_LOGGING"
     exit 1
 }
 
@@ -22,31 +31,63 @@ if (!(Test-Path $logFile)) {
     exit 1
 }
 
-$failureLog = Get-Content $logFile -Raw
+$taskBoardContent = Get-Content $taskBoard -Encoding UTF8 -Raw
+$activeTaskMatch = [regex]::Match($taskBoardContent, 'Current Active Task:\s*`([^`]+)`')
+$phaseMatch = [regex]::Match($taskBoardContent, 'Current Phase:\s*`([^`]+)`')
 
-$prompt = @"
-请根据 pytest 失败日志修复当前任务相关代码。
+if (!$activeTaskMatch.Success) {
+    Write-Host "❌ Could not determine current active task from $taskBoard"
+    exit 1
+}
 
-当前任务文件：
-$taskFile
+$activeTask = $activeTaskMatch.Groups[1].Value
+$currentPhase = if ($phaseMatch.Success) { $phaseMatch.Groups[1].Value } else { "Unknown Phase" }
 
-必须遵守：
-- AGENTS.md
-- AUTO_FIX_SKILL.md
-- TASK_REVIEW_CHECKLIST.md
-- TESTING_SKILL.md
+if ($task -ne $activeTask) {
+    Write-Host "❌ Task mismatch"
+    Write-Host "Requested: $task"
+    Write-Host "Active from board: $activeTask"
+    Write-Host "Fix only the current active task."
+    exit 1
+}
 
-pytest 失败日志如下：
+$failureLog = Get-Content $logFile -Encoding UTF8 -Raw
 
-$failureLog
+$prompt = @(
+    "Fix the current task code based on the pytest failure log."
+    ""
+    "Read and obey documents in this order before acting:"
+    "1. AGENTS.md"
+    "2. $taskBoard"
+    "3. $taskFile"
+    ""
+    "Current task file:"
+    "$taskFile"
+    ""
+    "Must follow:"
+    "- AGENTS.md"
+    "- docs/task_board.md"
+    "- AUTO_FIX_SKILL.md"
+    "- TASK_REVIEW_CHECKLIST.md"
+    "- TESTING_SKILL.md"
+    ""
+    "Current phase: $currentPhase"
+    "Current active task: $activeTask"
+    ""
+    "Pytest failure log:"
+    ""
+    $failureLog
+    ""
+    "Requirements:"
+    "1. State the current phase, task, and why only this task may be fixed now."
+    "2. Diagnose the failure first."
+    "3. Make only the minimum necessary fix."
+    "4. Do not delete or skip tests."
+    "5. Do not implement extra features."
+    "6. Provide the test command to rerun."
+    "7. If the fix is completed and verified, update docs/task_board.md."
+    "8. Do not move to the next task."
+) -join "`n"
 
-要求：
-1. 先诊断失败原因
-2. 只做最小必要修复
-3. 不允许删除或跳过测试
-4. 不允许实现额外功能
-5. 修复后说明需要运行的测试命令
-6. 不进入下一个 Task
-"@
-
-codex $prompt
+$exitCode = Invoke-CodexCli -Prompt $prompt
+exit $exitCode

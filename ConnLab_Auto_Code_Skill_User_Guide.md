@@ -15,12 +15,13 @@ AI 写代码 → 自动测试 → 自动修复 → 稳定通过
 
 ---
 
-# 🧠 你只需要记住 3 个命令
+# 🧠 你只需要记住 4 个命令
 
 ```powershell
 .\scripts\run_task.ps1 TASK_XXX
 .\scripts\run_tests.ps1
 .\scripts\fix_tests.ps1 TASK_XXX
+.\scripts\dev_cycle.ps1 TASK_XXX
 ```
 
 ---
@@ -41,12 +42,40 @@ connlab/
 ├── scripts/
 │   ├── run_task.ps1
 │   ├── run_tests.ps1
-│   └── fix_tests.ps1
+│   ├── fix_tests.ps1
+│   └── dev_cycle.ps1
 ```
 
 ---
 
-# 🚀 二、标准操作流程（你每次都按这个来）
+# ⚡ 二、最快捷用法
+
+如果你想让 Codex CLI 自动完成一轮：
+
+```powershell
+.\scripts\dev_cycle.ps1 TASK_002_CONFIG_LOGGING
+```
+
+它会按以下顺序执行：
+
+```text
+run_task
+→ run_tests
+→ 如果失败 → fix_tests
+→ run_tests
+→ 最多自动修复 3 次
+```
+
+注意：
+
+- 它不会跳到下一个 Task
+- 它会检查 `docs/task_board.md`，只允许执行当前 active task
+- 如果任务编号不匹配，会直接停止
+- 脚本会自动为外部 Codex CLI 准备独立 runtime home，避免和当前会话争用默认 `~/.codex`
+
+---
+
+# 🚀 三、标准操作流程（你每次都按这个来）
 
 ---
 
@@ -103,7 +132,7 @@ AI 根据任务写代码 + 自动生成测试
 
 ---
 
-# 🔁 三、循环规则（非常重要）
+# 🔁 四、循环规则（非常重要）
 
 ```text
 run_task
@@ -117,7 +146,7 @@ run_task
 
 ---
 
-# 🧪 四、你如何判断“可以继续”
+# 🧪 五、你如何判断“可以继续”
 
 你不需要看懂代码，只检查这 3 件事：
 
@@ -157,7 +186,7 @@ AI自动分析
 
 ---
 
-# 💾 五、通过后必须做
+# 💾 六、通过后必须做
 
 ```powershell
 git add .
@@ -168,7 +197,7 @@ git commit -m "feat: complete TASK_002_DATABASE"
 
 ---
 
-# 🚨 六、失败处理规则（非常关键）
+# 🚨 七、失败处理规则（非常关键）
 
 ---
 
@@ -200,7 +229,7 @@ git commit -m "feat: complete TASK_002_DATABASE"
 
 ---
 
-# 🧱 七、绝对禁止的行为
+# 🧱 八、绝对禁止的行为
 
 ```text
 ❌ 一次执行多个 Task
@@ -212,7 +241,7 @@ git commit -m "feat: complete TASK_002_DATABASE"
 
 ---
 
-# 🧠 八、你现在的角色
+# 🧠 九、你现在的角色
 
 你不是程序员，你是：
 
@@ -231,7 +260,7 @@ AI 工程管理者
 
 ---
 
-# 🏁 九、你的每日操作模板
+# 🏁 十、你的每日操作模板
 
 复制这一段，每天照做👇
 
@@ -241,23 +270,21 @@ AI 工程管理者
 
 ```text
 1. 选择一个 TASK
-2. run_task
-3. run_tests
-4. 如果失败 → fix_tests
-5. 再 run_tests
-6. 成功 → commit
-7. 下一个 TASK
+2. 优先使用 dev_cycle
+3. 如果需要手动控制，再分别 run_task / run_tests / fix_tests
+4. 成功 → commit
+5. 下一个 TASK
 ```
 
 ---
 
-# 📌 十、一句话总结
+# 📌 十一、一句话总结
 
 > ❗你不用理解代码，只需要让“测试通过 + 不乱扩展”
 
 ---
 
-# 👍 十一、当你卡住时
+# 👍 十二、当你卡住时
 
 直接说：
 
