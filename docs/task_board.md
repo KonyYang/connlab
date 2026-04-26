@@ -3,7 +3,7 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_008_PRECHECK_ENGINE`
+> Current Active Task: `TASK_009_INTAKE_PRECHECK_API`
 > Current Phase: `Phase 2 - Intake And Precheck Flow`
 
 ---
@@ -73,8 +73,9 @@ Current judgment as of 2026-04-26:
 - MVP database models and repositories are complete.
 - Project service and thin API foundation are complete.
 - Application form parser foundation is complete.
+- Deterministic precheck engine is complete.
 - The project is entering intake and precheck flow implementation.
-- The next required step is deterministic precheck engine.
+- The next required step is intake/precheck API.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -86,7 +87,8 @@ Current stop point:
 - `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` is complete.
 - `TASK_006_PROJECT_SERVICE_AND_API` is complete.
 - `TASK_007_APPLICATION_FORM_PARSER` is complete.
-- `TASK_008_PRECHECK_ENGINE` is the current active task.
+- `TASK_008_PRECHECK_ENGINE` is complete.
+- `TASK_009_INTAKE_PRECHECK_API` is the current active task.
 
 ---
 
@@ -149,8 +151,8 @@ Status table:
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | done | DOCX parser with synthetic fixture tests completed on 2026-04-26 |
-| T2-2 | `TASK_008_PRECHECK_ENGINE` | active | Parser/domain structures are available |
-| T2-3 | `TASK_009_INTAKE_PRECHECK_API` | blocked | Wait for parser + precheck |
+| T2-2 | `TASK_008_PRECHECK_ENGINE` | done | Deterministic precheck rules completed with rule tests on 2026-04-26 |
+| T2-3 | `TASK_009_INTAKE_PRECHECK_API` | active | Parser and precheck engine are available |
 
 Acceptance gate:
 
@@ -236,19 +238,19 @@ Next:
 
 Latest completed task:
 
-- `TASK_007_APPLICATION_FORM_PARSER`
+- `TASK_008_PRECHECK_ENGINE`
 
 Validation result:
 
-- `py -m pytest tests\unit\test_application_form_parser.py -p no:cacheprovider`
-- result: `2 passed`
+- `py -m pytest tests\unit\test_precheck_engine.py -p no:cacheprovider`
+- result: `5 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `21 passed`
+- result: `26 passed`
 
 Known limits:
 
-- no precheck engine or intake/precheck API implemented yet
-- parser supports robust label matching for MVP fields, not OCR/PDF/AI extraction
+- no intake/precheck API implemented yet
+- precheck is deterministic and does not perform AI, duration estimation, or standard/spec verification
 
 ---
 
@@ -256,7 +258,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_008_PRECHECK_ENGINE`
+- execute `TASK_009_INTAKE_PRECHECK_API`
 
 Why this is next:
 
@@ -265,10 +267,11 @@ Why this is next:
 - `TASK_005` established SQLAlchemy models and repositories
 - `TASK_006` established project service and thin project API
 - `TASK_007` established structured DOCX parser output
-- deterministic precheck is the next prerequisite before intake/precheck API
+- `TASK_008` established deterministic precheck rules
+- intake/precheck API is the next step to expose parser + precheck flow
 
 Do not start yet:
 
-- `TASK_009+` before `TASK_008` is done
+- `TASK_010+` before `TASK_009` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature
