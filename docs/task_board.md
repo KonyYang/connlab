@@ -3,8 +3,8 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_006_PROJECT_SERVICE_AND_API`
-> Current Phase: `Phase 1 - Backend MVP Foundation`
+> Current Active Task: `TASK_007_APPLICATION_FORM_PARSER`
+> Current Phase: `Phase 2 - Intake And Precheck Flow`
 
 ---
 
@@ -71,8 +71,9 @@ Current judgment as of 2026-04-26:
 - SQLite persistence foundation is complete.
 - MVP domain model foundation is complete.
 - MVP database models and repositories are complete.
-- The project is still in backend foundation stage.
-- The next required step is project service and API.
+- Project service and thin API foundation are complete.
+- The project is entering intake and precheck flow implementation.
+- The next required step is application form parser.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -82,7 +83,8 @@ Current stop point:
 - `TASK_003_SQLITE_DATABASE` is complete.
 - `TASK_004_DOMAIN_MODELS_MVP` is complete.
 - `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` is complete.
-- `TASK_006_PROJECT_SERVICE_AND_API` is the current active task.
+- `TASK_006_PROJECT_SERVICE_AND_API` is complete.
+- `TASK_007_APPLICATION_FORM_PARSER` is the current active task.
 
 ---
 
@@ -123,7 +125,7 @@ Status table:
 | T1-2 | `TASK_003_SQLITE_DATABASE` | done | SQLite engine, session factory, Base, `init_db()`, and tests completed on 2026-04-26 |
 | T1-3 | `TASK_004_DOMAIN_MODELS_MVP` | done | Pure dataclass domain models and enums completed on 2026-04-26 |
 | T1-4 | `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` | done | SQLAlchemy models and repositories completed with temp SQLite tests on 2026-04-26 |
-| T1-5 | `TASK_006_PROJECT_SERVICE_AND_API` | active | Repositories and domain objects are available |
+| T1-5 | `TASK_006_PROJECT_SERVICE_AND_API` | done | Project service and `/api/projects` create/list/detail routes completed on 2026-04-26 |
 
 Acceptance gate:
 
@@ -144,7 +146,7 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | blocked | Wait for project/application foundations |
+| T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | active | Project/application foundation is available |
 | T2-2 | `TASK_008_PRECHECK_ENGINE` | blocked | Wait for parser/domain structures |
 | T2-3 | `TASK_009_INTAKE_PRECHECK_API` | blocked | Wait for parser + precheck |
 
@@ -232,19 +234,19 @@ Next:
 
 Latest completed task:
 
-- `TASK_005_DATABASE_MODELS_AND_REPOSITORIES`
+- `TASK_006_PROJECT_SERVICE_AND_API`
 
 Validation result:
 
-- `py -m pytest tests\integration\test_repositories.py -p no:cacheprovider`
-- result: `4 passed`
+- `py -m pytest tests\unit\test_project_service.py tests\integration\test_project_api.py -p no:cacheprovider`
+- result: `3 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `16 passed`
+- result: `19 passed`
 
 Known limits:
 
-- no MVP business modules implemented yet
-- no project service or API write flow implemented yet
+- no application form parser implemented yet
+- no precheck engine or intake/precheck API implemented yet
 
 ---
 
@@ -252,17 +254,18 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_006_PROJECT_SERVICE_AND_API`
+- execute `TASK_007_APPLICATION_FORM_PARSER`
 
 Why this is next:
 
 - `TASK_003` established the SQLite engine, session factory, Base, and `init_db()`
 - `TASK_004` established pure MVP domain models and enums
 - `TASK_005` established SQLAlchemy models and repositories
-- project service and thin API are the next backend foundation step
+- `TASK_006` established project service and thin project API
+- application form parser is the next prerequisite before deterministic precheck
 
 Do not start yet:
 
-- `TASK_007+` before `TASK_006` is done
+- `TASK_008+` before `TASK_007` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature
