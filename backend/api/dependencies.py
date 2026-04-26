@@ -9,6 +9,7 @@ from fastapi import Depends
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.application.folder_service import FolderService
 from backend.application.intake_precheck_service import IntakePrecheckService
 from backend.application.ltr_service import LtrService
 from backend.application.project_service import ProjectService
@@ -22,6 +23,7 @@ from backend.infrastructure.storage.repositories import (
     FileAssetRepository,
     LtrRecordRepository,
     PrecheckResultRepository,
+    ProjectFolderRecordRepository,
     ProjectRepository,
     SampleInfoRepository,
 )
@@ -83,4 +85,13 @@ def get_ltr_service(session: Session = Depends(get_session)) -> LtrService:
     return LtrService(
         project_repository=ProjectRepository(session),
         ltr_repository=LtrRecordRepository(session),
+    )
+
+
+def get_folder_service(session: Session = Depends(get_session)) -> FolderService:
+    """Build a folder service for API routes."""
+    return FolderService(
+        project_repository=ProjectRepository(session),
+        folder_repository=ProjectFolderRecordRepository(session),
+        file_asset_repository=FileAssetRepository(session),
     )

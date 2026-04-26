@@ -3,8 +3,8 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_012_FOLDER_GENERATION`
-> Current Phase: `Phase 3 - LTR And Folder Flow`
+> Current Active Task: `TASK_013_MINIMAL_FRONTEND_SHELL`
+> Current Phase: `Phase 4 - Shell Integration And Packaging`
 
 ---
 
@@ -77,8 +77,9 @@ Current judgment as of 2026-04-26:
 - Intake/precheck API is complete.
 - LTR registration/tracking module is complete.
 - Folder generation preview is complete.
-- The project is entering LTR and folder flow implementation.
-- The next required step is safe folder generation.
+- Safe folder generation execution is complete.
+- The project is entering shell integration and packaging.
+- The next required step is the minimal frontend shell.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -94,7 +95,8 @@ Current stop point:
 - `TASK_009_INTAKE_PRECHECK_API` is complete.
 - `TASK_010_LTR_MODULE` is complete.
 - `TASK_011_FOLDER_PREVIEW` is complete.
-- `TASK_012_FOLDER_GENERATION` is the current active task.
+- `TASK_012_FOLDER_GENERATION` is complete.
+- `TASK_013_MINIMAL_FRONTEND_SHELL` is the current active task.
 
 ---
 
@@ -179,7 +181,7 @@ Status table:
 |----|------|--------|-------|
 | T3-1 | `TASK_010_LTR_MODULE` | done | LTR registration, project lookup, search, and duplicate protection completed on 2026-04-26 |
 | T3-2 | `TASK_011_FOLDER_PREVIEW` | done | Template scan, placeholder replacement, and conflict preview completed on 2026-04-26 |
-| T3-3 | `TASK_012_FOLDER_GENERATION` | active | Preview rules and template handling are available |
+| T3-3 | `TASK_012_FOLDER_GENERATION` | done | Safe folder generation, original application form copy, persistence, and overwrite protection completed on 2026-04-26 |
 
 Acceptance gate:
 
@@ -199,7 +201,7 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T4-1 | `TASK_013_MINIMAL_FRONTEND_SHELL` | blocked | Not allowed before backend MVP path exists |
+| T4-1 | `TASK_013_MINIMAL_FRONTEND_SHELL` | active | Backend MVP path exists through safe folder generation |
 | T4-2 | `TASK_014_MVP_WORKFLOW_INTEGRATION` | blocked | Depends on all MVP backend modules |
 | T4-3 | `TASK_015_PACKAGING_NOTES` | blocked | Finalization task |
 
@@ -244,18 +246,19 @@ Next:
 
 Latest completed task:
 
-- `TASK_011_FOLDER_PREVIEW`
+- `TASK_012_FOLDER_GENERATION`
 
 Validation result:
 
-- `py -m pytest tests\unit\test_folder_template_service.py -p no:cacheprovider`
-- result: `3 passed`
+- `py -m pytest tests\integration\test_folder_generation_api.py -p no:cacheprovider`
+- result: `1 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `31 passed`
+- result: `32 passed`
 
 Known limits:
 
-- no folder generation/copy execution implemented yet
+- no frontend shell implemented yet
+- no report generation, AI review, Matrix, or future-scope features
 
 ---
 
@@ -263,7 +266,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_012_FOLDER_GENERATION`
+- execute `TASK_013_MINIMAL_FRONTEND_SHELL`
 
 Why this is next:
 
@@ -276,10 +279,10 @@ Why this is next:
 - `TASK_009` exposed parser + precheck flow through API
 - `TASK_010` established LTR registration/tracking
 - `TASK_011` established safe folder preview
-- folder generation is the next step after preview rules are available
+- `TASK_012` established safe folder generation with persistence and overwrite protection
+- a minimal frontend shell is the next step after the backend MVP path exists
 
 Do not start yet:
 
-- `TASK_013+` before `TASK_012` is done
-- any frontend shell work before the backend MVP path exists
+- `TASK_014+` before `TASK_013` is done
 - any Matrix, Report, AI, or future-scope feature

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from backend.domain import Project
+from backend.domain import FileAsset, Project
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,14 @@ class FolderPlan:
     project_folder_path: Path
     items: tuple[FolderPlanItem, ...]
     conflict: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class FolderGenerationResult:
+    """Result of executing a folder generation plan."""
+
+    project_folder_path: Path
+    generated_paths: tuple[Path, ...]
 
 
 class FolderTemplateService:
@@ -59,6 +68,31 @@ class FolderTemplateService:
             project_folder_path=project_folder_path,
             items=items,
             conflict=project_folder_path.exists(),
+        )
+
+    def generate(
+        self,
+        plan: FolderPlan,
+        application_form_asset: FileAsset | None = None,
+    ) -> FolderGenerationResult:
+        """Generate folders/files from a preview plan without overwriting."""
+        if plan.conflict or any(item.conflict for item in plan.items):
+            raise FileExistsError(f"Target folder already exists: {plan.project_folder_path}")
+        generated: list[Path] = []
+        plan.project_folder_path.mkdir(parents=False, exist_ok=False)
+        generated.append(plan.project_folder_path)
+        for item in plan.items:
+            if item.item_type == "directory":
+                item.target_path.mkdir(parents=True, exist_ok=False)
+            else:
+                item.target_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item.source_path, item.target_path)
+            generated.append(item.target_path)
+        if application_form_asset is not None:
+            generated.append(_copy_application_form(plan, application_form_asset))
+        return FolderGenerationResult(
+            project_folder_path=plan.project_folder_path,
+            generated_paths=tuple(generated),
         )
 
 
@@ -112,3 +146,23 @@ def _placeholders(
         "{DATE}": plan_date.isoformat(),
         "{BUSINESS_UNIT}": project.business_unit or "",
     }
+
+
+def _copy_application_form(plan: FolderPlan, asset: FileAsset) -> Path:
+    """Copy the original application form into the request folder when available."""
+    if not asset.path.is_file():
+        raise FileNotFoundError(f"Application form asset not found: {asset.path}")
+    request_dir = _find_request_folder(plan) or plan.project_folder_path
+    target = request_dir / (asset.original_name or asset.path.name)
+    if target.exists():
+        raise FileExistsError(f"Application form target already exists: {target}")
+    shutil.copy2(asset.path, target)
+    return target
+
+
+def _find_request_folder(plan: FolderPlan) -> Path | None:
+    """Return the first generated directory that looks like a request folder."""
+    for item in plan.items:
+        if item.item_type == "directory" and "request" in item.target_path.name.lower():
+            return item.target_path
+    return None
