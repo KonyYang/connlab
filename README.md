@@ -1,21 +1,93 @@
-# ConnLab Codex Starter Pack v1.0
+# ConnLab
 
-This package is designed to be copied into the root of a new ConnLab repository and used as persistent context for Codex / IDE AI coding agents.
+ConnLab is an offline Windows-first MVP workbench for an electronic connector laboratory.
 
-Recommended usage:
-
-```bash
-mkdir connlab
-cd connlab
-git init
-# copy all files from this package here
-codex
-```
-
-Then give Codex one task at a time, for example:
+Current MVP flow:
 
 ```text
-Read AGENTS.md and implement tasks/TASK_001_REPOSITORY_SCAFFOLD.md only. Do not implement anything outside the task.
+Project -> Application form -> Precheck -> LTR -> Project Folder
 ```
 
-Important rule: do not ask Codex to build the whole system at once. The MVP must advance by small, reviewable tasks.
+Out of scope for the current MVP: Matrix, report generation, AI review, permissions, LAN deployment, full installer, and PyInstaller packaging.
+
+## Requirements
+
+- Windows development machine.
+- Python 3.11 or newer.
+- Node.js and npm for the React frontend.
+- Microsoft Office on Windows for realistic DOCX/XLSX lab workflows. The current parser uses `python-docx`; future Office automation must stay behind gateway/facade classes.
+
+## First Setup
+
+Run from repository root:
+
+```powershell
+py -m pip install -e .[dev]
+Set-Location frontend
+npm install
+Set-Location ..
+.\scripts\init_db.ps1
+```
+
+Default local runtime paths:
+
+- SQLite database: `data\connlab.sqlite3`
+- Project output root: `projects\`
+- Folder templates: `templates\`
+
+These can be overridden with environment variables:
+
+- `CONNLAB_DATA_DIR`
+- `CONNLAB_PROJECTS_DIR`
+- `CONNLAB_TEMPLATES_DIR`
+- `CONNLAB_DATABASE_PATH`
+- `CONNLAB_LOG_LEVEL`
+
+## Run Locally
+
+Backend API:
+
+```powershell
+.\scripts\run_backend.ps1
+```
+
+Frontend:
+
+```powershell
+.\scripts\run_frontend.ps1
+```
+
+Or start both in separate PowerShell windows:
+
+```powershell
+.\scripts\run_mvp_dev.ps1
+```
+
+Open the Vite URL shown by the frontend script. The frontend proxies `/api` to `http://127.0.0.1:8000`.
+
+## Verify
+
+Backend tests:
+
+```powershell
+.\scripts\run_tests.ps1
+```
+
+Frontend build:
+
+```powershell
+Set-Location frontend
+npm run build
+```
+
+Manual frontend smoke checklist:
+
+```text
+docs\manual_frontend_smoke.md
+```
+
+Packaging status:
+
+```text
+docs\packaging_notes.md
+```

@@ -3,7 +3,7 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_015_PACKAGING_NOTES`
+> Current Active Task: `MVP_TASK_SEQUENCE_COMPLETE`
 > Current Phase: `Phase 4 - Shell Integration And Packaging`
 
 ---
@@ -81,7 +81,8 @@ Current judgment as of 2026-04-26:
 - The project is entering shell integration and packaging.
 - Minimal frontend shell is complete.
 - MVP workflow integration is complete.
-- The next required step is packaging notes.
+- Packaging notes and local run scripts are complete.
+- The MVP task sequence is complete.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -100,7 +101,8 @@ Current stop point:
 - `TASK_012_FOLDER_GENERATION` is complete.
 - `TASK_013_MINIMAL_FRONTEND_SHELL` is complete.
 - `TASK_014_MVP_WORKFLOW_INTEGRATION` is complete.
-- `TASK_015_PACKAGING_NOTES` is the current active task.
+- `TASK_015_PACKAGING_NOTES` is complete.
+- No further MVP implementation task is active.
 
 ---
 
@@ -207,7 +209,7 @@ Status table:
 |----|------|--------|-------|
 | T4-1 | `TASK_013_MINIMAL_FRONTEND_SHELL` | done | Minimal React + TypeScript shell with project list/detail and MVP task cards completed on 2026-04-26 |
 | T4-2 | `TASK_014_MVP_WORKFLOW_INTEGRATION` | done | Frontend workflow actions, backend full-flow test, and manual smoke checklist completed on 2026-04-26 |
-| T4-3 | `TASK_015_PACKAGING_NOTES` | active | Finalization task after MVP workflow integration |
+| T4-3 | `TASK_015_PACKAGING_NOTES` | done | Windows local run scripts, README setup/run guide, and packaging notes completed on 2026-04-26 |
 
 Acceptance gate:
 
@@ -250,20 +252,23 @@ Next:
 
 Latest completed task:
 
-- `TASK_014_MVP_WORKFLOW_INTEGRATION`
+- `TASK_015_PACKAGING_NOTES`
 
 Validation result:
 
-- `py -m pytest tests\integration\test_mvp_workflow_api.py tests\unit\test_frontend_shell_files.py -p no:cacheprovider`
-- result: `5 passed`
+- `py -m pytest tests\unit\test_packaging_notes.py -p no:cacheprovider`
+- result: `3 passed`
+- `powershell.exe -ExecutionPolicy Bypass -File .\scripts\init_db.ps1`
+- result: database initialized
 - `npm run build` from `frontend/`
 - result: build passed
 - `py -m pytest -p no:cacheprovider`
-- result: `37 passed`
+- result: `40 passed`
 
 Known limits:
 
-- packaging notes are not written yet
+- no full installer or PyInstaller bundle implemented
+- PyWebView remains a future packaging placeholder
 - no report generation, AI review, Matrix, or future-scope features
 
 ---
@@ -272,7 +277,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_015_PACKAGING_NOTES`
+- no active MVP implementation task remains
 
 Why this is next:
 
@@ -288,9 +293,10 @@ Why this is next:
 - `TASK_012` established safe folder generation with persistence and overwrite protection
 - `TASK_013` established the minimal React + TypeScript shell
 - `TASK_014` connected the MVP workflow through backend and frontend
-- packaging notes are the finalization step after the MVP workflow is usable
+- `TASK_015` documented local Windows run scripts and packaging status
+- the defined MVP task sequence is complete
 
 Do not start yet:
 
-- post-MVP tasks before `TASK_015` is done
+- post-MVP tasks without a new task board entry and explicit approval
 - any Matrix, Report, AI, or future-scope feature
