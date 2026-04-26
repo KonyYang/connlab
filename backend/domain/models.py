@@ -125,6 +125,9 @@ class LtrRecord:
     ltr_number: str
     status: LtrStatus = LtrStatus.DRAFT
     registered_on: date | None = None
+    requested_by: str | None = None
+    requested_date: date | None = None
+    notes: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

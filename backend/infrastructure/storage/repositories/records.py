@@ -45,6 +45,19 @@ class LtrRecordRepository:
         rows = self._session.scalars(_by_project(LtrRecordModel, project_id)).all()
         return [_ltr_to_domain(row) for row in rows]
 
+    def search(self, query: str) -> list[LtrRecord]:
+        """Search LTR records by LTR number or project ID."""
+        pattern = f"%{query}%"
+        rows = self._session.scalars(
+            select(LtrRecordModel)
+            .where(
+                (LtrRecordModel.ltr_number.like(pattern))
+                | (LtrRecordModel.project_id.like(pattern))
+            )
+            .order_by(LtrRecordModel.ltr_number)
+        ).all()
+        return [_ltr_to_domain(row) for row in rows]
+
     def update(self, ltr: LtrRecord) -> LtrRecord:
         """Update an existing LTR record."""
         row = self._session.get(LtrRecordModel, ltr.ltr_id)
@@ -54,6 +67,9 @@ class LtrRecordRepository:
         row.ltr_number = ltr.ltr_number
         row.status = ltr.status.value
         row.registered_on = ltr.registered_on
+        row.requested_by = ltr.requested_by
+        row.requested_date = ltr.requested_date
+        row.notes = ltr.notes
         self._session.flush()
         return ltr
 
@@ -154,6 +170,9 @@ def _ltr_to_model(ltr: LtrRecord) -> LtrRecordModel:
         ltr_number=ltr.ltr_number,
         status=ltr.status.value,
         registered_on=ltr.registered_on,
+        requested_by=ltr.requested_by,
+        requested_date=ltr.requested_date,
+        notes=ltr.notes,
     )
 
 
@@ -165,6 +184,9 @@ def _ltr_to_domain(row: LtrRecordModel) -> LtrRecord:
         ltr_number=row.ltr_number,
         status=LtrStatus(row.status),
         registered_on=row.registered_on,
+        requested_by=row.requested_by,
+        requested_date=row.requested_date,
+        notes=row.notes,
     )
 
 

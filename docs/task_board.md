@@ -3,7 +3,7 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_010_LTR_MODULE`
+> Current Active Task: `TASK_012_FOLDER_GENERATION`
 > Current Phase: `Phase 3 - LTR And Folder Flow`
 
 ---
@@ -75,8 +75,10 @@ Current judgment as of 2026-04-26:
 - Application form parser foundation is complete.
 - Deterministic precheck engine is complete.
 - Intake/precheck API is complete.
+- LTR registration/tracking module is complete.
+- Folder generation preview is complete.
 - The project is entering LTR and folder flow implementation.
-- The next required step is LTR module.
+- The next required step is safe folder generation.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -90,7 +92,9 @@ Current stop point:
 - `TASK_007_APPLICATION_FORM_PARSER` is complete.
 - `TASK_008_PRECHECK_ENGINE` is complete.
 - `TASK_009_INTAKE_PRECHECK_API` is complete.
-- `TASK_010_LTR_MODULE` is the current active task.
+- `TASK_010_LTR_MODULE` is complete.
+- `TASK_011_FOLDER_PREVIEW` is complete.
+- `TASK_012_FOLDER_GENERATION` is the current active task.
 
 ---
 
@@ -173,9 +177,9 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T3-1 | `TASK_010_LTR_MODULE` | active | Core project and intake/precheck flow are available |
-| T3-2 | `TASK_011_FOLDER_PREVIEW` | blocked | Wait for project data model |
-| T3-3 | `TASK_012_FOLDER_GENERATION` | blocked | Wait for preview rules and template handling |
+| T3-1 | `TASK_010_LTR_MODULE` | done | LTR registration, project lookup, search, and duplicate protection completed on 2026-04-26 |
+| T3-2 | `TASK_011_FOLDER_PREVIEW` | done | Template scan, placeholder replacement, and conflict preview completed on 2026-04-26 |
+| T3-3 | `TASK_012_FOLDER_GENERATION` | active | Preview rules and template handling are available |
 
 Acceptance gate:
 
@@ -240,19 +244,18 @@ Next:
 
 Latest completed task:
 
-- `TASK_009_INTAKE_PRECHECK_API`
+- `TASK_011_FOLDER_PREVIEW`
 
 Validation result:
 
-- `py -m pytest tests\integration\test_intake_precheck_api.py -p no:cacheprovider`
-- result: `1 passed`
+- `py -m pytest tests\unit\test_folder_template_service.py -p no:cacheprovider`
+- result: `3 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `27 passed`
+- result: `31 passed`
 
 Known limits:
 
-- no LTR module implemented yet
-- no folder preview/generation implemented yet
+- no folder generation/copy execution implemented yet
 
 ---
 
@@ -260,7 +263,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_010_LTR_MODULE`
+- execute `TASK_012_FOLDER_GENERATION`
 
 Why this is next:
 
@@ -271,10 +274,12 @@ Why this is next:
 - `TASK_007` established structured DOCX parser output
 - `TASK_008` established deterministic precheck rules
 - `TASK_009` exposed parser + precheck flow through API
-- LTR registration/tracking is the next MVP downstream flow
+- `TASK_010` established LTR registration/tracking
+- `TASK_011` established safe folder preview
+- folder generation is the next step after preview rules are available
 
 Do not start yet:
 
-- `TASK_011+` before `TASK_010` is done
+- `TASK_013+` before `TASK_012` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature

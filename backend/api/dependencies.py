@@ -10,6 +10,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.intake_precheck_service import IntakePrecheckService
+from backend.application.ltr_service import LtrService
 from backend.application.project_service import ProjectService
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -19,6 +20,7 @@ from backend.infrastructure.storage.database import (
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
     FileAssetRepository,
+    LtrRecordRepository,
     PrecheckResultRepository,
     ProjectRepository,
     SampleInfoRepository,
@@ -73,4 +75,12 @@ def get_intake_precheck_service(
         file_asset_repository=FileAssetRepository(session),
         precheck_repository=PrecheckResultRepository(session),
         settings=settings,
+    )
+
+
+def get_ltr_service(session: Session = Depends(get_session)) -> LtrService:
+    """Build an LTR service for API routes."""
+    return LtrService(
+        project_repository=ProjectRepository(session),
+        ltr_repository=LtrRecordRepository(session),
     )

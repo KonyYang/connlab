@@ -12,6 +12,7 @@ class ProjectStatus(StrEnum):
     INTAKE_RECEIVED = "intake_received"
     PRECHECK_PASSED = "precheck_passed"
     CONFIRMED = "confirmed"
+    LTR_REGISTERED = "ltr_registered"
     FOLDER_CREATED = "folder_created"
     CLOSED = "closed"
     CANCELLED = "cancelled"

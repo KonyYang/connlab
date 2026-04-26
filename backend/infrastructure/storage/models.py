@@ -121,6 +121,9 @@ class LtrRecordModel(Base):
     ltr_number: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     status: Mapped[str] = mapped_column(String(64), nullable=False)
     registered_on: Mapped[date | None] = mapped_column(Date)
+    requested_by: Mapped[str | None] = mapped_column(String(255))
+    requested_date: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
 
 
 class ProjectFolderRecordModel(Base):
