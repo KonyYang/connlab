@@ -1,0 +1,220 @@
+:root {
+  color: #17211b;
+  background: #f4efe4;
+  font-family: "Aptos", "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(217, 116, 56, 0.2), transparent 32rem),
+    linear-gradient(135deg, #f4efe4 0%, #e9dfce 100%);
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0;
+}
+
+.hero {
+  padding: 32px;
+  border: 1px solid rgba(23, 33, 27, 0.16);
+  border-radius: 28px;
+  background: rgba(255, 252, 245, 0.72);
+  box-shadow: 0 24px 60px rgba(31, 26, 15, 0.12);
+}
+
+.hero h1 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(2.4rem, 8vw, 5.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.07em;
+}
+
+.hero-copy {
+  max-width: 640px;
+  margin: 20px 0 0;
+  font-size: 1.1rem;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #9a4c25;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.panel {
+  margin-top: 24px;
+  padding: 28px;
+  border-radius: 24px;
+  background: #fffaf0;
+  border: 1px solid rgba(23, 33, 27, 0.12);
+}
+
+.section-heading {
+  margin-bottom: 20px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.project-grid,
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.project-card,
+.task-card {
+  min-height: 150px;
+  padding: 20px;
+  border: 1px solid rgba(23, 33, 27, 0.14);
+  border-radius: 20px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+}
+
+.project-card {
+  cursor: pointer;
+}
+
+.project-card:hover {
+  border-color: #bd5e2c;
+  transform: translateY(-2px);
+}
+
+.project-card span,
+.project-card small {
+  display: block;
+  color: #5d675f;
+}
+
+.project-card strong {
+  display: block;
+  margin: 12px 0;
+  font-size: 1.25rem;
+}
+
+.task-card h3 {
+  margin: 0 0 12px;
+  font-size: 1.35rem;
+}
+
+.task-card p {
+  margin: 0;
+  color: #5d675f;
+}
+
+.wide-card {
+  grid-column: 1 / -1;
+}
+
+.workflow-form,
+.card-form {
+  display: grid;
+  gap: 12px;
+}
+
+.workflow-form {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 24px;
+}
+
+.workflow-form label {
+  display: grid;
+  gap: 6px;
+  color: #5d675f;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid rgba(23, 33, 27, 0.18);
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #17211b;
+}
+
+.primary-action {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #17211b;
+  color: #fffaf0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.primary-action:disabled {
+  background: #9aa198;
+  cursor: not-allowed;
+}
+
+.issue-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: #5d675f;
+}
+
+.folder-result {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.text-button {
+  margin-bottom: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9a4c25;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.error {
+  color: #9f231c;
+}
+
+.success {
+  color: #2f7049;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    width: min(100% - 20px, 1120px);
+    padding: 20px 0;
+  }
+
+  .hero,
+  .panel {
+    padding: 20px;
+    border-radius: 20px;
+  }
+}

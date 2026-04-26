@@ -3,7 +3,7 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_013_MINIMAL_FRONTEND_SHELL`
+> Current Active Task: `TASK_015_PACKAGING_NOTES`
 > Current Phase: `Phase 4 - Shell Integration And Packaging`
 
 ---
@@ -79,7 +79,9 @@ Current judgment as of 2026-04-26:
 - Folder generation preview is complete.
 - Safe folder generation execution is complete.
 - The project is entering shell integration and packaging.
-- The next required step is the minimal frontend shell.
+- Minimal frontend shell is complete.
+- MVP workflow integration is complete.
+- The next required step is packaging notes.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -96,7 +98,9 @@ Current stop point:
 - `TASK_010_LTR_MODULE` is complete.
 - `TASK_011_FOLDER_PREVIEW` is complete.
 - `TASK_012_FOLDER_GENERATION` is complete.
-- `TASK_013_MINIMAL_FRONTEND_SHELL` is the current active task.
+- `TASK_013_MINIMAL_FRONTEND_SHELL` is complete.
+- `TASK_014_MVP_WORKFLOW_INTEGRATION` is complete.
+- `TASK_015_PACKAGING_NOTES` is the current active task.
 
 ---
 
@@ -201,9 +205,9 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T4-1 | `TASK_013_MINIMAL_FRONTEND_SHELL` | active | Backend MVP path exists through safe folder generation |
-| T4-2 | `TASK_014_MVP_WORKFLOW_INTEGRATION` | blocked | Depends on all MVP backend modules |
-| T4-3 | `TASK_015_PACKAGING_NOTES` | blocked | Finalization task |
+| T4-1 | `TASK_013_MINIMAL_FRONTEND_SHELL` | done | Minimal React + TypeScript shell with project list/detail and MVP task cards completed on 2026-04-26 |
+| T4-2 | `TASK_014_MVP_WORKFLOW_INTEGRATION` | done | Frontend workflow actions, backend full-flow test, and manual smoke checklist completed on 2026-04-26 |
+| T4-3 | `TASK_015_PACKAGING_NOTES` | active | Finalization task after MVP workflow integration |
 
 Acceptance gate:
 
@@ -246,18 +250,20 @@ Next:
 
 Latest completed task:
 
-- `TASK_012_FOLDER_GENERATION`
+- `TASK_014_MVP_WORKFLOW_INTEGRATION`
 
 Validation result:
 
-- `py -m pytest tests\integration\test_folder_generation_api.py -p no:cacheprovider`
-- result: `1 passed`
+- `py -m pytest tests\integration\test_mvp_workflow_api.py tests\unit\test_frontend_shell_files.py -p no:cacheprovider`
+- result: `5 passed`
+- `npm run build` from `frontend/`
+- result: build passed
 - `py -m pytest -p no:cacheprovider`
-- result: `32 passed`
+- result: `37 passed`
 
 Known limits:
 
-- no frontend shell implemented yet
+- packaging notes are not written yet
 - no report generation, AI review, Matrix, or future-scope features
 
 ---
@@ -266,7 +272,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_013_MINIMAL_FRONTEND_SHELL`
+- execute `TASK_015_PACKAGING_NOTES`
 
 Why this is next:
 
@@ -280,9 +286,11 @@ Why this is next:
 - `TASK_010` established LTR registration/tracking
 - `TASK_011` established safe folder preview
 - `TASK_012` established safe folder generation with persistence and overwrite protection
-- a minimal frontend shell is the next step after the backend MVP path exists
+- `TASK_013` established the minimal React + TypeScript shell
+- `TASK_014` connected the MVP workflow through backend and frontend
+- packaging notes are the finalization step after the MVP workflow is usable
 
 Do not start yet:
 
-- `TASK_014+` before `TASK_013` is done
+- post-MVP tasks before `TASK_015` is done
 - any Matrix, Report, AI, or future-scope feature
