@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
+import { AppShell } from "./components/layout/AppShell";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
 import "./styles.css";
@@ -35,14 +36,10 @@ export default function App(): ReactElement {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  return (
-    <main className="app-shell">
-      <header className="hero">
-        <p className="eyebrow">ConnLab MVP</p>
-        <h1>Connector lab workbench</h1>
-        <p className="hero-copy">Project intake, precheck, LTR, and safe folder preparation.</p>
-      </header>
+  const activeRoute = route.name === "projectDetail" ? "workbench" : route.name;
 
+  return (
+    <AppShell activeRoute={activeRoute}>
       {route.name === "projects" && <ProjectListPage onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)} />}
       {route.name === "projectDetail" && (
         <ProjectWorkbenchPage projectId={route.projectId} onBack={() => navigate("/projects")} />
@@ -55,6 +52,6 @@ export default function App(): ReactElement {
           </button>
         </section>
       )}
-    </main>
+    </AppShell>
   );
 }

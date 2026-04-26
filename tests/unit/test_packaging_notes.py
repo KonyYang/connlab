@@ -33,9 +33,42 @@ def test_readme_documents_setup_run_and_validation() -> None:
         ".\\scripts\\run_backend.ps1",
         ".\\scripts\\run_frontend.ps1",
         ".\\scripts\\run_tests.ps1",
-        "npm run build",
+        ".\\scripts\\run_frontend_build.ps1",
+        "docs\\frontend_smoke_checklist.md",
     ]:
         assert term in readme
+
+
+def test_frontend_smoke_checklist_covers_phase5_mvp_flow() -> None:
+    """TASK_023 documents the manual frontend validation guard."""
+    checklist = (ROOT / "docs" / "frontend_smoke_checklist.md").read_text(
+        encoding="utf-8"
+    )
+
+    for term in [
+        "project registry page loads",
+        "Create a project",
+        "project detail page opens",
+        "Application Form",
+        "Precheck",
+        "LTR",
+        "Project Folder",
+        "Matrix is not exposed",
+        "Report generation is not exposed",
+        ".\\scripts\\run_frontend_build.ps1",
+    ]:
+        assert term in checklist
+
+
+def test_frontend_build_script_runs_npm_build_from_repo_root() -> None:
+    """TASK_023 provides a root-level frontend build command."""
+    script = (ROOT / "scripts" / "run_frontend_build.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "[Console]::OutputEncoding" in script
+    assert 'Push-Location "frontend"' in script
+    assert "npm run build" in script
 
 
 def test_packaging_notes_are_mvp_scoped() -> None:

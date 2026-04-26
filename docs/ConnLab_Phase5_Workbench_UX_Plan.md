@@ -120,6 +120,8 @@ Phase 5 — Workbench UX Modernization
 
 Create a modern, LIMS-inspired, workflow-oriented frontend shell for ConnLab MVP without changing the backend business scope.
 
+This phase is not "make the UI prettier". It is a product-architecture phase. The goal is to establish a durable workbench pattern before more real laboratory workflows are added.
+
 ### 4.3 Product Outcome
 
 After this phase, a lab engineer should be able to open ConnLab and immediately understand:
@@ -131,6 +133,14 @@ After this phase, a lab engineer should be able to open ConnLab and immediately 
 4. What the next action is.
 5. What precheck problems must be resolved.
 6. Whether LTR and folder generation are ready.
+```
+
+The interface must answer three questions on every page:
+
+```text
+What is the current state?
+What is wrong or blocking?
+What should I do next?
 ```
 
 ---
@@ -166,6 +176,8 @@ Multi-user permissions
 Full installer
 ```
 
+Real-world email/Word intake hardening is also not implemented in this UX phase. It should be planned after the workbench shell is stable, because that feature needs a reliable review UI and status model first.
+
 ### 5.3 Backend Change Rule
 
 This phase should be **frontend-first**.
@@ -177,6 +189,36 @@ Backend changes are allowed only when necessary to support already-existing MVP 
 - improving API response DTOs without adding new domain features.
 
 No new business domain should be added.
+
+### 5.4 Mandatory `$impeccable` Rule
+
+All Phase 5 UX/UI work must use `$impeccable`.
+
+Before any Phase 5 task that designs, changes, critiques, polishes, audits, or refactors frontend UI, the agent must:
+
+1. Load the `$impeccable` skill context.
+2. Read `PRODUCT.md`.
+3. Read `DESIGN.md`.
+4. Use `DESIGN.json` as the design-system sidecar when relevant.
+5. Treat ConnLab as `register: product`.
+6. Apply the product UI reference rules: familiar product patterns, restrained color, consistent component vocabulary, clear state, clear next action.
+
+If `PRODUCT.md`, `DESIGN.md`, or `DESIGN.json` is missing or stale, the task must stop and refresh those files before changing UI code.
+
+This rule applies to:
+
+- app shell layout
+- navigation
+- dashboard
+- project workbench
+- workflow stepper
+- issue display
+- forms
+- empty/loading/error states
+- status badges
+- spacing, typography, color, motion, and UX copy
+
+It does not apply to backend-only bug fixes.
 
 ---
 
@@ -232,6 +274,46 @@ frontend/src/
 │ Settings      │                                            │
 └───────────────┴────────────────────────────────────────────┘
 ```
+
+### 6.2.1 Recommended Information Architecture
+
+Use a left-navigation laboratory workbench, not a landing page and not a toolbox.
+
+Primary navigation:
+
+```text
+Dashboard
+Projects
+Intake
+Precheck
+LTR
+Folders
+Settings
+```
+
+Rules:
+
+- Dashboard summarizes project attention items.
+- Projects is the main project registry.
+- Intake is where imported request materials will later enter.
+- Precheck, LTR, and Folders may deep-link to filtered project work items, but should not become disconnected tools.
+- Future modules such as Matrix, Reports, AI Review, and Knowledge Base must remain absent or visibly disabled until explicitly opened by a later task.
+
+### 6.2.2 Project Workbench Pattern
+
+The project detail page should become the center of work.
+
+Recommended structure:
+
+```text
+Project summary
+Workflow stepper
+Current action panel
+Warnings / blockers
+File and history context
+```
+
+The workbench should avoid showing all forms at once. A lab engineer should see the active step first, with blocked or completed steps summarized.
 
 ### 6.3 MVP Workflow Display
 
@@ -305,6 +387,47 @@ What is the current state?
 What is wrong?
 What should I do next?
 ```
+
+### 7.5 LIMS Failure Modes To Avoid
+
+These patterns often make lab systems fail in practice:
+
+- Too many independent menu items with no obvious next action.
+- Project creation too early, before imported request data has been reviewed.
+- Raw backend errors shown as user instructions.
+- All lifecycle actions placed on one overloaded detail page.
+- Status values hidden in the database but not explained in the UI.
+- Warning, error, and missing-data states using the same visual treatment.
+- Generated folders or files without preview.
+- Future modules exposed as if they already work.
+- Parser output treated as truth before human confirmation.
+
+Phase 5 should prevent the UI-specific failures now. Real intake confirmation will be handled in a later parser/intake phase.
+
+### 7.6 Status And Next Action Model
+
+For frontend display, derive a UI state from existing MVP records:
+
+```text
+not_started
+ready
+in_progress
+passed
+warning
+failed
+blocked
+completed
+```
+
+Each workflow step should expose:
+
+- `status`
+- `label`
+- `blockingReason`
+- `nextActionLabel`
+- `canRunAction`
+
+This can be frontend-derived in Phase 5. Do not add backend state tables unless a specific task later requires it.
 
 ---
 
@@ -393,6 +516,8 @@ docs/phase5_workbench_ux_decision.md
 - Approved MVP workflow steps.
 - Out-of-scope list.
 - Component structure proposal.
+- LIMS failure modes to avoid.
+- Status and next-action vocabulary.
 
 ## Out of Scope
 
@@ -435,6 +560,8 @@ frontend/src/styles.css
 
 ## Requirements
 
+- Use `$impeccable` before designing or editing UI.
+- Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 - Left sidebar includes: Dashboard, Projects, Precheck, LTR, Folder, Settings.
 - Disabled future placeholders may be shown but must not open future features.
 - Main area renders current routes.
@@ -482,7 +609,10 @@ frontend/src/components/common/LoadingState.tsx
 
 ## Requirements
 
-- Show project cards with project number, product name, requestor, business unit, status.
+- Use `$impeccable` before designing or editing UI.
+- Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
+- Show project list/dashboard with project number, product name, requestor, business unit, status.
+- Prefer table or dense dashboard rows for project lists; use cards only for summary metrics or attention items.
 - Add search input placeholder UI. If backend search is not available, filter client-side only.
 - Keep create project form, but redesign it as a compact “New Project” panel.
 - Show clear empty/loading/error states.
@@ -536,11 +666,14 @@ frontend/src/components/project/ProjectSummaryPanel.tsx
 
 ## Requirements
 
+- Use `$impeccable` before designing or editing UI.
+- Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 - Show current project summary at top.
 - Show workflow stepper below summary.
 - Highlight current/blocked/ready/done states.
 - Only show active step content in the main content panel.
 - Do not display all forms at once.
+- Every step must show next action or blocking reason.
 
 ## Out of Scope
 
@@ -579,6 +712,9 @@ frontend/src/pages/ProjectWorkbenchPage.tsx
 ```
 
 ## Requirements
+
+- Use `$impeccable` before designing or editing UI.
+- Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 
 Convert technical issue display into business-readable cards:
 
@@ -620,6 +756,8 @@ Frontend only unless a tiny API DTO display fix is necessary.
 
 ### Application Form
 
+- Use `$impeccable` before designing or editing UI.
+- Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 - Use clear upload panel.
 - Show uploaded form metadata.
 - Show next action after upload.
@@ -672,6 +810,8 @@ frontend/src/components/workflow/workflowState.ts
 
 ## Requirements
 
+- Use `$impeccable` before designing or editing UI cleanup.
+- Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 - Keep pages readable.
 - Avoid giant component files.
 - Do not change backend contracts unless necessary.
@@ -698,6 +838,7 @@ Add minimal frontend validation so future UI changes do not silently break MVP f
 
 ## Scope
 
+- Use `$impeccable` before changing frontend validation UX or smoke checklist wording.
 - Add or update a smoke checklist.
 - Add a script/check that runs frontend build.
 - Update README with frontend validation command.
@@ -751,6 +892,8 @@ README.md if needed
 
 ## Requirements
 
+- Use `$impeccable` before final UX documentation sync.
+- Confirm `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json` still match the implemented UI direction.
 - Mark Phase 5 tasks complete or accurately blocked.
 - Record latest validation:
   - backend pytest result;
@@ -766,6 +909,7 @@ Do not automatically start them. Only recommend.
 Phase 6A — Application Form Real-World Parser Hardening
 Phase 6B — Folder Template Configuration UX
 Phase 6C — Precheck Rule Expansion
+Phase 6D — Real Email/Word Intake And Human Confirmation
 ```
 
 ## Out of Scope
@@ -884,7 +1028,7 @@ estimated completion date helper
 Recommended order:
 
 ```text
-Phase 5 -> Option A -> Option B -> Option C
+Phase 5 -> Real Intake/Parser Hardening -> Folder Template UX -> Precheck Rule Expansion
 ```
 
 Reason: Better parsing improves all downstream precheck and project creation quality.

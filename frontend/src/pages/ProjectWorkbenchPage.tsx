@@ -6,6 +6,7 @@ import {
   listProjectLtrs,
   previewFolder,
   registerLtr,
+  resolvePrecheckIssue,
   runPrecheck,
   uploadApplicationForm,
   type ApplicationForm,
@@ -16,6 +17,18 @@ import {
   type PrecheckResult,
   type Project
 } from "../api/client";
+import { ErrorMessage } from "../components/common/ErrorMessage";
+import { LoadingState } from "../components/common/LoadingState";
+import { PrecheckIssueCard } from "../components/precheck/PrecheckIssueCard";
+import { PrecheckSummary } from "../components/precheck/PrecheckSummary";
+import { ProjectSummaryPanel } from "../components/project/ProjectSummaryPanel";
+import { ApplicationFormActionPanel } from "../components/workflow/ApplicationFormActionPanel";
+import { FolderActionPanel } from "../components/workflow/FolderActionPanel";
+import { LtrActionPanel } from "../components/workflow/LtrActionPanel";
+import { NextActionPanel } from "../components/workflow/NextActionPanel";
+import { WorkflowStepper } from "../components/workflow/WorkflowStepper";
+import { buildWorkflowSteps, getActiveWorkflowStep } from "../components/workflow/workflowState";
+import "../workbench.css";
 
 type ProjectWorkbenchPageProps = {
   projectId: string;
@@ -43,10 +56,28 @@ export function ProjectWorkbenchPage({
   const [ltrNumber, setLtrNumber] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedStepId, setSelectedStepId] = useState("application");
+
+  const steps = buildWorkflowSteps({
+    folderGeneration,
+    folderPlan,
+    formRecord,
+    ltrs,
+    precheck,
+    project
+  });
+  const activeStep = getActiveWorkflowStep(steps, selectedStepId);
 
   useEffect(() => {
     void loadWorkbench();
   }, [projectId]);
+
+  useEffect(() => {
+    if (steps.some((step) => step.id === selectedStepId && step.state !== "blocked")) {
+      return;
+    }
+    setSelectedStepId(activeStep.id);
+  }, [activeStep.id, selectedStepId, steps]);
 
   async function loadWorkbench(): Promise<void> {
     try {
@@ -76,6 +107,7 @@ export function ProjectWorkbenchPage({
       const uploaded = await uploadApplicationForm(projectId, file);
       setFormRecord(uploaded);
       setPrecheck(null);
+      setSelectedStepId("precheck");
       setMessage(`Application form ${uploaded.form_no} Rev ${uploaded.revision} uploaded.`);
       setError(null);
       await loadWorkbench();
@@ -92,7 +124,28 @@ export function ProjectWorkbenchPage({
     try {
       const result = await runPrecheck(formRecord.form_id);
       setPrecheck(result);
+      setSelectedStepId("ltr");
       setMessage(`Precheck status: ${result.status}`);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function resolveIssueNow(issueId: string): Promise<void> {
+    try {
+      const resolved = await resolvePrecheckIssue(issueId);
+      setPrecheck((current) =>
+        current
+          ? {
+              ...current,
+              issues: current.issues.map((issue) =>
+                issue.issue_id === issueId ? resolved : issue
+              )
+            }
+          : current
+      );
+      setMessage("Precheck issue marked reviewed.");
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -105,6 +158,7 @@ export function ProjectWorkbenchPage({
       const record = await registerLtr(projectId, { ltr_number: ltrNumber });
       setLtrNumber("");
       setLtrs((current) => [record, ...current]);
+      setSelectedStepId("folder");
       setMessage(`LTR registered: ${record.ltr_number}`);
       setError(null);
       await loadWorkbench();
@@ -138,169 +192,146 @@ export function ProjectWorkbenchPage({
     }
   }
 
+  if (!project && !error) {
+    return <LoadingState label="Loading project workbench..." />;
+  }
+
   return (
-    <section className="panel">
-      <button className="text-button" type="button" onClick={onBack}>
-        Back to projects
-      </button>
-      {error && <p className="error">Workflow error: {error}</p>}
+    <section className="workbench-page">
+      {error && <ErrorMessage message={error} />}
       {message && <p className="success">{message}</p>}
       {project && (
         <>
-          <div className="section-heading">
-            <p className="eyebrow">Workbench</p>
-            <h2>{project.product_name}</h2>
-            <p>
-              {project.project_no} · {project.requestor} · status: {project.status}
-            </p>
-          </div>
-
-          <div className="task-grid">
-            <ApplicationFormCard formRecord={formRecord} onSubmit={uploadForm} />
-            <PrecheckCard precheck={precheck} onRun={runPrecheckNow} disabled={!formRecord} />
-            <LtrCard ltrs={ltrs} ltrNumber={ltrNumber} setLtrNumber={setLtrNumber} onSubmit={submitLtr} />
-            <FolderCard
-              folderInput={folderInput}
-              folderPlan={folderPlan}
-              folderGeneration={folderGeneration}
-              setFolderInput={setFolderInput}
-              onPreview={previewFolderNow}
-              onGenerate={generateFolderNow}
-            />
-          </div>
+          <ProjectSummaryPanel project={project} onBack={onBack} />
+          <WorkflowStepper
+            activeStepId={activeStep.id}
+            steps={steps}
+            onSelect={setSelectedStepId}
+          />
+          <NextActionPanel step={activeStep}>
+            {renderStepContent(activeStep.id, {
+              disabledPrecheck: !formRecord,
+              folderGeneration,
+              folderInput,
+              folderPlan,
+              formRecord,
+              ltrNumber,
+              ltrs,
+              onGenerate: generateFolderNow,
+              onPreview: previewFolderNow,
+              onRunPrecheck: runPrecheckNow,
+              onResolveIssue: resolveIssueNow,
+              onSubmitForm: uploadForm,
+              onSubmitLtr: submitLtr,
+              precheck,
+              setFolderInput,
+              setLtrNumber
+            })}
+          </NextActionPanel>
         </>
       )}
     </section>
   );
 }
 
-function ApplicationFormCard({
-  formRecord,
-  onSubmit
-}: {
-  formRecord: ApplicationForm | null;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-}): ReactElement {
-  return (
-    <article className="task-card">
-      <h3>Application Form</h3>
-      <p>Status: {formRecord ? `${formRecord.form_no} Rev ${formRecord.revision}` : "not uploaded"}</p>
-      <form className="card-form" onSubmit={onSubmit}>
-        <input name="applicationForm" type="file" accept=".docx" />
-        <button className="primary-action" type="submit">Upload form</button>
-      </form>
-    </article>
-  );
-}
-
-function PrecheckCard({
-  precheck,
-  disabled,
-  onRun
-}: {
-  precheck: PrecheckResult | null;
-  disabled: boolean;
-  onRun: () => Promise<void>;
-}): ReactElement {
-  return (
-    <article className="task-card">
-      <h3>Precheck</h3>
-      <p>Status: {precheck?.status ?? "not run"}</p>
-      <button className="primary-action" disabled={disabled} type="button" onClick={() => void onRun()}>
-        Run precheck
-      </button>
-      <ul className="issue-list">
-        {precheck?.issues.map((issue) => (
-          <li key={issue.issue_id}>{issue.level}: {issue.message}</li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
-function LtrCard({
-  ltrs,
-  ltrNumber,
-  setLtrNumber,
-  onSubmit
-}: {
-  ltrs: LtrRecord[];
-  ltrNumber: string;
-  setLtrNumber: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-}): ReactElement {
-  return (
-    <article className="task-card">
-      <h3>LTR</h3>
-      <p>Status: {ltrs[0]?.status ?? "not registered"}</p>
-      <form className="card-form" onSubmit={onSubmit}>
-        <input
-          required
-          placeholder="LTR number"
-          value={ltrNumber}
-          onChange={(event) => setLtrNumber(event.target.value)}
-        />
-        <button className="primary-action" type="submit">Register LTR</button>
-      </form>
-      {ltrs[0] && <p>Latest: {ltrs[0].ltr_number}</p>}
-    </article>
-  );
-}
-
-function FolderCard({
-  folderInput,
-  folderPlan,
-  folderGeneration,
-  setFolderInput,
-  onPreview,
-  onGenerate
-}: {
+type StepContentProps = {
+  disabledPrecheck: boolean;
+  folderGeneration: FolderGeneration | null;
   folderInput: FolderRequest;
   folderPlan: FolderPlan | null;
-  folderGeneration: FolderGeneration | null;
-  setFolderInput: (value: FolderRequest) => void;
-  onPreview: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  formRecord: ApplicationForm | null;
+  ltrNumber: string;
+  ltrs: LtrRecord[];
   onGenerate: () => Promise<void>;
-}): ReactElement {
+  onPreview: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onRunPrecheck: () => Promise<void>;
+  onResolveIssue: (issueId: string) => Promise<void>;
+  onSubmitForm: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmitLtr: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  precheck: PrecheckResult | null;
+  setFolderInput: (value: FolderRequest) => void;
+  setLtrNumber: (value: string) => void;
+};
+
+function renderStepContent(stepId: string, props: StepContentProps): ReactElement {
+  if (stepId === "precheck") {
+    return <PrecheckPanel {...props} />;
+  }
+  if (stepId === "ltr") {
+    return <LtrPanel {...props} />;
+  }
+  if (stepId === "folder") {
+    return <FolderPanel {...props} />;
+  }
+  return <ApplicationFormPanel {...props} />;
+}
+
+function ApplicationFormPanel({ formRecord, onSubmitForm }: StepContentProps): ReactElement {
+  return <ApplicationFormActionPanel formRecord={formRecord} onSubmitForm={onSubmitForm} />;
+}
+
+function PrecheckPanel({
+  disabledPrecheck,
+  onRunPrecheck,
+  onResolveIssue,
+  precheck
+}: StepContentProps): ReactElement {
   return (
-    <article className="task-card wide-card">
-      <h3>Project Folder</h3>
-      <p>Status: {folderGeneration ? "generated" : folderPlan ? "previewed" : "not previewed"}</p>
-      <form className="card-form" onSubmit={onPreview}>
-        <input
-          required
-          placeholder="Template path"
-          value={folderInput.template_path}
-          onChange={(event) => setFolderInput({ ...folderInput, template_path: event.target.value })}
-        />
-        <input
-          required
-          placeholder="Target root"
-          value={folderInput.target_root}
-          onChange={(event) => setFolderInput({ ...folderInput, target_root: event.target.value })}
-        />
-        <input
-          placeholder="DL number"
-          value={folderInput.dl_number ?? ""}
-          onChange={(event) => setFolderInput({ ...folderInput, dl_number: event.target.value })}
-        />
-        <button className="primary-action" type="submit">Preview folder</button>
-      </form>
-      {folderPlan && (
-        <div className="folder-result">
-          <p>Target: {folderPlan.project_folder_path}</p>
-          <p>Conflict: {String(folderPlan.conflict)}</p>
-          <button
-            className="primary-action"
-            disabled={folderPlan.conflict}
-            type="button"
-            onClick={() => void onGenerate()}
-          >
-            Generate folder
-          </button>
+    <div className="action-panel-body">
+      <PrecheckSummary precheck={precheck} />
+      <button className="primary-action" disabled={disabledPrecheck} type="button" onClick={() => void onRunPrecheck()}>
+        Run precheck
+      </button>
+      {precheck && precheck.issues.length === 0 && (
+        <p className="success">No precheck issues found.</p>
+      )}
+      {precheck && precheck.issues.length > 0 && (
+        <div className="precheck-issue-list">
+          {precheck.issues.map((issue) => (
+            <PrecheckIssueCard
+              issue={issue}
+              key={issue.issue_id}
+              onResolve={(issueId) => void onResolveIssue(issueId)}
+            />
+          ))}
         </div>
       )}
-      {folderGeneration && <p>Generated paths: {folderGeneration.generated_paths.length}</p>}
-    </article>
+    </div>
+  );
+}
+
+function LtrPanel({
+  ltrNumber,
+  ltrs,
+  onSubmitLtr,
+  setLtrNumber
+}: StepContentProps): ReactElement {
+  return (
+    <LtrActionPanel
+      ltrNumber={ltrNumber}
+      ltrs={ltrs}
+      onSubmitLtr={onSubmitLtr}
+      setLtrNumber={setLtrNumber}
+    />
+  );
+}
+
+function FolderPanel({
+  folderGeneration,
+  folderInput,
+  folderPlan,
+  onGenerate,
+  onPreview,
+  setFolderInput
+}: StepContentProps): ReactElement {
+  return (
+    <FolderActionPanel
+      folderGeneration={folderGeneration}
+      folderInput={folderInput}
+      folderPlan={folderPlan}
+      onGenerate={onGenerate}
+      onPreview={onPreview}
+      setFolderInput={setFolderInput}
+    />
   );
 }

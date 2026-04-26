@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-04-26T00:00:00+08:00",
+  "title": "Design System: ConnLab",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Cool Lab Canvas",
+        "canonical": "oklch(96% 0.014 255)",
+        "tonalRamp": [
+          "oklch(18% 0.014 255)",
+          "oklch(28% 0.014 255)",
+          "oklch(40% 0.014 255)",
+          "oklch(54% 0.014 255)",
+          "oklch(68% 0.014 255)",
+          "oklch(80% 0.014 255)",
+          "oklch(90% 0.014 255)",
+          "oklch(96% 0.014 255)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Workbench Blue",
+        "canonical": "oklch(49% 0.155 255)",
+        "tonalRamp": [
+          "oklch(18% 0.120 255)",
+          "oklch(28% 0.135 255)",
+          "oklch(38% 0.150 255)",
+          "oklch(49% 0.155 255)",
+          "oklch(60% 0.115 255)",
+          "oklch(72% 0.075 255)",
+          "oklch(84% 0.045 255)",
+          "oklch(94% 0.025 255)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Workbench Ink",
+        "canonical": "oklch(23% 0.035 260)",
+        "tonalRamp": [
+          "oklch(15% 0.035 260)",
+          "oklch(23% 0.035 260)",
+          "oklch(32% 0.030 260)",
+          "oklch(44% 0.026 260)",
+          "oklch(58% 0.020 260)",
+          "oklch(72% 0.015 260)",
+          "oklch(86% 0.010 260)",
+          "oklch(95% 0.006 260)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles and workbench headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Dense product content, forms, tables, and issue copy."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shell-lift",
+        "value": "0 12px 32px rgba(36, 54, 84, 0.10)",
+        "purpose": "Large shell separation only."
+      },
+      {
+        "name": "interactive-lift",
+        "value": "0 4px 12px rgba(36, 54, 84, 0.08)",
+        "purpose": "Optional hover response for clickable product surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "180ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Small state changes such as hover, focus, and panel reveal."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "workstation-min",
+        "value": "1366px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary next-action button for the active workflow step.",
+      "html": "<button class=\"ds-btn-primary\">Run precheck</button>",
+      "css": ".ds-btn-primary { background: #164aa3; color: #fbfdff; border: 1px solid #164aa3; border-radius: 10px; padding: 10px 16px; font: 700 14px/1.2 Aptos, Segoe UI, Microsoft YaHei, system-ui, sans-serif; transition: background 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background: #1f66d1; } .ds-btn-primary:focus-visible { outline: 3px solid rgba(31, 102, 209, 0.26); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge Warning",
+      "kind": "chip",
+      "refersTo": "status-warning",
+      "description": "Warning status badge for precheck issues and blocked review states.",
+      "html": "<span class=\"ds-badge-warning\">Warning</span>",
+      "css": ".ds-badge-warning { display: inline-flex; align-items: center; border-radius: 6px; padding: 4px 8px; background: #fff9eb; color: #9a641c; border: 1px solid #e3cf9f; font: 700 12px/1 Aptos, Segoe UI, Microsoft YaHei, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Workbench Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Default flat panel for project workflow content.",
+      "html": "<section class=\"ds-panel\"><h3>Application Form</h3><p>Upload and review the current request document.</p></section>",
+      "css": ".ds-panel { background: #fbfdff; color: #172033; border: 1px solid #d8e0ea; border-radius: 16px; padding: 24px; font-family: Aptos, Segoe UI, Microsoft YaHei, system-ui, sans-serif; } .ds-panel h3 { margin: 0 0 8px; font-size: 18px; line-height: 1.25; } .ds-panel p { margin: 0; color: #647084; font-size: 14px; line-height: 1.55; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Lab Ledger Workbench",
+    "overview": "ConnLab should feel like a disciplined lab ledger with modern workbench controls. It is not a landing page, not a developer console, and not an ERP menu maze. The interface should disappear into the work: import, review, precheck, register, preview, generate.",
+    "keyCharacteristics": [
+      "Left-navigation product shell, not a centered hero page",
+      "Project-first workflow with visible status and next action",
+      "Dense but readable tables, forms, and issue panels",
+      "Restrained blue, cyan, green, warning, and danger state colors",
+      "Familiar controls with consistent hover, focus, disabled, and error states"
+    ],
+    "rules": [
+      {
+        "name": "The State Owns Color Rule",
+        "body": "Color is reserved for current selection, next action, and semantic state. Decorative color blocks are prohibited.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Display Font Rule",
+        "body": "Product labels, buttons, tables, and workflow steps use the same sans family. Decorative display type is prohibited.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat By Default Rule",
+        "body": "Surfaces are flat at rest. Use borders and background tone before shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use a left-navigation app shell with a top context bar.",
+      "Do make every page answer current state, blocker, and next action.",
+      "Do use tables or dense rows for project lists.",
+      "Do show precheck issues as business-readable cards."
+    ],
+    "donts": [
+      "Don't expose Matrix, Report, AI review, permissions, or installer work as active UI.",
+      "Don't use a landing-page hero for workflow screens.",
+      "Don't create a toolbox page full of disconnected buttons.",
+      "Don't show raw backend errors as final user guidance."
+    ]
+  }
+}

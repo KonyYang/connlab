@@ -1,10 +1,10 @@
 # ConnLab Task Board
 
-> Status: active
+> Status: awaiting next phase approval
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `MVP_TASK_SEQUENCE_COMPLETE`
-> Current Phase: `Phase 4 - Shell Integration And Packaging`
+> Current Active Task: `none`
+> Current Phase: `Phase 5 complete - awaiting explicit Phase 6 approval`
 
 ---
 
@@ -83,6 +83,18 @@ Current judgment as of 2026-04-26:
 - MVP workflow integration is complete.
 - Packaging notes and local run scripts are complete.
 - The MVP task sequence is complete.
+- Workbench UX modernization is approved as the next controlled phase.
+- The UX baseline and decision record is complete.
+- The product app shell and left navigation are complete.
+- The project dashboard/table-oriented project registry is complete.
+- The project detail page now uses a sequential workflow stepper.
+- The precheck issue experience now uses business-readable summary and issue cards.
+- The intake, LTR, and folder action panels now provide clearer operator guidance.
+- Frontend workflow state and API usage are cleaned up.
+- Frontend build and smoke validation guard is documented.
+- Phase 5 documentation and board sync are complete.
+- No implementation task is currently active.
+- The next phase requires explicit user approval.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -102,7 +114,16 @@ Current stop point:
 - `TASK_013_MINIMAL_FRONTEND_SHELL` is complete.
 - `TASK_014_MVP_WORKFLOW_INTEGRATION` is complete.
 - `TASK_015_PACKAGING_NOTES` is complete.
-- No further MVP implementation task is active.
+- `TASK_016_UX_BASELINE_AND_DECISION_RECORD` is complete.
+- `TASK_017_APP_SHELL_LEFT_NAV` is complete.
+- `TASK_018_PROJECT_DASHBOARD` is complete.
+- `TASK_019_PROJECT_WORKBENCH_STEPPER` is complete.
+- `TASK_020_PRECHECK_ISSUE_EXPERIENCE` is complete.
+- `TASK_021_INTAKE_LTR_FOLDER_UX` is complete.
+- `TASK_022_FRONTEND_STATE_AND_API_CLEANUP` is complete.
+- `TASK_023_FRONTEND_TEST_AND_BUILD_GUARD` is complete.
+- `TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` is complete.
+- No current active implementation task is open.
 
 ---
 
@@ -217,6 +238,47 @@ Acceptance gate:
 - integration only covers MVP flow
 - packaging notes reflect real repository state
 
+### Phase 5 - Workbench UX Modernization
+
+Goal:
+
+- convert the MVP prototype frontend into a modern workflow-oriented ConnLab workbench
+- establish left navigation, project dashboard, project workbench, workflow stepper, business-readable issue display, and frontend validation guard
+
+Mandatory Phase 5 UX rule:
+
+- Use `$impeccable` for every Phase 5 UX/UI design, frontend interface change, visual polish, layout change, UX copy change, component extraction, audit, or critique.
+- Before editing UI, load `$impeccable` context and follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
+- Treat ConnLab as `register: product`.
+- If the `$impeccable` context files are missing or stale, refresh them before UI work.
+- Backend-only bug fixes are exempt from this rule.
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T5-1 | `TASK_016_UX_BASELINE_AND_DECISION_RECORD` | done | UX decision record, status vocabulary, target layout, and component structure completed on 2026-04-26 |
+| T5-2 | `TASK_017_APP_SHELL_LEFT_NAV` | done | Product app shell, left navigation, top context bar, and hero removal completed on 2026-04-26 |
+| T5-3 | `TASK_018_PROJECT_DASHBOARD` | done | Searchable project registry, compact new project panel, status badges, and explicit empty/loading/error states completed on 2026-04-26 |
+| T5-4 | `TASK_019_PROJECT_WORKBENCH_STEPPER` | done | Project summary, sequential workflow stepper, single active action panel, and blocked/ready/done/warning states completed on 2026-04-26 |
+| T5-5 | `TASK_020_PRECHECK_ISSUE_EXPERIENCE` | done | Business-readable precheck summary, severity badges, issue cards, and mark-reviewed action completed on 2026-04-26 |
+| T5-6 | `TASK_021_INTAKE_LTR_FOLDER_UX` | done | Upload metadata panel, latest LTR panel, tree-like folder preview, conflict display, and safer generate affordance completed on 2026-04-26 |
+| T5-7 | `TASK_022_FRONTEND_STATE_AND_API_CLEANUP` | done | Workflow state derivation extracted, workbench page reduced, and raw fetch usage guarded to API client on 2026-04-26 |
+| T5-8 | `TASK_023_FRONTEND_TEST_AND_BUILD_GUARD` | done | Frontend smoke checklist, root build script, README validation command, and static documentation checks completed on 2026-04-26 |
+| T5-9 | `TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done | Phase 5 decision record, board state, validation summary, and next-phase recommendation synced on 2026-04-26 |
+
+Acceptance gate:
+
+- left navigation workbench shell exists
+- project dashboard is usable by non-programmer lab engineers
+- project detail page uses sequential workflow stepper
+- precheck issues are business-readable
+- application/LTR/folder actions are easier to operate
+- existing MVP backend workflow still works
+- backend tests pass
+- frontend build passes
+- manual smoke checklist passes
+
 ---
 
 ## 6. Completion Update Protocol
@@ -252,23 +314,23 @@ Next:
 
 Latest completed task:
 
-- `TASK_015_PACKAGING_NOTES`
+- `TASK_024_PHASE5_DOCS_AND_BOARD_SYNC`
 
 Validation result:
 
-- `py -m pytest tests\unit\test_packaging_notes.py -p no:cacheprovider`
-- result: `3 passed`
-- `powershell.exe -ExecutionPolicy Bypass -File .\scripts\init_db.ps1`
-- result: database initialized
-- `npm run build` from `frontend/`
+- `.\scripts\run_frontend_build.ps1`
 - result: build passed
 - `py -m pytest -p no:cacheprovider`
-- result: `40 passed`
+- result: `56 passed`
+- manual browser smoke checklist
+- result: documented in `docs/frontend_smoke_checklist.md`; pending human execution/confirmation
 
 Known limits:
 
 - no full installer or PyInstaller bundle implemented
 - PyWebView remains a future packaging placeholder
+- browser-based manual frontend smoke has not been executed by Codex
+- `$impeccable` context is present in `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`
 - no report generation, AI review, Matrix, or future-scope features
 
 ---
@@ -277,7 +339,7 @@ Known limits:
 
 Current recommendation:
 
-- no active MVP implementation task remains
+- wait for explicit user approval before starting Phase 6
 
 Why this is next:
 
@@ -295,8 +357,34 @@ Why this is next:
 - `TASK_014` connected the MVP workflow through backend and frontend
 - `TASK_015` documented local Windows run scripts and packaging status
 - the defined MVP task sequence is complete
+- `docs/ConnLab_Phase5_Workbench_UX_Plan.md` defines the approved UX modernization direction
+- `TASK_016` established the approved UX decision record
+- `TASK_017` established the product app shell and left navigation
+- `TASK_018` established the searchable project registry/dashboard
+- `TASK_019` established the sequential project workbench stepper
+- `TASK_020` established business-readable precheck issue review
+- `TASK_021` established clearer intake, LTR, and folder operation panels
+- `TASK_022` cleaned up frontend workflow state derivation and centralized API usage checks
+- `TASK_023` established frontend build and manual smoke validation guards
+- `TASK_024` completed Phase 5 documentation and board sync
+- Phase 5 implementation is complete
+
+Recommended Phase 6 candidates:
+
+- `Phase 6A - Real Email/Word Intake And Human Confirmation`
+- `Phase 6B - Application Form Parser Hardening`
+- `Phase 6C - Folder Template Configuration UX`
+- `Phase 6D - Precheck Rule Expansion`
+
+Preferred next phase:
+
+- `Phase 6A - Real Email/Word Intake And Human Confirmation`
+
+Reason:
+
+- real imported request material should be reviewed and confirmed by humans before project data becomes authoritative
 
 Do not start yet:
 
-- post-MVP tasks without a new task board entry and explicit approval
+- any Phase 6 task before explicit user approval
 - any Matrix, Report, AI, or future-scope feature

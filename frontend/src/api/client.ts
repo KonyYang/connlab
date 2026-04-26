@@ -143,6 +143,13 @@ export function getLatestPrecheck(projectId: string): Promise<PrecheckResult> {
   );
 }
 
+export function resolvePrecheckIssue(issueId: string): Promise<PrecheckIssue> {
+  return requestJson<PrecheckIssue>(
+    `/api/precheck-issues/${encodeURIComponent(issueId)}/resolve`,
+    { method: "PATCH" }
+  );
+}
+
 export function registerLtr(
   projectId: string,
   input: { ltr_number: string; requested_by?: string; notes?: string }

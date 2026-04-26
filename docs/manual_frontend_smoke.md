@@ -1,6 +1,12 @@
 # Manual Frontend Smoke Checklist
 
-Use this checklist after starting the backend and frontend dev servers.
+This file is retained for compatibility. The current Phase 5 checklist is:
+
+```text
+docs\frontend_smoke_checklist.md
+```
+
+Use the current checklist after starting the backend and frontend dev servers.
 
 ## Startup
 

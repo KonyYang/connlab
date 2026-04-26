@@ -76,14 +76,19 @@ Backend tests:
 Frontend build:
 
 ```powershell
-Set-Location frontend
-npm run build
+.\scripts\run_frontend_build.ps1
 ```
 
 Manual frontend smoke checklist:
 
 ```text
-docs\manual_frontend_smoke.md
+docs\frontend_smoke_checklist.md
+```
+
+Phase 5 UX status:
+
+```text
+docs\phase5_workbench_ux_decision.md
 ```
 
 Packaging status:
