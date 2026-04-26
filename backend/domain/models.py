@@ -53,6 +53,24 @@ class ApplicationForm:
     manufacturing_site: str | None = None
     requested_testing: str | None = None
     subcontract_allowed: bool | None = None
+    reference_doc: str | None = None
+    lab_test_request_number: str | None = None
+    project_number: str | None = None
+    requested_completion_date: str | None = None
+    results_format: str | None = None
+    test_type: str | None = None
+    sample_status: str | None = None
+    project_type: str | None = None
+    post_testing_disposition: str | None = None
+    confidential: str | None = None
+    subcontract: str | None = None
+    additional_information: str | None = None
+    send_copies_recipients: str | None = None
+    lab: str | None = None
+    assigned_personnel: str | None = None
+    received_date: str | None = None
+    estimated_completion_date: str | None = None
+    sample_condition: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +98,7 @@ class PrecheckIssue:
     level: IssueLevel
     message: str
     field_name: str | None = None
+    resolved: bool = False
 
 
 @dataclass(frozen=True, slots=True)

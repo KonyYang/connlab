@@ -47,6 +47,32 @@ class PrecheckResultRepository:
         ).all()
         return [_result_to_domain(row) for row in rows]
 
+    def latest_by_project(self, project_id: str) -> PrecheckResult | None:
+        """Return the latest precheck result for a project."""
+        from backend.infrastructure.storage.models import ApplicationFormModel
+
+        row = self._session.scalars(
+            select(PrecheckResultModel)
+            .join(
+                ApplicationFormModel,
+                PrecheckResultModel.application_form_id == ApplicationFormModel.form_id,
+            )
+            .options(selectinload(PrecheckResultModel.issues))
+            .where(ApplicationFormModel.project_id == project_id)
+            .order_by(PrecheckResultModel.checked_on.desc(), PrecheckResultModel.result_id.desc())
+            .limit(1)
+        ).one_or_none()
+        return _result_to_domain(row) if row else None
+
+    def resolve_issue(self, issue_id: str) -> PrecheckIssue | None:
+        """Mark one issue resolved and return the updated domain issue."""
+        row = self._session.get(PrecheckIssueModel, issue_id)
+        if row is None:
+            return None
+        row.resolved = True
+        self._session.flush()
+        return _issue_to_domain(row)
+
     def update(self, result: PrecheckResult) -> PrecheckResult:
         """Replace an existing precheck result and its issue rows."""
         row = self._session.scalars(
@@ -83,6 +109,7 @@ def _issue_to_model(issue: PrecheckIssue) -> PrecheckIssueModel:
         level=issue.level.value,
         message=issue.message,
         field_name=issue.field_name,
+        resolved=issue.resolved,
     )
 
 
@@ -105,4 +132,5 @@ def _issue_to_domain(row: PrecheckIssueModel) -> PrecheckIssue:
         level=IssueLevel(row.level),
         message=row.message,
         field_name=row.field_name,
+        resolved=row.resolved,
     )

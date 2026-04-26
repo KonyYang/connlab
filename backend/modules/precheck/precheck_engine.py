@@ -62,6 +62,7 @@ def _renumber_issues(issues: list[PrecheckIssue]) -> list[PrecheckIssue]:
             level=issue.level,
             message=issue.message,
             field_name=issue.field_name,
+            resolved=issue.resolved,
         )
         for index, issue in enumerate(issues, start=1)
     ]

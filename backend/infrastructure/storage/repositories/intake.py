@@ -63,6 +63,24 @@ class ApplicationFormRepository:
         row.manufacturing_site = form.manufacturing_site
         row.requested_testing = form.requested_testing
         row.subcontract_allowed = form.subcontract_allowed
+        row.reference_doc = form.reference_doc
+        row.lab_test_request_number = form.lab_test_request_number
+        row.project_number = form.project_number
+        row.requested_completion_date = form.requested_completion_date
+        row.results_format = form.results_format
+        row.test_type = form.test_type
+        row.sample_status = form.sample_status
+        row.project_type = form.project_type
+        row.post_testing_disposition = form.post_testing_disposition
+        row.confidential = form.confidential
+        row.subcontract = form.subcontract
+        row.additional_information = form.additional_information
+        row.send_copies_recipients = form.send_copies_recipients
+        row.lab = form.lab
+        row.assigned_personnel = form.assigned_personnel
+        row.received_date = form.received_date
+        row.estimated_completion_date = form.estimated_completion_date
+        row.sample_condition = form.sample_condition
         self._session.flush()
         return form
 
@@ -127,6 +145,24 @@ def _form_to_model(form: ApplicationForm) -> ApplicationFormModel:
         manufacturing_site=form.manufacturing_site,
         requested_testing=form.requested_testing,
         subcontract_allowed=form.subcontract_allowed,
+        reference_doc=form.reference_doc,
+        lab_test_request_number=form.lab_test_request_number,
+        project_number=form.project_number,
+        requested_completion_date=form.requested_completion_date,
+        results_format=form.results_format,
+        test_type=form.test_type,
+        sample_status=form.sample_status,
+        project_type=form.project_type,
+        post_testing_disposition=form.post_testing_disposition,
+        confidential=form.confidential,
+        subcontract=form.subcontract,
+        additional_information=form.additional_information,
+        send_copies_recipients=form.send_copies_recipients,
+        lab=form.lab,
+        assigned_personnel=form.assigned_personnel,
+        received_date=form.received_date,
+        estimated_completion_date=form.estimated_completion_date,
+        sample_condition=form.sample_condition,
     )
 
 
@@ -145,6 +181,24 @@ def _form_to_domain(row: ApplicationFormModel) -> ApplicationForm:
         manufacturing_site=row.manufacturing_site,
         requested_testing=row.requested_testing,
         subcontract_allowed=row.subcontract_allowed,
+        reference_doc=row.reference_doc,
+        lab_test_request_number=row.lab_test_request_number,
+        project_number=row.project_number,
+        requested_completion_date=row.requested_completion_date,
+        results_format=row.results_format,
+        test_type=row.test_type,
+        sample_status=row.sample_status,
+        project_type=row.project_type,
+        post_testing_disposition=row.post_testing_disposition,
+        confidential=row.confidential,
+        subcontract=row.subcontract,
+        additional_information=row.additional_information,
+        send_copies_recipients=row.send_copies_recipients,
+        lab=row.lab,
+        assigned_personnel=row.assigned_personnel,
+        received_date=row.received_date,
+        estimated_completion_date=row.estimated_completion_date,
+        sample_condition=row.sample_condition,
     )
 
 

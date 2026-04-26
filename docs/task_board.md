@@ -3,8 +3,8 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_009_INTAKE_PRECHECK_API`
-> Current Phase: `Phase 2 - Intake And Precheck Flow`
+> Current Active Task: `TASK_010_LTR_MODULE`
+> Current Phase: `Phase 3 - LTR And Folder Flow`
 
 ---
 
@@ -74,8 +74,9 @@ Current judgment as of 2026-04-26:
 - Project service and thin API foundation are complete.
 - Application form parser foundation is complete.
 - Deterministic precheck engine is complete.
-- The project is entering intake and precheck flow implementation.
-- The next required step is intake/precheck API.
+- Intake/precheck API is complete.
+- The project is entering LTR and folder flow implementation.
+- The next required step is LTR module.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -88,7 +89,8 @@ Current stop point:
 - `TASK_006_PROJECT_SERVICE_AND_API` is complete.
 - `TASK_007_APPLICATION_FORM_PARSER` is complete.
 - `TASK_008_PRECHECK_ENGINE` is complete.
-- `TASK_009_INTAKE_PRECHECK_API` is the current active task.
+- `TASK_009_INTAKE_PRECHECK_API` is complete.
+- `TASK_010_LTR_MODULE` is the current active task.
 
 ---
 
@@ -152,7 +154,7 @@ Status table:
 |----|------|--------|-------|
 | T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | done | DOCX parser with synthetic fixture tests completed on 2026-04-26 |
 | T2-2 | `TASK_008_PRECHECK_ENGINE` | done | Deterministic precheck rules completed with rule tests on 2026-04-26 |
-| T2-3 | `TASK_009_INTAKE_PRECHECK_API` | active | Parser and precheck engine are available |
+| T2-3 | `TASK_009_INTAKE_PRECHECK_API` | done | Upload, parse, precheck, latest, and issue resolve API completed on 2026-04-26 |
 
 Acceptance gate:
 
@@ -171,7 +173,7 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T3-1 | `TASK_010_LTR_MODULE` | blocked | Wait for core project flow |
+| T3-1 | `TASK_010_LTR_MODULE` | active | Core project and intake/precheck flow are available |
 | T3-2 | `TASK_011_FOLDER_PREVIEW` | blocked | Wait for project data model |
 | T3-3 | `TASK_012_FOLDER_GENERATION` | blocked | Wait for preview rules and template handling |
 
@@ -238,19 +240,19 @@ Next:
 
 Latest completed task:
 
-- `TASK_008_PRECHECK_ENGINE`
+- `TASK_009_INTAKE_PRECHECK_API`
 
 Validation result:
 
-- `py -m pytest tests\unit\test_precheck_engine.py -p no:cacheprovider`
-- result: `5 passed`
+- `py -m pytest tests\integration\test_intake_precheck_api.py -p no:cacheprovider`
+- result: `1 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `26 passed`
+- result: `27 passed`
 
 Known limits:
 
-- no intake/precheck API implemented yet
-- precheck is deterministic and does not perform AI, duration estimation, or standard/spec verification
+- no LTR module implemented yet
+- no folder preview/generation implemented yet
 
 ---
 
@@ -258,7 +260,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_009_INTAKE_PRECHECK_API`
+- execute `TASK_010_LTR_MODULE`
 
 Why this is next:
 
@@ -268,10 +270,11 @@ Why this is next:
 - `TASK_006` established project service and thin project API
 - `TASK_007` established structured DOCX parser output
 - `TASK_008` established deterministic precheck rules
-- intake/precheck API is the next step to expose parser + precheck flow
+- `TASK_009` exposed parser + precheck flow through API
+- LTR registration/tracking is the next MVP downstream flow
 
 Do not start yet:
 
-- `TASK_010+` before `TASK_009` is done
+- `TASK_011+` before `TASK_010` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature

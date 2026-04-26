@@ -9,13 +9,21 @@ from fastapi import Depends
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.application.intake_precheck_service import IntakePrecheckService
 from backend.application.project_service import ProjectService
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
     init_db,
 )
-from backend.infrastructure.storage.repositories import ProjectRepository
+from backend.infrastructure.storage.repositories import (
+    ApplicationFormRepository,
+    FileAssetRepository,
+    PrecheckResultRepository,
+    ProjectRepository,
+    SampleInfoRepository,
+)
+from backend.shared.config import Settings
 
 
 @lru_cache(maxsize=1)
@@ -46,3 +54,23 @@ def get_session() -> Generator[Session, None, None]:
 def get_project_service(session: Session = Depends(get_session)) -> ProjectService:
     """Build a project service for API routes."""
     return ProjectService(ProjectRepository(session))
+
+
+def get_settings() -> Settings:
+    """Return application settings."""
+    return Settings.load()
+
+
+def get_intake_precheck_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> IntakePrecheckService:
+    """Build an intake/precheck service for API routes."""
+    return IntakePrecheckService(
+        project_repository=ProjectRepository(session),
+        form_repository=ApplicationFormRepository(session),
+        sample_repository=SampleInfoRepository(session),
+        file_asset_repository=FileAssetRepository(session),
+        precheck_repository=PrecheckResultRepository(session),
+        settings=settings,
+    )

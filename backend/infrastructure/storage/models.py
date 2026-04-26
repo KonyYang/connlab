@@ -41,6 +41,24 @@ class ApplicationFormModel(Base):
     manufacturing_site: Mapped[str | None] = mapped_column(String(255))
     requested_testing: Mapped[str | None] = mapped_column(Text)
     subcontract_allowed: Mapped[bool | None] = mapped_column(Boolean)
+    reference_doc: Mapped[str | None] = mapped_column(String(255))
+    lab_test_request_number: Mapped[str | None] = mapped_column(String(128))
+    project_number: Mapped[str | None] = mapped_column(String(128))
+    requested_completion_date: Mapped[str | None] = mapped_column(String(128))
+    results_format: Mapped[str | None] = mapped_column(String(128))
+    test_type: Mapped[str | None] = mapped_column(String(128))
+    sample_status: Mapped[str | None] = mapped_column(String(128))
+    project_type: Mapped[str | None] = mapped_column(String(128))
+    post_testing_disposition: Mapped[str | None] = mapped_column(Text)
+    confidential: Mapped[str | None] = mapped_column(String(128))
+    subcontract: Mapped[str | None] = mapped_column(String(128))
+    additional_information: Mapped[str | None] = mapped_column(Text)
+    send_copies_recipients: Mapped[str | None] = mapped_column(Text)
+    lab: Mapped[str | None] = mapped_column(String(128))
+    assigned_personnel: Mapped[str | None] = mapped_column(String(255))
+    received_date: Mapped[str | None] = mapped_column(String(128))
+    estimated_completion_date: Mapped[str | None] = mapped_column(String(128))
+    sample_condition: Mapped[str | None] = mapped_column(Text)
 
 
 class SampleInfoModel(Base):
@@ -89,6 +107,7 @@ class PrecheckIssueModel(Base):
     level: Mapped[str] = mapped_column(String(64), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     field_name: Mapped[str | None] = mapped_column(String(255))
+    resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     result: Mapped[PrecheckResultModel] = relationship(back_populates="issues")
 
 
