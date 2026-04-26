@@ -46,7 +46,7 @@ def get_session_factory() -> sessionmaker[Session]:
 
 def get_session() -> Generator[Session, None, None]:
     """Yield a database session for one request."""
-    with get_session_factory() as session:
+    with get_session_factory()() as session:
         try:
             yield session
             session.commit()
