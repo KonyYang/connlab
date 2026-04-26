@@ -39,7 +39,7 @@ def test_create_engine_session_and_init_db_with_temp_file() -> None:
             assert session.execute(text("select 1")).scalar_one() == 1
 
         assert database_path.is_file()
-        assert inspect(engine).get_table_names() == list(Base.metadata.tables.keys())
+        assert set(inspect(engine).get_table_names()) == set(Base.metadata.tables.keys())
         engine.dispose()
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)

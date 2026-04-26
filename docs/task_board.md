@@ -3,7 +3,7 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_005_DATABASE_MODELS_AND_REPOSITORIES`
+> Current Active Task: `TASK_006_PROJECT_SERVICE_AND_API`
 > Current Phase: `Phase 1 - Backend MVP Foundation`
 
 ---
@@ -70,8 +70,9 @@ Current judgment as of 2026-04-26:
 - Configuration and logging foundation is complete.
 - SQLite persistence foundation is complete.
 - MVP domain model foundation is complete.
+- MVP database models and repositories are complete.
 - The project is still in backend foundation stage.
-- The next required step is database models and repositories.
+- The next required step is project service and API.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -80,7 +81,8 @@ Current stop point:
 - `TASK_002_CONFIG_LOGGING` is complete.
 - `TASK_003_SQLITE_DATABASE` is complete.
 - `TASK_004_DOMAIN_MODELS_MVP` is complete.
-- `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` is the current active task.
+- `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` is complete.
+- `TASK_006_PROJECT_SERVICE_AND_API` is the current active task.
 
 ---
 
@@ -120,8 +122,8 @@ Status table:
 | T1-1 | `TASK_002_CONFIG_LOGGING` | done | `Settings.load()` and `configure_logging()` landed with tests on 2026-04-25 |
 | T1-2 | `TASK_003_SQLITE_DATABASE` | done | SQLite engine, session factory, Base, `init_db()`, and tests completed on 2026-04-26 |
 | T1-3 | `TASK_004_DOMAIN_MODELS_MVP` | done | Pure dataclass domain models and enums completed on 2026-04-26 |
-| T1-4 | `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` | active | Domain models and DB foundation are available |
-| T1-5 | `TASK_006_PROJECT_SERVICE_AND_API` | blocked | Wait for repositories and domain objects |
+| T1-4 | `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` | done | SQLAlchemy models and repositories completed with temp SQLite tests on 2026-04-26 |
+| T1-5 | `TASK_006_PROJECT_SERVICE_AND_API` | active | Repositories and domain objects are available |
 
 Acceptance gate:
 
@@ -230,19 +232,19 @@ Next:
 
 Latest completed task:
 
-- `TASK_004_DOMAIN_MODELS_MVP`
+- `TASK_005_DATABASE_MODELS_AND_REPOSITORIES`
 
 Validation result:
 
-- `py -m pytest tests\unit\test_domain_models.py -p no:cacheprovider`
+- `py -m pytest tests\integration\test_repositories.py -p no:cacheprovider`
 - result: `4 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `12 passed`
+- result: `16 passed`
 
 Known limits:
 
 - no MVP business modules implemented yet
-- no SQLAlchemy business tables or repositories implemented yet
+- no project service or API write flow implemented yet
 
 ---
 
@@ -250,16 +252,17 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_005_DATABASE_MODELS_AND_REPOSITORIES`
+- execute `TASK_006_PROJECT_SERVICE_AND_API`
 
 Why this is next:
 
 - `TASK_003` established the SQLite engine, session factory, Base, and `init_db()`
 - `TASK_004` established pure MVP domain models and enums
-- repositories are the next prerequisite before project service and API
+- `TASK_005` established SQLAlchemy models and repositories
+- project service and thin API are the next backend foundation step
 
 Do not start yet:
 
-- `TASK_006+` before `TASK_005` is done
+- `TASK_007+` before `TASK_006` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature
