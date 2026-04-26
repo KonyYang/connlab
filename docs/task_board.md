@@ -3,7 +3,7 @@
 > Status: active
 > Last Updated: 2026-04-26
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_007_APPLICATION_FORM_PARSER`
+> Current Active Task: `TASK_008_PRECHECK_ENGINE`
 > Current Phase: `Phase 2 - Intake And Precheck Flow`
 
 ---
@@ -72,8 +72,9 @@ Current judgment as of 2026-04-26:
 - MVP domain model foundation is complete.
 - MVP database models and repositories are complete.
 - Project service and thin API foundation are complete.
+- Application form parser foundation is complete.
 - The project is entering intake and precheck flow implementation.
-- The next required step is application form parser.
+- The next required step is deterministic precheck engine.
 - No Matrix, Report, AI review, or future-lifecycle work is allowed.
 
 Current stop point:
@@ -84,7 +85,8 @@ Current stop point:
 - `TASK_004_DOMAIN_MODELS_MVP` is complete.
 - `TASK_005_DATABASE_MODELS_AND_REPOSITORIES` is complete.
 - `TASK_006_PROJECT_SERVICE_AND_API` is complete.
-- `TASK_007_APPLICATION_FORM_PARSER` is the current active task.
+- `TASK_007_APPLICATION_FORM_PARSER` is complete.
+- `TASK_008_PRECHECK_ENGINE` is the current active task.
 
 ---
 
@@ -146,8 +148,8 @@ Status table:
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | active | Project/application foundation is available |
-| T2-2 | `TASK_008_PRECHECK_ENGINE` | blocked | Wait for parser/domain structures |
+| T2-1 | `TASK_007_APPLICATION_FORM_PARSER` | done | DOCX parser with synthetic fixture tests completed on 2026-04-26 |
+| T2-2 | `TASK_008_PRECHECK_ENGINE` | active | Parser/domain structures are available |
 | T2-3 | `TASK_009_INTAKE_PRECHECK_API` | blocked | Wait for parser + precheck |
 
 Acceptance gate:
@@ -234,19 +236,19 @@ Next:
 
 Latest completed task:
 
-- `TASK_006_PROJECT_SERVICE_AND_API`
+- `TASK_007_APPLICATION_FORM_PARSER`
 
 Validation result:
 
-- `py -m pytest tests\unit\test_project_service.py tests\integration\test_project_api.py -p no:cacheprovider`
-- result: `3 passed`
+- `py -m pytest tests\unit\test_application_form_parser.py -p no:cacheprovider`
+- result: `2 passed`
 - `py -m pytest -p no:cacheprovider`
-- result: `19 passed`
+- result: `21 passed`
 
 Known limits:
 
-- no application form parser implemented yet
 - no precheck engine or intake/precheck API implemented yet
+- parser supports robust label matching for MVP fields, not OCR/PDF/AI extraction
 
 ---
 
@@ -254,7 +256,7 @@ Known limits:
 
 Current recommendation:
 
-- execute `TASK_007_APPLICATION_FORM_PARSER`
+- execute `TASK_008_PRECHECK_ENGINE`
 
 Why this is next:
 
@@ -262,10 +264,11 @@ Why this is next:
 - `TASK_004` established pure MVP domain models and enums
 - `TASK_005` established SQLAlchemy models and repositories
 - `TASK_006` established project service and thin project API
-- application form parser is the next prerequisite before deterministic precheck
+- `TASK_007` established structured DOCX parser output
+- deterministic precheck is the next prerequisite before intake/precheck API
 
 Do not start yet:
 
-- `TASK_008+` before `TASK_007` is done
+- `TASK_009+` before `TASK_008` is done
 - any frontend shell work before the backend MVP path exists
 - any Matrix, Report, AI, or future-scope feature
