@@ -70,6 +70,9 @@ class FileAssetRepositoryPort(Protocol):
     def get(self, asset_id: str) -> FileAsset | None:
         """Return a file asset by ID."""
 
+    def list_by_project(self, project_id: str) -> list[FileAsset]:
+        """Return registered file assets for a project."""
+
 
 class PrecheckResultRepositoryPort(Protocol):
     """Precheck repository operations required by the intake service."""
@@ -146,7 +149,10 @@ class IntakePrecheckService:
         if form is None:
             raise IntakeNotFoundError(f"Application form not found: {application_form_id}")
         parsed = self._load_parsed_form(form)
-        result = self._engine.run(parsed)
+        result = self._engine.run(
+            parsed,
+            registered_attachments=self._registered_supporting_attachments(form.project_id),
+        )
         persisted = with_persistent_ids(result, application_form_id)
         return self._prechecks.create(persisted)
 
@@ -188,6 +194,14 @@ class IntakePrecheckService:
         if asset and asset.path.exists():
             return self._parser.parse(asset.path)
         return from_application_form(form, self._samples.list_by_project(form.project_id))
+
+    def _registered_supporting_attachments(self, project_id: str) -> tuple[str, ...]:
+        """Return project attachments that can satisfy attachment references."""
+        return tuple(
+            asset.original_name or asset.path.name
+            for asset in self._assets.list_by_project(project_id)
+            if asset.asset_type is not FileAssetType.APPLICATION_FORM
+        )
 
 
 def _safe_filename(filename: str) -> str:

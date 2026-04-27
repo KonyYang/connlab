@@ -7,10 +7,15 @@ type AppShellProps = {
   children: ReactNode;
 };
 
+function navigate(path: string): void {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 export function AppShell({ activeRoute, children }: AppShellProps): ReactElement {
   return (
     <div className="app-shell">
-      <Sidebar activeRoute={activeRoute} />
+      <Sidebar activeRoute={activeRoute} onNavigate={navigate} />
       <div className="app-workspace">
         <TopBar activeRoute={activeRoute} />
         <main className="main-work-area">{children}</main>

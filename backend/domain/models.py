@@ -8,6 +8,10 @@ from pathlib import Path
 
 from backend.domain.enums import (
     FileAssetType,
+    IntakeAssetRole,
+    IntakeCaseStatus,
+    IntakePackageSourceType,
+    IntakePackageStatus,
     IssueCategory,
     IssueLevel,
     LtrStatus,
@@ -150,3 +154,71 @@ class FileAsset:
     path: Path
     original_name: str | None = None
     registered_on: date | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IntakePackage:
+    """Imported request package before project confirmation."""
+
+    package_id: str
+    source_type: IntakePackageSourceType
+    status: IntakePackageStatus
+    source_original_name: str
+    source_stored_path: Path
+    subject: str | None = None
+    sender_name: str | None = None
+    sender_email: str | None = None
+    recipients_json: str | None = None
+    cc_json: str | None = None
+    received_at: str | None = None
+    body_text: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    notes: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IntakeAsset:
+    """File asset registered before a project exists."""
+
+    asset_id: str
+    package_id: str
+    original_name: str
+    stored_path: Path
+    extension: str
+    mime_type: str | None
+    size_bytes: int
+    sha256: str
+    asset_role: IntakeAssetRole = IntakeAssetRole.UNKNOWN
+    candidate_score: int | None = None
+    content_id: str | None = None
+    created_at: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IntakeCase:
+    """One selected application form before confirmation into a project."""
+
+    case_id: str
+    package_id: str
+    selected_form_asset_id: str | None
+    status: IntakeCaseStatus
+    confirmed_project_id: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    reviewer_notes: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IntakeDraft:
+    """Parser draft and human overrides for an intake case."""
+
+    draft_id: str
+    case_id: str
+    parsed_fields_json: str
+    sample_rows_json: str | None = None
+    requested_testing_json: str | None = None
+    field_confidence_json: str | None = None
+    parser_warnings_json: str | None = None
+    manual_overrides_json: str | None = None
+    updated_at: str | None = None

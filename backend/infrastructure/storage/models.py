@@ -148,3 +148,84 @@ class FileAssetModel(Base):
     path: Mapped[str] = mapped_column(String(1024), nullable=False)
     original_name: Mapped[str | None] = mapped_column(String(255))
     registered_on: Mapped[date | None] = mapped_column(Date)
+
+
+class IntakePackageModel(Base):
+    """Database row for a pre-project intake package."""
+
+    __tablename__ = "intake_packages"
+
+    package_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_stored_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    subject: Mapped[str | None] = mapped_column(String(512))
+    sender_name: Mapped[str | None] = mapped_column(String(255))
+    sender_email: Mapped[str | None] = mapped_column(String(255))
+    recipients_json: Mapped[str | None] = mapped_column(Text)
+    cc_json: Mapped[str | None] = mapped_column(Text)
+    received_at: Mapped[str | None] = mapped_column(String(64))
+    body_text: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[str | None] = mapped_column(String(64))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class IntakeAssetModel(Base):
+    """Database row for an intake asset before project confirmation."""
+
+    __tablename__ = "intake_assets"
+
+    asset_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    package_id: Mapped[str] = mapped_column(
+        ForeignKey("intake_packages.package_id"),
+        nullable=False,
+    )
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    extension: Mapped[str] = mapped_column(String(64), nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String(255))
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    asset_role: Mapped[str] = mapped_column(String(64), nullable=False)
+    candidate_score: Mapped[int | None] = mapped_column(Integer)
+    content_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[str | None] = mapped_column(String(64))
+
+
+class IntakeCaseModel(Base):
+    """Database row for one selected intake application form."""
+
+    __tablename__ = "intake_cases"
+
+    case_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    package_id: Mapped[str] = mapped_column(
+        ForeignKey("intake_packages.package_id"),
+        nullable=False,
+    )
+    selected_form_asset_id: Mapped[str | None] = mapped_column(
+        ForeignKey("intake_assets.asset_id"),
+        nullable=True,
+    )
+    status: Mapped[str] = mapped_column(String(64), nullable=False)
+    confirmed_project_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[str | None] = mapped_column(String(64))
+    reviewer_notes: Mapped[str | None] = mapped_column(Text)
+
+
+class IntakeDraftModel(Base):
+    """Database row for an editable parser draft."""
+
+    __tablename__ = "intake_drafts"
+
+    draft_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("intake_cases.case_id"), nullable=False)
+    parsed_fields_json: Mapped[str] = mapped_column(Text, nullable=False)
+    sample_rows_json: Mapped[str | None] = mapped_column(Text)
+    requested_testing_json: Mapped[str | None] = mapped_column(Text)
+    field_confidence_json: Mapped[str | None] = mapped_column(Text)
+    parser_warnings_json: Mapped[str | None] = mapped_column(Text)
+    manual_overrides_json: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[str | None] = mapped_column(String(64))

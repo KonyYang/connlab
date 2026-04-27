@@ -1,0 +1,74 @@
+"""Data models shared by ConnLab Office infrastructure gateways."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+from pathlib import Path
+
+
+class OfficeFileKind(StrEnum):
+    """Supported coarse file categories for Office intake."""
+
+    DOCX = "docx"
+    DOC = "doc"
+    XLSX = "xlsx"
+    XLS = "xls"
+    PDF = "pdf"
+    IMAGE = "image"
+    OUTLOOK_MSG = "outlook_msg"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class OfficeFileClassification:
+    """Classification result for an imported office-related file."""
+
+    original_name: str
+    extension: str
+    kind: OfficeFileKind
+    mime_type: str
+    size_bytes: int
+    supported: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedMailAttachment:
+    """Attachment extracted from an imported mail package."""
+
+    original_name: str
+    stored_path: Path
+    extension: str
+    kind: OfficeFileKind
+    mime_type: str
+    size_bytes: int
+    sha256: str
+    content_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedMailPackage:
+    """Metadata and attachments from an imported Outlook mail package."""
+
+    source_original_name: str
+    source_stored_path: Path
+    subject: str | None
+    sender_name: str | None
+    sender_email: str | None
+    recipients: list[str] = field(default_factory=list)
+    cc: list[str] = field(default_factory=list)
+    sent_at: datetime | None = None
+    body_text: str | None = None
+    attachments: list[ImportedMailAttachment] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class WordDocumentSnapshot:
+    """Text and table snapshot read from a Word document."""
+
+    paragraphs: list[str]
+    tables: list[list[list[str]]]
+    headers: list[str]
+    footers: list[str]
+    raw_text: str

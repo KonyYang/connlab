@@ -9,6 +9,10 @@ const ROUTE_TITLES: Record<string, { title: string; description: string }> = {
     title: "Projects",
     description: "Create, resume, and inspect MVP project workflow."
   },
+  intake: {
+    title: "Intake inbox",
+    description: "Review incoming request packages before project confirmation."
+  },
   workbench: {
     title: "Project workbench",
     description: "Review the current project state and next action."

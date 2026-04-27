@@ -64,3 +64,45 @@ class FileAssetType(StrEnum):
     FOLDER_TEMPLATE = "folder_template"
     GENERATED_FOLDER = "generated_folder"
     OTHER = "other"
+
+
+class IntakePackageSourceType(StrEnum):
+    """Source type for a Phase 6 intake package."""
+
+    OUTLOOK_MSG = "outlook_msg"
+    DIRECT_APPLICATION_FORM = "direct_application_form"
+    MANUAL = "manual"
+    FUTURE_OUTLOOK_ITEM = "future_outlook_item"
+
+
+class IntakePackageStatus(StrEnum):
+    """Lifecycle status for an intake package."""
+
+    IMPORTED = "imported"
+    NEEDS_APPLICATION_FORM_SELECTION = "needs_application_form_selection"
+    READY_FOR_REVIEW = "ready_for_review"
+    PARTIALLY_CONFIRMED = "partially_confirmed"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+
+
+class IntakeAssetRole(StrEnum):
+    """Role assigned to an intake asset before project confirmation."""
+
+    UNKNOWN = "unknown"
+    EMAIL_SOURCE = "email_source"
+    APPLICATION_FORM_CANDIDATE = "application_form_candidate"
+    SELECTED_APPLICATION_FORM = "selected_application_form"
+    SPECIFICATION = "specification"
+    SUPPORTING_ATTACHMENT = "supporting_attachment"
+    INLINE_IMAGE = "inline_image"
+    IGNORED = "ignored"
+
+
+class IntakeCaseStatus(StrEnum):
+    """Lifecycle status for one selected application form case."""
+
+    DRAFT_CREATED = "draft_created"
+    NEEDS_REVIEW = "needs_review"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"

@@ -1,0 +1,165 @@
+.intake-case-review {
+  display: grid;
+  gap: 20px;
+}
+
+.case-review-hero,
+.selected-form-panel,
+.draft-field-panel,
+.confirmation-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+}
+
+.case-review-hero,
+.confirmation-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+}
+
+.case-review-hero h2,
+.selected-form-panel h3,
+.draft-field-panel h3,
+.confirmation-panel h3 {
+  margin: 0;
+}
+
+.case-review-hero p,
+.selected-form-panel p,
+.confirmation-panel p {
+  margin: 8px 0 0;
+  color: var(--color-ink-muted);
+}
+
+.review-state,
+.confidence-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.review-state,
+.confidence-needs-review {
+  border: 1px solid #ead7b9;
+  background: #fff8ed;
+  color: var(--color-warning);
+}
+
+.case-review-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.selected-form-panel,
+.draft-field-panel {
+  padding: 22px;
+}
+
+.selected-form-panel dl {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.selected-form-panel div {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.selected-form-panel dt {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.selected-form-panel dd {
+  margin: 6px 0 0;
+}
+
+.draft-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.draft-toolbar > span {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.draft-field-list {
+  display: grid;
+  gap: 10px;
+}
+
+.draft-field-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1fr);
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.draft-field-row strong,
+.draft-field-row span {
+  display: block;
+}
+
+.draft-field-row span {
+  margin-top: 4px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.draft-field-review {
+  display: grid;
+  grid-template-columns: max-content minmax(160px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.confidence-high {
+  border: 1px solid #c5eadc;
+  background: #edf9f4;
+  color: var(--color-success);
+}
+
+.confidence-missing {
+  border: 1px solid #efc4c1;
+  background: #fff2f1;
+  color: var(--color-danger);
+}
+
+.confirmation-panel {
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .case-review-hero,
+  .case-review-grid,
+  .confirmation-panel,
+  .draft-field-row,
+  .draft-field-review {
+    display: grid;
+  }
+
+  .case-review-grid {
+    grid-template-columns: 1fr;
+  }
+}

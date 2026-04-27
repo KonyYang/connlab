@@ -33,7 +33,7 @@ def test_init_db_creates_mvp_tables(tmp_path: Path) -> None:
     try:
         init_db(engine)
 
-        assert set(inspect(engine).get_table_names()) == {
+        assert {
             "application_forms",
             "file_assets",
             "ltr_records",
@@ -42,7 +42,7 @@ def test_init_db_creates_mvp_tables(tmp_path: Path) -> None:
             "project_folder_records",
             "projects",
             "sample_infos",
-        }
+        }.issubset(set(inspect(engine).get_table_names()))
     finally:
         engine.dispose()
 

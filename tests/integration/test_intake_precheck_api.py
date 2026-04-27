@@ -5,8 +5,10 @@ from docx import Document
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from backend.domain import FileAsset, FileAssetType
 from backend.api.dependencies import get_session, get_settings
 from backend.api.main import app
+from backend.infrastructure.storage.repositories import FileAssetRepository
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -84,6 +86,79 @@ def test_intake_precheck_api_flow(tmp_path: Path) -> None:
         resolve_response = client.patch(f"/api/precheck-issues/{issue_id}/resolve")
         assert resolve_response.status_code == 200
         assert resolve_response.json()["resolved"] is True
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_precheck_uses_registered_supporting_attachments(tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        project_response = client.post(
+            "/api/projects",
+            json={
+                "project_no": "PRJ-002",
+                "product_name": "Connector",
+                "requestor": "Alice",
+            },
+        )
+        project_id = project_response.json()["project_id"]
+        docx_path = _create_docx(tmp_path / "form.docx")
+
+        with docx_path.open("rb") as handle:
+            upload_response = client.post(
+                f"/api/projects/{project_id}/application-form",
+                files={
+                    "file": (
+                        "form.docx",
+                        handle,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+            )
+
+        with session_factory() as session:
+            FileAssetRepository(session).create(
+                FileAsset(
+                    asset_id="supporting-asset",
+                    project_id=project_id,
+                    asset_type=FileAssetType.ATTACHMENT,
+                    path=tmp_path / "supporting.pdf",
+                    original_name="supporting.pdf",
+                )
+            )
+            session.commit()
+
+        precheck_response = client.post(
+            f"/api/application-forms/{upload_response.json()['form_id']}/precheck/run"
+        )
+
+        assert precheck_response.status_code == 200
+        precheck = precheck_response.json()
+        assert precheck["status"] == "passed"
+        assert precheck["issues"] == []
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
