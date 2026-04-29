@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from backend.domain import IssueCategory, IssueLevel, PrecheckStatus
 from backend.modules.intake import ParsedApplicationForm, ParsedLabSection, ParsedSampleInfo
 from backend.modules.precheck import PrecheckEngine
@@ -9,6 +11,15 @@ def test_valid_application_form_produces_passed_result() -> None:
     assert result.status is PrecheckStatus.PASSED
     assert result.issues == ()
     assert result.has_errors() is False
+
+
+def test_missing_project_number_does_not_block_precheck() -> None:
+    form = replace(_valid_form(), project_number=None)
+
+    result = PrecheckEngine().run(form, registered_attachments=("plan.pdf",))
+
+    assert result.status is PrecheckStatus.PASSED
+    assert not any(issue.field_name == "project_number" for issue in result.issues)
 
 
 def test_missing_sample_field_produces_error_issue() -> None:

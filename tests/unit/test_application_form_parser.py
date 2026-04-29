@@ -3,6 +3,7 @@ from pathlib import Path
 from docx import Document
 
 from backend.modules.intake import ApplicationFormParser
+from tests.fixtures.real_style_application_forms import build_real_style_application_form
 
 
 def test_application_form_parser_extracts_fields_and_sample_row(tmp_path: Path) -> None:
@@ -102,6 +103,63 @@ def test_application_form_parser_tolerates_missing_optional_fields(
     assert parsed.email is None
     assert parsed.samples == ()
     assert parsed.lab_section.lab is None
+
+
+def test_application_form_parser_extracts_real_style_applicant_fixture(
+    tmp_path: Path,
+) -> None:
+    docx_path = build_real_style_application_form(tmp_path / "real-style-applicant.docx")
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.form_no == "E-3718"
+    assert parsed.form_rev == "H"
+    assert parsed.requested_by == "Alice Requestor"
+    assert parsed.phone == "555-0100"
+    assert parsed.request_date == "2026-04-27"
+    assert parsed.email == "alice.requestor@example.com"
+    assert parsed.business_unit == "Industrial"
+    assert parsed.manufacturing_site == "Plant 7"
+    assert parsed.project_number == "PRJ-038-A"
+    assert parsed.project_type == "Qualification"
+    assert parsed.subcontract == "No"
+    assert parsed.requested_testing_description == "Thermal cycling and contact resistance"
+    assert parsed.lab_section.lab == "Connector Lab"
+    assert parsed.lab_section.assigned_personnel == "Charlie Tester"
+    assert parsed.lab_section.received_date == "2026-04-28"
+    assert parsed.lab_section.estimated_completion_date == "2026-05-15"
+    assert parsed.lab_section.sample_condition == "Good"
+    assert len(parsed.samples) == 1
+    assert parsed.samples[0].product_name == "Synthetic Connector"
+    assert parsed.samples[0].part_number == "PN-038-A"
+    assert parsed.samples[0].revision == "A"
+    assert parsed.samples[0].lot_or_traceability == "LOT-038"
+    assert parsed.samples[0].quantity == "24"
+
+
+def test_application_form_parser_extracts_comparable_tester_modified_fixture(
+    tmp_path: Path,
+) -> None:
+    applicant_path = build_real_style_application_form(
+        tmp_path / "real-style-applicant.docx",
+    )
+    tester_path = build_real_style_application_form(
+        tmp_path / "real-style-tester.docx",
+        tester_modified=True,
+    )
+
+    applicant = ApplicationFormParser().parse(applicant_path)
+    tester = ApplicationFormParser().parse(tester_path)
+
+    assert applicant.form_no == tester.form_no == "E-3718"
+    assert applicant.form_rev == tester.form_rev == "H"
+    assert applicant.requested_by == tester.requested_by == "Alice Requestor"
+    assert applicant.requested_testing_description == tester.requested_testing_description
+    assert applicant.project_number == "PRJ-038-A"
+    assert tester.project_number == "PRJ-038-T"
+    assert applicant.samples[0].part_number == "PN-038-A"
+    assert tester.samples[0].part_number == "PN-038-T"
+    assert tester.lab_section.sample_condition == "Good, tester reviewed"
 
 
 def _add_key_value_table(document: Document, pairs: list[tuple[str, str]]) -> None:

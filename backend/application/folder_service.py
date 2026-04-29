@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
 
+from backend.application.project_lifecycle_service import LifecycleOperation
 from backend.domain import (
     FileAsset,
     FileAssetType,
@@ -55,6 +56,17 @@ class FileAssetRepositoryPort(Protocol):
         """Return file assets for a project."""
 
 
+class ProjectLifecycleGuardPort(Protocol):
+    """Lifecycle guard behavior required by folder service."""
+
+    def require_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleOperation,
+    ) -> None:
+        """Raise when an operation is not allowed."""
+
+
 @dataclass(frozen=True, slots=True)
 class FolderCommand:
     """Input command for folder preview/generation."""
@@ -81,17 +93,21 @@ class FolderService:
         project_repository: ProjectRepositoryPort,
         folder_repository: ProjectFolderRecordRepositoryPort,
         file_asset_repository: FileAssetRepositoryPort,
+        lifecycle_guard: ProjectLifecycleGuardPort | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         """Create a folder service."""
         self._projects = project_repository
         self._folders = folder_repository
         self._assets = file_asset_repository
+        self._lifecycle = lifecycle_guard
         self._templates = FolderTemplateService()
         self._logger = logger or logging.getLogger("connlab.folder")
 
     def preview_folder(self, project_id: str, command: FolderCommand) -> FolderPlan:
         """Return a folder generation preview plan."""
+        if self._lifecycle is not None:
+            self._lifecycle.require_allowed(project_id, LifecycleOperation.FOLDER_PREVIEW)
         project = self._get_project(project_id)
         return self._templates.preview(
             project=project,
@@ -103,6 +119,8 @@ class FolderService:
 
     def generate_folder(self, project_id: str, command: FolderCommand) -> FolderGenerationRecord:
         """Generate project folders from a safe preview plan."""
+        if self._lifecycle is not None:
+            self._lifecycle.require_allowed(project_id, LifecycleOperation.FOLDER_GENERATE)
         project = self._get_project(project_id)
         plan = self.preview_folder(project_id, command)
         if plan.conflict or any(item.conflict for item in plan.items):

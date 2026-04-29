@@ -1,6 +1,6 @@
 export type Project = {
   project_id: string;
-  project_no: string;
+  project_no?: string | null;
   product_name: string;
   requestor: string;
   status: string;
@@ -9,7 +9,7 @@ export type Project = {
 };
 
 export type ProjectCreateInput = {
-  project_no: string;
+  project_no?: string | null;
   product_name: string;
   requestor: string;
   business_unit?: string;

@@ -10,7 +10,7 @@ type DraftField = {
 
 const DRAFT_FIELDS: DraftField[] = [
   {
-    field: "Project No.",
+    field: "Project Ref. (optional)",
     extracted: "P-2026-041",
     confidence: "High"
   },

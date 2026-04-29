@@ -111,8 +111,22 @@ class IntakeFormSelectionService:
 
     def _create_or_update_case(self, package_id: str, selected_asset_id: str) -> IntakeCase:
         existing_cases = self._case_store.list_by_package(package_id)
-        if existing_cases:
-            current = existing_cases[0]
+        for current in existing_cases:
+            if current.selected_form_asset_id == selected_asset_id:
+                return self._case_store.update(
+                    replace(
+                        current,
+                        status=IntakeCaseStatus.NEEDS_REVIEW,
+                        confirmed_project_id=None,
+                    )
+                )
+        reusable_cases = [
+            case
+            for case in existing_cases
+            if case.selected_form_asset_id in (None, "old-asset")
+        ]
+        if reusable_cases:
+            current = reusable_cases[0]
             return self._case_store.update(
                 replace(
                     current,

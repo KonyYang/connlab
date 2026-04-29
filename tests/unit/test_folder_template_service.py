@@ -53,6 +53,26 @@ def test_preview_reports_existing_target_conflict(tmp_path: Path) -> None:
     assert plan.project_folder_path == target_root / "PRJ-001"
 
 
+def test_project_no_placeholder_is_optional(tmp_path: Path) -> None:
+    template = tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"
+    template.mkdir()
+
+    project = Project(
+        project_id="project-1",
+        project_no=None,
+        product_name="Connector",
+        requestor="Alice",
+    )
+    plan = FolderTemplateService().preview(
+        project,
+        template,
+        tmp_path / "projects",
+        dl_number="DL-2026-04-001",
+    )
+
+    assert plan.project_folder_path.name == "DL-2026-04-001__Connector"
+
+
 def _project() -> Project:
     return Project(
         project_id="project-1",

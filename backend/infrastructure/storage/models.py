@@ -16,7 +16,7 @@ class ProjectModel(Base):
     __tablename__ = "projects"
 
     project_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    project_no: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    project_no: Mapped[str | None] = mapped_column(String(128), nullable=True)
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
     requestor: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(64), nullable=False)

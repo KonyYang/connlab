@@ -38,7 +38,6 @@ def check_requestor_fields(context: "RuleContext") -> list[PrecheckIssue]:
         "email": context.form.email,
         "business_unit": context.form.business_unit,
         "manufacturing_site": context.form.manufacturing_site,
-        "project_number": context.form.project_number,
     }
     return [
         _make_issue(

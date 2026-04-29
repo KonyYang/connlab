@@ -22,6 +22,14 @@ from backend.application.intake_confirmation_service import (
     IntakeConfirmationResult,
     IntakeConfirmationService,
 )
+from backend.application.exception_workflow_service import (
+    ExceptionWorkflowError,
+    ExceptionWorkflowIssue,
+    ExceptionWorkflowKind,
+    ExceptionWorkflowNotFoundError,
+    ExceptionWorkflowReview,
+    ExceptionWorkflowService,
+)
 
 __all__ = [
     "ApplicationFormCandidate",
@@ -30,6 +38,12 @@ __all__ = [
     "DirectWordIntakeError",
     "DirectWordIntakeResult",
     "DirectWordIntakeService",
+    "ExceptionWorkflowError",
+    "ExceptionWorkflowIssue",
+    "ExceptionWorkflowKind",
+    "ExceptionWorkflowNotFoundError",
+    "ExceptionWorkflowReview",
+    "ExceptionWorkflowService",
     "FormSelectionResult",
     "IntakeConfirmationError",
     "IntakeConfirmationNotFoundError",

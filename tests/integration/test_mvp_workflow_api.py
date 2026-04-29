@@ -76,6 +76,7 @@ def test_full_mvp_workflow_project_form_precheck_ltr_folder(tmp_path: Path) -> N
         assert precheck_response.status_code == 200
         assert precheck_response.json()["status"] in {"passed", "warning"}
         assert isinstance(precheck_response.json()["issues"], list)
+        _set_project_status(session_factory, project_id, ProjectStatus.CONFIRMED)
 
         ltr_response = client.post(
             f"/api/projects/{project_id}/ltr",
@@ -119,6 +120,19 @@ def test_full_mvp_workflow_project_form_precheck_ltr_folder(tmp_path: Path) -> N
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def _set_project_status(
+    session_factory,
+    project_id: str,
+    status: ProjectStatus,
+) -> None:
+    with session_factory() as session:
+        repository = ProjectRepository(session)
+        project = repository.get(project_id)
+        assert project is not None
+        repository.update(project.with_status(status))
+        session.commit()
 
 
 def _create_template(template: Path) -> Path:

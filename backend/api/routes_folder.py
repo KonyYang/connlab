@@ -16,6 +16,10 @@ from backend.application.folder_service import (
     FolderNotFoundError,
     FolderService,
 )
+from backend.application.project_lifecycle_service import (
+    ProjectLifecycleError,
+    ProjectLifecycleNotFoundError,
+)
 from backend.modules.folder import FolderGenerationResult, FolderPlan, FolderPlanItem
 
 
@@ -65,9 +69,9 @@ def preview_folder(
     """Preview project folder generation."""
     try:
         return _plan_response(service.preview_folder(project_id, _command(request)))
-    except FolderNotFoundError as exc:
+    except (FolderNotFoundError, ProjectLifecycleNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (FolderError, ValueError) as exc:
+    except (FolderError, ProjectLifecycleError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -85,11 +89,11 @@ def generate_folder(
     try:
         record = service.generate_folder(project_id, _command(request))
         return _generation_response(record.record.folder_id, record.result)
-    except FolderNotFoundError as exc:
+    except (FolderNotFoundError, ProjectLifecycleNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except FolderConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except (FolderError, ValueError, FileNotFoundError) as exc:
+    except (FolderError, ProjectLifecycleError, ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

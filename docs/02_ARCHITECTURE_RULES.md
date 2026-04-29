@@ -22,6 +22,14 @@ Forbidden:
 - frontend -> Office/SQLite directly
 - api route -> Office directly
 
+## Frontend/UI Design Rule
+
+`$impeccable` is required for all ConnLab frontend/UI work across the whole project, not just a single phase.
+
+Use it before designing, changing, critiquing, auditing, polishing, refactoring, or documenting frontend UI, UX copy, layout, visual hierarchy, interaction states, responsive behavior, or frontend smoke expectations.
+
+Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test work is exempt unless it changes UI behavior or user-facing copy.
+
 ## Office Gateway Principle
 
 All Word/Excel/Outlook access must be hidden behind infrastructure gateway classes:

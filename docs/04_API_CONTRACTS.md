@@ -17,7 +17,7 @@ Request:
   "product_name": "EK550",
   "requestor": "Fu Yang",
   "business_unit": "Power Solutions",
-  "project_no": "EK550A"
+  "project_no": null
 }
 ```
 
@@ -26,6 +26,8 @@ Response:
 ```json
 {"project_id": "uuid", "status": "DRAFT"}
 ```
+
+`project_no` is optional metadata from an application form. Before LTR registration, continuation uses `project_id`, `intake_package_id`, and `intake_case_id`; after registration, lab operations and folder naming should use `DL_NUMBER` / `ltr_number`.
 
 ### GET /api/projects
 

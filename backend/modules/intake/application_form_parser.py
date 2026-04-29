@@ -8,6 +8,11 @@ from pathlib import Path
 
 from docx import Document
 
+from backend.modules.intake.application_form_parser_patterns import (
+    LABEL_ALIASES,
+    SAMPLE_ALIASES,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ParsedSampleInfo:
@@ -71,6 +76,7 @@ class ApplicationFormParser:
         """Parse one DOCX file into a structured application form DTO."""
         document = Document(path)
         label_values = _extract_label_values(document)
+        _merge_footer_form_metadata(label_values, document)
         samples = _extract_sample_rows(document)
         return ParsedApplicationForm(
             form_no=_get(label_values, "form_no"),
@@ -109,68 +115,25 @@ class ApplicationFormParser:
         )
 
 
-LABEL_ALIASES = {
-    "form_no": {"form no", "form number"},
-    "form_rev": {"form rev", "rev", "revision"},
-    "reference_doc": {"reference doc", "reference document"},
-    "lab_test_request_number": {"lab test request number", "ltr number"},
-    "requested_by": {"requested by", "requester"},
-    "phone": {"phone", "telephone"},
-    "request_date": {"date", "request date"},
-    "email": {"email", "e-mail"},
-    "business_unit": {"business unit", "bu"},
-    "manufacturing_site": {"mfg site", "manufacturing site"},
-    "project_number": {"project #", "project no", "project number"},
-    "requested_completion_date": {
-        "requested testing completion date",
-        "completion date",
-    },
-    "results_format": {"results format"},
-    "test_type": {"test type"},
-    "sample_status": {"sample status"},
-    "project_type": {"project type"},
-    "post_testing_disposition": {"post-testing disposition", "post testing disposition"},
-    "requested_testing_description": {
-        "description of requested testing",
-        "requested testing",
-    },
-    "confidential": {"confidential"},
-    "subcontract": {"subcontract", "subcontract permission"},
-    "additional_information": {"additional information"},
-    "send_copies_recipients": {"send copies", "send copies recipients"},
-    "lab": {"lab"},
-    "assigned_personnel": {"assigned personnel", "assigned person"},
-    "received_date": {"received date"},
-    "estimated_completion_date": {"estimated completion date"},
-    "sample_condition": {"sample condition"},
-}
-
-SAMPLE_ALIASES = {
-    "product_name": {"product name", "product"},
-    "part_number": {"part number", "part no", "pn"},
-    "revision": {"revision", "rev"},
-    "lot_or_traceability": {"lot", "traceability", "lot/traceability"},
-    "material": {"material"},
-    "plating": {"plating"},
-    "housing_material": {"housing material"},
-    "quantity": {"quantity", "qty"},
-}
-
-
 def _extract_label_values(document) -> dict[str, str]:
     """Extract normalized label-value pairs from paragraphs and tables."""
     values: dict[str, str] = {}
-    for paragraph in document.paragraphs:
+    for paragraph in _iter_document_paragraphs(document):
         _merge_pair(values, paragraph.text)
-    for table in document.tables:
+    for table in _iter_document_tables(document):
         for row in table.rows:
             cells = [_clean(cell.text) for cell in row.cells]
             _merge_table_row(values, cells)
+    _merge_requested_testing_table(values, document)
     return values
 
 
 def _merge_table_row(values: dict[str, str], cells: list[str]) -> None:
     """Merge label-value pairs from one table row."""
+    cells = _dedupe_cells(cells)
+    if len(cells) == 1:
+        _merge_pair(values, cells[0])
+        return
     if len(cells) == 2:
         _set_value(values, cells[0], cells[1])
         return
@@ -180,9 +143,20 @@ def _merge_table_row(values: dict[str, str], cells: list[str]) -> None:
 
 def _merge_pair(values: dict[str, str], text: str) -> None:
     """Merge a label-value pair from free text when possible."""
-    if ":" in text:
-        label, value = text.split(":", 1)
-        _set_value(values, label, value)
+    cleaned = _clean(text)
+    if not cleaned:
+        return
+    for separator in (":", "："):
+        if separator in cleaned:
+            label, value = cleaned.split(separator, 1)
+            _set_value(values, label, value)
+            return
+    for key, aliases in LABEL_ALIASES.items():
+        for alias in sorted(aliases, key=len, reverse=True):
+            value = _value_after_alias(cleaned, alias)
+            if value:
+                values.setdefault(key, value)
+                return
 
 
 def _set_value(values: dict[str, str], label: str, value: str) -> None:
@@ -196,11 +170,11 @@ def _set_value(values: dict[str, str], label: str, value: str) -> None:
 def _extract_sample_rows(document) -> list[ParsedSampleInfo]:
     """Extract sample rows from tables with recognizable sample headers."""
     samples: list[ParsedSampleInfo] = []
-    for table in document.tables:
-        rows = [[_clean(cell.text) for cell in row.cells] for row in table.rows]
+    for table in _iter_document_tables(document):
+        rows = [_dedupe_cells([_clean(cell.text) for cell in row.cells]) for row in table.rows]
         for index, row in enumerate(rows):
             header = [_canonical_label(cell, SAMPLE_ALIASES) for cell in row]
-            if "part_number" not in header or index + 1 >= len(rows):
+            if not _is_sample_header(header) or index + 1 >= len(rows):
                 continue
             for sample_row in rows[index + 1 :]:
                 sample = _sample_from_row(header, sample_row)
@@ -223,6 +197,88 @@ def _sample_from_row(
     if not data:
         return None
     return ParsedSampleInfo(**data)
+
+
+def _merge_requested_testing_table(values: dict[str, str], document) -> None:
+    """Extract requested testing text from header/value testing tables."""
+    if values.get("requested_testing_description"):
+        return
+    for table in _iter_document_tables(document):
+        rows = [
+            _dedupe_cells([_clean(cell.text) for cell in row.cells])
+            for row in table.rows
+        ]
+        for index, row in enumerate(rows[:-1]):
+            labels = [_normalize_label(cell) for cell in row]
+            if "tests to be performed" not in labels:
+                continue
+            column = labels.index("tests to be performed")
+            if column >= len(rows[index + 1]):
+                continue
+            value = rows[index + 1][column]
+            if value:
+                values["requested_testing_description"] = value
+                return
+
+
+def _iter_document_paragraphs(document):
+    """Yield paragraphs from the body, headers, and footers."""
+    yield from document.paragraphs
+    for section in document.sections:
+        yield from section.header.paragraphs
+        yield from section.footer.paragraphs
+
+
+def _iter_document_tables(document):
+    """Yield tables from the body, headers, and footers."""
+    yield from document.tables
+    for section in document.sections:
+        yield from section.header.tables
+        yield from section.footer.tables
+
+
+def _merge_footer_form_metadata(values: dict[str, str], document) -> None:
+    """Extract form number and revision from compact footer text."""
+    footer_text = " ".join(_clean(paragraph.text) for section in document.sections for paragraph in section.footer.paragraphs)
+    for section in document.sections:
+        for table in section.footer.tables:
+            for row in table.rows:
+                footer_text = f"{footer_text} {' '.join(_clean(cell.text) for cell in row.cells)}"
+    form_match = re.search(r"\b(E-\d{3,})\b", footer_text, flags=re.IGNORECASE)
+    if form_match:
+        values["form_no"] = form_match.group(1).upper()
+    rev_match = re.search(
+        r"\bRev(?:ision)?\.?\s*[:：-]?\s*([A-Z0-9]+)\b",
+        footer_text,
+        flags=re.IGNORECASE,
+    )
+    if rev_match:
+        values["form_rev"] = rev_match.group(1).upper()
+
+
+def _is_sample_header(header: list[str | None]) -> bool:
+    """Return whether a normalized row looks like a sample table header."""
+    recognized = {key for key in header if key}
+    return "part_number" in recognized and len(recognized) >= 3
+
+
+def _dedupe_cells(cells: list[str]) -> list[str]:
+    """Remove repeated merged-cell text while preserving real columns."""
+    deduped: list[str] = []
+    for cell in cells:
+        if deduped and cell and cell == deduped[-1]:
+            continue
+        deduped.append(cell)
+    return deduped
+
+
+def _value_after_alias(text: str, alias: str) -> str | None:
+    """Return the value that follows a label alias in one cell of text."""
+    pattern = rf"^\s*{re.escape(alias)}\s*(?:[:：#-]|\b)\s*(.+)$"
+    match = re.match(pattern, text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return _clean(match.group(1))
 
 
 def _canonical_label(

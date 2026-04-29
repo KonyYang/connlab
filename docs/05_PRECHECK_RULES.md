@@ -39,9 +39,10 @@ Required:
 - Email
 - Business Unit
 - Mfg. Site
-- Project #
 
 Phone is warning if missing.
+
+Project # is optional application metadata. It may be parsed and stored when present, but it must not block precheck or project continuation.
 
 ## Sample Rules
 

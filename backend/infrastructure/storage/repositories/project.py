@@ -28,9 +28,9 @@ class ProjectRepository:
         return _to_domain(row) if row else None
 
     def list(self) -> list[Project]:
-        """Return all projects ordered by project number."""
+        """Return all projects ordered by optional project number and product."""
         rows = self._session.scalars(
-            select(ProjectModel).order_by(ProjectModel.project_no)
+            select(ProjectModel).order_by(ProjectModel.project_no, ProjectModel.product_name)
         ).all()
         return [_to_domain(row) for row in rows]
 

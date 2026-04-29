@@ -7,6 +7,7 @@ from datetime import date
 from typing import Protocol
 from uuid import uuid4
 
+from backend.application.project_lifecycle_service import LifecycleOperation
 from backend.domain import LtrRecord, LtrStatus, Project, ProjectStatus
 
 
@@ -45,6 +46,17 @@ class LtrRepositoryPort(Protocol):
         """Search LTR records."""
 
 
+class ProjectLifecycleGuardPort(Protocol):
+    """Lifecycle guard behavior required by LTR registration."""
+
+    def require_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleOperation,
+    ) -> None:
+        """Raise when an operation is not allowed."""
+
+
 @dataclass(frozen=True, slots=True)
 class RegisterLtrCommand:
     """Input command for registering an LTR."""
@@ -62,15 +74,19 @@ class LtrService:
         self,
         project_repository: ProjectRepositoryPort,
         ltr_repository: LtrRepositoryPort,
+        lifecycle_guard: ProjectLifecycleGuardPort | None = None,
     ) -> None:
         """Create an LTR service with repository ports."""
         self._projects = project_repository
         self._ltrs = ltr_repository
+        self._lifecycle = lifecycle_guard
 
     def register_ltr(self, project_id: str, command: RegisterLtrCommand) -> LtrRecord:
         """Register one active LTR for a project."""
         if not command.ltr_number.strip():
             raise LtrError("LTR number is required.")
+        if self._lifecycle is not None:
+            self._lifecycle.require_allowed(project_id, LifecycleOperation.LTR_COMMIT)
         project = self._get_project(project_id)
         existing = self._ltrs.list_by_project(project_id)
         if any(ltr.status is LtrStatus.REGISTERED for ltr in existing):

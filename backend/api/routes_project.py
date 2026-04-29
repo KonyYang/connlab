@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 class ProjectCreateRequest(BaseModel):
     """Request body for creating a project."""
 
-    project_no: str = Field(min_length=1)
+    project_no: str | None = None
     product_name: str = Field(min_length=1)
     requestor: str = Field(min_length=1)
     business_unit: str | None = None
@@ -34,7 +34,7 @@ class ProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     project_id: str
-    project_no: str
+    project_no: str | None = None
     product_name: str
     requestor: str
     status: str

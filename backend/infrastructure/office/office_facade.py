@@ -14,6 +14,10 @@ from backend.infrastructure.office.models import (
 )
 from backend.infrastructure.office.outlook_msg_gateway import OutlookMsgGateway
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
+from backend.infrastructure.office.office_lifecycle import (
+    ExcelWorkbookHandle,
+    OfficeLifecycleManager,
+)
 
 
 class OfficeFacade:
@@ -25,11 +29,13 @@ class OfficeFacade:
         word_gateway: WordDocumentGateway | None = None,
         outlook_gateway: OutlookMsgGateway | None = None,
         excel_gateway: ExcelWorkbookGateway | None = None,
+        lifecycle: OfficeLifecycleManager | None = None,
     ) -> None:
         """Create the facade with optional gateway overrides for tests."""
         self._word_gateway = word_gateway or WordDocumentGateway()
         self._outlook_gateway = outlook_gateway or OutlookMsgGateway()
         self._excel_gateway = excel_gateway or ExcelWorkbookGateway()
+        self._lifecycle = lifecycle or OfficeLifecycleManager()
 
     def classify_file(self, source_path: Path) -> OfficeFileClassification:
         """Classify an office-related file by extension and size."""
@@ -60,6 +66,20 @@ class OfficeFacade:
     def read_excel_workbook(self, source_path: Path) -> object:
         """Read an Excel workbook through the configured gateway."""
         return self._excel_gateway.read_workbook(source_path)
+
+    def open_excel_workbook(
+        self,
+        source_path: Path,
+        *,
+        modify_password: str | None = None,
+        read_only: bool = False,
+    ) -> ExcelWorkbookHandle:
+        """Open an Excel workbook through the Office lifecycle boundary."""
+        return self._lifecycle.open_excel_workbook(
+            Path(source_path),
+            modify_password=modify_password,
+            read_only=read_only,
+        )
 
 
 def _kind_from_extension(extension: str) -> OfficeFileKind:

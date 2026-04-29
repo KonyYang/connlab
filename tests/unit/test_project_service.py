@@ -46,6 +46,21 @@ def test_project_service_creates_draft_project() -> None:
     assert service.get_project(project.project_id) == project
 
 
+def test_project_service_treats_blank_project_no_as_optional() -> None:
+    repository = FakeProjectRepository()
+    service = ProjectService(repository)
+
+    project = service.create_project(
+        CreateProjectCommand(
+            project_no=" ",
+            product_name="Connector",
+            requestor="Alice",
+        )
+    )
+
+    assert project.project_no is None
+
+
 def test_project_service_raises_for_missing_project() -> None:
     service = ProjectService(FakeProjectRepository())
 

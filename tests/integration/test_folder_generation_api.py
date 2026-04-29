@@ -70,8 +70,9 @@ def test_folder_api_preview_generate_refuse_overwrite_and_persist(
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     )
                 },
-            )
+        )
         assert upload_response.status_code == 201
+        _set_project_status(session_factory, project_id, ProjectStatus.LTR_REGISTERED)
         payload = {
             "template_path": str(template),
             "target_root": str(target_root),
@@ -94,7 +95,8 @@ def test_folder_api_preview_generate_refuse_overwrite_and_persist(
         assert preview_response.status_code == 200
         assert preview_response.json()["conflict"] is False
         assert generate_response.status_code == 201
-        assert overwrite_response.status_code == 409
+        assert overwrite_response.status_code == 400
+        assert "already been created" in overwrite_response.json()["detail"]
 
         generated = generate_response.json()
         assert Path(generated["project_folder_path"]).is_dir()
@@ -111,6 +113,19 @@ def test_folder_api_preview_generate_refuse_overwrite_and_persist(
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def _set_project_status(
+    session_factory,
+    project_id: str,
+    status: ProjectStatus,
+) -> None:
+    with session_factory() as session:
+        repository = ProjectRepository(session)
+        project = repository.get(project_id)
+        assert project is not None
+        repository.update(project.with_status(status))
+        session.commit()
 
 
 def _create_template(template: Path) -> Path:

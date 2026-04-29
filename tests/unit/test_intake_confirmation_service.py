@@ -137,8 +137,19 @@ def test_confirm_case_creates_project_records_and_marks_case_confirmed() -> None
 def test_confirm_case_rejects_missing_required_project_fields() -> None:
     service, _ = _service(_draft('{"project_no":"P-1","requester":"White"}'))
 
-    with pytest.raises(IntakeConfirmationError):
+    with pytest.raises(IntakeConfirmationError, match="product_name"):
         service.confirm_case("case-1")
+
+
+def test_confirm_case_allows_missing_project_no() -> None:
+    service, _ = _service(
+        _draft('{"product_name":"Connector","requester":"White"}')
+    )
+
+    result = service.confirm_case("case-1")
+
+    assert result.project.project_no is None
+    assert result.application_form.project_number is None
 
 
 def test_confirm_case_rejects_unreviewed_or_already_confirmed_case() -> None:

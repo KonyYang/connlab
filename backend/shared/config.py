@@ -3,11 +3,29 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import tomllib
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
 DEFAULT_LOG_LEVEL = "INFO"
+
+
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookSettings:
+    """Runtime settings for the optional external LTR workbook."""
+
+    path: Path | None = None
+    mode: str = "local_only"
+    write_enabled: bool = False
+    lock_dir: Path | None = None
+    lock_timeout_seconds: int = 120
+    backup_dir: Path | None = None
+    modify_password: str | None = None
+    require_operator_confirmation_for_year_sheet_bootstrap: bool = True
+    allow_system_assisted_create_year_sheet: bool = False
+    template_sheet_name: str | None = None
+    sheet_bootstrap_clear_start_row: int = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,11 +37,14 @@ class Settings:
     templates_dir: Path
     database_path: Path
     log_level: str = DEFAULT_LOG_LEVEL
+    ltr_workbook: LtrWorkbookSettings = field(default_factory=LtrWorkbookSettings)
 
     @classmethod
     def load(cls, base_dir: Path | None = None) -> "Settings":
         """Load settings from the environment and ensure required folders exist."""
         root_dir = base_dir or Path(__file__).resolve().parents[2]
+        local_config = _load_local_config(root_dir)
+        workbook_config = local_config.get("ltr_workbook", {})
         settings = cls(
             data_dir=_resolve_directory("CONNLAB_DATA_DIR", root_dir / "data", root_dir),
             projects_dir=_resolve_directory(
@@ -43,6 +64,7 @@ class Settings:
             ),
             log_level=os.getenv("CONNLAB_LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
             or DEFAULT_LOG_LEVEL,
+            ltr_workbook=_load_ltr_workbook_settings(root_dir, workbook_config),
         )
         settings.ensure_directories()
         return settings
@@ -75,3 +97,86 @@ def _resolve_file_path(env_name: str, default: Path, base_dir: Path) -> Path:
     if not candidate.is_absolute():
         candidate = base_dir / candidate
     return candidate.resolve()
+
+
+def _load_local_config(base_dir: Path) -> dict:
+    """Load an optional operator-managed local TOML config."""
+    raw_path = os.getenv("CONNLAB_LOCAL_CONFIG_PATH")
+    path = Path(raw_path).expanduser() if raw_path else base_dir / "connlab.local.toml"
+    if not path.is_absolute():
+        path = base_dir / path
+    if not path.is_file():
+        return {}
+    with path.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def _load_ltr_workbook_settings(
+    base_dir: Path,
+    config: dict,
+) -> LtrWorkbookSettings:
+    """Load optional LTR workbook settings from local config and env overrides."""
+    return LtrWorkbookSettings(
+        path=_optional_path(
+            os.getenv("CONNLAB_LTR_WORKBOOK_PATH", str(config.get("path", ""))),
+            base_dir,
+        ),
+        mode=os.getenv("CONNLAB_LTR_WORKBOOK_MODE", str(config.get("mode", "local_only"))),
+        write_enabled=_bool_setting(
+            os.getenv("CONNLAB_LTR_WORKBOOK_WRITE_ENABLED"),
+            bool(config.get("write_enabled", False)),
+        ),
+        lock_dir=_optional_path(
+            os.getenv("CONNLAB_LTR_WORKBOOK_LOCK_DIR", str(config.get("lock_dir", ""))),
+            base_dir,
+        ),
+        lock_timeout_seconds=int(
+            os.getenv(
+                "CONNLAB_LTR_WORKBOOK_LOCK_TIMEOUT_SECONDS",
+                str(config.get("lock_timeout_seconds", 120)),
+            )
+        ),
+        backup_dir=_optional_path(
+            os.getenv("CONNLAB_LTR_WORKBOOK_BACKUP_DIR", str(config.get("backup_dir", ""))),
+            base_dir,
+        ),
+        modify_password=_optional_secret(
+            os.getenv(
+                "CONNLAB_LTR_WORKBOOK_PASSWORD",
+                str(config.get("modify_password", "")),
+            )
+        ),
+        require_operator_confirmation_for_year_sheet_bootstrap=_bool_setting(
+            os.getenv("CONNLAB_LTR_WORKBOOK_REQUIRE_BOOTSTRAP_CONFIRMATION"),
+            bool(config.get("require_operator_confirmation_for_year_sheet_bootstrap", True)),
+        ),
+        allow_system_assisted_create_year_sheet=_bool_setting(
+            os.getenv("CONNLAB_LTR_WORKBOOK_ALLOW_CREATE_YEAR_SHEET"),
+            bool(config.get("allow_system_assisted_create_year_sheet", False)),
+        ),
+        template_sheet_name=_optional_secret(str(config.get("template_sheet_name", ""))),
+        sheet_bootstrap_clear_start_row=int(config.get("sheet_bootstrap_clear_start_row", 2)),
+    )
+
+
+def _optional_path(value: str, base_dir: Path) -> Path | None:
+    """Resolve an optional path string."""
+    if not value.strip():
+        return None
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = base_dir / path
+    return path.resolve()
+
+
+def _optional_secret(value: str) -> str | None:
+    """Return a non-empty secret-like string without logging it."""
+    stripped = value.strip()
+    return stripped or None
+
+
+def _bool_setting(raw_value: str | None, default: bool) -> bool:
+    """Parse a boolean config value."""
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}

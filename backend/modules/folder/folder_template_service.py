@@ -140,7 +140,7 @@ def _placeholders(
     """Build supported folder-name placeholder values."""
     return {
         "{DL_NUMBER}": dl_number or "",
-        "{PROJECT_NO}": project.project_no,
+        "{PROJECT_NO}": project.project_no or "",
         "{PRODUCT_NAME}": project.product_name,
         "{REQUESTOR}": project.requestor,
         "{DATE}": plan_date.isoformat(),

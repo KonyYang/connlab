@@ -25,7 +25,7 @@ class Project:
     """Core project record at the center of the ConnLab MVP lifecycle."""
 
     project_id: str
-    project_no: str
+    project_no: str | None
     product_name: str
     requestor: str
     status: ProjectStatus = ProjectStatus.DRAFT

@@ -27,9 +27,9 @@ class ProjectRepositoryPort(Protocol):
 class CreateProjectCommand:
     """Input command for creating a project."""
 
-    project_no: str
     product_name: str
     requestor: str
+    project_no: str | None = None
     business_unit: str | None = None
 
 
@@ -48,7 +48,7 @@ class ProjectService:
         """Create a project with the default draft status."""
         project = Project(
             project_id=uuid4().hex,
-            project_no=command.project_no,
+            project_no=_optional_text(command.project_no),
             product_name=command.product_name,
             requestor=command.requestor,
             business_unit=command.business_unit,
@@ -67,3 +67,11 @@ class ProjectService:
         if project is None:
             raise ProjectNotFoundError(f"Project not found: {project_id}")
         return project
+
+
+def _optional_text(value: str | None) -> str | None:
+    """Normalize optional project metadata text."""
+    if value is None:
+        return None
+    text = value.strip()
+    return text or None

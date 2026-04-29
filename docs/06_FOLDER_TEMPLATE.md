@@ -11,7 +11,7 @@
 ## Recommended Folder Structure
 
 ```text
-{DL_NUMBER} {PROJECT_NO}/
+{DL_NUMBER}/
   00_Request/
     attachments/
   01_LTR/
@@ -38,7 +38,7 @@
 ## Placeholders
 
 - `{DL_NUMBER}`
-- `{PROJECT_NO}`
+- `{PROJECT_NO}` optional legacy application reference; do not use in default templates unless the lab explicitly needs it
 - `{PRODUCT_NAME}`
 - `{REQUESTOR}`
 - `{DATE}`
@@ -47,3 +47,7 @@
 ## Conflict Strategy for MVP
 
 If target folder exists, fail with clear message. Do not merge and do not overwrite.
+
+## Identity Rule
+
+Use `{DL_NUMBER}` as the folder identity once LTR registration is complete. Application `Project #` is optional metadata from the request form and must not be required for folder creation or project continuation.

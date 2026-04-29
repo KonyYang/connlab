@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from sqlalchemy import inspect
+from sqlalchemy import text
 
 from backend.domain import (
     ApplicationForm,
@@ -74,6 +75,107 @@ def test_project_repository_create_get_list_update(tmp_path: Path) -> None:
             assert stored == project
             assert repository.get("project-1") == updated
             assert repository.list() == [updated]
+    finally:
+        engine.dispose()
+
+
+def test_project_no_is_optional_and_not_unique(tmp_path: Path) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    try:
+        with session_factory() as session:
+            repository = ProjectRepository(session)
+            repository.create(
+                Project(
+                    project_id="project-1",
+                    project_no=None,
+                    product_name="Connector A",
+                    requestor="Alice",
+                )
+            )
+            repository.create(
+                Project(
+                    project_id="project-2",
+                    project_no=None,
+                    product_name="Connector B",
+                    requestor="Bob",
+                )
+            )
+            session.commit()
+
+            assert [project.project_no for project in repository.list()] == [None, None]
+    finally:
+        engine.dispose()
+
+
+def test_init_db_relaxes_legacy_project_no_constraint(tmp_path: Path) -> None:
+    engine = _create_temp_engine(tmp_path)
+
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE projects (
+                        project_id VARCHAR(64) NOT NULL,
+                        project_no VARCHAR(128) NOT NULL UNIQUE,
+                        product_name VARCHAR(255) NOT NULL,
+                        requestor VARCHAR(255) NOT NULL,
+                        status VARCHAR(64) NOT NULL,
+                        business_unit VARCHAR(255),
+                        created_on DATE,
+                        PRIMARY KEY (project_id)
+                    )
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO projects (
+                        project_id,
+                        project_no,
+                        product_name,
+                        requestor,
+                        status
+                    ) VALUES (
+                        'project-legacy',
+                        'PRJ-OLD',
+                        'Connector',
+                        'Alice',
+                        'draft'
+                    )
+                    """
+                )
+            )
+
+        init_db(engine)
+        columns = inspect(engine).get_columns("projects")
+        project_no_column = next(column for column in columns if column["name"] == "project_no")
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            repository = ProjectRepository(session)
+            repository.create(
+                Project(
+                    project_id="project-new-1",
+                    project_no=None,
+                    product_name="Connector A",
+                    requestor="Bob",
+                )
+            )
+            repository.create(
+                Project(
+                    project_id="project-new-2",
+                    project_no=None,
+                    product_name="Connector B",
+                    requestor="Carol",
+                )
+            )
+            session.commit()
+
+        assert project_no_column["nullable"] is True
     finally:
         engine.dispose()
 

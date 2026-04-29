@@ -1,10 +1,10 @@
 # ConnLab Task Board
 
-> Status: Phase 6A validated
-> Last Updated: 2026-04-27
+> Status: Phase 9 active
+> Last Updated: 2026-04-29
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `NONE_PHASE6A_VALIDATED`
-> Current Phase: `Phase 6A - Outlook Email Package Intake, Application Form Selection And Human Confirmation`
+> Current Active Task: `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING`
+> Current Phase: `Phase 9 - Operator Workflow UI Wiring`
 
 ---
 
@@ -59,6 +59,7 @@ After finishing, update docs/task_board.md with status, validation, and next ste
 3. If a requested task is ahead of the current active task, AI must stop and report the mismatch.
 4. If a task uncovers missing prerequisite work, the board must be updated before moving on.
 5. Future-scope work is forbidden even if related files already exist in the repository.
+6. Project-wide UI rule: any frontend UI, UX copy, layout, visual design, component, navigation, interaction, frontend smoke expectation, UI critique, UI audit, or UI polish work must use `$impeccable` before design or edits. Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test work is exempt unless it changes UI behavior or user-facing copy.
 
 ---
 
@@ -103,7 +104,30 @@ Current judgment as of 2026-04-26:
 - `TASK_028A_INTAKE_STORAGE_BOUNDARY` is complete.
 - Phase 6A validation is complete.
 - Phase 6A plan was completed as split `.msg` import, intake storage, intake UI, confirmation, direct Word intake, and attachment-aware precheck tasks.
-- No Matrix, Report, AI review, or future-lifecycle work is allowed.
+- Phase 7 has been explicitly approved by the user.
+- `TASK_036_PHASE7_SCOPE_AND_BOARD_ACTIVATION` is complete.
+- `TASK_037_REAL_SAMPLE_BASELINE` is complete.
+- `TASK_038_REAL_DOCX_PARSER_CALIBRATION` is complete.
+- `TASK_039_LTR_FIELD_CATALOG_AND_READINESS_SOURCE_MAP` is complete.
+- `TASK_040_LTR_NUMBER_RULES` is complete.
+- `TASK_041_LTR_WORKBOOK_SNAPSHOT_GATEWAY` is complete.
+- `TASK_042_LTR_READINESS_SERVICE_AND_API` is complete.
+- `TASK_043_LTR_REGISTRATION_PREVIEW` is complete.
+- `TASK_044_LTR_LOCAL_COMMIT_AND_AUDIT_RECORD` is complete.
+- `TASK_045_LTR_EXCEL_WRITE_GATEWAY_AND_SYNC` is complete.
+- `TASK_046_LTR_RENUMBER_AND_PROJECT_FOLDER_RENAME_PLAN` is complete.
+- `TASK_047_FOLDER_EVIDENCE_PLACEMENT_RULES` is complete.
+- `TASK_048_PROJECT_LIFECYCLE_GATING` is complete.
+- `TASK_049_EXCEPTION_WORKFLOWS` is complete.
+- `TASK_050_LOOKUP_SURFACES_FOR_SAMPLE_AND_TEST_CONDITIONS` is complete.
+- Phase 7 is complete for real sample baseline, parser calibration, LTR readiness/preview, folder evidence placement, lifecycle guards, exception workflows, lookup surfaces, validation, and documentation sync.
+- Phase 8 has been explicitly approved by the user for DL-centric project identity hardening.
+- `TASK_052_PROJECT_NO_OPTIONAL_DL_CENTRIC_IDENTITY` is complete.
+- Application `Project #` is optional metadata; internal IDs preserve pre-LTR continuity, and DL/LTR number is the business identity after registration.
+- Phase 9 has been explicitly approved by the user after manual smoke testing.
+- `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` is complete.
+- Phase 9 is activated for frontend operator workflow wiring of existing Phase 7/8 backend capabilities.
+- No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9.
 
 Current stop point:
 
@@ -137,7 +161,35 @@ Current stop point:
 - `TASK_027B_OUTLOOK_MSG_ATTACHMENT_EXTRACTION` is complete.
 - `TASK_027C_REAL_MSG_SAMPLE_COMPATIBILITY` is complete.
 - `TASK_028A_INTAKE_STORAGE_BOUNDARY` is complete.
-- Current active implementation task: none. Phase 6A is validated and stopped.
+- `TASK_028B_INTAKE_PACKAGE_ASSET_CASE_STORAGE` is complete.
+- `TASK_029_APPLICATION_FORM_CANDIDATE_DETECTION` is complete.
+- `TASK_030_FORM_SELECTION_AND_DRAFT_CREATION` is complete.
+- `TASK_031A_INTAKE_INBOX_FRONTEND_UX` is complete.
+- `TASK_031B_INTAKE_PACKAGE_DETAIL_FRONTEND_UX` is complete.
+- `TASK_031C_INTAKE_CASE_REVIEW_FRONTEND_UX` is complete.
+- `TASK_032_CONFIRM_INTAKE_CASE_TO_PROJECT` is complete.
+- `TASK_033_DIRECT_WORD_APPLICATION_FORM_IMPORT` is complete.
+- `TASK_034_ATTACHMENT_AWARE_PRECHECK_BRIDGE` is complete.
+- `TASK_035_PHASE6_VALIDATION_AND_DOCS_SYNC` is complete.
+- `TASK_036_PHASE7_SCOPE_AND_BOARD_ACTIVATION` is complete.
+- `TASK_037_REAL_SAMPLE_BASELINE` is complete.
+- `TASK_038_REAL_DOCX_PARSER_CALIBRATION` is complete.
+- `TASK_039_LTR_FIELD_CATALOG_AND_READINESS_SOURCE_MAP` is complete.
+- `TASK_040_LTR_NUMBER_RULES` is complete.
+- `TASK_041_LTR_WORKBOOK_SNAPSHOT_GATEWAY` is complete.
+- `TASK_042_LTR_READINESS_SERVICE_AND_API` is complete.
+- `TASK_043_LTR_REGISTRATION_PREVIEW` is complete.
+- `TASK_044_LTR_LOCAL_COMMIT_AND_AUDIT_RECORD` is complete.
+- `TASK_045_LTR_EXCEL_WRITE_GATEWAY_AND_SYNC` is complete.
+- `TASK_046_LTR_RENUMBER_AND_PROJECT_FOLDER_RENAME_PLAN` is complete.
+- `TASK_047_FOLDER_EVIDENCE_PLACEMENT_RULES` is complete.
+- `TASK_048_PROJECT_LIFECYCLE_GATING` is complete.
+- `TASK_049_EXCEPTION_WORKFLOWS` is complete.
+- `TASK_050_LOOKUP_SURFACES_FOR_SAMPLE_AND_TEST_CONDITIONS` is complete.
+- `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` is complete.
+- `TASK_052_PROJECT_NO_OPTIONAL_DL_CENTRIC_IDENTITY` is complete.
+- `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` is complete.
+- Current active implementation task: `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING`.
 
 ---
 
@@ -259,9 +311,9 @@ Goal:
 - convert the MVP prototype frontend into a modern workflow-oriented ConnLab workbench
 - establish left navigation, project dashboard, project workbench, workflow stepper, business-readable issue display, and frontend validation guard
 
-Mandatory Phase 5 UX rule:
+Mandatory project-wide UI rule as applied in Phase 5:
 
-- Use `$impeccable` for every Phase 5 UX/UI design, frontend interface change, visual polish, layout change, UX copy change, component extraction, audit, or critique.
+- Use `$impeccable` for every UX/UI design, frontend interface change, visual polish, layout change, UX copy change, component extraction, audit, or critique.
 - Before editing UI, load `$impeccable` context and follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 - Treat ConnLab as `register: product`.
 - If the `$impeccable` context files are missing or stale, refresh them before UI work.
@@ -315,7 +367,7 @@ Mandatory Phase 6A rules:
 - `.msg` handling is split into source import, attachment extraction, and real-sample compatibility instead of one oversized task.
 - Intake UI is split into inbox, package detail, and case review instead of one oversized task.
 - Intake file storage gets its own boundary before persistence and attachment handling.
-- UI changes in Phase 6A still use `$impeccable` and the `PRODUCT.md` / `DESIGN.md` / `DESIGN.json` context.
+- UI changes in Phase 6A follow the project-wide `$impeccable` rule and the `PRODUCT.md` / `DESIGN.md` / `DESIGN.json` context.
 
 Status table:
 
@@ -352,6 +404,140 @@ Acceptance gate:
 
 ---
 
+### Phase 7 - Real LTR, Folder Evidence, And Lifecycle Governance
+
+Goal:
+
+- prove ConnLab can handle the real laboratory intake-to-registration path using real `.msg`, `.docx`, and LTR workbook samples
+- calibrate real application form parsing before downstream automation
+- introduce LTR readiness, number preview, local registration, optional workbook integration, evidence placement, lifecycle guards, exception handling, and lookup surfaces in controlled steps
+
+Mandatory Phase 7 rules:
+
+- Start with real sample baseline and parser calibration; do not start with Excel write.
+- Keep original `.msg` and `.docx` samples out of Git unless explicitly sanitized.
+- Treat `D:\Source\Office Auto\TestDocument\LTR_number.xls` as a local validation backup, not a hard-coded production source.
+- Do not write to the real LTR workbook unless a later active task explicitly allows workbook write and settings enable it.
+- The LTR workbook password must be configurable; the expected default may be `DGLAB`, but code and tests must not hard-code that value.
+- Office/Excel/Word/Outlook access must stay behind `backend/infrastructure/office/`.
+- Do not replace current `ProjectStatus` broadly before lifecycle guard requirements are proven.
+- Do not implement Matrix, Report, AI review, LAN deployment, permissions, or Outlook inbox auto-scan in Phase 7.
+- Any Phase 7 frontend UI, UX copy, layout, workflow display, disabled-state reason, lookup panel, smoke checklist UX expectation, critique, audit, or polish work must use `$impeccable` before design or edits.
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T7-1 | `TASK_036_PHASE7_SCOPE_AND_BOARD_ACTIVATION` | done | Phase 7 approved, board section added, and `TASK_037` activated on 2026-04-27 |
+| T7-2 | `TASK_037_REAL_SAMPLE_BASELINE` | done | Real `.msg` and `.docx` baseline documented without committing originals on 2026-04-27 |
+| T7-3 | `TASK_038_REAL_DOCX_PARSER_CALIBRATION` | done | Real-style parser coverage for footer form/revision, request fields, sample rows, requested testing, and lab section completed on 2026-04-28 |
+| T7-4 | `TASK_039_LTR_FIELD_CATALOG_AND_READINESS_SOURCE_MAP` | done | 19-field readiness catalog, source map, severity, fallback, and placeholder policy completed on 2026-04-28 |
+| T7-5 | `TASK_040_LTR_NUMBER_RULES` | done | Pure LTR parsing, validation, formatting, suffix/W-prefix support, and monthly sequence rules completed on 2026-04-28 |
+| T7-6 | `TASK_041_LTR_WORKBOOK_SNAPSHOT_GATEWAY` | done | Read-only `.xlsx` workbook snapshot gateway, explicit `.xls` unsupported adapter handling, and metadata/LTR number scan completed on 2026-04-28 |
+| T7-7 | `TASK_042_LTR_READINESS_SERVICE_AND_API` | done | Readiness service/API, blockers, review-required fields, placeholder policy, and thin route completed on 2026-04-28 |
+| T7-8 | `TASK_043_LTR_REGISTRATION_PREVIEW` | done | No-write registration preview, deterministic proposed DL number, readiness mapping, local/workbook conflict reporting, and API smoke completed on 2026-04-28 |
+| T7-9 | `TASK_044_LTR_LOCAL_COMMIT_AND_AUDIT_RECORD` | done | Approved preview local commit, duplicate-safe registration, project status update, and notes-based audit snapshot completed on 2026-04-28 |
+| T7-10 | `TASK_045_LTR_EXCEL_WRITE_GATEWAY_AND_SYNC` | done | Config-gated OfficeFacade + Excel COM write boundary, real `.xls` layout probe, password config policy, and fake COM gateway tests completed on 2026-04-28 |
+| T7-11 | `TASK_046_LTR_RENUMBER_AND_PROJECT_FOLDER_RENAME_PLAN` | done | Non-destructive renumber preview, local duplicate detection, folder/file asset path impacts, and conflict reporting completed on 2026-04-28 |
+| T7-12 | `TASK_047_FOLDER_EVIDENCE_PLACEMENT_RULES` | done | Evidence placement preview/execution, real folder shape rules, no-overwrite copy, and API smoke completed on 2026-04-28 |
+| T7-13 | `TASK_048_PROJECT_LIFECYCLE_GATING` | done | Project lifecycle guard service, guarded LTR/folder/evidence operations, and business-readable API blocks completed on 2026-04-28 |
+| T7-14 | `TASK_049_EXCEPTION_WORKFLOWS` | done | Explicit no-form and multi-form package review, per-form case/draft creation, missing-info confirmation blocks, correction evidence preservation, and renumber reason coverage completed on 2026-04-29 |
+| T7-15 | `TASK_050_LOOKUP_SURFACES_FOR_SAMPLE_AND_TEST_CONDITIONS` | done | Read-only project lookup, sample summary, testing summary API, and structured-record search completed on 2026-04-29 |
+| T7-16 | `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` | done | Phase 7 validation summary, manual smoke checklist, board sync, workbook limitations, and next recommendation completed on 2026-04-29 |
+
+Acceptance gate:
+
+- all real `.msg` and `.docx` samples have documented expected behavior
+- parser handles real `.docx` forms well enough to create reviewable drafts
+- LTR field catalog maps all 19 readiness fields to source/fallback/severity/policy
+- LTR readiness check blocks incomplete registration correctly
+- LTR number rules are deterministic and tested
+- workbook snapshot is available before write
+- LTR registration preview is available before commit
+- local commit is traceable and duplicate-safe
+- external workbook write, if enabled, is behind infrastructure gateway and safely releases Excel
+- project folder evidence placement preserves original email, selected application form, attachments, specifications, LTR evidence, and correction evidence
+- lifecycle guards prevent invalid next actions
+- sample info and testing condition/method lookup is available
+- no Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, or future-scope feature slipped into Phase 7
+
+---
+
+### Phase 8 - DL-Centric Project Identity Hardening
+
+Goal:
+
+- downgrade application `Project #` / `project_no` from required project identity to optional metadata
+- keep pre-LTR continuity on internal `project_id`, `intake_package_id`, and `intake_case_id`
+- make post-registration operations and folder naming DL/LTR-centric
+
+Mandatory Phase 8 rules:
+
+- Do not use application `Project #` as a required business key.
+- Do not remove compatibility response fields or folder placeholders in a breaking cleanup.
+- Keep `{PROJECT_NO}` as an optional legacy placeholder only.
+- Do not change LTR number allocation rules or write to the external LTR workbook.
+- Do not implement Matrix, Report, AI review, LAN deployment, permissions, or Outlook inbox auto-scan.
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T8-1 | `TASK_052_PROJECT_NO_OPTIONAL_DL_CENTRIC_IDENTITY` | done | `project_no` is optional metadata across backend/API/frontend, intake confirmation no longer requires it, legacy SQLite constraint is relaxed, folder docs recommend DL-centric names, and tests/build passed on 2026-04-29 |
+
+Acceptance gate:
+
+- projects can be created without application `Project #`
+- intake confirmation works without application `Project #`
+- multiple projects with missing `project_no` are allowed
+- lookup, summaries, and folder preview tolerate missing `project_no`
+- frontend no longer presents Project No. as required identity
+- no future-scope feature slipped into Phase 8
+
+---
+
+### Phase 9 - Operator Workflow UI Wiring
+
+Goal:
+
+- wire existing Phase 7/8 backend capabilities into the frontend operator workflow
+- make readiness, preview, commit, exception, evidence, lookup, and lifecycle blocked states visible to lab operators
+- preserve preview-before-write and DL-centric workflow identity in the UI
+
+Mandatory Phase 9 rules:
+
+- Use `$impeccable` for every frontend UI, UX copy, workflow display, disabled-state reason, lookup panel, browser smoke expectation, critique, audit, or polish task.
+- Do not add new backend product behavior unless a Phase 9 task explicitly requires a thin API/client adjustment for existing backend behavior.
+- UI must call backend APIs through `frontend/src/api/client.ts`.
+- UI must not directly manipulate Office files, project folders, or external LTR workbooks.
+- Do not write to the external LTR workbook in Phase 9.
+- Do not implement Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, or email sending in Phase 9.
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T9-1 | `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` | done | Phase 9 scope opened, task sequence added, and `TASK_054` activated on 2026-04-29 |
+| T9-2 | `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING` | active | Wire LTR readiness, no-write preview, and local commit into the frontend workflow |
+| T9-3 | `TASK_055_INTAKE_EXCEPTION_WORKFLOW_FRONTEND_WIRING` | pending | Wire no-form, multi-form, and missing-info exception workflows |
+| T9-4 | `TASK_056_FOLDER_EVIDENCE_PLACEMENT_FRONTEND_WIRING` | pending | Wire evidence placement preview/execution and conflicts |
+| T9-5 | `TASK_057_PROJECT_LOOKUP_SAMPLE_TESTING_SUMMARY_FRONTEND_PANEL` | pending | Add read-only lookup, sample summary, and testing condition/method panels |
+| T9-6 | `TASK_058_LIFECYCLE_GUARDS_DISABLED_REASON_UI` | pending | Show backend lifecycle guard blocks as clear disabled-state reasons |
+| T9-7 | `TASK_059_PHASE9_BROWSER_SMOKE_AND_DOCS_SYNC` | pending | Close Phase 9 with build, browser smoke checklist, docs sync, and next recommendation |
+
+Acceptance gate:
+
+- LTR readiness, preview, and local commit are usable from frontend without external workbook write
+- intake exception workflows are visible and actionable
+- evidence placement is previewed before execution
+- lookup and summary surfaces are read-only and business-readable
+- lifecycle guard blocks are visible as actionable disabled-state reasons
+- frontend build passes
+- relevant backend tests pass
+- no Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, or external workbook mutation slipped into Phase 9
+
+---
+
 ## 6. Completion Update Protocol
 
 After finishing any task, AI must update this board in the same turn.
@@ -385,10 +571,60 @@ Next:
 
 Latest completed task:
 
-- `TASK_035_PHASE6_VALIDATION_AND_DOCS_SYNC`
+- `TASK_052_PROJECT_NO_OPTIONAL_DL_CENTRIC_IDENTITY`
 
 Validation result:
 
+- `py -m pytest tests\unit\test_project_service.py tests\integration\test_project_api.py tests\integration\test_repositories.py tests\unit\test_intake_confirmation_service.py tests\unit\test_folder_template_service.py tests\unit\test_precheck_engine.py -q`
+- result: `26 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `210 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest -q`
+- result: `203 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- Phase 7 validation summary:
+- result: `docs/phase7_validation_summary.md` added with manual smoke checklist, known limitations, workbook write policy, and next recommendation
+- Frontend build:
+- result: not rerun for `TASK_051`; no frontend or UX-copy files changed
+- `py -m pytest tests\unit\test_lookup_service.py tests\integration\test_lookup_api.py -q`
+- result: `6 passed`
+- `py -m pytest tests\integration\test_ltr_api.py tests\integration\test_intake_precheck_api.py tests\integration\test_project_lifecycle_gating_api.py tests\unit\test_ltr_readiness_service.py -q`
+- result: `12 passed`
+- `py -m pytest -q`
+- result: `201 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_exception_workflow_service.py tests\integration\test_exception_workflow_api.py -q`
+- result: `5 passed`
+- `py -m pytest tests\unit\test_intake_form_selection_service.py tests\unit\test_intake_confirmation_service.py tests\unit\test_evidence_placement_service.py tests\unit\test_ltr_renumber_preview_service.py -q`
+- result: `21 passed`
+- `py -m pytest tests\integration\test_intake_package_repositories.py tests\integration\test_exception_workflow_api.py tests\integration\test_evidence_placement_api.py tests\integration\test_ltr_renumber_preview_api.py tests\integration\test_project_lifecycle_gating_api.py -q`
+- result: `14 passed`
+- `py -m pytest -q`
+- result: `195 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_project_lifecycle_service.py tests\integration\test_project_lifecycle_gating_api.py -q`
+- result: `9 passed`
+- `py -m pytest tests\integration\test_ltr_api.py tests\integration\test_ltr_registration_preview_api.py tests\integration\test_ltr_local_commit_api.py tests\integration\test_folder_generation_api.py tests\integration\test_evidence_placement_api.py tests\integration\test_mvp_workflow_api.py -q`
+- result: `7 passed`
+- `py -m pytest -q`
+- result: `187 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_evidence_placement_service.py tests\integration\test_evidence_placement_api.py -q`
+- result: `4 passed`
+- `py -m pytest tests\unit\test_evidence_placement_service.py tests\integration\test_evidence_placement_api.py tests\integration\test_folder_generation_api.py tests\unit\test_ltr_renumber_preview_service.py -q`
+- result: `10 passed`
+- `py -m pytest -q`
+- result: `178 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
 - `py -m pytest tests\unit\test_intake_storage.py tests\unit\test_msg_compatibility.py tests\unit\test_outlook_msg_attachment_extraction.py -p no:cacheprovider`
 - result: `15 passed`
 - `py -m pytest tests\unit\test_intake_storage.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase5_ux_decision.py -p no:cacheprovider`
@@ -429,6 +665,78 @@ Validation result:
 - result: `10 passed`
 - `py -m pytest tests\unit\test_precheck_engine.py tests\integration\test_intake_precheck_api.py -q`
 - result: `7 passed`
+- safe real `.docx` parser coverage probe for `TASK_038_REAL_DOCX_PARSER_CALIBRATION`
+- result: 2 real `.docx` files readable; parser now extracts footer form/revision, requested testing, and 3-4 sample rows without committing originals
+- `py -m pytest -q`
+- result: `114 passed`
+- `py -m pytest tests\unit\test_ltr_field_catalog.py -q`
+- result: `6 passed`
+- `py -m pytest tests\integration\test_ltr_api.py tests\unit\test_ltr_field_catalog.py -q`
+- result: `7 passed`
+- `py -m pytest -q`
+- result: `120 passed`
+- `py -m pytest tests\unit\test_ltr_number_rules.py -q`
+- result: `12 passed`
+- `py -m pytest tests\integration\test_ltr_api.py tests\unit\test_ltr_field_catalog.py tests\unit\test_ltr_number_rules.py -q`
+- result: `19 passed`
+- `py -m pytest -q`
+- result: `132 passed`
+- `py -m pytest tests\unit\test_ltr_workbook_snapshot_gateway.py -q`
+- result: `6 passed`
+- `py -m pytest tests\unit\test_office_integration_boundary.py tests\unit\test_ltr_workbook_snapshot_gateway.py -q`
+- result: `12 passed`
+- safe real `.xls` workbook probe for `TASK_041_LTR_WORKBOOK_SNAPSHOT_GATEWAY`
+- result: `LTR_number.xls` detected as legacy `.xls` and rejected with explicit unsupported adapter error; no write attempted
+- `py -m pytest -q`
+- result: `138 passed`
+- `py -m pytest tests\unit\test_ltr_readiness_service.py -q`
+- result: `5 passed`
+- `py -m pytest tests\integration\test_ltr_readiness_api.py -q`
+- result: `1 passed`
+- `py -m pytest tests\unit\test_ltr_field_catalog.py tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_workbook_snapshot_gateway.py tests\integration\test_ltr_api.py tests\integration\test_ltr_readiness_api.py -q`
+- result: `26 passed`
+- `py -m pytest -q`
+- result: `144 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_ltr_registration_preview_service.py -q`
+- result: `6 passed`
+- `py -m pytest tests\integration\test_ltr_registration_preview_api.py -q`
+- result: `1 passed`
+- `py -m pytest tests\unit\test_ltr_registration_preview_service.py tests\unit\test_ltr_readiness_service.py tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_workbook_snapshot_gateway.py tests\integration\test_ltr_registration_preview_api.py tests\integration\test_ltr_readiness_api.py tests\integration\test_ltr_api.py -q`
+- result: `32 passed`
+- `py -m pytest tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py -q`
+- result: `7 passed`
+- `py -m pytest -q`
+- result: `151 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_ltr_local_commit_service.py -q`
+- result: `4 passed`
+- `py -m pytest tests\integration\test_ltr_local_commit_api.py -q`
+- result: `2 passed`
+- `py -m pytest tests\unit\test_ltr_local_commit_service.py tests\unit\test_ltr_registration_preview_service.py tests\unit\test_ltr_readiness_service.py tests\unit\test_ltr_number_rules.py tests\integration\test_ltr_local_commit_api.py tests\integration\test_ltr_registration_preview_api.py tests\integration\test_ltr_readiness_api.py tests\integration\test_ltr_api.py -q`
+- result: `33 passed`
+- `py -m pytest -q`
+- result: `158 passed`
+- safe real `.xls` layout probe for `TASK_045_LTR_EXCEL_WRITE_GATEWAY_AND_SYNC`
+- result: `LTR_number_解密版.xls` opened read-only through Excel COM; annual sheets `2020`-`2026` confirmed; A:Q registration columns and DL column D confirmed; no save/write attempted
+- `py -m pytest tests\unit\test_config.py tests\unit\test_office_integration_boundary.py tests\unit\test_excel_com_ltr_workbook_gateway.py -q`
+- result: `15 passed`
+- `py -m pytest tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_registration_preview_service.py tests\unit\test_ltr_local_commit_service.py tests\integration\test_ltr_registration_preview_api.py tests\integration\test_ltr_local_commit_api.py -q`
+- result: `28 passed`
+- `py -m pytest tests\unit\test_ltr_workbook_snapshot_gateway.py tests\unit\test_ltr_number_rules.py tests\unit\test_excel_com_ltr_workbook_gateway.py -q`
+- result: `25 passed`
+- `py -m pytest -q`
+- result: `168 passed`
+- `py -m pytest tests\unit\test_ltr_renumber_preview_service.py -q`
+- result: `5 passed`
+- `py -m pytest tests\integration\test_ltr_renumber_preview_api.py -q`
+- result: `1 passed`
+- `py -m pytest tests\unit\test_ltr_renumber_preview_service.py tests\integration\test_ltr_renumber_preview_api.py tests\integration\test_ltr_api.py tests\integration\test_folder_generation_api.py tests\unit\test_ltr_number_rules.py -q`
+- result: `22 passed`
+- `py -m pytest -q`
+- result: `174 passed`
 - `py -m pytest -q`
 - result: `112 passed`
 - `npm run build`
@@ -441,6 +749,16 @@ Validation result:
 - result: `95 passed`
 - manual browser smoke checklist
 - result: not required for docs-only scope activation
+- static documentation review for `TASK_036_PHASE7_SCOPE_AND_BOARD_ACTIVATION`
+- result: Phase 7 board section added and `TASK_037_REAL_SAMPLE_BASELINE` activated
+- safe real sample probe for `TASK_037_REAL_SAMPLE_BASELINE`
+- result: 4 `.msg` samples supported by current gateway; attachments extracted into temporary workspace only
+- safe real `.docx` parser coverage probe for `TASK_037_REAL_SAMPLE_BASELINE`
+- result: 2 real `.docx` files readable; current parser extracts 6-7 top-level fields, 0 lab fields, and 0 sample rows
+- `py -m pytest tests\unit\test_application_form_parser.py -q`
+- result: `4 passed`
+- `py -m pytest tests\unit\test_precheck_engine.py tests\integration\test_intake_precheck_api.py -q`
+- result: `7 passed`
 
 Known limits:
 
@@ -452,9 +770,27 @@ Known limits:
 - OfficeFacade boundary and Word snapshot gateway are implemented
 - `.msg` source import and minimal metadata are implemented
 - `.msg` fixture-supported attachment extraction is implemented
-- real `.msg` sample compatibility was validated against 3 local samples; all were classified as supported
+- real `.msg` sample compatibility baseline now covers 4 local samples; all were readable by the current gateway
 - intake storage boundary is implemented
 - intake persistence, candidate detection, review UI, and confirm flow are planned but not implemented
+- Phase 7 is complete; no later phase is active until explicit user approval
+- real `.msg` / `.docx` originals must not be committed
+- external LTR workbook write remains disabled and out of scope until a later explicit task
+- parser now has generated real-style regression coverage and real-sample probe coverage for footer form/revision, request fields, sample rows, requested testing, and lab section; original real `.docx` files remain local and uncommitted
+- LTR readiness field catalog is defined as pure Python only; readiness evaluation, API, preview, commit, and workbook integration remain out of scope
+- LTR number rules are defined as pure Python only; workbook snapshot, readiness service, preview, commit, and workbook write remain out of scope
+- LTR workbook snapshot gateway is read-only; `.xlsx` package snapshots are supported, legacy `.xls` is explicitly unsupported until a later adapter task, and workbook write remains out of scope
+- LTR readiness service/API is implemented; it evaluates confirmed project/form/sample/evidence data plus an optional proposed LTR number, but it does not preview, commit, or write workbook data
+- LTR registration preview is implemented as no-write/no-commit; API supports `local_only` preview and service supports optional read-only workbook snapshot injection for conflict and fingerprint context
+- `DL` is generated during preview and should be `pending_preview` before a candidate number exists; it is not expected to be present in the mailed application attachment
+- LTR local commit is implemented; it recomputes preview-equivalent data, requires operator confirmation, stores audit JSON in `LtrRecord.notes`, updates project status through `LtrService`, and does not call workbook write
+- LTR Excel COM write boundary is implemented behind `OfficeFacade`; write remains disabled by default and password/path are configuration-driven
+- Normal LTR preview no longer calculates or reserves a candidate number; final normal DL allocation happens inside the Excel COM write session after reading workbook data
+- LTR renumber preview is implemented as non-destructive planning only; it reports affected folder/file asset paths and blocks future execution when target paths or local LTR numbers conflict
+- LTR workbook password handling is a future adapter/write requirement: default may be configured as `DGLAB`, but password must not be hard-coded and missing/invalid password must not create local registered state
+- `$impeccable` is now a project-wide rule for all frontend/UI and UX-copy work, not only Phase 5 or Phase 6A
+- application `Project #` / `project_no` is now optional metadata; current workflow continuity relies on internal IDs before LTR registration and DL/LTR number after registration
+- existing SQLite databases with legacy `projects.project_no NOT NULL UNIQUE` are relaxed by a narrow `init_db()` migration; no general migration framework has been added
 
 ---
 
@@ -462,7 +798,7 @@ Known limits:
 
 Current recommendation:
 
-- stop after Phase 6A validation
+- stop after Phase 8 identity hardening and wait for explicit user approval before activating another task
 
 Why this is next:
 
@@ -498,19 +834,35 @@ Why this is next:
 - `TASK_027B` established fixture-supported attachment extraction and metadata
 - `TASK_027C` documented real `.msg` compatibility status and missing fixture blocker
 - `TASK_028A` established controlled intake file storage
-- intake database persistence is the next smallest step before candidate scoring or UI work
+- `TASK_036` activated Phase 7 without implementing product behavior
+- `TASK_037` documented real `.msg` and `.docx` baseline behavior without committing original samples
+- `TASK_038` improved deterministic parser coverage for generated real-style `.docx` layouts
+- `TASK_039` defined the authoritative 19-field LTR readiness catalog and placeholder policy
+- `TASK_040` defined pure deterministic LTR number parsing, validation, formatting, suffix/W-prefix handling, and monthly sequence rules
+- `TASK_041` added the read-only workbook snapshot gateway and explicit legacy `.xls` unsupported handling
+- `TASK_042` added the readiness service/API so incomplete LTR registration data blocks preview or registration
+- `TASK_043` added no-write registration preview with deterministic proposed number, readiness field mapping, conflict reporting, and snapshot context
+- `TASK_044` added local-only commit with operator confirmation and traceable audit notes
+- `TASK_045` added the config-gated OfficeFacade + Excel COM workbook write boundary and patched normal preview so final normal numbering is allocated only inside write access
+- `TASK_046` added non-destructive renumber/folder rename impact preview and conflict reporting
+- `TASK_047` added deterministic evidence placement preview/execution for email, forms, specs, LTR evidence, corrections, and no-overwrite copy behavior
+- `TASK_048` added lifecycle operation guards around existing project statuses for LTR, folder, and evidence operations
+- `TASK_049` added explicit no-form, multi-form, missing-info, correction evidence, and renumber reason workflow behavior
+- `TASK_050` added read-only project lookup, sample summary, and testing condition/method summary from structured records
+- `TASK_051` closed Phase 7 with validation summary, manual smoke checklist, known limitations, workbook write policy, and next recommendation
+- `TASK_052` downgraded application Project # to optional metadata and preserved DL-centric project identity
 
-Active Phase 6A task:
+Active Phase 8 task:
 
-- none
+- `NONE_PENDING_USER_APPROVAL`
 
 Reason:
 
-- Intake package, asset, case, and draft metadata must persist before candidate scoring or UI work.
+- Phase 8 identity hardening is complete and the board must not silently activate any later scope.
 
 Do not start yet:
 
-- any next phase or new feature before a new task plan is approved
+- any later phase task before explicit user approval and a new task board activation
 - Outlook inbox auto-scan
 - email sending
-- any Matrix, Report, AI, or future-scope feature
+- any Matrix, Report, AI review, LAN deployment, permissions, or future-scope feature

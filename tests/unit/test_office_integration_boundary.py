@@ -93,6 +93,28 @@ def test_office_lifecycle_rejects_unimplemented_com_fallback() -> None:
         raise AssertionError("COM fallback should be unavailable")
 
 
+def test_office_facade_delegates_excel_open_to_lifecycle(tmp_path: Path) -> None:
+    """OfficeFacade keeps Excel COM open calls behind the lifecycle boundary."""
+    lifecycle = _FakeLifecycle()
+    workbook_path = tmp_path / "ltr.xls"
+    workbook_path.write_bytes(b"sample")
+
+    handle = OfficeFacade(lifecycle=lifecycle).open_excel_workbook(
+        workbook_path,
+        modify_password="placeholder-secret",
+        read_only=False,
+    )
+
+    assert handle == "handle"
+    assert lifecycle.calls == [
+        {
+            "path": workbook_path,
+            "modify_password": "placeholder-secret",
+            "read_only": False,
+        }
+    ]
+
+
 def test_application_api_and_frontend_do_not_import_office_libraries_directly() -> None:
     """Application/API/frontend layers must not directly import Office libraries."""
     checked_roots = [
@@ -119,3 +141,23 @@ def test_only_office_infrastructure_imports_docx_in_backend_infrastructure() -> 
     ).read_text(encoding="utf-8")
 
     assert "from docx import Document" in office_source
+
+
+class _FakeLifecycle:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def open_excel_workbook(
+        self,
+        path: Path,
+        modify_password: str | None = None,
+        read_only: bool = False,
+    ) -> str:
+        self.calls.append(
+            {
+                "path": path,
+                "modify_password": modify_password,
+                "read_only": read_only,
+            }
+        )
+        return "handle"

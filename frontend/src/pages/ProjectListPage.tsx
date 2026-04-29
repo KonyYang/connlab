@@ -104,10 +104,9 @@ export function ProjectListPage({ onOpenProject }: ProjectListPageProps): ReactE
           </div>
           <form className="compact-form" onSubmit={submitProject}>
             <label>
-              Project No.
+              Project No. (optional)
               <input
-                required
-                value={form.project_no}
+                value={form.project_no ?? ""}
                 onChange={(event) => setForm({ ...form, project_no: event.target.value })}
               />
             </label>
@@ -144,12 +143,12 @@ export function ProjectListPage({ onOpenProject }: ProjectListPageProps): ReactE
           <div className="register-toolbar">
             <div>
               <h3>Active work queue</h3>
-              <p>Search by project, product, requestor, business unit, or status.</p>
+              <p>Search by DL, project reference, product, requestor, business unit, or status.</p>
             </div>
             <label className="search-field">
               Search projects
               <input
-                placeholder="Project, product, requestor..."
+                placeholder="DL, product, requestor..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -175,7 +174,7 @@ export function ProjectListPage({ onOpenProject }: ProjectListPageProps): ReactE
               <table className="project-table">
                 <thead>
                   <tr>
-                    <th>Project No.</th>
+                    <th>Project Ref.</th>
                     <th>Product</th>
                     <th>Requestor</th>
                     <th>Business Unit</th>
@@ -186,7 +185,7 @@ export function ProjectListPage({ onOpenProject }: ProjectListPageProps): ReactE
                 <tbody>
                   {filteredProjects.map((project) => (
                     <tr key={project.project_id}>
-                      <td className="project-no">{project.project_no}</td>
+                      <td className="project-no">{project.project_no || "Not set"}</td>
                       <td>{project.product_name}</td>
                       <td>{project.requestor}</td>
                       <td>{project.business_unit || "Not set"}</td>

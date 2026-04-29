@@ -13,13 +13,13 @@ Use this checklist after starting the backend and frontend dev servers. It is a 
 1. Confirm the left navigation and top context bar are visible.
 2. Confirm the project registry page loads without a workflow error.
 3. Confirm the project table or empty state is visible.
-4. Create a project with project number, product name, requestor, and optional business unit.
+4. Create a project with product name, requestor, and optional business unit. Project number is optional metadata.
 5. Confirm the created project appears in the registry and can be opened.
 
 ## Project Workbench
 
 1. Confirm the project detail page opens.
-2. Confirm the project summary panel shows project number, requestor, business unit, and status.
+2. Confirm the project summary panel shows product name, optional project reference, requestor, business unit, and status.
 3. Confirm the workflow stepper shows only these MVP steps:
    - Application Form
    - Precheck

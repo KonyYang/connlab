@@ -16,7 +16,7 @@ Use the current checklist after starting the backend and frontend dev servers.
 
 ## MVP Flow
 
-1. Create a project with project number, product name, requestor, and optional business unit.
+1. Create a project with product name, requestor, and optional business unit. Leave project number empty to confirm it is optional.
 2. Open the created project workbench and confirm the project status is visible.
 3. Upload a DOCX application form.
 4. Run precheck and confirm status plus issue list are visible.

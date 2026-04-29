@@ -52,6 +52,7 @@ def test_ltr_api_register_retrieve_search_and_prevent_duplicate(
             },
         )
         project_id = project_response.json()["project_id"]
+        _set_project_status(session_factory, project_id, ProjectStatus.CONFIRMED)
 
         register_response = client.post(
             f"/api/projects/{project_id}/ltr",
@@ -78,7 +79,8 @@ def test_ltr_api_register_retrieve_search_and_prevent_duplicate(
         assert list_response.json() == [registered]
         assert search_response.status_code == 200
         assert search_response.json() == [registered]
-        assert duplicate_response.status_code == 409
+        assert duplicate_response.status_code == 400
+        assert "already has a registered LTR" in duplicate_response.json()["detail"]
 
         with session_factory() as session:
             project = ProjectRepository(session).get(project_id)
@@ -87,3 +89,16 @@ def test_ltr_api_register_retrieve_search_and_prevent_duplicate(
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def _set_project_status(
+    session_factory,
+    project_id: str,
+    status: ProjectStatus,
+) -> None:
+    with session_factory() as session:
+        repository = ProjectRepository(session)
+        project = repository.get(project_id)
+        assert project is not None
+        repository.update(project.with_status(status))
+        session.commit()

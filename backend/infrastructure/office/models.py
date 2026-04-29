@@ -21,6 +21,14 @@ class OfficeFileKind(StrEnum):
     UNKNOWN = "unknown"
 
 
+class LtrWorkbookFormat(StrEnum):
+    """Supported LTR workbook file formats."""
+
+    XLS = "xls"
+    XLSX = "xlsx"
+    UNSUPPORTED = "unsupported"
+
+
 @dataclass(frozen=True, slots=True)
 class OfficeFileClassification:
     """Classification result for an imported office-related file."""
@@ -72,3 +80,18 @@ class WordDocumentSnapshot:
     headers: list[str]
     footers: list[str]
     raw_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookSnapshot:
+    """Read-only metadata and existing LTR numbers from a workbook."""
+
+    workbook_path: Path
+    workbook_format: LtrWorkbookFormat
+    size_bytes: int
+    modified_time: datetime
+    sheet_names: tuple[str, ...]
+    readable_sheet_names: tuple[str, ...]
+    sheet_strategy: str
+    existing_ltr_numbers: tuple[str, ...]
+    unsupported_reason: str | None = None

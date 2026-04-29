@@ -166,6 +166,31 @@ def test_selection_updates_existing_case_and_draft() -> None:
     assert draft_store.drafts["draft-1"].parsed_fields_json == "{}"
 
 
+def test_selection_creates_separate_case_when_package_already_has_other_form_case() -> None:
+    existing_case = IntakeCase(
+        case_id="case-1",
+        package_id="pkg-1",
+        selected_form_asset_id="asset-a",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    service, _, case_store, _ = _service(
+        [
+            _asset("asset-a", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+            _asset("asset-b", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        ],
+        cases=[existing_case],
+    )
+
+    result = service.select_form_asset("pkg-1", "asset-b")
+
+    assert result.case.selected_form_asset_id == "asset-b"
+    assert len(case_store.cases) == 2
+    assert {case.selected_form_asset_id for case in case_store.cases.values()} == {
+        "asset-a",
+        "asset-b",
+    }
+
+
 def test_selection_rejects_non_word_non_candidate_asset() -> None:
     service, _, _, _ = _service([_asset("asset-a", IntakeAssetRole.UNKNOWN, ".pdf")])
 

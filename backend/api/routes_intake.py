@@ -7,7 +7,16 @@ from datetime import date
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
-from backend.api.dependencies import get_intake_precheck_service
+from backend.api.dependencies import (
+    get_exception_workflow_service,
+    get_intake_precheck_service,
+)
+from backend.application.exception_workflow_service import (
+    ExceptionWorkflowIssue,
+    ExceptionWorkflowNotFoundError,
+    ExceptionWorkflowReview,
+    ExceptionWorkflowService,
+)
 from backend.application.intake_precheck_service import (
     IntakeNotFoundError,
     IntakePrecheckService,
@@ -63,6 +72,27 @@ class PrecheckResultResponse(BaseModel):
     issues: list[PrecheckIssueResponse]
 
 
+class ExceptionWorkflowIssueResponse(BaseModel):
+    """One explicit exception workflow issue."""
+
+    kind: str
+    message: str
+    operator_action: str
+    blocking: bool
+    asset_id: str | None = None
+    case_id: str | None = None
+
+
+class ExceptionWorkflowReviewResponse(BaseModel):
+    """Intake package exception workflow review response."""
+
+    package_id: str
+    package_status: str
+    case_ids: list[str]
+    draft_ids: list[str]
+    issues: list[ExceptionWorkflowIssueResponse]
+
+
 @router.post(
     "/api/projects/{project_id}/application-form",
     response_model=ApplicationFormResponse,
@@ -78,6 +108,21 @@ def upload_application_form(
         record = service.upload_application_form(project_id, file.filename or "", file.file)
         return _form_response(record)
     except IntakeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/{package_id}/exceptions/review",
+    response_model=ExceptionWorkflowReviewResponse,
+)
+def review_intake_package_exceptions(
+    package_id: str,
+    service: ExceptionWorkflowService = Depends(get_exception_workflow_service),
+) -> ExceptionWorkflowReviewResponse:
+    """Review and persist explicit exception workflow state for an intake package."""
+    try:
+        return _exception_review_response(service.review_package(package_id))
+    except ExceptionWorkflowNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
@@ -138,6 +183,33 @@ def _form_response(record: ParsedFormRecord) -> ApplicationFormResponse:
         project_number=record.form.project_number,
         requested_testing=record.form.requested_testing,
         samples=[_sample_response(sample) for sample in record.samples],
+    )
+
+
+def _exception_review_response(
+    review: ExceptionWorkflowReview,
+) -> ExceptionWorkflowReviewResponse:
+    """Convert exception workflow review to API response."""
+    return ExceptionWorkflowReviewResponse(
+        package_id=review.package_id,
+        package_status=review.package.status.value,
+        case_ids=[case.case_id for case in review.cases],
+        draft_ids=[draft.draft_id for draft in review.drafts],
+        issues=[_exception_issue_response(issue) for issue in review.issues],
+    )
+
+
+def _exception_issue_response(
+    issue: ExceptionWorkflowIssue,
+) -> ExceptionWorkflowIssueResponse:
+    """Convert one exception workflow issue to API response."""
+    return ExceptionWorkflowIssueResponse(
+        kind=issue.kind.value,
+        message=issue.message,
+        operator_action=issue.operator_action,
+        blocking=issue.blocking,
+        asset_id=issue.asset_id,
+        case_id=issue.case_id,
     )
 
 

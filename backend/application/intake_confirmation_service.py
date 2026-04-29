@@ -77,7 +77,7 @@ class IntakeConfirmationResult:
 class IntakeConfirmationService:
     """Confirms reviewed intake draft data into formal MVP project records."""
 
-    _required_project_fields = ("project_no", "product_name", "requester")
+    _required_project_fields = ("product_name", "requester")
 
     def __init__(
         self,
@@ -197,7 +197,7 @@ class IntakeConfirmationService:
     def _to_project(self, project_id: str, data: dict[str, Any]) -> Project:
         return Project(
             project_id=project_id,
-            project_no=self._text(data, "project_no"),
+            project_no=self._optional_text(data, "project_no"),
             product_name=self._text(data, "product_name"),
             requestor=self._text(data, "requester"),
             status=ProjectStatus.INTAKE_RECEIVED,
@@ -214,7 +214,7 @@ class IntakeConfirmationService:
             email=self._optional_text(data, "email"),
             business_unit=self._optional_text(data, "business_unit"),
             requested_testing=self._optional_text(data, "requested_testing"),
-            project_number=self._text(data, "project_no"),
+            project_number=self._optional_text(data, "project_no"),
         )
 
     def _to_sample_infos(self, project_id: str, data: dict[str, Any]) -> tuple[SampleInfo, ...]:

@@ -71,15 +71,12 @@ def test_task026_exists_as_the_next_controlled_task() -> None:
         assert term in task
 
 
-def test_task_board_marks_phase6a_active_and_forbids_future_scope() -> None:
-    """The task board keeps Phase 6A active and allows only the current task."""
+def test_task_board_preserves_phase6a_completion_and_forbids_future_scope() -> None:
+    """The task board preserves Phase 6A completion while later phases advance."""
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
 
-    assert "Current Active Task: `NONE_PHASE6A_VALIDATED`" in board
-    assert (
-        "Current Phase: `Phase 6A - Outlook Email Package Intake, "
-        "Application Form Selection And Human Confirmation`"
-    ) in board
+    assert "Current Active Task: `NONE_PENDING_USER_APPROVAL`" in board
+    assert "Current Phase: `Phase 8 - DL-Centric Project Identity Hardening`" in board
     assert "| T6A-1 | `TASK_025_PHASE6_SCOPE_REVISION_AND_BOARD_ACTIVATION` | done |" in board
     assert "| T6A-2 | `TASK_026_OFFICE_INTEGRATION_BOUNDARY` | done |" in board
     assert (

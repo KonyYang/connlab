@@ -14,9 +14,44 @@ def test_settings_load_defaults_and_create_directories() -> None:
         assert settings.projects_dir == workspace_tmp / "projects"
         assert settings.templates_dir == workspace_tmp / "templates"
         assert settings.log_level == DEFAULT_LOG_LEVEL
+        assert settings.ltr_workbook.mode == "local_only"
+        assert settings.ltr_workbook.write_enabled is False
+        assert settings.ltr_workbook.path is None
+        assert settings.ltr_workbook.modify_password is None
         assert settings.data_dir.is_dir()
         assert settings.projects_dir.is_dir()
         assert settings.templates_dir.is_dir()
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_settings_load_ltr_workbook_from_local_config(
+    monkeypatch,
+) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    config_path = workspace_tmp / "connlab.local.toml"
+    config_path.write_text(
+        """[ltr_workbook]
+path = "local/LTR_number.xls"
+mode = "excel_com"
+write_enabled = true
+lock_dir = "locks"
+backup_dir = "backups"
+modify_password = "placeholder-secret"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(config_path))
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.path == (workspace_tmp / "local" / "LTR_number.xls").resolve()
+        assert settings.ltr_workbook.mode == "excel_com"
+        assert settings.ltr_workbook.write_enabled is True
+        assert settings.ltr_workbook.lock_dir == (workspace_tmp / "locks").resolve()
+        assert settings.ltr_workbook.backup_dir == (workspace_tmp / "backups").resolve()
+        assert settings.ltr_workbook.modify_password == "placeholder-secret"
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 

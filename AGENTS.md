@@ -49,6 +49,23 @@ Layering rules:
 - `api` calls application services only.
 - UI/frontend never directly manipulates Office files or project folders.
 
+### 4.1 Project-Wide Frontend/UI Design Rule
+
+`$impeccable` is a ConnLab project-wide rule for frontend and UI work. It is not limited to Phase 5 or Phase 6.
+
+Use `$impeccable` before any task that designs, changes, critiques, audits, polishes, refactors, or documents:
+
+- frontend pages, routes, components, forms, navigation, panels, tables, dashboards, empty states, error states, loading states, or disabled states
+- UX copy, operator guidance, business-readable status text, action labels, confirmation flows, or frontend smoke expectations
+- layout, spacing, typography, color, visual hierarchy, responsive behavior, icons, interaction states, or motion
+
+Requirements:
+
+- Load `$impeccable` context before UI design or edits and follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
+- Treat ConnLab as `$impeccable` `register: product`.
+- Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test tasks are exempt unless they change UI behavior or user-facing copy.
+- If `$impeccable` guidance conflicts with the active task scope, obey `AGENTS.md` and `docs/task_board.md` scope control first, then report the conflict.
+
 ## 5. Core Domain Principles
 
 - Project is the system center.

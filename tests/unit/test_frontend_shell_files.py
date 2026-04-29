@@ -144,7 +144,7 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "ErrorMessage" in list_page_source
     assert "LoadingState" in list_page_source
     assert "<table" in list_page_source
-    assert "Project No." in list_page_source
+    assert "Project No. (optional)" in list_page_source
     assert "Product" in list_page_source
     assert "Requestor" in list_page_source
     assert "Business Unit" in list_page_source
@@ -184,7 +184,7 @@ def test_project_workbench_uses_sequential_stepper() -> None:
     assert "warning" in workflow_state_source
     assert "done" in workflow_state_source
     assert "Project workflow" in stepper_source
-    assert "Project No." in summary_source
+    assert "Project Ref." in summary_source
     assert ".workflow-stepper" in styles_source
     assert ".next-action-panel" in styles_source
 

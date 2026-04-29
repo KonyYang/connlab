@@ -10,7 +10,7 @@ Fields:
 - product_name
 - requestor
 - business_unit
-- project_no
+- project_no (optional application reference only; not the primary business identifier)
 - status
 - root_folder
 - created_at
@@ -41,7 +41,7 @@ Fields:
 - email
 - business_unit
 - manufacturing_site
-- project_no
+- project_no (optional application reference)
 - requested_completion_date
 - results_format
 - test_type

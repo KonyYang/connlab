@@ -66,3 +66,46 @@ def test_project_api_create_list_get_with_temp_db(tmp_path: Path) -> None:
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def test_project_api_allows_missing_project_no(tmp_path: Path) -> None:
+    engine = create_database_engine(
+        Settings(
+            data_dir=tmp_path / "data",
+            projects_dir=tmp_path / "projects",
+            templates_dir=tmp_path / "templates",
+            database_path=tmp_path / "connlab.sqlite3",
+        )
+    )
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    client = TestClient(app)
+
+    try:
+        first = client.post(
+            "/api/projects",
+            json={"product_name": "Connector A", "requestor": "Alice"},
+        )
+        second = client.post(
+            "/api/projects",
+            json={"product_name": "Connector B", "requestor": "Bob"},
+        )
+
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["project_no"] is None
+        assert second.json()["project_no"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()

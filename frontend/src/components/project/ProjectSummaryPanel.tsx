@@ -24,8 +24,8 @@ export function ProjectSummaryPanel({
         </div>
         <dl className="project-summary-facts">
           <div>
-            <dt>Project No.</dt>
-            <dd>{project.project_no}</dd>
+            <dt>Project Ref.</dt>
+            <dd>{project.project_no || "Not set"}</dd>
           </div>
           <div>
             <dt>Requestor</dt>
