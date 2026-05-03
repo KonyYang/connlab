@@ -62,5 +62,11 @@ Not allowed:
 
 - `py -m pytest tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`
 - Result: `37 passed`
+- `py -m pytest -q`
+- Result: `275 passed`
 - `npm run build`
 - Result: passed
+- `git diff --check`
+- Result: passed with CRLF working-copy warnings only
+- Sidebar correction: `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- Result: `27 passed`; `npm run build`, result passed

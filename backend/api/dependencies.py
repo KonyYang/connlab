@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.application.exception_workflow_service import ExceptionWorkflowService
 from backend.application.evidence_placement_service import EvidencePlacementService
 from backend.application.folder_service import FolderService
+from backend.application.direct_word_intake_service import DirectWordIntakeService
 from backend.application.intake_precheck_service import IntakePrecheckService
 from backend.application.intake_asset_preview_service import IntakeAssetPreviewService
 from backend.application.intake_case_review_service import IntakeCaseReviewService
@@ -126,6 +127,18 @@ def get_msg_package_intake_service(
 ) -> MsgPackageIntakeService:
     """Build a manual `.msg` package intake service for API routes."""
     return MsgPackageIntakeService(
+        storage=IntakeStorage(settings.data_dir / "intake"),
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+    )
+
+
+def get_direct_word_intake_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> DirectWordIntakeService:
+    """Build a direct Word application-form intake service for API routes."""
+    return DirectWordIntakeService(
         storage=IntakeStorage(settings.data_dir / "intake"),
         package_store=IntakePackageRepository(session),
         asset_store=IntakeAssetRepository(session),

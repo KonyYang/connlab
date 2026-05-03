@@ -6,6 +6,15 @@ from pathlib import Path
 FRONTEND_ROOT = Path(__file__).resolve().parents[2] / "frontend"
 
 
+def precheck_feature_source() -> str:
+    """Return the current Precheck feature source used by static UI checks."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "precheck"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(feature_root.glob("*.tsx")) + sorted(feature_root.glob("*.ts"))
+    )
+
+
 def test_frontend_shell_core_files_exist() -> None:
     """Minimal React shell files are present."""
     expected_files = [
@@ -108,6 +117,12 @@ def test_frontend_app_shell_uses_left_navigation_without_hero_layout() -> None:
     top_bar_source = (
         FRONTEND_ROOT / "src" / "components" / "layout" / "TopBar.tsx"
     ).read_text(encoding="utf-8")
+    intake_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+    workbench_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
     icon_source = (
         FRONTEND_ROOT / "src" / "components" / "common" / "UiIcon.tsx"
     ).read_text(encoding="utf-8")
@@ -121,8 +136,10 @@ def test_frontend_app_shell_uses_left_navigation_without_hero_layout() -> None:
     assert "Dashboard" in sidebar_source
     assert "Projects" in sidebar_source
     assert "New Project" in sidebar_source
-    assert "Precheck" in sidebar_source
-    assert "LTR Number" in sidebar_source
+    assert "Precheck" not in sidebar_source
+    assert "LTR Number" not in sidebar_source
+    assert "Precheck" in intake_review_source
+    assert "LTR Number" in workbench_source
     assert "Folders" in sidebar_source
     assert "Settings" in sidebar_source
     assert "UiIcon" in sidebar_source
@@ -355,7 +372,7 @@ def test_intake_exception_frontend_wires_review_outcomes() -> None:
     ).read_text(encoding="utf-8")
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
     package_styles = (FRONTEND_ROOT / "src" / "intake-package-detail.css").read_text(
         encoding="utf-8"
     )
@@ -508,7 +525,7 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
         'accept=".msg"',
         "importMsgPackage",
         "selectIntakeApplicationForm",
-        "Import email package",
+        "Import from Outlook",
         "Upload application form",
         "Email information",
         "Attachments (",
@@ -518,7 +535,6 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
         "handleContinueToPrecheck",
         "selectedWordAssetId",
         "selectedPrecheckCaseId",
-        "application-form-asset",
         "isWordAsset",
     ]:
         assert term in inbox_source
@@ -533,8 +549,8 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
     assert ".intake-error" in inbox_styles
 
 
-def test_direct_application_form_entry_is_visible_without_backend_wiring() -> None:
-    """TASK_069 shows direct Word intake as an affordance without route changes."""
+def test_direct_application_form_entry_imports_through_backend() -> None:
+    """TASK_086 wires direct Word intake to the backend import endpoint."""
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
         encoding="utf-8"
     )
@@ -546,32 +562,81 @@ def test_direct_application_form_entry_is_visible_without_backend_wiring() -> No
     )
 
     for term in [
-        "ManualIntakeInput",
-        "ManualIntake",
-        "createManualIntake",
-        "/api/intake-packages/manual",
+        "importDirectWordApplicationForm",
+        "/api/intake-packages/import-docx",
     ]:
         assert term in client_source
 
     for term in [
         'accept=".doc,.docx"',
         "Upload application form",
+        "importDirectWordApplicationForm(file)",
         "directWordName",
-        "Direct application form import is visible here but not wired to backend in this task.",
+        'sourceMode: "word"',
+        "Uploading application form...",
+        "Direct application form import failed.",
     ]:
         assert term in inbox_source
 
     assert "fetch(" not in inbox_source
     assert "createManualIntake" not in inbox_source
+    assert "not wired to backend" not in inbox_source
     assert ".source-button" in inbox_styles
     assert ".attachment-empty" in inbox_styles
+
+
+def test_task087_intake_information_density_cleanup() -> None:
+    """TASK_087 keeps Intake source review concise and action-focused."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
+
+    for term in [
+        "received_at?: string | null",
+        "IntakePackageImport",
+    ]:
+        assert term in client_source
+
+    for term in [
+        "senderEmailText",
+        "mailDateText",
+        "Application form:",
+        "Select a Word (.docx) file before continuing.",
+        "attachmentRoleText",
+        "toLocaleString",
+    ]:
+        assert term in inbox_source
+
+    for removed_term in [
+        "senderText",
+        "<dt>Source file</dt>",
+        'className="attachment-type"',
+        'className="attachment-size"',
+        'className="attachment-guidance"',
+        "Choose one Word document as the application form.",
+        "application-form-asset",
+        'type="radio"',
+        "attachment-selection-mark",
+    ]:
+        assert removed_term not in inbox_source
+
+    assert "grid-template-columns: 42px minmax(0, 1fr);" in inbox_styles
+    assert ".step-footer-guidance" in inbox_styles
+    assert ".attachment-name small" in inbox_styles
+    assert ".attachment-guidance" not in inbox_styles
 
 
 def test_task070_precheck_step_matches_reference_workspace() -> None:
     """TASK_070 turns case review into the step-style Precheck workspace."""
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
     case_styles = (FRONTEND_ROOT / "src" / "intake-case-review.css").read_text(
         encoding="utf-8"
     )
@@ -614,9 +679,11 @@ def test_task071_intake_session_state_survives_route_changes() -> None:
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
     ).read_text(encoding="utf-8")
+    session_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "intakeSession.ts"
+    ).read_text(encoding="utf-8")
 
     for term in [
-        "EMPTY_INTAKE_SESSION",
         "type IntakeSessionState",
         "useState<IntakeSessionState>",
         "session={intakeSession}",
@@ -627,14 +694,79 @@ def test_task071_intake_session_state_survives_route_changes() -> None:
         assert term in app_source
 
     for term in [
-        "export type IntakeSessionState",
-        "export const EMPTY_INTAKE_SESSION",
         "session: IntakeSessionState",
         "onSessionChange: (session: IntakeSessionState) => void",
         "onSessionChange({",
         "selectedWordAssetId",
     ]:
         assert term in inbox_source
+
+    for term in [
+        "export type IntakeSessionState",
+        "export const EMPTY_INTAKE_SESSION",
+    ]:
+        assert term in session_source
+
+
+def test_task085_intake_session_persists_to_session_storage() -> None:
+    """TASK_085 persists New Project Intake state through browser refresh."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    session_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "intakeSession.ts"
+    ).read_text(encoding="utf-8")
+    case_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "loadIntakeSession",
+        "saveIntakeSession",
+        "clearIntakeSession",
+        "window.sessionStorage",
+        "connlab:intake-session",
+        "normalizeIntakeSession",
+        "EMPTY_INTAKE_SESSION",
+    ]:
+        assert term in session_source
+
+    for term in [
+        "useState<IntakeSessionState>(loadIntakeSession)",
+        "saveIntakeSession(intakeSession)",
+        "clearIntakeSession();",
+        "setIntakeSession(EMPTY_INTAKE_SESSION);",
+    ]:
+        assert term in app_source
+
+    for term in [
+        "onProjectConfirmed?: () => void",
+        "onProjectConfirmed?.()",
+    ]:
+        assert term in case_review_source
+
+
+def test_task085_precheck_back_preserves_intake_selected_form_session() -> None:
+    """TASK_085 hotfix keeps Intake selection after returning from Precheck."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    case_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "type PrecheckBackSnapshot",
+        "selectedFormAssetId",
+        "activeCase.selected_form_asset_id",
+        "caseId: activeCase.case_id",
+    ]:
+        assert term in case_review_source
+
+    for term in [
+        "type PrecheckBackSnapshot",
+        "snapshot?.selectedFormAssetId ?? current.selectedAssetId",
+        "snapshot?.selectedFormAssetId ?? current.selectedWordAssetId",
+        "snapshot?.caseId ?? current.selectedPrecheckCaseId",
+        'navigate("/intake")',
+    ]:
+        assert term in app_source
 
 
 def test_task073_selected_form_precheck_binding_is_explicit() -> None:
@@ -648,7 +780,7 @@ def test_task073_selected_form_precheck_binding_is_explicit() -> None:
     ).read_text(encoding="utf-8")
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
 
     for term in [
         "SelectedApplicationForm",
@@ -688,7 +820,7 @@ def test_precheck_date_fields_normalize_parser_dates_for_date_inputs() -> None:
     """Precheck date inputs convert Word MM/DD/YYYY values to browser ISO dates."""
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
 
     for term in [
         "dateInputValue(value)",
@@ -703,7 +835,7 @@ def test_task081_precheck_selects_use_backend_lookup_options() -> None:
     """TASK_081 wires Precheck select fields to backend lookup options."""
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
         encoding="utf-8"
     )
@@ -745,7 +877,7 @@ def test_task082_precheck_sample_rows_are_editable_with_icon_actions() -> None:
     """TASK_082 makes sample rows editable and uses compact icon actions."""
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
     case_styles = (FRONTEND_ROOT / "src" / "intake-case-review.css").read_text(
         encoding="utf-8"
     )
@@ -798,7 +930,7 @@ def test_task083_precheck_shows_section1_issue_summary_and_field_highlights() ->
     """TASK_083 surfaces deterministic SECTION 1 precheck issues before confirm."""
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + precheck_feature_source()
     case_styles = (FRONTEND_ROOT / "src" / "intake-case-review.css").read_text(
         encoding="utf-8"
     )
@@ -833,6 +965,57 @@ def test_task083_precheck_shows_section1_issue_summary_and_field_highlights() ->
 
     assert "Andy Liu" not in case_review_source
     assert "Quality Team" not in case_review_source
+
+
+def test_task084_precheck_route_uses_feature_boundary_and_style_tokens() -> None:
+    """TASK_084 keeps Precheck page logic thin and moves UI details to features."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+    feature_source = precheck_feature_source()
+    case_styles = (FRONTEND_ROOT / "src" / "intake-case-review.css").read_text(
+        encoding="utf-8"
+    )
+    inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
+
+    for relative_path in [
+        "src/features/precheck/precheckFieldConfig.ts",
+        "src/features/precheck/precheckReviewSelectors.ts",
+        "src/features/precheck/PrecheckFieldGrid.tsx",
+        "src/features/precheck/PrecheckSampleTable.tsx",
+        "src/features/precheck/PrecheckIssueSummary.tsx",
+        "src/features/precheck/PrecheckSourceCheck.tsx",
+    ]:
+        assert (FRONTEND_ROOT / relative_path).is_file()
+
+    for term in [
+        "PrecheckFieldGrid",
+        "PrecheckSampleTable",
+        "PrecheckIssueSummary",
+        "PrecheckSourceCheck",
+        "PrecheckLowerPanels",
+        "PrecheckMessages",
+    ]:
+        assert term in page_source
+
+    for term in [
+        "PRECHECK_PROJECT_FIELDS",
+        "PRECHECK_SAMPLE_COLUMNS",
+        "fieldsWithLookupOptions",
+        "normalizedSampleRows",
+        "mergedPartNumberRevision",
+        "mergedTraceabilityLotInfo",
+    ]:
+        assert term in feature_source
+
+    assert 'lookupGroup: "business_unit"' not in page_source
+    assert "const SAMPLE_COLUMNS" not in page_source
+    assert "function ReviewField" not in page_source
+    assert "--precheck-data-ink" in case_styles
+    assert "--precheck-control-min-width" in case_styles
+    assert "--intake-data-ink" in inbox_styles
 
 
 def test_task075_intake_attachment_preview_prioritizes_docx() -> None:
@@ -878,6 +1061,46 @@ def test_task075_intake_attachment_preview_prioritizes_docx() -> None:
         ".preview-error-state",
     ]:
         assert term in inbox_styles
+
+
+def test_task088_attachment_details_preview_completion() -> None:
+    """TASK_088 renders image previews and metadata-only attachment details."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
+
+    for term in [
+        "image_data_url?: string | null",
+        "metadata_only",
+    ]:
+        assert term in client_source + inbox_source
+
+    for term in [
+        "ImageAttachmentPreview",
+        "MetadataOnlyPreview",
+        "image_data_url",
+        "metadata-preview-grid",
+        "assetKindFromPreview",
+        "Image preview",
+        "Metadata only",
+    ]:
+        assert term in inbox_source
+
+    for term in [
+        ".image-attachment-preview",
+        ".image-preview-frame",
+        ".metadata-only-preview",
+        ".metadata-preview-grid",
+    ]:
+        assert term in inbox_styles
+
+    assert "Document structure" not in inbox_source
 
 
 def test_folder_evidence_frontend_wires_preview_and_execution() -> None:

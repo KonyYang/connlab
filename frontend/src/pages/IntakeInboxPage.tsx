@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from "react";
 import {
   getIntakeAssetPreview,
+  importDirectWordApplicationForm,
   importMsgPackage,
   selectIntakeApplicationForm,
   type IntakeAsset,
@@ -8,32 +9,16 @@ import {
   type IntakePackageImport
 } from "../api/client";
 import { UiIcon } from "../components/common/UiIcon";
+import {
+  EMPTY_INTAKE_SESSION,
+  type IntakeSessionState
+} from "../features/intake/intakeSession";
 import "../intake-inbox.css";
 
 type IntakeInboxPageProps = {
   session: IntakeSessionState;
   onSessionChange: (session: IntakeSessionState) => void;
   onOpenPackage: (packageId: string, caseId?: string | null) => void;
-};
-
-type SourceMode = "msg" | "word";
-
-export type IntakeSessionState = {
-  packageImport: IntakePackageImport | null;
-  selectedAssetId: string | null;
-  selectedWordAssetId: string | null;
-  selectedPrecheckCaseId: string | null;
-  sourceMode: SourceMode;
-  directWordName: string | null;
-};
-
-export const EMPTY_INTAKE_SESSION: IntakeSessionState = {
-  packageImport: null,
-  selectedAssetId: null,
-  selectedWordAssetId: null,
-  selectedPrecheckCaseId: null,
-  sourceMode: "msg",
-  directWordName: null
 };
 
 export function IntakeInboxPage({
@@ -119,21 +104,31 @@ export function IntakeInboxPage({
     }
   }
 
-  function handleDirectWordChange(event: ChangeEvent<HTMLInputElement>): void {
+  async function handleDirectWordChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) {
       return;
     }
-    onSessionChange({
-      packageImport: null,
-      selectedAssetId: null,
-      selectedWordAssetId: null,
-      selectedPrecheckCaseId: null,
-      sourceMode: "word",
-      directWordName: file.name
-    });
-    setImportError("Direct application form import is visible here but not wired to backend in this task.");
+    setImporting(true);
+    setImportError(null);
+    try {
+      const imported = await importDirectWordApplicationForm(file);
+      const firstWord = imported.assets.find(isWordAsset) ?? imported.assets[0] ?? null;
+      onSessionChange({
+        packageImport: imported,
+        selectedAssetId: firstWord?.asset_id ?? null,
+        selectedWordAssetId: firstWord?.asset_id ?? null,
+        selectedPrecheckCaseId: null,
+        sourceMode: "word",
+        directWordName: file.name
+      });
+    } catch (error) {
+      onSessionChange(EMPTY_INTAKE_SESSION);
+      setImportError(error instanceof Error ? error.message : "Direct application form import failed.");
+    } finally {
+      setImporting(false);
+    }
   }
 
   async function handleContinueToPrecheck(): Promise<void> {
@@ -166,7 +161,7 @@ export function IntakeInboxPage({
       <div className="new-project-heading">
         <div>
           <h2>New Project</h2>
-          <p>Create a project from email or application form.</p>
+          <p>Step 1 of 4: Intake</p>
         </div>
       </div>
 
@@ -189,7 +184,7 @@ export function IntakeInboxPage({
                 accept=".doc,.docx"
                 className="file-input-hidden"
                 type="file"
-                onChange={handleDirectWordChange}
+                onChange={(event) => void handleDirectWordChange(event)}
               />
               <button
                 className={sourceMode === "msg" ? "source-button source-button-active" : "source-button"}
@@ -197,16 +192,16 @@ export function IntakeInboxPage({
                 type="button"
                 onClick={() => msgInputRef.current?.click()}
               >
-                <UiIcon name="package" />
-                {importing ? "Importing email..." : "Import email package"}
+                <UiIcon name="outlook" />
+                {importing ? "Importing from Outlook..." : "Import from Outlook"}
               </button>
               <button
                 className={sourceMode === "word" ? "source-button source-button-active" : "source-button"}
                 type="button"
                 onClick={() => wordInputRef.current?.click()}
               >
-                <UiIcon name="folder" />
-                Upload application form
+                <UiIcon name="upload" />
+                {importing && sourceMode === "word" ? "Uploading application form..." : "Upload application form"}
               </button>
             </div>
             {importError ? <p className="intake-error">{importError}</p> : null}
@@ -216,20 +211,16 @@ export function IntakeInboxPage({
             <h3>Email information</h3>
             <dl className="email-info-list">
               <div>
-                <dt>Sender</dt>
-                <dd>{senderText(packageImport)}</dd>
+                <dt>From</dt>
+                <dd>{senderEmailText(packageImport)}</dd>
               </div>
               <div>
                 <dt>Subject</dt>
-                <dd>{packageImport?.subject || directWordName || "No email imported"}</dd>
+                <dd>{packageImport?.subject || directWordName || "No subject"}</dd>
               </div>
               <div>
-                <dt>Received</dt>
-                <dd>{packageImport ? "Imported now" : "Waiting for package"}</dd>
-              </div>
-              <div>
-                <dt>Source file</dt>
-                <dd>{packageImport?.source_original_name || directWordName || "Not selected"}</dd>
+                <dt>Date</dt>
+                <dd>{mailDateText(packageImport)}</dd>
               </div>
             </dl>
           </section>
@@ -237,7 +228,6 @@ export function IntakeInboxPage({
           <section className="intake-panel intake-attachments-panel">
             <div className="attachments-heading">
               <h3>Attachments ({packageImport?.assets.length ?? 0})</h3>
-              <span>Choose one Word document as the application form.</span>
             </div>
             {packageImport ? (
               <div className="attachment-list" role="list">
@@ -249,33 +239,20 @@ export function IntakeInboxPage({
                       className={selected ? "attachment-row attachment-row-active" : "attachment-row"}
                       key={asset.asset_id}
                       type="button"
-                      onClick={() => onSessionChange({ ...session, selectedAssetId: asset.asset_id })}
+                      onClick={() => {
+                        onSessionChange({
+                          ...session,
+                          selectedAssetId: asset.asset_id,
+                          selectedWordAssetId: word ? asset.asset_id : selectedWordAssetId,
+                          selectedPrecheckCaseId: word ? null : session.selectedPrecheckCaseId
+                        });
+                      }}
                     >
-                      <span className="attachment-selector">
-                        {word ? (
-                          <input
-                            aria-label={`Use ${asset.original_name} as application form`}
-                            checked={asset.asset_id === selectedWordAssetId}
-                            name="application-form-asset"
-                            type="radio"
-                            onChange={() => {
-                              onSessionChange({
-                                ...session,
-                                selectedAssetId: asset.asset_id,
-                                selectedWordAssetId: asset.asset_id,
-                                selectedPrecheckCaseId: null
-                              });
-                            }}
-                            onClick={(event) => event.stopPropagation()}
-                          />
-                        ) : (
-                          <span className="attachment-spacer" />
-                        )}
-                      </span>
                       <span className={`file-chip file-chip-${assetKind(asset)}`}>{assetKindLabel(asset)}</span>
-                      <span className="attachment-name">{asset.original_name}</span>
-                      <span className="attachment-type">{assetTypeText(asset)}</span>
-                      <span className="attachment-size">{formatBytes(asset.size_bytes)}</span>
+                      <span className="attachment-name">
+                        <strong>{asset.original_name}</strong>
+                        <small>{attachmentRoleText(asset)}</small>
+                      </span>
                     </button>
                   );
                 })}
@@ -283,13 +260,10 @@ export function IntakeInboxPage({
             ) : (
               <div className="attachment-empty">
                 <UiIcon name="package" />
-                <strong>No email package imported</strong>
-                <span>Import one Outlook `.msg` file to list its attachments.</span>
+                <strong>No source imported</strong>
+                <span>Import a .msg package or upload an application form.</span>
               </div>
             )}
-            <p className="attachment-guidance">
-              Select a Word (.docx) file as the application form before continuing.
-            </p>
           </section>
         </aside>
 
@@ -341,7 +315,11 @@ export function IntakeInboxPage({
 
       <div className="step-footer">
         <button className="secondary-action" disabled type="button">Back</button>
-        <span>Step 1 of 4</span>
+        <span className="step-footer-guidance">
+          {selectedApplicationForm
+            ? `Application form: ${selectedApplicationForm.original_name}`
+            : "Select a Word (.docx) file before continuing."}
+        </span>
         <button
           className="primary-action continue-action"
           disabled={!packageImport || !selectedApplicationForm || preparingPrecheck}
@@ -403,6 +381,12 @@ function AttachmentPreview({
       </div>
     );
   }
+  if (preview.kind === "image") {
+    return <ImageAttachmentPreview preview={preview} />;
+  }
+  if (preview.kind === "metadata_only" || preview.kind === "unsupported") {
+    return <MetadataOnlyPreview preview={preview} />;
+  }
   if (preview.kind !== "docx_application_form") {
     return (
       <div className="preview-empty unsupported-preview">
@@ -413,6 +397,57 @@ function AttachmentPreview({
     );
   }
   return <DocxApplicationPreview preview={preview} />;
+}
+
+function ImageAttachmentPreview({
+  preview
+}: {
+  preview: IntakeAssetPreview;
+}): ReactElement {
+  if (!preview.image_data_url) {
+    return <MetadataOnlyPreview preview={preview} />;
+  }
+  return (
+    <div className="image-attachment-preview">
+      <div className="docx-preview-title">
+        <span className="file-chip file-chip-image">IMG</span>
+        <div>
+          <strong>{preview.title}</strong>
+          <span>{preview.metadata.original_name}</span>
+        </div>
+      </div>
+      <div className="image-preview-frame">
+        <img alt={preview.metadata.original_name} src={preview.image_data_url} />
+      </div>
+    </div>
+  );
+}
+
+function MetadataOnlyPreview({
+  preview
+}: {
+  preview: IntakeAssetPreview;
+}): ReactElement {
+  return (
+    <div className="metadata-only-preview">
+      <div className="docx-preview-title">
+        <span className={`file-chip file-chip-${assetKindFromPreview(preview)}`}>{assetKindLabelFromPreview(preview)}</span>
+        <div>
+          <strong>{preview.title}</strong>
+          <span>{preview.metadata.original_name}</span>
+        </div>
+      </div>
+      <p>{preview.message ?? "Attachment metadata is available. Structured rendering is not implemented for this file type."}</p>
+      <dl className="metadata-preview-grid">
+        {preview.fields.map((field) => (
+          <div key={`${field.label}-${field.value}`}>
+            <dt>{field.label}</dt>
+            <dd>{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 }
 
 function DocxApplicationPreview({
@@ -492,12 +527,31 @@ function NewProjectStepper(): ReactElement {
   );
 }
 
-function senderText(item: IntakePackageImport | null): string {
+function senderEmailText(item: IntakePackageImport | null): string {
   if (!item) {
     return "No email imported";
   }
-  const sender = [item.sender_name, item.sender_email].filter(Boolean).join(" ");
-  return sender || "Unknown sender";
+  return item.sender_email || "No sender email";
+}
+
+function mailDateText(item: IntakePackageImport | null): string {
+  if (!item) {
+    return "Waiting for source";
+  }
+  if (!item.received_at) {
+    return "Direct upload";
+  }
+  const date = new Date(item.received_at);
+  if (Number.isNaN(date.getTime())) {
+    return item.received_at;
+  }
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function isWordAsset(asset: IntakeAsset | null): boolean {
@@ -535,6 +589,31 @@ function assetKindLabel(asset: IntakeAsset): string {
   return "FILE";
 }
 
+function assetKindFromPreview(preview: IntakeAssetPreview): string {
+  return assetKind({
+    asset_id: preview.metadata.asset_id,
+    original_name: preview.metadata.original_name,
+    extension: preview.metadata.extension,
+    mime_type: preview.metadata.mime_type,
+    size_bytes: preview.metadata.size_bytes,
+    asset_role: preview.metadata.asset_role
+  });
+}
+
+function assetKindLabelFromPreview(preview: IntakeAssetPreview): string {
+  const kind = assetKindFromPreview(preview);
+  if (kind === "word") {
+    return "W";
+  }
+  if (kind === "pdf") {
+    return "PDF";
+  }
+  if (kind === "image") {
+    return "IMG";
+  }
+  return preview.metadata.extension.replace(".", "").toUpperCase() || "FILE";
+}
+
 function assetTypeText(asset: IntakeAsset): string {
   if (isWordAsset(asset)) {
     return "Word Document";
@@ -543,6 +622,16 @@ function assetTypeText(asset: IntakeAsset): string {
     return "PDF Document";
   }
   return `${asset.extension.replace(".", "").toUpperCase()} Attachment`;
+}
+
+function attachmentRoleText(asset: IntakeAsset): string {
+  if (isWordAsset(asset)) {
+    return "Application form candidate";
+  }
+  if (asset.asset_role && asset.asset_role !== "source_email") {
+    return asset.asset_role.replaceAll("_", " ");
+  }
+  return "Supporting attachment";
 }
 
 function previewStatusText(
@@ -563,7 +652,10 @@ function previewStatusText(
   if (preview?.kind === "docx_application_form") {
     return "Structured Word preview";
   }
-  if (preview?.kind === "unsupported") {
+  if (preview?.kind === "image") {
+    return "Image preview";
+  }
+  if (preview?.kind === "metadata_only" || preview?.kind === "unsupported") {
     return "Metadata only";
   }
   return "Ready";

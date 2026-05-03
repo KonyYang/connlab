@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from docx import Document
 
 from backend.api.dependencies import get_session, get_settings
 from backend.api.main import app
@@ -19,6 +20,48 @@ from backend.infrastructure.storage.repositories.intake_package import (
     IntakePackageRepository,
 )
 from backend.shared.config import Settings
+
+
+def test_direct_word_intake_api_creates_package_and_candidate(tmp_path: Path) -> None:
+    """Direct Word upload creates an intake package without an email source."""
+    settings, engine, session_factory = _test_database(tmp_path)
+    app.dependency_overrides[get_session] = _override_session(session_factory)
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+    sample_path = tmp_path / "direct_application.docx"
+    document = Document()
+    document.add_paragraph("Laboratory Test Request")
+    document.save(sample_path)
+
+    try:
+        with sample_path.open("rb") as handle:
+            response = client.post(
+                "/api/intake-packages/import-docx",
+                files={
+                    "file": (
+                        sample_path.name,
+                        handle,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+            )
+
+        assert response.status_code == 201
+        payload = response.json()
+        assert payload["source_type"] == "direct_application_form"
+        assert payload["source_original_name"] == sample_path.name
+        assert payload["asset_count"] == 1
+        assert payload["candidate_count"] == 1
+        assert "received_at" in payload
+        assert payload["received_at"] is None
+        assert payload["next_action"] == "review_application_form_candidates"
+        assert payload["assets"][0]["original_name"] == sample_path.name
+        assert payload["assets"][0]["asset_role"] in {
+            "application_form_candidate",
+            "selected_application_form",
+        }
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_manual_intake_api_creates_review_case(tmp_path: Path) -> None:

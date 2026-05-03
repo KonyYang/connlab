@@ -7,8 +7,9 @@ import shutil
 import base64
 import hashlib
 import mimetypes
+from email.utils import parseaddr, parsedate_to_datetime
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import olefile
@@ -150,18 +151,30 @@ def _parse_ole_metadata(path: Path) -> _ParsedMsgMetadata | None:
     if not olefile.isOleFile(str(path)):
         return None
     with olefile.OleFileIO(str(path)) as ole:
-        sender_name, sender_email = _parse_sender(
-            _read_msg_text_property(ole, "0C1A")
-            or _read_msg_text_property(ole, "0C1F")
-        )
+        transport_headers, _ = _split_headers_and_body(_read_msg_text_property(ole, "007D") or "")
+        header_sender_name, header_sender_email = _parse_sender(transport_headers.get("from"))
+        sender_name, sender_email = _parse_sender(_read_msg_text_property(ole, "0C1A"))
         explicit_sender_email = _read_msg_text_property(ole, "0C1F")
+        smtp_sender_email = (
+            _read_msg_text_property(ole, "5D01")
+            or _read_msg_text_property(ole, "5D02")
+            or header_sender_email
+        )
         return _ParsedMsgMetadata(
-            subject=_read_msg_text_property(ole, "0037"),
-            sender_name=sender_name,
-            sender_email=explicit_sender_email or sender_email,
+            subject=_read_msg_text_property(ole, "0037") or transport_headers.get("subject"),
+            sender_name=sender_name or header_sender_name,
+            sender_email=_preferred_sender_email(
+                smtp_sender_email,
+                explicit_sender_email,
+                sender_email,
+            ),
             recipients=_split_recipients(_read_msg_text_property(ole, "0E04")),
             cc=_split_recipients(_read_msg_text_property(ole, "0E03")),
-            sent_at=None,
+            sent_at=(
+                _read_msg_time_property(ole, "0039")
+                or _read_msg_time_property(ole, "0E06")
+                or _parse_datetime(transport_headers.get("sent") or transport_headers.get("date"))
+            ),
             body_text=_read_msg_text_property(ole, "1000"),
         )
 
@@ -334,6 +347,25 @@ def _read_msg_binary_property(
     return _read_stream(ole, (*storage, f"__substg1.0_{property_id}0102"))
 
 
+def _read_msg_time_property(
+    ole: olefile.OleFileIO,
+    property_id: str,
+    storage: tuple[str, ...] = (),
+) -> datetime | None:
+    """Read a MAPI PT_SYSTIME property as a UTC datetime."""
+    value = _read_stream(ole, (*storage, f"__substg1.0_{property_id}0040"))
+    if value is None or len(value) < 8:
+        return None
+    filetime = int.from_bytes(value[:8], byteorder="little", signed=False)
+    if filetime <= 0:
+        return None
+    seconds = filetime / 10_000_000 - 11_644_473_600
+    try:
+        return datetime.fromtimestamp(seconds, tz=UTC)
+    except (OSError, OverflowError, ValueError):
+        return None
+
+
 def _read_stream(ole: olefile.OleFileIO, stream_path: tuple[str, ...]) -> bytes | None:
     """Read an OLE stream if it exists."""
     if not ole.exists(stream_path):
@@ -408,12 +440,32 @@ def _parse_sender(value: str | None) -> tuple[str | None, str | None]:
     """Parse a simple sender display name and email address."""
     if not value:
         return None, None
+    parsed_name, parsed_email = parseaddr(value)
+    if parsed_email and "@" in parsed_email:
+        return parsed_name.strip() or None, parsed_email.strip()
     match = re.match(r"^(?P<name>.*?)\s*<(?P<email>[^>]+)>$", value)
     if match:
         return match.group("name").strip() or None, match.group("email").strip()
     if "@" in value:
         return None, value.strip()
     return value.strip(), None
+
+
+def _preferred_sender_email(*candidates: str | None) -> str | None:
+    """Return the first SMTP-like sender address, falling back to a non-X.500 value."""
+    fallback: str | None = None
+    for candidate in candidates:
+        cleaned = (candidate or "").strip()
+        if not cleaned:
+            continue
+        _, parsed_email = parseaddr(cleaned)
+        if parsed_email and "@" in parsed_email and not parsed_email.upper().startswith("/O="):
+            return parsed_email
+        if "@" in cleaned and not cleaned.upper().startswith("/O="):
+            return cleaned
+        if fallback is None and not cleaned.upper().startswith("/O="):
+            fallback = cleaned
+    return fallback
 
 
 def _split_recipients(value: str | None) -> list[str]:
@@ -431,7 +483,10 @@ def _parse_datetime(value: str | None) -> datetime | None:
     try:
         return datetime.fromisoformat(normalized)
     except ValueError:
-        return None
+        try:
+            return parsedate_to_datetime(normalized)
+        except (TypeError, ValueError):
+            return None
 
 
 def _has_minimal_metadata(metadata: _ParsedMsgMetadata) -> bool:

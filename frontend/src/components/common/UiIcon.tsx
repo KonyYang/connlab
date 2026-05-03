@@ -24,7 +24,9 @@ export type UiIconName =
   | "user"
   | "reports"
   | "templates"
-  | "library";
+  | "library"
+  | "outlook"
+  | "upload";
 
 type UiIconProps = {
   name: UiIconName;
@@ -154,6 +156,19 @@ const PATHS: Record<UiIconName, ReactElement> = {
     <>
       <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
       <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </>
+  ),
+  outlook: (
+    <>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-10 6L2 7" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 16V4" />
+      <path d="M8 8l4-4 4 4" />
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
     </>
   ),
   trash: (

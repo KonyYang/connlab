@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from backend.infrastructure.office import OfficeFacade, OutlookMsgImportError
-from backend.infrastructure.office.outlook_msg_gateway import OutlookMsgMetadataError
+from backend.infrastructure.office.outlook_msg_gateway import (
+    OutlookMsgMetadataError,
+    _parse_datetime,
+    _preferred_sender_email,
+)
 
 
 def test_outlook_msg_gateway_copies_source_and_reads_minimal_metadata(
@@ -84,3 +88,21 @@ def test_outlook_msg_gateway_does_not_overwrite_existing_sources(tmp_path: Path)
     assert second.source_stored_path.name == "duplicate_2.msg"
     assert first.source_stored_path.read_text(encoding="utf-8") == "Subject: First"
     assert second.source_stored_path.read_text(encoding="utf-8") == "Subject: Second"
+
+
+def test_exchange_sender_prefers_smtp_over_x500_address() -> None:
+    """Exchange X.500 sender paths must not be shown as the From email."""
+    sender = _preferred_sender_email(
+        "Neo.Xu@fci.com",
+        "/O=FRAGROUP/OU=EXCHANGE ADMINISTRATIVE GROUP/CN=RECIPIENTS/CN=QIU, PETER78F",
+    )
+
+    assert sender == "Neo.Xu@fci.com"
+
+
+def test_outlook_rfc_date_header_is_parsed() -> None:
+    """Real Outlook transport headers often use RFC-style date strings."""
+    parsed = _parse_datetime("Fri, 11 Oct 2024 16:38:00 +0800")
+
+    assert parsed is not None
+    assert parsed.isoformat() == "2024-10-11T16:38:00+08:00"

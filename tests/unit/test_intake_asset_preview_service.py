@@ -50,17 +50,52 @@ def test_docx_preview_returns_structured_application_form_sections(
 
 
 def test_unsupported_asset_returns_metadata_preview(tmp_path: Path) -> None:
-    """Unsupported assets return an explicit preview state instead of failing."""
+    """Non-rendered assets return metadata instead of failing."""
     pdf_path = tmp_path / "drawing.pdf"
     pdf_path.write_bytes(b"%PDF-1.4")
     service = IntakeAssetPreviewService(AssetStore([_asset("asset-pdf", pdf_path, ".pdf")]))
 
     preview = service.preview_asset("asset-pdf")
 
-    assert preview.kind == "unsupported"
+    assert preview.kind == "metadata_only"
     assert preview.metadata.original_name == "drawing.pdf"
+    assert ("File type", "PDF") in [(field.label, field.value) for field in preview.fields]
     assert preview.message is not None
-    assert "not implemented" in preview.message
+    assert "Detailed rendering is not implemented" in preview.message
+
+
+def test_image_asset_returns_inline_preview(tmp_path: Path) -> None:
+    """Small image attachments return a safe data URL preview."""
+    image_path = tmp_path / "photo.png"
+    image_path.write_bytes(b"\x89PNG\r\n\x1a\n")
+    service = IntakeAssetPreviewService(
+        AssetStore([_asset("asset-image", image_path, ".png", "image/png")])
+    )
+
+    preview = service.preview_asset("asset-image")
+
+    assert preview.kind == "image"
+    assert preview.title == "Image preview"
+    assert preview.image_data_url is not None
+    assert preview.image_data_url.startswith("data:image/png;base64,")
+
+
+def test_non_application_docx_returns_metadata_only(tmp_path: Path) -> None:
+    """Word attachments that are not LTR application forms are not rendered as forms."""
+    docx_path = tmp_path / "notes.docx"
+    document = Document()
+    document.add_paragraph("General meeting notes")
+    document.save(docx_path)
+    service = IntakeAssetPreviewService(
+        AssetStore([_asset("asset-notes", docx_path, ".docx")])
+    )
+
+    preview = service.preview_asset("asset-notes")
+
+    assert preview.kind == "metadata_only"
+    assert preview.title == "Word attachment"
+    assert preview.message is not None
+    assert "does not look like" in preview.message
 
 
 def test_missing_asset_raises_not_found() -> None:
@@ -71,7 +106,12 @@ def test_missing_asset_raises_not_found() -> None:
         service.preview_asset("missing")
 
 
-def _asset(asset_id: str, path: Path, extension: str) -> IntakeAsset:
+def _asset(
+    asset_id: str,
+    path: Path,
+    extension: str,
+    mime_type: str = "application/octet-stream",
+) -> IntakeAsset:
     """Build one registered intake asset for tests."""
     return IntakeAsset(
         asset_id=asset_id,
@@ -79,7 +119,7 @@ def _asset(asset_id: str, path: Path, extension: str) -> IntakeAsset:
         original_name=path.name,
         stored_path=path,
         extension=extension,
-        mime_type="application/octet-stream",
+        mime_type=mime_type,
         size_bytes=path.stat().st_size,
         sha256=asset_id * 64,
         asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,

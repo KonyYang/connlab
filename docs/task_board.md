@@ -1,6 +1,6 @@
 # ConnLab Task Board
 
-> Status: Phase 10A complete; SECTION 1 pre-project precheck complete
+> Status: Phase 10A complete; Attachment details preview completion complete
 > Last Updated: 2026-05-03
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: None - pending user approval for next phase
@@ -165,6 +165,16 @@ Current judgment as of 2026-04-26:
 - Precheck sample rows are now editable before Project confirmation, with compact edit/copy/delete icon actions and draft persistence through the review update API.
 - `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete.
 - Precheck review now runs deterministic SECTION 1 pre-project checks, blocks Project confirmation on error-level issues, shows warnings, clears prefilled Lab Test Request Number in the draft view, and excludes SECTION 2 lab fields from pre-project blockers.
+- `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` is complete.
+- Precheck route page now composes named feature components from `frontend/src/features/precheck`; field config, sample config, issue summary, source check, lower panels, messages, state panel, and pure selectors are outside the route page while behavior is preserved.
+- `TASK_085_INTAKE_SESSION_PERSISTENCE` is complete.
+- Intake session now persists through browser refresh with `sessionStorage`, falls back safely when storage is unavailable or invalid, and clears after successful Project confirmation.
+- `TASK_086_DIRECT_WORD_APPLICATION_FORM_UPLOAD_WIRING` is complete.
+- New Project Intake `Upload application form` now imports direct Word files through the backend and creates the same package/asset/candidate flow as email-based intake.
+- `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP` is complete.
+- New Project Intake now shows a concise source summary with sender email, subject, and date; attachment rows prioritize file names and application-form selection without separate type/size columns.
+- `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete.
+- Intake Attachment details now renders inline image previews, keeps application-form Word previews focused on business fields and sample/requested-testing content, and shows metadata-only details for Excel, PDF, MSG, non-application Word, and other files.
 - No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
 Current stop point:
@@ -257,7 +267,12 @@ Current stop point:
 - `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING` is complete.
 - `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` is complete.
 - `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete.
-- No implementation task is active. Await explicit user approval for the next phase.
+- `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` is complete.
+- `TASK_085_INTAKE_SESSION_PERSISTENCE` is complete.
+- `TASK_086_DIRECT_WORD_APPLICATION_FORM_UPLOAD_WIRING` is complete.
+- `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP` is complete.
+- `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete.
+- No implementation task is active. Await explicit user approval for the next task.
 
 ---
 
@@ -1052,7 +1067,7 @@ Known limits:
 
 Current recommendation:
 
-- request user approval for `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION`
+- request user approval before opening the next controlled implementation task or phase
 
 Why this is next:
 
@@ -1177,8 +1192,30 @@ Why this is next:
 - `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete: deterministic SECTION 1 draft precheck now evaluates required requestor/project fields, sample rows, requested testing, disposition, confidentiality/subcontract, and report copy recipients before Project creation.
 - Backend confirmation is authoritative: error-level SECTION 1 issues reject Project creation; `Project #` and nonblank Lab Test Request Number are warnings; SECTION 2 lab fields are excluded from pre-project blockers.
 - Precheck UI now shows a top issue summary, field-level error/warning highlights, and no longer displays fixed recipient chips as real data. `send_copies_recipients` is a real editable field.
-- Validation for `TASK_083`: `py -m pytest tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `37 passed`; `npm run build`, result passed.
-- `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` is proposed for the next controlled task: extract Precheck field config, sample config, issue summary, and named components into a `features/precheck` boundary while preserving behavior.
+- Validation for `TASK_083`: `py -m pytest tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `37 passed`; `py -m pytest -q`, result `275 passed`; `npm run build`, result passed; `git diff --check`, result passed with CRLF working-copy warnings only.
+- Sidebar correction for `TASK_083`: removed `Precheck` and `LTR Number` from global navigation because they are workflow steps, then updated shell static expectations. Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `27 passed`; `npm run build`, result passed.
+- `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` is proposed for the next controlled task: extract Precheck field config, sample config, issue summary, named components, and maintainable feature style/token rules into a `features/precheck` boundary while preserving behavior and the recent Intake/Precheck readability fixes.
+- The user approved `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION`.
+- `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` is complete: Precheck field configuration, sample table configuration, issue summary, source check, lower panels, messages, state panel, and pure selectors now live under `frontend/src/features/precheck`; `IntakeCaseReviewPage.tsx` remains the route-level workflow coordinator.
+- TASK_084 style cleanup preserved the recent Intake/Precheck readability fixes through scoped data/text tokens instead of scattered hard-coded color and font-weight overrides.
+- Validation for `TASK_084`: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `28 passed`; `npm run build`, result passed; `py -m pytest -q`, result `276 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- The user approved `TASK_085_INTAKE_SESSION_PERSISTENCE` after reviewing the deep evaluation and session persistence plan.
+- `TASK_085_INTAKE_SESSION_PERSISTENCE` is complete: App-level Intake session now loads from `sessionStorage`, saves changes back to `sessionStorage`, removes empty persisted sessions, and clears after successful Project confirmation.
+- Validation for `TASK_085`: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `29 passed`; `npm run build`, result passed; `py -m pytest -q`, result `277 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- The user approved the Intake improvement task plan and started with `TASK_086_DIRECT_WORD_APPLICATION_FORM_UPLOAD_WIRING`.
+- `TASK_086_DIRECT_WORD_APPLICATION_FORM_UPLOAD_WIRING` is complete: direct Word upload is exposed as `POST /api/intake-packages/import-docx`, the frontend API client calls it, and the Intake page updates session state with the returned package and selected Word asset.
+- Validation for `TASK_086`: `py -m pytest tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `32 passed`; `npm run build`, result passed; `py -m pytest -q`, result `278 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- The user approved executing the next recommended task, `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP`.
+- `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP` is complete: Intake source summary is reduced to sender email, subject, and date; import responses expose optional `received_at`; attachment rows now prioritize file names with compact role text instead of separate type and size columns; application-form selection guidance appears near the Continue action.
+- Validation for `TASK_087`: `py -m pytest tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `33 passed`; `npm run build`, result passed; `py -m pytest -q`, result `279 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- TASK_087 hotfix: real Outlook `.msg` import now avoids showing Exchange X.500 sender paths when a SMTP sender address is available, parses RFC-style Outlook Date headers, formats Intake dates in the UI, and uses row click/highlight instead of a radio button for selecting the Word application form.
+- Validation for TASK_087 hotfix: `py -m pytest tests\unit\test_outlook_msg_source_import.py tests\unit\test_frontend_shell_files.py tests\integration\test_msg_package_intake_api.py -q`, result `41 passed`; `npm run build`, result passed; `py -m pytest -q`, result `281 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- TASK_085 hotfix: Precheck `Back to Intake` now syncs the active case id and selected Word form asset id back into the App-level Intake session before routing, so returning to Intake preserves the selected application form and Continue eligibility.
+- Validation for TASK_085 hotfix: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `31 passed`; `npm run build`, result passed; `py -m pytest -q`, result `282 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- The user approved executing the next recommended task, `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION`.
+- `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete: Intake selected-attachment preview now supports inline image previews, metadata-only previews for Excel/PDF/MSG/non-application Word/other files, and application-form Word previews focused on business fields, sample rows, and requested-testing details without generic document structure.
+- Validation for `TASK_088`: `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `42 passed`; `npm run build`, result passed; `py -m pytest -q`, result `285 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- Recommended next controlled task: `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION`.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
 Active implementation task:
@@ -1187,7 +1224,7 @@ Active implementation task:
 
 Reason:
 
-- `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete. The next implementation task is blocked until user approval; recommended next task is `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION`.
+- `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete. The next implementation task is blocked until explicit user approval; recommended next task is `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION`.
 
 Do not start yet:
 

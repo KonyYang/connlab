@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -69,12 +70,15 @@ class IntakeAssetPreview:
     tables: tuple[PreviewTable, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
     message: str | None = None
+    image_data_url: str | None = None
 
 
 class IntakeAssetPreviewService:
     """Build safe attachment previews from registered intake asset records."""
 
     _docx_extensions = {".docx"}
+    _image_extensions = {".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff"}
+    _max_inline_image_bytes = 5 * 1024 * 1024
 
     def __init__(
         self,
@@ -93,13 +97,35 @@ class IntakeAssetPreviewService:
 
         metadata = _metadata(asset)
         extension = _normalized_extension(asset)
+        if extension in self._image_extensions:
+            return self._image_preview(asset, metadata)
         if extension in self._docx_extensions:
             return self._docx_preview(asset, metadata)
+        return _metadata_preview(metadata, extension)
+
+    def _image_preview(
+        self,
+        asset: IntakeAsset,
+        metadata: PreviewMetadata,
+    ) -> IntakeAssetPreview:
+        """Build a browser-safe inline image preview for a stored image asset."""
+        if not asset.stored_path.is_file():
+            raise IntakeAssetPreviewError(
+                f"Stored intake asset file is missing: {asset.original_name}"
+            )
+        if asset.size_bytes > self._max_inline_image_bytes:
+            return _metadata_preview(
+                metadata,
+                _normalized_extension(asset),
+                "Image preview is metadata-only because the file is larger than the inline preview limit.",
+            )
+        image_bytes = asset.stored_path.read_bytes()
+        mime_type = metadata.mime_type or _image_mime_type(_normalized_extension(asset))
         return IntakeAssetPreview(
-            kind="unsupported",
+            kind="image",
             metadata=metadata,
-            title="Preview not available",
-            message=f"{extension or 'This file type'} is registered, but structured preview is not implemented in this task.",
+            title="Image preview",
+            image_data_url=f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode('ascii')}",
         )
 
     def _docx_preview(
@@ -114,11 +140,16 @@ class IntakeAssetPreviewService:
             )
         try:
             parsed = self._parser.parse(asset.stored_path)
-            outline = self._parser.table_outline(asset.stored_path)
         except Exception as exc:
             raise IntakeAssetPreviewError(
                 f"Unable to preview Word application form: {asset.original_name}"
             ) from exc
+        if not _looks_like_application_form(parsed):
+            return _metadata_preview(
+                metadata,
+                _normalized_extension(asset),
+                "This Word document is registered as an attachment. It does not look like a Laboratory Test Request application form.",
+            )
 
         fields = _preview_fields(parsed)
         tables = tuple(
@@ -126,7 +157,6 @@ class IntakeAssetPreviewService:
             for table in (
                 _sample_table(parsed),
                 _requested_testing_table(parsed),
-                _document_outline_table(outline),
             )
             if table is not None
         )
@@ -153,6 +183,27 @@ def _metadata(asset: IntakeAsset) -> PreviewMetadata:
     )
 
 
+def _metadata_preview(
+    metadata: PreviewMetadata,
+    extension: str,
+    message: str | None = None,
+) -> IntakeAssetPreview:
+    """Return a path-free metadata-only preview for non-rendered attachments."""
+    file_type = _file_type_label(extension)
+    return IntakeAssetPreview(
+        kind="metadata_only",
+        metadata=metadata,
+        title=f"{file_type} attachment",
+        fields=(
+            PreviewField("File name", metadata.original_name),
+            PreviewField("File type", file_type),
+            PreviewField("File size", _format_bytes(metadata.size_bytes)),
+            PreviewField("Role", metadata.asset_role.replace("_", " ")),
+        ),
+        message=message or f"{file_type} content is stored with this intake package. Detailed rendering is not implemented in this task.",
+    )
+
+
 def _normalized_extension(asset: IntakeAsset) -> str:
     """Return the lower-case asset extension with a leading dot."""
     extension = asset.extension or Path(asset.original_name).suffix
@@ -160,6 +211,57 @@ def _normalized_extension(asset: IntakeAsset) -> str:
     if extension and not extension.startswith("."):
         return f".{extension}"
     return extension
+
+
+def _image_mime_type(extension: str) -> str:
+    """Return a browser-friendly image MIME type for known image extensions."""
+    if extension in {".jpg", ".jpeg"}:
+        return "image/jpeg"
+    if extension == ".png":
+        return "image/png"
+    if extension == ".gif":
+        return "image/gif"
+    if extension == ".bmp":
+        return "image/bmp"
+    if extension in {".tif", ".tiff"}:
+        return "image/tiff"
+    return "application/octet-stream"
+
+
+def _file_type_label(extension: str) -> str:
+    """Return an operator-readable file type label."""
+    labels = {
+        ".doc": "Word",
+        ".docx": "Word",
+        ".xls": "Excel",
+        ".xlsx": "Excel",
+        ".pdf": "PDF",
+        ".msg": "MSG",
+    }
+    return labels.get(extension, (extension.replace(".", "").upper() or "File"))
+
+
+def _format_bytes(value: int) -> str:
+    """Return a compact file size string for metadata previews."""
+    if value >= 1024 * 1024:
+        return f"{value / 1024 / 1024:.1f} MB"
+    if value >= 1024:
+        return f"{round(value / 1024)} KB"
+    return f"{value} B"
+
+
+def _looks_like_application_form(parsed: ParsedApplicationForm) -> bool:
+    """Return true when a Word file has enough request-form signals for structured preview."""
+    return any(
+        [
+            _text(parsed.form_no),
+            _text(parsed.form_rev),
+            _text(parsed.requested_by),
+            _text(parsed.email),
+            _text(parsed.requested_testing_description),
+            parsed.samples,
+        ]
+    )
 
 
 def _preview_fields(parsed: ParsedApplicationForm) -> tuple[PreviewField, ...]:
@@ -235,13 +337,6 @@ def _requested_testing_table(parsed: ParsedApplicationForm) -> PreviewTable | No
         ("Field", "Value"),
         tuple(rows),
     )
-
-
-def _document_outline_table(outline: tuple[tuple[str, str], ...]) -> PreviewTable | None:
-    """Return a compact outline of non-empty Word tables for orientation."""
-    if not outline:
-        return None
-    return PreviewTable("Document structure", ("Section", "First visible text"), outline)
 
 
 def _preview_warnings(

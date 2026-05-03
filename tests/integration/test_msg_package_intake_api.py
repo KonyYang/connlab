@@ -285,6 +285,8 @@ def test_intake_asset_preview_api_returns_docx_preview_without_paths(
         docx_path = _create_application_docx(tmp_path / "preview-application.docx")
         pdf_path = tmp_path / "drawing.pdf"
         pdf_path.write_bytes(b"%PDF-1.4")
+        image_path = tmp_path / "photo.png"
+        image_path.write_bytes(b"\x89PNG\r\n\x1a\n")
         with session_factory() as session:
             package_repo = IntakePackageRepository(session)
             asset_repo = IntakeAssetRepository(session)
@@ -324,6 +326,19 @@ def test_intake_asset_preview_api_returns_docx_preview_without_paths(
                     asset_role=IntakeAssetRole.SUPPORTING_ATTACHMENT,
                 )
             )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="asset-image-preview",
+                    package_id="pkg-preview",
+                    original_name=image_path.name,
+                    stored_path=image_path,
+                    extension=".png",
+                    mime_type="image/png",
+                    size_bytes=image_path.stat().st_size,
+                    sha256="e" * 64,
+                    asset_role=IntakeAssetRole.SUPPORTING_ATTACHMENT,
+                )
+            )
             session.commit()
 
         response = client.get("/api/intake-assets/asset-docx-preview/preview")
@@ -339,7 +354,14 @@ def test_intake_asset_preview_api_returns_docx_preview_without_paths(
 
         unsupported = client.get("/api/intake-assets/asset-pdf-preview/preview")
         assert unsupported.status_code == 200
-        assert unsupported.json()["kind"] == "unsupported"
+        assert unsupported.json()["kind"] == "metadata_only"
+        assert unsupported.json()["fields"][1]["value"] == "PDF"
+
+        image = client.get("/api/intake-assets/asset-image-preview/preview")
+        assert image.status_code == 200
+        image_payload = image.json()
+        assert image_payload["kind"] == "image"
+        assert image_payload["image_data_url"].startswith("data:image/png;base64,")
 
         missing = client.get("/api/intake-assets/missing/preview")
         assert missing.status_code == 404

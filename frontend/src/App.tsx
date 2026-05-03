@@ -1,11 +1,14 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import {
+  clearIntakeSession,
   EMPTY_INTAKE_SESSION,
-  IntakeInboxPage,
+  loadIntakeSession,
+  saveIntakeSession,
   type IntakeSessionState
-} from "./pages/IntakeInboxPage";
-import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
+} from "./features/intake/intakeSession";
+import { IntakeInboxPage } from "./pages/IntakeInboxPage";
+import { IntakeCaseReviewPage, type PrecheckBackSnapshot } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
@@ -54,13 +57,17 @@ function navigate(path: string): void {
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
   const [intakeSession, setIntakeSession] =
-    useState<IntakeSessionState>(EMPTY_INTAKE_SESSION);
+    useState<IntakeSessionState>(loadIntakeSession);
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(window.location.pathname));
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  useEffect(() => {
+    saveIntakeSession(intakeSession);
+  }, [intakeSession]);
 
   const activeRoute =
     route.name === "projectDetail"
@@ -101,7 +108,19 @@ export default function App(): ReactElement {
         <IntakeCaseReviewPage
           initialCaseId={intakeSession.selectedPrecheckCaseId}
           packageId={route.packageId}
-          onBack={() => navigate("/intake")}
+          onBack={(snapshot?: PrecheckBackSnapshot) => {
+            setIntakeSession((current) => ({
+              ...current,
+              selectedAssetId: snapshot?.selectedFormAssetId ?? current.selectedAssetId,
+              selectedWordAssetId: snapshot?.selectedFormAssetId ?? current.selectedWordAssetId,
+              selectedPrecheckCaseId: snapshot?.caseId ?? current.selectedPrecheckCaseId
+            }));
+            navigate("/intake");
+          }}
+          onProjectConfirmed={() => {
+            clearIntakeSession();
+            setIntakeSession(EMPTY_INTAKE_SESSION);
+          }}
         />
       )}
       {route.name === "projectDetail" && (

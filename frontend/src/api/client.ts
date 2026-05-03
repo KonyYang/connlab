@@ -142,6 +142,7 @@ export type IntakeAssetPreview = {
   tables: IntakeAssetPreviewTable[];
   warnings: string[];
   message?: string | null;
+  image_data_url?: string | null;
 };
 
 export type IntakePackageImport = {
@@ -152,6 +153,7 @@ export type IntakePackageImport = {
   subject?: string | null;
   sender_name?: string | null;
   sender_email?: string | null;
+  received_at?: string | null;
   asset_count: number;
   candidate_count: number;
   next_action: string;
@@ -531,6 +533,15 @@ export function importMsgPackage(file: File): Promise<IntakePackageImport> {
   const formData = new FormData();
   formData.append("file", file);
   return requestJson<IntakePackageImport>("/api/intake-packages/import-msg", {
+    method: "POST",
+    body: formData
+  });
+}
+
+export function importDirectWordApplicationForm(file: File): Promise<IntakePackageImport> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return requestJson<IntakePackageImport>("/api/intake-packages/import-docx", {
     method: "POST",
     body: formData
   });

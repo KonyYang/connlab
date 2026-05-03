@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 from datetime import date
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from backend.api.dependencies import (
+    get_direct_word_intake_service,
     get_exception_workflow_service,
     get_intake_asset_preview_service,
     get_intake_form_selection_service,
@@ -15,6 +19,11 @@ from backend.api.dependencies import (
     get_intake_precheck_service,
     get_manual_intake_service,
     get_msg_package_intake_service,
+)
+from backend.application.direct_word_intake_service import (
+    DirectWordIntakeError,
+    DirectWordIntakeResult,
+    DirectWordIntakeService,
 )
 from backend.application.intake_asset_preview_service import (
     IntakeAssetPreview,
@@ -185,6 +194,7 @@ class IntakeAssetPreviewResponse(BaseModel):
     tables: list[IntakeAssetPreviewTableResponse]
     warnings: list[str]
     message: str | None = None
+    image_data_url: str | None = None
 
 
 class IntakePackageImportResponse(BaseModel):
@@ -197,6 +207,7 @@ class IntakePackageImportResponse(BaseModel):
     subject: str | None = None
     sender_name: str | None = None
     sender_email: str | None = None
+    received_at: str | None = None
     asset_count: int
     candidate_count: int
     next_action: str
@@ -324,6 +335,28 @@ def import_msg_package(
         )
     except MsgPackageIntakeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/import-docx",
+    response_model=IntakePackageImportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def import_direct_word_application_form(
+    file: UploadFile = File(...),
+    service: DirectWordIntakeService = Depends(get_direct_word_intake_service),
+) -> IntakePackageImportResponse:
+    """Import one directly selected Word application form."""
+    original_name = Path(file.filename or "application.docx").name
+    suffix = Path(original_name).suffix or ".docx"
+    with tempfile.TemporaryDirectory() as directory:
+        temporary_path = Path(directory) / original_name
+        with temporary_path.open("wb") as handle:
+            shutil.copyfileobj(file.file, handle)
+        try:
+            return _direct_word_import_response(service.import_word_form(temporary_path))
+        except DirectWordIntakeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get(
@@ -508,6 +541,7 @@ def _msg_import_response(result: MsgPackageIntakeResult) -> IntakePackageImportR
         subject=result.package.subject,
         sender_name=result.package.sender_name,
         sender_email=result.package.sender_email,
+        received_at=result.package.received_at,
         asset_count=len(result.assets),
         candidate_count=len(result.candidates),
         next_action=(
@@ -516,6 +550,26 @@ def _msg_import_response(result: MsgPackageIntakeResult) -> IntakePackageImportR
             else "resolve_missing_application_form"
         ),
         assets=[_intake_asset_response(asset) for asset in result.assets],
+    )
+
+
+def _direct_word_import_response(
+    result: DirectWordIntakeResult,
+) -> IntakePackageImportResponse:
+    """Convert direct Word intake output to the shared import response."""
+    return IntakePackageImportResponse(
+        package_id=result.package.package_id,
+        source_type=result.package.source_type.value,
+        package_status=result.package.status.value,
+        source_original_name=result.package.source_original_name,
+        subject=result.package.subject,
+        sender_name=result.package.sender_name,
+        sender_email=result.package.sender_email,
+        received_at=result.package.received_at,
+        asset_count=1,
+        candidate_count=1,
+        next_action="review_application_form_candidates",
+        assets=[_intake_asset_response(result.asset)],
     )
 
 
@@ -632,6 +686,7 @@ def _intake_asset_preview_response(
         tables=[_preview_table_response(table) for table in preview.tables],
         warnings=list(preview.warnings),
         message=preview.message,
+        image_data_url=preview.image_data_url,
     )
 
 
