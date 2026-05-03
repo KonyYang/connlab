@@ -1,10 +1,10 @@
 # ConnLab Task Board
 
-> Status: Phase 9 active
-> Last Updated: 2026-04-29
+> Status: Phase 10A complete; SECTION 1 pre-project precheck complete
+> Last Updated: 2026-05-03
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING`
-> Current Phase: `Phase 9 - Operator Workflow UI Wiring`
+> Current Active Task: None - pending user approval for next phase
+> Current Phase: `Phase 10A - Intake Entry Completion`
 
 ---
 
@@ -127,7 +127,45 @@ Current judgment as of 2026-04-26:
 - Phase 9 has been explicitly approved by the user after manual smoke testing.
 - `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` is complete.
 - Phase 9 is activated for frontend operator workflow wiring of existing Phase 7/8 backend capabilities.
-- No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9.
+- `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING` is complete.
+- LTR readiness, no-write preview, and local-only commit are wired into the frontend workflow with explicit operator confirmation and workbook-write caveats.
+- `TASK_055_INTAKE_EXCEPTION_WORKFLOW_FRONTEND_WIRING` is complete.
+- Intake package exception review, no-form outcome guidance, multi-form separate case creation, and missing-info confirmation blockers are wired into the frontend.
+- `TASK_056_FOLDER_EVIDENCE_PLACEMENT_FRONTEND_WIRING` is complete.
+- Evidence placement preview, no-overwrite execution, category display, warnings, and conflicts are wired into the frontend project folder workflow.
+- `TASK_057_PROJECT_LOOKUP_SAMPLE_TESTING_SUMMARY_FRONTEND_PANEL` is complete.
+- Read-only project lookup, sample summary, and testing condition/method summary are wired into the frontend project workbench.
+- `TASK_058_LIFECYCLE_GUARDS_DISABLED_REASON_UI` is complete.
+- Lifecycle guard disabled-state reasons are visible inline for LTR, folder, and evidence actions.
+- `TASK_059_PHASE9_BROWSER_SMOKE_AND_DOCS_SYNC` is complete.
+- Phase 9 validation summary, manual browser smoke checklist, board sync, and next recommendation are complete.
+- Phase 10A has been explicitly approved by the user as an intake-entry correction before copied-workbook LTR write hardening.
+- `TASK_060_PHASE10A_SCOPE_AND_BOARD_ACTIVATION` is complete.
+- Phase 10A is activated for manual `.msg` package import and no-email manual intake entry completion.
+- `TASK_061_MSG_PACKAGE_IMPORT_API_AND_FRONTEND_ENTRY` is complete.
+- Manual `.msg` package import is wired through the Intake UI, API client, FastAPI route, application service, OfficeFacade, intake storage, and repositories.
+- `TASK_062_INTAKE_PACKAGE_DETAIL_REAL_DATA_WIRING` is complete.
+- Intake package detail now loads real package metadata, source preservation state, stored assets, candidate application forms, and case summaries from backend data.
+- `TASK_063_DIRECT_MANUAL_INTAKE_ENTRY` is complete.
+- No-email manual intake now creates structured package, asset, case, and draft records before project creation, with missing required fields returned to the UI.
+- Copied-workbook LTR write hardening is deferred until after intake entry completion.
+- `TASK_076_FRONTEND_ARCHITECTURE_RULES_AND_UI_BOUNDARY` is complete.
+- `docs/frontend_architecture_rules.md` now defines page, feature, component, API, state, selector, config, styling, and review boundaries for future UI work.
+- `TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT` is complete.
+- `docs/intake_precheck_business_gap_audit.md` now records current Intake/Precheck UI, backend contract, parser, persistence, mock-content, and workflow gaps before any broad UI completion work.
+- `TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES` is complete.
+- `docs/intake_precheck_field_contract.md` now defines SECTION 1 project-creation fields, warning/blocker/auto-clear states, sample edit rules, lookup groups, direct `.docx` policy, draft-level precheck scope, and source `.msg` display policy.
+- `TASK_079_LOOKUP_OPTIONS_BACKEND_AND_API` is complete.
+- Backend-managed Intake/Precheck lookup options now have SQLite persistence, a repository/service boundary, first-run default seed values, and a read-only API endpoint.
+- `TASK_080_DOCX_PARSER_FIELD_CALIBRATION_FOR_SECTION1` is complete.
+- E-3718 Rev H parser calibration now prevents neighboring labels from being accepted as values and reads SECTION 1 content-control values such as Phone, Date, Business Unit, Mfg. Site, and downstream dropdown fields from the real local sample.
+- `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING` is complete.
+- Precheck select fields now load backend-managed lookup options through `GET /api/lookups/intake-precheck`; `Post-Testing Sample Disposition` uses the same shared field renderer as other lookup fields.
+- `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` is complete.
+- Precheck sample rows are now editable before Project confirmation, with compact edit/copy/delete icon actions and draft persistence through the review update API.
+- `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete.
+- Precheck review now runs deterministic SECTION 1 pre-project checks, blocks Project confirmation on error-level issues, shows warnings, clears prefilled Lab Test Request Number in the draft view, and excludes SECTION 2 lab fields from pre-project blockers.
+- No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
 Current stop point:
 
@@ -189,7 +227,37 @@ Current stop point:
 - `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` is complete.
 - `TASK_052_PROJECT_NO_OPTIONAL_DL_CENTRIC_IDENTITY` is complete.
 - `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` is complete.
-- Current active implementation task: `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING`.
+- `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING` is complete.
+- `TASK_055_INTAKE_EXCEPTION_WORKFLOW_FRONTEND_WIRING` is complete.
+- `TASK_056_FOLDER_EVIDENCE_PLACEMENT_FRONTEND_WIRING` is complete.
+- `TASK_057_PROJECT_LOOKUP_SAMPLE_TESTING_SUMMARY_FRONTEND_PANEL` is complete.
+- `TASK_058_LIFECYCLE_GUARDS_DISABLED_REASON_UI` is complete.
+- `TASK_059_PHASE9_BROWSER_SMOKE_AND_DOCS_SYNC` is complete.
+- `TASK_060_PHASE10A_SCOPE_AND_BOARD_ACTIVATION` is complete.
+- `TASK_061_MSG_PACKAGE_IMPORT_API_AND_FRONTEND_ENTRY` is complete.
+- `TASK_062_INTAKE_PACKAGE_DETAIL_REAL_DATA_WIRING` is complete.
+- `TASK_063_DIRECT_MANUAL_INTAKE_ENTRY` is complete.
+- `TASK_064_UNIFIED_INTAKE_CASE_REVIEW_AND_CONFIRMATION_UI` is complete.
+- `TASK_065_INTAKE_ENTRY_BROWSER_SMOKE_AND_DOCS_SYNC` is complete.
+- `TASK_066_PHASE10A_SMOKE_BLOCKER_FIXES` is complete.
+- `TASK_067_PROJECTS_REGISTRY_AND_LTR_NUMBER_TERMINOLOGY_REALIGNMENT` is complete.
+- `TASK_068_REFERENCE_STYLE_PROJECTS_UI_POLISH` is complete.
+- `TASK_069_STEP_STYLE_NEW_PROJECT_INTAKE_UI` is complete.
+- `TASK_070_STEP_STYLE_PRECHECK_UI` is complete.
+- `TASK_071_INTAKE_PRECHECK_SESSION_STATE` is complete.
+- `TASK_072_PRECHECK_ENTRY_CASE_CREATION_AND_STYLE_FIX` is complete.
+- `TASK_073_SELECTED_FORM_PRECHECK_BINDING_HOTFIX` is complete.
+- `TASK_074_PRECHECK_DYNAMIC_WORD_DATA_DISPLAY_HOTFIX` is complete.
+- `TASK_075_INTAKE_ATTACHMENT_PREVIEW_AND_DOCX_PRIORITY` is complete.
+- `TASK_076_FRONTEND_ARCHITECTURE_RULES_AND_UI_BOUNDARY` is complete.
+- `TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT` is complete.
+- `TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES` is complete.
+- `TASK_079_LOOKUP_OPTIONS_BACKEND_AND_API` is complete.
+- `TASK_080_DOCX_PARSER_FIELD_CALIBRATION_FOR_SECTION1` is complete.
+- `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING` is complete.
+- `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` is complete.
+- `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete.
+- No implementation task is active. Await explicit user approval for the next phase.
 
 ---
 
@@ -518,12 +586,12 @@ Status table:
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | T9-1 | `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` | done | Phase 9 scope opened, task sequence added, and `TASK_054` activated on 2026-04-29 |
-| T9-2 | `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING` | active | Wire LTR readiness, no-write preview, and local commit into the frontend workflow |
-| T9-3 | `TASK_055_INTAKE_EXCEPTION_WORKFLOW_FRONTEND_WIRING` | pending | Wire no-form, multi-form, and missing-info exception workflows |
-| T9-4 | `TASK_056_FOLDER_EVIDENCE_PLACEMENT_FRONTEND_WIRING` | pending | Wire evidence placement preview/execution and conflicts |
-| T9-5 | `TASK_057_PROJECT_LOOKUP_SAMPLE_TESTING_SUMMARY_FRONTEND_PANEL` | pending | Add read-only lookup, sample summary, and testing condition/method panels |
-| T9-6 | `TASK_058_LIFECYCLE_GUARDS_DISABLED_REASON_UI` | pending | Show backend lifecycle guard blocks as clear disabled-state reasons |
-| T9-7 | `TASK_059_PHASE9_BROWSER_SMOKE_AND_DOCS_SYNC` | pending | Close Phase 9 with build, browser smoke checklist, docs sync, and next recommendation |
+| T9-2 | `TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING` | done | LTR readiness, no-write preview, explicit local commit confirmation, latest local LTR state, and workbook-write caveats wired into frontend on 2026-04-29 |
+| T9-3 | `TASK_055_INTAKE_EXCEPTION_WORKFLOW_FRONTEND_WIRING` | done | Intake exception review API, no-form guidance, multi-form case creation, and missing-info blockers wired into frontend on 2026-04-29 |
+| T9-4 | `TASK_056_FOLDER_EVIDENCE_PLACEMENT_FRONTEND_WIRING` | done | Evidence placement preview/execution, no-overwrite state, warnings, and conflicts wired into frontend on 2026-04-29 |
+| T9-5 | `TASK_057_PROJECT_LOOKUP_SAMPLE_TESTING_SUMMARY_FRONTEND_PANEL` | done | Read-only lookup, sample summary, and testing condition/method summary wired into frontend on 2026-04-29 |
+| T9-6 | `TASK_058_LIFECYCLE_GUARDS_DISABLED_REASON_UI` | done | Lifecycle guard disabled-state reasons for LTR, folder, and evidence actions surfaced inline on 2026-04-29 |
+| T9-7 | `TASK_059_PHASE9_BROWSER_SMOKE_AND_DOCS_SYNC` | done | Phase 9 validation summary, browser smoke checklist, board sync, and next recommendation completed on 2026-04-29 |
 
 Acceptance gate:
 
@@ -535,6 +603,56 @@ Acceptance gate:
 - frontend build passes
 - relevant backend tests pass
 - no Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, or external workbook mutation slipped into Phase 9
+
+---
+
+### Phase 10A - Intake Entry Completion
+
+Goal:
+
+- make the project entry point match real lab operations
+- support manual `.msg` package import as the primary intake entry
+- support no-email direct manual intake as the exception path
+- route both entry paths into shared review and confirmation before project creation
+
+Mandatory Phase 10A rules:
+
+- Use `$impeccable` for every frontend UI, UX copy, workflow display, browser smoke expectation, critique, audit, or polish task.
+- Do not add Outlook inbox auto-scan or email sending.
+- Do not implement Matrix, Report, AI review, LAN deployment, permissions, or external LTR workbook mutation.
+- Do not implement copied-workbook LTR write hardening in Phase 10A.
+- UI must call backend APIs through `frontend/src/api/client.ts`.
+- UI must not directly manipulate Office files, project folders, or external LTR workbooks.
+
+Status table:
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| T10A-1 | `TASK_060_PHASE10A_SCOPE_AND_BOARD_ACTIVATION` | done | Phase 10A intake-entry priority documented and `TASK_061` activated on 2026-04-29 |
+| T10A-2 | `TASK_061_MSG_PACKAGE_IMPORT_API_AND_FRONTEND_ENTRY` | done | Manual `.msg` package import API, frontend entry, import result summary, and review navigation wired on 2026-04-29 |
+| T10A-3 | `TASK_062_INTAKE_PACKAGE_DETAIL_REAL_DATA_WIRING` | done | Real package detail API and frontend source/assets/candidates/cases display wired on 2026-04-29 |
+| T10A-4 | `TASK_063_DIRECT_MANUAL_INTAKE_ENTRY` | done | No-email manual intake API, structured draft storage, missing-field response, and frontend entry wired on 2026-04-29 |
+| T10A-5 | `TASK_064_UNIFIED_INTAKE_CASE_REVIEW_AND_CONFIRMATION_UI` | done | Unified email/manual case review API, frontend review page, explicit confirmation gate, and confirmation blocker tests on 2026-04-30 |
+| T10A-6 | `TASK_065_INTAKE_ENTRY_BROWSER_SMOKE_AND_DOCS_SYNC` | done | Phase 10A validation summary, manual browser smoke checklist, board sync, and next recommendation completed on 2026-04-30 |
+| T10A-7 | `TASK_066_PHASE10A_SMOKE_BLOCKER_FIXES` | done | Case review field corrections, intake draft override persistence, and folder/evidence not-ready preview handling completed on 2026-05-01 |
+| T10A-8 | `TASK_067_PROJECTS_REGISTRY_AND_LTR_NUMBER_TERMINOLOGY_REALIGNMENT` | done | Projects registry layout, New Project entry, and LTR Number terminology aligned on 2026-05-01 |
+| T10A-9 | `TASK_068_REFERENCE_STYLE_PROJECTS_UI_POLISH` | done | Product shell and Projects registry polished closer to the reference layout with 14-inch laptop constraints on 2026-05-01 |
+| T10A-10 | `TASK_069_STEP_STYLE_NEW_PROJECT_INTAKE_UI` | done | Step-style New Project Intake page completed with one-email attachment list, Word-only application-form radio selection, and attachment detail workspace on 2026-05-01 |
+| T10A-11 | `TASK_070_STEP_STYLE_PRECHECK_UI` | done | Step-style New Project Precheck workspace completed with source/template checks, blocker row, editable key information, sample table, requested testing, and confirmation controls on 2026-05-01 |
+| T10A-12 | `TASK_071_INTAKE_PRECHECK_SESSION_STATE` | done | Intake imported package and selected Word application-form state now persists across route changes, with direct Intake to Precheck and Precheck back to Intake navigation on 2026-05-01 |
+| T10A-13 | `TASK_072_PRECHECK_ENTRY_CASE_CREATION_AND_STYLE_FIX` | done | Continue to Precheck now prepares review cases through the existing API and Precheck CSS is loaded on 2026-05-01 |
+| T10A-14 | `TASK_073_SELECTED_FORM_PRECHECK_BINDING_HOTFIX` | done | Intake-selected Word application form now creates/opens the matching Precheck case and populates draft fields from the selected `.docx` on 2026-05-01 |
+| T10A-15 | `TASK_074_PRECHECK_DYNAMIC_WORD_DATA_DISPLAY_HOTFIX` | done | Precheck now displays parsed sample rows and parsed non-standard field values from the selected Word draft instead of reference mock data on 2026-05-01 |
+
+Acceptance gate:
+
+- operators can start from a `.msg` file without creating a project first
+- operators can start from manual intake when no email exists
+- both paths preserve source context and create structured records through the same review gate
+- one selected application form creates one project only after confirmation
+- missing required information is visible before confirmation
+- copied-workbook LTR write hardening remains deferred until Phase 10A is complete
+- no future-scope feature slips into Phase 10A
 
 ---
 
@@ -571,10 +689,132 @@ Next:
 
 Latest completed task:
 
-- `TASK_052_PROJECT_NO_OPTIONAL_DL_CENTRIC_IDENTITY`
+- `TASK_074_PRECHECK_DYNAMIC_WORD_DATA_DISPLAY_HOTFIX`
 
 Validation result:
 
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `21 passed`
+- `py -m pytest -q`
+- result: `247 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`
+- result: `26 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `250 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_intake_form_selection_service.py tests\integration\test_msg_package_intake_api.py -q`
+- result: `12 passed`
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `22 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `250 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `21 passed`
+- `py -m pytest -q`
+- result: `247 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `20 passed`
+- `py -m pytest -q`
+- result: `246 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `19 passed`
+- `py -m pytest -q`
+- result: `245 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- static documentation review for `TASK_060_PHASE10A_SCOPE_AND_BOARD_ACTIVATION`
+- result: `docs/phase10a_intake_entry_completion_plan.md` added, Phase 10A board section added, and `TASK_061_MSG_PACKAGE_IMPORT_API_AND_FRONTEND_ENTRY` activated
+- targeted documentation regression tests for Phase 10A:
+- result: `16 passed`
+- `py -m pytest -q`
+- result: `222 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`
+- result: `21 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`
+- result: `24 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase9_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py tests\unit\test_frontend_shell_files.py -q`
+- result: `34 passed`
+- `py -m pytest -q`
+- result: `241 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- static documentation review for `TASK_065_INTAKE_ENTRY_BROWSER_SMOKE_AND_DOCS_SYNC`
+- result: `docs/phase10a_validation_summary.md` added, `docs/frontend_smoke_checklist.md` updated, Phase 10A marked complete
+- `py -m pytest tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase9_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py -q`
+- result: `17 passed`
+- `py -m pytest tests\unit\test_frontend_shell_files.py tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_intake_package_query_service.py tests\unit\test_manual_intake_service.py tests\integration\test_manual_intake_api.py tests\unit\test_intake_case_review_service.py -q`
+- result: `34 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `242 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase9_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py -q`
+- result: `37 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `228 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `py -m pytest tests\unit\test_intake_package_query_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`
+- result: `22 passed`
+- `py -m pytest tests\unit\test_manual_intake_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`
+- result: `22 passed`
+- `py -m pytest tests\unit\test_manual_intake_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase9_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py -q`
+- result: `38 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `237 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest tests\unit\test_intake_package_query_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase9_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py -q`
+- result: `38 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `232 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- `npm run build` from `frontend/`
+- result: passed
+- `py -m pytest -q`
+- result: `219 passed`
+- `git diff --check`
+- result: passed with line-ending warnings only
+- static documentation review for `TASK_059_PHASE9_BROWSER_SMOKE_AND_DOCS_SYNC`
+- result: `docs/phase9_validation_summary.md` added, `docs/frontend_smoke_checklist.md` updated, Phase 9 marked complete
 - `py -m pytest tests\unit\test_project_service.py tests\integration\test_project_api.py tests\integration\test_repositories.py tests\unit\test_intake_confirmation_service.py tests\unit\test_folder_template_service.py tests\unit\test_precheck_engine.py -q`
 - result: `26 passed`
 - `npm run build` from `frontend/`
@@ -773,7 +1013,7 @@ Known limits:
 - real `.msg` sample compatibility baseline now covers 4 local samples; all were readable by the current gateway
 - intake storage boundary is implemented
 - intake persistence, candidate detection, review UI, and confirm flow are planned but not implemented
-- Phase 7 is complete; no later phase is active until explicit user approval
+- Phase 7 is complete; later phases were activated only after explicit user approval
 - real `.msg` / `.docx` originals must not be committed
 - external LTR workbook write remains disabled and out of scope until a later explicit task
 - parser now has generated real-style regression coverage and real-sample probe coverage for footer form/revision, request fields, sample rows, requested testing, and lab section; original real `.docx` files remain local and uncommitted
@@ -791,6 +1031,20 @@ Known limits:
 - `$impeccable` is now a project-wide rule for all frontend/UI and UX-copy work, not only Phase 5 or Phase 6A
 - application `Project #` / `project_no` is now optional metadata; current workflow continuity relies on internal IDs before LTR registration and DL/LTR number after registration
 - existing SQLite databases with legacy `projects.project_no NOT NULL UNIQUE` are relaxed by a narrow `init_db()` migration; no general migration framework has been added
+- Phase 9 is complete; external LTR workbook write remains out of scope
+- TASK_054 frontend wiring does not write the shared LTR workbook; normal DL allocation remains finalized only during an enabled Excel write session
+- TASK_055 frontend wiring calls existing intake exception review APIs only; it does not add Outlook inbox auto-scan or email sending
+- TASK_056 frontend wiring calls existing evidence placement APIs only; file copy remains backend-controlled and no-overwrite
+- TASK_057 frontend wiring is read-only lookup and summary display only; it does not add Matrix, Report, or AI review behavior
+- TASK_058 frontend disabled-state text mirrors existing lifecycle guard outcomes; backend remains authoritative
+- TASK_059 closes Phase 9
+- TASK_060 opens Phase 10A for intake entry completion
+- TASK_061 adds manual `.msg` package import through API/frontend entry without Outlook inbox auto-scan or email sending
+- TASK_062 replaces static package detail data with real backend package detail state
+- TASK_063 adds the no-email manual intake exception path without creating a project
+- TASK_064 unifies email/manual review and keeps project creation behind explicit operator confirmation
+- TASK_065 closes Phase 10A
+- copied-workbook LTR write hardening is deferred until explicit user approval for the next phase
 
 ---
 
@@ -798,7 +1052,7 @@ Known limits:
 
 Current recommendation:
 
-- stop after Phase 8 identity hardening and wait for explicit user approval before activating another task
+- request user approval for `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION`
 
 Why this is next:
 
@@ -851,18 +1105,93 @@ Why this is next:
 - `TASK_050` added read-only project lookup, sample summary, and testing condition/method summary from structured records
 - `TASK_051` closed Phase 7 with validation summary, manual smoke checklist, known limitations, workbook write policy, and next recommendation
 - `TASK_052` downgraded application Project # to optional metadata and preserved DL-centric project identity
+- `TASK_053` opened Phase 9 and activated the first controlled frontend operator workflow wiring task
+- `TASK_054` wired LTR readiness, no-write preview, and local commit confirmation into the frontend workflow without external workbook mutation
+- `TASK_055` wired intake no-form, multi-form, and missing-info exception workflows into the frontend without Outlook auto-scan or email sending
+- `TASK_056` wired folder evidence placement preview and no-overwrite execution into the frontend without direct file manipulation
+- `TASK_057` wired read-only project lookup, sample summary, and testing condition/method summary into the frontend without adding future workflow scope
+- `TASK_058` surfaced lifecycle guard disabled-state reasons for LTR, folder, and evidence actions without adding a new lifecycle model
+- `TASK_059` closed Phase 9 with validation summary, manual browser smoke checklist, docs sync, and next recommendation
+- the user explicitly approved adjusting the plan so intake entry is corrected before copied-workbook LTR write hardening
+- `TASK_060` opened Phase 10A for manual `.msg` package import and no-email manual intake
+- `TASK_061` added manual `.msg` package import through API/frontend entry and stores source email plus extracted attachments
+- `TASK_062` added real package detail API/frontend wiring for source metadata, stored assets, candidate forms, no-form and multi-form outcomes, and created case summaries
+- `TASK_063` added no-email manual intake entry with structured package/case/draft storage and missing required field visibility
+- `TASK_066` fixed Phase 10A manual smoke blockers: case review field correction, persisted draft overrides, and folder/evidence not-ready preview handling
+- The user approved `TASK_067` to align the Projects registry layout, New Project entry, and LTR Number terminology before Phase 10B.
+- `docs/ltr_number_terminology.md` defines the current terminology rule: `LTR` is Laboratory Testing Request, while `LTR Number` is the registered project business identifier.
+- `TASK_067` is complete: Projects uses the approved registry layout direction, the existing intake route is presented as New Project, and operator-facing LTR identity text uses LTR Number.
+- The user approved `TASK_068` to polish the shell and Projects registry closer to the reference image, including sidebar icons, top-right utilities, registry toolbar controls, visual refinement, and 14-inch laptop fit.
+- `TASK_068` is complete: sidebar icons, top utility controls, registry toolbar controls, and 14-inch laptop spacing were added without implementing unavailable backend behavior.
+- The user approved `TASK_069` to redesign only the Intake step of New Project as a reference-style step workflow around one email package and Word application-form selection.
+- `TASK_069` is complete: New Project Intake now uses a four-step visual workflow, one email package metadata panel, attachment list, Word-only application-form selection, and attachment details workspace.
+- The user approved `TASK_070` to redesign the Precheck step based on the provided reference image.
+- `TASK_070` is complete: Precheck now uses a source/template check header, Lab Test Request Number blocker row, key information edit surface, sample table, requested testing section, recipient chips, and confirmation footer.
+- The user reported that Intake imported email data was cleared after switching pages and confirmed the desired business behavior is to keep it while the app remains open.
+- `TASK_071` is complete: Intake import state now lives at App session scope, Continue goes directly to Precheck, and Precheck Back returns directly to Intake.
+- The user reported that Continue to Precheck reached an unstyled Precheck page with no review case.
+- `TASK_072` is complete: Continue to Precheck now prepares review cases with the existing exception-review API before routing, and Precheck CSS is imported.
+- The user reported that Precheck did not use the application form selected in Intake and could show stale or incomplete data when multiple Word forms exist.
+- `TASK_073` is complete: Continue to Precheck now calls an explicit selected-form API, parses the selected `.docx` into draft fields, stores the returned case id in app session state, and Precheck opens that matching case first.
+- The user reported that selected Word data still did not visibly populate Precheck after the case binding fix.
+- Runtime inspection showed the selected Word draft did contain parsed fields and samples, but the Precheck UI was still rendering reference mock sample rows and fixed select options hid parsed values that were not in the option list.
+- `TASK_074` is complete: case review now returns `sample_rows`, Precheck renders parsed sample rows and parsed additional/disposition fields, and select controls preserve parsed values outside the fixed option list.
+- real operation usually starts from an exported `.msg` application package, while no-email manual intake is an exception path
+- Phase 10A intake entry completion hotfix is closed
+- The user approved stabilizing Intake attachment preview before moving to the next phase.
+- `TASK_075_INTAKE_ATTACHMENT_PREVIEW_AND_DOCX_PRIORITY` is complete: New Project Intake now loads a safe selected-attachment preview, prioritizing structured `.docx` Laboratory Testing Request preview from the standard table-driven E-3718_H application form.
+- The user approved documenting frontend architecture rules before any further UI or Phase 10B work.
+- `TASK_076_FRONTEND_ARCHITECTURE_RULES_AND_UI_BOUNDARY` is complete: frontend page, feature, component, API, state, selector, config, styling, copy/mock, and review boundaries are documented in `docs/frontend_architecture_rules.md` and linked from `docs/02_ARCHITECTURE_RULES.md`.
+- `AGENTS.md` now requires reading `docs/02_ARCHITECTURE_RULES.md` and `docs/frontend_architecture_rules.md` before frontend/UI implementation, refactor, UX-copy, layout, component, route, state, API-client, or styling tasks.
+- Validation for `TASK_076`: `py -m pytest tests\unit\test_frontend_architecture_rules.py -q`, result `2 passed`.
+- The user approved auditing the real-business Intake and Precheck pages before any broad UI completion work.
+- `TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT` is complete: current Intake/Precheck route-page structure, UI mock/reference content, frontend/backend contract mismatches, parser-to-confirmation data loss, direct Word/manual path ambiguity, Lab Test Request Number blocker gap, and deterministic precheck placement gap are documented in `docs/intake_precheck_business_gap_audit.md`.
+- Validation for `TASK_077`: `py -m pytest tests\unit\test_intake_precheck_business_gap_audit.py -q`, result `2 passed`.
+- The user approved `TASK_078` after confirming SECTION 1 project-creation rules, `Project #` warning policy, Lab Test Request Number auto-clear warning policy, direct `.docx` intake, backend-soft-coded lookup options, send-copy recipient confirmation, sample row editing boundaries, pre-project draft precheck, workflow state concern, and source `.msg` display rules.
+- `TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES` is complete: `docs/intake_precheck_field_contract.md` defines field states, SECTION 1 required/warning rules, SECTION 2 exclusion, sample row edit/copy/delete rules, lookup groups, direct `.docx` intake policy, draft-level precheck policy, and source `.msg` display policy.
+- Validation for `TASK_078`: `py -m pytest tests\unit\test_intake_precheck_field_contract.py -q`, result `2 passed`.
+- The user approved `TASK_079_LOOKUP_OPTIONS_BACKEND_AND_API` as the next step after confirming that lookup values should be backend/database managed instead of hardcoded in frontend JSX.
+- `TASK_079_LOOKUP_OPTIONS_BACKEND_AND_API` is complete: Intake/Precheck lookup groups are stored in `lookup_options`, seeded on first-run empty databases, exposed through `GET /api/lookups/intake-precheck`, and covered by unit/integration tests.
+- Validation for `TASK_079`: `py -m pytest tests\unit\test_lookup_options_service.py tests\integration\test_lookup_options_api.py -q`, result `4 passed`.
+- User-reported screenshot issues are recorded for `TASK_080_DOCX_PARSER_FIELD_CALIBRATION_FOR_SECTION1`: Business Unit/Mfg. Site label bleed, application Date mapping, and Phone # import.
+- The user approved executing `TASK_080` and requested remembering the Disposition lookup unification as `TASK_081`.
+- `TASK_080_DOCX_PARSER_FIELD_CALIBRATION_FOR_SECTION1` is complete: parser now rejects neighboring field labels as values and maps E-3718 Rev H ordered content-control values for Date, Business Unit, Mfg. Site, and related dropdown fields.
+- Real local sample probe result for `local/office files samples/E-3718_H Laboratory Test Request-Even.docx`: Phone `0513-80167327`, Date `10/11/2024`, Business Unit `Power Solutions`, Mfg. Site `Nantong`, Results Format `Formal Report (Customer)`, Test Type `Customer Specific Testing`, Sample Status `Production`, Project Type `New Product Development`, and Post-Testing Sample Disposition `Keep in the Lab`.
+- Validation for `TASK_080`: `py -m pytest tests\unit\test_application_form_parser.py tests\integration\test_intake_precheck_api.py -q`, result `9 passed`.
+- TASK_080 hotfix: Precheck date inputs now normalize Word-style `MM/DD/YYYY` strings to browser-compatible `YYYY-MM-DD` display values, so parsed Date and Requested Testing Completion Date are visible in the UI.
+- Validation for TASK_080 date hotfix: `py -m pytest tests\unit\test_frontend_shell_files.py tests\unit\test_application_form_parser.py -q`, result `31 passed`; `npm run build`, result passed.
+- `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING` is proposed: frontend should consume `GET /api/lookups/intake-precheck`, remove hardcoded select arrays, and treat `post_testing_disposition` as the same backend-managed select implementation as the other Intake/Precheck lookup fields.
+- The user approved executing the next recommended task, `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING`.
+- `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING` is complete: frontend API client now exposes `getIntakePrecheckLookupOptions`, Precheck select field options are injected from backend lookup groups, `post_testing_disposition` moved into the shared field renderer, and the independent hardcoded Disposition select was removed.
+- Backend lookup defaults now include Word `Post-Testing Sample Disposition` values: `Choose an item.`, `Send Back to Requestor`, `Scrap`, and `Keep in the Lab`; existing local databases receive missing required disposition defaults without overwriting other lookup options.
+- Validation for `TASK_081`: `py -m pytest tests\unit\test_frontend_shell_files.py tests\integration\test_lookup_options_api.py tests\unit\test_lookup_options_service.py -q`, result `29 passed`; `npm run build`, result passed.
+- `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` is proposed for the next controlled task: make sample rows editable, add compact edit/copy/delete actions, preserve at least one row, and persist sample row corrections before project confirmation.
+- The user approved executing `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` and requested compact edit/copy/delete icons matching the provided reference image.
+- `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` is complete: sample rows now render as editable inputs, Add Sample creates a blank row, Copy duplicates the selected row, Delete is disabled for the last remaining row, and compact edit/copy/delete icon buttons replace text-heavy row actions.
+- The review-fields API now accepts `sample_rows`; backend review service persists sample row corrections as draft manual overrides so project confirmation uses corrected sample rows.
+- Validation for `TASK_082`: `py -m pytest tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `34 passed`; `npm run build`, result passed.
+- TASK_082 hotfix: sample table columns now preserve the application-form shape by using one `Part Number / Revision` column and one `Traceability Manufacturing Lot Info` column instead of splitting revision and manufacturing lot into separate UI columns.
+- Validation for TASK_082 hotfix: `py -m pytest tests\unit\test_frontend_shell_files.py tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py -q`, result `34 passed`; `npm run build`, result passed.
+- `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is proposed for the next controlled task: run deterministic SECTION 1 precheck before Project creation and show clear blockers/warnings.
+- The user approved executing `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE`.
+- `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete: deterministic SECTION 1 draft precheck now evaluates required requestor/project fields, sample rows, requested testing, disposition, confidentiality/subcontract, and report copy recipients before Project creation.
+- Backend confirmation is authoritative: error-level SECTION 1 issues reject Project creation; `Project #` and nonblank Lab Test Request Number are warnings; SECTION 2 lab fields are excluded from pre-project blockers.
+- Precheck UI now shows a top issue summary, field-level error/warning highlights, and no longer displays fixed recipient chips as real data. `send_copies_recipients` is a real editable field.
+- Validation for `TASK_083`: `py -m pytest tests\unit\test_intake_case_review_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `37 passed`; `npm run build`, result passed.
+- `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` is proposed for the next controlled task: extract Precheck field config, sample config, issue summary, and named components into a `features/precheck` boundary while preserving behavior.
+- copied-workbook LTR write hardening depends on explicit approval for a new phase
 
-Active Phase 8 task:
+Active implementation task:
 
-- `NONE_PENDING_USER_APPROVAL`
+- none
 
 Reason:
 
-- Phase 8 identity hardening is complete and the board must not silently activate any later scope.
+- `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` is complete. The next implementation task is blocked until user approval; recommended next task is `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION`.
 
 Do not start yet:
 
-- any later phase task before explicit user approval and a new task board activation
+- copied-workbook LTR write hardening
 - Outlook inbox auto-scan
 - email sending
 - any Matrix, Report, AI review, LAN deployment, permissions, or future-scope feature

@@ -14,6 +14,7 @@ from backend.domain import (
     IntakeDraft,
     IntakePackage,
 )
+from backend.modules.intake import ApplicationFormParser, ParsedApplicationForm
 
 
 class IntakeSelectionError(ValueError):
@@ -70,11 +71,14 @@ class IntakeFormSelectionService:
         asset_store: IntakeAssetStore,
         case_store: IntakeCaseStore,
         draft_store: IntakeDraftStore,
+        parser: ApplicationFormParser | None = None,
     ) -> None:
+        """Create the selection service from explicit stores and parser."""
         self._package_store = package_store
         self._asset_store = asset_store
         self._case_store = case_store
         self._draft_store = draft_store
+        self._parser = parser or ApplicationFormParser()
 
     def select_form_asset(self, package_id: str, asset_id: str) -> FormSelectionResult:
         package = self._package_store.get(package_id)
@@ -93,7 +97,8 @@ class IntakeFormSelectionService:
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)
         )
         case = self._create_or_update_case(package.package_id, selected_asset.asset_id)
-        draft = self._create_or_update_draft(case.case_id)
+        draft_payload, parser_warnings = self._parse_selected_asset(selected_asset)
+        draft = self._create_or_update_draft(case.case_id, draft_payload, parser_warnings)
 
         return FormSelectionResult(
             package_id=package.package_id,
@@ -144,24 +149,84 @@ class IntakeFormSelectionService:
             )
         )
 
-    def _create_or_update_draft(self, case_id: str) -> IntakeDraft:
+    def _create_or_update_draft(
+        self,
+        case_id: str,
+        parsed_fields: dict[str, object],
+        parser_warnings: list[str],
+    ) -> IntakeDraft:
         existing_draft = self._draft_store.get_by_case(case_id)
+        parsed_fields_json = json.dumps(parsed_fields, ensure_ascii=False, sort_keys=True)
+        parser_warnings_json = json.dumps(parser_warnings, ensure_ascii=False)
         if existing_draft is not None:
             return self._draft_store.update(
                 replace(
                     existing_draft,
-                    parsed_fields_json=self._empty_json_object(),
-                    parser_warnings_json=self._initial_parser_warnings(),
+                    parsed_fields_json=parsed_fields_json,
+                    parser_warnings_json=parser_warnings_json,
+                    manual_overrides_json=None,
                 )
             )
         return self._draft_store.create(
             IntakeDraft(
                 draft_id=f"draft-{uuid4().hex}",
                 case_id=case_id,
-                parsed_fields_json=self._empty_json_object(),
-                parser_warnings_json=self._initial_parser_warnings(),
+                parsed_fields_json=parsed_fields_json,
+                parser_warnings_json=parser_warnings_json,
             )
         )
+
+    def _parse_selected_asset(self, asset: IntakeAsset) -> tuple[dict[str, object], list[str]]:
+        """Parse the selected application form into review draft fields."""
+        if self._normalized_extension(asset) != ".docx":
+            return {}, ["Only .docx selected forms can be parsed for Precheck draft fields."]
+        try:
+            parsed = self._parser.parse(asset.stored_path)
+        except Exception as exc:  # pragma: no cover - defensive boundary for corrupt Word files
+            return {}, [f"Selected application form could not be parsed: {exc}"]
+        return self._draft_payload(parsed), []
+
+    def _draft_payload(self, parsed: ParsedApplicationForm) -> dict[str, object]:
+        """Convert parser output into the draft fields consumed by Precheck review."""
+        first_sample = parsed.samples[0] if parsed.samples else None
+        return {
+            "form_no": self._clean(parsed.form_no),
+            "revision": self._clean(parsed.form_rev),
+            "reference_doc": self._clean(parsed.reference_doc),
+            "lab_test_request_number": self._clean(parsed.lab_test_request_number),
+            "requester": self._clean(parsed.requested_by),
+            "phone": self._clean(parsed.phone),
+            "request_date": self._clean(parsed.request_date),
+            "email": self._clean(parsed.email),
+            "business_unit": self._clean(parsed.business_unit),
+            "manufacturing_site": self._clean(parsed.manufacturing_site),
+            "project_no": self._clean(parsed.project_number),
+            "requested_completion_date": self._clean(parsed.requested_completion_date),
+            "results_format": self._clean(parsed.results_format),
+            "test_type": self._clean(parsed.test_type),
+            "sample_status": self._clean(parsed.sample_status),
+            "project_type": self._clean(parsed.project_type),
+            "post_testing_disposition": self._clean(parsed.post_testing_disposition),
+            "requested_testing": self._clean(parsed.requested_testing_description),
+            "confidential": self._clean(parsed.confidential),
+            "subcontract": self._clean(parsed.subcontract),
+            "additional_information": self._clean(parsed.additional_information),
+            "send_copies_recipients": self._clean(parsed.send_copies_recipients),
+            "product_name": self._clean(first_sample.product_name if first_sample else None),
+            "samples": [
+                {
+                    "product_name": self._clean(sample.product_name),
+                    "part_number": self._clean(sample.part_number),
+                    "revision": self._clean(sample.revision),
+                    "lot_or_traceability": self._clean(sample.lot_or_traceability),
+                    "material": self._clean(sample.material),
+                    "plating": self._clean(sample.plating),
+                    "housing_material": self._clean(sample.housing_material),
+                    "quantity": self._clean(sample.quantity),
+                }
+                for sample in parsed.samples
+            ],
+        }
 
     def _normalized_extension(self, asset: IntakeAsset) -> str:
         extension = asset.extension or Path(asset.original_name).suffix
@@ -170,11 +235,9 @@ class IntakeFormSelectionService:
             return f".{extension}"
         return extension
 
-    def _empty_json_object(self) -> str:
-        return json.dumps({}, separators=(",", ":"))
-
-    def _initial_parser_warnings(self) -> str:
-        return json.dumps(
-            ["Word content parsing is intentionally deferred until the parsing task."],
-            separators=(",", ":"),
-        )
+    def _clean(self, value: object | None) -> str | None:
+        """Normalize parser values for draft JSON."""
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None

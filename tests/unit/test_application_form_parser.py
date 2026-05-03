@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from backend.modules.intake import ApplicationFormParser
 from tests.fixtures.real_style_application_forms import build_real_style_application_form
@@ -137,6 +139,21 @@ def test_application_form_parser_extracts_real_style_applicant_fixture(
     assert parsed.samples[0].quantity == "24"
 
 
+def test_application_form_parser_extracts_yes_no_content_controls(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "content-control-form.docx"
+    document = Document()
+    _add_content_control_row(document, "Confidential tests or samples?", "Confidential", "No")
+    _add_content_control_row(document, "Can testing be subcontracted?", "Subcontracted", "Yes")
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.confidential == "No"
+    assert parsed.subcontract == "Yes"
+
+
 def test_application_form_parser_extracts_comparable_tester_modified_fixture(
     tmp_path: Path,
 ) -> None:
@@ -162,8 +179,134 @@ def test_application_form_parser_extracts_comparable_tester_modified_fixture(
     assert tester.lab_section.sample_condition == "Good, tester reviewed"
 
 
+def test_application_form_parser_calibrates_section1_content_controls(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "section1-content-controls.docx"
+    document = Document()
+    _add_key_value_table(
+        document,
+        [
+            ("Requested By:", "Neo Xu"),
+            ("Phone #:", "0513-80167327"),
+            ("Date:", ""),
+            ("Email:", "Neo.Xu@fci.com"),
+            ("Business Unit:", "Mfg. Site:"),
+            ("Project #:", "CoolPowerHD 2X3.5"),
+            ("Results Format:", "Requested Testing Completion Date:"),
+        ],
+    )
+    for value in [
+        "10/11/2024",
+        "Power Solutions",
+        "Nantong",
+        "Formal Report (Customer)",
+        "11/15/2024",
+        "Customer Specific Testing",
+        "Production",
+        "New Product Development",
+        "Keep in the Lab",
+        "No",
+        "Yes",
+        "Dongguan",
+        "10/17/2024",
+        "10/31/2024",
+        "Acceptable",
+    ]:
+        _add_content_control_paragraph(document, value)
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.phone == "0513-80167327"
+    assert parsed.request_date == "10/11/2024"
+    assert parsed.business_unit == "Power Solutions"
+    assert parsed.manufacturing_site == "Nantong"
+    assert parsed.results_format == "Formal Report (Customer)"
+    assert parsed.requested_completion_date == "11/15/2024"
+    assert parsed.sample_status == "Production"
+    assert parsed.project_type == "New Product Development"
+    assert parsed.post_testing_disposition == "Keep in the Lab"
+
+
+def test_application_form_parser_keeps_blank_fields_blank_when_neighbor_is_label(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "blank-neighbor-label.docx"
+    document = Document()
+    _add_key_value_table(
+        document,
+        [
+            ("Business Unit:", "Mfg. Site:"),
+            ("Results Format:", "Requested Testing Completion Date:"),
+        ],
+    )
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.business_unit is None
+    assert parsed.results_format is None
+
+
 def _add_key_value_table(document: Document, pairs: list[tuple[str, str]]) -> None:
     table = document.add_table(rows=len(pairs), cols=2)
     for row_index, (label, value) in enumerate(pairs):
         table.cell(row_index, 0).text = label
         table.cell(row_index, 1).text = value
+
+
+def _add_content_control_row(
+    document: Document,
+    label: str,
+    tag: str,
+    value: str,
+) -> None:
+    table = document.add_table(rows=1, cols=1)
+    row = table.rows[0]._tr
+    table.cell(0, 0).text = label
+    row.append(_content_control_cell(tag, value))
+
+
+def _add_content_control_paragraph(document: Document, value: str) -> None:
+    """Add a content control paragraph with a visible value."""
+    paragraph = document.add_paragraph()
+    paragraph._p.append(_content_control_run(value))
+
+
+def _content_control_cell(tag: str, value: str):
+    sdt = OxmlElement("w:sdt")
+    sdt_pr = OxmlElement("w:sdtPr")
+    alias = OxmlElement("w:alias")
+    alias.set(qn("w:val"), tag)
+    tag_element = OxmlElement("w:tag")
+    tag_element.set(qn("w:val"), tag)
+    sdt_pr.append(alias)
+    sdt_pr.append(tag_element)
+    sdt_content = OxmlElement("w:sdtContent")
+    cell = OxmlElement("w:tc")
+    paragraph = OxmlElement("w:p")
+    run = OxmlElement("w:r")
+    text = OxmlElement("w:t")
+    text.text = value
+    run.append(text)
+    paragraph.append(run)
+    cell.append(paragraph)
+    sdt_content.append(cell)
+    sdt.append(sdt_pr)
+    sdt.append(sdt_content)
+    return sdt
+
+
+def _content_control_run(value: str):
+    sdt = OxmlElement("w:sdt")
+    sdt_content = OxmlElement("w:sdtContent")
+    paragraph = OxmlElement("w:p")
+    run = OxmlElement("w:r")
+    text = OxmlElement("w:t")
+    text.text = value
+    run.append(text)
+    paragraph.append(run)
+    sdt_content.append(paragraph)
+    sdt.append(sdt_content)
+    return sdt

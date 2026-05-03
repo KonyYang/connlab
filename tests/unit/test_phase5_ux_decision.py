@@ -54,6 +54,6 @@ def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None
     ]:
         assert term in source
 
-    assert "Current Active Task: `NONE_PENDING_USER_APPROVAL`" in board
-    assert "Phase 6A - Outlook Email Package Intake" in board
+    assert "Current Active Task: None - pending user approval for next phase" in board
     assert "TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done" in board
+    assert "Phase 6A - Outlook Email Package Intake" in board

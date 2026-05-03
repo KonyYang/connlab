@@ -1,60 +1,58 @@
-import { useDeferredValue, useEffect, useState, type FormEvent, type ReactElement } from "react";
+import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from "react";
 import {
-  createProject,
+  listProjectLtrs,
   listProjects,
-  type Project,
-  type ProjectCreateInput
+  type LtrRecord,
+  type Project
 } from "../api/client";
 import { EmptyState } from "../components/common/EmptyState";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
+import { UiIcon, type UiIconName } from "../components/common/UiIcon";
 import { ProjectStatusBadge } from "../components/project/ProjectStatusBadge";
 import "../project-dashboard.css";
 
 type ProjectListPageProps = {
+  onNewProject: () => void;
   onOpenProject: (projectId: string) => void;
 };
 
-const EMPTY_PROJECT: ProjectCreateInput = {
-  project_no: "",
-  product_name: "",
-  requestor: "",
-  business_unit: ""
+type RegistryRow = {
+  project: Project;
+  ltrNumbers: string[];
 };
 
-export function ProjectListPage({ onOpenProject }: ProjectListPageProps): ReactElement {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [form, setForm] = useState<ProjectCreateInput>(EMPTY_PROJECT);
+export function ProjectListPage({
+  onNewProject,
+  onOpenProject
+}: ProjectListPageProps): ReactElement {
+  const [rows, setRows] = useState<RegistryRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-
-  const query = deferredSearch.trim().toLowerCase();
-  const filteredProjects = query
-    ? projects.filter((project) =>
-        [
-          project.project_no,
-          project.product_name,
-          project.requestor,
-          project.business_unit ?? "",
-          project.status
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(query)
-      )
-    : projects;
 
   useEffect(() => {
     void refreshProjects();
   }, []);
 
+  const metrics = useMemo(() => buildMetrics(rows), [rows]);
+  const filteredRows = useMemo(
+    () => filterRows(rows, deferredSearch),
+    [deferredSearch, rows]
+  );
+
   async function refreshProjects(): Promise<void> {
     setLoading(true);
     try {
-      setProjects(await listProjects());
+      const projects = await listProjects();
+      const nextRows = await Promise.all(
+        projects.map(async (project) => ({
+          project,
+          ltrNumbers: await safeLtrNumbers(project.project_id)
+        }))
+      );
+      setRows(nextRows);
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -63,150 +61,257 @@ export function ProjectListPage({ onOpenProject }: ProjectListPageProps): ReactE
     }
   }
 
-  async function submitProject(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setSaving(true);
-    try {
-      const project = await createProject(form);
-      setForm(EMPTY_PROJECT);
-      setProjects((current) => [project, ...current]);
-      setError(null);
-      onOpenProject(project.project_id);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <section className="project-dashboard">
-      <div className="section-heading dashboard-heading">
-        <div>
-          <p className="eyebrow">Projects</p>
-          <h2>Project registry</h2>
-          <p className="section-summary">
-            Track active connector lab requests and open the next workflow step.
-          </p>
-        </div>
-        <div className="dashboard-count">
-          <strong>{projects.length}</strong>
-          <span>stored projects</span>
-        </div>
+      <div className="project-metric-grid" aria-label="Project metrics">
+        {metrics.map((metric) => (
+          <article className="project-metric-card" key={metric.label}>
+            <span className={`metric-icon metric-icon-${metric.tone}`}>
+              <UiIcon name={metric.icon} />
+            </span>
+            <div>
+              <strong>{metric.value}</strong>
+              <span>{metric.label}</span>
+              <small>{metric.caption}</small>
+            </div>
+          </article>
+        ))}
       </div>
 
-      <div className="dashboard-layout">
-        <aside className="new-project-panel">
+      <div className="project-register-panel">
+        <div className="register-toolbar">
           <div>
-            <p className="eyebrow">New project</p>
-            <h3>Register request</h3>
-            <p>Create the project shell before importing application material.</p>
+            <h3>Project registry</h3>
+            <p>Search and open existing projects. LTR Number is the business identifier after registration.</p>
           </div>
-          <form className="compact-form" onSubmit={submitProject}>
-            <label>
-              Project No. (optional)
-              <input
-                value={form.project_no ?? ""}
-                onChange={(event) => setForm({ ...form, project_no: event.target.value })}
-              />
+          <div className="registry-tools">
+            <label className="project-search">
+              <span>Search projects</span>
+              <span className="project-search-input">
+                <UiIcon name="search" />
+                <input
+                  placeholder="Search LTR Number, product, requestor..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </span>
             </label>
-            <label>
-              Product Name
-              <input
-                required
-                value={form.product_name}
-                onChange={(event) => setForm({ ...form, product_name: event.target.value })}
-              />
-            </label>
-            <label>
-              Requestor
-              <input
-                required
-                value={form.requestor}
-                onChange={(event) => setForm({ ...form, requestor: event.target.value })}
-              />
-            </label>
-            <label>
-              Business Unit
-              <input
-                value={form.business_unit ?? ""}
-                onChange={(event) => setForm({ ...form, business_unit: event.target.value })}
-              />
-            </label>
-            <button className="primary-action" disabled={saving} type="submit">
-              {saving ? "Creating..." : "Create project"}
+            <button className="toolbar-button" disabled title="Filter is not active in this phase" type="button">
+              <UiIcon name="filter" />
+              Filter
             </button>
-          </form>
-        </aside>
-
-        <div className="project-register-panel">
-          <div className="register-toolbar">
-            <div>
-              <h3>Active work queue</h3>
-              <p>Search by DL, project reference, product, requestor, business unit, or status.</p>
+            <button className="toolbar-button" disabled title="Column presets are not active in this phase" type="button">
+              <UiIcon name="columns" />
+              Columns
+            </button>
+            <div className="view-toggle" aria-label="Registry view">
+              <button className="view-toggle-active" type="button" title="List view">
+                <UiIcon name="list" />
+              </button>
+              <button disabled type="button" title="Grid view is not active in this phase">
+                <UiIcon name="grid" />
+              </button>
             </div>
-            <label className="search-field">
-              Search projects
-              <input
-                placeholder="DL, product, requestor..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
+            <button className="toolbar-button toolbar-icon-button" type="button" onClick={() => void refreshProjects()}>
+              <UiIcon name="refresh" />
+            </button>
+            <button className="primary-action" type="button" onClick={onNewProject}>
+              New Project
+            </button>
           </div>
-
-          {loading && <LoadingState label="Loading project registry..." />}
-          {error && <ErrorMessage message={error} />}
-          {!loading && !error && projects.length === 0 && (
-            <EmptyState
-              title="No projects yet"
-              message="Create the first project record to start the MVP workflow."
-            />
-          )}
-          {!loading && !error && projects.length > 0 && filteredProjects.length === 0 && (
-            <EmptyState
-              title="No matching projects"
-              message="Adjust the search text to return to the full project registry."
-            />
-          )}
-          {!loading && !error && filteredProjects.length > 0 && (
-            <div className="project-table-wrap">
-              <table className="project-table">
-                <thead>
-                  <tr>
-                    <th>Project Ref.</th>
-                    <th>Product</th>
-                    <th>Requestor</th>
-                    <th>Business Unit</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProjects.map((project) => (
-                    <tr key={project.project_id}>
-                      <td className="project-no">{project.project_no || "Not set"}</td>
-                      <td>{project.product_name}</td>
-                      <td>{project.requestor}</td>
-                      <td>{project.business_unit || "Not set"}</td>
-                      <td><ProjectStatusBadge status={project.status} /></td>
-                      <td>
-                        <button
-                          className="row-action"
-                          type="button"
-                          onClick={() => onOpenProject(project.project_id)}
-                        >
-                          Open
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
+
+        {loading && <LoadingState label="Loading project registry..." />}
+        {error && <ErrorMessage message={error} />}
+        {!loading && !error && rows.length === 0 && (
+          <EmptyState
+            title="No projects yet"
+            message="Use New Project to import a request package or create a manual project request."
+          />
+        )}
+        {!loading && !error && rows.length > 0 && filteredRows.length === 0 && (
+          <EmptyState
+            title="No matching projects"
+            message="Adjust the search text to return to the full project registry."
+          />
+        )}
+        {!loading && !error && filteredRows.length > 0 && (
+          <div className="project-table-wrap">
+            <table className="project-table">
+              <thead>
+                <tr>
+                  <th>LTR Number</th>
+                  <th>Project Name</th>
+                  <th>Product</th>
+                  <th>Requestor</th>
+                  <th>Business Unit</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Recent Activity</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row) => (
+                  <tr key={row.project.project_id}>
+                    <td className="project-no">{businessIdentifier(row)}</td>
+                    <td>{projectDisplayName(row.project)}</td>
+                    <td>{row.project.product_name}</td>
+                    <td>{row.project.requestor}</td>
+                    <td>{row.project.business_unit || "Not set"}</td>
+                    <td><ProjectStatusBadge status={row.project.status} /></td>
+                    <td>
+                      <div className="progress-cell">
+                        <span>
+                          <i style={{ width: `${statusProgress(row.project.status)}%` }} />
+                        </span>
+                        <strong>{statusProgress(row.project.status)}%</strong>
+                      </div>
+                    </td>
+                    <td>{activityText(row)}</td>
+                    <td>
+                      <button
+                        className="row-action"
+                        type="button"
+                        onClick={() => onOpenProject(row.project.project_id)}
+                      >
+                        Open
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="registry-footer">
+              <span>
+                Showing {filteredRows.length} of {rows.length} projects
+              </span>
+              <span>20 / page</span>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
+}
+
+async function safeLtrNumbers(projectId: string): Promise<string[]> {
+  try {
+    const records = await listProjectLtrs(projectId);
+    return records.map((record: LtrRecord) => record.ltr_number).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
+  const query = search.trim().toLowerCase();
+  if (!query) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    [
+      businessIdentifier(row),
+      row.project.project_no ?? "",
+      row.project.product_name,
+      row.project.requestor,
+      row.project.business_unit ?? "",
+      row.project.status
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query)
+  );
+}
+
+function buildMetrics(rows: RegistryRow[]): Array<{
+  caption: string;
+  icon: UiIconName;
+  label: string;
+  tone: string;
+  value: number;
+}> {
+  return [
+    {
+      caption: "All time",
+      icon: "projects",
+      label: "Total projects",
+      tone: "total",
+      value: rows.length
+    },
+    {
+      caption: "Active workflow",
+      icon: "clock",
+      label: "In progress",
+      tone: "progress",
+      value: rows.filter((row) => isInProgress(row.project.status)).length
+    },
+    {
+      caption: "Awaiting action",
+      icon: "hourglass",
+      label: "Pending review",
+      tone: "review",
+      value: rows.filter((row) => isPendingReview(row.project.status)).length
+    },
+    {
+      caption: "Closed or folder ready",
+      icon: "new-project",
+      label: "Completed",
+      tone: "completed",
+      value: rows.filter((row) => isCompleted(row.project.status)).length
+    },
+    {
+      caption: "No LTR Number yet",
+      icon: "package",
+      label: "Draft",
+      tone: "draft",
+      value: rows.filter((row) => row.ltrNumbers.length === 0).length
+    }
+  ];
+}
+
+function businessIdentifier(row: RegistryRow): string {
+  return row.ltrNumbers[0] ?? "Pending LTR Number";
+}
+
+function projectDisplayName(project: Project): string {
+  return project.project_no || project.product_name;
+}
+
+function isCompleted(status: string): boolean {
+  return ["closed", "folder_created"].includes(status);
+}
+
+function isInProgress(status: string): boolean {
+  return !["cancelled", "closed", "draft", "folder_created"].includes(status);
+}
+
+function isPendingReview(status: string): boolean {
+  return ["draft", "intake_received", "precheck_pending", "precheck_failed"].includes(status);
+}
+
+function statusProgress(status: string): number {
+  const values: Record<string, number> = {
+    cancelled: 0,
+    closed: 100,
+    confirmed: 45,
+    draft: 10,
+    folder_created: 100,
+    intake_received: 25,
+    ltr_registered: 70,
+    precheck_failed: 35,
+    precheck_passed: 55,
+    precheck_pending: 30
+  };
+  return values[status] ?? 20;
+}
+
+function activityText(row: RegistryRow): string {
+  if (row.ltrNumbers.length > 0) {
+    return `LTR Number registered: ${row.ltrNumbers[0]}`;
+  }
+  if (row.project.status === "intake_received") {
+    return "Project confirmed from request package";
+  }
+  return "Awaiting LTR Number registration";
 }

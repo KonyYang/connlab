@@ -62,9 +62,17 @@ Use `$impeccable` before any task that designs, changes, critiques, audits, poli
 Requirements:
 
 - Load `$impeccable` context before UI design or edits and follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
+- Read `docs/02_ARCHITECTURE_RULES.md` and `docs/frontend_architecture_rules.md` before any frontend/UI implementation, refactor, UX-copy, layout, component, route, state, API-client, or styling task.
 - Treat ConnLab as `$impeccable` `register: product`.
 - Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test tasks are exempt unless they change UI behavior or user-facing copy.
 - If `$impeccable` guidance conflicts with the active task scope, obey `AGENTS.md` and `docs/task_board.md` scope control first, then report the conflict.
+
+Frontend architecture control:
+
+- `docs/02_ARCHITECTURE_RULES.md` defines the project-wide dependency and UI architecture reference.
+- `docs/frontend_architecture_rules.md` defines page, feature, component, API, state, selector, config, styling, copy/mock, and review boundaries for React frontend work.
+- Future frontend changes must follow those documents unless an active task explicitly updates the rules.
+- Do not grow route pages by adding ad hoc fields, `useState`, workflow decisions, or large JSX blocks when the change belongs in feature config, selectors, feature hooks, or named business components.
 
 ## 5. Core Domain Principles
 

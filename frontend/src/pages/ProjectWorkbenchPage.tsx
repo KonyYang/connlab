@@ -1,19 +1,28 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
 import {
+  commitLtrLocally,
   generateFolder,
   getLatestPrecheck,
+  getLtrReadiness,
   getProject,
   listProjectLtrs,
+  placeEvidence,
+  previewLtrRegistration,
+  previewEvidencePlacement,
   previewFolder,
-  registerLtr,
   resolvePrecheckIssue,
   runPrecheck,
   uploadApplicationForm,
   type ApplicationForm,
+  type EvidencePlacementPlan,
+  type EvidencePlacementResult,
   type FolderGeneration,
   type FolderPlan,
   type FolderRequest,
+  type LtrPreviewRequest,
+  type LtrReadiness,
   type LtrRecord,
+  type LtrRegistrationPreview,
   type PrecheckResult,
   type Project
 } from "../api/client";
@@ -21,10 +30,11 @@ import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
 import { PrecheckIssueCard } from "../components/precheck/PrecheckIssueCard";
 import { PrecheckSummary } from "../components/precheck/PrecheckSummary";
+import { ProjectLookupPanel } from "../components/project/ProjectLookupPanel";
 import { ProjectSummaryPanel } from "../components/project/ProjectSummaryPanel";
 import { ApplicationFormActionPanel } from "../components/workflow/ApplicationFormActionPanel";
 import { FolderActionPanel } from "../components/workflow/FolderActionPanel";
-import { LtrActionPanel } from "../components/workflow/LtrActionPanel";
+import { buildLocalCommitRequest, LtrActionPanel } from "../components/workflow/LtrActionPanel";
 import { NextActionPanel } from "../components/workflow/NextActionPanel";
 import { WorkflowStepper } from "../components/workflow/WorkflowStepper";
 import { buildWorkflowSteps, getActiveWorkflowStep } from "../components/workflow/workflowState";
@@ -42,6 +52,17 @@ const EMPTY_FOLDER: FolderRequest = {
   plan_date: new Date().toISOString().slice(0, 10)
 };
 
+function defaultLtrPreviewInput(): LtrPreviewRequest {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    registration_type: "normal",
+    mode: "local_only",
+    proposed_ltr_number: ""
+  };
+}
+
 export function ProjectWorkbenchPage({
   projectId,
   onBack
@@ -53,7 +74,18 @@ export function ProjectWorkbenchPage({
   const [folderInput, setFolderInput] = useState<FolderRequest>(EMPTY_FOLDER);
   const [folderPlan, setFolderPlan] = useState<FolderPlan | null>(null);
   const [folderGeneration, setFolderGeneration] = useState<FolderGeneration | null>(null);
-  const [ltrNumber, setLtrNumber] = useState("");
+  const [evidencePlan, setEvidencePlan] = useState<EvidencePlacementPlan | null>(null);
+  const [evidenceResult, setEvidenceResult] = useState<EvidencePlacementResult | null>(null);
+  const [ltrReadiness, setLtrReadiness] = useState<LtrReadiness | null>(null);
+  const [ltrPreview, setLtrPreview] = useState<LtrRegistrationPreview | null>(null);
+  const [ltrPreviewInput, setLtrPreviewInput] = useState<LtrPreviewRequest>(defaultLtrPreviewInput);
+  const [ltrRequestedBy, setLtrRequestedBy] = useState("");
+  const [ltrOperatorNote, setLtrOperatorNote] = useState("");
+  const [ltrCommitConfirmed, setLtrCommitConfirmed] = useState(false);
+  const [previewingLtr, setPreviewingLtr] = useState(false);
+  const [committingLtr, setCommittingLtr] = useState(false);
+  const [previewingEvidence, setPreviewingEvidence] = useState(false);
+  const [placingEvidence, setPlacingEvidence] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedStepId, setSelectedStepId] = useState("application");
@@ -83,6 +115,11 @@ export function ProjectWorkbenchPage({
     try {
       setProject(await getProject(projectId));
       setLtrs(await listProjectLtrs(projectId));
+      try {
+        setLtrReadiness(await getLtrReadiness(projectId));
+      } catch {
+        setLtrReadiness(null);
+      }
       try {
         setPrecheck(await getLatestPrecheck(projectId));
       } catch {
@@ -152,18 +189,52 @@ export function ProjectWorkbenchPage({
     }
   }
 
-  async function submitLtr(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function previewLtrNow(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    setPreviewingLtr(true);
     try {
-      const record = await registerLtr(projectId, { ltr_number: ltrNumber });
-      setLtrNumber("");
-      setLtrs((current) => [record, ...current]);
+      const preview = await previewLtrRegistration(projectId, normalizedPreviewInput(ltrPreviewInput));
+      setLtrPreview(preview);
+      setLtrReadiness(preview.readiness);
+      setLtrCommitConfirmed(false);
+      setMessage("LTR Number preview completed without workbook write.");
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPreviewingLtr(false);
+    }
+  }
+
+  async function commitLtrNow(): Promise<void> {
+    if (!ltrPreview) {
+      setError("Run a no-write LTR Number preview before local commit.");
+      return;
+    }
+    setCommittingLtr(true);
+    try {
+      const result = await commitLtrLocally(
+        projectId,
+        buildLocalCommitRequest(
+          ltrPreview,
+          normalizedPreviewInput(ltrPreviewInput),
+          ltrCommitConfirmed,
+          ltrRequestedBy,
+          ltrOperatorNote
+        )
+      );
+      setLtrs((current) => [result.ltr, ...current]);
+      setLtrPreview(result.preview);
+      setLtrReadiness(result.preview.readiness);
+      setLtrCommitConfirmed(false);
       setSelectedStepId("folder");
-      setMessage(`LTR registered: ${record.ltr_number}`);
+      setMessage(`LTR Number committed locally: ${result.ltr.ltr_number}`);
       setError(null);
       await loadWorkbench();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setCommittingLtr(false);
     }
   }
 
@@ -184,11 +255,43 @@ export function ProjectWorkbenchPage({
     try {
       const generated = await generateFolder(projectId, folderInput);
       setFolderGeneration(generated);
+      setEvidencePlan(null);
+      setEvidenceResult(null);
       setMessage(`Folder generated: ${generated.project_folder_path}`);
       setError(null);
       await loadWorkbench();
     } catch (err) {
       setError((err as Error).message);
+    }
+  }
+
+  async function previewEvidenceNow(): Promise<void> {
+    setPreviewingEvidence(true);
+    try {
+      const plan = await previewEvidencePlacement(projectId);
+      setEvidencePlan(plan);
+      setEvidenceResult(null);
+      setMessage(plan.conflict ? "Evidence preview has conflicts." : "Evidence preview is clear.");
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPreviewingEvidence(false);
+    }
+  }
+
+  async function placeEvidenceNow(): Promise<void> {
+    setPlacingEvidence(true);
+    try {
+      const result = await placeEvidence(projectId);
+      setEvidenceResult(result);
+      setEvidencePlan(result.plan);
+      setMessage(`Evidence placed: ${result.copied_paths.length} files copied.`);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPlacingEvidence(false);
     }
   }
 
@@ -203,6 +306,7 @@ export function ProjectWorkbenchPage({
       {project && (
         <>
           <ProjectSummaryPanel project={project} onBack={onBack} />
+          <ProjectLookupPanel projectId={project.project_id} />
           <WorkflowStepper
             activeStepId={activeStep.id}
             steps={steps}
@@ -211,21 +315,39 @@ export function ProjectWorkbenchPage({
           <NextActionPanel step={activeStep}>
             {renderStepContent(activeStep.id, {
               disabledPrecheck: !formRecord,
+              evidencePlan,
+              evidenceResult,
               folderGeneration,
               folderInput,
               folderPlan,
               formRecord,
-              ltrNumber,
+              committingLtr,
+              ltrCommitConfirmed,
+              ltrOperatorNote,
+              ltrPreview,
+              ltrPreviewInput,
+              ltrReadiness,
+              ltrRequestedBy,
               ltrs,
+              onCommitLtr: commitLtrNow,
               onGenerate: generateFolderNow,
+              onPlaceEvidence: placeEvidenceNow,
               onPreview: previewFolderNow,
+              onPreviewEvidence: previewEvidenceNow,
+              onPreviewLtr: previewLtrNow,
               onRunPrecheck: runPrecheckNow,
               onResolveIssue: resolveIssueNow,
               onSubmitForm: uploadForm,
-              onSubmitLtr: submitLtr,
               precheck,
+              placingEvidence,
+              projectStatus: project.status,
+              previewingEvidence,
+              previewingLtr,
+              setLtrCommitConfirmed,
+              setLtrOperatorNote,
+              setLtrPreviewInput,
+              setLtrRequestedBy,
               setFolderInput,
-              setLtrNumber
             })}
           </NextActionPanel>
         </>
@@ -236,21 +358,39 @@ export function ProjectWorkbenchPage({
 
 type StepContentProps = {
   disabledPrecheck: boolean;
+  evidencePlan: EvidencePlacementPlan | null;
+  evidenceResult: EvidencePlacementResult | null;
   folderGeneration: FolderGeneration | null;
   folderInput: FolderRequest;
   folderPlan: FolderPlan | null;
   formRecord: ApplicationForm | null;
-  ltrNumber: string;
+  committingLtr: boolean;
+  ltrCommitConfirmed: boolean;
+  ltrOperatorNote: string;
+  ltrPreview: LtrRegistrationPreview | null;
+  ltrPreviewInput: LtrPreviewRequest;
+  ltrReadiness: LtrReadiness | null;
+  ltrRequestedBy: string;
   ltrs: LtrRecord[];
+  onCommitLtr: () => Promise<void>;
   onGenerate: () => Promise<void>;
+  onPlaceEvidence: () => Promise<void>;
   onPreview: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onPreviewEvidence: () => Promise<void>;
+  onPreviewLtr: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onRunPrecheck: () => Promise<void>;
   onResolveIssue: (issueId: string) => Promise<void>;
   onSubmitForm: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-  onSubmitLtr: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   precheck: PrecheckResult | null;
+  placingEvidence: boolean;
+  projectStatus?: string | null;
+  previewingEvidence: boolean;
+  previewingLtr: boolean;
+  setLtrCommitConfirmed: (value: boolean) => void;
+  setLtrOperatorNote: (value: string) => void;
+  setLtrPreviewInput: (value: LtrPreviewRequest) => void;
+  setLtrRequestedBy: (value: string) => void;
   setFolderInput: (value: FolderRequest) => void;
-  setLtrNumber: (value: string) => void;
 };
 
 function renderStepContent(stepId: string, props: StepContentProps): ReactElement {
@@ -300,38 +440,53 @@ function PrecheckPanel({
   );
 }
 
-function LtrPanel({
-  ltrNumber,
-  ltrs,
-  onSubmitLtr,
-  setLtrNumber
-}: StepContentProps): ReactElement {
+function LtrPanel(props: StepContentProps): ReactElement {
   return (
     <LtrActionPanel
-      ltrNumber={ltrNumber}
-      ltrs={ltrs}
-      onSubmitLtr={onSubmitLtr}
-      setLtrNumber={setLtrNumber}
+      commitConfirmed={props.ltrCommitConfirmed}
+      committing={props.committingLtr}
+      ltrs={props.ltrs}
+      ltrPreview={props.ltrPreview}
+      ltrReadiness={props.ltrReadiness}
+      onCommitLtr={props.onCommitLtr}
+      onPreviewLtr={props.onPreviewLtr}
+      operatorNote={props.ltrOperatorNote}
+      previewing={props.previewingLtr}
+      previewInput={props.ltrPreviewInput}
+      projectStatus={props.projectStatus}
+      requestedBy={props.ltrRequestedBy}
+      setCommitConfirmed={props.setLtrCommitConfirmed}
+      setOperatorNote={props.setLtrOperatorNote}
+      setPreviewInput={props.setLtrPreviewInput}
+      setRequestedBy={props.setLtrRequestedBy}
     />
   );
 }
 
-function FolderPanel({
-  folderGeneration,
-  folderInput,
-  folderPlan,
-  onGenerate,
-  onPreview,
-  setFolderInput
-}: StepContentProps): ReactElement {
+function FolderPanel(props: StepContentProps): ReactElement {
   return (
     <FolderActionPanel
-      folderGeneration={folderGeneration}
-      folderInput={folderInput}
-      folderPlan={folderPlan}
-      onGenerate={onGenerate}
-      onPreview={onPreview}
-      setFolderInput={setFolderInput}
+      evidencePlan={props.evidencePlan}
+      evidenceResult={props.evidenceResult}
+      folderGeneration={props.folderGeneration}
+      folderInput={props.folderInput}
+      folderPlan={props.folderPlan}
+      placingEvidence={props.placingEvidence}
+      onGenerate={props.onGenerate}
+      onPlaceEvidence={props.onPlaceEvidence}
+      onPreview={props.onPreview}
+      onPreviewEvidence={props.onPreviewEvidence}
+      previewingEvidence={props.previewingEvidence}
+      projectStatus={props.projectStatus}
+      setFolderInput={props.setFolderInput}
     />
   );
+}
+
+function normalizedPreviewInput(input: LtrPreviewRequest): LtrPreviewRequest {
+  return {
+    ...input,
+    mode: "local_only",
+    proposed_ltr_number: input.proposed_ltr_number?.trim() || null
+  };
 }

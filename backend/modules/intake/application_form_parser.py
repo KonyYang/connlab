@@ -114,6 +114,16 @@ class ApplicationFormParser:
             samples=tuple(samples),
         )
 
+    def table_outline(self, path: Path, limit: int = 8) -> tuple[tuple[str, str], ...]:
+        """Return a compact outline of non-empty Word tables."""
+        document = Document(path)
+        rows: list[tuple[str, str]] = []
+        for index, table in enumerate(document.tables[:limit], start=1):
+            first_text = _first_non_empty_cell(table)
+            if first_text:
+                rows.append((f"Table {index}", first_text[:140]))
+        return tuple(rows)
+
 
 def _extract_label_values(document) -> dict[str, str]:
     """Extract normalized label-value pairs from paragraphs and tables."""
@@ -125,6 +135,7 @@ def _extract_label_values(document) -> dict[str, str]:
             cells = [_clean(cell.text) for cell in row.cells]
             _merge_table_row(values, cells)
     _merge_requested_testing_table(values, document)
+    _merge_content_control_values(values, document)
     return values
 
 
@@ -163,7 +174,7 @@ def _set_value(values: dict[str, str], label: str, value: str) -> None:
     """Set a normalized label value if both label and value are meaningful."""
     key = _canonical_label(label, LABEL_ALIASES)
     cleaned = _clean(value)
-    if key and cleaned:
+    if key and cleaned and not _is_known_label(cleaned):
         values.setdefault(key, cleaned)
 
 
@@ -219,6 +230,89 @@ def _merge_requested_testing_table(values: dict[str, str], document) -> None:
             if value:
                 values["requested_testing_description"] = value
                 return
+
+
+def _merge_content_control_values(values: dict[str, str], document) -> None:
+    """Merge relevant Word content-control values that are hidden from cell.text."""
+    content_control_fields = {
+        "confidential": "confidential",
+        "confidiential": "confidential",
+        "disposition": "post_testing_disposition",
+        "subcontract": "subcontract",
+        "subcontracted": "subcontract",
+        "test type": "test_type",
+    }
+    ordered_values: list[str] = []
+    for control in document.element.xpath('.//*[local-name()="sdt"]'):
+        names = [
+            *_control_attribute_values(control, "alias"),
+            *_control_attribute_values(control, "tag"),
+        ]
+        key = next(
+            (
+                content_control_fields[name]
+                for raw_name in names
+                if (name := _normalize_label(raw_name)) in content_control_fields
+            ),
+            None,
+        )
+        value = _clean("".join(control.xpath('./*[local-name()="sdtContent"]//*[local-name()="t"]/text()')))
+        if not value or _is_placeholder_value(value):
+            continue
+        ordered_values.append(value)
+        if key:
+            values[key] = value
+    _merge_ordered_section1_content_controls(values, ordered_values)
+
+
+def _merge_ordered_section1_content_controls(
+    values: dict[str, str],
+    ordered_values: list[str],
+) -> None:
+    """Merge E-3718 Rev H content controls that have no stable alias/tag."""
+    ordered_keys = (
+        "request_date",
+        "business_unit",
+        "manufacturing_site",
+        "results_format",
+        "requested_completion_date",
+        "test_type",
+        "sample_status",
+        "project_type",
+        "post_testing_disposition",
+        "confidential",
+        "subcontract",
+        "lab",
+        "received_date",
+        "estimated_completion_date",
+        "sample_condition",
+    )
+    if len(ordered_values) < 8:
+        return
+    for key, value in zip(ordered_keys, ordered_values, strict=False):
+        if value and not _is_known_label(value):
+            values.setdefault(key, value)
+
+
+def _control_attribute_values(control, name: str) -> list[str]:
+    """Return w:val values for one content-control property name."""
+    return [
+        _clean(value)
+        for value in control.xpath(
+            f'./*[local-name()="sdtPr"]/*[local-name()="{name}"]/@*[local-name()="val"]'
+        )
+        if _clean(value)
+    ]
+
+
+def _first_non_empty_cell(table) -> str:
+    """Return the first non-empty cell text in a Word table."""
+    for row in table.rows:
+        for cell in row.cells:
+            value = _clean(cell.text)
+            if value:
+                return " ".join(value.split())
+    return ""
 
 
 def _iter_document_paragraphs(document):
@@ -293,6 +387,11 @@ def _canonical_label(
     return None
 
 
+def _is_known_label(value: str) -> bool:
+    """Return whether a value is actually another known field label."""
+    return _canonical_label(value, LABEL_ALIASES) is not None
+
+
 def _normalize_label(value: str) -> str:
     """Normalize label text for keyword matching."""
     cleaned = _clean(value).lower().replace("#", " number ")
@@ -303,6 +402,14 @@ def _normalize_label(value: str) -> str:
 def _get(values: dict[str, str], key: str) -> str | None:
     """Return a parsed value or None when missing."""
     return values.get(key)
+
+
+def _is_placeholder_value(value: str) -> bool:
+    """Return whether a content-control value is an unselected placeholder."""
+    return _clean(value).lower() in {
+        "choose an item.",
+        "click here to enter a date.",
+    }
 
 
 def _clean(value: str) -> str:

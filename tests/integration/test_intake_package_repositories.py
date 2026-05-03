@@ -334,7 +334,22 @@ def test_confirmation_service_creates_project_records_with_repositories() -> Non
                 parsed_fields_json=(
                     '{"project_no":"P-5","product_name":"Connector",'
                     '"requester":"White","form_no":"E-3718","revision":"H",'
-                    '"samples":[{"part_number":"PN-5","quantity":3}]}'
+                    '"phone":"555-0100","request_date":"2026-05-03",'
+                    '"email":"white@example.com","business_unit":"BU",'
+                    '"manufacturing_site":"Nantong",'
+                    '"results_format":"Formal Report (Customer)",'
+                    '"requested_completion_date":"2026-05-10",'
+                    '"test_type":"Customer Specific Testing",'
+                    '"sample_status":"Production",'
+                    '"project_type":"New Product Development",'
+                    '"requested_testing":"Bend testing",'
+                    '"post_testing_disposition":"Keep in the Lab",'
+                    '"confidential":"No","subcontract":"Yes",'
+                    '"send_copies_recipients":"Neo Xu",'
+                    '"samples":[{"product_name":"Connector",'
+                    '"part_number":"PN-5","lot_or_traceability":"LOT-5",'
+                    '"material":"Copper","plating":"Ag",'
+                    '"housing_material":"PA10T","quantity":3}]}'
                 ),
             )
         )

@@ -45,7 +45,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: 226px minmax(0, 1fr);
   min-height: 100vh;
   background: var(--color-canvas);
 }
@@ -57,19 +57,19 @@ button {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 8px;
   min-height: 100vh;
-  padding: 20px 16px;
-  border-right: 1px solid var(--color-border);
-  background: var(--color-sidebar);
-  color: #22304a;
+  padding: 24px 16px;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #4b5563;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 6px 16px;
+  padding: 6px 4px 14px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -93,60 +93,75 @@ button {
 
 .sidebar-nav {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .nav-item {
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
+  min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border: none;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
   background: transparent;
-  color: #334155;
+  color: #6b7280;
   cursor: pointer;
   text-align: left;
+  transition: all 0.15s ease;
 }
 
 .nav-item span {
-  font-weight: 700;
+  font-weight: 500;
+  font-size: 15px;
 }
 
-.nav-item small {
-  color: #6b7688;
-  font-size: 11px;
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.nav-label {
+  flex: 1;
+  min-width: 0;
 }
 
 .nav-item:hover:not(:disabled) {
-  background: var(--color-sidebar-hover);
-  border-color: var(--color-border);
-  color: #22304a;
+  background: #f3f4f6;
+  color: #374151;
 }
 
 .nav-item-active {
-  background: var(--color-sidebar-active);
-  border-color: var(--color-sidebar-active-border);
-  color: var(--color-primary);
+  background: #eff6ff;
+  border-left-color: #3b82f6;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.nav-item-active .nav-icon {
+  color: #2563eb;
 }
 
 .nav-item:disabled {
   cursor: not-allowed;
-  color: var(--color-sidebar-disabled);
-  opacity: 1;
-}
-
-.nav-item:disabled small {
-  color: var(--color-sidebar-disabled);
+  color: #9ca3af;
+  opacity: 0.6;
 }
 
 .top-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(180px, 1fr) minmax(280px, 460px) auto;
   align-items: center;
-  gap: 20px;
-  min-height: 76px;
-  padding: 16px 28px;
+  gap: 16px;
+  min-height: 72px;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: 0 1px 0 rgba(36, 54, 84, 0.05);
@@ -154,35 +169,119 @@ button {
 
 .top-bar h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
 
 .top-bar-description {
-  max-width: 44ch;
+  max-width: 38ch;
   margin: 0;
   color: var(--color-ink-muted);
   font-size: 14px;
 }
 
-.environment-badge {
-  display: inline-flex;
+.top-search {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
   align-items: center;
-  min-height: 28px;
-  padding: 4px 8px;
-  border: 1px solid #b9d7e6;
-  border-radius: 6px;
-  background: #eef8fb;
-  color: var(--color-ready);
-  font-size: 12px;
-  font-weight: 700;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+.top-search input {
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.top-search input:focus {
+  outline: none;
+}
+
+.top-utilities {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.utility-button,
+.user-menu {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.utility-button {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+}
+
+.utility-alert span {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: var(--color-surface);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.user-menu {
+  display: grid;
+  grid-template-columns: 34px minmax(86px, 1fr) 16px;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.user-menu strong,
+.user-menu small {
+  display: block;
+}
+
+.user-menu strong {
+  font-size: 13px;
+}
+
+.user-menu small {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.user-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: var(--color-primary);
 }
 
 .main-work-area {
-  width: min(1240px, calc(100% - 48px));
+  width: min(1280px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 24px 0 40px;
+  padding: 20px 0 34px;
 }
 
 .eyebrow {
@@ -273,6 +372,12 @@ input {
   color: var(--color-ink);
 }
 
+.ui-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
 .primary-action {
   min-height: 42px;
   padding: 10px 16px;
@@ -330,11 +435,12 @@ input {
   }
 
   .sidebar-brand div,
-  .nav-item small {
+  .nav-copy small {
     display: none;
   }
 
   .nav-item {
+    grid-template-columns: 1fr;
     justify-items: center;
     padding: 10px 6px;
     text-align: center;
@@ -358,4 +464,33 @@ input {
     padding: 18px;
   }
 
+}
+
+@media (min-width: 761px) and (max-width: 1366px) {
+  .app-shell {
+    grid-template-columns: 214px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    padding: 16px 12px;
+  }
+
+  .top-bar {
+    grid-template-columns: minmax(150px, 0.7fr) minmax(160px, 0.9fr) minmax(260px, 380px) auto;
+    gap: 12px;
+    padding-inline: 18px;
+  }
+
+  .top-bar h1 {
+    font-size: 20px;
+  }
+
+  .top-bar-description {
+    font-size: 13px;
+  }
+
+  .main-work-area {
+    width: min(100% - 28px, 1120px);
+    padding-top: 18px;
+  }
 }

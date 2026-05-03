@@ -11,8 +11,8 @@ from typing import Protocol
 from backend.application.project_lifecycle_service import LifecycleOperation
 from backend.domain import FileAsset, Project, ProjectFolderRecord
 from backend.modules.folder import (
-    EvidencePlacementItem,
     EvidencePlacementPlan,
+    EvidencePlacementItem,
     EvidencePlacementPlanner,
 )
 
@@ -94,7 +94,17 @@ class EvidencePlacementService:
         if self._lifecycle is not None:
             self._lifecycle.require_allowed(project_id, LifecycleOperation.EVIDENCE_PREVIEW)
         project = self._get_project(project_id)
-        folder = self._latest_folder(project.project_id)
+        folder = self._latest_folder(project.project_id, required=False)
+        if folder is None:
+            return EvidencePlacementPlan(
+                project_id=project.project_id,
+                project_folder_path=Path(),
+                evidence_root_path=Path(),
+                items=(),
+                warnings=(
+                    "Generate the project folder before placing evidence files.",
+                ),
+            )
         assets = self._assets.list_by_project(project.project_id)
         return self._planner.preview(
             project_id=project.project_id,
@@ -106,6 +116,7 @@ class EvidencePlacementService:
         """Copy project evidence according to a safe preview plan."""
         if self._lifecycle is not None:
             self._lifecycle.require_allowed(project_id, LifecycleOperation.EVIDENCE_PLACE)
+        self._latest_folder(project_id, required=True)
         plan = self.preview_project(project_id)
         conflicts = self._conflict_messages(plan)
         if conflicts:
@@ -125,10 +136,17 @@ class EvidencePlacementService:
             raise EvidencePlacementNotFoundError(f"Project not found: {project_id}")
         return project
 
-    def _latest_folder(self, project_id: str) -> ProjectFolderRecord:
+    def _latest_folder(
+        self,
+        project_id: str,
+        *,
+        required: bool = True,
+    ) -> ProjectFolderRecord | None:
         """Return the latest generated folder record for a project."""
         folders = self._folders.list_by_project(project_id)
         if not folders:
+            if not required:
+                return None
             raise EvidencePlacementNotFoundError(
                 f"Project folder record not found for project: {project_id}"
             )

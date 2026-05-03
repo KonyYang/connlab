@@ -13,6 +13,11 @@ from backend.application.exception_workflow_service import ExceptionWorkflowServ
 from backend.application.evidence_placement_service import EvidencePlacementService
 from backend.application.folder_service import FolderService
 from backend.application.intake_precheck_service import IntakePrecheckService
+from backend.application.intake_asset_preview_service import IntakeAssetPreviewService
+from backend.application.intake_case_review_service import IntakeCaseReviewService
+from backend.application.intake_confirmation_service import IntakeConfirmationService
+from backend.application.intake_form_selection_service import IntakeFormSelectionService
+from backend.application.intake_package_query_service import IntakePackageQueryService
 from backend.application.ltr_local_commit_service import LtrLocalCommitService
 from backend.application.ltr_renumber_preview_service import LtrRenumberPreviewService
 from backend.application.ltr_registration_preview_service import (
@@ -20,9 +25,13 @@ from backend.application.ltr_registration_preview_service import (
 )
 from backend.application.ltr_readiness_service import LtrReadinessService
 from backend.application.ltr_service import LtrService
+from backend.application.lookup_options_service import LookupOptionService
 from backend.application.lookup_service import LookupService
+from backend.application.manual_intake_service import ManualIntakeService
+from backend.application.msg_package_intake_service import MsgPackageIntakeService
 from backend.application.project_lifecycle_service import ProjectLifecycleService
 from backend.application.project_service import ProjectService
+from backend.infrastructure.files import IntakeStorage
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -36,6 +45,9 @@ from backend.infrastructure.storage.repositories import (
     ProjectFolderRecordRepository,
     ProjectRepository,
     SampleInfoRepository,
+)
+from backend.infrastructure.storage.repositories.lookup_options import (
+    LookupOptionRepository,
 )
 from backend.infrastructure.storage.repositories.intake_package import (
     IntakeAssetRepository,
@@ -108,6 +120,92 @@ def get_exception_workflow_service(
     )
 
 
+def get_msg_package_intake_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> MsgPackageIntakeService:
+    """Build a manual `.msg` package intake service for API routes."""
+    return MsgPackageIntakeService(
+        storage=IntakeStorage(settings.data_dir / "intake"),
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+    )
+
+
+def get_intake_package_query_service(
+    session: Session = Depends(get_session),
+) -> IntakePackageQueryService:
+    """Build a read-only intake package detail query service."""
+    return IntakePackageQueryService(
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+        case_store=IntakeCaseRepository(session),
+    )
+
+
+def get_intake_asset_preview_service(
+    session: Session = Depends(get_session),
+) -> IntakeAssetPreviewService:
+    """Build a safe intake asset preview service."""
+    return IntakeAssetPreviewService(
+        asset_store=IntakeAssetRepository(session),
+    )
+
+
+def get_intake_form_selection_service(
+    session: Session = Depends(get_session),
+) -> IntakeFormSelectionService:
+    """Build an application-form asset selection service."""
+    return IntakeFormSelectionService(
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+        case_store=IntakeCaseRepository(session),
+        draft_store=IntakeDraftRepository(session),
+    )
+
+
+def get_manual_intake_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> ManualIntakeService:
+    """Build a no-email manual intake service for API routes."""
+    return ManualIntakeService(
+        storage=IntakeStorage(settings.data_dir / "intake"),
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+        case_store=IntakeCaseRepository(session),
+        draft_store=IntakeDraftRepository(session),
+    )
+
+
+def get_intake_case_review_service(
+    session: Session = Depends(get_session),
+) -> IntakeCaseReviewService:
+    """Build a unified intake case review query service."""
+    return IntakeCaseReviewService(
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+        case_store=IntakeCaseRepository(session),
+        draft_store=IntakeDraftRepository(session),
+    )
+
+
+def get_intake_confirmation_service(
+    session: Session = Depends(get_session),
+) -> IntakeConfirmationService:
+    """Build an intake confirmation service for API routes."""
+    return IntakeConfirmationService(
+        package_store=IntakePackageRepository(session),
+        intake_asset_store=IntakeAssetRepository(session),
+        intake_case_store=IntakeCaseRepository(session),
+        intake_draft_store=IntakeDraftRepository(session),
+        project_store=ProjectRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
+        file_asset_store=FileAssetRepository(session),
+    )
+
+
 def get_ltr_service(session: Session = Depends(get_session)) -> LtrService:
     """Build an LTR service for API routes."""
     project_repository = ProjectRepository(session)
@@ -127,6 +225,13 @@ def get_lookup_service(session: Session = Depends(get_session)) -> LookupService
         ltr_repository=LtrRecordRepository(session),
         file_asset_repository=FileAssetRepository(session),
     )
+
+
+def get_lookup_option_service(
+    session: Session = Depends(get_session),
+) -> LookupOptionService:
+    """Build a backend-managed lookup option service for API routes."""
+    return LookupOptionService(LookupOptionRepository(session))
 
 
 def get_ltr_readiness_service(

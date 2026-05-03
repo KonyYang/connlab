@@ -6,7 +6,8 @@
 .package-hero,
 .source-panel,
 .selection-panel,
-.asset-panel {
+.asset-panel,
+.exception-review-panel {
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: var(--color-surface);
@@ -22,13 +23,15 @@
 .package-hero h2,
 .source-panel h3,
 .selection-panel h3,
-.asset-panel h3 {
+.asset-panel h3,
+.exception-review-panel h3 {
   margin: 0;
 }
 
 .package-hero p,
 .selection-panel p,
-.selection-note {
+.selection-note,
+.exception-review-panel p {
   margin: 8px 0 0;
   color: var(--color-ink-muted);
 }
@@ -61,7 +64,8 @@
 
 .source-panel,
 .selection-panel,
-.asset-panel {
+.asset-panel,
+.exception-review-panel {
   padding: 22px;
 }
 
@@ -132,6 +136,18 @@
   background: #fbfdff;
 }
 
+.asset-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.asset-row-main input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
 .asset-row strong,
 .asset-row span {
   display: block;
@@ -163,21 +179,114 @@
   color: var(--color-success);
 }
 
+.asset-role-source {
+  border: 1px solid #bfd7f2;
+  background: #f4f8fe;
+  color: var(--color-primary);
+}
+
 .asset-role-supporting {
   border: 1px solid var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-ink-muted);
 }
 
+.exception-review-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.exception-review-header,
+.case-link-list {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.exception-review-header > span {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.exception-outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.exception-outcome,
+.exception-result {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.exception-outcome {
+  padding: 14px;
+}
+
+.exception-outcome strong {
+  display: block;
+}
+
+.exception-result {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.exception-issue-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exception-issue-list li {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #ead7b9;
+  border-radius: 10px;
+  background: #fff8ed;
+}
+
+.exception-issue-list span,
+.exception-issue-list em {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  font-style: normal;
+}
+
+.exception-note {
+  padding: 12px;
+  border: 1px solid #dce7f4;
+  border-radius: 10px;
+  background: #f6fafe;
+  font-size: 13px;
+}
+
+.exception-note-danger {
+  border-color: #efc4c1;
+  background: #fff2f1;
+  color: var(--color-danger);
+}
+
 @media (max-width: 900px) {
   .package-hero,
   .package-detail-grid,
-  .asset-row {
+  .asset-row,
+  .exception-review-header,
+  .case-link-list {
     display: grid;
   }
 
   .package-detail-grid,
-  .metadata-list {
+  .metadata-list,
+  .exception-outcome-grid {
     grid-template-columns: 1fr;
   }
 

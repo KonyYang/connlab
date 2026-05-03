@@ -1,6 +1,10 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
-import { IntakeInboxPage } from "./pages/IntakeInboxPage";
+import {
+  EMPTY_INTAKE_SESSION,
+  IntakeInboxPage,
+  type IntakeSessionState
+} from "./pages/IntakeInboxPage";
 import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
@@ -49,6 +53,8 @@ function navigate(path: string): void {
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
+  const [intakeSession, setIntakeSession] =
+    useState<IntakeSessionState>(EMPTY_INTAKE_SESSION);
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(window.location.pathname));
@@ -65,8 +71,25 @@ export default function App(): ReactElement {
 
   return (
     <AppShell activeRoute={activeRoute}>
-      {route.name === "projects" && <ProjectListPage onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)} />}
-      {route.name === "intake" && <IntakeInboxPage onOpenPackage={(id) => navigate(`/intake/${encodeURIComponent(id)}`)} />}
+      {route.name === "projects" && (
+        <ProjectListPage
+          onNewProject={() => navigate("/intake")}
+          onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)}
+        />
+      )}
+      {route.name === "intake" && (
+        <IntakeInboxPage
+          session={intakeSession}
+          onSessionChange={setIntakeSession}
+          onOpenPackage={(id, caseId) => {
+            setIntakeSession((current) => ({
+              ...current,
+              selectedPrecheckCaseId: caseId ?? current.selectedPrecheckCaseId
+            }));
+            navigate(`/intake/${encodeURIComponent(id)}/case-review`);
+          }}
+        />
+      )}
       {route.name === "intakePackage" && (
         <IntakePackageDetailPage
           packageId={route.packageId}
@@ -76,8 +99,9 @@ export default function App(): ReactElement {
       )}
       {route.name === "intakeCaseReview" && (
         <IntakeCaseReviewPage
+          initialCaseId={intakeSession.selectedPrecheckCaseId}
           packageId={route.packageId}
-          onBack={() => navigate(`/intake/${encodeURIComponent(route.packageId)}`)}
+          onBack={() => navigate("/intake")}
         />
       )}
       {route.name === "projectDetail" && (

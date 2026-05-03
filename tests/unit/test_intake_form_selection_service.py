@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from docx import Document
 
 from backend.application.intake_form_selection_service import (
     IntakeFormSelectionService,
@@ -98,6 +99,24 @@ def _asset(asset_id: str, role: IntakeAssetRole, extension: str = ".docx") -> In
     )
 
 
+def _asset_with_path(
+    asset_id: str,
+    role: IntakeAssetRole,
+    stored_path: Path,
+) -> IntakeAsset:
+    return IntakeAsset(
+        asset_id=asset_id,
+        package_id="pkg-1",
+        original_name=stored_path.name,
+        stored_path=stored_path,
+        extension=stored_path.suffix,
+        mime_type="application/octet-stream",
+        size_bytes=stored_path.stat().st_size,
+        sha256=asset_id * 64,
+        asset_role=role,
+    )
+
+
 def _service(
     assets: list[IntakeAsset],
     cases: list[IntakeCase] | None = None,
@@ -128,6 +147,38 @@ def test_select_candidate_creates_case_and_empty_draft() -> None:
     assert result.draft.parsed_fields_json == "{}"
     assert len(case_store.cases) == 1
     assert len(draft_store.drafts) == 1
+
+
+def test_select_candidate_parses_selected_docx_into_draft(tmp_path: Path) -> None:
+    docx_path = tmp_path / "selected-application.docx"
+    document = Document()
+    table = document.add_table(rows=4, cols=2)
+    for row_index, (label, value) in enumerate(
+        [
+            ("Form No.", "E-3718"),
+            ("Requested By", "Alice Requestor"),
+            ("Email", "alice@example.com"),
+            ("Description of Requested Testing", "Thermal cycling"),
+        ]
+    ):
+        table.cell(row_index, 0).text = label
+        table.cell(row_index, 1).text = value
+    sample_table = document.add_table(rows=2, cols=4)
+    for index, header in enumerate(["Product Name", "Part Number", "Revision", "Quantity"]):
+        sample_table.cell(0, index).text = header
+    for index, value in enumerate(["Connector A", "PN-073", "A", "12"]):
+        sample_table.cell(1, index).text = value
+    document.save(docx_path)
+    service, _, _, _ = _service(
+        [_asset_with_path("asset-a", IntakeAssetRole.APPLICATION_FORM_CANDIDATE, docx_path)]
+    )
+
+    result = service.select_form_asset("pkg-1", "asset-a")
+
+    assert '"requester": "Alice Requestor"' in result.draft.parsed_fields_json
+    assert '"product_name": "Connector A"' in result.draft.parsed_fields_json
+    assert '"requested_testing": "Thermal cycling"' in result.draft.parsed_fields_json
+    assert result.draft.parser_warnings_json == "[]"
 
 
 def test_select_word_asset_without_candidate_role_is_allowed_for_human_override() -> None:

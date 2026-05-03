@@ -30,6 +30,8 @@ Use it before designing, changing, critiquing, auditing, polishing, refactoring,
 
 Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test work is exempt unless it changes UI behavior or user-facing copy.
 
+Frontend architecture boundaries are defined in `docs/frontend_architecture_rules.md`. Future UI work must follow those page, feature, component, API, state, selector, config, and styling rules unless the active task explicitly updates them.
+
 ## Office Gateway Principle
 
 All Word/Excel/Outlook access must be hidden behind infrastructure gateway classes:

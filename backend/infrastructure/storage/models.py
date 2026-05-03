@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.infrastructure.storage.database import Base
@@ -229,3 +229,19 @@ class IntakeDraftModel(Base):
     parser_warnings_json: Mapped[str | None] = mapped_column(Text)
     manual_overrides_json: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[str | None] = mapped_column(String(64))
+
+
+class LookupOptionModel(Base):
+    """Database row for backend-managed UI lookup options."""
+
+    __tablename__ = "lookup_options"
+    __table_args__ = (
+        UniqueConstraint("group_key", "value", name="uq_lookup_options_group_value"),
+    )
+
+    option_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    group_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

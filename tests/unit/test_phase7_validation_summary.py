@@ -23,10 +23,13 @@ def test_phase7_validation_summary_closes_phase_without_future_scope() -> None:
     ]:
         assert term in summary
 
-    assert "Current Active Task: `NONE_PENDING_USER_APPROVAL`" in board
+    assert (
+        "Current Active Task: None - pending user approval for next phase"
+        in board
+    )
     assert "| T7-16 | `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` | done |" in board
     assert "Current recommendation:" in board
-    assert "wait for explicit user approval" in board
+    assert "Phase 10A has been explicitly approved by the user" in board
 
 
 def test_phase7_task_file_is_done() -> None:

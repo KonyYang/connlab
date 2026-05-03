@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { UiIcon, type UiIconName } from "../common/UiIcon";
 
 type SidebarProps = {
   activeRoute: string;
@@ -8,18 +9,20 @@ type SidebarProps = {
 type NavItem = {
   label: string;
   route: string;
-  hint: string;
+  hint: string | null;
+  icon: UiIconName;
   disabled?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", route: "dashboard", hint: "Project attention overview", disabled: true },
-  { label: "Projects", route: "projects", hint: "Project registry" },
-  { label: "Intake", route: "intake", hint: "Request material inbox" },
-  { label: "Precheck", route: "precheck", hint: "Project-scoped review", disabled: true },
-  { label: "LTR", route: "ltr", hint: "Project-scoped LTR work", disabled: true },
-  { label: "Folders", route: "folders", hint: "Project folder preparation", disabled: true },
-  { label: "Settings", route: "settings", hint: "Local runtime settings", disabled: true }
+  { label: "Dashboard", route: "dashboard", hint: null, icon: "dashboard", disabled: true },
+  { label: "Projects", route: "projects", hint: null, icon: "projects" },
+  { label: "New Project", route: "intake", hint: null, icon: "new-project" },
+  { label: "Reports", route: "reports", hint: null, icon: "reports", disabled: true },
+  { label: "Folders", route: "folders", hint: null, icon: "folder", disabled: true },
+  { label: "Templates", route: "templates", hint: null, icon: "templates", disabled: true },
+  { label: "Reference Library", route: "reference", hint: null, icon: "library", disabled: true },
+  { label: "Settings", route: "settings", hint: null, icon: "settings", disabled: true }
 ];
 
 export function Sidebar({ activeRoute, onNavigate }: SidebarProps): ReactElement {
@@ -46,11 +49,10 @@ export function Sidebar({ activeRoute, onNavigate }: SidebarProps): ReactElement
                   onNavigate?.(`/${item.route}`);
                 }
               }}
-              title={item.disabled ? `${item.label} is not active in this phase yet` : item.hint}
               type="button"
             >
-              <span>{item.label}</span>
-              <small>{item.disabled ? "Not active" : item.hint}</small>
+              <span className="nav-icon"><UiIcon name={item.icon} /></span>
+              <span className="nav-label">{item.label}</span>
             </button>
           );
         })}

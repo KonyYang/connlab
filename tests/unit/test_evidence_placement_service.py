@@ -6,6 +6,7 @@ import pytest
 
 from backend.application.evidence_placement_service import (
     EvidencePlacementConflictError,
+    EvidencePlacementNotFoundError,
     EvidencePlacementService,
 )
 from backend.domain import FileAsset, FileAssetType, Project, ProjectFolderRecord
@@ -118,6 +119,28 @@ def test_corrected_evidence_is_placed_without_deleting_original_evidence(
     ).is_file()
 
 
+def test_evidence_preview_reports_missing_folder_record_as_not_ready(
+    tmp_path: Path,
+) -> None:
+    """Preview returns an actionable not-ready plan before folder generation."""
+    source = _touch(tmp_path / "sources" / "request.msg")
+    service = EvidencePlacementService(
+        project_repository=_ProjectRepo(),
+        folder_repository=_FolderRepo(None),
+        file_asset_repository=_AssetRepo(
+            [_asset("email", FileAssetType.ATTACHMENT, source)]
+        ),
+    )
+
+    plan = service.preview_project("project-1")
+
+    assert plan.items == ()
+    assert plan.conflict is False
+    assert "Generate the project folder" in plan.warnings[0]
+    with pytest.raises(EvidencePlacementNotFoundError):
+        service.place_project("project-1")
+
+
 def _service(
     tmp_path: Path,
     folder_path: Path,
@@ -185,12 +208,14 @@ class _ProjectRepo:
 class _FolderRepo:
     """In-memory folder repository for evidence tests."""
 
-    def __init__(self, folder_path: Path) -> None:
+    def __init__(self, folder_path: Path | None) -> None:
         """Create a fixed folder repository."""
         self._folder_path = folder_path
 
     def list_by_project(self, project_id: str) -> list[ProjectFolderRecord]:
         """Return one generated folder record."""
+        if self._folder_path is None:
+            return []
         return [
             ProjectFolderRecord(
                 folder_id="folder-1",

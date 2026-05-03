@@ -9,7 +9,21 @@ from pydantic import BaseModel
 
 from backend.api.dependencies import (
     get_exception_workflow_service,
+    get_intake_asset_preview_service,
+    get_intake_form_selection_service,
+    get_intake_package_query_service,
     get_intake_precheck_service,
+    get_manual_intake_service,
+    get_msg_package_intake_service,
+)
+from backend.application.intake_asset_preview_service import (
+    IntakeAssetPreview,
+    IntakeAssetPreviewError,
+    IntakeAssetPreviewNotFoundError,
+    IntakeAssetPreviewService,
+    PreviewField,
+    PreviewMetadata,
+    PreviewTable,
 )
 from backend.application.exception_workflow_service import (
     ExceptionWorkflowIssue,
@@ -22,7 +36,37 @@ from backend.application.intake_precheck_service import (
     IntakePrecheckService,
     ParsedFormRecord,
 )
-from backend.domain import ApplicationForm, PrecheckIssue, PrecheckResult, SampleInfo
+from backend.application.intake_form_selection_service import (
+    FormSelectionResult,
+    IntakeFormSelectionService,
+    IntakeSelectionError,
+    IntakeSelectionNotFoundError,
+)
+from backend.application.intake_package_query_service import (
+    IntakePackageDetail,
+    IntakePackageQueryNotFoundError,
+    IntakePackageQueryService,
+)
+from backend.application.msg_package_intake_service import (
+    MsgPackageIntakeError,
+    MsgPackageIntakeResult,
+    MsgPackageIntakeService,
+)
+from backend.application.manual_intake_service import (
+    ManualIntakeError,
+    ManualIntakeInput,
+    ManualIntakeResult,
+    ManualIntakeService,
+    ManualSampleInput,
+)
+from backend.domain import (
+    ApplicationForm,
+    IntakeAsset,
+    IntakeCase,
+    PrecheckIssue,
+    PrecheckResult,
+    SampleInfo,
+)
 
 
 router = APIRouter(tags=["intake"])
@@ -93,6 +137,159 @@ class ExceptionWorkflowReviewResponse(BaseModel):
     issues: list[ExceptionWorkflowIssueResponse]
 
 
+class IntakeAssetResponse(BaseModel):
+    """Stored intake asset response."""
+
+    asset_id: str
+    original_name: str
+    extension: str
+    mime_type: str | None = None
+    size_bytes: int
+    asset_role: str
+    candidate_score: int | None = None
+
+
+class IntakeAssetPreviewMetadataResponse(BaseModel):
+    """Safe attachment metadata for preview rendering."""
+
+    asset_id: str
+    original_name: str
+    extension: str
+    mime_type: str | None = None
+    size_bytes: int
+    asset_role: str
+
+
+class IntakeAssetPreviewFieldResponse(BaseModel):
+    """One preview field for a structured attachment preview."""
+
+    label: str
+    value: str
+
+
+class IntakeAssetPreviewTableResponse(BaseModel):
+    """One preview table section for an attachment."""
+
+    title: str
+    headers: list[str]
+    rows: list[list[str]]
+
+
+class IntakeAssetPreviewResponse(BaseModel):
+    """Typed response for one selected intake asset preview."""
+
+    kind: str
+    metadata: IntakeAssetPreviewMetadataResponse
+    title: str
+    fields: list[IntakeAssetPreviewFieldResponse]
+    tables: list[IntakeAssetPreviewTableResponse]
+    warnings: list[str]
+    message: str | None = None
+
+
+class IntakePackageImportResponse(BaseModel):
+    """Manual `.msg` package import response."""
+
+    package_id: str
+    source_type: str
+    package_status: str
+    source_original_name: str
+    subject: str | None = None
+    sender_name: str | None = None
+    sender_email: str | None = None
+    asset_count: int
+    candidate_count: int
+    next_action: str
+    assets: list[IntakeAssetResponse]
+
+
+class IntakeCaseSummaryResponse(BaseModel):
+    """Intake case summary for package detail."""
+
+    case_id: str
+    selected_form_asset_id: str | None = None
+    status: str
+    confirmed_project_id: str | None = None
+
+
+class IntakePackageDetailResponse(BaseModel):
+    """Read-only intake package detail response."""
+
+    package_id: str
+    source_type: str
+    package_status: str
+    source_original_name: str
+    source_stored: bool
+    subject: str | None = None
+    sender_name: str | None = None
+    sender_email: str | None = None
+    received_at: str | None = None
+    asset_count: int
+    candidate_count: int
+    case_count: int
+    next_action: str
+    assets: list[IntakeAssetResponse]
+    candidate_assets: list[IntakeAssetResponse]
+    cases: list[IntakeCaseSummaryResponse]
+
+
+class ManualSampleInputRequest(BaseModel):
+    """Manual sample fields from the no-email intake form."""
+
+    product_name: str | None = None
+    part_number: str | None = None
+    revision: str | None = None
+    lot_or_traceability: str | None = None
+    material: str | None = None
+    plating: str | None = None
+    housing_material: str | None = None
+    quantity: int | None = None
+
+
+class ManualIntakeRequest(BaseModel):
+    """No-email manual intake request."""
+
+    product_name: str | None = None
+    requester: str | None = None
+    email: str | None = None
+    business_unit: str | None = None
+    project_no: str | None = None
+    form_no: str | None = None
+    revision: str | None = None
+    requested_testing: str | None = None
+    sample: ManualSampleInputRequest | None = None
+    operator_notes: str | None = None
+
+
+class ManualIntakeResponse(BaseModel):
+    """Stored no-email manual intake response."""
+
+    package_id: str
+    case_id: str
+    draft_id: str
+    package_status: str
+    selected_form_asset_id: str
+    missing_required_fields: list[str]
+    next_action: str
+
+
+class SelectApplicationFormRequest(BaseModel):
+    """Human selected application form asset request."""
+
+    asset_id: str
+
+
+class SelectApplicationFormResponse(BaseModel):
+    """Review case created from a selected application form asset."""
+
+    package_id: str
+    case_id: str
+    draft_id: str
+    selected_form_asset_id: str
+    package_status: str
+    next_action: str
+
+
 @router.post(
     "/api/projects/{project_id}/application-form",
     response_model=ApplicationFormResponse,
@@ -109,6 +306,94 @@ def upload_application_form(
         return _form_response(record)
     except IntakeNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/import-msg",
+    response_model=IntakePackageImportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def import_msg_package(
+    file: UploadFile = File(...),
+    service: MsgPackageIntakeService = Depends(get_msg_package_intake_service),
+) -> IntakePackageImportResponse:
+    """Import one manually selected Outlook `.msg` package."""
+    try:
+        return _msg_import_response(
+            service.import_msg_package(file.filename or "source.msg", file.file)
+        )
+    except MsgPackageIntakeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get(
+    "/api/intake-packages/{package_id}",
+    response_model=IntakePackageDetailResponse,
+)
+def get_intake_package_detail(
+    package_id: str,
+    service: IntakePackageQueryService = Depends(get_intake_package_query_service),
+) -> IntakePackageDetailResponse:
+    """Return source, asset, candidate, and case state for one intake package."""
+    try:
+        return _package_detail_response(service.get_detail(package_id))
+    except IntakePackageQueryNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/api/intake-assets/{asset_id}/preview",
+    response_model=IntakeAssetPreviewResponse,
+)
+def preview_intake_asset(
+    asset_id: str,
+    service: IntakeAssetPreviewService = Depends(get_intake_asset_preview_service),
+) -> IntakeAssetPreviewResponse:
+    """Return a safe preview for one registered intake asset."""
+    try:
+        return _intake_asset_preview_response(service.preview_asset(asset_id))
+    except IntakeAssetPreviewNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IntakeAssetPreviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/{package_id}/select-form",
+    response_model=SelectApplicationFormResponse,
+)
+def select_application_form_asset(
+    package_id: str,
+    request: SelectApplicationFormRequest,
+    service: IntakeFormSelectionService = Depends(get_intake_form_selection_service),
+) -> SelectApplicationFormResponse:
+    """Select one intake asset as the source application form for Precheck."""
+    try:
+        return _form_selection_response(
+            service.select_form_asset(package_id, request.asset_id)
+        )
+    except IntakeSelectionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IntakeSelectionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/manual",
+    response_model=ManualIntakeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_manual_intake(
+    request: ManualIntakeRequest,
+    service: ManualIntakeService = Depends(get_manual_intake_service),
+) -> ManualIntakeResponse:
+    """Create one no-email manual intake case without creating a project."""
+    try:
+        return _manual_intake_response(
+            service.create_manual_case(_manual_intake_input(request))
+        )
+    except ManualIntakeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post(
@@ -210,6 +495,181 @@ def _exception_issue_response(
         blocking=issue.blocking,
         asset_id=issue.asset_id,
         case_id=issue.case_id,
+    )
+
+
+def _msg_import_response(result: MsgPackageIntakeResult) -> IntakePackageImportResponse:
+    """Convert manual `.msg` import output to API response."""
+    return IntakePackageImportResponse(
+        package_id=result.package.package_id,
+        source_type=result.package.source_type.value,
+        package_status=result.package.status.value,
+        source_original_name=result.package.source_original_name,
+        subject=result.package.subject,
+        sender_name=result.package.sender_name,
+        sender_email=result.package.sender_email,
+        asset_count=len(result.assets),
+        candidate_count=len(result.candidates),
+        next_action=(
+            "review_application_form_candidates"
+            if result.candidates
+            else "resolve_missing_application_form"
+        ),
+        assets=[_intake_asset_response(asset) for asset in result.assets],
+    )
+
+
+def _package_detail_response(detail: IntakePackageDetail) -> IntakePackageDetailResponse:
+    """Convert package detail read model to API response."""
+    return IntakePackageDetailResponse(
+        package_id=detail.package.package_id,
+        source_type=detail.package.source_type.value,
+        package_status=detail.package.status.value,
+        source_original_name=detail.package.source_original_name,
+        source_stored=detail.package.source_stored_path.is_file(),
+        subject=detail.package.subject,
+        sender_name=detail.package.sender_name,
+        sender_email=detail.package.sender_email,
+        received_at=detail.package.received_at,
+        asset_count=len(detail.assets),
+        candidate_count=len(detail.candidate_assets),
+        case_count=len(detail.cases),
+        next_action=_package_next_action(detail),
+        assets=[_intake_asset_response(asset) for asset in detail.assets],
+        candidate_assets=[_intake_asset_response(asset) for asset in detail.candidate_assets],
+        cases=[_intake_case_response(case) for case in detail.cases],
+    )
+
+
+def _manual_intake_input(request: ManualIntakeRequest) -> ManualIntakeInput:
+    """Convert API manual intake request to service input."""
+    sample = request.sample or ManualSampleInputRequest()
+    return ManualIntakeInput(
+        product_name=request.product_name,
+        requester=request.requester,
+        email=request.email,
+        business_unit=request.business_unit,
+        project_no=request.project_no,
+        form_no=request.form_no,
+        revision=request.revision,
+        requested_testing=request.requested_testing,
+        sample=ManualSampleInput(
+            product_name=sample.product_name,
+            part_number=sample.part_number,
+            revision=sample.revision,
+            lot_or_traceability=sample.lot_or_traceability,
+            material=sample.material,
+            plating=sample.plating,
+            housing_material=sample.housing_material,
+            quantity=sample.quantity,
+        ),
+        operator_notes=request.operator_notes,
+    )
+
+
+def _manual_intake_response(result: ManualIntakeResult) -> ManualIntakeResponse:
+    """Convert manual intake service output to API response."""
+    return ManualIntakeResponse(
+        package_id=result.package.package_id,
+        case_id=result.case.case_id,
+        draft_id=result.draft.draft_id,
+        package_status=result.package.status.value,
+        selected_form_asset_id=result.asset.asset_id,
+        missing_required_fields=list(result.missing_required_fields),
+        next_action=(
+            "review_manual_intake"
+            if not result.missing_required_fields
+            else "complete_required_manual_fields"
+        ),
+    )
+
+
+def _form_selection_response(
+    result: FormSelectionResult,
+) -> SelectApplicationFormResponse:
+    """Convert selected form case creation output to API response."""
+    return SelectApplicationFormResponse(
+        package_id=result.package_id,
+        case_id=result.case.case_id,
+        draft_id=result.draft.draft_id,
+        selected_form_asset_id=result.selected_asset.asset_id,
+        package_status="ready_for_review",
+        next_action="review_selected_application_form",
+    )
+
+
+def _package_next_action(detail: IntakePackageDetail) -> str:
+    """Return the next operator action for package detail."""
+    if not detail.candidate_assets:
+        return "resolve_missing_application_form"
+    if len(detail.candidate_assets) > len(detail.cases):
+        return "create_review_cases"
+    return "review_created_cases"
+
+
+def _intake_asset_response(asset: IntakeAsset) -> IntakeAssetResponse:
+    """Convert an intake asset to API response."""
+    return IntakeAssetResponse(
+        asset_id=asset.asset_id,
+        original_name=asset.original_name,
+        extension=asset.extension,
+        mime_type=asset.mime_type,
+        size_bytes=asset.size_bytes,
+        asset_role=asset.asset_role.value,
+        candidate_score=asset.candidate_score,
+    )
+
+
+def _intake_asset_preview_response(
+    preview: IntakeAssetPreview,
+) -> IntakeAssetPreviewResponse:
+    """Convert an intake asset preview to an API response."""
+    return IntakeAssetPreviewResponse(
+        kind=preview.kind,
+        metadata=_preview_metadata_response(preview.metadata),
+        title=preview.title,
+        fields=[_preview_field_response(field) for field in preview.fields],
+        tables=[_preview_table_response(table) for table in preview.tables],
+        warnings=list(preview.warnings),
+        message=preview.message,
+    )
+
+
+def _preview_metadata_response(
+    metadata: PreviewMetadata,
+) -> IntakeAssetPreviewMetadataResponse:
+    """Convert path-free preview metadata to a response DTO."""
+    return IntakeAssetPreviewMetadataResponse(
+        asset_id=metadata.asset_id,
+        original_name=metadata.original_name,
+        extension=metadata.extension,
+        mime_type=metadata.mime_type,
+        size_bytes=metadata.size_bytes,
+        asset_role=metadata.asset_role,
+    )
+
+
+def _preview_field_response(field: PreviewField) -> IntakeAssetPreviewFieldResponse:
+    """Convert one preview field to a response DTO."""
+    return IntakeAssetPreviewFieldResponse(label=field.label, value=field.value)
+
+
+def _preview_table_response(table: PreviewTable) -> IntakeAssetPreviewTableResponse:
+    """Convert one preview table to a response DTO."""
+    return IntakeAssetPreviewTableResponse(
+        title=table.title,
+        headers=list(table.headers),
+        rows=[list(row) for row in table.rows],
+    )
+
+
+def _intake_case_response(case: IntakeCase) -> IntakeCaseSummaryResponse:
+    """Convert an intake case to package detail response."""
+    return IntakeCaseSummaryResponse(
+        case_id=case.case_id,
+        selected_form_asset_id=case.selected_form_asset_id,
+        status=case.status.value,
+        confirmed_project_id=case.confirmed_project_id,
     )
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Protocol
 from uuid import uuid4
 
+from backend.application.intake_section1_precheck import evaluate_section1_precheck
 from backend.domain import (
     ApplicationForm,
     FileAsset,
@@ -76,8 +77,6 @@ class IntakeConfirmationResult:
 
 class IntakeConfirmationService:
     """Confirms reviewed intake draft data into formal MVP project records."""
-
-    _required_project_fields = ("product_name", "requester")
 
     def __init__(
         self,
@@ -190,9 +189,15 @@ class IntakeConfirmationService:
         return value
 
     def _validate_required_fields(self, data: dict[str, Any]) -> None:
-        missing = [field for field in self._required_project_fields if not self._text(data, field)]
-        if missing:
-            raise IntakeConfirmationError(f"Missing required intake draft fields: {', '.join(missing)}")
+        blockers = [
+            issue.message
+            for issue in evaluate_section1_precheck(data)
+            if issue.level == "error"
+        ]
+        if blockers:
+            raise IntakeConfirmationError(
+                "SECTION 1 precheck blockers: " + "; ".join(blockers)
+            )
 
     def _to_project(self, project_id: str, data: dict[str, Any]) -> Project:
         return Project(

@@ -6,6 +6,7 @@ import type {
   PrecheckResult,
   Project
 } from "../../api/client";
+import { lifecycleBlockReason } from "./lifecycleGuards";
 import type { WorkflowStep } from "./WorkflowStepCard";
 
 export type WorkflowStepId = "application" | "precheck" | "ltr" | "folder";
@@ -33,6 +34,9 @@ export function buildWorkflowSteps({
   const ltrDone = ltrs.length > 0;
   const folderDone = Boolean(folderGeneration || project?.status === "folder_created");
   const folderReady = applicationDone && precheckDone && ltrDone;
+  const ltrReason = lifecycleBlockReason(project?.status, "ltr_preview");
+  const folderReason = lifecycleBlockReason(project?.status, "folder_preview");
+  const evidenceReason = lifecycleBlockReason(project?.status, "evidence_place");
 
   return [
     {
@@ -55,17 +59,17 @@ export function buildWorkflowSteps({
       id: "ltr",
       number: 3,
       title: "LTR",
-      state: !precheckDone ? "blocked" : ltrDone ? "done" : "current",
+      state: !precheckDone || (Boolean(ltrReason) && !ltrDone) ? "blocked" : ltrDone ? "done" : "current",
       summary: !precheckDone ? "Blocked by precheck" : ltrs[0]?.ltr_number ?? "LTR not registered",
-      nextAction: !precheckDone ? "Complete precheck first" : ltrDone ? "Confirm latest LTR" : "Register LTR number"
+      nextAction: !precheckDone ? "Complete precheck first" : ltrReason && !ltrDone ? ltrReason : ltrDone ? "Confirm latest LTR" : "Register LTR number"
     },
     {
       id: "folder",
       number: 4,
       title: "Project Folder",
-      state: !folderReady ? "blocked" : folderDone ? "done" : folderPlan?.conflict ? "warning" : "current",
+      state: !folderReady || (Boolean(folderReason) && !folderDone) ? "blocked" : folderDone ? "done" : folderPlan?.conflict ? "warning" : "current",
       summary: !folderReady ? "Blocked by prior steps" : folderDone ? "Folder generated" : folderPlan ? "Preview ready" : "Folder not previewed",
-      nextAction: !folderReady ? "Complete form, precheck, and LTR first" : folderDone ? "Verify generated folder" : "Preview folder before generation"
+      nextAction: !folderReady ? "Complete form, precheck, and LTR first" : folderReason && !folderDone ? folderReason : folderDone ? evidenceReason ?? "Verify generated folder" : "Preview folder before generation"
     }
   ];
 }

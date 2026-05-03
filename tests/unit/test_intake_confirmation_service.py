@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -114,11 +115,7 @@ def _service(draft: IntakeDraft, case: IntakeCase | None = None) -> tuple[Intake
 
 def test_confirm_case_creates_project_records_and_marks_case_confirmed() -> None:
     service, stores = _service(
-        _draft(
-            '{"project_no":"P-1","product_name":"Connector","requester":"White",'
-            '"business_unit":"BU","form_no":"E-3718","revision":"H",'
-            '"samples":[{"part_number":"PN-1","quantity":2}]}'
-        )
+        _draft(_complete_section1_json(project_no="P-1", product_name="Connector"))
     )
 
     result = service.confirm_case("case-1")
@@ -137,13 +134,13 @@ def test_confirm_case_creates_project_records_and_marks_case_confirmed() -> None
 def test_confirm_case_rejects_missing_required_project_fields() -> None:
     service, _ = _service(_draft('{"project_no":"P-1","requester":"White"}'))
 
-    with pytest.raises(IntakeConfirmationError, match="product_name"):
+    with pytest.raises(IntakeConfirmationError, match="Product Name"):
         service.confirm_case("case-1")
 
 
 def test_confirm_case_allows_missing_project_no() -> None:
     service, _ = _service(
-        _draft('{"product_name":"Connector","requester":"White"}')
+        _draft(_complete_section1_json(project_no=None, product_name="Connector"))
     )
 
     result = service.confirm_case("case-1")
@@ -173,7 +170,7 @@ def test_confirm_case_applies_manual_overrides() -> None:
     draft = IntakeDraft(
         draft_id="draft-1",
         case_id="case-1",
-        parsed_fields_json='{"project_no":"P-1","product_name":"Wrong","requester":"White"}',
+        parsed_fields_json=_complete_section1_json(project_no="P-1", product_name="Wrong"),
         manual_overrides_json='{"product_name":"Correct"}',
     )
     service, _ = _service(draft)
@@ -181,3 +178,44 @@ def test_confirm_case_applies_manual_overrides() -> None:
     result = service.confirm_case("case-1")
 
     assert result.project.product_name == "Correct"
+
+
+def _complete_section1_json(
+    *,
+    project_no: str | None,
+    product_name: str,
+) -> str:
+    data = {
+        "project_no": project_no,
+        "form_no": "E-3718",
+        "revision": "H",
+        "product_name": product_name,
+        "requester": "White",
+        "phone": "555-0100",
+        "request_date": "2026-05-03",
+        "email": "white@example.com",
+        "business_unit": "BU",
+        "manufacturing_site": "Nantong",
+        "results_format": "Formal Report (Customer)",
+        "requested_completion_date": "2026-05-10",
+        "test_type": "Customer Specific Testing",
+        "sample_status": "Production",
+        "project_type": "New Product Development",
+        "requested_testing": "Bend testing",
+        "post_testing_disposition": "Keep in the Lab",
+        "confidential": "No",
+        "subcontract": "Yes",
+        "send_copies_recipients": "Neo Xu",
+        "samples": [
+            {
+                "product_name": product_name,
+                "part_number": "PN-1",
+                "lot_or_traceability": "LOT-1",
+                "material": "Copper",
+                "plating": "Ag",
+                "housing_material": "PA10T",
+                "quantity": 2,
+            }
+        ],
+    }
+    return json.dumps(data)

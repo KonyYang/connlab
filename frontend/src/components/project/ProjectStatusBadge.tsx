@@ -6,10 +6,12 @@ type ProjectStatusBadgeProps = {
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
+  intake_received: "Pending LTR Number",
+  confirmed: "Pending LTR Number",
   precheck_pending: "Precheck pending",
   precheck_passed: "Precheck passed",
   precheck_failed: "Precheck failed",
-  ltr_registered: "LTR registered",
+  ltr_registered: "LTR Number registered",
   folder_created: "Folder created"
 };
 

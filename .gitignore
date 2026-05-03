@@ -77,3 +77,8 @@ Thumbs.db
 .env
 .env.*
 connlab.local.toml
+
+# =========================
+# Local Design Assets
+# =========================
+local/
