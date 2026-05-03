@@ -10,6 +10,7 @@ import {
   updateIntakeCaseReviewFields
 } from "../api/client";
 import { UiIcon } from "../components/common/UiIcon";
+import { NewProjectWorkflowHeader } from "../components/workflow/NewProjectWorkflow";
 import {
   emptyPrecheckSampleRow,
   PRECHECK_PROJECT_FIELDS,
@@ -36,7 +37,6 @@ import {
 } from "../features/precheck/precheckReviewSelectors";
 import { PrecheckSourceCheck } from "../features/precheck/PrecheckSourceCheck";
 import { PrecheckStatePanel } from "../features/precheck/PrecheckStatePanel";
-import { PrecheckStepper } from "../features/precheck/PrecheckStepper";
 import "../intake-case-review.css";
 
 type IntakeCaseReviewPageProps = {
@@ -198,14 +198,7 @@ export function IntakeCaseReviewPage({
 
   return (
     <section className="precheck-workflow">
-      <header className="precheck-header">
-        <div>
-          <h2>New Project</h2>
-          <p>Step 2 of 4: Precheck</p>
-        </div>
-      </header>
-
-      <PrecheckStepper />
+      <NewProjectWorkflowHeader currentStep="precheck" />
 
       {loading ? <PrecheckStatePanel title="Loading Precheck" text="Loading source context, selected case, and confirmation blockers." /> : null}
       {loadError ? <PrecheckStatePanel tone="danger" title="Precheck cannot be loaded" text={loadError} /> : null}
@@ -288,7 +281,7 @@ export function IntakeCaseReviewPage({
 
           <footer className="precheck-footer">
             <button
-              className="secondary-button precheck-back-button"
+              className="new-project-secondary-action precheck-back-button"
               type="button"
               onClick={() => onBack({
                 caseId: activeCase.case_id,
@@ -312,7 +305,7 @@ export function IntakeCaseReviewPage({
               <span className="sr-only">I confirm this reviewed case should create one project.</span>
             </label>
             <button
-              className="secondary-button"
+              className="new-project-secondary-action"
               disabled={!draftChanged || savingFields || Boolean(activeCase.confirmed_project_id)}
               type="button"
               onClick={() => void handleSaveFields()}
@@ -320,7 +313,7 @@ export function IntakeCaseReviewPage({
               <span className="sr-only">Save corrections</span>
               {savingFields ? "Saving" : "Save Draft"}
             </button>
-            <button className="primary-button precheck-confirm-button" disabled={!canConfirm} type="button" onClick={() => void handleConfirm()}>
+            <button className="new-project-primary-action precheck-confirm-button" disabled={!canConfirm} type="button" onClick={() => void handleConfirm()}>
               {confirming ? "Confirming" : "Confirm & Continue to LTR Number"}
               <span className="button-arrow" aria-hidden="true">&gt;</span>
             </button>

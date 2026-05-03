@@ -7,6 +7,8 @@ import pytest
 from backend.infrastructure.office import OfficeFacade, OutlookMsgImportError
 from backend.infrastructure.office.outlook_msg_gateway import (
     OutlookMsgMetadataError,
+    _embedded_msg_attachment_name,
+    _is_inline_body_attachment,
     _parse_datetime,
     _preferred_sender_email,
 )
@@ -106,3 +108,25 @@ def test_outlook_rfc_date_header_is_parsed() -> None:
 
     assert parsed is not None
     assert parsed.isoformat() == "2024-10-11T16:38:00+08:00"
+
+
+def test_inline_body_images_are_not_user_visible_msg_attachments() -> None:
+    """Real Outlook `.msg` files store body images as OLE attachments with Content-ID."""
+    assert _is_inline_body_attachment(
+        file_name="image006.png",
+        content_id="image006.png@01DC54A0.EBC57880",
+        mime_type_hint="image/png",
+    )
+    assert not _is_inline_body_attachment(
+        file_name="2043130018-TS-000_3.4mm_floating_board.pdf",
+        content_id=None,
+        mime_type_hint="application/pdf",
+    )
+
+
+def test_embedded_outlook_item_attachment_gets_msg_filename() -> None:
+    """Embedded Outlook items can expose only a subject-like display name."""
+    assert _embedded_msg_attachment_name("RE: Coolpower HDF 3.40mm 震动夹具设计") == (
+        "RE: Coolpower HDF 3.40mm 震动夹具设计.msg"
+    )
+    assert _embedded_msg_attachment_name("forwarded.msg") == "forwarded.msg"

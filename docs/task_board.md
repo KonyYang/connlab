@@ -1215,7 +1215,17 @@ Why this is next:
 - The user approved executing the next recommended task, `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION`.
 - `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete: Intake selected-attachment preview now supports inline image previews, metadata-only previews for Excel/PDF/MSG/non-application Word/other files, and application-form Word previews focused on business fields, sample rows, and requested-testing details without generic document structure.
 - Validation for `TASK_088`: `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `42 passed`; `npm run build`, result passed; `py -m pytest -q`, result `285 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
-- Recommended next controlled task: `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION`.
+- The user approved executing `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION`.
+- `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION` is complete: Intake and Precheck now share one New Project workflow header/stepper component, the four stage labels are consistent, Intake no longer shows a disabled Back action, and footer primary/secondary action styling is aligned without changing business behavior.
+- Validation for `TASK_089`: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `33 passed`; `npm run build`, result passed; `py -m pytest -q`, result `286 passed`.
+- TASK_087 hotfix: real Outlook `.msg` attachment extraction now filters inline body images, preserves embedded Outlook item attachments as `.msg` records, hides the imported source email from the Intake Attachments list while keeping it stored for traceability, and labels `.msg` rows as `MSG` instead of `FILE`.
+- Validation for TASK_087 hotfix: `py -m pytest tests\unit\test_outlook_msg_source_import.py tests\unit\test_frontend_shell_files.py -q`, result `42 passed`; `py -m pytest tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py -q`, result `8 passed`; `npm run build`, result passed; real sample probe extracted 6 visible attachments from `D:\test_samples\Coolopower HDF 3 40mm Busbar to Busbar &Busbar to PCB Connector Qualification Testing_NPD.msg`; `py -m pytest -q`, result `289 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- The user approved executing `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION`.
+- `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete: Intake source panel, attachment list, attachment preview panel, and pure display selectors now live under `frontend/src/features/intake`; `IntakeInboxPage.tsx` remains the route-level API/session coordinator and was reduced from 664 lines to 234 lines without changing behavior.
+- Validation for `TASK_090`: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`; `npm run build`, result passed; `py -m pytest -q`, result `290 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- TASK_090 hotfix: Intake form selection now preserves `manual_overrides_json` only when the existing case already belongs to the same selected application form asset; reusable cases rebound to a different asset clear manual overrides to avoid mixing old edits with a new form.
+- Validation for TASK_090 hotfix: `py -m pytest tests\unit\test_intake_form_selection_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `50 passed`; `npm run build`, result passed; `py -m pytest -q`, result `292 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- Recommended next controlled task: `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
 Active implementation task:
@@ -1224,7 +1234,7 @@ Active implementation task:
 
 Reason:
 
-- `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete. The next implementation task is blocked until explicit user approval; recommended next task is `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION`.
+- `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete, and the manual-overrides selection hotfix is complete. The next implementation task is blocked until explicit user approval; recommended next task is `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
 
 Do not start yet:
 

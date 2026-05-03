@@ -218,16 +218,32 @@ def _extract_ole_attachments(path: Path, target_dir: Path) -> list[ImportedMailA
                 or _read_msg_text_property(ole, "3704", storage)
                 or _read_msg_text_property(ole, "3001", storage)
             )
+            content_id = _read_msg_text_property(ole, "3712", storage)
+            mime_type_hint = _read_msg_text_property(ole, "370E", storage)
             data = _read_msg_binary_property(ole, "3701", storage)
-            if not file_name or data is None:
+            if file_name and data is not None and not _is_inline_body_attachment(
+                file_name=file_name,
+                content_id=content_id,
+                mime_type_hint=mime_type_hint,
+            ):
+                attachments.append(
+                    _write_attachment(
+                        target_dir=target_dir,
+                        original_name=file_name,
+                        content=data,
+                        content_id=content_id,
+                        mime_type_hint=mime_type_hint,
+                    )
+                )
+                continue
+            if not _is_embedded_msg_attachment(ole, storage):
                 continue
             attachments.append(
                 _write_attachment(
                     target_dir=target_dir,
-                    original_name=file_name,
-                    content=data,
-                    content_id=_read_msg_text_property(ole, "3712", storage),
-                    mime_type_hint=_read_msg_text_property(ole, "370E", storage),
+                    original_name=_embedded_msg_attachment_name(file_name),
+                    content=_embedded_msg_fixture_bytes(ole, storage),
+                    mime_type_hint=_fallback_mime_type(OfficeFileKind.OUTLOOK_MSG),
                 )
             )
         return attachments
@@ -270,6 +286,59 @@ def _write_attachment(
         sha256=hashlib.sha256(content).hexdigest(),
         content_id=content_id,
     )
+
+
+def _is_inline_body_attachment(
+    *,
+    file_name: str,
+    content_id: str | None,
+    mime_type_hint: str | None,
+) -> bool:
+    """Return whether an OLE attachment is an inline mail-body image."""
+    if not content_id:
+        return False
+    extension = Path(file_name).suffix.lower().lstrip(".")
+    mime_type = (mime_type_hint or "").lower()
+    if mime_type.startswith("image/"):
+        return True
+    return extension in {"jpg", "jpeg", "png", "gif", "bmp", "tif", "tiff"}
+
+
+def _is_embedded_msg_attachment(ole: olefile.OleFileIO, storage: tuple[str, ...]) -> bool:
+    """Return whether an attachment storage contains an embedded Outlook item."""
+    return any(
+        len(stream) > len(storage)
+        and tuple(stream[: len(storage)]) == storage
+        and stream[len(storage)] == "__substg1.0_3701000D"
+        for stream in ole.listdir(streams=True, storages=False)
+    )
+
+
+def _embedded_msg_attachment_name(file_name: str | None) -> str:
+    """Return a stable display name for an embedded Outlook item attachment."""
+    base_name = (file_name or "attached message").strip()
+    if Path(base_name).suffix.lower() != ".msg":
+        base_name = f"{base_name}.msg"
+    return base_name
+
+
+def _embedded_msg_fixture_bytes(ole: olefile.OleFileIO, storage: tuple[str, ...]) -> bytes:
+    """Serialize basic embedded Outlook item metadata into a traceable `.msg` placeholder."""
+    root = (*storage, "__substg1.0_3701000D")
+    subject = _read_msg_text_property(ole, "0037", root)
+    sender_name, sender_email = _parse_sender(_read_msg_text_property(ole, "0C1A", root))
+    explicit_sender_email = _read_msg_text_property(ole, "0C1F", root)
+    sent_at = _read_msg_time_property(ole, "0039", root) or _read_msg_time_property(ole, "0E06", root)
+    lines = [
+        f"Subject: {subject or ''}",
+        f"From: {sender_email or explicit_sender_email or sender_name or ''}",
+        f"To: {_read_msg_text_property(ole, '0E04', root) or ''}",
+        f"Cc: {_read_msg_text_property(ole, '0E03', root) or ''}",
+        f"Sent: {sent_at.isoformat() if sent_at else ''}",
+        "",
+        _read_msg_text_property(ole, "1000", root) or "",
+    ]
+    return "\n".join(lines).encode("utf-8")
 
 
 def _parse_fixture_attachments(text: str, *, stored_path: Path) -> list[_ParsedAttachment]:

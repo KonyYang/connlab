@@ -15,6 +15,15 @@ def precheck_feature_source() -> str:
     )
 
 
+def intake_feature_source() -> str:
+    """Return the current Intake feature source used by static UI checks."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "intake"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(feature_root.glob("*.tsx")) + sorted(feature_root.glob("*.ts"))
+    )
+
+
 def test_frontend_shell_core_files_exist() -> None:
     """Minimal React shell files are present."""
     expected_files = [
@@ -507,10 +516,13 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
     )
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
+    workflow_styles = (
+        FRONTEND_ROOT / "src" / "components" / "workflow" / "new-project-workflow.css"
+    ).read_text(encoding="utf-8")
 
     for term in [
         "IntakePackageImport",
@@ -540,7 +552,7 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
         assert term in inbox_source
 
     assert "fetch(" not in inbox_source
-    assert ".new-project-stepper" in inbox_styles
+    assert ".new-project-stepper" in workflow_styles
     assert ".intake-step-grid" in inbox_styles
     assert ".attachment-details-panel" in inbox_styles
     assert ".attachment-row-active" in inbox_styles
@@ -556,7 +568,7 @@ def test_direct_application_form_entry_imports_through_backend() -> None:
     )
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
@@ -592,7 +604,7 @@ def test_task087_intake_information_density_cleanup() -> None:
     )
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
@@ -632,18 +644,44 @@ def test_task087_intake_information_density_cleanup() -> None:
     assert ".attachment-guidance" not in inbox_styles
 
 
-def test_task070_precheck_step_matches_reference_workspace() -> None:
-    """TASK_070 turns case review into the step-style Precheck workspace."""
-    case_review_source = (
-        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
-    ).read_text(encoding="utf-8") + precheck_feature_source()
-    case_styles = (FRONTEND_ROOT / "src" / "intake-case-review.css").read_text(
+def test_task087_msg_attachment_hotfix_filters_source_and_labels_msg() -> None:
+    """Real Outlook attachments hide source email rows and show `.msg` chips."""
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8") + intake_feature_source()
+    inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
 
     for term in [
+        "visibleIntakeAttachments",
+        'asset.asset_role !== "email_source"',
+        'extension === ".msg"',
+        'return "MSG"',
+    ]:
+        assert term in inbox_source
+
+    assert ".file-chip-msg" in inbox_styles
+
+
+def test_task070_precheck_step_matches_reference_workspace() -> None:
+    """TASK_070 turns case review into the step-style Precheck workspace."""
+    case_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8") + precheck_feature_source() + (
+        FRONTEND_ROOT / "src" / "components" / "workflow" / "NewProjectWorkflow.tsx"
+    ).read_text(encoding="utf-8")
+    case_styles = (FRONTEND_ROOT / "src" / "intake-case-review.css").read_text(
+        encoding="utf-8"
+    )
+    workflow_styles = (
+        FRONTEND_ROOT / "src" / "components" / "workflow" / "new-project-workflow.css"
+    ).read_text(encoding="utf-8")
+
+    for term in [
         'import "../intake-case-review.css"',
-        "Step 2 of 4: Precheck",
+        "New Project Step",
+        'currentStep="precheck"',
         "Source document & template check",
         "Template version mismatch detected",
         "Lab Test Request Number must be blank",
@@ -660,7 +698,6 @@ def test_task070_precheck_step_matches_reference_workspace() -> None:
 
     for term in [
         ".precheck-workflow",
-        ".precheck-stepper",
         ".source-template-check",
         ".precheck-blocker-banner",
         ".precheck-form-grid",
@@ -672,13 +709,66 @@ def test_task070_precheck_step_matches_reference_workspace() -> None:
     ]:
         assert term in case_styles
 
+    assert ".new-project-stepper" in workflow_styles
+
+
+def test_task089_new_project_workflow_shell_is_shared() -> None:
+    """TASK_089 uses one workflow shell across Intake and Precheck."""
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8") + intake_feature_source()
+    case_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+    workflow_source = (
+        FRONTEND_ROOT / "src" / "components" / "workflow" / "NewProjectWorkflow.tsx"
+    ).read_text(encoding="utf-8")
+    workflow_styles = (
+        FRONTEND_ROOT / "src" / "components" / "workflow" / "new-project-workflow.css"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "NewProjectWorkflowHeader",
+        'currentStep="intake"',
+        "Continue to Precheck",
+    ]:
+        assert term in inbox_source
+
+    assert 'className="secondary-action" disabled type="button">Back' not in inbox_source
+
+    for term in [
+        "NewProjectWorkflowHeader",
+        'currentStep="precheck"',
+        "Confirm & Continue to LTR Number",
+    ]:
+        assert term in case_review_source
+
+    for term in [
+        "New Project Step",
+        "Intake",
+        "Precheck",
+        "LTR Number",
+        "Project Folder",
+    ]:
+        assert term in workflow_source
+
+    for term in [
+        ".new-project-workflow-header",
+        ".new-project-stepper",
+        ".new-project-step-complete",
+        ".new-project-step-current",
+        ".new-project-primary-action",
+        ".new-project-secondary-action",
+    ]:
+        assert term in workflow_styles
+
 
 def test_task071_intake_session_state_survives_route_changes() -> None:
     """TASK_071 lifts Intake package state to App so step navigation preserves it."""
     app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     session_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "intakeSession.ts"
     ).read_text(encoding="utf-8")
@@ -777,7 +867,7 @@ def test_task073_selected_form_precheck_binding_is_explicit() -> None:
     )
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
     ).read_text(encoding="utf-8") + precheck_feature_source()
@@ -1025,7 +1115,7 @@ def test_task075_intake_attachment_preview_prioritizes_docx() -> None:
     )
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
@@ -1070,7 +1160,7 @@ def test_task088_attachment_details_preview_completion() -> None:
     )
     inbox_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + intake_feature_source()
     inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
@@ -1101,6 +1191,46 @@ def test_task088_attachment_details_preview_completion() -> None:
         assert term in inbox_styles
 
     assert "Document structure" not in inbox_source
+
+
+def test_task090_intake_workflow_structure_extraction() -> None:
+    """TASK_090 keeps Intake page thin and moves display logic into feature files."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    feature_source = intake_feature_source()
+
+    for term in [
+        "IntakeSourcePanel",
+        "AttachmentList",
+        "AttachmentPreviewPanel",
+        "buildAttachmentViewModels",
+        "visibleIntakeAttachments",
+        "selectedIntakeAsset",
+    ]:
+        assert term in page_source
+
+    for term in [
+        "export function visibleIntakeAttachments",
+        "export function buildAttachmentViewModels",
+        "export function senderEmailText",
+        "export function mailDateText",
+        "function AttachmentPreview",
+        "function DocxApplicationPreview",
+        "function PreviewTableSection",
+    ]:
+        assert term in feature_source
+
+    for removed_term in [
+        "function AttachmentPreview(",
+        "function senderEmailText(",
+        "function mailDateText(",
+        "function assetKind(",
+        "function formatBytes(",
+        "attachments-heading",
+        "email-info-list",
+    ]:
+        assert removed_term not in page_source
 
 
 def test_folder_evidence_frontend_wires_preview_and_execution() -> None:

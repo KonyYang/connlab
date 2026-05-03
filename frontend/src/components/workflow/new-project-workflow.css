@@ -1,0 +1,166 @@
+.new-project-workflow-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #bfd7f2;
+}
+
+.new-project-workflow-header h2 {
+  margin: 0;
+  color: var(--color-primary-strong);
+  font-family: "Aptos", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.new-project-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #bfd7f2;
+  list-style: none;
+}
+
+.new-project-step {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: max-content minmax(0, max-content);
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.new-project-step:not(:last-child)::after {
+  position: absolute;
+  right: calc(-50% + 32px);
+  width: calc(100% - 56px);
+  height: 1px;
+  background: #cbd9ec;
+  content: "";
+}
+
+.new-project-step span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #c7d8f7;
+  border-radius: 999px;
+  background: #fbfdff;
+  color: var(--color-primary-strong);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.new-project-step strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-project-step-current {
+  color: var(--color-primary-strong);
+}
+
+.new-project-step-current span {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fbfdff;
+  box-shadow: 0 8px 18px rgba(31, 102, 209, 0.18);
+}
+
+.new-project-step-complete {
+  color: #24795c;
+}
+
+.new-project-step-complete::after {
+  background: #92d1b8;
+}
+
+.new-project-step-complete span {
+  border-color: #bfe6d7;
+  background: #eefaf5;
+  color: #24795c;
+}
+
+.new-project-step-action,
+.new-project-secondary-action,
+.new-project-primary-action {
+  min-height: 42px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: "Aptos", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  transition: border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), background 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.new-project-secondary-action {
+  border: 1px solid #cddcf1;
+  background: #fbfdff;
+  color: var(--color-primary-strong);
+}
+
+.new-project-secondary-action:hover:not(:disabled) {
+  border-color: #9fbbea;
+  background: #f4f8ff;
+}
+
+.new-project-primary-action {
+  border: 1px solid #164aa3;
+  background: #164aa3;
+  color: #fbfdff;
+  box-shadow: 0 10px 22px rgba(31, 102, 209, 0.18);
+}
+
+.new-project-primary-action:hover:not(:disabled) {
+  border-color: #1f66d1;
+  background: #1f66d1;
+}
+
+.new-project-secondary-action:focus-visible,
+.new-project-primary-action:focus-visible {
+  outline: 3px solid rgba(31, 102, 209, 0.24);
+  outline-offset: 2px;
+}
+
+.new-project-secondary-action:disabled,
+.new-project-primary-action:disabled {
+  border-color: #d3dbe8;
+  background: #e7ecf3;
+  box-shadow: none;
+  color: #9aa7ba;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .new-project-workflow-header,
+  .new-project-stepper {
+    grid-template-columns: 1fr;
+  }
+
+  .new-project-stepper {
+    gap: 8px;
+  }
+
+  .new-project-step {
+    justify-content: start;
+  }
+
+  .new-project-step:not(:last-child)::after {
+    display: none;
+  }
+}

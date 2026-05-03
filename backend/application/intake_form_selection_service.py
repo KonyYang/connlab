@@ -59,6 +59,14 @@ class FormSelectionResult:
     selected_asset: IntakeAsset
 
 
+@dataclass(frozen=True)
+class _CaseSelection:
+    """Selected or reused case plus whether it already belonged to this asset."""
+
+    case: IntakeCase
+    same_selected_asset: bool
+
+
 class IntakeFormSelectionService:
     """Creates review records after a human selects one application form asset."""
 
@@ -96,13 +104,18 @@ class IntakeFormSelectionService:
         selected_asset = self._asset_store.update(
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)
         )
-        case = self._create_or_update_case(package.package_id, selected_asset.asset_id)
+        case_selection = self._create_or_update_case(package.package_id, selected_asset.asset_id)
         draft_payload, parser_warnings = self._parse_selected_asset(selected_asset)
-        draft = self._create_or_update_draft(case.case_id, draft_payload, parser_warnings)
+        draft = self._create_or_update_draft(
+            case_selection.case.case_id,
+            draft_payload,
+            parser_warnings,
+            keep_manual_overrides=case_selection.same_selected_asset,
+        )
 
         return FormSelectionResult(
             package_id=package.package_id,
-            case=case,
+            case=case_selection.case,
             draft=draft,
             selected_asset=selected_asset,
         )
@@ -114,16 +127,19 @@ class IntakeFormSelectionService:
             return True
         return self._normalized_extension(asset) in self._word_extensions
 
-    def _create_or_update_case(self, package_id: str, selected_asset_id: str) -> IntakeCase:
+    def _create_or_update_case(self, package_id: str, selected_asset_id: str) -> _CaseSelection:
         existing_cases = self._case_store.list_by_package(package_id)
         for current in existing_cases:
             if current.selected_form_asset_id == selected_asset_id:
-                return self._case_store.update(
-                    replace(
-                        current,
-                        status=IntakeCaseStatus.NEEDS_REVIEW,
-                        confirmed_project_id=None,
-                    )
+                return _CaseSelection(
+                    case=self._case_store.update(
+                        replace(
+                            current,
+                            status=IntakeCaseStatus.NEEDS_REVIEW,
+                            confirmed_project_id=None,
+                        )
+                    ),
+                    same_selected_asset=True,
                 )
         reusable_cases = [
             case
@@ -132,21 +148,27 @@ class IntakeFormSelectionService:
         ]
         if reusable_cases:
             current = reusable_cases[0]
-            return self._case_store.update(
-                replace(
-                    current,
+            return _CaseSelection(
+                case=self._case_store.update(
+                    replace(
+                        current,
+                        selected_form_asset_id=selected_asset_id,
+                        status=IntakeCaseStatus.NEEDS_REVIEW,
+                        confirmed_project_id=None,
+                    )
+                ),
+                same_selected_asset=False,
+            )
+        return _CaseSelection(
+            case=self._case_store.create(
+                IntakeCase(
+                    case_id=f"case-{uuid4().hex}",
+                    package_id=package_id,
                     selected_form_asset_id=selected_asset_id,
                     status=IntakeCaseStatus.NEEDS_REVIEW,
-                    confirmed_project_id=None,
                 )
-            )
-        return self._case_store.create(
-            IntakeCase(
-                case_id=f"case-{uuid4().hex}",
-                package_id=package_id,
-                selected_form_asset_id=selected_asset_id,
-                status=IntakeCaseStatus.NEEDS_REVIEW,
-            )
+            ),
+            same_selected_asset=False,
         )
 
     def _create_or_update_draft(
@@ -154,17 +176,21 @@ class IntakeFormSelectionService:
         case_id: str,
         parsed_fields: dict[str, object],
         parser_warnings: list[str],
+        keep_manual_overrides: bool,
     ) -> IntakeDraft:
         existing_draft = self._draft_store.get_by_case(case_id)
         parsed_fields_json = json.dumps(parsed_fields, ensure_ascii=False, sort_keys=True)
         parser_warnings_json = json.dumps(parser_warnings, ensure_ascii=False)
         if existing_draft is not None:
+            manual_overrides_json = (
+                existing_draft.manual_overrides_json if keep_manual_overrides else None
+            )
             return self._draft_store.update(
                 replace(
                     existing_draft,
                     parsed_fields_json=parsed_fields_json,
                     parser_warnings_json=parser_warnings_json,
-                    manual_overrides_json=None,
+                    manual_overrides_json=manual_overrides_json,
                 )
             )
         return self._draft_store.create(

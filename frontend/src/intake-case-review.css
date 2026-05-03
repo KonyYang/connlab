@@ -15,93 +15,13 @@
   --precheck-control-min-width: 110px;
 }
 
-.precheck-header,
-.precheck-stepper,
 .precheck-footer {
   border-bottom: 1px solid #1d64d8;
 }
 
-.precheck-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 0 12px;
-}
-
-.precheck-header h2,
-.precheck-header p,
 .precheck-card h3,
 .precheck-card h4 {
   margin: 0;
-}
-
-.precheck-header h2 {
-  color: var(--precheck-blue-strong);
-  font-size: 19px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.precheck-header p {
-  margin-top: 8px;
-  color: #1d64d8;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.precheck-stepper {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  margin: 0;
-  padding: 0 0 13px;
-  list-style: none;
-}
-
-.precheck-step {
-  position: relative;
-  display: inline-grid;
-  grid-template-columns: max-content max-content;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  color: var(--precheck-blue-strong);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.precheck-step:not(:last-child)::after {
-  position: absolute;
-  right: calc(-50% + 34px);
-  width: calc(100% - 56px);
-  height: 1px;
-  background: #a8c5f5;
-  content: "";
-}
-
-.precheck-step span {
-  display: grid;
-  min-width: 26px;
-  height: 26px;
-  place-items: center;
-  padding: 0 6px;
-  border: 1px solid #c7d8f7;
-  border-radius: 999px;
-  background: #f7fbff;
-  color: var(--precheck-blue-strong);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.precheck-step-active span {
-  border-color: var(--precheck-blue);
-  background: var(--precheck-blue);
-  color: #fbfdff;
-  box-shadow: 0 8px 18px rgba(11, 97, 232, 0.22);
-}
-
-.precheck-step-done span {
-  border-color: #c5eadc;
-  color: #11865b;
 }
 
 .precheck-card {
@@ -736,11 +656,11 @@
   line-height: 1;
 }
 
-.precheck-footer > .secondary-button:first-child {
+.precheck-footer > .new-project-secondary-action:first-child {
   min-height: 54px;
 }
 
-.precheck-footer > .secondary-button:not(:first-child) {
+.precheck-footer > .new-project-secondary-action:not(:first-child) {
   min-height: 46px;
 }
 
@@ -842,7 +762,6 @@
 }
 
 @media (max-width: 900px) {
-  .precheck-stepper,
   .template-check-grid,
   .precheck-form-grid,
   .precheck-lower-grid,
