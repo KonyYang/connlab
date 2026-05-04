@@ -55,3 +55,15 @@ Complete the Intake `Attachment details` area for real business use by showing p
 - No direct `fetch()` is added outside `frontend/src/api/client.ts`.
 - `npm run build` passes.
 - Relevant pytest tests pass.
+
+## Post-Completion Notes
+
+- Attachment details `Test Sample Information` now uses the same application-form sample columns as Precheck: `Product Name`, `Part Number / Revision`, `Traceability Manufacturing Lot Info`, `Contact Base Material`, `Contact Plating`, `Contact Lubricant`, `Housing Material`, and `Quantity`.
+- The DOCX parser now recognizes `Contact Lubricant` / `lubricant` sample columns for preview and precheck draft display without changing the persisted `SampleInfo` database schema.
+- Preview combines part number and revision for display, with conservative suffix-only de-duplication to avoid dropping single-letter revisions that merely appear inside part numbers.
+
+## Additional Validation
+
+- `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_application_form_parser.py tests\unit\test_intake_form_selection_service.py -q`, result `22 passed`.
+- `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_application_form_parser.py tests\unit\test_intake_form_selection_service.py tests\unit\test_frontend_shell_files.py -q`, result `57 passed`.
+- `py -m pytest tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py -q`, result `8 passed`.

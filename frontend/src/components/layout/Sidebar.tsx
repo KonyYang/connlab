@@ -30,10 +30,7 @@ export function Sidebar({ activeRoute, onNavigate }: SidebarProps): ReactElement
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-brand">
         <img className="brand-mark" src="/connlab-icon.svg" alt="" aria-hidden="true" />
-        <div>
-          <strong>ConnLab</strong>
-          <small>Local workbench</small>
-        </div>
+        <strong>ConnLab</strong>
       </div>
       <nav className="sidebar-nav">
         {NAV_ITEMS.map((item) => {

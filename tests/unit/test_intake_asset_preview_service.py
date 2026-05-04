@@ -45,7 +45,20 @@ def test_docx_preview_returns_structured_application_form_sections(
     sample_table = next(
         table for table in preview.tables if table.title == "Test Sample Information"
     )
+    assert sample_table.headers == (
+        "Product Name",
+        "Part Number / Revision",
+        "Traceability Manufacturing Lot Info",
+        "Contact Base Material",
+        "Contact Plating",
+        "Contact Lubricant",
+        "Housing Material",
+        "Quantity",
+    )
     assert sample_table.rows[0][0] == "Connector A"
+    assert sample_table.rows[0][1] == "PN-075 A"
+    assert sample_table.rows[0][3] == "Ag"
+    assert sample_table.rows[0][5] == "NA"
     assert any(table.title == "Requested Testing" for table in preview.tables)
 
 
@@ -141,12 +154,19 @@ def _create_application_docx(path: Path) -> Path:
         header.cell(row_index, 0).text = label
         header.cell(row_index, 1).text = value
 
-    samples = document.add_table(rows=2, cols=5)
+    samples = document.add_table(rows=2, cols=6)
     for index, header_text in enumerate(
-        ["Product Name", "Part Number", "Revision", "Contact Base Material", "Quantity"]
+        [
+            "Product Name",
+            "Part Number",
+            "Revision",
+            "Contact Base Material",
+            "Contact Lubricant",
+            "Quantity",
+        ]
     ):
         samples.cell(0, index).text = header_text
-    for index, value in enumerate(["Connector A", "PN-075", "A", "Ag", "12"]):
+    for index, value in enumerate(["Connector A", "PN-075", "A", "Ag", "NA", "12"]):
         samples.cell(1, index).text = value
     document.save(path)
     return path

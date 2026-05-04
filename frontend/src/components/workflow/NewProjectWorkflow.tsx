@@ -20,22 +20,17 @@ export function NewProjectWorkflowHeader({ currentStep }: NewProjectWorkflowHead
   const currentLabel = NEW_PROJECT_STEPS[currentIndex].label;
 
   return (
-    <>
-      <header className="new-project-workflow-header">
-        <h2>{`New Project Step ${currentIndex + 1} of ${NEW_PROJECT_STEPS.length}: ${currentLabel}`}</h2>
-      </header>
-      <ol className="new-project-stepper" aria-label="New project steps">
-        {NEW_PROJECT_STEPS.map((step, index) => {
-          const status = stepStatus(index, currentIndex);
-          return (
-            <li className={`new-project-step new-project-step-${status}`} key={step.key}>
-              <span aria-hidden="true">{status === "complete" ? "✓" : index + 1}</span>
-              <strong>{step.label}</strong>
-            </li>
-          );
-        })}
-      </ol>
-    </>
+    <ol className="new-project-stepper" aria-label={`New project step ${currentIndex + 1} of ${NEW_PROJECT_STEPS.length}: ${currentLabel}`}>
+      {NEW_PROJECT_STEPS.map((step, index) => {
+        const status = stepStatus(index, currentIndex);
+        return (
+          <li className={`new-project-step new-project-step-${status}`} key={step.key}>
+            <span aria-hidden="true">{status === "complete" ? "✓" : index + 1}</span>
+            <strong>{step.label}</strong>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

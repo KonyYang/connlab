@@ -7,7 +7,6 @@ import {
   assetKindFromPreview,
   assetKindLabel,
   assetKindLabelFromPreview,
-  assetTypeText,
   formatBytes,
   previewStatusText,
 } from "./intakeSelectors";
@@ -36,7 +35,6 @@ export function AttachmentPreviewPanel({
         <div>
           <h3>Attachment details</h3>
           <strong>{selectedAsset?.original_name ?? directWordName ?? "Select an attachment"}</strong>
-          <span>{selectedAsset ? assetTypeText(selectedAsset) : "Attachment metadata and preview appear here."}</span>
         </div>
         <div className="details-actions">
           <button className="secondary-action" disabled type="button">

@@ -1,55 +1,48 @@
-.new-project-workflow-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid #bfd7f2;
-}
-
-.new-project-workflow-header h2 {
-  margin: 0;
-  color: var(--color-primary-strong);
-  font-family: "Aptos", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0;
-  line-height: 1.2;
-}
-
 .new-project-stepper {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(max-content, 1fr));
+  column-gap: 18px;
+  row-gap: 10px;
   margin: 0;
-  padding: 0 0 12px;
+  padding: 8px 0 14px;
   border-bottom: 1px solid #bfd7f2;
   list-style: none;
+  overflow-x: auto;
 }
 
 .new-project-step {
   position: relative;
-  display: inline-grid;
-  grid-template-columns: max-content minmax(0, max-content);
-  gap: 10px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  min-width: max-content;
   color: var(--color-ink-muted);
   font-size: 14px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .new-project-step:not(:last-child)::after {
   position: absolute;
-  right: calc(-50% + 32px);
-  width: calc(100% - 56px);
+  top: 50%;
+  left: calc(50% + 28px);
+  width: calc(100% + 18px);
   height: 1px;
   background: #cbd9ec;
   content: "";
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.new-project-step span,
+.new-project-step strong {
+  position: relative;
+  z-index: 1;
 }
 
 .new-project-step span {
   display: grid;
+  flex: 0 0 auto;
   width: 30px;
   height: 30px;
   place-items: center;
@@ -63,9 +56,9 @@
 }
 
 .new-project-step strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-left: 10px;
+  padding-right: 10px;
+  background: var(--color-canvas, #f4f7fb);
   white-space: nowrap;
 }
 
@@ -147,13 +140,11 @@
 }
 
 @media (max-width: 900px) {
-  .new-project-workflow-header,
   .new-project-stepper {
-    grid-template-columns: 1fr;
-  }
-
-  .new-project-stepper {
-    gap: 8px;
+    grid-template-columns: repeat(4, max-content);
+    justify-content: start;
+    column-gap: 6px;
+    padding-bottom: 12px;
   }
 
   .new-project-step {

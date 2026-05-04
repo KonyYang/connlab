@@ -37,3 +37,16 @@ Extract Intake workflow display logic from `IntakeInboxPage.tsx` into the `featu
 - `py -m pytest -q`, result `290 passed`.
 - `git diff --check`, result passed with CRLF working-copy warnings only.
 - `IntakeInboxPage.tsx` is reduced from 664 lines to 234 lines.
+
+## Notes
+
+- **UX Polish (post-structure extraction)**: Intake attachment list now hides role subtitles (Supporting Attachment / Application Form Candidate) and displays long filenames as up to two medium-weight lines (font-weight: 500, -webkit-line-clamp: 2). This cleanup reduces visual density while preserving file type chips (MSG/W/PDF) and attachment selection behavior.
+- **New Project Stepper Polish (post-structure extraction)**: The shared New Project workflow stepper now removes the redundant `New Project Step ...` heading row, exposes the current step through the stepper `aria-label`, keeps step labels on one line in narrow windows through horizontal overflow, and layers connector lines behind labels so they do not cross operator-readable text.
+- **Attachment Details Cleanup (post-structure extraction)**: The Attachment details header no longer shows the redundant file type subtitle (Word Document / PDF Document) below the filename, reducing visual noise while keeping the file type chip visible on the left.
+- **Email Information Polish (post-structure extraction)**: The Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, improving readability and matching the visual hierarchy of the Attachment details header.
+
+## Additional Validation
+
+- `py -m pytest tests\unit\test_frontend_shell_files.py::test_task070_precheck_step_matches_reference_workspace tests\unit\test_frontend_shell_files.py::test_task089_new_project_workflow_shell_is_shared -q`, result `2 passed`.
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`.
+- `npm run build` from `frontend/`, result passed.

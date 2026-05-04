@@ -125,7 +125,7 @@
 .email-info-list dd {
   min-width: 0;
   margin: 0;
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -213,29 +213,20 @@
 
 .attachment-name {
   display: grid;
-  gap: 2px;
   min-width: 0;
   overflow: hidden;
 }
 
-.attachment-name strong {
+.attachment-title {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
+  color: var(--color-ink);
   font-size: 12px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.attachment-name small {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  text-transform: capitalize;
-  white-space: nowrap;
+  font-weight: 500;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .attachment-empty {

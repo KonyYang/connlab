@@ -640,7 +640,7 @@ def test_task087_intake_information_density_cleanup() -> None:
 
     assert "grid-template-columns: 42px minmax(0, 1fr);" in inbox_styles
     assert ".step-footer-guidance" in inbox_styles
-    assert ".attachment-name small" in inbox_styles
+    assert ".attachment-title" in inbox_styles
     assert ".attachment-guidance" not in inbox_styles
 
 
@@ -680,7 +680,6 @@ def test_task070_precheck_step_matches_reference_workspace() -> None:
 
     for term in [
         'import "../intake-case-review.css"',
-        "New Project Step",
         'currentStep="precheck"',
         "Source document & template check",
         "Template version mismatch detected",
@@ -744,7 +743,7 @@ def test_task089_new_project_workflow_shell_is_shared() -> None:
         assert term in case_review_source
 
     for term in [
-        "New Project Step",
+        "aria-label={`",
         "Intake",
         "Precheck",
         "LTR Number",
@@ -753,12 +752,14 @@ def test_task089_new_project_workflow_shell_is_shared() -> None:
         assert term in workflow_source
 
     for term in [
-        ".new-project-workflow-header",
         ".new-project-stepper",
         ".new-project-step-complete",
         ".new-project-step-current",
         ".new-project-primary-action",
         ".new-project-secondary-action",
+        "overflow-x: auto",
+        "white-space: nowrap",
+        "grid-template-columns: repeat(4, max-content)",
     ]:
         assert term in workflow_styles
 

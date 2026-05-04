@@ -295,27 +295,40 @@ def _sample_table(parsed: ParsedApplicationForm) -> PreviewTable | None:
         return None
     headers = (
         "Product Name",
-        "Part Number",
-        "Revision",
-        "Traceability / Lot",
-        "Material",
-        "Plating",
-        "Housing",
+        "Part Number / Revision",
+        "Traceability Manufacturing Lot Info",
+        "Contact Base Material",
+        "Contact Plating",
+        "Contact Lubricant",
+        "Housing Material",
         "Quantity",
     )
     rows = tuple(_sample_row(sample) for sample in parsed.samples)
     return PreviewTable("Test Sample Information", headers, rows)
 
 
+def _part_number_revision(sample: ParsedSampleInfo) -> str:
+    """Combine part number and revision, avoiding duplication."""
+    part_number = _text(sample.part_number)
+    revision = _text(sample.revision)
+    if not part_number:
+        return revision
+    if not revision:
+        return part_number
+    if part_number.strip().lower().endswith(f" {revision.strip().lower()}"):
+        return part_number
+    return f"{part_number} {revision}"
+
+
 def _sample_row(sample: ParsedSampleInfo) -> tuple[str, ...]:
     """Convert one parsed sample to preview table cells."""
     return (
         _text(sample.product_name),
-        _text(sample.part_number),
-        _text(sample.revision),
+        _part_number_revision(sample),
         _text(sample.lot_or_traceability),
         _text(sample.material),
         _text(sample.plating),
+        _text(sample.lubricant),
         _text(sample.housing_material),
         _text(sample.quantity),
     )

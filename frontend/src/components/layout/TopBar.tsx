@@ -5,22 +5,18 @@ type TopBarProps = {
   activeRoute: string;
 };
 
-const ROUTE_TITLES: Record<string, { title: string; description: string }> = {
+const ROUTE_TITLES: Record<string, { title: string }> = {
   projects: {
-    title: "Projects",
-    description: "Project registry and workflow overview."
+    title: "Projects"
   },
   intake: {
-    title: "New Project",
-    description: "Start from a request package or manual entry before project confirmation."
+    title: "New Project"
   },
   workbench: {
-    title: "Project workbench",
-    description: "Review the current project state and next action."
+    title: "Project workbench"
   },
   unknown: {
-    title: "ConnLab",
-    description: "Offline connector laboratory workbench."
+    title: "ConnLab"
   }
 };
 
@@ -30,10 +26,8 @@ export function TopBar({ activeRoute }: TopBarProps): ReactElement {
   return (
     <header className="top-bar">
       <div>
-        <p className="eyebrow">ConnLab MVP</p>
         <h1>{context.title}</h1>
       </div>
-      <p className="top-bar-description">{context.description}</p>
       <div className="top-search" role="search">
         <UiIcon name="search" />
         <input

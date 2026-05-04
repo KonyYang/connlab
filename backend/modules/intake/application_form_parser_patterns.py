@@ -71,6 +71,7 @@ SAMPLE_ALIASES: dict[str, set[str]] = {
     },
     "material": {"material", "contact base material"},
     "plating": {"plating", "contact plating"},
+    "lubricant": {"lubricant", "contact lubricant"},
     "housing_material": {"housing material"},
     "quantity": {"quantity", "qty"},
 }

@@ -24,6 +24,7 @@ class ParsedSampleInfo:
     lot_or_traceability: str | None = None
     material: str | None = None
     plating: str | None = None
+    lubricant: str | None = None
     housing_material: str | None = None
     quantity: str | None = None
 

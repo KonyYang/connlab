@@ -30,8 +30,7 @@ export function AttachmentList({
             >
               <span className={`file-chip file-chip-${attachment.kind}`}>{attachment.label}</span>
               <span className="attachment-name">
-                <strong>{attachment.asset.original_name}</strong>
-                <small>{attachment.roleText}</small>
+                <span className="attachment-title">{attachment.asset.original_name}</span>
               </span>
             </button>
           ))}

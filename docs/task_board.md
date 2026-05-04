@@ -1,7 +1,7 @@
 # ConnLab Task Board
 
-> Status: Phase 10A complete; Attachment details preview completion complete
-> Last Updated: 2026-05-03
+> Status: Phase 10A complete; Intake workflow structure extraction and stepper polish complete
+> Last Updated: 2026-05-04
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: None - pending user approval for next phase
 > Current Phase: `Phase 10A - Intake Entry Completion`
@@ -175,6 +175,9 @@ Current judgment as of 2026-04-26:
 - New Project Intake now shows a concise source summary with sender email, subject, and date; attachment rows prioritize file names and application-form selection without separate type/size columns.
 - `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete.
 - Intake Attachment details now renders inline image previews, keeps application-form Word previews focused on business fields and sample/requested-testing content, and shows metadata-only details for Excel, PDF, MSG, non-application Word, and other files.
+- TASK_088 sample preview correction is complete: Attachment details `Test Sample Information` now matches the application-form / Precheck sample columns, including combined `Part Number / Revision`, contact material/plating/lubricant, housing material, and quantity, without changing persisted sample storage schema.
+- `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete.
+- Intake source panel, attachment list, attachment preview panel, and pure display selectors now live under `frontend/src/features/intake`; the shared New Project workflow stepper no longer shows the redundant heading row, keeps labels on one line in narrow windows, and prevents connector lines from crossing text.
 - No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
 Current stop point:
@@ -1215,6 +1218,8 @@ Why this is next:
 - The user approved executing the next recommended task, `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION`.
 - `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete: Intake selected-attachment preview now supports inline image previews, metadata-only previews for Excel/PDF/MSG/non-application Word/other files, and application-form Word previews focused on business fields, sample rows, and requested-testing details without generic document structure.
 - Validation for `TASK_088`: `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `42 passed`; `npm run build`, result passed; `py -m pytest -q`, result `285 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- TASK_088 sample preview correction: Attachment details sample preview now uses the same sample columns as the application form / Precheck, adds parser support for `Contact Lubricant`, and combines part number/revision with suffix-only de-duplication.
+- Validation for TASK_088 sample preview correction: `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_application_form_parser.py tests\unit\test_intake_form_selection_service.py -q`, result `22 passed`; `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_application_form_parser.py tests\unit\test_intake_form_selection_service.py tests\unit\test_frontend_shell_files.py -q`, result `57 passed`; `py -m pytest tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py -q`, result `8 passed`.
 - The user approved executing `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION`.
 - `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION` is complete: Intake and Precheck now share one New Project workflow header/stepper component, the four stage labels are consistent, Intake no longer shows a disabled Back action, and footer primary/secondary action styling is aligned without changing business behavior.
 - Validation for `TASK_089`: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `33 passed`; `npm run build`, result passed; `py -m pytest -q`, result `286 passed`.
@@ -1225,6 +1230,12 @@ Why this is next:
 - Validation for `TASK_090`: `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`; `npm run build`, result passed; `py -m pytest -q`, result `290 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
 - TASK_090 hotfix: Intake form selection now preserves `manual_overrides_json` only when the existing case already belongs to the same selected application form asset; reusable cases rebound to a different asset clear manual overrides to avoid mixing old edits with a new form.
 - Validation for TASK_090 hotfix: `py -m pytest tests\unit\test_intake_form_selection_service.py tests\integration\test_msg_package_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `50 passed`; `npm run build`, result passed; `py -m pytest -q`, result `292 passed`; `git diff --check`, result passed with CRLF working-copy warnings only.
+- TASK_090 UX polish: Intake attachment list now hides role subtitles and displays long filenames as up to two medium-weight lines.
+- Validation for TASK_090 UX polish: `py -m pytest tests\unit\test_frontend_shell_files.py::test_task087_intake_information_density_cleanup -q`, result `1 passed`; `npm run build`, result passed.
+- TASK_090 New Project stepper polish: the shared Intake/Precheck workflow stepper no longer renders the redundant `New Project Step ...` title row; step connector lines are layered behind labels; narrow Windows side-by-side layouts keep all four step labels on one line with horizontal overflow instead of wrapping.
+- Validation for TASK_090 New Project stepper polish: `py -m pytest tests\unit\test_frontend_shell_files.py::test_task070_precheck_step_matches_reference_workspace tests\unit\test_frontend_shell_files.py::test_task089_new_project_workflow_shell_is_shared -q`, result `2 passed`; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`; `npm run build`, result passed.
+- TASK_090 Attachment details cleanup: the Attachment details header no longer shows the redundant file type subtitle (Word Document / PDF Document) below the filename, reducing visual noise while keeping the file type chip visible.
+- TASK_090 Email information polish: the Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, matching the visual hierarchy of the Attachment details header.
 - Recommended next controlled task: `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
@@ -1234,7 +1245,7 @@ Active implementation task:
 
 Reason:
 
-- `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete, and the manual-overrides selection hotfix is complete. The next implementation task is blocked until explicit user approval; recommended next task is `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
+- `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete, and the manual-overrides selection hotfix plus latest UI polish items are complete. The next implementation task is blocked until explicit user approval; recommended next task is `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
 
 Do not start yet:
 

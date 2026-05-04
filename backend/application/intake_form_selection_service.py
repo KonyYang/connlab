@@ -247,6 +247,7 @@ class IntakeFormSelectionService:
                     "lot_or_traceability": self._clean(sample.lot_or_traceability),
                     "material": self._clean(sample.material),
                     "plating": self._clean(sample.plating),
+                    "lubricant": self._clean(sample.lubricant),
                     "housing_material": self._clean(sample.housing_material),
                     "quantity": self._clean(sample.quantity),
                 }

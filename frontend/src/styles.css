@@ -81,14 +81,9 @@ button {
   box-shadow: 0 6px 14px rgba(31, 102, 209, 0.18);
 }
 
-.sidebar-brand strong,
-.sidebar-brand small {
-  display: block;
-}
-
-.sidebar-brand small {
-  color: #6b7688;
-  font-size: 12px;
+.sidebar-brand strong {
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .sidebar-nav {
@@ -157,7 +152,7 @@ button {
 
 .top-bar {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(180px, 1fr) minmax(280px, 460px) auto;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(280px, 460px) auto;
   align-items: center;
   gap: 16px;
   min-height: 72px;
@@ -169,16 +164,11 @@ button {
 
 .top-bar h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary);
   line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-.top-bar-description {
-  max-width: 38ch;
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: 14px;
+  letter-spacing: 0;
 }
 
 .top-search {
@@ -434,8 +424,7 @@ input {
     padding: 16px 10px;
   }
 
-  .sidebar-brand div,
-  .nav-copy small {
+  .sidebar-brand strong {
     display: none;
   }
 
@@ -450,10 +439,6 @@ input {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
     padding: 14px 18px;
-  }
-
-  .top-bar-description {
-    max-width: none;
   }
 
   .main-work-area {
@@ -476,17 +461,13 @@ input {
   }
 
   .top-bar {
-    grid-template-columns: minmax(150px, 0.7fr) minmax(160px, 0.9fr) minmax(260px, 380px) auto;
+    grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 380px) auto;
     gap: 12px;
     padding-inline: 18px;
   }
 
   .top-bar h1 {
-    font-size: 20px;
-  }
-
-  .top-bar-description {
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .main-work-area {
