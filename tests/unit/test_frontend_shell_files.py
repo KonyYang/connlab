@@ -684,6 +684,24 @@ def test_task094_intake_continue_uses_application_form_header_gate() -> None:
     assert "Select a Word (.docx) file before continuing." not in inbox_source
 
 
+def test_task095_precheck_uses_single_active_case_without_switcher() -> None:
+    """TASK_095 keeps the New Project Precheck page on one active case."""
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8") + intake_feature_source()
+    case_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "selectedPrecheckCaseId: null" in inbox_source
+    assert inbox_source.count("selectedPrecheckCaseId: null") >= 3
+    assert "selectedPrecheckCaseId: selection.case_id" in inbox_source
+    assert "review.cases.find((item) => item.case_id === selectedCaseId)" in case_review_source
+    assert "Review cases" not in case_review_source
+    assert "case-switcher" not in case_review_source
+    assert "case-selector-list" not in case_review_source
+
+
 def test_task087_msg_attachment_hotfix_filters_source_and_labels_msg() -> None:
     """Real Outlook attachments hide source email rows and show `.msg` chips."""
     inbox_source = (

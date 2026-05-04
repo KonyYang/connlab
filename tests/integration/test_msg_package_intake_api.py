@@ -249,6 +249,28 @@ def test_select_form_api_binds_selected_docx_to_precheck_case(tmp_path: Path) ->
             draft = IntakeDraftRepository(session).get_by_case(selected["case_id"])
             assert draft is not None
             assert "Alice Requestor" in draft.parsed_fields_json
+
+        second_response = client.post(
+            "/api/intake-packages/pkg-select/select-form",
+            json={"asset_id": "asset-other"},
+        )
+
+        assert second_response.status_code == 200
+        second = second_response.json()
+        assert second["case_id"] == selected["case_id"]
+        assert second["selected_form_asset_id"] == "asset-other"
+
+        second_review_response = client.get("/api/intake-packages/pkg-select/case-review")
+        assert second_review_response.status_code == 200
+        second_cases = second_review_response.json()["cases"]
+        assert len(second_cases) == 1
+        assert second_cases[0]["case_id"] == selected["case_id"]
+        assert second_cases[0]["selected_form_asset_id"] == "asset-other"
+
+        with session_factory() as session:
+            persisted_cases = IntakeCaseRepository(session).list_by_package("pkg-select")
+            assert len(persisted_cases) == 1
+            assert persisted_cases[0].selected_form_asset_id == "asset-other"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

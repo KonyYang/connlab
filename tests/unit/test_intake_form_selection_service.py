@@ -218,7 +218,6 @@ def test_selection_updates_existing_case_and_draft() -> None:
         package_id="pkg-1",
         selected_form_asset_id="old-asset",
         status=IntakeCaseStatus.DRAFT_CREATED,
-        confirmed_project_id="project-should-be-cleared",
     )
     existing_draft = IntakeDraft(
         draft_id="draft-1",
@@ -291,7 +290,7 @@ def test_selection_clears_manual_overrides_when_rebinding_reusable_case() -> Non
     assert draft_store.drafts["draft-1"].manual_overrides_json is None
 
 
-def test_selection_creates_separate_case_when_package_already_has_other_form_case() -> None:
+def test_selection_rebinds_unconfirmed_case_when_package_has_other_form_case() -> None:
     existing_case = IntakeCase(
         case_id="case-1",
         package_id="pkg-1",
@@ -308,12 +307,34 @@ def test_selection_creates_separate_case_when_package_already_has_other_form_cas
 
     result = service.select_form_asset("pkg-1", "asset-b")
 
+    assert result.case.case_id == "case-1"
+    assert result.case.selected_form_asset_id == "asset-b"
+    assert len(case_store.cases) == 1
+    assert case_store.cases["case-1"].selected_form_asset_id == "asset-b"
+
+
+def test_selection_creates_new_case_when_existing_case_is_confirmed() -> None:
+    confirmed_case = IntakeCase(
+        case_id="case-1",
+        package_id="pkg-1",
+        selected_form_asset_id="asset-a",
+        status=IntakeCaseStatus.CONFIRMED,
+        confirmed_project_id="project-1",
+    )
+    service, _, case_store, _ = _service(
+        [
+            _asset("asset-a", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+            _asset("asset-b", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        ],
+        cases=[confirmed_case],
+    )
+
+    result = service.select_form_asset("pkg-1", "asset-b")
+
+    assert result.case.case_id != "case-1"
     assert result.case.selected_form_asset_id == "asset-b"
     assert len(case_store.cases) == 2
-    assert {case.selected_form_asset_id for case in case_store.cases.values()} == {
-        "asset-a",
-        "asset-b",
-    }
+    assert case_store.cases["case-1"].confirmed_project_id == "project-1"
 
 
 def test_selection_rejects_non_word_non_candidate_asset() -> None:

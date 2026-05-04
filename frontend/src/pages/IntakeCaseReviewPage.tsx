@@ -31,7 +31,6 @@ import {
   fallbackValue,
   fieldsWithLookupOptions,
   focusSampleRow,
-  formatStatus,
   issueLevelMap,
   normalizedSampleRows,
   normalizedRequestedTestingRows,
@@ -373,30 +372,6 @@ export function IntakeCaseReviewPage({
               }}
             />
           </section>
-
-          {review.cases.length > 1 ? (
-            <section className="precheck-card case-switcher">
-              <h3 className="ui-panel-title">Review cases</h3>
-              <div className="case-selector-list">
-                {review.cases.map((item) => (
-                  <button
-                    className={item.case_id === activeCase.case_id ? "case-selector-button case-selector-button-active" : "case-selector-button"}
-                    key={item.case_id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCaseId(item.case_id);
-                      setOperatorConfirmed(false);
-                      setConfirmError(null);
-                      setConfirmResult(null);
-                    }}
-                  >
-                    <strong>{item.selected_asset_name ?? "Manual intake"}</strong>
-                    <span>{formatStatus(item.status)}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
 
           <footer className="precheck-footer">
             <button

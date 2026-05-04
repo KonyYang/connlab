@@ -147,7 +147,10 @@ class IntakeFormSelectionService:
     def _create_or_update_case(self, package_id: str, selected_asset_id: str) -> _CaseSelection:
         existing_cases = self._case_store.list_by_package(package_id)
         for current in existing_cases:
-            if current.selected_form_asset_id == selected_asset_id:
+            if (
+                current.selected_form_asset_id == selected_asset_id
+                and self._can_reuse_case(current)
+            ):
                 return _CaseSelection(
                     case=self._case_store.update(
                         replace(
@@ -161,7 +164,7 @@ class IntakeFormSelectionService:
         reusable_cases = [
             case
             for case in existing_cases
-            if case.selected_form_asset_id in (None, "old-asset")
+            if self._can_reuse_case(case)
         ]
         if reusable_cases:
             current = reusable_cases[0]
@@ -186,6 +189,13 @@ class IntakeFormSelectionService:
                 )
             ),
             same_selected_asset=False,
+        )
+
+    def _can_reuse_case(self, case: IntakeCase) -> bool:
+        """Return whether an intake case can be rebound before project confirmation."""
+        return (
+            case.confirmed_project_id is None
+            and case.status is not IntakeCaseStatus.CONFIRMED
         )
 
     def _create_or_update_draft(

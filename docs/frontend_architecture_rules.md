@@ -148,6 +148,8 @@ Allowed page-level state:
 - fatal loading/error state for the whole page
 - selected tab or selected workflow step when it is purely presentational
 
+Intake session state represents one current New Project source package and one selected application form. Importing a new email package or direct Word form must replace the previous session. Selecting a different eligible application form clears the previous Precheck case id until the backend returns the case for the new selected form. Precheck may resolve an active case from route/session state, but it must not present a multi-case switcher in the New Project workflow.
+
 Prefer feature hooks for:
 
 - imported package state

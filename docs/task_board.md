@@ -1,6 +1,6 @@
 # ConnLab Task Board
 
-> Status: Phase 10A follow-up complete; TASK_094 application-form header gate complete
+> Status: Phase 10A follow-up complete; TASK_095 single active Precheck case complete
 > Last Updated: 2026-05-04
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: None - pending user approval for next task or phase
@@ -184,6 +184,7 @@ Current judgment as of 2026-04-26:
 - TASK_094 manual smoke hotfix is complete: every attachment selection now refreshes the footer guidance and `Continue to Precheck` state from the current selected file.
 - TASK_094 supplemental upload hotfix is complete: uploading a `.docx` into an email package now returns a business-readable 400 validation message when the header gate fails instead of surfacing `Internal Server Error`.
 - Intake and Precheck now share a small UI typography/action vocabulary for panel titles, preview titles, section titles, primary actions, secondary actions, and compact actions. Static frontend shell tests guard the shared vocabulary on key Intake/Precheck components.
+- `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete: repeated Intake to Precheck navigation now keeps one active unconfirmed review case, preserves edits only for the same selected form, clears manual overrides when rebinding to a different form, and removes the Precheck `Review cases` card.
 - No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
 Current stop point:
@@ -286,6 +287,7 @@ Current stop point:
 - `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` is complete.
 - TASK_094 manual smoke hotfix is complete.
 - TASK_094 supplemental upload 500 hotfix is complete.
+- `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete.
 - No implementation task is active. Await explicit user approval for the next task.
 
 ---
@@ -692,6 +694,7 @@ Status table:
 | T10A-33 | `TASK_092_INTAKE_ATTACHMENT_DOWNLOAD_ACTION` | done | Intake attachment Download button, /download API, and frontend wiring completed on 2026-05-04 |
 | T10A-34 | `TASK_093_EMAIL_PACKAGE_MISSING_FORM_UPLOAD_CONTINUATION` | done | Email package missing-form upload continuation completed on 2026-05-04 |
 | T10A-35 | `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` | done | Intake Continue to Precheck is gated by `.docx` and Laboratory Testing Request header table cell `(1,2)` validation through OfficeFacade on 2026-05-04; manual smoke hotfix keeps footer/button state synced to every selected attachment |
+| T10A-36 | `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` | done | Single active Precheck case behavior completed on 2026-05-04; A-to-B form selection reuses the unconfirmed case, clears old manual overrides, and the Precheck case switcher was removed |
 
 Acceptance gate:
 
@@ -1289,7 +1292,9 @@ Why this is next:
 - Validation for TASK_090 New Project stepper polish: `py -m pytest tests\unit\test_frontend_shell_files.py::test_task070_precheck_step_matches_reference_workspace tests\unit\test_frontend_shell_files.py::test_task089_new_project_workflow_shell_is_shared -q`, result `2 passed`; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`; `npm run build`, result passed.
 - TASK_090 Attachment details cleanup: the Attachment details header no longer shows the redundant file type subtitle (Word Document / PDF Document) below the filename, reducing visual noise while keeping the file type chip visible.
 - TASK_090 Email information polish: the Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, matching the visual hierarchy of the Attachment details header.
-- Recommended next controlled task: pending user decision after `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE`.
+- `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete: `IntakeFormSelectionService` now reuses unconfirmed package cases when switching selected application forms, clears manual overrides only when rebinding to a different form, leaves confirmed cases intact, and the New Project Precheck page no longer renders the `Review cases` switcher.
+- Validation for `TASK_095`: `py -m pytest tests\unit\test_intake_form_selection_service.py -q`, result `13 passed`; `py -m pytest tests\integration\test_msg_package_intake_api.py -q`, result `10 passed`; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `44 passed`; `npm run build`, result passed.
+- Recommended next controlled task: pending user decision after `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION`.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
 Active implementation task:
@@ -1298,7 +1303,7 @@ Active implementation task:
 
 Reason:
 
-- `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` is complete. The next implementation task is blocked until explicit user approval.
+- `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete. The next implementation task is blocked until explicit user approval.
 
 Do not start yet:
 

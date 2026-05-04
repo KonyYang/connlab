@@ -43,6 +43,13 @@ IntakePackage
 
 The frontend session is not the source of truth. The backend package/case/draft records are the recovery point for page navigation, refresh, and later workflow expansion.
 
+Current New Project Intake uses one active Precheck review case before Project confirmation:
+
+- Continuing to Precheck with the same selected application form reopens the same case and preserves saved draft corrections.
+- Selecting a different application form before Project confirmation rebinds the reusable unconfirmed case to the new form and clears manual overrides.
+- Importing a new email package or direct `.docx` source starts a clean Intake session.
+- The Precheck page must not expose a multi-case switcher for the current New Project workflow.
+
 ## 3. Field States
 
 Use these field states in backend DTOs, frontend selectors, and UI copy.
