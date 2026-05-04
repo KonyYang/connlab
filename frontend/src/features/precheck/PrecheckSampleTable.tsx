@@ -28,8 +28,8 @@ export function PrecheckSampleTable({
   return (
     <div className="sample-table-wrap">
       <div className="sample-table-header">
-        <h4>Test Sample Information</h4>
-        <button className="sample-add-button" disabled={disabled} type="button" onClick={onAdd}>
+        <h4 className="ui-section-title">Test Sample Information</h4>
+        <button className="sample-add-button ui-compact-action" disabled={disabled} type="button" onClick={onAdd}>
           Add Sample
         </button>
       </div>

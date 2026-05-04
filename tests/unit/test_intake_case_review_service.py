@@ -190,6 +190,87 @@ def test_review_service_updates_sample_rows_as_manual_overrides(tmp_path: Path) 
     ]
 
 
+def test_review_service_updates_requested_testing_rows_as_manual_overrides(tmp_path: Path) -> None:
+    """Operator requested-testing row corrections are persisted and sync compatibility field."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "product_name": "Connector",
+                "requested_testing_rows": [
+                    {"test_to_be_performed": "Old test", "applicable_specification": "GS-00"}
+                ],
+            }
+        ),
+    )
+
+    item = service.update_case_fields(
+        "case-1",
+        {},
+        requested_testing_rows=[
+            {
+                "test_to_be_performed": "Qualification test",
+                "applicable_specification": "GS-12-2652-22",
+            },
+            {
+                "test_to_be_performed": "Environmental test",
+                "applicable_specification": "QG-03-016E",
+            },
+        ],
+    )
+
+    # Verify rows are persisted
+    assert item.parsed_fields["requested_testing_rows"] == [
+        {
+            "test_to_be_performed": "Qualification test",
+            "applicable_specification": "GS-12-2652-22",
+        },
+        {
+            "test_to_be_performed": "Environmental test",
+            "applicable_specification": "QG-03-016E",
+        },
+    ]
+
+    # Verify compatibility field is synced from first column
+    assert item.parsed_fields["requested_testing"] == "Qualification test\nEnvironmental test"
+
+
+def test_review_service_requested_testing_rows_syncs_to_compatibility_field(tmp_path: Path) -> None:
+    """When only rows are provided, requested_testing compatibility field is updated."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "product_name": "Connector",
+                "requested_testing": "Old flattened text",
+            }
+        ),
+    )
+
+    item = service.update_case_fields(
+        "case-1",
+        {},
+        requested_testing_rows=[
+            {"test_to_be_performed": "Bend test", "applicable_specification": ""},
+            {"test_to_be_performed": "", "applicable_specification": "GS-99"},
+        ],
+    )
+
+    # Rows with any value are kept
+    assert len(item.parsed_fields["requested_testing_rows"]) == 2
+    assert item.parsed_fields["requested_testing_rows"][0]["test_to_be_performed"] == "Bend test"
+    assert item.parsed_fields["requested_testing_rows"][1]["applicable_specification"] == "GS-99"
+
+    # Compatibility field should only include non-empty test descriptions
+    assert item.parsed_fields["requested_testing"] == "Bend test"
+
+
 def test_review_service_section1_precheck_warns_without_blocking_project_no_and_ltr(
     tmp_path: Path,
 ) -> None:
@@ -238,6 +319,42 @@ def test_review_service_excludes_section2_lab_fields_from_preproject_check(
 
     assert item.missing_required_fields == ()
     assert all("estimated_completion_date" != issue.field_key for issue in item.precheck_issues)
+
+
+def test_review_service_saves_and_returns_additional_information_overrides(tmp_path: Path) -> None:
+    """Additional Information saves and returns correctly via overrides."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(_complete_section1_fields()),
+    )
+
+    # Simulate frontend sending ALL fields (as handleSaveFields does)
+    item = service.update_case_fields(
+        "case-1",
+        {
+            **_complete_section1_fields(),
+            "additional_information": "New additional info text",
+        },
+    )
+
+    # Verify the response includes the new value
+    assert item.parsed_fields.get("additional_information") == "New additional info text"
+
+    # Verify reload from store also returns the saved value
+    review = service.get_package_review("pkg-1")
+    assert review.cases[0].parsed_fields.get("additional_information") == "New additional info text"
+
+    # Modify again and verify
+    item = service.update_case_fields(
+        "case-1",
+        {
+            **_complete_section1_fields(),
+            "additional_information": "Modified additional info",
+        },
+    )
+    assert item.parsed_fields.get("additional_information") == "Modified additional info"
 
 
 def test_review_service_raises_for_missing_package(tmp_path: Path) -> None:

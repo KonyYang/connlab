@@ -59,7 +59,13 @@ def test_docx_preview_returns_structured_application_form_sections(
     assert sample_table.rows[0][1] == "PN-075 A"
     assert sample_table.rows[0][3] == "Ag"
     assert sample_table.rows[0][5] == "NA"
-    assert any(table.title == "Requested Testing" for table in preview.tables)
+    requested_testing_table = next(
+        table for table in preview.tables if table.title == "Description of Requested Testing"
+    )
+    assert requested_testing_table.headers == ("Tests to be Performed", "Applicable Specifications")
+    assert requested_testing_table.rows[0][0] == "Thermal cycling"
+    assert requested_testing_table.rows[0][1] == ""
+    assert not any(table.title == "Additional Information" for table in preview.tables)
 
 
 def test_unsupported_asset_returns_metadata_preview(tmp_path: Path) -> None:

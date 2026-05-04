@@ -58,12 +58,27 @@ Complete the Intake `Attachment details` area for real business use by showing p
 
 ## Post-Completion Notes
 
+- Attachment details previews now use one unified header for DOCX, PDF, MSG, image, Excel, metadata-only, and unsupported attachments; operator-facing preview pages no longer show duplicated outer `Attachment details`, `File size`, or raw `Role` rows.
 - Attachment details `Test Sample Information` now uses the same application-form sample columns as Precheck: `Product Name`, `Part Number / Revision`, `Traceability Manufacturing Lot Info`, `Contact Base Material`, `Contact Plating`, `Contact Lubricant`, `Housing Material`, and `Quantity`.
 - The DOCX parser now recognizes `Contact Lubricant` / `lubricant` sample columns for preview and precheck draft display without changing the persisted `SampleInfo` database schema.
 - Preview combines part number and revision for display, with conservative suffix-only de-duplication to avoid dropping single-letter revisions that merely appear inside part numbers.
+- Attachment details DOCX preview now renders `Form No.` and `Revision` as one merged `Form No./Revision` card at the end of the field grid; the backend preview label `Completion Date` is corrected to `Requested Completion Date` without changing preview field order or persistence.
+- Post-completion polish on 2026-05-04:
+  - Attachment details requested-testing preview was realigned with Precheck by showing `Description of Requested Testing` and `Additional Information` instead of a generic table containing report-copy recipients.
+  - `Send Copies To` remains structured data for Precheck/confirmation but no longer renders in Attachment details preview.
+  - Validation: `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_frontend_shell_files.py -q` = 40 passed; `npm run build` passed.
+- Parser structural alignment on 2026-05-04:
+  - DOCX parser now preserves the application-form two-column requested-testing table (`Tests to be Performed` + `Applicable Specifications`) through `ParsedRequestedTestingRow`.
+  - `Additional Information` is extracted from the real heading-plus-following-block structure after skipping Confidential/Subcontracted controls.
+  - Preview service returns `Description of Requested Testing` as a two-column preview table and `Additional Information` as a separate table.
+  - Frontend renders the requested-testing table in the same preview-table style as `Test Sample Information` and renders Additional Information as a compact bordered text block.
+  - Validation: `py -m pytest tests\unit\test_application_form_parser.py tests\unit\test_intake_asset_preview_service.py tests\unit\test_frontend_shell_files.py -q` = 48 passed; `py -m pytest tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py -q` = 8 passed; `npm run build` passed; `py -m pytest -q` = 293 passed.
 
 ## Additional Validation
 
 - `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_application_form_parser.py tests\unit\test_intake_form_selection_service.py -q`, result `22 passed`.
 - `py -m pytest tests\unit\test_intake_asset_preview_service.py tests\unit\test_application_form_parser.py tests\unit\test_intake_form_selection_service.py tests\unit\test_frontend_shell_files.py -q`, result `57 passed`.
 - `py -m pytest tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py -q`, result `8 passed`.
+- `py -m pytest tests\unit\test_frontend_shell_files.py::test_task088_attachment_details_preview_completion tests\unit\test_application_form_parser.py -q`, result `8 passed`.
+- `py -m pytest tests -k preview -q`, result `38 passed, 254 deselected`.
+- `npm run build` from `frontend/`, result passed.

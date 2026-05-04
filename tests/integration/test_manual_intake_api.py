@@ -3,11 +3,14 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from docx import Document
 
 from backend.api.dependencies import get_session, get_settings
+from backend.api.routes_intake import router as intake_router
+from backend.api.routes_intake_review import router as intake_review_router
 from backend.api.main import app
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -253,6 +256,115 @@ def _test_database(tmp_path: Path):
     engine = create_database_engine(settings)
     init_db(engine)
     return settings, engine, create_session_factory(engine)
+
+
+def test_review_fields_persists_requested_testing_rows(tmp_path: Path) -> None:
+    """PATCH /review-fields with requested_testing_rows persists and returns rows."""
+    settings, engine, session_factory = _test_database(tmp_path)
+
+    from fastapi.testclient import TestClient
+
+    # Use IntakeDraftRepository from top-level imports
+    # No additional imports needed
+
+    # Create a fresh app instance for this test
+    test_app = FastAPI(title="Test App")
+    test_app.include_router(intake_router)
+    test_app.include_router(intake_review_router)
+    test_app.dependency_overrides[get_session] = _override_session(session_factory)
+
+    client = TestClient(test_app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={
+                "product_name": "Connector sample",
+                "requester": "Test user",
+                "email": "test@example.com",
+                "business_unit": "Power Solutions",
+                "project_no": "PRJ-001",
+            },
+        )
+        assert create_response.status_code == 201
+        payload = create_response.json()
+
+        # First update: complete all required fields
+        update_response = client.patch(
+            f"/api/intake-cases/{payload['case_id']}/review-fields",
+            json={
+                "fields": {
+                    "form_no": "E-3718",
+                    "revision": "H",
+                    "product_name": "Connector sample",
+                    "requester": "Test user",
+                    "phone": "555-0100",
+                    "request_date": "2026-05-03",
+                    "email": "test@example.com",
+                    "business_unit": "Power Solutions",
+                    "manufacturing_site": "Nantong",
+                    "results_format": "Formal Report (Customer)",
+                    "requested_completion_date": "2026-05-10",
+                    "test_type": "Customer Specific Testing",
+                    "sample_status": "Production",
+                    "project_type": "New Product Development",
+                    "post_testing_disposition": "Keep in the Lab",
+                    "confidential": "No",
+                    "subcontract": "Yes",
+                    "send_copies_recipients": "Team",
+                },
+            },
+        )
+        assert update_response.status_code == 200
+
+        # Second update: add requested_testing_rows
+        rows_update_response = client.patch(
+            f"/api/intake-cases/{payload['case_id']}/review-fields",
+            json={
+                "fields": {},
+                "requested_testing_rows": [
+                    {
+                        "test_to_be_performed": "Qualification test",
+                        "applicable_specification": "GS-12-2652-22",
+                    },
+                    {
+                        "test_to_be_performed": "Environmental test",
+                        "applicable_specification": "QG-03-016E_Rev2",
+                    },
+                ],
+            },
+        )
+        assert rows_update_response.status_code == 200
+        updated_case = rows_update_response.json()
+
+        # Verify response contains rows
+        assert "requested_testing_rows" in updated_case
+        assert len(updated_case["requested_testing_rows"]) == 2
+        assert updated_case["requested_testing_rows"][0]["test_to_be_performed"] == "Qualification test"
+        assert updated_case["requested_testing_rows"][0]["applicable_specification"] == "GS-12-2652-22"
+
+        # Verify compatibility field is synced
+        fields_dict = {f["key"]: f["value"] for f in updated_case["fields"]}
+        assert "requested_testing" in fields_dict
+        assert "Qualification test" in fields_dict["requested_testing"]
+        assert "Environmental test" in fields_dict["requested_testing"]
+
+        # Verify draft persistence
+        with session_factory() as session:
+            draft = IntakeDraftRepository(session).get(payload["draft_id"])
+            assert draft is not None
+            assert draft.manual_overrides_json is not None
+            import json
+
+            overrides = json.loads(draft.manual_overrides_json)
+            assert "requested_testing_rows" in overrides
+            assert len(overrides["requested_testing_rows"]) == 2
+            assert overrides["requested_testing_rows"][0]["test_to_be_performed"] == "Qualification test"
+            # Compatibility field should also be in overrides
+            assert "requested_testing" in overrides
+    finally:
+        test_app.dependency_overrides.clear()
+        engine.dispose()
 
 
 def _override_session(session_factory):

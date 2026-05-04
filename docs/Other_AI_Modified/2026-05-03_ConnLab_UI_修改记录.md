@@ -986,7 +986,269 @@ dist/assets/index-QPeIaYm7.js   280.90 kB │ gzip: 83.06 kB
 
 ---
 
-## 十四、备注
+## 十四、Form No./Revision 卡片位置优化
+
+### 14.1 问题描述
+
+**问题**: 
+1. Attachment details 预览中，Form No. 和 Revision 字段显示在字段卡片区的最前面，占据视觉重点
+2. Form No. 和 Revision 分散在两个独立的卡片中
+3. 卡片标题为"Form / Revision"，不够精确
+
+**需求**:
+- 将 Form No. 和 Revision 移到字段卡片区的最后面（Subcontracted 之后）
+- 合并为一个卡片显示
+- 标题改为"Form No./Revision"，更精确反映字段内容
+- 后端 preview 字段顺序保持不变，仅修正 preview label 文案
+
+---
+
+### 14.2 实施方案
+
+#### 修改 1：AttachmentPreviewPanel.tsx - 字段过滤和合并逻辑
+
+文件：`frontend/src/features/intake/AttachmentPreviewPanel.tsx`（第 187-250 行）
+
+**新增字段过滤函数**:
+```typescript
+const FORM_VERSION_LABELS = new Set(["Form No.", "Revision"]);
+
+function businessPreviewFields(preview: IntakeAssetPreview): IntakeAssetPreview["fields"] {
+  return preview.fields.filter((field) => !FORM_VERSION_LABELS.has(field.label));
+}
+
+function formVersionText(preview: IntakeAssetPreview): string | null {
+  const formNo = preview.fields.find((field) => field.label === "Form No.")?.value.trim();
+  const revision = preview.fields.find((field) => field.label === "Revision")?.value.trim();
+
+  if (formNo && revision) {
+    return `${formNo} / Rev ${revision}`;
+  }
+  if (formNo) {
+    return formNo;
+  }
+  if (revision) {
+    return `Rev ${revision}`;
+  }
+  return null;
+}
+```
+
+**修改 DocxApplicationPreview 组件**:
+```typescript
+function DocxApplicationPreview({
+  preview,
+}: {
+  preview: IntakeAssetPreview;
+}): ReactElement {
+  const sampleTable = preview.tables.find((table) => table.title === "Test Sample Information");
+  const otherTables = preview.tables.filter((table) => table.title !== "Test Sample Information");
+  const fields = businessPreviewFields(preview);
+  const versionText = formVersionText(preview);
+  return (
+    <div className="docx-structured-preview">
+      {/* ... 标题和警告区域 ... */}
+      
+      {/* 业务字段卡片区（不含 Form No. 和 Revision） */}
+      {fields.length > 0 ? (
+        <dl className="docx-field-grid">
+          {fields.map((field) => (
+            <div key={`${field.label}-${field.value}`}>
+              <dt>{field.label}</dt>
+              <dd>{field.value}</dd>
+            </div>
+          ))}
+          {/* Form No./Revision 合并卡片（在字段网格末尾） */}
+          {versionText ? (
+            <div>
+              <dt>Form No./Revision</dt>
+              <dd>{versionText}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+      
+      {/* 表格区域 */}
+      {sampleTable ? <PreviewTableSection table={sampleTable} compact /> : null}
+      {otherTables.map((table) => <PreviewTableSection key={table.title} table={table} />)}
+    </div>
+  );
+}
+```
+
+**关键变化**:
+- ✅ 使用 `businessPreviewFields()` 过滤掉 Form No. 和 Revision 字段
+- ✅ 使用 `formVersionText()` 合并两个字段的值为 `E-3718 / Rev H` 格式
+- ✅ 将合并后的卡片放在 `docx-field-grid` 内部末尾
+- ✅ 标题从"Form / Revision"改为"Form No./Revision"
+- ✅ 复用标准字段卡片样式，无需独立的 `.docx-form-version-card` 样式
+
+---
+
+#### 修改 2：intake_asset_preview_service.py - 后端预览字段标签调整
+
+文件：`backend/application/intake_asset_preview_service.py`（第 284 行）
+
+**修改前**:
+```python
+("Completion Date", parsed.requested_completion_date),
+```
+
+**修改后**:
+```python
+("Requested Completion Date", parsed.requested_completion_date),
+```
+
+**说明**: 
+- 将 "Completion Date" 改为 "Requested Completion Date"，与前端 Precheck 字段标签保持一致。
+- 这是 `/api/intake-assets/{asset_id}/preview` 返回字段 label 的文案修正，不改变字段顺序、数据来源或持久化结构。
+
+---
+
+#### 修改 3：intake-inbox.css - 样式清理
+
+文件：`frontend/src/intake-inbox.css`（第 570 行之后）
+
+**说明**: 
+- 移除了第一阶段添加的 `.docx-form-version-card` 独立样式（不再需要）
+- Form No./Revision 卡片现在复用 `.docx-field-grid div` 的标准样式
+- 保持代码简洁，避免样式冗余
+
+---
+
+#### 修改 4：test_frontend_shell_files.py - 测试断言更新
+
+文件：`tests/unit/test_frontend_shell_files.py`（第 1197-1200 行）
+
+**修改前**:
+```python
+# TASK_091: Form No. and Revision moved to end as merged card
+assert "businessPreviewFields" in inbox_source
+assert "formVersionText" in inbox_source
+assert "Form / Revision" in inbox_source
+assert ".docx-form-version-card" in inbox_styles
+```
+
+**修改后**:
+```python
+# TASK_088 polish: Form No. and Revision moved to end of field grid as merged card
+assert "businessPreviewFields" in inbox_source
+assert "formVersionText" in inbox_source
+assert "Form No./Revision" in inbox_source
+```
+
+**说明**: 
+- 更新标题断言从"Form / Revision"改为"Form No./Revision"
+- 移除 `.docx-form-version-card` 样式断言（已删除该样式）
+
+---
+
+### 14.3 验证结果
+
+**单元测试**:
+```bash
+py -m pytest tests\unit\test_frontend_shell_files.py::test_task088_attachment_details_preview_completion -q
+. [100%]
+1 passed in 0.08s
+
+py -m pytest tests\unit\test_frontend_shell_files.py -q
+...................................                                   [100%]
+35 passed in 0.07s
+
+py -m pytest tests/unit/test_application_form_parser.py -q
+.......                                                                                                                                                                   [100%] 
+7 passed in 0.38s
+
+py -m pytest tests/ -k "preview" -q
+......................................                                                                                                                                    [100%] 
+38 passed, 254 deselected in 1.40s
+
+py -m pytest tests/unit/ -q --tb=short
+......................................................................................................................................................................... [ 68%] 
+...............................................................................                                                                                           [100%] 
+248 passed in 1.82s
+```
+
+**前端构建**:
+```bash
+cd D:\PythonProject\connlab\frontend
+npm run build
+
+> connlab-frontend@0.1.0 build
+> tsc -b && vite build
+
+vite v7.3.2 building client environment for production...
+✓ 77 modules transformed.
+dist/index.html                   0.46 kB │ gzip:  0.30 kB
+dist/assets/index-BrPEm3cn.css   51.38 kB │ gzip:  9.43 kB
+dist/assets/index-CWFhIROC.js   281.32 kB │ gzip: 83.22 kB
+✓ built in 598ms
+```
+
+---
+
+### 14.4 最终效果
+
+**修改前的字段顺序**:
+```
+┌────────────────────────────────────────────────┐
+│ Form No.          │ Revision                   │
+│ E-3718            │ H                          │
+├────────────────────────────────────────────────┤
+│ Requested By      │ Phone #                    │
+│ Neo Xu            │ 0513-80167327              │
+────────────────────────────────────────────────┤
+│ ... 其他字段 ...                                │
+────────────────────────────────────────────────┤
+│ Subcontracted                                  │
+│ Yes                                            │
+└────────────────────────────────────────────────┘
+```
+
+**修改后的字段顺序**:
+```
+┌────────────────────────────────────────────────┐
+│ Requested By      │ Phone #                    │
+│ Neo Xu            │ 0513-80167327              │
+├────────────────────────────────────────────────
+│ ... 其他字段 ...                                │
+├────────────────────────────────────────────────┤
+│ Subcontracted     │ Form No./Revision          │
+│ Yes               │ E-3718 / Rev H             │
+└────────────────────────────────────────────────┘
+```
+
+**改进**:
+- ✅ Form No. 和 Revision 不再占据第一屏视觉重点
+- ✅ 合并为一个卡片，节省空间
+- ✅ 标题改为"Form No./Revision"，更精确
+- ✅ 位置移到字段区末尾（Subcontracted 之后）
+- ✅ 后端预览 API 字段顺序不变，只改前端展示
+- ✅ "Completion Date" 改为"Requested Completion Date"，标签更准确
+- ✅ 所有单元测试通过（248 个）
+- ✅ 前端构建成功
+
+---
+
+### 14.5 设计决策记录
+
+**为什么不在后端修改字段顺序？**
+
+1. 后端 preview API 可能被其他消费方使用（测试、API 调试工具等）
+2. 字段顺序在 JSON 对象中本就不应该强依赖
+3. 前端展示层调整更灵活，不影响后端契约
+4. 符合 AGENTS.md 第 4.1 节的 `$impeccable` 原则
+
+**为什么合并 Form No. 和 Revision？**
+
+1. 两个字段语义紧密相关，都属于表单版本信息
+2. 合并后节省一个卡片位置
+3. 显示格式 `E-3718 / Rev H` 更符合业务阅读习惯
+4. 减少视觉碎片化，提升信息密度
+
+---
+
+## 十五、备注
 
 - 本次修改严格遵循 AGENTS.md 中的 `$impeccable` 规则（第 4.1 节）
 - 所有修改均为纯视觉层优化，不影响业务逻辑
@@ -996,7 +1258,7 @@ dist/assets/index-QPeIaYm7.js   280.90 kB │ gzip: 83.06 kB
 
 ---
 
-**文档版本**: 1.4  
-**最后更新**: 2026-05-03（含修正记录 + Intake attachment list cleanup + Attachment details cleanup + Email information color）  
+**文档版本**: 1.5  
+**最后更新**: 2026-05-04（含 Form No./Revision 卡片位置优化 + Completion Date 标签修改）  
 **修改人员**: AI Assistant  
 **审核状态**: 待审核

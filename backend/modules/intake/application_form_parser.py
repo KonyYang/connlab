@@ -30,6 +30,14 @@ class ParsedSampleInfo:
 
 
 @dataclass(frozen=True, slots=True)
+class ParsedRequestedTestingRow:
+    """One row from the application-form requested-testing table."""
+
+    test_to_be_performed: str
+    applicable_specification: str
+
+
+@dataclass(frozen=True, slots=True)
 class ParsedLabSection:
     """Section 2 lab fields extracted from an application form."""
 
@@ -68,6 +76,7 @@ class ParsedApplicationForm:
     send_copies_recipients: str | None = None
     lab_section: ParsedLabSection = field(default_factory=ParsedLabSection)
     samples: tuple[ParsedSampleInfo, ...] = field(default_factory=tuple)
+    requested_testing_rows: tuple[ParsedRequestedTestingRow, ...] = field(default_factory=tuple)
 
 
 class ApplicationFormParser:
@@ -79,6 +88,14 @@ class ApplicationFormParser:
         label_values = _extract_label_values(document)
         _merge_footer_form_metadata(label_values, document)
         samples = _extract_sample_rows(document)
+        requested_testing_rows = _extract_requested_testing_rows(document)
+        if requested_testing_rows and not label_values.get("requested_testing_description"):
+            label_values["requested_testing_description"] = "\n".join(
+                r.test_to_be_performed for r in requested_testing_rows if r.test_to_be_performed
+            )
+        if not label_values.get("requested_testing_description"):
+            _merge_legacy_requested_testing(label_values, document)
+        _merge_additional_information_block(label_values, document)
         return ParsedApplicationForm(
             form_no=_get(label_values, "form_no"),
             form_rev=_get(label_values, "form_rev"),
@@ -113,6 +130,7 @@ class ApplicationFormParser:
                 sample_condition=_get(label_values, "sample_condition"),
             ),
             samples=tuple(samples),
+            requested_testing_rows=requested_testing_rows,
         )
 
     def table_outline(self, path: Path, limit: int = 8) -> tuple[tuple[str, str], ...]:
@@ -135,7 +153,6 @@ def _extract_label_values(document) -> dict[str, str]:
         for row in table.rows:
             cells = [_clean(cell.text) for cell in row.cells]
             _merge_table_row(values, cells)
-    _merge_requested_testing_table(values, document)
     _merge_content_control_values(values, document)
     return values
 
@@ -211,8 +228,34 @@ def _sample_from_row(
     return ParsedSampleInfo(**data)
 
 
-def _merge_requested_testing_table(values: dict[str, str], document) -> None:
-    """Extract requested testing text from header/value testing tables."""
+def _extract_requested_testing_rows(document) -> tuple[ParsedRequestedTestingRow, ...]:
+    """Extract requested testing rows from a two-column application-form table."""
+    for table in _iter_document_tables(document):
+        rows = [
+            _dedupe_cells([_clean(cell.text) for cell in row.cells])
+            for row in table.rows
+        ]
+        if not rows:
+            continue
+        header = [_normalize_label(cell) for cell in rows[0]]
+        if "tests to be performed" not in header or "applicable specifications" not in header:
+            continue
+        test_col = header.index("tests to be performed")
+        spec_col = header.index("applicable specifications")
+        result: list[ParsedRequestedTestingRow] = []
+        for row in rows[1:]:
+            if test_col >= len(row) or spec_col >= len(row):
+                continue
+            test = row[test_col]
+            spec = row[spec_col]
+            if test or spec:
+                result.append(ParsedRequestedTestingRow(test, spec))
+        return tuple(result)
+    return ()
+
+
+def _merge_legacy_requested_testing(values: dict[str, str], document) -> None:
+    """Fallback: extract requested testing text from header/value testing tables."""
     if values.get("requested_testing_description"):
         return
     for table in _iter_document_tables(document):
@@ -231,6 +274,52 @@ def _merge_requested_testing_table(values: dict[str, str], document) -> None:
             if value:
                 values["requested_testing_description"] = value
                 return
+
+
+def _merge_additional_information_block(values: dict[str, str], document) -> None:
+    """Extract Additional Information from a dedicated block table."""
+    if values.get("additional_information"):
+        return
+    for table in _iter_document_tables(document):
+        rows = [
+            _dedupe_cells([_clean(cell.text) for cell in row.cells])
+            for row in table.rows
+        ]
+        found = False
+        for row in rows:
+            for cell in row:
+                if "additional information" in _normalize_label(cell):
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            continue
+        texts: list[str] = []
+        for row in rows:
+            for cell in row:
+                cleaned = _clean(cell)
+                if cleaned and "additional information" not in _normalize_label(cleaned) and not _is_known_label(cleaned):
+                    texts.append(cleaned)
+        if texts:
+            values["additional_information"] = "\n".join(texts)
+            return
+    found_heading = False
+    for child in document.element.body:
+        text = _body_child_text(child)
+        if not text:
+            continue
+        normalized = _normalize_label(text)
+        if not found_heading:
+            if "additional information" in normalized:
+                found_heading = True
+            continue
+        if _is_additional_information_skip_block(normalized):
+            continue
+        if _is_additional_information_stop_block(normalized):
+            return
+        values["additional_information"] = text
+        return
 
 
 def _merge_content_control_values(values: dict[str, str], document) -> None:
@@ -330,6 +419,28 @@ def _iter_document_tables(document):
     for section in document.sections:
         yield from section.header.tables
         yield from section.footer.tables
+
+
+def _body_child_text(child) -> str:
+    """Return visible text from one body paragraph/table element."""
+    return _clean("".join(child.xpath('.//*[local-name()="t"]/text()')))
+
+
+def _is_additional_information_skip_block(normalized: str) -> bool:
+    """Return whether a block between heading and content is an unrelated yes/no control."""
+    return (
+        "confidential tests or samples" in normalized
+        or "can testing be subcontracted" in normalized
+    )
+
+
+def _is_additional_information_stop_block(normalized: str) -> bool:
+    """Return whether Additional Information scanning has reached the next section."""
+    return (
+        "send copies of test results/reports to" in normalized
+        or "section 2 to be completed by the testing laboratory" in normalized
+        or normalized.startswith("section 2")
+    )
 
 
 def _merge_footer_form_metadata(values: dict[str, str], document) -> None:

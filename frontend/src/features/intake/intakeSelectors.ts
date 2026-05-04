@@ -136,43 +136,6 @@ export function attachmentRoleText(asset: IntakeAsset): string {
   return "Supporting attachment";
 }
 
-export function previewStatusText(
-  asset: IntakeAsset | null,
-  preview: IntakeAssetPreview | null,
-  loading: boolean,
-  error: string | null,
-): string {
-  if (!asset) {
-    return "Waiting";
-  }
-  if (loading) {
-    return "Loading";
-  }
-  if (error) {
-    return "Preview error";
-  }
-  if (preview?.kind === "docx_application_form") {
-    return "Structured Word preview";
-  }
-  if (preview?.kind === "image") {
-    return "Image preview";
-  }
-  if (preview?.kind === "metadata_only" || preview?.kind === "unsupported") {
-    return "Metadata only";
-  }
-  return "Ready";
-}
-
-export function formatBytes(value: number): string {
-  if (value >= 1024 * 1024) {
-    return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  }
-  if (value >= 1024) {
-    return `${Math.round(value / 1024)} KB`;
-  }
-  return `${value} B`;
-}
-
 function assetKindLabelFromKind(kind: IntakeAttachmentKind, extension: string): string {
   if (kind === "word") {
     return "W";

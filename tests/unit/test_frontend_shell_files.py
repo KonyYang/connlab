@@ -642,6 +642,11 @@ def test_task087_intake_information_density_cleanup() -> None:
     assert ".step-footer-guidance" in inbox_styles
     assert ".attachment-title" in inbox_styles
     assert ".attachment-guidance" not in inbox_styles
+    assert "grid-template-rows: auto auto minmax(0, 1fr);" in inbox_styles
+    assert ".intake-attachments-panel" in inbox_styles
+    assert "grid-template-rows: auto minmax(0, 1fr);" in inbox_styles
+    assert "overflow: auto;" in inbox_styles
+    assert "align-content: start;" in inbox_styles
 
 
 def test_task087_msg_attachment_hotfix_filters_source_and_labels_msg() -> None:
@@ -949,7 +954,7 @@ def test_task081_precheck_selects_use_backend_lookup_options() -> None:
         "fieldsWithLookupOptions",
         "getIntakePrecheckLookupOptions",
         "Post-Testing Sample Disposition",
-        "ConsentPanel",
+        "precheck-consent-row",
         "normalizedOptions",
     ]:
         assert term in case_review_source
@@ -1135,7 +1140,6 @@ def test_task075_intake_attachment_preview_prioritizes_docx() -> None:
         "AttachmentPreview",
         "DocxApplicationPreview",
         "docx_application_form",
-        "Structured Word preview",
         "Loading preview",
         "Preview unavailable",
         "Test Sample Information",
@@ -1176,10 +1180,7 @@ def test_task088_attachment_details_preview_completion() -> None:
         "ImageAttachmentPreview",
         "MetadataOnlyPreview",
         "image_data_url",
-        "metadata-preview-grid",
         "assetKindFromPreview",
-        "Image preview",
-        "Metadata only",
     ]:
         assert term in inbox_source
 
@@ -1187,11 +1188,33 @@ def test_task088_attachment_details_preview_completion() -> None:
         ".image-attachment-preview",
         ".image-preview-frame",
         ".metadata-only-preview",
-        ".metadata-preview-grid",
+        ".docx-preview-title-with-actions",
     ]:
         assert term in inbox_styles
 
     assert "Document structure" not in inbox_source
+
+    assert "AttachmentPreviewActions" in inbox_source
+    assert "docx-preview-title-with-actions" in inbox_source
+    assert "attachment-details-panel-compact" in inbox_source
+    assert "metadata-preview-grid" not in inbox_source
+    assert "previewStatusText" not in inbox_source
+    assert "formatBytes" not in inbox_source
+
+    # TASK_088 polish: Form No. and Revision moved to end of field grid as merged card
+    assert "businessPreviewFields" in inbox_source
+    assert "formVersionText" in inbox_source
+    assert "Form No./Revision" in inbox_source
+
+    # Requested Testing alignment: application-form table shape, no Send Copies To in attachment details
+    assert "RequestedTestingPreviewSection" in inbox_source
+    assert "requestedTestingTable" in inbox_source
+    assert "additionalInformationTable" in inbox_source
+    assert "Description of Requested Testing" in inbox_source
+    assert "PreviewTableSection table={requestedTestingTable}" in inbox_source
+    assert "No additional information extracted from the selected application form." in inbox_source
+    assert ".attachment-requested-testing-stack" in inbox_styles
+    assert ".attachment-additional-information-block" in inbox_styles
 
 
 def test_task090_intake_workflow_structure_extraction() -> None:
@@ -1232,6 +1255,120 @@ def test_task090_intake_workflow_structure_extraction() -> None:
         "email-info-list",
     ]:
         assert removed_term not in page_source
+
+
+def test_task091_intake_precheck_typography_uses_shared_ui_vocabulary() -> None:
+    """TASK_091 keeps Intake and Precheck title/action typography maintainable."""
+    styles_source = (FRONTEND_ROOT / "src" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8") + intake_feature_source()
+    precheck_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8") + precheck_feature_source()
+
+    for token in [
+        "--font-size-panel-title",
+        "--font-size-preview-title",
+        "--font-size-section-title",
+        "--font-size-label",
+        "--font-size-data",
+        ".ui-panel-title",
+        ".ui-preview-title",
+        ".ui-section-title",
+        ".ui-primary-action",
+        ".ui-secondary-action",
+        ".ui-compact-action",
+    ]:
+        assert token in styles_source
+
+    for term in [
+        'className="ui-panel-title">Import source',
+        'className="ui-panel-title">Email information',
+        'className="ui-panel-title">Attachments',
+        'className="ui-preview-title"',
+        'className="ui-section-title">{table.title}',
+        "secondary-action ui-secondary-action",
+        "continue-action ui-primary-action",
+    ]:
+        assert term in inbox_source
+
+    for term in [
+        'className="ui-panel-title">Source document & template check',
+        'className="ui-panel-title">Key Information Edit & Confirm',
+        'className="ui-section-title">Test Sample Information',
+        'className="ui-section-title">Description of Requested Testing',
+        'className="ui-section-title">Additional Information',
+        "sample-add-button ui-compact-action",
+        "requested-testing-add-button ui-compact-action",
+        "precheck-confirm-button ui-primary-action",
+        "new-project-secondary-action precheck-back-button ui-secondary-action",
+    ]:
+        assert term in precheck_source
+
+
+def test_task092_intake_attachment_download_has_url_helper() -> None:
+    """TASK_092 adds intakeAssetDownloadUrl to the API client."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "intakeAssetDownloadUrl" in client_source
+    assert "/download" in client_source
+    assert "intakeAssetDownloadUrl(" in client_source
+    assert "${API_BASE}/api/intake-assets/" in client_source
+
+
+def test_task092_intake_attachment_download_uses_download_link() -> None:
+    """TASK_092 replaces disabled Download button with a working download <a>."""
+    preview_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentPreviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "intakeAssetDownloadUrl" in preview_source
+    assert 'className="secondary-action ui-secondary-action"' in preview_source
+    assert 'href={intakeAssetDownloadUrl(assetId)}' in preview_source
+    assert 'download={originalName}' in preview_source
+    assert "toolbar-button toolbar-icon-button" not in preview_source
+    assert "disabled" not in preview_source
+    assert 'AttachmentPreviewActions({ assetId' in preview_source
+
+
+def test_task092_intake_attachment_download_action_accepts_metadata() -> None:
+    """TASK_092 passes assetId and originalName to AttachmentPreviewActions."""
+    preview_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentPreviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "assetId={preview.metadata.asset_id}" in preview_source
+    assert "originalName={preview.metadata.original_name}" in preview_source
+
+
+def test_task092_intake_inbox_css_supports_anchor_as_secondary_action() -> None:
+    """TASK_092 secondary-action CSS supports <a> as a button-like element."""
+    inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "display: inline-grid" in inbox_styles
+    assert "text-decoration: none" in inbox_styles
+
+
+def test_task092_preview_header_and_non_preview_download_availability() -> None:
+    """TASK_092 fix: Download is available in loading/error/no-preview branches."""
+    preview_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentPreviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "function PreviewHeader" in preview_source
+    assert "preview-loading-outer" in preview_source
+    assert "preview-error-outer" in preview_source
+    assert "preview-no-preview-outer" in preview_source
+    assert "<PreviewHeader asset={asset} />" in preview_source
+    assert "AttachmentPreviewActions assetId={asset.asset_id}" in preview_source
+    assert "originalName={asset.original_name}" in preview_source
 
 
 def test_folder_evidence_frontend_wires_preview_and_execution() -> None:

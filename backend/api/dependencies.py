@@ -10,6 +10,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.exception_workflow_service import ExceptionWorkflowService
+from backend.application.intake_asset_download_service import (
+    IntakeAssetDownloadService,
+)
 from backend.application.evidence_placement_service import EvidencePlacementService
 from backend.application.folder_service import FolderService
 from backend.application.direct_word_intake_service import DirectWordIntakeService
@@ -153,6 +156,15 @@ def get_intake_package_query_service(
         package_store=IntakePackageRepository(session),
         asset_store=IntakeAssetRepository(session),
         case_store=IntakeCaseRepository(session),
+    )
+
+
+def get_intake_asset_download_service(
+    session: Session = Depends(get_session),
+) -> IntakeAssetDownloadService:
+    """Build an intake asset download service for API routes."""
+    return IntakeAssetDownloadService(
+        asset_store=IntakeAssetRepository(session),
     )
 
 

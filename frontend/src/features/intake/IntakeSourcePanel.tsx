@@ -31,7 +31,7 @@ export function IntakeSourcePanel({
   return (
     <>
       <section className="intake-panel">
-        <h3>Import source</h3>
+        <h3 className="ui-panel-title">Import source</h3>
         <div className="import-source-actions">
           <input
             ref={msgInputRef}
@@ -69,7 +69,7 @@ export function IntakeSourcePanel({
       </section>
 
       <section className="intake-panel">
-        <h3>Email information</h3>
+        <h3 className="ui-panel-title">Email information</h3>
         <dl className="email-info-list">
           <div>
             <dt>From</dt>

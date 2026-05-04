@@ -52,6 +52,7 @@ class IntakeCaseReviewItemResponse(BaseModel):
     confirm_allowed: bool
     fields: list[IntakeCaseReviewFieldResponse]
     sample_rows: list[dict[str, Any]]
+    requested_testing_rows: list[dict[str, Any]]
     precheck_issues: list["DraftPrecheckIssueResponse"]
 
 
@@ -87,6 +88,7 @@ class UpdateIntakeCaseReviewFieldsRequest(BaseModel):
 
     fields: dict[str, Any]
     sample_rows: list[dict[str, Any]] | None = None
+    requested_testing_rows: list[dict[str, Any]] | None = None
 
 
 class ConfirmIntakeCaseResponse(BaseModel):
@@ -150,6 +152,7 @@ def update_intake_case_review_fields(
                 case_id,
                 request.fields,
                 sample_rows=request.sample_rows,
+                requested_testing_rows=request.requested_testing_rows,
             )
         )
     except IntakeCaseReviewNotFoundError as exc:
@@ -184,6 +187,7 @@ def _case_item_response(item: IntakeCaseReviewItem) -> IntakeCaseReviewItemRespo
         and item.case.status.value == "needs_review"
         and item.case.confirmed_project_id is None,
         sample_rows=_sample_rows(item.parsed_fields),
+        requested_testing_rows=_requested_testing_rows(item.parsed_fields),
         precheck_issues=[_precheck_issue_response(issue) for issue in item.precheck_issues],
         fields=[
             _field_response("form_no", "Form No.", item.parsed_fields, required=False),
@@ -253,6 +257,18 @@ def _sample_rows(fields: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(rows, list):
         return []
     return [row for row in rows if isinstance(row, dict)]
+
+
+def _requested_testing_rows(fields: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return parsed requested-testing rows from draft fields."""
+    rows = fields.get("requested_testing_rows")
+    if not isinstance(rows, list):
+        return []
+    return [
+        {"test_to_be_performed": row.get("test_to_be_performed", ""), "applicable_specification": row.get("applicable_specification", "")}
+        for row in rows
+        if isinstance(row, dict)
+    ]
 
 
 def _field_response(

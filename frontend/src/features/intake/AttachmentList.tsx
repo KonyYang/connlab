@@ -17,7 +17,7 @@ export function AttachmentList({
   return (
     <section className="intake-panel intake-attachments-panel">
       <div className="attachments-heading">
-        <h3>Attachments ({attachments.length})</h3>
+        <h3 className="ui-panel-title">Attachments ({attachments.length})</h3>
       </div>
       {packageLoaded ? (
         <div className="attachment-list" role="list">

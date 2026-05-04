@@ -8,17 +8,24 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.api.dependencies import (
     get_direct_word_intake_service,
     get_exception_workflow_service,
+    get_intake_asset_download_service,
     get_intake_asset_preview_service,
     get_intake_form_selection_service,
     get_intake_package_query_service,
     get_intake_precheck_service,
     get_manual_intake_service,
     get_msg_package_intake_service,
+)
+from backend.application.intake_asset_download_service import (
+    IntakeAssetDownloadError,
+    IntakeAssetDownloadNotFoundError,
+    IntakeAssetDownloadService,
 )
 from backend.application.direct_word_intake_service import (
     DirectWordIntakeError,
@@ -389,6 +396,25 @@ def preview_intake_asset(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except IntakeAssetPreviewError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/api/intake-assets/{asset_id}/download")
+def download_intake_asset(
+    asset_id: str,
+    service: IntakeAssetDownloadService = Depends(get_intake_asset_download_service),
+) -> FileResponse:
+    """Return the stored file for one registered intake asset as a browser download."""
+    try:
+        download = service.get_downloadable(asset_id)
+    except IntakeAssetDownloadNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IntakeAssetDownloadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return FileResponse(
+        path=download.path,
+        filename=download.filename,
+        media_type=download.media_type,
+    )
 
 
 @router.post(

@@ -1,6 +1,6 @@
 # ConnLab Task Board
 
-> Status: Phase 10A complete; Intake workflow structure extraction and stepper polish complete
+> Status: Phase 10A complete; TASK_092 complete; Intake attachment Download available via API
 > Last Updated: 2026-05-04
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: None - pending user approval for next phase
@@ -178,6 +178,8 @@ Current judgment as of 2026-04-26:
 - TASK_088 sample preview correction is complete: Attachment details `Test Sample Information` now matches the application-form / Precheck sample columns, including combined `Part Number / Revision`, contact material/plating/lubricant, housing material, and quantity, without changing persisted sample storage schema.
 - `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete.
 - Intake source panel, attachment list, attachment preview panel, and pure display selectors now live under `frontend/src/features/intake`; the shared New Project workflow stepper no longer shows the redundant heading row, keeps labels on one line in narrow windows, and prevents connector lines from crossing text.
+- `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG` is complete.
+- Intake and Precheck now share a small UI typography/action vocabulary for panel titles, preview titles, section titles, primary actions, secondary actions, and compact actions. Static frontend shell tests guard the shared vocabulary on key Intake/Precheck components.
 - No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
 Current stop point:
@@ -275,6 +277,7 @@ Current stop point:
 - `TASK_086_DIRECT_WORD_APPLICATION_FORM_UPLOAD_WIRING` is complete.
 - `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP` is complete.
 - `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete.
+- `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG` is complete.
 - No implementation task is active. Await explicit user approval for the next task.
 
 ---
@@ -661,6 +664,24 @@ Status table:
 | T10A-13 | `TASK_072_PRECHECK_ENTRY_CASE_CREATION_AND_STYLE_FIX` | done | Continue to Precheck now prepares review cases through the existing API and Precheck CSS is loaded on 2026-05-01 |
 | T10A-14 | `TASK_073_SELECTED_FORM_PRECHECK_BINDING_HOTFIX` | done | Intake-selected Word application form now creates/opens the matching Precheck case and populates draft fields from the selected `.docx` on 2026-05-01 |
 | T10A-15 | `TASK_074_PRECHECK_DYNAMIC_WORD_DATA_DISPLAY_HOTFIX` | done | Precheck now displays parsed sample rows and parsed non-standard field values from the selected Word draft instead of reference mock data on 2026-05-01 |
+| T10A-16 | `TASK_075_INTAKE_ATTACHMENT_PREVIEW_AND_DOCX_PRIORITY` | done | Intake attachment preview completed on 2026-05-01 |
+| T10A-17 | `TASK_076_FRONTEND_ARCHITECTURE_RULES_AND_UI_BOUNDARY` | done | Frontend architecture rules documented on 2026-05-01 |
+| T10A-18 | `TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT` | done | Intake/Precheck business gap audit documented on 2026-05-01 |
+| T10A-19 | `TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES` | done | Intake/Precheck field contract documented on 2026-05-01 |
+| T10A-20 | `TASK_079_LOOKUP_OPTIONS_BACKEND_AND_API` | done | Backend-managed lookup options completed on 2026-05-01 |
+| T10A-21 | `TASK_080_DOCX_PARSER_FIELD_CALIBRATION_FOR_SECTION1` | done | Parser calibration for Section 1 fields completed on 2026-05-01 |
+| T10A-22 | `TASK_081_FRONTEND_LOOKUP_API_FIELD_RENDERER_WIRING` | done | Frontend lookup API field renderer wiring completed on 2026-05-01 |
+| T10A-23 | `TASK_082_PRECHECK_SAMPLE_ROW_EDIT_COPY_DELETE_UI` | done | Sample row edit/copy/delete UI completed on 2026-05-01 |
+| T10A-24 | `TASK_083_PREPROJECT_SECTION1_PRECHECK_AND_CONFIRMATION_GUIDANCE` | done | Pre-project Section 1 precheck completed on 2026-05-01 |
+| T10A-25 | `TASK_084_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION` | done | Precheck feature component extraction completed on 2026-05-01 |
+| T10A-26 | `TASK_085_INTAKE_SESSION_PERSISTENCE` | done | Intake session persistence completed on 2026-05-01 |
+| T10A-27 | `TASK_086_DIRECT_WORD_APPLICATION_FORM_UPLOAD_WIRING` | done | Direct Word upload API and frontend wiring completed on 2026-05-01 |
+| T10A-28 | `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP` | done | Intake information density and attachment list cleanup completed on 2026-05-01 |
+| T10A-29 | `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` | done | Attachment details preview completed on 2026-05-04 |
+| T10A-30 | `TASK_089_NEW_PROJECT_WORKFLOW_SHELL_AND_BUTTON_UNIFICATION` | done | New Project workflow shell and button unification completed on 2026-05-04 |
+| T10A-31 | `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` | done | Intake workflow structure extraction completed on 2026-05-04 |
+| T10A-32 | `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG` | done | Intake/Precheck manual smoke and UI polish backlog completed on 2026-05-04 |
+| T10A-33 | `TASK_092_INTAKE_ATTACHMENT_DOWNLOAD_ACTION` | done | Intake attachment Download button, /download API, and frontend wiring completed on 2026-05-04 |
 
 Acceptance gate:
 
@@ -1236,7 +1257,7 @@ Why this is next:
 - Validation for TASK_090 New Project stepper polish: `py -m pytest tests\unit\test_frontend_shell_files.py::test_task070_precheck_step_matches_reference_workspace tests\unit\test_frontend_shell_files.py::test_task089_new_project_workflow_shell_is_shared -q`, result `2 passed`; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`; `npm run build`, result passed.
 - TASK_090 Attachment details cleanup: the Attachment details header no longer shows the redundant file type subtitle (Word Document / PDF Document) below the filename, reducing visual noise while keeping the file type chip visible.
 - TASK_090 Email information polish: the Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, matching the visual hierarchy of the Attachment details header.
-- Recommended next controlled task: `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
+- Recommended next controlled task: pending user decision after `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
 Active implementation task:
@@ -1245,7 +1266,7 @@ Active implementation task:
 
 Reason:
 
-- `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete, and the manual-overrides selection hotfix plus latest UI polish items are complete. The next implementation task is blocked until explicit user approval; recommended next task is `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
+- `TASK_092_INTAKE_ATTACHMENT_DOWNLOAD_ACTION` is complete. The next implementation task is blocked until explicit user approval.
 
 Do not start yet:
 

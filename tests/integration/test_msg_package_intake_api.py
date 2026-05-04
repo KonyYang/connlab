@@ -370,6 +370,89 @@ def test_intake_asset_preview_api_returns_docx_preview_without_paths(
         engine.dispose()
 
 
+def test_intake_asset_download_api_returns_file_with_original_name(
+    tmp_path: Path,
+) -> None:
+    """The download endpoint returns a stored file with the original name."""
+    file_content = b"test file content for download"
+    stored_file = tmp_path / "original-application.docx"
+    stored_file.write_bytes(file_content)
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        """Yield one test database session."""
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        with session_factory() as session:
+            asset_repo = IntakeAssetRepository(session)
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="asset-download",
+                    package_id="pkg-download",
+                    original_name="Original Application Form.docx",
+                    stored_path=stored_file,
+                    extension=".docx",
+                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    size_bytes=len(file_content),
+                    sha256="f" * 64,
+                    asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,
+                    candidate_score=90,
+                )
+            )
+            session.commit()
+
+        response = client.get("/api/intake-assets/asset-download/download")
+
+        assert response.status_code == 200
+        assert response.content == file_content
+        content_disposition = response.headers["content-disposition"].lower()
+        assert "filename" in content_disposition
+        assert "original" in content_disposition
+        assert "application" in content_disposition
+        assert ".docx" in content_disposition
+
+        missing_response = client.get("/api/intake-assets/missing/download")
+        assert missing_response.status_code == 404
+        assert "Intake asset not found" in missing_response.json()["detail"]
+
+        with session_factory() as session:
+            asset_repo = IntakeAssetRepository(session)
+            asset = asset_repo.get("asset-download")
+            assert asset is not None
+            stored_file.unlink()
+            session.commit()
+
+        missing_file_response = client.get(
+            "/api/intake-assets/asset-download/download"
+        )
+        assert missing_file_response.status_code == 400
+        assert "Stored intake asset file is missing" in missing_file_response.json()[
+            "detail"
+        ]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_msg_package_import_api_rejects_non_msg_upload(tmp_path: Path) -> None:
     """The API rejects non-msg files before intake records are created."""
     settings = Settings(

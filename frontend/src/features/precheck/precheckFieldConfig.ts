@@ -16,6 +16,16 @@ export type PrecheckSampleColumn = {
   label: string;
 };
 
+export type PrecheckRequestedTestingRow = {
+  test_to_be_performed: string;
+  applicable_specification: string;
+};
+
+export const PRECHECK_REQUESTED_TESTING_COLUMNS = [
+  { key: "test_to_be_performed", label: "Tests to be Performed" },
+  { key: "applicable_specification", label: "Applicable Specifications" }
+] as const;
+
 export const PRECHECK_SAMPLE_COLUMNS: PrecheckSampleColumn[] = [
   { key: "product_name", label: "Product Name" },
   { key: "part_number", label: "Part Number / Revision" },
@@ -88,4 +98,11 @@ export const PRECHECK_PROJECT_FIELDS: PrecheckFieldSpec[] = [
 
 export function emptyPrecheckSampleRow(): PrecheckSampleRow {
   return Object.fromEntries(PRECHECK_SAMPLE_COLUMNS.map((column) => [column.key, ""]));
+}
+
+export function emptyPrecheckRequestedTestingRow(): PrecheckRequestedTestingRow {
+  return {
+    test_to_be_performed: "",
+    applicable_specification: ""
+  };
 }

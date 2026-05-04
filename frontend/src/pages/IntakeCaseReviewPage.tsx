@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type ConfirmIntakeCase,
@@ -13,8 +13,10 @@ import { UiIcon } from "../components/common/UiIcon";
 import { NewProjectWorkflowHeader } from "../components/workflow/NewProjectWorkflow";
 import {
   emptyPrecheckSampleRow,
+  emptyPrecheckRequestedTestingRow,
   PRECHECK_PROJECT_FIELDS,
-  type PrecheckSampleRow
+  type PrecheckSampleRow,
+  type PrecheckRequestedTestingRow
 } from "../features/precheck/precheckFieldConfig";
 import { PrecheckFieldGrid } from "../features/precheck/PrecheckFieldGrid";
 import { PrecheckIssueSummary } from "../features/precheck/PrecheckIssueSummary";
@@ -32,7 +34,9 @@ import {
   formatStatus,
   issueLevelMap,
   normalizedSampleRows,
+  normalizedRequestedTestingRows,
   preferredCaseId,
+  requestedTestingText,
   updateSampleRow
 } from "../features/precheck/precheckReviewSelectors";
 import { PrecheckSourceCheck } from "../features/precheck/PrecheckSourceCheck";
@@ -67,11 +71,17 @@ export function IntakeCaseReviewPage({
   const [confirmResult, setConfirmResult] = useState<ConfirmIntakeCase | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [sampleRows, setSampleRows] = useState<PrecheckSampleRow[]>([emptyPrecheckSampleRow()]);
+  const [requestedTestingRows, setRequestedTestingRows] = useState<PrecheckRequestedTestingRow[]>([
+    emptyPrecheckRequestedTestingRow()
+  ]);
   const [lookupOptions, setLookupOptions] = useState<IntakePrecheckLookupOptions | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [savingFields, setSavingFields] = useState(false);
   const [fieldSaveError, setFieldSaveError] = useState<string | null>(null);
   const [fieldSaveMessage, setFieldSaveMessage] = useState<string | null>(null);
+  const fieldValuesRef = useRef<Record<string, string>>({});
+  const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
+  const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
 
   async function loadReview(): Promise<void> {
     setLoading(true);
@@ -131,7 +141,10 @@ export function IntakeCaseReviewPage({
   const sampleRowsChanged = activeCase
     ? JSON.stringify(sampleRows) !== JSON.stringify(normalizedSampleRows(activeCase.sample_rows))
     : false;
-  const draftChanged = fieldValuesChanged || sampleRowsChanged;
+  const requestedTestingRowsChanged = activeCase
+    ? JSON.stringify(requestedTestingRows) !== JSON.stringify(normalizedRequestedTestingRows(activeCase.requested_testing_rows))
+    : false;
+  const draftChanged = fieldValuesChanged || sampleRowsChanged || requestedTestingRowsChanged;
   const projectFields = useMemo(
     () => fieldsWithLookupOptions(PRECHECK_PROJECT_FIELDS, lookupOptions),
     [lookupOptions]
@@ -144,10 +157,18 @@ export function IntakeCaseReviewPage({
   useEffect(() => {
     if (!activeCase) {
       setFieldValues({});
+      fieldValuesRef.current = {};
       return;
     }
-    setFieldValues(Object.fromEntries(activeCase.fields.map((field) => [field.key, editableValue(field.value)])));
-    setSampleRows(normalizedSampleRows(activeCase.sample_rows));
+    const nextFieldValues = Object.fromEntries(activeCase.fields.map((field) => [field.key, editableValue(field.value)]));
+    setFieldValues(nextFieldValues);
+    fieldValuesRef.current = nextFieldValues;
+    const nextSampleRows = normalizedSampleRows(activeCase.sample_rows);
+    setSampleRows(nextSampleRows);
+    sampleRowsRef.current = nextSampleRows;
+    const nextRequestedTestingRows = normalizedRequestedTestingRows(activeCase.requested_testing_rows);
+    setRequestedTestingRows(nextRequestedTestingRows);
+    requestedTestingRowsRef.current = nextRequestedTestingRows;
     setFieldSaveError(null);
     setFieldSaveMessage(null);
   }, [activeCase]);
@@ -181,10 +202,15 @@ export function IntakeCaseReviewPage({
     setFieldSaveMessage(null);
     setConfirmError(null);
     setConfirmResult(null);
+    const saveCaseId = activeCase.case_id;
     try {
-      await updateIntakeCaseReviewFields(activeCase.case_id, {
-        fields: fieldValues,
-        sample_rows: sampleRows
+      await updateIntakeCaseReviewFields(saveCaseId, {
+        fields: {
+          ...fieldValuesRef.current,
+          requested_testing: requestedTestingText(requestedTestingRowsRef.current)
+        },
+        sample_rows: sampleRowsRef.current,
+        requested_testing_rows: requestedTestingRowsRef.current
       });
       setFieldSaveMessage("Corrections saved. Confirmation blockers have been refreshed.");
       setOperatorConfirmed(false);
@@ -212,7 +238,7 @@ export function IntakeCaseReviewPage({
           <PrecheckSourceCheck review={review} activeCase={activeCase} />
           <PrecheckIssueSummary issues={activeCase.precheck_issues} />
           <section className="precheck-card key-information-card">
-            <h3>Key Information Edit & Confirm</h3>
+            <h3 className="ui-panel-title">Key Information Edit & Confirm</h3>
             <PrecheckFieldGrid
               disabled={savingFields || Boolean(activeCase.confirmed_project_id)}
               fields={projectFields}
@@ -220,7 +246,11 @@ export function IntakeCaseReviewPage({
               sourceFields={activeCase.fields}
               values={fieldValues}
               onChange={(key, value) => {
-                setFieldValues((current) => ({ ...current, [key]: value }));
+                setFieldValues((current) => {
+                  const next = { ...current, [key]: value };
+                  fieldValuesRef.current = next;
+                  return next;
+                });
                 setFieldSaveMessage(null);
                 setFieldSaveError(null);
               }}
@@ -229,35 +259,122 @@ export function IntakeCaseReviewPage({
               disabled={savingFields || Boolean(activeCase.confirmed_project_id)}
               rows={sampleRows}
               onAdd={() => {
-                setSampleRows((current) => [...current, emptyPrecheckSampleRow()]);
+                setSampleRows((current) => {
+                  const next = [...current, emptyPrecheckSampleRow()];
+                  sampleRowsRef.current = next;
+                  return next;
+                });
                 setFieldSaveMessage(null);
               }}
               onChange={(rowIndex, key, value) => {
-                setSampleRows((current) => updateSampleRow(current, rowIndex, key, value));
+                setSampleRows((current) => {
+                  const next = updateSampleRow(current, rowIndex, key, value);
+                  sampleRowsRef.current = next;
+                  return next;
+                });
                 setFieldSaveMessage(null);
                 setFieldSaveError(null);
               }}
               onEdit={(rowIndex) => focusSampleRow(rowIndex)}
               onCopy={(rowIndex) => {
-                setSampleRows((current) => copySampleRow(current, rowIndex));
+                setSampleRows((current) => {
+                  const next = copySampleRow(current, rowIndex);
+                  sampleRowsRef.current = next;
+                  return next;
+                });
                 setFieldSaveMessage(null);
               }}
               onDelete={(rowIndex) => {
-                setSampleRows((current) => deleteSampleRow(current, rowIndex));
+                setSampleRows((current) => {
+                  const next = deleteSampleRow(current, rowIndex);
+                  sampleRowsRef.current = next;
+                  return next;
+                });
                 setFieldSaveMessage(null);
               }}
             />
             <PrecheckLowerPanels
               additionalInformation={fieldValues.additional_information ?? fallbackValue("additional_information", activeCase.fields)}
               confidential={fieldValues.confidential ?? fallbackValue("confidential", activeCase.fields)}
-              requestedTesting={fieldValues.requested_testing ?? fallbackValue("requested_testing", activeCase.fields)}
+              disabled={savingFields || Boolean(activeCase.confirmed_project_id)}
+              requestedTestingRows={requestedTestingRows}
               subcontract={fieldValues.subcontract ?? fallbackValue("subcontract", activeCase.fields)}
+              onAdditionalInformationChange={(value) => {
+                setFieldValues((current) => {
+                  const next = { ...current, additional_information: value };
+                  fieldValuesRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+                setFieldSaveError(null);
+              }}
+              onConfidentialChange={(value) => {
+                setFieldValues((current) => {
+                  const next = { ...current, confidential: value };
+                  fieldValuesRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+                setFieldSaveError(null);
+              }}
+              onRequestedTestingRowAdd={() => {
+                setRequestedTestingRows((current) => {
+                  const next = [...current, emptyPrecheckRequestedTestingRow()];
+                  requestedTestingRowsRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+              }}
+              onRequestedTestingRowChange={(rowIndex, key, value) => {
+                setRequestedTestingRows((current) => {
+                  const next = current.map((row, index) => (index === rowIndex ? { ...row, [key]: value } : row));
+                  requestedTestingRowsRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+                setFieldSaveError(null);
+              }}
+              onRequestedTestingRowCopy={(rowIndex) => {
+                setRequestedTestingRows((current) => {
+                  const copied = { ...(current[rowIndex] ?? emptyPrecheckRequestedTestingRow()) };
+                  const next = [...current.slice(0, rowIndex + 1), copied, ...current.slice(rowIndex + 1)];
+                  requestedTestingRowsRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+              }}
+              onRequestedTestingRowDelete={(rowIndex) => {
+                if (requestedTestingRows.length <= 1) return;
+                setRequestedTestingRows((current) => {
+                  const next = current.filter((_, index) => index !== rowIndex);
+                  requestedTestingRowsRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+              }}
+              onRequestedTestingRowEdit={(rowIndex) => {
+                // Focus the first input of the row
+                document
+                  .querySelector<HTMLTextAreaElement>(
+                    `.requested-testing-edit-table tbody tr:nth-child(${rowIndex + 1}) textarea:first-child`
+                  )
+                  ?.focus();
+              }}
+              onSubcontractChange={(value) => {
+                setFieldValues((current) => {
+                  const next = { ...current, subcontract: value };
+                  fieldValuesRef.current = next;
+                  return next;
+                });
+                setFieldSaveMessage(null);
+                setFieldSaveError(null);
+              }}
             />
           </section>
 
           {review.cases.length > 1 ? (
             <section className="precheck-card case-switcher">
-              <h3>Review cases</h3>
+              <h3 className="ui-panel-title">Review cases</h3>
               <div className="case-selector-list">
                 {review.cases.map((item) => (
                   <button
@@ -281,7 +398,7 @@ export function IntakeCaseReviewPage({
 
           <footer className="precheck-footer">
             <button
-              className="new-project-secondary-action precheck-back-button"
+              className="new-project-secondary-action precheck-back-button ui-secondary-action"
               type="button"
               onClick={() => onBack({
                 caseId: activeCase.case_id,
@@ -305,7 +422,7 @@ export function IntakeCaseReviewPage({
               <span className="sr-only">I confirm this reviewed case should create one project.</span>
             </label>
             <button
-              className="new-project-secondary-action"
+              className="new-project-secondary-action ui-secondary-action"
               disabled={!draftChanged || savingFields || Boolean(activeCase.confirmed_project_id)}
               type="button"
               onClick={() => void handleSaveFields()}
@@ -313,7 +430,7 @@ export function IntakeCaseReviewPage({
               <span className="sr-only">Save corrections</span>
               {savingFields ? "Saving" : "Save Draft"}
             </button>
-            <button className="new-project-primary-action precheck-confirm-button" disabled={!canConfirm} type="button" onClick={() => void handleConfirm()}>
+            <button className="new-project-primary-action precheck-confirm-button ui-primary-action" disabled={!canConfirm} type="button" onClick={() => void handleConfirm()}>
               {confirming ? "Confirming" : "Confirm & Continue to LTR Number"}
               <span className="button-arrow" aria-hidden="true">&gt;</span>
             </button>

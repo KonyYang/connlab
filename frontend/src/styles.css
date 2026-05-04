@@ -17,6 +17,15 @@
   --color-sidebar-active-border: #bfd7f2;
   --color-sidebar-disabled: #9aa8ba;
   --shadow-shell: 0 12px 32px rgba(36, 54, 84, 0.1);
+  --font-size-page-title: 18px;
+  --font-size-panel-title: 18px;
+  --font-size-preview-title: 16px;
+  --font-size-section-title: 14px;
+  --font-size-label: 12px;
+  --font-size-data: 13px;
+  --font-weight-title: 800;
+  --font-weight-label: 800;
+  --font-weight-data: 400;
   color: var(--color-ink);
   background: var(--color-canvas);
   font-family: "Aptos", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
@@ -41,6 +50,58 @@ body {
 
 button {
   font: inherit;
+}
+
+.ui-panel-title,
+.ui-preview-title,
+.ui-section-title {
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.ui-panel-title {
+  color: var(--color-ink);
+  font-size: var(--font-size-panel-title);
+  font-weight: var(--font-weight-title);
+}
+
+.ui-preview-title {
+  display: block;
+  color: var(--color-primary-strong);
+  font-size: var(--font-size-preview-title);
+  font-weight: var(--font-weight-title);
+}
+
+.ui-section-title {
+  color: var(--color-primary-strong);
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-title);
+}
+
+.ui-field-label {
+  color: var(--color-ink);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+}
+
+.ui-data-text {
+  color: var(--color-ink);
+  font-size: var(--font-size-data);
+  font-weight: var(--font-weight-data);
+}
+
+.ui-primary-action,
+.ui-secondary-action {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ui-compact-action {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .app-shell {
@@ -164,7 +225,7 @@ button {
 
 .top-bar h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--font-size-page-title);
   font-weight: 700;
   color: var(--color-primary);
   line-height: 1.2;

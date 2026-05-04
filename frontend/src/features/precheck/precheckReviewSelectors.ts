@@ -7,9 +7,11 @@ import type {
 } from "../../api/client";
 import {
   emptyPrecheckSampleRow,
+  emptyPrecheckRequestedTestingRow,
   PRECHECK_SAMPLE_COLUMNS,
   type PrecheckFieldSpec,
-  type PrecheckSampleRow
+  type PrecheckSampleRow,
+  type PrecheckRequestedTestingRow
 } from "./precheckFieldConfig";
 
 export function buildConfirmationBlockedReason(
@@ -146,6 +148,26 @@ export function deleteSampleRow(rows: PrecheckSampleRow[], rowIndex: number): Pr
     return rows;
   }
   return rows.filter((_, index) => index !== rowIndex);
+}
+
+export function normalizedRequestedTestingRows(raw: unknown): PrecheckRequestedTestingRow[] {
+  if (!Array.isArray(raw)) {
+    return [emptyPrecheckRequestedTestingRow()];
+  }
+  const rows = raw
+    .map((row) => ({
+      test_to_be_performed: String((row as Record<string, unknown>).test_to_be_performed ?? ""),
+      applicable_specification: String((row as Record<string, unknown>).applicable_specification ?? "")
+    }))
+    .filter((row) => row.test_to_be_performed || row.applicable_specification);
+  return rows.length > 0 ? rows : [emptyPrecheckRequestedTestingRow()];
+}
+
+export function requestedTestingText(rows: PrecheckRequestedTestingRow[]): string {
+  return rows
+    .map((row) => row.test_to_be_performed.trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function focusSampleRow(rowIndex: number): void {

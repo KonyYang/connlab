@@ -78,6 +78,7 @@ class IntakeCaseReviewService:
         "form_no",
         "revision",
         "requested_testing",
+        "requested_testing_rows",
         "phone",
         "request_date",
         "manufacturing_site",
@@ -143,6 +144,7 @@ class IntakeCaseReviewService:
         case_id: str,
         fields: dict[str, Any],
         sample_rows: list[dict[str, Any]] | None = None,
+        requested_testing_rows: list[dict[str, Any]] | None = None,
     ) -> IntakeCaseReviewItem:
         """Persist operator field corrections and return the refreshed case review."""
         intake_case = self._cases.get(case_id)
@@ -164,6 +166,18 @@ class IntakeCaseReviewService:
                 overrides[key] = normalized
         if sample_rows is not None:
             overrides["samples"] = self._normalized_sample_rows(sample_rows)
+        if requested_testing_rows is not None:
+            normalized_rows = self._normalized_requested_testing_rows(requested_testing_rows)
+            overrides["requested_testing_rows"] = normalized_rows
+            # Also update flattened requested_testing for compatibility
+            if "requested_testing" not in fields:
+                tests_text = "\n".join(
+                    row.get("test_to_be_performed", "")
+                    for row in normalized_rows
+                    if row.get("test_to_be_performed", "").strip()
+                )
+                if tests_text:
+                    overrides["requested_testing"] = tests_text
         updated_draft = self._drafts.update(
             replace(
                 draft,
@@ -231,3 +245,15 @@ class IntakeCaseReviewService:
             }
             normalized_rows.append(normalized_row)
         return normalized_rows or [{}]
+
+    def _normalized_requested_testing_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+        """Return persistable requested-testing row overrides, filtering empty rows."""
+        normalized_rows: list[dict[str, str]] = []
+        for row in rows:
+            normalized_row = {
+                "test_to_be_performed": str(row.get("test_to_be_performed", "")).strip(),
+                "applicable_specification": str(row.get("applicable_specification", "")).strip(),
+            }
+            if any(normalized_row.values()):
+                normalized_rows.append(normalized_row)
+        return normalized_rows

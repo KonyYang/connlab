@@ -154,6 +154,72 @@ def test_application_form_parser_extracts_yes_no_content_controls(
     assert parsed.subcontract == "Yes"
 
 
+def test_application_form_parser_extracts_two_column_requested_testing_and_additional_information(
+    tmp_path: Path,
+) -> None:
+    """Real DOCX structure: two-column requested-testing table plus dedicated Additional Information block."""
+    docx_path = tmp_path / "real-structure-form.docx"
+    document = Document()
+    document.add_paragraph("Form No.: E-3718")
+    document.add_paragraph("Form Rev: H")
+    _add_key_value_table(
+        document,
+        [
+            ("Requested By", "Alice"),
+            ("Email", "alice@example.com"),
+        ],
+    )
+    sample_table = document.add_table(rows=2, cols=8)
+    headers = [
+        "Product Name",
+        "Part Number",
+        "Revision",
+        "Lot/Traceability",
+        "Material",
+        "Plating",
+        "Housing Material",
+        "Quantity",
+    ]
+    values = ["Connector", "PN-001", "A", "LOT-1", "Copper", "Tin", "LCP", "12"]
+    for index, header in enumerate(headers):
+        sample_table.cell(0, index).text = header
+        sample_table.cell(1, index).text = values[index]
+
+    rt_table = document.add_table(rows=3, cols=2)
+    rt_table.cell(0, 0).text = "Tests to be Performed"
+    rt_table.cell(0, 1).text = "Applicable Specifications"
+    rt_table.cell(1, 0).text = "依附件表格要求"
+    rt_table.cell(1, 1).text = "GS-12-2652-22"
+    rt_table.cell(2, 0).text = "T-rise"
+    rt_table.cell(2, 1).text = "EIA-364-70D"
+
+    _add_content_control_row(document, "Confidential tests or samples?", "Confidential", "No")
+    _add_content_control_row(document, "Can testing be subcontracted?", "Subcontracted", "Yes")
+
+    document.add_paragraph("Additional Information")
+    ai_table = document.add_table(rows=1, cols=1)
+    ai_table.cell(0, 0).text = "依附件EVE客户表格要求..."
+
+    sc_table = document.add_table(rows=1, cols=2)
+    sc_table.cell(0, 0).text = "Send copies of test results/reports to:"
+    sc_table.cell(0, 1).text = "Mike.Rao@fci.com;Yang.Fu@fci.com"
+
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert len(parsed.requested_testing_rows) == 2
+    assert parsed.requested_testing_rows[0].test_to_be_performed == "依附件表格要求"
+    assert parsed.requested_testing_rows[0].applicable_specification == "GS-12-2652-22"
+    assert parsed.requested_testing_rows[1].test_to_be_performed == "T-rise"
+    assert parsed.requested_testing_rows[1].applicable_specification == "EIA-364-70D"
+    assert parsed.requested_testing_description == "依附件表格要求\nT-rise"
+    assert parsed.additional_information == "依附件EVE客户表格要求..."
+    assert parsed.confidential == "No"
+    assert parsed.subcontract == "Yes"
+    assert parsed.send_copies_recipients == "Mike.Rao@fci.com;Yang.Fu@fci.com"
+
+
 def test_application_form_parser_extracts_comparable_tester_modified_fixture(
     tmp_path: Path,
 ) -> None:

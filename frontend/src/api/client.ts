@@ -252,6 +252,7 @@ export type IntakeCaseReviewItem = {
   confirm_allowed: boolean;
   fields: IntakeCaseReviewField[];
   sample_rows: Record<string, unknown>[];
+  requested_testing_rows: Record<string, unknown>[];
   precheck_issues: DraftPrecheckIssue[];
 };
 
@@ -289,9 +290,15 @@ export type ConfirmIntakeCase = {
   file_asset_count: number;
 };
 
+export type RequestedTestingRowInput = {
+  test_to_be_performed: string;
+  applicable_specification: string;
+};
+
 export type UpdateIntakeCaseReviewFieldsInput = {
   fields: Record<string, string | null>;
   sample_rows?: Record<string, string>[];
+  requested_testing_rows?: RequestedTestingRowInput[];
 };
 
 export type LtrRecord = {
@@ -557,6 +564,10 @@ export function getIntakeAssetPreview(assetId: string): Promise<IntakeAssetPrevi
   return requestJson<IntakeAssetPreview>(
     `/api/intake-assets/${encodeURIComponent(assetId)}/preview`
   );
+}
+
+export function intakeAssetDownloadUrl(assetId: string): string {
+  return `${API_BASE}/api/intake-assets/${encodeURIComponent(assetId)}/download`;
 }
 
 export function selectIntakeApplicationForm(

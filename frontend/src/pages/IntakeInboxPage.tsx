@@ -220,7 +220,7 @@ export function IntakeInboxPage({
             : "Select a Word (.docx) file before continuing."}
         </span>
         <button
-          className="new-project-primary-action continue-action"
+          className="new-project-primary-action continue-action ui-primary-action"
           disabled={!packageImport || !selectedApplicationForm || preparingPrecheck}
           type="button"
           onClick={() => void handleContinueToPrecheck()}

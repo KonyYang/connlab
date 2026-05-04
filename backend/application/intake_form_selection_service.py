@@ -234,6 +234,13 @@ class IntakeFormSelectionService:
             "project_type": self._clean(parsed.project_type),
             "post_testing_disposition": self._clean(parsed.post_testing_disposition),
             "requested_testing": self._clean(parsed.requested_testing_description),
+            "requested_testing_rows": [
+                {
+                    "test_to_be_performed": self._clean(row.test_to_be_performed),
+                    "applicable_specification": self._clean(row.applicable_specification),
+                }
+                for row in parsed.requested_testing_rows
+            ],
             "confidential": self._clean(parsed.confidential),
             "subcontract": self._clean(parsed.subcontract),
             "additional_information": self._clean(parsed.additional_information),

@@ -15,7 +15,7 @@ export function PrecheckSourceCheck({
 }: PrecheckSourceCheckProps): ReactElement {
   return (
     <section className="precheck-card source-template-check">
-      <h3>Source document & template check</h3>
+      <h3 className="ui-panel-title">Source document & template check</h3>
       <div className="template-check-grid">
         <div className="source-doc-card">
           <span className="word-file-icon">W</span>
@@ -39,7 +39,7 @@ export function PrecheckSourceCheck({
               <span>Source: E_3778_Rev-H</span>
             </div>
           </div>
-          <button className="secondary-button" disabled type="button">
+          <button className="secondary-button ui-secondary-action" disabled type="button">
             <UiIcon name="refresh" />
             Update to latest template
           </button>

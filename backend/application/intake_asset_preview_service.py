@@ -157,6 +157,7 @@ class IntakeAssetPreviewService:
             for table in (
                 _sample_table(parsed),
                 _requested_testing_table(parsed),
+                _additional_information_table(parsed),
             )
             if table is not None
         )
@@ -281,7 +282,7 @@ def _preview_fields(parsed: ParsedApplicationForm) -> tuple[PreviewField, ...]:
         ("Test Type", parsed.test_type),
         ("Test Sample Status", parsed.sample_status),
         ("Project Type", parsed.project_type),
-        ("Completion Date", parsed.requested_completion_date),
+        ("Requested Completion Date", parsed.requested_completion_date),
         ("Post-Testing Disposition", parsed.post_testing_disposition),
         ("Confidential", parsed.confidential),
         ("Subcontracted", parsed.subcontract),
@@ -335,21 +336,35 @@ def _sample_row(sample: ParsedSampleInfo) -> tuple[str, ...]:
 
 
 def _requested_testing_table(parsed: ParsedApplicationForm) -> PreviewTable | None:
-    """Return requested testing and additional information as preview rows."""
-    rows: list[tuple[str, str]] = []
+    """Return requested testing rows as a two-column preview table."""
+    if parsed.requested_testing_rows:
+        rows = tuple(
+            (r.test_to_be_performed, r.applicable_specification)
+            for r in parsed.requested_testing_rows
+        )
+        return PreviewTable(
+            "Description of Requested Testing",
+            ("Tests to be Performed", "Applicable Specifications"),
+            rows,
+        )
     if _text(parsed.requested_testing_description):
-        rows.append(("Requested Testing", _text(parsed.requested_testing_description)))
+        return PreviewTable(
+            "Description of Requested Testing",
+            ("Tests to be Performed", "Applicable Specifications"),
+            ((_text(parsed.requested_testing_description), ""),),
+        )
+    return None
+
+
+def _additional_information_table(parsed: ParsedApplicationForm) -> PreviewTable | None:
+    """Return Additional Information as a separate preview table."""
     if _text(parsed.additional_information):
-        rows.append(("Additional Information", _text(parsed.additional_information)))
-    if _text(parsed.send_copies_recipients):
-        rows.append(("Send Copies To", _text(parsed.send_copies_recipients)))
-    if not rows:
-        return None
-    return PreviewTable(
-        "Requested Testing",
-        ("Field", "Value"),
-        tuple(rows),
-    )
+        return PreviewTable(
+            "Additional Information",
+            ("Value",),
+            ((_text(parsed.additional_information),),),
+        )
+    return None
 
 
 def _preview_warnings(

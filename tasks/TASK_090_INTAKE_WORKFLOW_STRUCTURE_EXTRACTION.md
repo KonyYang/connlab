@@ -44,6 +44,7 @@ Extract Intake workflow display logic from `IntakeInboxPage.tsx` into the `featu
 - **New Project Stepper Polish (post-structure extraction)**: The shared New Project workflow stepper now removes the redundant `New Project Step ...` heading row, exposes the current step through the stepper `aria-label`, keeps step labels on one line in narrow windows through horizontal overflow, and layers connector lines behind labels so they do not cross operator-readable text.
 - **Attachment Details Cleanup (post-structure extraction)**: The Attachment details header no longer shows the redundant file type subtitle (Word Document / PDF Document) below the filename, reducing visual noise while keeping the file type chip visible on the left.
 - **Email Information Polish (post-structure extraction)**: The Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, improving readability and matching the visual hierarchy of the Attachment details header.
+- **Left Column Attachment Stretch (post-structure extraction)**: The Intake left column now keeps `Import source` and `Email information` at natural height while allowing the `Attachments` panel to consume remaining vertical space and scroll when needed. The layout uses `grid-template-rows: auto auto minmax(0, 1fr)` on `.intake-left-stack` and `grid-template-rows: auto minmax(0, 1fr)` on `.intake-attachments-panel`, with `overflow: auto` on `.attachment-list`.
 
 ## Additional Validation
 
