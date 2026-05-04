@@ -5,6 +5,12 @@ from backend.application.intake_candidate_service import (
     ApplicationFormCandidateDetectionResult,
     ApplicationFormCandidateDetector,
 )
+from backend.application.application_form_eligibility_service import (
+    ApplicationFormEligibility,
+    ApplicationFormEligibilityNotFoundError,
+    ApplicationFormEligibilityService,
+    IntakeAssetApplicationFormEligibilityService,
+)
 from backend.application.direct_word_intake_service import (
     DirectWordIntakeError,
     DirectWordIntakeResult,
@@ -58,6 +64,10 @@ __all__ = [
     "ApplicationFormCandidate",
     "ApplicationFormCandidateDetectionResult",
     "ApplicationFormCandidateDetector",
+    "ApplicationFormEligibility",
+    "ApplicationFormEligibilityNotFoundError",
+    "ApplicationFormEligibilityService",
+    "IntakeAssetApplicationFormEligibilityService",
     "DirectWordIntakeError",
     "DirectWordIntakeResult",
     "DirectWordIntakeService",

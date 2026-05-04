@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 from docx import Document
 
+from backend.application.application_form_eligibility_service import (
+    ApplicationFormEligibility,
+)
 from backend.application.intake_form_selection_service import (
     IntakeFormSelectionService,
     IntakeSelectionError,
@@ -75,6 +78,19 @@ class DraftStore:
         return draft
 
 
+class FakeEligibilityValidator:
+    def __init__(self, result: ApplicationFormEligibility | None = None) -> None:
+        self.result = result or ApplicationFormEligibility(
+            eligible=True,
+            reason_code="ok",
+            message="Application form is ready for Precheck.",
+            observed_header_cell="Laboratory Testing Request",
+        )
+
+    def evaluate(self, asset: IntakeAsset) -> ApplicationFormEligibility:
+        return self.result
+
+
 def _package() -> IntakePackage:
     return IntakePackage(
         package_id="pkg-1",
@@ -121,12 +137,19 @@ def _service(
     assets: list[IntakeAsset],
     cases: list[IntakeCase] | None = None,
     drafts: list[IntakeDraft] | None = None,
+    eligibility: ApplicationFormEligibility | None = None,
 ) -> tuple[IntakeFormSelectionService, AssetStore, CaseStore, DraftStore]:
     asset_store = AssetStore(assets)
     case_store = CaseStore(cases)
     draft_store = DraftStore(drafts)
     return (
-        IntakeFormSelectionService(PackageStore([_package()]), asset_store, case_store, draft_store),
+        IntakeFormSelectionService(
+            PackageStore([_package()]),
+            asset_store,
+            case_store,
+            draft_store,
+            eligibility_validator=FakeEligibilityValidator(eligibility),
+        ),
         asset_store,
         case_store,
         draft_store,
@@ -298,6 +321,42 @@ def test_selection_rejects_non_word_non_candidate_asset() -> None:
 
     with pytest.raises(IntakeSelectionError):
         service.select_form_asset("pkg-1", "asset-a")
+
+
+def test_selection_rejects_doc_asset_even_when_candidate() -> None:
+    service, _, _, _ = _service(
+        [_asset("asset-a", IntakeAssetRole.APPLICATION_FORM_CANDIDATE, ".doc")],
+        eligibility=ApplicationFormEligibility(
+            eligible=False,
+            reason_code="not_docx",
+            message="Select a .docx Laboratory Testing Request form to continue.",
+        ),
+    )
+
+    with pytest.raises(IntakeSelectionError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-a")
+
+    assert "Select a .docx Laboratory Testing Request form" in str(exc_info.value)
+
+
+def test_selection_rejects_docx_when_header_gate_fails() -> None:
+    service, _, _, _ = _service(
+        [_asset("asset-a", IntakeAssetRole.APPLICATION_FORM_CANDIDATE)],
+        eligibility=ApplicationFormEligibility(
+            eligible=False,
+            reason_code="header_cell_mismatch",
+            message=(
+                "Selected document is not recognized as Laboratory Testing Request. "
+                'Header table cell (1,2): "Connector Test Request"'
+            ),
+            observed_header_cell="Connector Test Request",
+        ),
+    )
+
+    with pytest.raises(IntakeSelectionError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-a")
+
+    assert 'Header table cell (1,2): "Connector Test Request"' in str(exc_info.value)
 
 
 def test_selection_rejects_missing_package_or_asset() -> None:

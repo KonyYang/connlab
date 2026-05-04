@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from "react";
 import {
   getIntakeAssetPreview,
+  getIntakePackageDetail,
   importDirectWordApplicationForm,
   importMsgPackage,
   selectIntakeApplicationForm,
+  uploadEmailPackageApplicationForm,
+  validateIntakeAssetApplicationForm,
+  type ApplicationFormEligibility,
   type IntakeAssetPreview,
+  type IntakePackageDetail,
   type IntakePackageImport
 } from "../api/client";
 import { NewProjectWorkflowHeader } from "../components/workflow/NewProjectWorkflow";
@@ -17,8 +22,8 @@ import {
 } from "../features/intake/intakeSession";
 import {
   buildAttachmentViewModels,
+  intakeContinueState,
   isWordAsset,
-  selectedApplicationFormAsset,
   selectedIntakeAsset,
   visibleIntakeAttachments
 } from "../features/intake/intakeSelectors";
@@ -43,15 +48,14 @@ export function IntakeInboxPage({
   const [preview, setPreview] = useState<IntakeAssetPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const { packageImport, selectedAssetId, selectedWordAssetId, sourceMode, directWordName } = session;
+  const [applicationFormEligibility, setApplicationFormEligibility] =
+    useState<ApplicationFormEligibility | null>(null);
+  const [validatingApplicationForm, setValidatingApplicationForm] = useState(false);
+  const { packageImport, selectedAssetId, sourceMode, directWordName } = session;
 
   const selectedAsset = useMemo(
     () => selectedIntakeAsset(packageImport, selectedAssetId),
     [packageImport, selectedAssetId]
-  );
-  const selectedApplicationForm = useMemo(
-    () => selectedApplicationFormAsset(packageImport, selectedWordAssetId),
-    [packageImport, selectedWordAssetId]
   );
   const visibleAttachmentAssets = useMemo(
     () => visibleIntakeAttachments(packageImport),
@@ -60,6 +64,21 @@ export function IntakeInboxPage({
   const attachmentViewModels = useMemo(
     () => buildAttachmentViewModels(visibleAttachmentAssets, selectedAssetId),
     [selectedAssetId, visibleAttachmentAssets]
+  );
+  const continueState = useMemo(
+    () =>
+      intakeContinueState(
+        packageImport,
+        selectedAsset,
+        applicationFormEligibility,
+        validatingApplicationForm,
+      ),
+    [
+      applicationFormEligibility,
+      packageImport,
+      selectedAsset,
+      validatingApplicationForm,
+    ]
   );
 
   useEffect(() => {
@@ -93,6 +112,45 @@ export function IntakeInboxPage({
       cancelled = true;
     };
   }, [selectedAssetId]);
+
+  useEffect(() => {
+    if (!selectedAsset || !isWordAsset(selectedAsset)) {
+      setApplicationFormEligibility(null);
+      setValidatingApplicationForm(false);
+      return;
+    }
+    let cancelled = false;
+    setValidatingApplicationForm(true);
+    setApplicationFormEligibility(null);
+    validateIntakeAssetApplicationForm(selectedAsset.asset_id)
+      .then((result) => {
+        if (!cancelled) {
+          setApplicationFormEligibility(result);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setApplicationFormEligibility({
+            eligible: false,
+            reason_code: "word_header_unreadable",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Unable to verify the Word header. Open the document in Word and check the form header.",
+            observed_header_cell: null,
+            expected_text: "Laboratory Testing Request",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setValidatingApplicationForm(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAsset]);
 
   async function handleMsgFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
@@ -130,26 +188,48 @@ export function IntakeInboxPage({
     setImporting(true);
     setImportError(null);
     try {
-      const imported = await importDirectWordApplicationForm(file);
-      const firstWord = imported.assets.find(isWordAsset) ?? imported.assets[0] ?? null;
-      onSessionChange({
-        packageImport: imported,
-        selectedAssetId: firstWord?.asset_id ?? null,
-        selectedWordAssetId: firstWord?.asset_id ?? null,
-        selectedPrecheckCaseId: null,
-        sourceMode: "word",
-        directWordName: file.name
-      });
+      if (packageImport?.source_type === "outlook_msg") {
+        const selection = await uploadEmailPackageApplicationForm(packageImport.package_id, file);
+        const detail = await getIntakePackageDetail(packageImport.package_id);
+        const refreshed = packageDetailToImport(detail);
+        onSessionChange({
+          packageImport: refreshed,
+          selectedAssetId: selection.selected_form_asset_id,
+          selectedWordAssetId: selection.selected_form_asset_id,
+          selectedPrecheckCaseId: selection.case_id,
+          sourceMode: "msg",
+          directWordName: null
+        });
+      } else {
+        const imported = await importDirectWordApplicationForm(file);
+        const firstWord = imported.assets.find(isWordAsset) ?? imported.assets[0] ?? null;
+        onSessionChange({
+          packageImport: imported,
+          selectedAssetId: firstWord?.asset_id ?? null,
+          selectedWordAssetId: firstWord?.asset_id ?? null,
+          selectedPrecheckCaseId: null,
+          sourceMode: "word",
+          directWordName: file.name
+        });
+      }
     } catch (error) {
-      onSessionChange(EMPTY_INTAKE_SESSION);
-      setImportError(error instanceof Error ? error.message : "Direct application form import failed.");
+      if (!packageImport) {
+        onSessionChange(EMPTY_INTAKE_SESSION);
+      }
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : packageImport
+            ? "Application form upload failed."
+            : "Direct application form import failed."
+      );
     } finally {
       setImporting(false);
     }
   }
 
   async function handleContinueToPrecheck(): Promise<void> {
-    if (!packageImport || !selectedApplicationForm) {
+    if (!packageImport || !selectedAsset || !continueState.canContinue) {
       return;
     }
     setPreparingPrecheck(true);
@@ -157,7 +237,7 @@ export function IntakeInboxPage({
     try {
       const selection = await selectIntakeApplicationForm(
         packageImport.package_id,
-        selectedApplicationForm.asset_id
+        selectedAsset.asset_id
       );
       onSessionChange({
         ...session,
@@ -189,6 +269,9 @@ export function IntakeInboxPage({
             wordInputRef={wordInputRef}
             onDirectWordChange={(event) => void handleDirectWordChange(event)}
             onMsgFileChange={(event) => void handleMsgFileChange(event)}
+            onSelectSourceMode={(mode) => {
+              onSessionChange({ ...session, sourceMode: mode });
+            }}
           />
           <AttachmentList
             attachments={attachmentViewModels}
@@ -197,8 +280,8 @@ export function IntakeInboxPage({
               onSessionChange({
                 ...session,
                 selectedAssetId: attachment.asset.asset_id,
-                selectedWordAssetId: attachment.word ? attachment.asset.asset_id : selectedWordAssetId,
-                selectedPrecheckCaseId: attachment.word ? null : session.selectedPrecheckCaseId
+                selectedWordAssetId: attachment.word ? attachment.asset.asset_id : null,
+                selectedPrecheckCaseId: null
               });
             }}
           />
@@ -215,13 +298,11 @@ export function IntakeInboxPage({
 
       <div className="step-footer">
         <span className="step-footer-guidance">
-          {selectedApplicationForm
-            ? `Application form: ${selectedApplicationForm.original_name}`
-            : "Select a Word (.docx) file before continuing."}
+          {continueState.guidance}
         </span>
         <button
           className="new-project-primary-action continue-action ui-primary-action"
-          disabled={!packageImport || !selectedApplicationForm || preparingPrecheck}
+          disabled={!continueState.canContinue || preparingPrecheck}
           type="button"
           onClick={() => void handleContinueToPrecheck()}
         >
@@ -231,4 +312,21 @@ export function IntakeInboxPage({
       </div>
     </section>
   );
+}
+
+function packageDetailToImport(detail: IntakePackageDetail): IntakePackageImport {
+  return {
+    package_id: detail.package_id,
+    source_type: detail.source_type,
+    package_status: detail.package_status,
+    source_original_name: detail.source_original_name,
+    subject: detail.subject,
+    sender_name: detail.sender_name,
+    sender_email: detail.sender_email,
+    received_at: detail.received_at,
+    asset_count: detail.asset_count,
+    candidate_count: detail.candidate_count,
+    next_action: detail.next_action,
+    assets: detail.assets
+  };
 }

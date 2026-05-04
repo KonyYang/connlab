@@ -16,7 +16,13 @@ from backend.application.intake_asset_download_service import (
 from backend.application.evidence_placement_service import EvidencePlacementService
 from backend.application.folder_service import FolderService
 from backend.application.direct_word_intake_service import DirectWordIntakeService
+from backend.application.email_package_application_form_service import (
+    EmailPackageApplicationFormService,
+)
 from backend.application.intake_precheck_service import IntakePrecheckService
+from backend.application.application_form_eligibility_service import (
+    IntakeAssetApplicationFormEligibilityService,
+)
 from backend.application.intake_asset_preview_service import IntakeAssetPreviewService
 from backend.application.intake_case_review_service import IntakeCaseReviewService
 from backend.application.intake_confirmation_service import IntakeConfirmationService
@@ -148,6 +154,26 @@ def get_direct_word_intake_service(
     )
 
 
+def get_email_package_application_form_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> EmailPackageApplicationFormService:
+    """Build a service for adding a Word form to an existing email package."""
+    package_store = IntakePackageRepository(session)
+    asset_store = IntakeAssetRepository(session)
+    return EmailPackageApplicationFormService(
+        storage=IntakeStorage(settings.data_dir / "intake"),
+        package_store=package_store,
+        asset_store=asset_store,
+        selection_service=IntakeFormSelectionService(
+            package_store=package_store,
+            asset_store=asset_store,
+            case_store=IntakeCaseRepository(session),
+            draft_store=IntakeDraftRepository(session),
+        ),
+    )
+
+
 def get_intake_package_query_service(
     session: Session = Depends(get_session),
 ) -> IntakePackageQueryService:
@@ -173,6 +199,15 @@ def get_intake_asset_preview_service(
 ) -> IntakeAssetPreviewService:
     """Build a safe intake asset preview service."""
     return IntakeAssetPreviewService(
+        asset_store=IntakeAssetRepository(session),
+    )
+
+
+def get_intake_asset_application_form_eligibility_service(
+    session: Session = Depends(get_session),
+) -> IntakeAssetApplicationFormEligibilityService:
+    """Build the intake asset application-form eligibility service."""
+    return IntakeAssetApplicationFormEligibilityService(
         asset_store=IntakeAssetRepository(session),
     )
 

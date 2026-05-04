@@ -8,6 +8,7 @@ from backend.infrastructure.office.models import (
     OfficeFileClassification,
     OfficeFileKind,
     WordDocumentSnapshot,
+    WordHeaderCellResult,
 )
 from backend.infrastructure.office.msg_compatibility import (
     MsgCompatibilityResult,
@@ -69,5 +70,6 @@ __all__ = [
     "UnsupportedLtrWorkbookError",
     "WordDocumentGateway",
     "WordDocumentSnapshot",
+    "WordHeaderCellResult",
     "probe_msg_samples",
 ]

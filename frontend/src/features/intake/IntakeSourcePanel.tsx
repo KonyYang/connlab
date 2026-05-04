@@ -15,6 +15,7 @@ type IntakeSourcePanelProps = {
   wordInputRef: RefObject<HTMLInputElement | null>;
   onDirectWordChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onMsgFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onSelectSourceMode: (mode: IntakeSourceMode) => void;
 };
 
 export function IntakeSourcePanel({
@@ -24,6 +25,7 @@ export function IntakeSourcePanel({
   msgInputRef,
   onDirectWordChange,
   onMsgFileChange,
+  onSelectSourceMode,
   packageImport,
   sourceMode,
   wordInputRef,
@@ -42,7 +44,7 @@ export function IntakeSourcePanel({
           />
           <input
             ref={wordInputRef}
-            accept=".doc,.docx"
+            accept=".docx"
             className="file-input-hidden"
             type="file"
             onChange={onDirectWordChange}
@@ -51,15 +53,22 @@ export function IntakeSourcePanel({
             className={sourceMode === "msg" ? "source-button source-button-active" : "source-button"}
             disabled={importing}
             type="button"
-            onClick={() => msgInputRef.current?.click()}
+            onClick={() => {
+              onSelectSourceMode("msg");
+              msgInputRef.current?.click();
+            }}
           >
             <UiIcon name="outlook" />
             {importing ? "Importing from Outlook..." : "Import from Outlook"}
           </button>
           <button
             className={sourceMode === "word" ? "source-button source-button-active" : "source-button"}
+            disabled={importing}
             type="button"
-            onClick={() => wordInputRef.current?.click()}
+            onClick={() => {
+              onSelectSourceMode("word");
+              wordInputRef.current?.click();
+            }}
           >
             <UiIcon name="upload" />
             {importing && sourceMode === "word" ? "Uploading application form..." : "Upload application form"}

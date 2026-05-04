@@ -11,6 +11,7 @@ from backend.infrastructure.office.models import (
     OfficeFileClassification,
     OfficeFileKind,
     WordDocumentSnapshot,
+    WordHeaderCellResult,
 )
 from backend.infrastructure.office.outlook_msg_gateway import OutlookMsgGateway
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
@@ -58,6 +59,15 @@ class OfficeFacade:
     def read_word_document(self, source_path: Path) -> WordDocumentSnapshot:
         """Read a Word document through the configured gateway."""
         return self._word_gateway.read_word_document(source_path)
+
+    def read_word_header_table_cell(
+        self,
+        source_path: Path,
+        row: int,
+        column: int,
+    ) -> WordHeaderCellResult:
+        """Read one Word header table cell through the configured gateway."""
+        return self._word_gateway.read_header_table_cell(source_path, row, column)
 
     def import_outlook_msg(self, source_path: Path, target_dir: Path) -> ImportedMailPackage:
         """Import an Outlook `.msg` file through the configured gateway."""

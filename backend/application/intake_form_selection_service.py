@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
 
+from backend.application.application_form_eligibility_service import (
+    ApplicationFormEligibility,
+    ApplicationFormEligibilityService,
+)
 from backend.domain import (
     IntakeAsset,
     IntakeAssetRole,
@@ -51,6 +55,12 @@ class IntakeDraftStore(Protocol):
     def update(self, draft: IntakeDraft) -> IntakeDraft: ...
 
 
+class ApplicationFormEligibilityValidator(Protocol):
+    """Port for checking whether an intake asset can be selected for Precheck."""
+
+    def evaluate(self, asset: IntakeAsset) -> ApplicationFormEligibility: ...
+
+
 @dataclass(frozen=True)
 class FormSelectionResult:
     package_id: str
@@ -70,7 +80,7 @@ class _CaseSelection:
 class IntakeFormSelectionService:
     """Creates review records after a human selects one application form asset."""
 
-    _word_extensions = {".docx", ".doc"}
+    _word_extensions = {".docx"}
     _blocked_roles = {IntakeAssetRole.EMAIL_SOURCE, IntakeAssetRole.IGNORED}
 
     def __init__(
@@ -80,6 +90,7 @@ class IntakeFormSelectionService:
         case_store: IntakeCaseStore,
         draft_store: IntakeDraftStore,
         parser: ApplicationFormParser | None = None,
+        eligibility_validator: ApplicationFormEligibilityValidator | None = None,
     ) -> None:
         """Create the selection service from explicit stores and parser."""
         self._package_store = package_store
@@ -87,6 +98,9 @@ class IntakeFormSelectionService:
         self._case_store = case_store
         self._draft_store = draft_store
         self._parser = parser or ApplicationFormParser()
+        self._eligibility_validator = (
+            eligibility_validator or ApplicationFormEligibilityService()
+        )
 
     def select_form_asset(self, package_id: str, asset_id: str) -> FormSelectionResult:
         package = self._package_store.get(package_id)
@@ -100,6 +114,9 @@ class IntakeFormSelectionService:
             raise IntakeSelectionError("Selected asset does not belong to the intake package.")
         if not self._is_selectable_application_form(asset):
             raise IntakeSelectionError("Selected asset is not an application form candidate.")
+        eligibility = self._eligibility_validator.evaluate(asset)
+        if not eligibility.eligible:
+            raise IntakeSelectionError(eligibility.message)
 
         selected_asset = self._asset_store.update(
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)

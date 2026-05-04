@@ -145,6 +145,14 @@ export type IntakeAssetPreview = {
   image_data_url?: string | null;
 };
 
+export type ApplicationFormEligibility = {
+  eligible: boolean;
+  reason_code: string;
+  message: string;
+  observed_header_cell?: string | null;
+  expected_text: string;
+};
+
 export type IntakePackageImport = {
   package_id: string;
   source_type: string;
@@ -554,6 +562,21 @@ export function importDirectWordApplicationForm(file: File): Promise<IntakePacka
   });
 }
 
+export function uploadEmailPackageApplicationForm(
+  packageId: string,
+  file: File
+): Promise<SelectedApplicationForm> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return requestJson<SelectedApplicationForm>(
+    `/api/intake-packages/${encodeURIComponent(packageId)}/application-form`,
+    {
+      method: "POST",
+      body: formData
+    }
+  );
+}
+
 export function getIntakePackageDetail(packageId: string): Promise<IntakePackageDetail> {
   return requestJson<IntakePackageDetail>(
     `/api/intake-packages/${encodeURIComponent(packageId)}`
@@ -563,6 +586,15 @@ export function getIntakePackageDetail(packageId: string): Promise<IntakePackage
 export function getIntakeAssetPreview(assetId: string): Promise<IntakeAssetPreview> {
   return requestJson<IntakeAssetPreview>(
     `/api/intake-assets/${encodeURIComponent(assetId)}/preview`
+  );
+}
+
+export function validateIntakeAssetApplicationForm(
+  assetId: string
+): Promise<ApplicationFormEligibility> {
+  return requestJson<ApplicationFormEligibility>(
+    `/api/intake-assets/${encodeURIComponent(assetId)}/application-form/validate`,
+    { method: "POST" }
   );
 }
 

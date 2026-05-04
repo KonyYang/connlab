@@ -42,7 +42,7 @@ class DirectWordIntakeResult:
 class DirectWordIntakeService:
     """Imports one local Word application form into the intake review flow."""
 
-    _allowed_kinds = {OfficeFileKind.DOCX, OfficeFileKind.DOC}
+    _allowed_kinds = {OfficeFileKind.DOCX}
 
     def __init__(
         self,
@@ -59,7 +59,7 @@ class DirectWordIntakeService:
     def import_word_form(self, source_path: Path) -> DirectWordIntakeResult:
         classification = self._office.classify_file(source_path)
         if classification.kind not in self._allowed_kinds:
-            raise DirectWordIntakeError("Direct intake accepts only .docx or .doc files.")
+            raise DirectWordIntakeError("Direct intake accepts only .docx files.")
 
         package_id = f"pkg-{uuid4().hex}"
         asset_id = f"asset-{uuid4().hex}"

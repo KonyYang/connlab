@@ -33,7 +33,7 @@ class ApplicationFormCandidateDetector:
     """Scores stored intake assets without opening Office documents."""
 
     _candidate_threshold = 60
-    _document_extensions = {".docx", ".doc"}
+    _document_extensions = {".docx"}
     _positive_name_terms = (
         "application form",
         "application",

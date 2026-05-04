@@ -202,6 +202,14 @@ GET /api/lookups/intake-precheck
 
 Direct `.docx` is a first-class no-email entry path.
 
+Application-form entry gate:
+
+- Only `.docx` files can activate Intake `Continue to Precheck`.
+- The selected Word document must have header table cell `(1,2)` containing `Laboratory Testing Request`.
+- Backend validation is authoritative. The frontend may display the disabled reason, but it must not inspect local files or bypass the backend gate.
+- When the header marker is missing or different, the Intake footer should show the observed `(1,2)` cell text, limited to a short cleaned value. Blank content should display as `empty`.
+- `.doc` files may appear as stored attachments only; they are not valid application-form entry sources for Precheck.
+
 It must create the same durable workflow records as `.msg` import:
 
 ```text
@@ -271,4 +279,3 @@ Recommended next sequence:
 7. `TASK_085_PRECHECK_BUSINESS_UI_COMPLETION`
 8. `TASK_086_INTAKE_BUSINESS_UI_COMPLETION`
 9. `TASK_087_ROUTE_STATE_AND_WORKFLOW_SESSION_HARDENING`
-

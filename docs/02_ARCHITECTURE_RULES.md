@@ -44,6 +44,14 @@ OutlookMailGateway
 
 MVP application form parsing can use python-docx first. If pywin32 is later needed, it must stay inside gateways.
 
+Intake application-form header gating is also an Office gateway responsibility:
+
+- Frontend and API routes must not read Word files directly.
+- Application services call a validator that uses `OfficeFacade`.
+- `OfficeFacade` delegates Word header table cell reads to `WordDocumentGateway`.
+- Word COM, when used, stays inside `backend/infrastructure/office`.
+- The stable gate for Intake to Precheck is `.docx` plus header table cell `(1,2)` containing `Laboratory Testing Request`.
+
 ## Feature Admission Checklist
 
 Before adding any feature, answer:

@@ -1,4 +1,9 @@
-import type { IntakeAsset, IntakeAssetPreview, IntakePackageImport } from "../../api/client";
+import type {
+  ApplicationFormEligibility,
+  IntakeAsset,
+  IntakeAssetPreview,
+  IntakePackageImport
+} from "../../api/client";
 
 export type IntakeAttachmentKind = "word" | "pdf" | "image" | "msg" | "file";
 
@@ -9,6 +14,11 @@ export type IntakeAttachmentViewModel = {
   roleText: string;
   selected: boolean;
   word: boolean;
+};
+
+export type IntakeContinueState = {
+  canContinue: boolean;
+  guidance: string;
 };
 
 export function visibleIntakeAttachments(packageImport: IntakePackageImport | null): IntakeAsset[] {
@@ -77,7 +87,73 @@ export function isWordAsset(asset: IntakeAsset | null): boolean {
   if (!asset) {
     return false;
   }
-  return [".doc", ".docx"].includes(asset.extension.toLowerCase());
+  return asset.extension.toLowerCase() === ".docx";
+}
+
+export function intakeContinueState(
+  packageImport: IntakePackageImport | null,
+  selectedAsset: IntakeAsset | null,
+  eligibility: ApplicationFormEligibility | null,
+  validating: boolean,
+): IntakeContinueState {
+  if (!packageImport) {
+    return {
+      canContinue: false,
+      guidance: "Import an email package with an application form or upload the application form.",
+    };
+  }
+  if (!selectedAsset) {
+    return {
+      canContinue: false,
+      guidance:
+        packageImport.source_type === "outlook_msg"
+          ? "No application form found in this email. Upload the application form to continue with this email package."
+          : "Import an email package with an application form or upload the application form.",
+    };
+  }
+  if (!isWordAsset(selectedAsset)) {
+    return {
+      canContinue: false,
+      guidance: "Selected file is not .docx. Select a .docx application form.",
+    };
+  }
+  if (validating) {
+    return {
+      canContinue: false,
+      guidance: `Verifying application form: ${selectedAsset.original_name}`,
+    };
+  }
+  if (!eligibility) {
+    return {
+      canContinue: false,
+      guidance: "Select a .docx Laboratory Testing Request form to continue.",
+    };
+  }
+  if (!eligibility.eligible) {
+    return {
+      canContinue: false,
+      guidance: applicationFormEligibilityMessage(eligibility),
+    };
+  }
+  return {
+    canContinue: true,
+    guidance: `Application form: ${selectedAsset.original_name}`,
+  };
+}
+
+function applicationFormEligibilityMessage(
+  eligibility: ApplicationFormEligibility,
+): string {
+  if (
+    eligibility.reason_code === "header_cell_mismatch" &&
+    eligibility.observed_header_cell
+  ) {
+    return `Selected document is not recognized as Laboratory Testing Request. Header table cell (1,2): "${eligibility.observed_header_cell}"`;
+  }
+  if (eligibility.reason_code === "header_cell_empty") {
+    return 'Selected document is not recognized as Laboratory Testing Request. Header table cell (1,2): "empty"';
+  }
+  return eligibility.message;
 }
 
 export function assetKind(asset: IntakeAsset): IntakeAttachmentKind {

@@ -580,7 +580,7 @@ def test_direct_application_form_entry_imports_through_backend() -> None:
         assert term in client_source
 
     for term in [
-        'accept=".doc,.docx"',
+        'accept=".docx"',
         "Upload application form",
         "importDirectWordApplicationForm(file)",
         "directWordName",
@@ -619,7 +619,7 @@ def test_task087_intake_information_density_cleanup() -> None:
         "senderEmailText",
         "mailDateText",
         "Application form:",
-        "Select a Word (.docx) file before continuing.",
+        "Select a .docx Laboratory Testing Request form to continue.",
         "attachmentRoleText",
         "toLocaleString",
     ]:
@@ -647,6 +647,41 @@ def test_task087_intake_information_density_cleanup() -> None:
     assert "grid-template-rows: auto minmax(0, 1fr);" in inbox_styles
     assert "overflow: auto;" in inbox_styles
     assert "align-content: start;" in inbox_styles
+
+
+def test_task094_intake_continue_uses_application_form_header_gate() -> None:
+    """TASK_094 gates Continue to Precheck on backend application-form eligibility."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8") + intake_feature_source()
+
+    for term in [
+        "ApplicationFormEligibility",
+        "validateIntakeAssetApplicationForm",
+        "/application-form/validate",
+    ]:
+        assert term in client_source
+
+    for term in [
+        "intakeContinueState",
+        "applicationFormEligibility",
+        "validatingApplicationForm",
+        "continueState.canContinue",
+        "selectedWordAssetId: attachment.word ? attachment.asset.asset_id : null",
+        "selectedPrecheckCaseId: null",
+        "Selected file is not .docx. Select a .docx application form.",
+        "Import an email package with an application form or upload the application form.",
+        "Header table cell (1,2)",
+        "Selected document is not recognized as Laboratory Testing Request.",
+        "Select a .docx Laboratory Testing Request form to continue.",
+        'asset.extension.toLowerCase() === ".docx"',
+    ]:
+        assert term in inbox_source
+
+    assert "Select a Word (.docx) file before continuing." not in inbox_source
 
 
 def test_task087_msg_attachment_hotfix_filters_source_and_labels_msg() -> None:
@@ -888,7 +923,7 @@ def test_task073_selected_form_precheck_binding_is_explicit() -> None:
 
     for term in [
         "selectIntakeApplicationForm",
-        "selectedApplicationForm.asset_id",
+        "selectedAsset.asset_id",
         "selectedPrecheckCaseId",
         "selection.case_id",
     ]:
@@ -1369,6 +1404,38 @@ def test_task092_preview_header_and_non_preview_download_availability() -> None:
     assert "<PreviewHeader asset={asset} />" in preview_source
     assert "AttachmentPreviewActions assetId={asset.asset_id}" in preview_source
     assert "originalName={asset.original_name}" in preview_source
+
+
+def test_task093_email_package_missing_form_upload_continuation() -> None:
+    """TASK_093 keeps supplemental form upload attached to the current email package."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    inbox_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8") + intake_feature_source()
+    source_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "IntakeSourcePanel.tsx"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "uploadEmailPackageApplicationForm",
+        "/application-form",
+        "Promise<SelectedApplicationForm>",
+    ]:
+        assert term in client_source
+
+    for term in [
+        'packageImport?.source_type === "outlook_msg"',
+        "uploadEmailPackageApplicationForm(packageImport.package_id, file)",
+        "getIntakePackageDetail(packageImport.package_id)",
+        "packageDetailToImport",
+        "No application form found in this email. Upload the application form to continue with this email package.",
+        "selectedPrecheckCaseId: selection.case_id",
+    ]:
+        assert term in inbox_source
+
+    assert "disabled={importing}" in source_panel_source
 
 
 def test_folder_evidence_frontend_wires_preview_and_execution() -> None:

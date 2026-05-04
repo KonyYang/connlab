@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 from docx import Document
+from docx.shared import Inches
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
@@ -248,6 +249,327 @@ def test_select_form_api_binds_selected_docx_to_precheck_case(tmp_path: Path) ->
             draft = IntakeDraftRepository(session).get_by_case(selected["case_id"])
             assert draft is not None
             assert "Alice Requestor" in draft.parsed_fields_json
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_email_package_without_form_accepts_supplemental_application_form(
+    tmp_path: Path,
+) -> None:
+    """A no-form email package can continue after uploading a Word form into it."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        """Yield one test database session."""
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        import_response = client.post(
+            "/api/intake-packages/import-msg",
+            files={
+                "file": (
+                    "request.msg",
+                    _msg_bytes(
+                        [
+                            "Subject: Connector qualification request",
+                            "From: Jane Engineer <jane@example.com>",
+                            "Attachment: drawing.pdf; content=pdf bytes",
+                        ]
+                    ),
+                    "application/vnd.ms-outlook",
+                )
+            },
+        )
+        assert import_response.status_code == 201
+        imported = import_response.json()
+        assert imported["package_status"] == "needs_application_form_selection"
+        assert imported["candidate_count"] == 0
+        assert imported["next_action"] == "resolve_missing_application_form"
+
+        docx_path = _create_application_docx(tmp_path / "supplemental-form.docx")
+        with docx_path.open("rb") as handle:
+            supplemental_response = client.post(
+                f"/api/intake-packages/{imported['package_id']}/application-form",
+                files={
+                    "file": (
+                        docx_path.name,
+                        handle,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+            )
+
+        assert supplemental_response.status_code == 201
+        selected = supplemental_response.json()
+        assert selected["package_id"] == imported["package_id"]
+        assert selected["selected_form_asset_id"]
+        assert selected["case_id"]
+        assert selected["next_action"] == "review_selected_application_form"
+
+        detail_response = client.get(f"/api/intake-packages/{imported['package_id']}")
+        assert detail_response.status_code == 200
+        detail = detail_response.json()
+        assert detail["source_type"] == "outlook_msg"
+        assert detail["source_original_name"] == "request.msg"
+        assert detail["subject"] == "Connector qualification request"
+        assert detail["sender_email"] == "jane@example.com"
+        assert detail["asset_count"] == 3
+        assert detail["case_count"] == 1
+        assert selected["selected_form_asset_id"] in [
+            asset["asset_id"] for asset in detail["assets"]
+        ]
+        assert any(asset["asset_role"] == "email_source" for asset in detail["assets"])
+        assert any(asset["original_name"] == "drawing.pdf" for asset in detail["assets"])
+        supplemental_asset = next(
+            asset
+            for asset in detail["assets"]
+            if asset["asset_id"] == selected["selected_form_asset_id"]
+        )
+        assert supplemental_asset["original_name"] == "supplemental-form.docx"
+        assert supplemental_asset["asset_role"] == "selected_application_form"
+
+        review_response = client.get(
+            f"/api/intake-packages/{imported['package_id']}/case-review"
+        )
+        assert review_response.status_code == 200
+        cases = review_response.json()["cases"]
+        assert len(cases) == 1
+        assert cases[0]["case_id"] == selected["case_id"]
+        assert cases[0]["selected_form_asset_id"] == selected["selected_form_asset_id"]
+
+        with session_factory() as session:
+            assets = IntakeAssetRepository(session).list_by_package(imported["package_id"])
+            selected_asset = next(
+                asset for asset in assets if asset.asset_id == selected["selected_form_asset_id"]
+            )
+            assert settings.data_dir / "intake" in selected_asset.stored_path.parents
+            assert selected_asset.stored_path.is_file()
+            assert IntakeDraftRepository(session).get_by_case(selected["case_id"]) is not None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_select_form_rejects_docx_with_mismatched_header_gate(tmp_path: Path) -> None:
+    """Selected-form API blocks docx files whose header marker does not match."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        """Yield one test database session."""
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        docx_path = _create_application_docx(
+            tmp_path / "wrong-form.docx",
+            header_text="Connector Test Request",
+        )
+        with session_factory() as session:
+            package_repo = IntakePackageRepository(session)
+            asset_repo = IntakeAssetRepository(session)
+            package_repo.create(
+                IntakePackage(
+                    package_id="pkg-bad-header",
+                    source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                    status=IntakePackageStatus.READY_FOR_REVIEW,
+                    source_original_name="request.msg",
+                    source_stored_path=tmp_path / "request.msg",
+                )
+            )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="asset-bad-header",
+                    package_id="pkg-bad-header",
+                    original_name=docx_path.name,
+                    stored_path=docx_path,
+                    extension=".docx",
+                    mime_type="application/octet-stream",
+                    size_bytes=docx_path.stat().st_size,
+                    sha256="c" * 64,
+                    asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,
+                    candidate_score=90,
+                )
+            )
+            session.commit()
+
+        validate_response = client.post(
+            "/api/intake-assets/asset-bad-header/application-form/validate"
+        )
+        assert validate_response.status_code == 200
+        validation = validate_response.json()
+        assert validation["eligible"] is False
+        assert validation["reason_code"] == "header_cell_mismatch"
+        assert validation["observed_header_cell"] == "Connector Test Request"
+
+        select_response = client.post(
+            "/api/intake-packages/pkg-bad-header/select-form",
+            json={"asset_id": "asset-bad-header"},
+        )
+        assert select_response.status_code == 400
+        assert 'Header table cell (1,2): "Connector Test Request"' in (
+            select_response.json()["detail"]
+        )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_email_package_supplemental_application_form_rejects_non_word(
+    tmp_path: Path,
+) -> None:
+    """The supplemental path rejects non-Word files without creating a case."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        """Yield one test database session."""
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        with session_factory() as session:
+            IntakePackageRepository(session).create(
+                IntakePackage(
+                    package_id="pkg-no-form",
+                    source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                    status=IntakePackageStatus.NEEDS_APPLICATION_FORM_SELECTION,
+                    source_original_name="request.msg",
+                    source_stored_path=tmp_path / "request.msg",
+                )
+            )
+            session.commit()
+
+        response = client.post(
+            "/api/intake-packages/pkg-no-form/application-form",
+            files={"file": ("drawing.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+
+        assert response.status_code == 400
+        assert "accepts only .docx files" in response.json()["detail"]
+        with session_factory() as session:
+            assert IntakeCaseRepository(session).list_by_package("pkg-no-form") == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_email_package_supplemental_application_form_rejects_bad_header(
+    tmp_path: Path,
+) -> None:
+    """Supplemental `.docx` uploads return a business error when the header gate fails."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        """Yield one test database session."""
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        with session_factory() as session:
+            IntakePackageRepository(session).create(
+                IntakePackage(
+                    package_id="pkg-bad-supplemental-form",
+                    source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                    status=IntakePackageStatus.NEEDS_APPLICATION_FORM_SELECTION,
+                    source_original_name="request.msg",
+                    source_stored_path=tmp_path / "request.msg",
+                )
+            )
+            session.commit()
+
+        docx_path = _create_application_docx(
+            tmp_path / "wrong-form.docx",
+            header_text="Connector Test Request",
+        )
+        with docx_path.open("rb") as handle:
+            response = client.post(
+                "/api/intake-packages/pkg-bad-supplemental-form/application-form",
+                files={
+                    "file": (
+                        docx_path.name,
+                        handle,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+            )
+
+        assert response.status_code == 400
+        assert 'Header table cell (1,2): "Connector Test Request"' in (
+            response.json()["detail"]
+        )
+        with session_factory() as session:
+            assert IntakeCaseRepository(session).list_by_package(
+                "pkg-bad-supplemental-form"
+            ) == []
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -503,9 +825,14 @@ def _msg_bytes(lines: list[str]) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
-def _create_application_docx(path: Path) -> Path:
+def _create_application_docx(
+    path: Path,
+    header_text: str = "Laboratory Testing Request",
+) -> Path:
     """Create a small application-form document for selected-form API tests."""
     document = Document()
+    header_table = document.sections[0].header.add_table(rows=1, cols=2, width=Inches(6))
+    header_table.cell(0, 1).text = header_text
     table = document.add_table(rows=3, cols=2)
     for row_index, (label, value) in enumerate(
         [

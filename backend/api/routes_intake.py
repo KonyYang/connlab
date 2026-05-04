@@ -13,8 +13,10 @@ from pydantic import BaseModel
 
 from backend.api.dependencies import (
     get_direct_word_intake_service,
+    get_email_package_application_form_service,
     get_exception_workflow_service,
     get_intake_asset_download_service,
+    get_intake_asset_application_form_eligibility_service,
     get_intake_asset_preview_service,
     get_intake_form_selection_service,
     get_intake_package_query_service,
@@ -32,6 +34,11 @@ from backend.application.direct_word_intake_service import (
     DirectWordIntakeResult,
     DirectWordIntakeService,
 )
+from backend.application.email_package_application_form_service import (
+    EmailPackageApplicationFormError,
+    EmailPackageApplicationFormNotFoundError,
+    EmailPackageApplicationFormService,
+)
 from backend.application.intake_asset_preview_service import (
     IntakeAssetPreview,
     IntakeAssetPreviewError,
@@ -40,6 +47,11 @@ from backend.application.intake_asset_preview_service import (
     PreviewField,
     PreviewMetadata,
     PreviewTable,
+)
+from backend.application.application_form_eligibility_service import (
+    ApplicationFormEligibility,
+    ApplicationFormEligibilityNotFoundError,
+    IntakeAssetApplicationFormEligibilityService,
 )
 from backend.application.exception_workflow_service import (
     ExceptionWorkflowIssue,
@@ -204,6 +216,16 @@ class IntakeAssetPreviewResponse(BaseModel):
     image_data_url: str | None = None
 
 
+class ApplicationFormEligibilityResponse(BaseModel):
+    """Eligibility response for the Intake application-form gate."""
+
+    eligible: bool
+    reason_code: str
+    message: str
+    observed_header_cell: str | None = None
+    expected_text: str
+
+
 class IntakePackageImportResponse(BaseModel):
     """Manual `.msg` package import response."""
 
@@ -366,6 +388,38 @@ def import_direct_word_application_form(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post(
+    "/api/intake-packages/{package_id}/application-form",
+    response_model=SelectApplicationFormResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def upload_email_package_application_form(
+    package_id: str,
+    file: UploadFile = File(...),
+    service: EmailPackageApplicationFormService = Depends(
+        get_email_package_application_form_service
+    ),
+) -> SelectApplicationFormResponse:
+    """Upload a Word application form into an existing email intake package."""
+    original_name = Path(file.filename or "application.docx").name
+    with tempfile.TemporaryDirectory() as directory:
+        temporary_path = Path(directory) / original_name
+        with temporary_path.open("wb") as handle:
+            shutil.copyfileobj(file.file, handle)
+        try:
+            return _form_selection_response(
+                service.upload_application_form(package_id, temporary_path)
+            )
+        except EmailPackageApplicationFormNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except IntakeSelectionNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except IntakeSelectionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except EmailPackageApplicationFormError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get(
     "/api/intake-packages/{package_id}",
     response_model=IntakePackageDetailResponse,
@@ -415,6 +469,23 @@ def download_intake_asset(
         filename=download.filename,
         media_type=download.media_type,
     )
+
+
+@router.post(
+    "/api/intake-assets/{asset_id}/application-form/validate",
+    response_model=ApplicationFormEligibilityResponse,
+)
+def validate_intake_asset_application_form(
+    asset_id: str,
+    service: IntakeAssetApplicationFormEligibilityService = Depends(
+        get_intake_asset_application_form_eligibility_service
+    ),
+) -> ApplicationFormEligibilityResponse:
+    """Validate whether one intake asset can enter Precheck as the application form."""
+    try:
+        return _application_form_eligibility_response(service.evaluate_asset(asset_id))
+    except ApplicationFormEligibilityNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post(
@@ -713,6 +784,19 @@ def _intake_asset_preview_response(
         warnings=list(preview.warnings),
         message=preview.message,
         image_data_url=preview.image_data_url,
+    )
+
+
+def _application_form_eligibility_response(
+    result: ApplicationFormEligibility,
+) -> ApplicationFormEligibilityResponse:
+    """Convert application-form eligibility to an API response."""
+    return ApplicationFormEligibilityResponse(
+        eligible=result.eligible,
+        reason_code=result.reason_code,
+        message=result.message,
+        observed_header_cell=result.observed_header_cell,
+        expected_text=result.expected_text,
     )
 
 

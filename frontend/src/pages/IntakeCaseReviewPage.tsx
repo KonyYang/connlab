@@ -158,6 +158,8 @@ export function IntakeCaseReviewPage({
     if (!activeCase) {
       setFieldValues({});
       fieldValuesRef.current = {};
+      sampleRowsRef.current = [];
+      requestedTestingRowsRef.current = [];
       return;
     }
     const nextFieldValues = Object.fromEntries(activeCase.fields.map((field) => [field.key, editableValue(field.value)]));

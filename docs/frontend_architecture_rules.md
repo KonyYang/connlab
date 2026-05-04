@@ -179,6 +179,13 @@ Frontend selectors may calculate display-only state from typed API responses, bu
 
 If the UI needs a new authoritative rule, add or expose it through backend application/API layers in a separate approved task.
 
+Intake application-form entry gate:
+
+- Intake may display eligibility state returned by backend validation.
+- Continue-to-Precheck disabled state should be computed in `features/intake` selectors from typed API DTOs.
+- UI copy may show a cleaned observed Word header cell value returned by the backend, but frontend code must not read local Word files.
+- The backend remains authoritative when `select-form` is called.
+
 ## API Rules
 
 Only the API layer may call `fetch()`.
@@ -275,4 +282,3 @@ Before closing a UI task, verify:
 - mock/reference content is clearly inactive or removed
 - `npm run build` passes from `frontend/`
 - relevant manual smoke path is documented when the task changes operator flow
-

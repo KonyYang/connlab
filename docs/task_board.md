@@ -1,9 +1,9 @@
 # ConnLab Task Board
 
-> Status: Phase 10A complete; TASK_092 complete; Intake attachment Download available via API
+> Status: Phase 10A follow-up complete; TASK_094 application-form header gate complete
 > Last Updated: 2026-05-04
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: None - pending user approval for next phase
+> Current Active Task: None - pending user approval for next task or phase
 > Current Phase: `Phase 10A - Intake Entry Completion`
 
 ---
@@ -179,6 +179,10 @@ Current judgment as of 2026-04-26:
 - `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` is complete.
 - Intake source panel, attachment list, attachment preview panel, and pure display selectors now live under `frontend/src/features/intake`; the shared New Project workflow stepper no longer shows the redundant heading row, keeps labels on one line in narrow windows, and prevents connector lines from crossing text.
 - `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG` is complete.
+- `TASK_093_EMAIL_PACKAGE_MISSING_FORM_UPLOAD_CONTINUATION` is complete: an imported email package without a detected application form can continue by uploading a Word application form into the same package while preserving the source email and original attachments.
+- `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` is complete: Intake to Precheck is gated by `.docx` plus Laboratory Testing Request header table cell `(1,2)` validation through the OfficeFacade boundary, with backend selection enforcement and frontend disabled reasons.
+- TASK_094 manual smoke hotfix is complete: every attachment selection now refreshes the footer guidance and `Continue to Precheck` state from the current selected file.
+- TASK_094 supplemental upload hotfix is complete: uploading a `.docx` into an email package now returns a business-readable 400 validation message when the header gate fails instead of surfacing `Internal Server Error`.
 - Intake and Precheck now share a small UI typography/action vocabulary for panel titles, preview titles, section titles, primary actions, secondary actions, and compact actions. Static frontend shell tests guard the shared vocabulary on key Intake/Precheck components.
 - No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
@@ -278,6 +282,10 @@ Current stop point:
 - `TASK_087_INTAKE_INFORMATION_DENSITY_AND_ATTACHMENT_LIST_CLEANUP` is complete.
 - `TASK_088_ATTACHMENT_DETAILS_PREVIEW_COMPLETION` is complete.
 - `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG` is complete.
+- `TASK_093_EMAIL_PACKAGE_MISSING_FORM_UPLOAD_CONTINUATION` is complete.
+- `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` is complete.
+- TASK_094 manual smoke hotfix is complete.
+- TASK_094 supplemental upload 500 hotfix is complete.
 - No implementation task is active. Await explicit user approval for the next task.
 
 ---
@@ -682,6 +690,8 @@ Status table:
 | T10A-31 | `TASK_090_INTAKE_WORKFLOW_STRUCTURE_EXTRACTION` | done | Intake workflow structure extraction completed on 2026-05-04 |
 | T10A-32 | `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG` | done | Intake/Precheck manual smoke and UI polish backlog completed on 2026-05-04 |
 | T10A-33 | `TASK_092_INTAKE_ATTACHMENT_DOWNLOAD_ACTION` | done | Intake attachment Download button, /download API, and frontend wiring completed on 2026-05-04 |
+| T10A-34 | `TASK_093_EMAIL_PACKAGE_MISSING_FORM_UPLOAD_CONTINUATION` | done | Email package missing-form upload continuation completed on 2026-05-04 |
+| T10A-35 | `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` | done | Intake Continue to Precheck is gated by `.docx` and Laboratory Testing Request header table cell `(1,2)` validation through OfficeFacade on 2026-05-04; manual smoke hotfix keeps footer/button state synced to every selected attachment |
 
 Acceptance gate:
 
@@ -728,10 +738,32 @@ Next:
 
 Latest completed task:
 
-- `TASK_074_PRECHECK_DYNAMIC_WORD_DATA_DISPLAY_HOTFIX`
+- `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE`
 
 Validation result:
 
+- `py -m pytest tests\unit\test_application_form_eligibility_service.py tests\unit\test_intake_form_selection_service.py -q`
+- result: `18 passed`
+- `py -m pytest tests\unit\test_intake_form_selection_service.py -q`
+- result: `12 passed`
+- `py -m pytest tests\integration\test_msg_package_intake_api.py -q`
+- result: `9 passed`
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `43 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- TASK_094 manual smoke hotfix:
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q`
+- result: `43 passed`
+- `npm run build` from `frontend/`
+- result: passed
+- TASK_094 supplemental upload 500 hotfix:
+- `py -m pytest tests\integration\test_msg_package_intake_api.py::test_email_package_supplemental_application_form_rejects_bad_header tests\integration\test_msg_package_intake_api.py::test_email_package_without_form_accepts_supplemental_application_form tests\integration\test_msg_package_intake_api.py::test_email_package_supplemental_application_form_rejects_non_word -q`
+- result: `3 passed`
+- `py -m pytest tests\unit\test_frontend_shell_files.py::test_task093_email_package_missing_form_upload_continuation tests\unit\test_frontend_shell_files.py::test_task094_intake_continue_uses_application_form_header_gate -q`
+- result: `2 passed`
+- `npm run build` from `frontend/`
+- result: passed
 - `npm run build` from `frontend/`
 - result: passed
 - `py -m pytest tests\unit\test_frontend_shell_files.py -q`
@@ -1257,7 +1289,7 @@ Why this is next:
 - Validation for TASK_090 New Project stepper polish: `py -m pytest tests\unit\test_frontend_shell_files.py::test_task070_precheck_step_matches_reference_workspace tests\unit\test_frontend_shell_files.py::test_task089_new_project_workflow_shell_is_shared -q`, result `2 passed`; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `35 passed`; `npm run build`, result passed.
 - TASK_090 Attachment details cleanup: the Attachment details header no longer shows the redundant file type subtitle (Word Document / PDF Document) below the filename, reducing visual noise while keeping the file type chip visible.
 - TASK_090 Email information polish: the Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, matching the visual hierarchy of the Attachment details header.
-- Recommended next controlled task: pending user decision after `TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG`.
+- Recommended next controlled task: pending user decision after `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE`.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
 Active implementation task:
@@ -1266,7 +1298,7 @@ Active implementation task:
 
 Reason:
 
-- `TASK_092_INTAKE_ATTACHMENT_DOWNLOAD_ACTION` is complete. The next implementation task is blocked until explicit user approval.
+- `TASK_094_INTAKE_APPLICATION_FORM_HEADER_GATE` is complete. The next implementation task is blocked until explicit user approval.
 
 Do not start yet:
 

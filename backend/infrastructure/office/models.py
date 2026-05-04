@@ -83,6 +83,14 @@ class WordDocumentSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class WordHeaderCellResult:
+    """Result from reading one Word header table cell."""
+
+    value: str | None
+    gateway_mode: str
+
+
+@dataclass(frozen=True, slots=True)
 class LtrWorkbookSnapshot:
     """Read-only metadata and existing LTR numbers from a workbook."""
 
