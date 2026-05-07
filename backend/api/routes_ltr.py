@@ -36,6 +36,12 @@ from backend.application.ltr_readiness_service import (
     LtrReadinessResult,
     LtrReadinessService,
 )
+from backend.application.ltr_workbook_write_preview_service import (
+    LtrWorkbookWritePreview,
+    LtrWorkbookWritePreviewError,
+    LtrWorkbookWritePreviewService,
+    PreviewLtrWorkbookWriteCommand,
+)
 from backend.application.ltr_service import (
     DuplicateActiveLtrError,
     LtrError,
@@ -53,6 +59,7 @@ from backend.api.dependencies import (
     get_ltr_renumber_preview_service,
     get_ltr_registration_preview_service,
     get_ltr_service,
+    get_ltr_workbook_write_preview_service,
 )
 from backend.domain import LtrRecord
 
@@ -184,6 +191,37 @@ class LtrRenumberPreviewResponse(BaseModel):
     conflicts: list[str]
     warnings: list[str]
     audit_summary: str
+
+
+class LtrWorkbookWritePreviewRequest(BaseModel):
+    """Request body for no-write LTR workbook row preview."""
+
+    ltr_number: str = Field(min_length=1)
+    plan_date: date
+    test_item: str = Field(min_length=1)
+    sample_description: str = Field(min_length=1)
+    location: str = Field(min_length=1)
+    test_type_in_sheet: str = Field(min_length=1)
+    project_leader: str = Field(min_length=1)
+
+
+class LtrWorkbookColumnPreviewResponse(BaseModel):
+    """One workbook column preview response."""
+
+    column: str
+    field_name: str
+    value: object = None
+
+
+class LtrWorkbookWritePreviewResponse(BaseModel):
+    """No-write LTR workbook row preview response."""
+
+    project_id: str
+    workbook_path: str | None = None
+    target_sheet: str
+    target_row: int | None = None
+    columns: list[LtrWorkbookColumnPreviewResponse]
+    warnings: list[str]
 
 
 @router.post(
@@ -353,6 +391,38 @@ def preview_ltr_renumber(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post(
+    "/api/projects/{project_id}/ltr-workbook/write-preview",
+    response_model=LtrWorkbookWritePreviewResponse,
+)
+def preview_ltr_workbook_write(
+    project_id: str,
+    request: LtrWorkbookWritePreviewRequest,
+    service: LtrWorkbookWritePreviewService = Depends(
+        get_ltr_workbook_write_preview_service
+    ),
+) -> LtrWorkbookWritePreviewResponse:
+    """Preview the LTR workbook row mapping without opening or writing the workbook."""
+    try:
+        return _workbook_write_preview_to_response(
+            service.preview_project(
+                project_id,
+                PreviewLtrWorkbookWriteCommand(
+                    ltr_number=request.ltr_number,
+                    plan_date=request.plan_date,
+                    test_item=request.test_item,
+                    sample_description=request.sample_description,
+                    location=request.location,
+                    test_type_in_sheet=request.test_type_in_sheet,
+                    project_leader=request.project_leader,
+                ),
+            )
+        )
+    except LtrWorkbookWritePreviewError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
 @router.get("/api/ltr-records", response_model=list[LtrRecordResponse])
 def search_ltr_records(
     query: str = Query(default=""),
@@ -360,6 +430,27 @@ def search_ltr_records(
 ) -> list[LtrRecordResponse]:
     """Search LTR records by query string."""
     return [_to_response(ltr) for ltr in service.search_ltrs(query)]
+
+
+def _workbook_write_preview_to_response(
+    preview: LtrWorkbookWritePreview,
+) -> LtrWorkbookWritePreviewResponse:
+    """Convert no-write workbook preview to API response."""
+    return LtrWorkbookWritePreviewResponse(
+        project_id=preview.project_id,
+        workbook_path=str(preview.workbook_path) if preview.workbook_path else None,
+        target_sheet=preview.target_sheet,
+        target_row=preview.target_row,
+        columns=[
+            LtrWorkbookColumnPreviewResponse(
+                column=column.column,
+                field_name=column.field_name,
+                value=column.value,
+            )
+            for column in preview.columns
+        ],
+        warnings=list(preview.warnings),
+    )
 
 
 def _renumber_preview_to_response(

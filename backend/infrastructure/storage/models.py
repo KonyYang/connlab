@@ -245,3 +245,17 @@ class LookupOptionModel(Base):
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class ExternalResourceModel(Base):
+    """Database row for operator-configured external resources."""
+
+    __tablename__ = "external_resources"
+
+    resource_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    resource_type: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    validation_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_validated_at: Mapped[str | None] = mapped_column(String(64))
+    validation_failure_reason: Mapped[str | None] = mapped_column(Text)

@@ -211,8 +211,14 @@ def _extract_ole_attachments(path: Path, target_dir: Path) -> list[ImportedMailA
     if not olefile.isOleFile(str(path)):
         return []
     with olefile.OleFileIO(str(path)) as ole:
+        attachment_storages = _attachment_storages(ole)
+        embedded_msg_attachments = (
+            iter(_extract_embedded_msg_attachments_via_outlook(path, target_dir))
+            if any(_is_embedded_msg_attachment(ole, storage) for storage in attachment_storages)
+            else iter(())
+        )
         attachments: list[ImportedMailAttachment] = []
-        for storage in _attachment_storages(ole):
+        for storage in attachment_storages:
             file_name = (
                 _read_msg_text_property(ole, "3707", storage)
                 or _read_msg_text_property(ole, "3704", storage)
@@ -238,11 +244,15 @@ def _extract_ole_attachments(path: Path, target_dir: Path) -> list[ImportedMailA
                 continue
             if not _is_embedded_msg_attachment(ole, storage):
                 continue
+            com_attachment = next(embedded_msg_attachments, None)
+            if com_attachment is not None:
+                attachments.append(com_attachment)
+                continue
             attachments.append(
                 _write_attachment(
                     target_dir=target_dir,
                     original_name=_embedded_msg_attachment_name(file_name),
-                    content=_embedded_msg_fixture_bytes(ole, storage),
+                    content=_embedded_msg_attachment_bytes(ole, storage),
                     mime_type_hint=_fallback_mime_type(OfficeFileKind.OUTLOOK_MSG),
                 )
             )
@@ -322,8 +332,8 @@ def _embedded_msg_attachment_name(file_name: str | None) -> str:
     return base_name
 
 
-def _embedded_msg_fixture_bytes(ole: olefile.OleFileIO, storage: tuple[str, ...]) -> bytes:
-    """Serialize basic embedded Outlook item metadata into a traceable `.msg` placeholder."""
+def _embedded_msg_attachment_bytes(ole: olefile.OleFileIO, storage: tuple[str, ...]) -> bytes:
+    """Return the raw embedded Outlook item payload or a traceable placeholder."""
     root = (*storage, "__substg1.0_3701000D")
     subject = _read_msg_text_property(ole, "0037", root)
     sender_name, sender_email = _parse_sender(_read_msg_text_property(ole, "0C1A", root))
@@ -339,6 +349,62 @@ def _embedded_msg_fixture_bytes(ole: olefile.OleFileIO, storage: tuple[str, ...]
         _read_msg_text_property(ole, "1000", root) or "",
     ]
     return "\n".join(lines).encode("utf-8")
+
+
+def _extract_embedded_msg_attachments_via_outlook(
+    source_path: Path,
+    target_dir: Path,
+) -> list[ImportedMailAttachment]:
+    """Save embedded Outlook items with Outlook when the desktop client is available."""
+    try:
+        import pythoncom
+        import win32com.client
+    except ImportError:
+        return []
+
+    outlook = None
+    namespace = None
+    mail_item = None
+    initialized = False
+    try:
+        pythoncom.CoInitialize()
+        initialized = True
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        namespace = outlook.GetNamespace("MAPI")
+        mail_item = namespace.OpenSharedItem(str(source_path))
+        attachment_dir = target_dir / "attachments"
+        attachment_dir.mkdir(parents=True, exist_ok=True)
+        attachments: list[ImportedMailAttachment] = []
+        for index in range(1, mail_item.Attachments.Count + 1):
+            attachment = mail_item.Attachments.Item(index)
+            if int(getattr(attachment, "Type", 0)) != 5:
+                continue
+            file_name = str(getattr(attachment, "FileName", "") or "").strip() or "attached message.msg"
+            stored_path = _unique_destination(attachment_dir, _safe_filename(file_name))
+            attachment.SaveAsFile(str(stored_path))
+            attachments.append(
+                ImportedMailAttachment(
+                    original_name=Path(file_name).name,
+                    stored_path=stored_path,
+                    extension=stored_path.suffix.lower().lstrip("."),
+                    kind=OfficeFileKind.OUTLOOK_MSG,
+                    mime_type=mimetypes.guess_type(stored_path.name)[0]
+                    or _fallback_mime_type(OfficeFileKind.OUTLOOK_MSG),
+                    size_bytes=stored_path.stat().st_size,
+                    sha256=hashlib.sha256(stored_path.read_bytes()).hexdigest(),
+                )
+            )
+        return attachments
+    except Exception:
+        return []
+    finally:
+        try:
+            if mail_item is not None:
+                mail_item.Close(0)
+        except Exception:
+            pass
+        if initialized:
+            pythoncom.CoUninitialize()
 
 
 def _parse_fixture_attachments(text: str, *, stored_path: Path) -> list[_ParsedAttachment]:

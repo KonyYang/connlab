@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
 import type { IntakeAsset, IntakeAssetPreview } from "../../api/client";
-import { intakeAssetDownloadUrl } from "../../api/client";
+import { downloadIntakeAsset } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
 import {
   assetKindFromPreview,
@@ -32,15 +32,29 @@ export function AttachmentPreviewPanel({
 }
 
 function AttachmentPreviewActions({ assetId, originalName }: { assetId: string; originalName: string }): ReactElement {
+  async function handleDownload(): Promise<void> {
+    const blob = await downloadIntakeAsset(assetId);
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = originalName;
+    link.rel = "noopener";
+    link.style.display = "none";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 0);
+  }
+
   return (
     <div className="details-actions">
-      <a
+      <button
         className="secondary-action ui-secondary-action"
-        href={intakeAssetDownloadUrl(assetId)}
-        download={originalName}
+        type="button"
+        onClick={() => void handleDownload()}
       >
         Download
-      </a>
+      </button>
     </div>
   );
 }

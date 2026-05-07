@@ -5,8 +5,10 @@ import {
   type IntakeCaseReview,
   type IntakePrecheckLookupOptions,
   confirmIntakeCase,
+  discardUnsavedProjectCreationDraft,
   getIntakeCaseReview,
   getIntakePrecheckLookupOptions,
+  saveProjectCreationDraft,
   updateIntakeCaseReviewFields
 } from "../api/client";
 import { UiIcon } from "../components/common/UiIcon";
@@ -30,7 +32,6 @@ import {
   editableValue,
   fallbackValue,
   fieldsWithLookupOptions,
-  focusSampleRow,
   issueLevelMap,
   normalizedSampleRows,
   normalizedRequestedTestingRows,
@@ -45,19 +46,14 @@ import "../intake-case-review.css";
 type IntakeCaseReviewPageProps = {
   packageId: string;
   initialCaseId?: string | null;
-  onBack: (snapshot?: PrecheckBackSnapshot) => void;
+  onExit: () => void;
   onProjectConfirmed?: () => void;
-};
-
-export type PrecheckBackSnapshot = {
-  caseId: string;
-  selectedFormAssetId: string | null;
 };
 
 export function IntakeCaseReviewPage({
   packageId,
   initialCaseId,
-  onBack,
+  onExit,
   onProjectConfirmed
 }: IntakeCaseReviewPageProps): ReactElement {
   const [review, setReview] = useState<IntakeCaseReview | null>(null);
@@ -78,6 +74,8 @@ export function IntakeCaseReviewPage({
   const [savingFields, setSavingFields] = useState(false);
   const [fieldSaveError, setFieldSaveError] = useState<string | null>(null);
   const [fieldSaveMessage, setFieldSaveMessage] = useState<string | null>(null);
+  const [exiting, setExiting] = useState<"save" | "discard" | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fieldValuesRef = useRef<Record<string, string>>({});
   const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
   const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
@@ -223,6 +221,75 @@ export function IntakeCaseReviewPage({
     }
   }
 
+  async function saveFieldCorrectionsForExit(): Promise<boolean> {
+    if (!activeCase || !draftChanged) {
+      return true;
+    }
+    setFieldSaveError(null);
+    setConfirmError(null);
+    try {
+      await updateIntakeCaseReviewFields(activeCase.case_id, {
+        fields: {
+          ...fieldValuesRef.current,
+          requested_testing: requestedTestingText(requestedTestingRowsRef.current)
+        },
+        sample_rows: sampleRowsRef.current,
+        requested_testing_rows: requestedTestingRowsRef.current
+      });
+      return true;
+    } catch (error) {
+      setFieldSaveError(
+        error instanceof Error ? error.message : "Unable to save field corrections before exit."
+      );
+      return false;
+    }
+  }
+
+  async function handleSaveDraftAndExit(): Promise<void> {
+    if (!activeCase) {
+      return;
+    }
+    setExiting("save");
+    setFieldSaveError(null);
+    const fieldsSaved = await saveFieldCorrectionsForExit();
+    if (!fieldsSaved) {
+      setExiting(null);
+      return;
+    }
+    try {
+      await saveProjectCreationDraft(packageId);
+      onExit();
+    } catch (error) {
+      setFieldSaveError(
+        error instanceof Error ? error.message : "Unable to save this creation draft."
+      );
+    } finally {
+      setExiting(null);
+    }
+  }
+
+  async function handleDiscardAndExit(): Promise<void> {
+    if (!activeCase) {
+      return;
+    }
+    if (!confirmDiscard) {
+      setConfirmDiscard(true);
+      return;
+    }
+    setExiting("discard");
+    setFieldSaveError(null);
+    try {
+      await discardUnsavedProjectCreationDraft(packageId);
+      onExit();
+    } catch (error) {
+      setFieldSaveError(
+        error instanceof Error ? error.message : "Unable to discard this unsaved creation session."
+      );
+    } finally {
+      setExiting(null);
+    }
+  }
+
   return (
     <section className="precheck-workflow">
       <NewProjectWorkflowHeader currentStep="precheck" />
@@ -276,7 +343,6 @@ export function IntakeCaseReviewPage({
                 setFieldSaveMessage(null);
                 setFieldSaveError(null);
               }}
-              onEdit={(rowIndex) => focusSampleRow(rowIndex)}
               onCopy={(rowIndex) => {
                 setSampleRows((current) => {
                   const next = copySampleRow(current, rowIndex);
@@ -353,14 +419,6 @@ export function IntakeCaseReviewPage({
                 });
                 setFieldSaveMessage(null);
               }}
-              onRequestedTestingRowEdit={(rowIndex) => {
-                // Focus the first input of the row
-                document
-                  .querySelector<HTMLTextAreaElement>(
-                    `.requested-testing-edit-table tbody tr:nth-child(${rowIndex + 1}) textarea:first-child`
-                  )
-                  ?.focus();
-              }}
               onSubcontractChange={(value) => {
                 setFieldValues((current) => {
                   const next = { ...current, subcontract: value };
@@ -375,19 +433,32 @@ export function IntakeCaseReviewPage({
 
           <footer className="precheck-footer">
             <button
-              className="new-project-secondary-action precheck-back-button ui-secondary-action"
+              className="new-project-secondary-action ui-secondary-action"
+              disabled={Boolean(exiting)}
               type="button"
-              onClick={() => onBack({
-                caseId: activeCase.case_id,
-                selectedFormAssetId: activeCase.selected_form_asset_id ?? null
-              })}
+              onClick={() => void handleSaveDraftAndExit()}
             >
-              <span className="button-arrow" aria-hidden="true">&lt;</span>
-              Back to Intake
+              {exiting === "save" ? "Saving..." : "Save draft and exit"}
+            </button>
+            <button
+              className="new-project-secondary-action ui-secondary-action"
+              disabled={Boolean(exiting)}
+              type="button"
+              onClick={() => void handleDiscardAndExit()}
+            >
+              {exiting === "discard"
+                ? "Discarding..."
+                : confirmDiscard
+                  ? "Confirm discard"
+                  : "Exit without saving"}
             </button>
             <div className="footer-source-status">
               <UiIcon name="clock" />
-              <span>Source: Intake email / application form verified</span>
+              <span>
+                {confirmDiscard
+                  ? "Discard removes ConnLab imported copies for this unsaved session."
+                  : "Source: Intake email / application form verified"}
+              </span>
             </div>
             <label className="confirm-check">
               <input

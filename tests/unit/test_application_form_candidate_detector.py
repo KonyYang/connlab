@@ -30,10 +30,10 @@ def _asset(asset_id: str, name: str, extension: str, role: IntakeAssetRole) -> I
     )
 
 
-def test_detector_scores_word_application_form_as_candidate() -> None:
+def test_detector_scores_docx_application_form_as_candidate() -> None:
     store = InMemoryAssetStore(
         [
-            _asset("a", "E-3718 Application Form.docx", ".docx", IntakeAssetRole.UNKNOWN),
+            _asset("a", "file-a.docx", ".docx", IntakeAssetRole.UNKNOWN),
             _asset("b", "connector drawing.pdf", ".pdf", IntakeAssetRole.UNKNOWN),
         ]
     )
@@ -61,12 +61,12 @@ def test_detector_keeps_human_selected_and_ignored_roles_protected() -> None:
     assert store.assets["b"].asset_role is IntakeAssetRole.IGNORED
 
 
-def test_detector_penalizes_non_application_word_documents() -> None:
+def test_detector_marks_all_docx_files_as_candidates() -> None:
     store = InMemoryAssetStore(
         [_asset("a", "test result report.docx", ".docx", IntakeAssetRole.UNKNOWN)]
     )
 
     result = ApplicationFormCandidateDetector(store).detect_for_package("pkg-1")
 
-    assert result.candidates == ()
-    assert store.assets["a"].asset_role is IntakeAssetRole.SUPPORTING_ATTACHMENT
+    assert [candidate.asset_id for candidate in result.candidates] == ["a"]
+    assert store.assets["a"].asset_role is IntakeAssetRole.APPLICATION_FORM_CANDIDATE

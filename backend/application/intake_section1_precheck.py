@@ -39,11 +39,6 @@ REQUIRED_SECTION1_FIELDS: tuple[tuple[str, str], ...] = (
 
 SAMPLE_REQUIRED_FIELDS: tuple[tuple[str, str], ...] = (
     ("product_name", "Product Name"),
-    ("part_number", "Part Number / Revision"),
-    ("lot_or_traceability", "Traceability Manufacturing Lot Info"),
-    ("material", "Contact Base Material"),
-    ("plating", "Contact Plating"),
-    ("housing_material", "Housing Material"),
     ("quantity", "Quantity"),
 )
 
@@ -62,7 +57,14 @@ def evaluate_section1_precheck(data: dict[str, Any]) -> tuple[DraftPrecheckIssue
             )
 
     _append_expected_value_issue(issues, data, "form_no", "Form No.", "E-3718")
-    _append_expected_value_issue(issues, data, "revision", "Revision", "H")
+    _append_expected_value_issue(
+        issues,
+        data,
+        "revision",
+        "Revision",
+        "H",
+        level="warning",
+    )
 
     if not _text(data.get("project_no")):
         issues.append(
@@ -103,13 +105,15 @@ def _append_expected_value_issue(
     key: str,
     label: str,
     expected: str,
+    *,
+    level: str = "error",
 ) -> None:
     """Append an error when a present metadata value does not match the expected value."""
     value = _text(data.get(key))
     if value and value.upper() != expected.upper():
         issues.append(
             DraftPrecheckIssue(
-                level="error",
+                level=level,
                 field_key=key,
                 message=f"{label} must be {expected} before Project creation.",
             )
@@ -127,6 +131,7 @@ def _append_sample_issues(issues: list[DraftPrecheckIssue], samples: object) -> 
             )
         )
         return
+    rows_with_product: list[tuple[int, dict]] = []
     for row_index, row in enumerate(samples, start=1):
         if not isinstance(row, dict):
             issues.append(
@@ -137,15 +142,28 @@ def _append_sample_issues(issues: list[DraftPrecheckIssue], samples: object) -> 
                 )
             )
             continue
-        for key, label in SAMPLE_REQUIRED_FIELDS:
-            if not _text(row.get(key)):
-                issues.append(
-                    DraftPrecheckIssue(
-                        level="error",
-                        field_key=f"samples.{key}",
-                        message=f"Sample row {row_index}: {label} is required.",
-                    )
+        if _text(row.get("product_name")):
+            rows_with_product.append((row_index, row))
+    if not rows_with_product:
+        issues.append(
+            DraftPrecheckIssue(
+                level="error",
+                field_key="samples.product_name",
+                message="At least one sample Product Name is required before Project creation.",
+            )
+        )
+        return
+    for row_index, row in rows_with_product:
+        if not _contains_digit(row.get("quantity")):
+            issues.append(
+                DraftPrecheckIssue(
+                    level="error",
+                    field_key="samples.quantity",
+                    message=(
+                        f"Sample row {row_index}: Quantity must contain at least one number."
+                    ),
                 )
+            )
 
 
 def _text(value: object) -> str | None:
@@ -154,3 +172,9 @@ def _text(value: object) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _contains_digit(value: object) -> bool:
+    """Return whether a value contains any numeric quantity text."""
+    text = _text(value)
+    return bool(text and any(char.isdigit() for char in text))

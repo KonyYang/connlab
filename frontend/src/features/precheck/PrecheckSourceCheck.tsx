@@ -15,13 +15,13 @@ export function PrecheckSourceCheck({
 }: PrecheckSourceCheckProps): ReactElement {
   return (
     <section className="precheck-card source-template-check">
-      <h3 className="ui-panel-title">Source document & template check</h3>
+      <h3 className="ui-panel-title">Source traceability</h3>
       <div className="template-check-grid">
         <div className="source-doc-card">
           <span className="word-file-icon">W</span>
           <div>
             <strong>{activeCase.selected_asset_name ?? review.source_original_name}</strong>
-            <span>source context: {formatSourceType(review.source_type)}</span>
+            <span>Imported source: {formatSourceType(review.source_type)}</span>
           </div>
           <UiIcon name="clock" />
         </div>
@@ -34,14 +34,14 @@ export function PrecheckSourceCheck({
           <div className="template-warning-copy">
             <UiIcon name="help" />
             <div>
-              <strong>Template version mismatch detected</strong>
-              <span>Current: In Library: E_3778_Rev-H</span>
-              <span>Source: E_3778_Rev-H</span>
+              <strong>Confirmed application data is edited below</strong>
+              <span>The source file remains attached for traceability.</span>
+              <span>Project creation uses the corrected Precheck values.</span>
             </div>
           </div>
           <button className="secondary-button ui-secondary-action" disabled type="button">
-            <UiIcon name="refresh" />
-            Update to latest template
+            <UiIcon name="clock" />
+            Source locked after Precheck entry
           </button>
         </div>
       </div>

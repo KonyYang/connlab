@@ -1,9 +1,12 @@
 import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from "react";
 import {
+  discardSavedProjectCreationDraft,
   listProjectLtrs,
+  listProjectCreationDrafts,
   listProjects,
   type LtrRecord,
-  type Project
+  type Project,
+  type ProjectCreationDraft
 } from "../api/client";
 import { EmptyState } from "../components/common/EmptyState";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -13,6 +16,7 @@ import { ProjectStatusBadge } from "../components/project/ProjectStatusBadge";
 import "../project-dashboard.css";
 
 type ProjectListPageProps = {
+  onContinueDraft: (draft: ProjectCreationDraft) => void | Promise<void>;
   onNewProject: () => void;
   onOpenProject: (projectId: string) => void;
 };
@@ -23,13 +27,19 @@ type RegistryRow = {
 };
 
 export function ProjectListPage({
+  onContinueDraft,
   onNewProject,
   onOpenProject
 }: ProjectListPageProps): ReactElement {
   const [rows, setRows] = useState<RegistryRow[]>([]);
+  const [drafts, setDrafts] = useState<ProjectCreationDraft[]>([]);
   const [loading, setLoading] = useState(true);
+  const [draftsLoading, setDraftsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [discardingDraftId, setDiscardingDraftId] = useState<string | null>(null);
+  const [confirmDiscardDraftId, setConfirmDiscardDraftId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
@@ -37,6 +47,10 @@ export function ProjectListPage({
   }, []);
 
   const metrics = useMemo(() => buildMetrics(rows), [rows]);
+  const filteredDrafts = useMemo(
+    () => filterDrafts(drafts, deferredSearch),
+    [deferredSearch, drafts]
+  );
   const filteredRows = useMemo(
     () => filterRows(rows, deferredSearch),
     [deferredSearch, rows]
@@ -44,8 +58,10 @@ export function ProjectListPage({
 
   async function refreshProjects(): Promise<void> {
     setLoading(true);
+    setDraftsLoading(true);
     try {
       const projects = await listProjects();
+      const nextDrafts = await listProjectCreationDrafts();
       const nextRows = await Promise.all(
         projects.map(async (project) => ({
           project,
@@ -53,11 +69,34 @@ export function ProjectListPage({
         }))
       );
       setRows(nextRows);
+      setDrafts(nextDrafts);
       setError(null);
+      setDraftError(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+      setDraftsLoading(false);
+    }
+  }
+
+  async function handleDiscardDraft(draft: ProjectCreationDraft): Promise<void> {
+    if (confirmDiscardDraftId !== draft.package_id) {
+      setConfirmDiscardDraftId(draft.package_id);
+      return;
+    }
+    setDiscardingDraftId(draft.package_id);
+    setDraftError(null);
+    try {
+      await discardSavedProjectCreationDraft(draft.package_id);
+      setDrafts((current) =>
+        current.filter((item) => item.package_id !== draft.package_id)
+      );
+      setConfirmDiscardDraftId(null);
+    } catch (err) {
+      setDraftError((err as Error).message);
+    } finally {
+      setDiscardingDraftId(null);
     }
   }
 
@@ -191,6 +230,89 @@ export function ProjectListPage({
           </div>
         )}
       </div>
+
+      <div className="project-register-panel drafts-panel">
+        <div className="register-toolbar">
+          <div>
+            <h3>Drafts / In Progress</h3>
+            <p>Continue saved New Project work or discard drafts that should not become projects.</p>
+          </div>
+        </div>
+
+        {draftsLoading && <LoadingState label="Loading saved drafts..." />}
+        {draftError && <ErrorMessage message={draftError} />}
+        {!draftsLoading && !draftError && drafts.length === 0 && (
+          <EmptyState
+            title="No saved drafts"
+            message="Use Save draft and exit from New Project when work should continue later."
+          />
+        )}
+        {!draftsLoading && !draftError && drafts.length > 0 && filteredDrafts.length === 0 && (
+          <EmptyState
+            title="No matching drafts"
+            message="Adjust the search text to return to saved New Project drafts."
+          />
+        )}
+        {!draftsLoading && !draftError && filteredDrafts.length > 0 && (
+          <div className="project-table-wrap">
+            <table className="project-table draft-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Product</th>
+                  <th>Requestor</th>
+                  <th>Step</th>
+                  <th>Updated</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDrafts.map((draft) => (
+                  <tr key={draft.package_id}>
+                    <td>
+                      <strong>{draft.subject || draft.source_name}</strong>
+                      <span className="draft-source-name">{draft.source_name}</span>
+                    </td>
+                    <td>{draft.product_name || "Not set"}</td>
+                    <td>{draft.requester || "Not set"}</td>
+                    <td><span className="status-badge status-badge-ready">{draftStepLabel(draft.current_step)}</span></td>
+                    <td>{draft.updated_at || "Not recorded"}</td>
+                    <td>
+                      <div className="draft-actions">
+                        <button
+                          className="row-action"
+                          type="button"
+                          onClick={() => void onContinueDraft(draft)}
+                        >
+                          Continue
+                        </button>
+                        <button
+                          className="row-action row-action-danger"
+                          disabled={discardingDraftId === draft.package_id}
+                          type="button"
+                          onClick={() => void handleDiscardDraft(draft)}
+                        >
+                          {discardingDraftId === draft.package_id
+                            ? "Discarding..."
+                            : confirmDiscardDraftId === draft.package_id
+                              ? "Confirm discard"
+                              : "Discard"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="registry-footer">
+              <span>
+                Showing {filteredDrafts.length} of {drafts.length} saved drafts
+              </span>
+              <span>Drafts are separate from confirmed Projects</span>
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -222,6 +344,35 @@ function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
       .toLowerCase()
       .includes(query)
   );
+}
+
+function filterDrafts(
+  drafts: ProjectCreationDraft[],
+  search: string,
+): ProjectCreationDraft[] {
+  const query = search.trim().toLowerCase();
+  if (!query) {
+    return drafts;
+  }
+  return drafts.filter((draft) =>
+    [
+      draft.subject ?? "",
+      draft.source_name,
+      draft.product_name ?? "",
+      draft.requester ?? "",
+      draft.current_step
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query)
+  );
+}
+
+function draftStepLabel(step: string): string {
+  if (step === "precheck") {
+    return "Precheck";
+  }
+  return "Intake";
 }
 
 function buildMetrics(rows: RegistryRow[]): Array<{

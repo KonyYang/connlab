@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.infrastructure.office.excel_workbook_gateway import ExcelWorkbookGateway
 from backend.infrastructure.office.models import (
+    ExcelStructureProbeResult,
     ImportedMailPackage,
     OfficeFileClassification,
     OfficeFileKind,
@@ -76,6 +77,24 @@ class OfficeFacade:
     def read_excel_workbook(self, source_path: Path) -> object:
         """Read an Excel workbook through the configured gateway."""
         return self._excel_gateway.read_workbook(source_path)
+
+    def probe_excel_structure(
+        self,
+        source_path: Path,
+        *,
+        expected_headers: tuple[str, ...],
+        expected_date_headers: tuple[str, ...] = (),
+        expected_sheet_names: tuple[str, ...] = (),
+        expected_sheet_name_patterns: tuple[str, ...] = (),
+    ) -> ExcelStructureProbeResult:
+        """Probe workbook sheets and headers through the Excel gateway."""
+        return self._excel_gateway.probe_structure(
+            source_path,
+            expected_headers=expected_headers,
+            expected_date_headers=expected_date_headers,
+            expected_sheet_names=expected_sheet_names,
+            expected_sheet_name_patterns=expected_sheet_name_patterns,
+        )
 
     def open_excel_workbook(
         self,

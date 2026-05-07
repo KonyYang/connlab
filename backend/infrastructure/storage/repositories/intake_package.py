@@ -59,6 +59,15 @@ class IntakePackageRepository:
         self._session.flush()
         return package
 
+    def delete(self, package_id: str) -> bool:
+        """Delete one intake package row by ID."""
+        row = self._session.get(IntakePackageModel, package_id)
+        if row is None:
+            return False
+        self._session.delete(row)
+        self._session.flush()
+        return True
+
 
 class IntakeAssetRepository:
     """Persist and load intake asset records."""
@@ -95,6 +104,16 @@ class IntakeAssetRepository:
         _assign_asset(row, asset)
         self._session.flush()
         return asset
+
+    def delete_by_package(self, package_id: str) -> int:
+        """Delete all intake assets for one package and return the row count."""
+        rows = self._session.scalars(
+            select(IntakeAssetModel).where(IntakeAssetModel.package_id == package_id)
+        ).all()
+        for row in rows:
+            self._session.delete(row)
+        self._session.flush()
+        return len(rows)
 
 
 class IntakeCaseRepository:
@@ -133,6 +152,16 @@ class IntakeCaseRepository:
         self._session.flush()
         return case
 
+    def delete_by_package(self, package_id: str) -> int:
+        """Delete all intake cases for one package and return the row count."""
+        rows = self._session.scalars(
+            select(IntakeCaseModel).where(IntakeCaseModel.package_id == package_id)
+        ).all()
+        for row in rows:
+            self._session.delete(row)
+        self._session.flush()
+        return len(rows)
+
 
 class IntakeDraftRepository:
     """Persist and load intake draft records."""
@@ -167,6 +196,19 @@ class IntakeDraftRepository:
         _assign_draft(row, draft)
         self._session.flush()
         return draft
+
+    def delete_by_package(self, package_id: str) -> int:
+        """Delete all drafts for cases in one package and return the row count."""
+        case_ids = select(IntakeCaseModel.case_id).where(
+            IntakeCaseModel.package_id == package_id
+        )
+        rows = self._session.scalars(
+            select(IntakeDraftModel).where(IntakeDraftModel.case_id.in_(case_ids))
+        ).all()
+        for row in rows:
+            self._session.delete(row)
+        self._session.flush()
+        return len(rows)
 
 
 def _package_to_model(package: IntakePackage) -> IntakePackageModel:

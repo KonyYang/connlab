@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.dependencies import (
     get_intake_case_review_service,
@@ -14,6 +14,7 @@ from backend.api.dependencies import (
 from backend.application.intake_case_review_service import (
     DraftPrecheckIssue,
     IntakeCaseReview,
+    IntakeCaseReviewFrozenError,
     IntakeCaseReviewItem,
     IntakeCaseReviewNotFoundError,
     IntakeCaseReviewService,
@@ -50,6 +51,9 @@ class IntakeCaseReviewItemResponse(BaseModel):
     operator_notes: str | None = None
     missing_required_fields: list[str]
     confirm_allowed: bool
+    base_editing_frozen: bool = False
+    frozen_field_keys: list[str] = Field(default_factory=list)
+    frozen_reason: str | None = None
     fields: list[IntakeCaseReviewFieldResponse]
     sample_rows: list[dict[str, Any]]
     requested_testing_rows: list[dict[str, Any]]
@@ -157,6 +161,14 @@ def update_intake_case_review_fields(
         )
     except IntakeCaseReviewNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IntakeCaseReviewFrozenError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": str(exc),
+                "field_keys": list(exc.field_keys),
+            },
+        ) from exc
 
 
 def _case_review_response(review: IntakeCaseReview) -> IntakeCaseReviewResponse:
@@ -186,6 +198,9 @@ def _case_item_response(item: IntakeCaseReviewItem) -> IntakeCaseReviewItemRespo
         confirm_allowed=not item.missing_required_fields
         and item.case.status.value == "needs_review"
         and item.case.confirmed_project_id is None,
+        base_editing_frozen=item.base_editing_frozen,
+        frozen_field_keys=list(item.frozen_field_keys),
+        frozen_reason=item.frozen_reason,
         sample_rows=_sample_rows(item.parsed_fields),
         requested_testing_rows=_requested_testing_rows(item.parsed_fields),
         precheck_issues=[_precheck_issue_response(issue) for issue in item.precheck_issues],

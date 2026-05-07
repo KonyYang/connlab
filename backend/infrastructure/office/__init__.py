@@ -1,6 +1,7 @@
 """Office gateway package."""
 
 from backend.infrastructure.office.models import (
+    ExcelStructureProbeResult,
     ImportedMailAttachment,
     ImportedMailPackage,
     LtrWorkbookFormat,
@@ -28,12 +29,20 @@ from backend.infrastructure.office.excel_workbook_gateway import (
 )
 from backend.infrastructure.office.excel_com_ltr_workbook_gateway import (
     ExcelComLTRWorkbookGateway,
+    LtrWorkbookExistingRow,
     LtrWorkbookReadOnlyError,
     LtrWorkbookRowData,
     LtrWorkbookRowPointer,
     LtrWorkbookWriteConfig,
     LtrWorkbookWriteDisabledError,
     LtrWorkbookWriteError,
+)
+from backend.infrastructure.office.ltr_workbook_transaction_gateway import (
+    LtrWorkbookBackupError,
+    LtrWorkbookLockTimeoutError,
+    LtrWorkbookTransactionConfig,
+    LtrWorkbookTransactionContext,
+    LtrWorkbookTransactionGateway,
 )
 from backend.infrastructure.office.outlook_msg_gateway import (
     OutlookMsgAttachmentError,
@@ -46,12 +55,19 @@ __all__ = [
     "ImportedMailAttachment",
     "ImportedMailPackage",
     "ExcelWorkbookGateway",
+    "ExcelStructureProbeResult",
     "ExcelComLTRWorkbookGateway",
     "LtrWorkbookFormat",
+    "LtrWorkbookBackupError",
+    "LtrWorkbookExistingRow",
     "LtrWorkbookGatewayError",
+    "LtrWorkbookLockTimeoutError",
     "LtrWorkbookReadOnlyError",
     "LtrWorkbookRowData",
     "LtrWorkbookRowPointer",
+    "LtrWorkbookTransactionConfig",
+    "LtrWorkbookTransactionContext",
+    "LtrWorkbookTransactionGateway",
     "LtrWorkbookWriteConfig",
     "LtrWorkbookWriteDisabledError",
     "LtrWorkbookWriteError",

@@ -184,11 +184,13 @@ For each task:
 1. Read this AGENTS.md.
 2. Read `docs/task_board.md`.
 3. Read the specific task file in `tasks/`.
-4. Implement only the current active task allowed by `docs/task_board.md`.
-5. Add/update tests.
-6. Run relevant tests if possible.
-7. Update `docs/task_board.md` after task completion before closing the turn.
-8. Summarize changed files and any known limitations.
+4. Create a concrete implementation plan document first (scope, design, file-level changes, risks, validation).
+5. Submit the plan document for user review and wait for explicit approval.
+6. After user approval, implement only the current active task allowed by `docs/task_board.md`.
+7. Add/update tests.
+8. Run relevant tests if possible.
+9. Update `docs/task_board.md` after task completion before closing the turn.
+10. Summarize changed files and any known limitations.
 
 If a task conflicts with AGENTS.md, follow AGENTS.md and report the conflict.
 
@@ -235,10 +237,12 @@ If the requested task is ahead of the active task on the board, stop and report 
 
 1. 阅读 TASK 文件
 2. 使用 TASK_EXECUTION_SKILL.md
-3. 输出设计方案后再写代码
-4. 执行 TASK_REVIEW_CHECKLIST.md
-5. 提供运行验证方法
-6. 停止，不进入下一个任务
+3. 先产出“可执行方案文件”（必须可审阅，包含范围、改动点、风险、验证）
+4. 将方案文件提交给用户审阅，未获得“同意/批准”前禁止写实现代码
+5. 用户批准后再进入第二步：实施编码与测试
+6. 执行 TASK_REVIEW_CHECKLIST.md
+7. 提供运行验证方法
+8. 停止，不进入下一个任务
 
 ---
 

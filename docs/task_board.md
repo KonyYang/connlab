@@ -1,10 +1,10 @@
-# ConnLab Task Board
+﻿# ConnLab Task Board
 
-> Status: Phase 10A follow-up complete; TASK_095 single active Precheck case complete
-> Last Updated: 2026-05-04
+> Status: TASK_139 plan ready for review; LTR frozen-field revision request record
+> Last Updated: 2026-05-07
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: None - pending user approval for next task or phase
-> Current Phase: `Phase 10A - Intake Entry Completion`
+> Current Active Task: None - TASK_139 plan under user review
+> Current Phase: `Phase 10B - LTR workbook write hardening`
 
 ---
 
@@ -185,6 +185,12 @@ Current judgment as of 2026-04-26:
 - TASK_094 supplemental upload hotfix is complete: uploading a `.docx` into an email package now returns a business-readable 400 validation message when the header gate fails instead of surfacing `Internal Server Error`.
 - Intake and Precheck now share a small UI typography/action vocabulary for panel titles, preview titles, section titles, primary actions, secondary actions, and compact actions. Static frontend shell tests guard the shared vocabulary on key Intake/Precheck components.
 - `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete: repeated Intake to Precheck navigation now keeps one active unconfirmed review case, preserves edits only for the same selected form, clears manual overrides when rebinding to a different form, and removes the Precheck `Review cases` card.
+- Project creation continuation decisions are captured as proposed task series:
+  - `TASK_096_PROJECT_CREATION_DRAFT_LIFECYCLE`: complete; explicit `Save draft and exit` versus `Exit without saving`, including deletion of ConnLab-owned unsaved database rows and stored files.
+  - `TASK_097_DRAFTS_IN_PROGRESS_SURFACE`: complete; separate Drafts / In Progress area with `Continue` / `Discard`, distinct from confirmed Projects using `Open`.
+  - `TASK_098_PRECHECK_CONFIRMED_APPLICATION_EDITING`: complete; removed Precheck `Back to Intake` and treats Precheck as the confirmed application-data editing surface.
+  - `TASK_099_LTR_REGISTERED_FREEZE_AND_EXCEPTION_PATH`: freeze normal Precheck base-field editing after LTR registration and use revise/exception for later changes.
+  - `TASK_100_PROJECT_WORKBENCH_BOUNDARY_AFTER_FOLDER_CREATION`: keep Project Workbench focused on confirmed projects, folder state, and file/source material management.
 - No Matrix, Report, AI review, LAN deployment, permissions, Outlook inbox auto-scan, email sending, external LTR workbook mutation, or future-scope work is allowed in Phase 9 or Phase 10A.
 
 Current stop point:
@@ -1294,20 +1300,192 @@ Why this is next:
 - TASK_090 Email information polish: the Email information panel now displays From/Subject/Date values in the primary ink color (black) instead of muted gray, matching the visual hierarchy of the Attachment details header.
 - `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete: `IntakeFormSelectionService` now reuses unconfirmed package cases when switching selected application forms, clears manual overrides only when rebinding to a different form, leaves confirmed cases intact, and the New Project Precheck page no longer renders the `Review cases` switcher.
 - Validation for `TASK_095`: `py -m pytest tests\unit\test_intake_form_selection_service.py -q`, result `13 passed`; `py -m pytest tests\integration\test_msg_package_intake_api.py -q`, result `10 passed`; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `44 passed`; `npm run build`, result passed.
-- Recommended next controlled task: pending user decision after `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION`.
+- `TASK_096_PROJECT_CREATION_DRAFT_LIFECYCLE` is complete: New Project creation packages can now be explicitly saved as `draft_saved` or discarded through the unsaved-session path, which removes ConnLab-owned intake database rows and the package storage directory without touching Outlook originals or arbitrary source paths.
+- Validation for `TASK_096`: `py -m pytest tests\unit\test_project_creation_draft_lifecycle_service.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q`, result `54 passed`; `npm run build`, result passed.
+- Wider check for `TASK_096`: `py -m pytest tests\unit tests\integration -q`, result `319 passed`, `7 failed`; failures are existing/directly unrelated to TASK_096 expectations around direct `.doc` intake, historical board-title assertions, and fake `.docx` header-gate setup.
+- `TASK_097_DRAFTS_IN_PROGRESS_SURFACE` is complete: saved `draft_saved` creation packages are listed in a separate Drafts / In Progress panel, use `Continue` / `Discard`, and continue back into New Project Intake or Precheck rather than Project Workbench.
+- Validation for `TASK_097`: `py -m pytest tests\integration\test_manual_intake_api.py tests\unit\test_project_creation_draft_lifecycle_service.py tests\unit\test_frontend_shell_files.py -q`, result `57 passed`; `npm run build`, result passed.
+- Wider integration check for `TASK_097`: `py -m pytest tests\integration -q`, result `53 passed`, `1 failed`; the remaining failure is the existing fake `.docx` Word header-gate setup in `test_intake_package_repositories.py`.
+- `TASK_098_PRECHECK_CONFIRMED_APPLICATION_EDITING` is complete: Precheck no longer offers `Back to Intake`, keeps save/discard exit paths, shows source files as traceability context, and confirms Projects from corrected Precheck draft data.
+- Validation for `TASK_098`: `py -m pytest tests\unit\test_frontend_shell_files.py tests\integration\test_manual_intake_api.py tests\unit\test_intake_case_review_service.py -q`, result `66 passed`; `npm run build`, result passed.
+- Wider integration check for `TASK_098`: `py -m pytest tests\integration -q`, result `53 passed`, `1 failed`; the remaining failure is the existing fake `.docx` Word header-gate setup in `test_intake_package_repositories.py`.
+- User redirected the New Project workflow strategy on 2026-05-05: the current four-step frontend is too heavy and should be redesigned as a single New Project page combining request source, attachments, editable application information, LTR number choice, and project folder creation completion.
+- `TASK_101_NEW_PROJECT_SINGLE_PAGE_FLOW_REDESIGN` is complete: `docs/new_project_single_page_flow_redesign.md` defines the single-page New Project UX/data-flow design, request email and attachment behavior, editable application information editor, field-level required guidance, no-silent-replace import rule, LTR/folder completion model, draft/cancel behavior, backend orchestration boundary, and implementation split.
+- `TASK_102_NEW_PROJECT_SINGLE_PAGE_INTAKE_APPLICATION_EDITOR` is complete: `/intake` now uses one New Project page with request source, email information, attachments, attachment preview, editable SECTION 1 application information, automatic draft persistence through the review-field boundary, direct required-field red states, and a disabled `Apply LTR Number and Create Folder` completion affordance. A narrow `application-draft` API prepares the blank durable editor draft without importing a Word form.
+- `TASK_103_APPLICATION_FORM_IMPORT_TO_EDITOR_NO_SILENT_REPLACE` is complete: Word attachment rows now expose explicit `Import`, attachment selection remains preview-only, double-click opens the stored file through the API download URL, import uses the existing backend `select-form` eligibility/header-gate/parser path, and replacement requires inline confirmation before manual editor data is cleared.
+- Implementation sequence after `TASK_101`: `TASK_102_NEW_PROJECT_SINGLE_PAGE_INTAKE_APPLICATION_EDITOR`, `TASK_103_APPLICATION_FORM_IMPORT_TO_EDITOR_NO_SILENT_REPLACE`, `TASK_104_NEW_PROJECT_LTR_AND_FOLDER_ONE_ACTION_ORCHESTRATION`.
+- `TASK_099_LTR_REGISTERED_FREEZE_AND_EXCEPTION_PATH` and `TASK_100_PROJECT_WORKBENCH_BOUNDARY_AFTER_FOLDER_CREATION` are paused until the single-page New Project redesign is resolved.
+- Validation for `TASK_101`: `py -m pytest tests\unit\test_task101_single_page_flow_redesign.py tests\unit\test_frontend_shell_files.py -q`, result passed.
+- Validation for `TASK_102`: `py -m pytest tests\unit\test_new_project_application_draft_service.py tests\unit\test_frontend_shell_files.py tests\integration\test_manual_intake_api.py -q`, result `60 passed`; `npm run build`, result passed.
+- Validation for `TASK_103`: `py -m pytest tests\unit\test_intake_form_selection_service.py tests\unit\test_frontend_shell_files.py tests\integration\test_msg_package_intake_api.py -q`, result `73 passed`; `npm run build`, result passed.
+- Recommended next controlled task: `TASK_104_NEW_PROJECT_LTR_AND_FOLDER_ONE_ACTION_ORCHESTRATION`, pending explicit user approval to activate.
+- User approved an out-of-sequence, UI-only hotfix path (option 2) and authorized creating a dedicated task for the New Project editor textarea scrollbar behavior.
+- `TASK_105_NEW_PROJECT_EDITOR_TEXTAREA_SCROLLBAR_HOTFIX` is complete: `Description of Requested Testing` and `Additional Information` textarea editors now use auto-grow behavior with no vertical drag/inner scroll, aligned with `Test Sample Information`.
+- Validation for `TASK_105`: `npm run build`, result passed.
+- User requested a follow-up visual consistency hotfix for New Project editor typography and Additional Information textarea border style.
+- `TASK_106_NEW_PROJECT_EDITOR_TYPOGRAPHY_AND_ADDITIONAL_INFO_STYLE_HOTFIX` is complete: three editable table textareas now use typography aligned with select fields; `Additional Information` textarea now uses matching border color and corner radius.
+- Validation for `TASK_106`: `npm run build`, result passed.
+- User requested a messaging placement hotfix: remove redundant bottom guidance, move imported-form message beside `Application information`, and keep full filename readable in narrow layouts.
+- `TASK_107_NEW_PROJECT_IMPORT_MESSAGE_PLACEMENT_AND_FOOTER_GUIDANCE_HOTFIX` is complete: redundant bottom guidance was removed during active package editing, import message now appears beside `Application information`, and narrow-layout wrapping keeps full filenames readable.
+- Validation for `TASK_107`: `npm run build`, result passed.
+- `TASK_108_NEW_PROJECT_IMPORTED_FORM_MESSAGE_COPY_STYLE_HOTFIX` is complete: removed `Imported application form:` prefix and restyled the imported filename message to normal black non-bold text.
+- Validation for `TASK_108`: `npm run build`, result passed.
+- `TASK_109_SIDEBAR_COLLAPSE_TOGGLE_FOR_SMALL_SCREEN_WORKSPACE` is complete: added sidebar collapse/expand control, icon-only collapsed navigation, and local persistence of collapse preference for better small-screen workspace width.
+- Validation for `TASK_109`: `npm run build`, result passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `50 passed`.
+- `TASK_110_NEW_PROJECT_IMPORTED_FILENAME_VISIBILITY_AND_SAMPLE_TABLE_WIDTH_HOTFIX` is complete: imported application filename now remains visible beside `Application information` using selected form fallback, and sample table now uses wide editable columns with horizontal scrolling plus sticky `Actions` column for small-screen usability.
+- Validation for `TASK_110`: `npm run build`, result passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `50 passed`.
+- User rejected TASK_110 sample-table width/scroll presentation and requested full revert for item #2 while keeping filename visibility fix.
+- `TASK_111_REVERT_SAMPLE_TABLE_WIDTH_SCROLL_HOTFIX` is complete: reverted sample table wide columns, sticky `Actions`, and related scroll styling to previous behavior; imported filename visibility fix remains.
+- Validation for `TASK_111`: `npm run build`, result passed.
+- `TASK_112_COLLAPSED_SIDEBAR_EDITOR_AREA_EXPANSION` is complete: when sidebar is collapsed, New Project editor workspace width is expanded (main work area max width and left/right split adjusted), so the sample table columns widen proportionally with the card.
+- Validation for `TASK_112`: `npm run build`, result passed.
+- User requested selective (not proportional) widening in collapsed-sidebar mode.
+- `TASK_113_COLLAPSED_SIDEBAR_SELECTIVE_SAMPLE_COLUMN_WIDENING` is complete: only `Contact Base Material` and `Contact Plating` columns widen in collapsed-sidebar mode; other sample columns remain unchanged.
+- Validation for `TASK_113`: `npm run build`, result passed.
+- User requested immediate rollback of the selective widening change.
+- `TASK_114_REVERT_SELECTIVE_SAMPLE_COLUMN_WIDENING` is complete: removed collapsed-sidebar selective column widening override and restored prior column-width behavior.
+- Validation for `TASK_114`: `npm run build`, result passed.
+- User reported a severe readability risk: sample table content appears incomplete/clipped compared to Word source.
+- `TASK_115_SAMPLE_TABLE_TEXT_VISIBILITY_AND_AUTOGROW_FIX` is complete: sample table typography is compacted for dense fields, table cells top-align content, and sample-row autogrow adds a clipping safety buffer so wrapped second lines remain fully visible.
+- Validation for `TASK_115`: `npm run build`, result passed.
+- User reported inline blue focus capsule still obscures content and requested a Word-like cell display.
+- `TASK_116_SAMPLE_TABLE_INLINE_EDIT_VISUAL_DECONFLICT` is complete: sample-table inline editors now remove inner input chrome (border/radius/focus outline), keeping direct editing while making content read like plain table text.
+- Validation for `TASK_116`: `npm run build`, result passed.
+- User approved adding a subtle editing cue without intrusive input chrome.
+- `TASK_117_SAMPLE_TABLE_FOCUS_ROW_SOFT_HIGHLIGHT` is complete: sample table now applies a soft row background highlight on `:focus-within` to indicate current edit row without covering text.
+- Validation for `TASK_117`: `npm run build`, result passed.
+- User requested a capsule-style editor retry with strict no-clipping behavior.
+- `TASK_118_SAMPLE_TABLE_CAPSULE_RESTORE_WITH_NO_CLIP_AUTOGROW` is complete: restored capsule-like sample cell editor chrome, kept focus visuals without box-model jumps, and increased auto-grow safety buffer to prevent wrapped-line clipping.
+- Validation for `TASK_118`: `npm run build`, result passed.
+- User requested multiline auto-expand behavior for `Send copies of test results/reports to`.
+- `TASK_119_SEND_COPIES_FIELD_AUTOGROW_TEXTAREA` is complete: `send_copies_recipients` now renders as an auto-grow textarea (Enter creates new lines and height expands automatically) while keeping other fields unchanged.
+- Validation for `TASK_119`: `npm run build`, result passed.
+- User requested visual alignment for the last `Actions` column between the two lower tables.
+- `TASK_120_ALIGN_ACTIONS_COLUMN_WIDTH_BETWEEN_TABLES` is complete: unified `Actions` column width to 116px and centered content in both sample and requested-testing tables for consistent alignment.
+- Validation for `TASK_120`: `npm run build`, result passed.
+- User clarified intent: lower table actions column should be narrowed and action icon colors should stay consistently blue.
+- `TASK_121_NARROW_REQUESTED_TESTING_ACTIONS_COLUMN_AND_BLUE_ICON_UNIFY` is complete: narrowed lower requested-testing `Actions` column to 92px and adjusted disabled action icon styling to a blue tone.
+- Validation for `TASK_121`: `npm run build`, result passed.
+- User requested rollback of the above two actions-column adjustments.
+- `TASK_122_REVERT_TASK120_TASK121_ACTIONS_COLUMN_CHANGES` is complete: restored requested-testing `Actions` width to 112px, restored sample table `Actions` width to 10%, removed cross-table fixed-width alignment rule, and restored disabled action icon opacity behavior.
+- Validation for `TASK_122`: `npm run build`, result passed.
+- User requested removing sample-table blue capsule editors due to visibility issues.
+- `TASK_123_REMOVE_SAMPLE_TABLE_CAPSULE_FOR_FULL_VISIBILITY` is complete: removed capsule-like inner borders/radius/focus chrome for sample table editors and returned to plain inline text appearance for maximum content visibility.
+- Validation for `TASK_123`: `npm run build`, result passed.
+- User requested `Test Sample Information` last-column action icons in blue.
+- `TASK_124_SAMPLE_TABLE_ACTIONS_ICON_BLUE` is complete: sample table action icons now use blue tones for normal and disabled states.
+- Validation for `TASK_124`: `npm run build`, result passed.
 - copied-workbook LTR write hardening depends on explicit approval for a new phase
 
 Active implementation task:
 
-- none
+- None (`TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD` is plan-only and awaiting user approval)
 
 Reason:
 
-- `TASK_095_SINGLE_ACTIVE_PRECHECK_CASE_PER_INTAKE_SESSION` is complete. The next implementation task is blocked until explicit user approval.
+- `TASK_133` was allowed because `TASK_131` added lock/backup/short transaction infrastructure and `TASK_132` added no-write workbook row preview mapping.
+- The user requested the next task after `TASK_133`; this integration is the next controlled step because the external workbook commit API exists but is not connected to the New Project operator workflow.
+- The user approved continuing after `TASK_134`; this task addressed the known gap where missing annual sheets failed commit without a controlled bootstrap path.
+- The user explicitly confirmed the attached blocker message should not block project creation at this stage; this task narrows the rule to warning-only.
+- The user approved opening `TASK_137`; this task aligns specified-number classification and workbook commit guards with the confirmed `DL-YYYY-MM-NNN` baseline and suffix-token handling.
+- `TASK_139` is allowed for plan review because `TASK_099` froze normal base-field editing after LTR registration and `TASK_100` bounded Project Workbench to post-creation work. The next safe mainline gap is a traceable request record for frozen-field corrections, without applying changes to workbook, folder, or project identity.
+
+Prior completed note:
+
+- `TASK_100_PROJECT_WORKBENCH_BOUNDARY_AFTER_FOLDER_CREATION` is complete. Project Workbench is now bounded to post-creation project status and source material management: creation-stage controls (application form upload, precheck run, local LTR commit, initial folder generation) are removed from Workbench, while evidence placement preview/place remains. Projects continue to use `Open`; Drafts / In Progress continue to use `Continue`.
+- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q` passed, 53 passed; `npm run build` passed from `frontend`; `py -m pytest tests\unit tests\integration -q` passed, 409 passed.
+
+Prior completed note:
+
+- `TASK_099_LTR_REGISTERED_FREEZE_AND_EXCEPTION_PATH` is complete. Normal New Project/Precheck base-field editing is now frozen after the intake case is tied to a project with a registered LTR. The API exposes frozen state and returns a 409 revise/exception message when stale clients attempt to change frozen base fields; the New Project editor shows the same message, disables normal editing, and stops autosave in frozen state.
+- Validation: `py -m pytest tests\unit\test_intake_case_review_service.py -q` passed, 14 passed; `py -m pytest tests\integration\test_manual_intake_api.py::test_review_fields_returns_conflict_after_registered_ltr -q` passed, 1 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task099_new_project_editor_exposes_ltr_registered_freeze_state -q` passed, 1 passed; `py -m pytest tests\integration\test_new_project_completion_api.py tests\integration\test_manual_intake_api.py tests\unit\test_frontend_shell_files.py -q` passed, 66 passed; `py -m pytest tests\unit tests\integration -q` passed, 408 passed; `npm run build` passed from `frontend`.
+
+Prior completed note:
+
+- `TASK_138_LTR_SUFFIX_TOKEN_STRICT_INPUT_AND_BOARD_CLEANUP` is complete. Suffix-token-only specified LTR input now validates the raw trimmed token, so internal spaces and other non-alphanumeric characters are rejected instead of normalized away. The stale pending TASK_133 rule-clarification block was replaced with implemented-rule notes for TASK_137/TASK_138.
+- Validation: `py -m pytest tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_workbook_write_commit_service.py tests\integration\test_ltr_workbook_write_commit_api.py -q` passed, 35 passed; `py -m pytest tests\unit tests\integration -q` passed, 403 passed; `git diff --check` passed with LF/CRLF working-copy warnings only.
+
+Prior completed note:
+
+- `TASK_137_LTR_SPECIFIED_NUMBER_RULES_AND_YEAR_MONTH_GUARDS` is complete. `Use specified LTR number` now uses explicit category handling (base/full/suffix token), rejects invalid specified inputs with actionable errors, enforces base existence requirements for associated input, preserves replacement behavior for existing full numbers, and keeps year-sheet bootstrap plus duplicate guards on commit paths.
+- Validation: `py -m pytest tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_workbook_write_commit_service.py tests\integration\test_ltr_workbook_write_commit_api.py -q` passed, 33 passed; `py -m pytest tests\unit tests\integration -q` passed, 401 passed.
+
+Prior completed note:
+
+- `TASK_136_REVISION_H_NON_BLOCKING_IN_NEW_PROJECT_PRECHECK` is complete. SECTION 1 `Revision must be H` is now warning-only during New Project creation precheck and no longer blocks completion, while `Form No. must be E-3718` remains an error-level blocker.
+- Validation: `py -m pytest tests\unit\test_intake_section1_precheck.py tests\integration\test_manual_intake_api.py -q` passed, 12 passed; `py -m pytest tests\unit tests\integration -q` passed, 394 passed.
+
+Prior completed note:
+
+- `TASK_135_LTR_WORKBOOK_YEAR_SHEET_BOOTSTRAP` is complete. External LTR workbook commit now supports a controlled bootstrap path for missing annual sheets: when enabled by settings and explicitly acknowledged by the operator, the commit flow copies a configured template sheet, clears configured data rows, verifies the target year sheet exists, and then continues the same locked backup + short transaction write path.
+- Validation: `py -m pytest tests\unit\test_ltr_workbook_write_commit_service.py tests\unit\test_ltr_workbook_transaction_gateway.py tests\unit\test_excel_com_ltr_workbook_gateway.py tests\integration\test_ltr_workbook_write_commit_api.py -q` passed, 23 passed; `py -m pytest tests\unit tests\integration -q` passed, 392 passed.
+
+Prior completed note:
+
+- `TASK_134_NEW_PROJECT_LTR_WORKBOOK_COMMIT_UI_INTEGRATION` is complete. New Project now requires an explicit controlled-workbook acknowledgement, confirms the intake case, commits the LTR workbook write through the TASK_133 API, records the workbook action/sheet/row/backup message, and then reuses New Project completion to generate the project folder with the committed LTR number. If folder generation fails after a workbook commit, retry skips duplicate case confirmation and duplicate workbook write.
+- Validation: `py -m pytest tests\integration\test_new_project_completion_api.py tests\integration\test_ltr_workbook_write_commit_api.py tests\unit\test_frontend_shell_files.py -q` passed, 56 passed; `npm run build` passed; `py -m pytest tests\unit tests\integration -q` passed, 389 passed.
+
+Prior completed note:
+
+- `TASK_133_LTR_WORKBOOK_WRITE_COMMIT` is complete. The backend now has an operator-confirmed LTR workbook write commit service and API that require preview acknowledgement, use the lock/backup/short transaction gateway, re-scan workbook-visible numbers inside the write transaction, support the approved specified-number classifications, replace existing workbook rows or append new rows, and register local LTR records only after a successful workbook save.
+- Validation: `py -m pytest tests\unit\test_ltr_workbook_write_commit_service.py tests\integration\test_ltr_workbook_write_commit_api.py tests\unit\test_excel_com_ltr_workbook_gateway.py tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_workbook_write_preview_service.py -q` passed, 34 passed; `py -m pytest tests\unit tests\integration -q` passed, 387 passed.
+
+Prior completed note:
+
+- `TASK_132_LTR_WORKBOOK_WRITE_PREVIEW` is complete. Confirmed project data and New Project setup confirmation values now map into a no-write LTR workbook A:Q row preview with workbook path, target sheet, target row when known, column values, and warnings.
+- Validation: `py -m pytest tests\unit\test_ltr_workbook_write_preview_service.py tests\integration\test_ltr_workbook_write_preview_api.py tests\unit\test_ltr_workbook_transaction_gateway.py tests\unit\test_excel_com_ltr_workbook_gateway.py -q` passed, 14 passed; `py -m pytest tests\unit tests\integration -q` passed, 376 passed; `git diff --check` passed with CRLF working-copy warnings only.
+
+Prior completed note:
+
+- `TASK_131_LTR_WORKBOOK_LOCK_BACKUP_AND_SHORT_TRANSACTION_GATEWAY` is complete. LTR workbook write transactions now have an infrastructure-only gateway for exclusive lock acquisition, bounded wait/timeout, write-before backup, short COM write session execution, workbook close, and lock release.
+- Validation: `py -m pytest tests\unit\test_ltr_workbook_transaction_gateway.py tests\unit\test_excel_com_ltr_workbook_gateway.py -q` passed, 9 passed; `py -m pytest tests\unit tests\integration -q` passed, 371 passed; `git diff --check` passed with CRLF working-copy warnings only.
+
+Prior completed note:
+
+- `TASK_130_EXTERNAL_EXCEL_STRUCTURE_PROBES` is complete. External Excel resources now have read-only `.xlsx` structure probes for expected sheets, headers, and date-like headers. The probes are connected to external resource validation for standard record and equipment calibration Excel files, while LTR workbook validation remains read-only through the existing snapshot gateway.
+- Validation: `py -m pytest tests\unit\test_excel_structure_probe.py tests\unit\test_external_resource_service.py tests\unit\test_ltr_workbook_snapshot_gateway.py -q` passed, 17 passed; `py -m pytest tests\unit tests\integration -q` passed, 367 passed.
+
+Prior completed note:
+
+- `TASK_129_SECRET_AND_LOCAL_SETTINGS_POLICY` is complete. LTR workbook local settings now expose a redacted safe summary, reject invalid positive-integer policy values, preserve local/env password loading without hard-coding secrets, and document the local secret policy plus future Windows Credential Manager direction.
+- Validation: `py -m pytest tests\unit\test_config.py -q` passed, 6 passed; `py -m pytest tests\unit tests\integration -q` passed, 362 passed.
+
+Prior completed note:
+
+- `TASK_128_EXTERNAL_RESOURCE_REGISTRY_AND_VALIDATION` is complete. External resources now have SQLite-backed registration, active state, validation status, last validation time, and failure reason. Backend APIs can list, upsert, and validate `ltr_workbook`, `application_form_template`, `project_folder_template`, `standard_record_excel`, and `equipment_calibration_excel` without writing public-drive Excel files.
+- Validation: `py -m pytest tests\unit\test_external_resource_service.py tests\integration\test_external_resource_api.py -q` passed, 9 passed; `py -m pytest tests\unit tests\integration -q` passed, 359 passed.
+
+Prior completed note:
+
+- `TASK_127_LOOKUP_OPTIONS_SAFE_UPDATE_AND_IMPORT` is complete. New Project setup confirmation `Location` and `Test Type in sheet` now use the existing database-backed lookup option service with required default backfill for new and existing databases. A local TOML import API updates/ disables lookup options without deleting old records and backs up SQLite before import.
+- Validation: `py -m pytest tests\unit\test_lookup_options_service.py tests\integration\test_lookup_options_api.py tests\integration\test_new_project_completion_api.py -q` passed, 9 passed; `py -m pytest tests\unit tests\integration -q` passed, 350 passed; `npm run build` passed from `frontend`.
+
+Prior completed note:
+
+- `TASK_126_NEW_PROJECT_SETUP_CONFIRMATION_REQUIRED_FIELDS_REWORK` is complete. LTR/setup confirmation controls now live in the left-side project setup card, obsolete blockers were loosened, and the main completion button remains in the Application information footer.
+- Validation: `py -m pytest tests\unit tests\integration -q` passed, 347 passed; `npm run build` passed from `frontend`.
+
+Prior completed note:
+
+- `TASK_125_FULL_TEST_SUITE_HISTORICAL_EXPECTATION_SYNC` is complete. Historical test expectations now match current `.docx` intake, eligibility-gated form selection, candidate scoring, and task-board phase progression.
+- Validation: `py -m pytest tests\unit tests\integration -q` passed, 347 passed.
+
+Prior completed note:
+
+- `TASK_104_NEW_PROJECT_LTR_AND_FOLDER_ONE_ACTION_ORCHESTRATION` is complete. New Project now has a one-action completion path for intake confirmation, LTR registration, folder preview, folder generation, and Workbench routing.
+- Validation: `py -m pytest tests\integration\test_new_project_completion_api.py tests\integration\test_ltr_local_commit_api.py -q` passed; `npm run build` passed from `frontend`. Follow-up TASK_125 full-suite stabilization is complete; `py -m pytest tests\unit tests\integration -q` now passes with 347 tests.
+
+Next recommended action:
+
+- Review `tasks/TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD.md`. If approved, open TASK_139 implementation as the next controlled task. Do not implement it before approval.
+
+Implemented LTR number rule clarification:
+
+- `TASK_137` implemented specified-number classification for base DL numbers, full base-plus-suffix numbers, and suffix-token-only input.
+- `TASK_138` tightens suffix-token-only input so any non-alphanumeric character, including internal spaces, is rejected instead of normalized away.
 
 Do not start yet:
 
-- copied-workbook LTR write hardening
 - Outlook inbox auto-scan
 - email sending
 - any Matrix, Report, AI review, LAN deployment, permissions, or future-scope feature

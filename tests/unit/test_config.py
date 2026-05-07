@@ -2,6 +2,8 @@ import shutil
 import uuid
 from pathlib import Path
 
+import pytest
+
 from backend.shared.config import DEFAULT_LOG_LEVEL, Settings
 
 
@@ -52,6 +54,69 @@ modify_password = "placeholder-secret"
         assert settings.ltr_workbook.lock_dir == (workspace_tmp / "locks").resolve()
         assert settings.ltr_workbook.backup_dir == (workspace_tmp / "backups").resolve()
         assert settings.ltr_workbook.modify_password == "placeholder-secret"
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_ltr_workbook_safe_summary_redacts_password(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    config_path = workspace_tmp / "connlab.local.toml"
+    config_path.write_text(
+        """[ltr_workbook]
+path = "local/LTR_number.xls"
+mode = "excel_com"
+write_enabled = true
+lock_dir = "locks"
+lock_timeout_seconds = 90
+backup_dir = "backups"
+modify_password = "operator-secret"
+template_sheet_name = "Template"
+sheet_bootstrap_clear_start_row = 3
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(config_path))
+
+    try:
+        summary = Settings.load(base_dir=workspace_tmp).ltr_workbook.safe_summary()
+
+        assert summary["modify_password_configured"] is True
+        assert summary["template_sheet_name_configured"] is True
+        assert "operator-secret" not in str(summary)
+        assert "Template" not in str(summary)
+        assert summary["lock_timeout_seconds"] == 90
+        assert summary["sheet_bootstrap_clear_start_row"] == 3
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_ltr_workbook_settings_reject_invalid_lock_timeout(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    config_path = workspace_tmp / "connlab.local.toml"
+    config_path.write_text(
+        """[ltr_workbook]
+lock_timeout_seconds = 0
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(config_path))
+
+    try:
+        with pytest.raises(ValueError, match="lock_timeout_seconds"):
+            Settings.load(base_dir=workspace_tmp)
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_ltr_workbook_password_env_override_is_redacted(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    monkeypatch.setenv("CONNLAB_LTR_WORKBOOK_PASSWORD", "env-secret")
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password == "env-secret"
+        assert "env-secret" not in str(settings.ltr_workbook.safe_summary())
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 

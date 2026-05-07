@@ -11,11 +11,27 @@ from backend.application.intake_section1_precheck import (
     clear_disallowed_section1_values,
     evaluate_section1_precheck,
 )
-from backend.domain import IntakeAsset, IntakeCase, IntakeDraft, IntakePackage
+from backend.domain import (
+    IntakeAsset,
+    IntakeCase,
+    IntakeDraft,
+    IntakePackage,
+    LtrRecord,
+    LtrStatus,
+)
 
 
 class IntakeCaseReviewNotFoundError(LookupError):
     """Raised when review data cannot be found for an intake package."""
+
+
+class IntakeCaseReviewFrozenError(ValueError):
+    """Raised when normal review edits target fields frozen by LTR registration."""
+
+    def __init__(self, message: str, field_keys: tuple[str, ...]) -> None:
+        """Create the error with the frozen fields that triggered it."""
+        super().__init__(message)
+        self.field_keys = field_keys
 
 
 class IntakePackageStore(Protocol):
@@ -46,6 +62,12 @@ class IntakeDraftStore(Protocol):
     def update(self, draft: IntakeDraft) -> IntakeDraft: ...
 
 
+class LtrRecordStore(Protocol):
+    """Read port for project LTR records."""
+
+    def list_by_project(self, project_id: str) -> list[LtrRecord]: ...
+
+
 @dataclass(frozen=True)
 class IntakeCaseReviewItem:
     """Review data for one selected intake case."""
@@ -56,6 +78,9 @@ class IntakeCaseReviewItem:
     parsed_fields: dict[str, Any]
     missing_required_fields: tuple[str, ...]
     precheck_issues: tuple[DraftPrecheckIssue, ...]
+    base_editing_frozen: bool = False
+    frozen_field_keys: tuple[str, ...] = ()
+    frozen_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +93,32 @@ class IntakeCaseReview:
 
 class IntakeCaseReviewService:
     """Loads unified email/manual intake case review data."""
+
+    FROZEN_REASON = "LTR registered. Base application fields require revise/exception handling."
+
+    _frozen_field_keys = (
+        "form_no",
+        "revision",
+        "product_name",
+        "requester",
+        "phone",
+        "request_date",
+        "email",
+        "business_unit",
+        "manufacturing_site",
+        "project_no",
+        "results_format",
+        "requested_completion_date",
+        "test_type",
+        "sample_status",
+        "project_type",
+        "post_testing_disposition",
+        "requested_testing",
+        "confidential",
+        "subcontract",
+        "samples",
+        "requested_testing_rows",
+    )
 
     _editable_fields = {
         "product_name",
@@ -100,12 +151,14 @@ class IntakeCaseReviewService:
         asset_store: IntakeAssetStore,
         case_store: IntakeCaseStore,
         draft_store: IntakeDraftStore,
+        ltr_store: LtrRecordStore | None = None,
     ) -> None:
         """Create the service from explicit repository ports."""
         self._packages = package_store
         self._assets = asset_store
         self._cases = case_store
         self._drafts = draft_store
+        self._ltrs = ltr_store
 
     def get_package_review(self, package_id: str) -> IntakeCaseReview:
         """Return review data for all cases in one package."""
@@ -127,6 +180,7 @@ class IntakeCaseReviewService:
             draft_fields = self._merged_draft_fields(draft)
             precheck_issues = evaluate_section1_precheck(draft_fields)
             parsed_fields = clear_disallowed_section1_values(draft_fields)
+            freeze_state = self._freeze_state(case)
             items.append(
                 IntakeCaseReviewItem(
                     case=case,
@@ -135,6 +189,9 @@ class IntakeCaseReviewService:
                     parsed_fields=parsed_fields,
                     missing_required_fields=blocking_issue_fields(precheck_issues),
                     precheck_issues=precheck_issues,
+                    base_editing_frozen=freeze_state,
+                    frozen_field_keys=self._frozen_field_keys if freeze_state else (),
+                    frozen_reason=self.FROZEN_REASON if freeze_state else None,
                 )
             )
         return IntakeCaseReview(package=package, cases=tuple(items))
@@ -155,6 +212,15 @@ class IntakeCaseReviewService:
             raise IntakeCaseReviewNotFoundError(
                 f"Intake draft not found for case: {intake_case.case_id}"
             )
+        draft_fields = self._merged_draft_fields(draft)
+        frozen_changes = self._changed_frozen_fields(
+            draft_fields,
+            fields,
+            sample_rows=sample_rows,
+            requested_testing_rows=requested_testing_rows,
+        )
+        if frozen_changes and self._freeze_state(intake_case):
+            raise IntakeCaseReviewFrozenError(self.FROZEN_REASON, frozen_changes)
         overrides = self._json_object(draft.manual_overrides_json or "{}")
         for key, value in fields.items():
             if key not in self._editable_fields:
@@ -197,6 +263,7 @@ class IntakeCaseReviewService:
         draft_fields = self._merged_draft_fields(updated_draft)
         precheck_issues = evaluate_section1_precheck(draft_fields)
         parsed_fields = clear_disallowed_section1_values(draft_fields)
+        freeze_state = self._freeze_state(intake_case)
         return IntakeCaseReviewItem(
             case=intake_case,
             draft=updated_draft,
@@ -204,6 +271,9 @@ class IntakeCaseReviewService:
             parsed_fields=parsed_fields,
             missing_required_fields=blocking_issue_fields(precheck_issues),
             precheck_issues=precheck_issues,
+            base_editing_frozen=freeze_state,
+            frozen_field_keys=self._frozen_field_keys if freeze_state else (),
+            frozen_reason=self.FROZEN_REASON if freeze_state else None,
         )
 
     def _merged_draft_fields(self, draft: IntakeDraft) -> dict[str, Any]:
@@ -257,3 +327,42 @@ class IntakeCaseReviewService:
             if any(normalized_row.values()):
                 normalized_rows.append(normalized_row)
         return normalized_rows
+
+    def _freeze_state(self, intake_case: IntakeCase) -> bool:
+        """Return whether base review edits are frozen by registered LTR state."""
+        if self._ltrs is None or not intake_case.confirmed_project_id:
+            return False
+        return any(
+            ltr.status is LtrStatus.REGISTERED
+            for ltr in self._ltrs.list_by_project(intake_case.confirmed_project_id)
+        )
+
+    def _changed_frozen_fields(
+        self,
+        current_fields: dict[str, Any],
+        fields: dict[str, Any],
+        *,
+        sample_rows: list[dict[str, Any]] | None,
+        requested_testing_rows: list[dict[str, Any]] | None,
+    ) -> tuple[str, ...]:
+        """Return frozen field keys whose requested value differs from current draft data."""
+        changed: list[str] = []
+        frozen_scalar_fields = set(self._frozen_field_keys) - {"samples", "requested_testing_rows"}
+        for key, value in fields.items():
+            if key not in frozen_scalar_fields:
+                continue
+            if self._normalized_override(value) != self._normalized_override(current_fields.get(key)):
+                changed.append(key)
+        if sample_rows is not None:
+            current_samples = current_fields.get("samples")
+            if self._normalized_sample_rows(sample_rows) != (
+                current_samples if isinstance(current_samples, list) else []
+            ):
+                changed.append("samples")
+        if requested_testing_rows is not None:
+            current_testing_rows = current_fields.get("requested_testing_rows")
+            if self._normalized_requested_testing_rows(requested_testing_rows) != (
+                current_testing_rows if isinstance(current_testing_rows, list) else []
+            ):
+                changed.append("requested_testing_rows")
+        return tuple(dict.fromkeys(changed))

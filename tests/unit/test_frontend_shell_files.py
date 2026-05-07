@@ -99,10 +99,33 @@ def test_frontend_shell_shows_only_mvp_workflow_steps() -> None:
 
 
 def test_frontend_workflow_integration_calls_mvp_actions() -> None:
-    """The workbench wires the visible MVP actions to API client functions."""
+    """Workbench integration follows either legacy wizard or TASK_100 post-creation boundary."""
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+
+    if "Project workbench boundary" in workbench_source:
+        for blocked_term in [
+            "uploadApplicationForm",
+            "runPrecheck",
+            "getLtrReadiness",
+            "previewLtrRegistration",
+            "commitLtrLocally",
+            "previewFolder",
+            "generateFolder",
+            "resolvePrecheckIssue",
+            "ApplicationFormActionPanel",
+            "LtrActionPanel",
+            "FolderActionPanel",
+        ]:
+            assert blocked_term not in workbench_source
+        for term in [
+            "previewEvidencePlacement",
+            "placeEvidence",
+            "ProjectLookupPanel",
+        ]:
+            assert term in workbench_source
+        return
 
     for api_name in [
         "uploadApplicationForm",
@@ -217,7 +240,7 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
 
 
 def test_project_workbench_uses_sequential_stepper() -> None:
-    """TASK_019 replaces parallel cards with a single active workflow panel."""
+    """Workbench keeps either legacy stepper or TASK_100 post-creation status surface."""
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
@@ -230,6 +253,13 @@ def test_project_workbench_uses_sequential_stepper() -> None:
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
+
+    if "Project workbench boundary" in workbench_source:
+        assert "WorkflowStepper" not in workbench_source
+        assert "NextActionPanel" not in workbench_source
+        assert "project-workbench-status" in workbench_source
+        assert ".project-workbench-status" in styles_source
+        return
 
     assert "WorkflowStepper" in workbench_source
     assert "NextActionPanel" in workbench_source
@@ -252,7 +282,7 @@ def test_project_workbench_uses_sequential_stepper() -> None:
 
 
 def test_precheck_issue_experience_uses_business_readable_cards() -> None:
-    """TASK_020 shows precheck issues as actionable cards, not raw list rows."""
+    """Precheck issue card assets stay available; Workbench inclusion may change after TASK_100."""
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
@@ -272,9 +302,14 @@ def test_precheck_issue_experience_uses_business_readable_cards() -> None:
         encoding="utf-8"
     )
 
-    assert "PrecheckSummary" in workbench_source
-    assert "PrecheckIssueCard" in workbench_source
-    assert "resolvePrecheckIssue" in workbench_source
+    if "Project workbench boundary" in workbench_source:
+        assert "PrecheckSummary" not in workbench_source
+        assert "PrecheckIssueCard" not in workbench_source
+        assert "resolvePrecheckIssue" not in workbench_source
+    else:
+        assert "PrecheckSummary" in workbench_source
+        assert "PrecheckIssueCard" in workbench_source
+        assert "resolvePrecheckIssue" in workbench_source
     assert "/api/precheck-issues/" in client_source
     assert "Field or category" in issue_card_source
     assert "What is wrong" in issue_card_source
@@ -290,7 +325,7 @@ def test_precheck_issue_experience_uses_business_readable_cards() -> None:
 
 
 def test_intake_ltr_folder_panels_show_operator_guidance() -> None:
-    """TASK_021 improves the three MVP action panels without new backend scope."""
+    """Legacy workflow action panels stay defined; Workbench may decouple after TASK_100."""
     application_source = (
         FRONTEND_ROOT / "src" / "components" / "workflow" / "ApplicationFormActionPanel.tsx"
     ).read_text(encoding="utf-8")
@@ -307,9 +342,14 @@ def test_intake_ltr_folder_panels_show_operator_guidance() -> None:
         encoding="utf-8"
     )
 
-    assert "ApplicationFormActionPanel" in workbench_source
-    assert "LtrActionPanel" in workbench_source
-    assert "FolderActionPanel" in workbench_source
+    if "Project workbench boundary" in workbench_source:
+        assert "ApplicationFormActionPanel" not in workbench_source
+        assert "LtrActionPanel" not in workbench_source
+        assert "FolderActionPanel" not in workbench_source
+    else:
+        assert "ApplicationFormActionPanel" in workbench_source
+        assert "LtrActionPanel" in workbench_source
+        assert "FolderActionPanel" in workbench_source
     assert "Application intake" in application_source
     assert "Requested Testing" in application_source
     assert "next" in application_source.lower()
@@ -351,7 +391,13 @@ def test_ltr_frontend_wires_readiness_preview_and_local_commit() -> None:
         "commitLtrLocally",
     ]:
         assert term in client_source
-        assert term in workbench_source or term.startswith("/ltr/")
+    if "Project workbench boundary" not in workbench_source:
+        for term in [
+            "getLtrReadiness",
+            "previewLtrRegistration",
+            "commitLtrLocally",
+        ]:
+            assert term in workbench_source
 
     for term in [
         "Readiness",
@@ -524,6 +570,13 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
         FRONTEND_ROOT / "src" / "components" / "workflow" / "new-project-workflow.css"
     ).read_text(encoding="utf-8")
 
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "ensureNewProjectApplicationDraft" in inbox_source
+        assert "Apply LTR Number and Create Folder" in inbox_source + (
+            FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
+        ).read_text(encoding="utf-8")
+        return
+
     for term in [
         "IntakePackageImport",
         "IntakeAsset",
@@ -572,6 +625,10 @@ def test_direct_application_form_entry_imports_through_backend() -> None:
     inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
         encoding="utf-8"
     )
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "importDirectWordApplicationForm(file)" in inbox_source
+        return
 
     for term in [
         "importDirectWordApplicationForm",
@@ -642,7 +699,7 @@ def test_task087_intake_information_density_cleanup() -> None:
     assert ".step-footer-guidance" in inbox_styles
     assert ".attachment-title" in inbox_styles
     assert ".attachment-guidance" not in inbox_styles
-    assert "grid-template-rows: auto auto minmax(0, 1fr);" in inbox_styles
+    assert "grid-template-rows: auto auto;" in inbox_styles
     assert ".intake-attachments-panel" in inbox_styles
     assert "grid-template-rows: auto minmax(0, 1fr);" in inbox_styles
     assert "overflow: auto;" in inbox_styles
@@ -664,6 +721,11 @@ def test_task094_intake_continue_uses_application_form_header_gate() -> None:
         "/application-form/validate",
     ]:
         assert term in client_source
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "ensureNewProjectApplicationDraft" in inbox_source
+        assert "validateIntakeAssetApplicationForm" in client_source
+        return
 
     for term in [
         "intakeContinueState",
@@ -692,6 +754,11 @@ def test_task095_precheck_uses_single_active_case_without_switcher() -> None:
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
     ).read_text(encoding="utf-8")
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "selectedPrecheckCaseId: draft.case_id" in inbox_source
+        assert "review.cases.find" in inbox_source
+        return
 
     assert "selectedPrecheckCaseId: null" in inbox_source
     assert inbox_source.count("selectedPrecheckCaseId: null") >= 3
@@ -739,8 +806,8 @@ def test_task070_precheck_step_matches_reference_workspace() -> None:
     for term in [
         'import "../intake-case-review.css"',
         'currentStep="precheck"',
-        "Source document & template check",
-        "Template version mismatch detected",
+        "Source traceability",
+        "Confirmed application data is edited below",
         "Lab Test Request Number must be blank",
         "Key Information Edit & Confirm",
         "Test Sample Information",
@@ -771,9 +838,12 @@ def test_task070_precheck_step_matches_reference_workspace() -> None:
 
 def test_task089_new_project_workflow_shell_is_shared() -> None:
     """TASK_089 uses one workflow shell across Intake and Precheck."""
-    inbox_source = (
+    page_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
-    ).read_text(encoding="utf-8") + intake_feature_source()
+    ).read_text(encoding="utf-8")
+    inbox_source = (
+        page_source + intake_feature_source()
+    )
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
     ).read_text(encoding="utf-8")
@@ -783,6 +853,14 @@ def test_task089_new_project_workflow_shell_is_shared() -> None:
     workflow_styles = (
         FRONTEND_ROOT / "src" / "components" / "workflow" / "new-project-workflow.css"
     ).read_text(encoding="utf-8")
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "new-project-single-page" in page_source
+        assert "AttachmentPreviewPanel" not in page_source
+        assert "Apply LTR Number and Create Folder" in (
+            FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
+        ).read_text(encoding="utf-8")
+        return
 
     for term in [
         "NewProjectWorkflowHeader",
@@ -831,6 +909,12 @@ def test_task071_intake_session_state_survives_route_changes() -> None:
     session_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "intakeSession.ts"
     ).read_text(encoding="utf-8")
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert 'navigate("/intake")' in app_source
+        assert "session={intakeSession}" in app_source
+        assert "onSessionChange={setIntakeSession}" in app_source
+        return
 
     for term in [
         "type IntakeSessionState",
@@ -894,28 +978,17 @@ def test_task085_intake_session_persists_to_session_storage() -> None:
 
 
 def test_task085_precheck_back_preserves_intake_selected_form_session() -> None:
-    """TASK_085 hotfix keeps Intake selection after returning from Precheck."""
+    """TASK_098 supersedes the old Precheck back-navigation hotfix."""
     app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
     ).read_text(encoding="utf-8")
 
-    for term in [
-        "type PrecheckBackSnapshot",
-        "selectedFormAssetId",
-        "activeCase.selected_form_asset_id",
-        "caseId: activeCase.case_id",
-    ]:
-        assert term in case_review_source
-
-    for term in [
-        "type PrecheckBackSnapshot",
-        "snapshot?.selectedFormAssetId ?? current.selectedAssetId",
-        "snapshot?.selectedFormAssetId ?? current.selectedWordAssetId",
-        "snapshot?.caseId ?? current.selectedPrecheckCaseId",
-        'navigate("/intake")',
-    ]:
-        assert term in app_source
+    assert "Back to Intake" not in case_review_source
+    assert "PrecheckBackSnapshot" not in case_review_source
+    assert "PrecheckBackSnapshot" not in app_source
+    assert "Save draft and exit" in case_review_source
+    assert "Exit without saving" in case_review_source
 
 
 def test_task073_selected_form_precheck_binding_is_explicit() -> None:
@@ -930,6 +1003,12 @@ def test_task073_selected_form_precheck_binding_is_explicit() -> None:
     case_review_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
     ).read_text(encoding="utf-8") + precheck_feature_source()
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "ensureNewProjectApplicationDraft" in inbox_source
+        assert "selectedAsset.asset_id" not in inbox_source
+        assert "/select-form" in client_source
+        return
 
     for term in [
         "SelectedApplicationForm",
@@ -1045,16 +1124,13 @@ def test_task082_precheck_sample_rows_are_editable_with_icon_actions() -> None:
         "sample_rows: sampleRows",
         "onAdd",
         "onChange",
-        "onEdit",
         "onCopy",
         "onDelete",
-        "focusSampleRow",
         "copySampleRow",
         "deleteSampleRow",
         "mergedPartNumberRevision",
         "mergedTraceabilityLotInfo",
         "rows.length <= 1",
-        'name="edit"',
         'name="copy"',
         'name="trash"',
     ]:
@@ -1068,7 +1144,6 @@ def test_task082_precheck_sample_rows_are_editable_with_icon_actions() -> None:
         assert term in case_styles
 
     assert "sample_rows?: Record<string, string>[]" in client_source
-    assert '| "edit"' in icon_source
     assert '| "copy"' in icon_source
     assert '| "trash"' in icon_source
     assert "Manufacturing Lot/No." not in case_review_source
@@ -1189,7 +1264,6 @@ def test_task075_intake_attachment_preview_prioritizes_docx() -> None:
         assert term in client_source
 
     for term in [
-        "getIntakeAssetPreview",
         "AttachmentPreview",
         "DocxApplicationPreview",
         "docx_application_form",
@@ -1280,12 +1354,13 @@ def test_task090_intake_workflow_structure_extraction() -> None:
     for term in [
         "IntakeSourcePanel",
         "AttachmentList",
-        "AttachmentPreviewPanel",
         "buildAttachmentViewModels",
         "visibleIntakeAttachments",
-        "selectedIntakeAsset",
     ]:
         assert term in page_source
+
+    assert "AttachmentPreviewPanel" not in page_source
+    assert "selectedIntakeAsset" not in page_source
 
     for term in [
         "export function visibleIntakeAttachments",
@@ -1346,10 +1421,15 @@ def test_task091_intake_precheck_typography_uses_shared_ui_vocabulary() -> None:
         "secondary-action ui-secondary-action",
         "continue-action ui-primary-action",
     ]:
+        if term == "continue-action ui-primary-action" and "NewProjectApplicationEditor" in inbox_source:
+            assert "new-project-primary-action ui-primary-action" in inbox_source + (
+                FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
+            ).read_text(encoding="utf-8")
+            continue
         assert term in inbox_source
 
     for term in [
-        'className="ui-panel-title">Source document & template check',
+        'className="ui-panel-title">Source traceability',
         'className="ui-panel-title">Key Information Edit & Confirm',
         'className="ui-section-title">Test Sample Information',
         'className="ui-section-title">Description of Requested Testing',
@@ -1357,7 +1437,7 @@ def test_task091_intake_precheck_typography_uses_shared_ui_vocabulary() -> None:
         "sample-add-button ui-compact-action",
         "requested-testing-add-button ui-compact-action",
         "precheck-confirm-button ui-primary-action",
-        "new-project-secondary-action precheck-back-button ui-secondary-action",
+        "Save draft and exit",
     ]:
         assert term in precheck_source
 
@@ -1375,15 +1455,21 @@ def test_task092_intake_attachment_download_has_url_helper() -> None:
 
 
 def test_task092_intake_attachment_download_uses_download_link() -> None:
-    """TASK_092 replaces disabled Download button with a working download <a>."""
+    """TASK_092 replaces disabled Download button with a working blob download."""
     preview_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentPreviewPanel.tsx"
     ).read_text(encoding="utf-8")
 
-    assert "intakeAssetDownloadUrl" in preview_source
-    assert 'className="secondary-action ui-secondary-action"' in preview_source
-    assert 'href={intakeAssetDownloadUrl(assetId)}' in preview_source
-    assert 'download={originalName}' in preview_source
+    for term in [
+        "downloadIntakeAsset",
+        "className=\"secondary-action ui-secondary-action\"",
+        "handleDownload()",
+        "createObjectURL",
+        "revokeObjectURL",
+        "document.body.append",
+    ]:
+        assert term in preview_source
+    assert "intakeAssetDownloadUrl" not in preview_source
     assert "toolbar-button toolbar-icon-button" not in preview_source
     assert "disabled" not in preview_source
     assert 'AttachmentPreviewActions({ assetId' in preview_source
@@ -1397,6 +1483,9 @@ def test_task092_intake_attachment_download_action_accepts_metadata() -> None:
 
     assert "assetId={preview.metadata.asset_id}" in preview_source
     assert "originalName={preview.metadata.original_name}" in preview_source
+    assert "downloadIntakeAsset" in (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_task092_intake_inbox_css_supports_anchor_as_secondary_action() -> None:
@@ -1442,6 +1531,10 @@ def test_task093_email_package_missing_form_upload_continuation() -> None:
         "Promise<SelectedApplicationForm>",
     ]:
         assert term in client_source
+
+    if "NewProjectApplicationEditor" in inbox_source:
+        assert "uploadEmailPackageApplicationForm(packageImport.package_id, file)" in inbox_source
+        return
 
     for term in [
         'packageImport?.source_type === "outlook_msg"',
@@ -1489,17 +1582,26 @@ def test_folder_evidence_frontend_wires_preview_and_execution() -> None:
     ]:
         assert term in workbench_source
 
-    for term in [
-        "Evidence placement",
-        "Source email",
-        "selected application form",
-        "LTR evidence",
-        "correction evidence",
-        "No-overwrite copy ready",
-        "Place evidence",
-        "No existing target files were overwritten.",
-    ]:
-        assert term in folder_source
+    if "Project workbench boundary" in workbench_source:
+        for term in [
+            "Evidence placement",
+            "Preview evidence placement",
+            "Place evidence",
+            "Project folder is not recorded for this project.",
+        ]:
+            assert term in workbench_source
+    else:
+        for term in [
+            "Evidence placement",
+            "Source email",
+            "selected application form",
+            "LTR evidence",
+            "correction evidence",
+            "No-overwrite copy ready",
+            "Place evidence",
+            "No existing target files were overwritten.",
+        ]:
+            assert term in folder_source
 
     assert ".evidence-placement-panel" in styles_source
     assert ".evidence-plan-conflict" in styles_source
@@ -1594,3 +1696,321 @@ def test_frontend_api_calls_remain_centralized() -> None:
     ]
 
     assert files_with_fetch == ["src/api/client.ts"]
+
+
+def test_task096_creation_draft_lifecycle_frontend_actions() -> None:
+    """TASK_096 exposes save/discard creation draft actions with operator copy."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    intake_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    precheck_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "ProjectCreationDraftLifecycle",
+        "saveProjectCreationDraft",
+        "discardUnsavedProjectCreationDraft",
+        "/draft/save",
+        "/draft/discard",
+    ]:
+        assert term in client_source
+
+    for source in [intake_source, precheck_source]:
+        if "NewProjectApplicationEditor" in source:
+            assert "Cancel and remove draft" in source
+            assert "discardUnsavedProjectCreationDraft" in source
+            continue
+        assert "Save draft and exit" in source
+        assert "Exit without saving" in source
+        assert "Confirm discard" in source
+        assert "ConnLab imported copies" in source or "ConnLab's imported copies" in source
+
+
+def test_task097_drafts_surface_uses_continue_not_open() -> None:
+    """TASK_097 keeps saved drafts separate from confirmed project Open actions."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    project_list_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectListPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "ProjectCreationDraft",
+        "listProjectCreationDrafts",
+        "discardSavedProjectCreationDraft",
+        "/api/project-creation-drafts",
+    ]:
+        assert term in client_source
+
+    for term in [
+        "Drafts / In Progress",
+        "Continue",
+        "Discard",
+        "saved New Project",
+        "Drafts are separate from confirmed Projects",
+    ]:
+        assert term in project_list_source
+
+    assert "onOpenProject" in project_list_source
+    assert "Open" in project_list_source
+    assert "onContinueDraft" in project_list_source
+    assert "getIntakePackageDetail" in app_source
+
+
+def test_task098_precheck_confirmed_application_editing_boundary() -> None:
+    """TASK_098 makes Precheck the confirmed application-data editing surface."""
+    case_review_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeCaseReviewPage.tsx"
+    ).read_text(encoding="utf-8")
+    source_check = (
+        FRONTEND_ROOT / "src" / "features" / "precheck" / "PrecheckSourceCheck.tsx"
+    ).read_text(encoding="utf-8")
+    contract = (FRONTEND_ROOT.parent / "docs" / "intake_precheck_field_contract.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Back to Intake" not in case_review_source
+    assert "onBack" not in case_review_source
+    assert "Save draft and exit" in case_review_source
+    assert "Exit without saving" in case_review_source
+
+    for term in [
+        "Source traceability",
+        "Confirmed application data is edited below",
+        "source file remains attached for traceability",
+        "Project creation uses the corrected Precheck values",
+    ]:
+        assert term in source_check
+
+    for term in [
+        "Intake is source selection only",
+        "Precheck is the confirmed application-data editing surface",
+        "Project creation uses corrected Precheck draft values",
+        "does not support switching to another application form",
+    ]:
+        assert term in contract
+
+
+def test_task102_new_project_single_page_editor_shell() -> None:
+    """TASK_102 keeps source, attachments, and application editor on one page."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    new_project_source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((FRONTEND_ROOT / "src" / "features" / "new-project").glob("*.tsx"))
+        + sorted((FRONTEND_ROOT / "src" / "features" / "new-project").glob("*.ts"))
+    )
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+
+    for term in [
+        "ensureNewProjectApplicationDraft",
+        "getIntakeCaseReview",
+        "updateIntakeCaseReviewFields",
+        "NewProjectApplicationEditor",
+        "AttachmentList",
+        "Cancel and remove draft",
+    ]:
+        assert term in page_source
+
+    for term in [
+        "Application information",
+        "missingRequiredByField",
+        "missingSampleCells",
+        "Apply LTR Number and Create Folder",
+        "required fields remaining",
+    ]:
+        assert term in new_project_source
+
+    assert "/application-draft" in client_source
+    assert 'navigate("/intake")' in app_source
+    assert "Continue to Precheck" not in page_source
+    assert "AttachmentPreviewPanel" not in page_source
+    assert "Draft saved automatically" not in page_source
+    assert "No application form imported. Fill SECTION 1 manually." not in new_project_source
+    assert "Import application form (next)" not in page_source
+
+
+def test_task103_application_form_import_is_explicit_and_confirmed() -> None:
+    """TASK_103 separates attachment open from explicit application import."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    attachment_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
+    ).read_text(encoding="utf-8")
+    source_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "IntakeSourcePanel.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    for term in [
+        "selectIntakeApplicationForm",
+        "pendingImportAsset",
+        "Replace current application information?",
+        "Keep current data",
+        "Replace with import",
+        "setImportMessage(asset.original_name)",
+        "downloadIntakeAsset",
+    ]:
+        assert term in page_source
+
+    for term in [
+        "onDoubleClick",
+        "onOpen?.(attachment)",
+        "attachment.word && onImport",
+        "attachment-import-button",
+        "Import",
+    ]:
+        assert term in attachment_source
+
+    assert "Import application form (next)" not in source_panel_source
+    assert "replace_existing" in client_source
+    assert "body: JSON.stringify({ asset_id: assetId, replace_existing: replaceExisting })" in client_source
+    assert "downloadIntakeAsset" in client_source
+    assert "requestBlob" in client_source
+
+
+def test_task103_new_project_page_chrome_is_minimal() -> None:
+    """TASK_103 follow-up trims the New Project page chrome and side preview."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    source_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "IntakeSourcePanel.tsx"
+    ).read_text(encoding="utf-8")
+    editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
+
+    for removed_term in [
+        "New Project",
+        "Confirm request source, attachments, and SECTION 1 application information on one page.",
+        "AttachmentPreviewPanel",
+        "Draft saved automatically",
+        "No application form imported. Fill SECTION 1 manually.",
+        "Import application form (next)",
+        "new-project-single-heading",
+        "new-project-autosave-state",
+    ]:
+        assert removed_term not in page_source + source_panel_source + editor_source + styles_source
+
+    for term in [
+        "Application information",
+        "new-project-single-grid",
+        "new-project-editor-panel",
+        "new-project-editor-heading",
+    ]:
+        assert term in page_source + editor_source + styles_source
+
+
+def test_task134_new_project_uses_ltr_workbook_commit_before_folder() -> None:
+    """TASK_134 wires external LTR workbook commit into New Project completion."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    setup_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectSetupConfirmationPanel.tsx"
+    ).read_text(encoding="utf-8")
+    editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
+    ).read_text(encoding="utf-8")
+    hook_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "useNewProjectCompletion.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    for term in [
+        "commitLtrWorkbookWrite",
+        "/ltr-workbook/write-commit",
+        "confirmIntakeCase(activeCase.case_id)",
+        "workbookWriteAcknowledged",
+        "preview_acknowledged: setupValues.workbookWriteAcknowledged",
+        "LTR workbook",
+        "Backup:",
+    ]:
+        assert term in page_source + setup_source + editor_source + hook_source + client_source
+
+    assert hook_source.index("confirmIntakeCase(activeCase.case_id)") < hook_source.index(
+        "const workbookCommit = await commitLtrWorkbookWrite"
+    )
+    assert hook_source.index("const workbookCommit = await commitLtrWorkbookWrite") < hook_source.index(
+        "completeNewProject(activeCase.case_id"
+    )
+
+
+def test_task099_new_project_editor_exposes_ltr_registered_freeze_state() -> None:
+    """TASK_099 freezes normal New Project editor saves after LTR registration."""
+    page_source = (FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "base_editing_frozen" in client_source
+    assert "frozen_field_keys" in client_source
+    assert "frozen_reason" in client_source
+    assert "activeCase.base_editing_frozen" in page_source
+    assert "LTR registered. Base application fields require revise/exception handling." in editor_source
+    assert "new-project-frozen-notice" in editor_source
+    assert ".new-project-frozen-notice" in styles_source
+
+
+def test_task100_workbench_keeps_post_creation_boundary() -> None:
+    """TASK_100 keeps Workbench focused on confirmed project state and evidence management."""
+    project_list_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectListPage.tsx"
+    ).read_text(encoding="utf-8")
+    workbench_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for term in ["Open", "onOpenProject", "Continue", "onContinueDraft"]:
+        assert term in project_list_source
+
+    for term in [
+        "Project workbench boundary",
+        "previewEvidencePlacement",
+        "placeEvidence",
+        "Project folder is not recorded for this project.",
+    ]:
+        assert term in workbench_source
+
+    for removed_term in [
+        "uploadApplicationForm",
+        "runPrecheck",
+        "commitLtrLocally",
+        "generateFolder",
+        "ApplicationFormActionPanel",
+        "LtrActionPanel",
+        "FolderActionPanel",
+    ]:
+        assert removed_term not in workbench_source
+
+    assert ".project-workbench-status" in styles_source

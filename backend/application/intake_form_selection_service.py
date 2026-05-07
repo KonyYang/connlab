@@ -102,7 +102,13 @@ class IntakeFormSelectionService:
             eligibility_validator or ApplicationFormEligibilityService()
         )
 
-    def select_form_asset(self, package_id: str, asset_id: str) -> FormSelectionResult:
+    def select_form_asset(
+        self,
+        package_id: str,
+        asset_id: str,
+        replace_existing: bool = False,
+    ) -> FormSelectionResult:
+        """Select and parse one application form asset for review."""
         package = self._package_store.get(package_id)
         if package is None:
             raise IntakeSelectionNotFoundError(f"Intake package not found: {package_id}")
@@ -127,7 +133,8 @@ class IntakeFormSelectionService:
             case_selection.case.case_id,
             draft_payload,
             parser_warnings,
-            keep_manual_overrides=case_selection.same_selected_asset,
+            keep_manual_overrides=case_selection.same_selected_asset
+            and not replace_existing,
         )
 
         return FormSelectionResult(

@@ -9,15 +9,16 @@ from pathlib import Path
 from typing import Protocol
 
 from backend.domain import IntakeAsset
-from backend.infrastructure.office import OfficeFacade, WordHeaderCellResult
+from backend.infrastructure.office import OfficeFacade, WordDocumentSnapshot, WordHeaderCellResult
 
 EXPECTED_LTR_HEADER_TEXT = "Laboratory Testing Request"
+EXPECTED_LTR_FOOTER_TEXT = "E-3718"
 
 logger = logging.getLogger(__name__)
 
 
-class WordHeaderCellReader(Protocol):
-    """Port for reading Word header table cells."""
+class WordDocumentReader(Protocol):
+    """Port for reading Word header cells and document snapshots."""
 
     def read_word_header_table_cell(
         self,
@@ -25,6 +26,8 @@ class WordHeaderCellReader(Protocol):
         row: int,
         column: int,
     ) -> WordHeaderCellResult: ...
+
+    def read_word_document(self, source_path: Path) -> WordDocumentSnapshot: ...
 
 
 class IntakeAssetStore(Protocol):
@@ -45,6 +48,7 @@ class ApplicationFormEligibility:
     reason_code: str
     message: str
     observed_header_cell: str | None = None
+    observed_footer_text: str | None = None
     expected_text: str = EXPECTED_LTR_HEADER_TEXT
 
 
@@ -57,12 +61,13 @@ class ApplicationFormEligibilityService:
 
     def __init__(
         self,
-        office: WordHeaderCellReader | None = None,
+        office: WordDocumentReader | None = None,
         expected_text: str = EXPECTED_LTR_HEADER_TEXT,
     ) -> None:
         """Create the eligibility service."""
         self._office = office or OfficeFacade()
         self._expected_text = expected_text
+        self._expected_footer_text = EXPECTED_LTR_FOOTER_TEXT
 
     def evaluate(self, asset: IntakeAsset) -> ApplicationFormEligibility:
         """Evaluate one intake asset for application-form selection."""
@@ -76,6 +81,7 @@ class ApplicationFormEligibilityService:
             self._log(asset, result, gateway_mode=None)
             return result
 
+        header_error: Exception | None = None
         try:
             header = self._office.read_word_header_table_cell(
                 asset.stored_path,
@@ -83,28 +89,54 @@ class ApplicationFormEligibilityService:
                 self._header_column,
             )
         except Exception as exc:
-            observed = _clean_observed(str(exc), self._observed_limit)
-            result = self._result(
-                False,
-                "word_header_unreadable",
-                "Unable to verify the Word header. Open the document in Word and check the form header.",
-                observed,
-            )
-            self._log(asset, result, gateway_mode=None, error=exc)
-            return result
+            header_error = exc
+            header = None
 
-        observed = _clean_observed(header.value, self._observed_limit)
+        observed = _clean_observed(header.value, self._observed_limit) if header else None
         if not observed:
+            footer_text = self._footer_marker(asset)
+            if footer_text:
+                result = self._result(
+                    True,
+                    "ok_footer_fallback",
+                    "Application form is ready for Precheck.",
+                    None,
+                    footer_text,
+                )
+                self._log(asset, result, gateway_mode=header.gateway_mode if header else None)
+                return result
+            if header_error is not None:
+                result = self._result(
+                    False,
+                    "word_header_unreadable",
+                    "Unable to verify the Word header. Footer marker E-3718 was not found.",
+                    None,
+                    None,
+                )
+                self._log(asset, result, gateway_mode=None, error=header_error)
+                return result
             result = self._result(
                 False,
                 "header_cell_empty",
                 'Selected document is not recognized as Laboratory Testing Request. Header table cell (1,2): "empty"',
                 None,
+                None,
             )
-            self._log(asset, result, gateway_mode=header.gateway_mode)
+            self._log(asset, result, gateway_mode=header.gateway_mode if header else None)
             return result
 
         if self._expected_text not in observed:
+            footer_text = self._footer_marker(asset)
+            if footer_text:
+                result = self._result(
+                    True,
+                    "ok_footer_fallback",
+                    "Application form is ready for Precheck.",
+                    observed,
+                    footer_text,
+                )
+                self._log(asset, result, gateway_mode=header.gateway_mode)
+                return result
             result = self._result(
                 False,
                 "header_cell_mismatch",
@@ -113,6 +145,7 @@ class ApplicationFormEligibilityService:
                     f'Header table cell (1,2): "{observed}"'
                 ),
                 observed,
+                None,
             )
             self._log(asset, result, gateway_mode=header.gateway_mode)
             return result
@@ -122,6 +155,7 @@ class ApplicationFormEligibilityService:
             "ok",
             "Application form is ready for Precheck.",
             observed,
+            None,
         )
         self._log(asset, result, gateway_mode=header.gateway_mode)
         return result
@@ -132,6 +166,7 @@ class ApplicationFormEligibilityService:
         reason_code: str,
         message: str,
         observed_header_cell: str | None = None,
+        observed_footer_text: str | None = None,
     ) -> ApplicationFormEligibility:
         """Build a result with the configured expected header text."""
         return ApplicationFormEligibility(
@@ -139,8 +174,21 @@ class ApplicationFormEligibilityService:
             reason_code=reason_code,
             message=message,
             observed_header_cell=observed_header_cell,
+            observed_footer_text=observed_footer_text,
             expected_text=self._expected_text,
         )
+
+    def _footer_marker(self, asset: IntakeAsset) -> str | None:
+        """Return the footer text that confirms the application form, if present."""
+        try:
+            snapshot = self._office.read_word_document(asset.stored_path)
+        except Exception:
+            return None
+        for footer in snapshot.footers:
+            observed = _clean_observed(footer, self._observed_limit)
+            if observed and self._expected_footer_text in observed:
+                return observed
+        return None
 
     def _log(
         self,
@@ -162,6 +210,8 @@ class ApplicationFormEligibilityService:
                 "expected_text": result.expected_text,
                 "observed_header_cell": result.observed_header_cell,
                 "observed_header_cell_length": len(result.observed_header_cell or ""),
+                "observed_footer_text": result.observed_footer_text,
+                "observed_footer_text_length": len(result.observed_footer_text or ""),
                 "gateway_mode": gateway_mode,
                 "error_type": type(error).__name__ if error else None,
                 "error_message": str(error) if error else None,

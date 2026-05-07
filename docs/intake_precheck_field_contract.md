@@ -50,6 +50,13 @@ Current New Project Intake uses one active Precheck review case before Project c
 - Importing a new email package or direct `.docx` source starts a clean Intake session.
 - The Precheck page must not expose a multi-case switcher for the current New Project workflow.
 
+TASK_098 update:
+
+- Intake is source selection only. It imports or uploads request material, validates the selected application-form source, and creates the active Precheck case.
+- Precheck is the confirmed application-data editing surface. Project creation uses corrected Precheck draft values, not the raw Word file values.
+- After entering Precheck, normal workflow does not support switching to another application form. The operator should use `Save draft and exit` or `Exit without saving`; form replacement is not part of the MVP flow.
+- The source `.msg` or `.docx` remains visible as traceability context, but it is not presented as the final submitted application record.
+
 ## 3. Field States
 
 Use these field states in backend DTOs, frontend selectors, and UI copy.

@@ -8,12 +8,13 @@ from backend.application.application_form_eligibility_service import (
     IntakeAssetApplicationFormEligibilityService,
 )
 from backend.domain import IntakeAsset, IntakeAssetRole
-from backend.infrastructure.office import WordHeaderCellResult
+from backend.infrastructure.office import WordDocumentSnapshot, WordHeaderCellResult
 
 
-class FakeHeaderReader:
-    def __init__(self, value: str | None) -> None:
-        self.value = value
+class FakeOfficeReader:
+    def __init__(self, header_value: str | None, footer_values: list[str] | None = None) -> None:
+        self.header_value = header_value
+        self.footer_values = footer_values or []
 
     def read_word_header_table_cell(
         self,
@@ -23,7 +24,16 @@ class FakeHeaderReader:
     ) -> WordHeaderCellResult:
         assert row == 1
         assert column == 2
-        return WordHeaderCellResult(value=self.value, gateway_mode="fake")
+        return WordHeaderCellResult(value=self.header_value, gateway_mode="fake")
+
+    def read_word_document(self, source_path: Path) -> WordDocumentSnapshot:
+        return WordDocumentSnapshot(
+            paragraphs=[],
+            tables=[],
+            headers=[],
+            footers=self.footer_values,
+            raw_text="\n".join(self.footer_values),
+        )
 
 
 class FakeAssetStore:
@@ -36,7 +46,7 @@ class FakeAssetStore:
 
 def test_application_form_eligibility_accepts_matching_docx_header() -> None:
     service = ApplicationFormEligibilityService(
-        FakeHeaderReader("Laboratory Testing Request\r\x07")
+        FakeOfficeReader("Laboratory Testing Request\r\x07")
     )
 
     result = service.evaluate(_asset("form.docx"))
@@ -47,7 +57,7 @@ def test_application_form_eligibility_accepts_matching_docx_header() -> None:
 
 
 def test_application_form_eligibility_rejects_non_docx() -> None:
-    result = ApplicationFormEligibilityService(FakeHeaderReader(None)).evaluate(
+    result = ApplicationFormEligibilityService(FakeOfficeReader(None)).evaluate(
         _asset("legacy.doc")
     )
 
@@ -58,7 +68,7 @@ def test_application_form_eligibility_rejects_non_docx() -> None:
 
 def test_application_form_eligibility_reports_observed_mismatch() -> None:
     result = ApplicationFormEligibilityService(
-        FakeHeaderReader("Connector Test Request")
+        FakeOfficeReader("Connector Test Request")
     ).evaluate(_asset("form.docx"))
 
     assert result.eligible is False
@@ -68,7 +78,7 @@ def test_application_form_eligibility_reports_observed_mismatch() -> None:
 
 
 def test_application_form_eligibility_reports_empty_header_cell() -> None:
-    result = ApplicationFormEligibilityService(FakeHeaderReader("\r\x07")).evaluate(
+    result = ApplicationFormEligibilityService(FakeOfficeReader("\r\x07")).evaluate(
         _asset("form.docx")
     )
 
@@ -77,11 +87,24 @@ def test_application_form_eligibility_reports_empty_header_cell() -> None:
     assert 'Header table cell (1,2): "empty"' in result.message
 
 
+def test_application_form_eligibility_accepts_footer_marker_when_header_changes() -> None:
+    service = ApplicationFormEligibilityService(
+        FakeOfficeReader("Connector Test Request", ["Form No. E-3718 Rev H"])
+    )
+
+    result = service.evaluate(_asset("form.docx"))
+
+    assert result.eligible is True
+    assert result.reason_code == "ok_footer_fallback"
+    assert result.observed_header_cell == "Connector Test Request"
+    assert result.observed_footer_text == "Form No. E-3718 Rev H"
+
+
 def test_intake_asset_eligibility_service_loads_asset() -> None:
     asset = _asset("form.docx", asset_id="asset-1")
     service = IntakeAssetApplicationFormEligibilityService(
         FakeAssetStore(asset),
-        ApplicationFormEligibilityService(FakeHeaderReader("Laboratory Testing Request")),
+        ApplicationFormEligibilityService(FakeOfficeReader("Laboratory Testing Request")),
     )
 
     assert service.evaluate_asset("asset-1").eligible is True

@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
+import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -13,9 +13,25 @@ function navigate(path: string): void {
 }
 
 export function AppShell({ activeRoute, children }: AppShellProps): ReactElement {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
+    const raw = window.localStorage.getItem("connlab.sidebar.collapsed");
+    setSidebarCollapsed(raw === "1");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("connlab.sidebar.collapsed", sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
+
   return (
-    <div className="app-shell">
-      <Sidebar activeRoute={activeRoute} onNavigate={navigate} />
+    <div className={`app-shell${sidebarCollapsed ? " app-shell-sidebar-collapsed" : ""}`}>
+      <Sidebar
+        activeRoute={activeRoute}
+        collapsed={sidebarCollapsed}
+        onNavigate={navigate}
+        onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+      />
       <div className="app-workspace">
         <TopBar activeRoute={activeRoute} />
         <main className="main-work-area">{children}</main>

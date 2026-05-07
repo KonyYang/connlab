@@ -29,6 +29,7 @@ from backend.application.intake_package_query_service import (
 )
 from backend.application.intake_case_review_service import (
     IntakeCaseReview,
+    IntakeCaseReviewFrozenError,
     IntakeCaseReviewItem,
     IntakeCaseReviewNotFoundError,
     IntakeCaseReviewService,
@@ -83,6 +84,7 @@ __all__ = [
     "IntakeConfirmationResult",
     "IntakeConfirmationService",
     "IntakeCaseReview",
+    "IntakeCaseReviewFrozenError",
     "IntakeCaseReviewItem",
     "IntakeCaseReviewNotFoundError",
     "IntakeCaseReviewService",

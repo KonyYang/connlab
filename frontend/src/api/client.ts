@@ -150,6 +150,7 @@ export type ApplicationFormEligibility = {
   reason_code: string;
   message: string;
   observed_header_cell?: string | null;
+  observed_footer_text?: string | null;
   expected_text: string;
 };
 
@@ -235,6 +236,40 @@ export type ManualIntake = {
   next_action: string;
 };
 
+export type ProjectCreationDraftLifecycle = {
+  package_id: string;
+  action: string;
+  package_status?: string | null;
+  deleted_package: boolean;
+  deleted_assets: number;
+  deleted_cases: number;
+  deleted_drafts: number;
+  deleted_files: boolean;
+  message: string;
+};
+
+export type ProjectCreationDraft = {
+  package_id: string;
+  source_type: string;
+  source_name: string;
+  subject?: string | null;
+  requester?: string | null;
+  product_name?: string | null;
+  updated_at?: string | null;
+  current_step: string;
+  selected_form_asset_id?: string | null;
+  active_case_id?: string | null;
+};
+
+export type NewProjectApplicationDraft = {
+  package_id: string;
+  case_id: string;
+  draft_id: string;
+  package_status: string;
+  selected_form_asset_id?: string | null;
+  next_action: string;
+};
+
 export type IntakeCaseReviewField = {
   key: string;
   label: string;
@@ -258,6 +293,9 @@ export type IntakeCaseReviewItem = {
   operator_notes?: string | null;
   missing_required_fields: string[];
   confirm_allowed: boolean;
+  base_editing_frozen?: boolean;
+  frozen_field_keys?: string[];
+  frozen_reason?: string | null;
   fields: IntakeCaseReviewField[];
   sample_rows: Record<string, unknown>[];
   requested_testing_rows: Record<string, unknown>[];
@@ -435,6 +473,59 @@ export type FolderRequest = {
   plan_date?: string;
 };
 
+export type CompleteNewProjectInput = {
+  ltr_mode: "auto" | "specified";
+  specified_ltr_number?: string | null;
+  operator_confirmed?: boolean;
+  plan_date?: string | null;
+  test_item?: string | null;
+  sample_description?: string | null;
+  location?: string | null;
+  test_type_in_sheet?: string | null;
+  project_leader?: string | null;
+};
+
+export type CompleteNewProject = {
+  project_id: string;
+  project_status: string;
+  ltr_number: string;
+  folder_id: string;
+  project_folder_path: string;
+  preview_item_count: number;
+  generated_paths: string[];
+};
+
+export type NewProjectCompletionOptions = {
+  location_options: string[];
+  test_type_in_sheet_options: string[];
+  default_project_leader: string;
+};
+
+export type LtrWorkbookWriteCommitInput = {
+  plan_date: string;
+  operator_confirmed: boolean;
+  preview_acknowledged: boolean;
+  number_input?: string | null;
+  test_item: string;
+  sample_description: string;
+  location: string;
+  test_type_in_sheet: string;
+  project_leader: string;
+  requested_by?: string | null;
+  requested_date?: string | null;
+  operator_note?: string | null;
+};
+
+export type LtrWorkbookWriteCommit = {
+  ltr: LtrRecord;
+  action: string;
+  workbook_path: string;
+  backup_path: string;
+  sheet_name: string;
+  row_number: number;
+  ltr_number: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -462,10 +553,38 @@ async function responseErrorMessage(response: Response): Promise<string> {
   }
   try {
     const parsed = JSON.parse(raw) as { detail?: unknown };
-    return typeof parsed.detail === "string" ? parsed.detail : raw;
+    if (typeof parsed.detail === "string") {
+      return parsed.detail;
+    }
+    if (
+      parsed.detail &&
+      typeof parsed.detail === "object" &&
+      "message" in parsed.detail &&
+      typeof parsed.detail.message === "string"
+    ) {
+      return parsed.detail.message;
+    }
+    return raw;
   } catch {
     return raw;
   }
+}
+
+async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Accept: "*/*",
+      ...(init?.headers ?? {})
+    }
+  });
+
+  if (!response.ok) {
+    const message = await responseErrorMessage(response);
+    throw new Error(message || `Request failed with ${response.status}`);
+  }
+
+  return response.blob();
 }
 
 export function listProjects(): Promise<Project[]> {
@@ -602,16 +721,30 @@ export function intakeAssetDownloadUrl(assetId: string): string {
   return `${API_BASE}/api/intake-assets/${encodeURIComponent(assetId)}/download`;
 }
 
+export function downloadIntakeAsset(assetId: string): Promise<Blob> {
+  return requestBlob(`/api/intake-assets/${encodeURIComponent(assetId)}/download`);
+}
+
 export function selectIntakeApplicationForm(
   packageId: string,
-  assetId: string
+  assetId: string,
+  replaceExisting = false
 ): Promise<SelectedApplicationForm> {
   return requestJson<SelectedApplicationForm>(
     `/api/intake-packages/${encodeURIComponent(packageId)}/select-form`,
     {
       method: "POST",
-      body: JSON.stringify({ asset_id: assetId })
+      body: JSON.stringify({ asset_id: assetId, replace_existing: replaceExisting })
     }
+  );
+}
+
+export function ensureNewProjectApplicationDraft(
+  packageId: string
+): Promise<NewProjectApplicationDraft> {
+  return requestJson<NewProjectApplicationDraft>(
+    `/api/intake-packages/${encodeURIComponent(packageId)}/application-draft`,
+    { method: "POST" }
   );
 }
 
@@ -620,6 +753,37 @@ export function createManualIntake(input: ManualIntakeInput): Promise<ManualInta
     method: "POST",
     body: JSON.stringify(input)
   });
+}
+
+export function saveProjectCreationDraft(
+  packageId: string
+): Promise<ProjectCreationDraftLifecycle> {
+  return requestJson<ProjectCreationDraftLifecycle>(
+    `/api/intake-packages/${encodeURIComponent(packageId)}/draft/save`,
+    { method: "POST" }
+  );
+}
+
+export function discardUnsavedProjectCreationDraft(
+  packageId: string
+): Promise<ProjectCreationDraftLifecycle> {
+  return requestJson<ProjectCreationDraftLifecycle>(
+    `/api/intake-packages/${encodeURIComponent(packageId)}/draft/discard`,
+    { method: "POST" }
+  );
+}
+
+export function listProjectCreationDrafts(): Promise<ProjectCreationDraft[]> {
+  return requestJson<ProjectCreationDraft[]>("/api/project-creation-drafts");
+}
+
+export function discardSavedProjectCreationDraft(
+  packageId: string
+): Promise<ProjectCreationDraftLifecycle> {
+  return requestJson<ProjectCreationDraftLifecycle>(
+    `/api/project-creation-drafts/${encodeURIComponent(packageId)}/discard`,
+    { method: "POST" }
+  );
 }
 
 export function getIntakeCaseReview(packageId: string): Promise<IntakeCaseReview> {
@@ -640,6 +804,23 @@ export function confirmIntakeCase(caseId: string): Promise<ConfirmIntakeCase> {
       body: JSON.stringify({ operator_confirmed: true })
     }
   );
+}
+
+export function completeNewProject(
+  caseId: string,
+  input: CompleteNewProjectInput
+): Promise<CompleteNewProject> {
+  return requestJson<CompleteNewProject>(
+    `/api/intake-cases/${encodeURIComponent(caseId)}/complete-new-project`,
+    {
+      method: "POST",
+      body: JSON.stringify({ operator_confirmed: true, ...input })
+    }
+  );
+}
+
+export function getNewProjectCompletionOptions(): Promise<NewProjectCompletionOptions> {
+  return requestJson<NewProjectCompletionOptions>("/api/new-project/completion-options");
 }
 
 export function updateIntakeCaseReviewFields(
@@ -710,6 +891,19 @@ export function commitLtrLocally(
     {
       method: "POST",
       body: JSON.stringify({ ...input, mode: input.mode ?? "local_only" })
+    }
+  );
+}
+
+export function commitLtrWorkbookWrite(
+  projectId: string,
+  input: LtrWorkbookWriteCommitInput
+): Promise<LtrWorkbookWriteCommit> {
+  return requestJson<LtrWorkbookWriteCommit>(
+    `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/write-commit`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
     }
   );
 }

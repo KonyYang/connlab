@@ -10,6 +10,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.exception_workflow_service import ExceptionWorkflowService
+from backend.application.external_resource_service import ExternalResourceService
 from backend.application.intake_asset_download_service import (
     IntakeAssetDownloadService,
 )
@@ -33,15 +34,39 @@ from backend.application.ltr_renumber_preview_service import LtrRenumberPreviewS
 from backend.application.ltr_registration_preview_service import (
     LtrRegistrationPreviewService,
 )
+from backend.application.ltr_workbook_write_preview_service import (
+    LtrWorkbookWritePreviewService,
+)
+from backend.application.ltr_workbook_write_commit_service import (
+    LtrWorkbookYearSheetBootstrapPolicy,
+    LtrWorkbookWriteCommitService,
+)
 from backend.application.ltr_readiness_service import LtrReadinessService
 from backend.application.ltr_service import LtrService
 from backend.application.lookup_options_service import LookupOptionService
 from backend.application.lookup_service import LookupService
 from backend.application.manual_intake_service import ManualIntakeService
 from backend.application.msg_package_intake_service import MsgPackageIntakeService
+from backend.application.new_project_application_draft_service import (
+    NewProjectApplicationDraftService,
+)
+from backend.application.new_project_completion_service import (
+    NewProjectCompletionService,
+)
+from backend.application.project_creation_draft_lifecycle_service import (
+    ProjectCreationDraftLifecycleService,
+)
+from backend.application.project_creation_draft_query_service import (
+    ProjectCreationDraftQueryService,
+)
 from backend.application.project_lifecycle_service import ProjectLifecycleService
 from backend.application.project_service import ProjectService
 from backend.infrastructure.files import IntakeStorage
+from backend.infrastructure.office import (
+    LtrWorkbookTransactionConfig,
+    LtrWorkbookTransactionGateway,
+    OfficeFacade,
+)
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -49,6 +74,7 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
+    ExternalResourceRepository,
     FileAssetRepository,
     LtrRecordRepository,
     PrecheckResultRepository,
@@ -128,6 +154,13 @@ def get_exception_workflow_service(
         case_store=IntakeCaseRepository(session),
         draft_store=IntakeDraftRepository(session),
     )
+
+
+def get_external_resource_service(
+    session: Session = Depends(get_session),
+) -> ExternalResourceService:
+    """Build the external resource registry service."""
+    return ExternalResourceService(ExternalResourceRepository(session))
 
 
 def get_msg_package_intake_service(
@@ -224,6 +257,28 @@ def get_intake_form_selection_service(
     )
 
 
+def get_new_project_application_draft_service(
+    session: Session = Depends(get_session),
+) -> NewProjectApplicationDraftService:
+    """Build the New Project single-page application draft service."""
+    package_store = IntakePackageRepository(session)
+    asset_store = IntakeAssetRepository(session)
+    case_store = IntakeCaseRepository(session)
+    draft_store = IntakeDraftRepository(session)
+    return NewProjectApplicationDraftService(
+        package_store=package_store,
+        case_store=case_store,
+        draft_store=draft_store,
+        asset_store=asset_store,
+        selection_service=IntakeFormSelectionService(
+            package_store=package_store,
+            asset_store=asset_store,
+            case_store=case_store,
+            draft_store=draft_store,
+        ),
+    )
+
+
 def get_manual_intake_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -238,6 +293,31 @@ def get_manual_intake_service(
     )
 
 
+def get_project_creation_draft_lifecycle_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> ProjectCreationDraftLifecycleService:
+    """Build the New Project creation draft lifecycle service."""
+    return ProjectCreationDraftLifecycleService(
+        storage=IntakeStorage(settings.data_dir / "intake"),
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+        case_store=IntakeCaseRepository(session),
+        draft_store=IntakeDraftRepository(session),
+    )
+
+
+def get_project_creation_draft_query_service(
+    session: Session = Depends(get_session),
+) -> ProjectCreationDraftQueryService:
+    """Build the saved creation draft query service."""
+    return ProjectCreationDraftQueryService(
+        package_store=IntakePackageRepository(session),
+        case_store=IntakeCaseRepository(session),
+        draft_store=IntakeDraftRepository(session),
+    )
+
+
 def get_intake_case_review_service(
     session: Session = Depends(get_session),
 ) -> IntakeCaseReviewService:
@@ -247,6 +327,7 @@ def get_intake_case_review_service(
         asset_store=IntakeAssetRepository(session),
         case_store=IntakeCaseRepository(session),
         draft_store=IntakeDraftRepository(session),
+        ltr_store=LtrRecordRepository(session),
     )
 
 
@@ -362,6 +443,132 @@ def get_ltr_renumber_preview_service(
         folder_repository=ProjectFolderRecordRepository(session),
         file_asset_repository=FileAssetRepository(session),
     )
+
+
+def get_ltr_workbook_write_preview_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> LtrWorkbookWritePreviewService:
+    """Build the no-write LTR workbook mapping preview service."""
+    return LtrWorkbookWritePreviewService(
+        project_store=ProjectRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
+        workbook_settings=settings.ltr_workbook,
+    )
+
+
+def get_ltr_workbook_write_commit_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> LtrWorkbookWriteCommitService:
+    """Build the external LTR workbook write commit service."""
+    project_repository = ProjectRepository(session)
+    ltr_repository = LtrRecordRepository(session)
+    lifecycle_guard = ProjectLifecycleService(project_repository)
+    preview_service = LtrWorkbookWritePreviewService(
+        project_store=project_repository,
+        application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
+        workbook_settings=settings.ltr_workbook,
+    )
+    transaction_gateway = LtrWorkbookTransactionGateway(
+        OfficeFacade(),
+        LtrWorkbookTransactionConfig(
+            path=settings.ltr_workbook.path,
+            write_enabled=settings.ltr_workbook.write_enabled,
+            modify_password=settings.ltr_workbook.modify_password,
+            lock_dir=settings.ltr_workbook.lock_dir,
+            lock_timeout_seconds=settings.ltr_workbook.lock_timeout_seconds,
+            backup_dir=settings.ltr_workbook.backup_dir,
+        ),
+    )
+    return LtrWorkbookWriteCommitService(
+        preview_service=preview_service,
+        transaction_gateway=transaction_gateway,
+        ltr_service=LtrService(
+            project_repository=project_repository,
+            ltr_repository=ltr_repository,
+            lifecycle_guard=lifecycle_guard,
+        ),
+        ltr_store=ltr_repository,
+        year_sheet_bootstrap_policy=LtrWorkbookYearSheetBootstrapPolicy(
+            allow_system_assisted_create_year_sheet=(
+                settings.ltr_workbook.allow_system_assisted_create_year_sheet
+            ),
+            require_operator_confirmation_for_year_sheet_bootstrap=(
+                settings.ltr_workbook.require_operator_confirmation_for_year_sheet_bootstrap
+            ),
+            template_sheet_name=settings.ltr_workbook.template_sheet_name,
+            sheet_bootstrap_clear_start_row=(
+                settings.ltr_workbook.sheet_bootstrap_clear_start_row
+            ),
+        ),
+    )
+
+
+def get_new_project_completion_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> NewProjectCompletionService:
+    """Build the New Project single-page completion orchestration service."""
+    project_repository = ProjectRepository(session)
+    ltr_repository = LtrRecordRepository(session)
+    file_asset_repository = FileAssetRepository(session)
+    lifecycle_guard = ProjectLifecycleService(project_repository)
+    readiness_service = LtrReadinessService(
+        project_repository=project_repository,
+        form_repository=ApplicationFormRepository(session),
+        sample_repository=SampleInfoRepository(session),
+        file_asset_repository=file_asset_repository,
+    )
+    preview_service = LtrRegistrationPreviewService(
+        ltr_repository=ltr_repository,
+        readiness_service=readiness_service,
+        lifecycle_guard=lifecycle_guard,
+    )
+    confirmation_service = IntakeConfirmationService(
+        package_store=IntakePackageRepository(session),
+        intake_asset_store=IntakeAssetRepository(session),
+        intake_case_store=IntakeCaseRepository(session),
+        intake_draft_store=IntakeDraftRepository(session),
+        project_store=project_repository,
+        application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
+        file_asset_store=file_asset_repository,
+    )
+    ltr_commit_service = LtrLocalCommitService(
+        preview_service=preview_service,
+        ltr_service=LtrService(
+            project_repository=project_repository,
+            ltr_repository=ltr_repository,
+            lifecycle_guard=lifecycle_guard,
+        ),
+    )
+    folder_service = FolderService(
+        project_repository=project_repository,
+        folder_repository=ProjectFolderRecordRepository(session),
+        file_asset_repository=file_asset_repository,
+        lifecycle_guard=lifecycle_guard,
+    )
+    return NewProjectCompletionService(
+        intake_case_store=IntakeCaseRepository(session),
+        project_store=project_repository,
+        ltr_store=ltr_repository,
+        confirmation_service=confirmation_service,
+        ltr_commit_service=ltr_commit_service,
+        folder_service=folder_service,
+        default_folder_template_path=_default_folder_template_path(settings.templates_dir),
+        default_folder_target_root=settings.projects_dir,
+    )
+
+
+def _default_folder_template_path(templates_dir):
+    """Return the first configured template directory, or the root as a fallback."""
+    if "{" in templates_dir.name and "}" in templates_dir.name:
+        return templates_dir
+    template_dirs = sorted(path for path in templates_dir.iterdir() if path.is_dir())
+    return template_dirs[0] if template_dirs else templates_dir
 
 
 def get_folder_service(session: Session = Depends(get_session)) -> FolderService:

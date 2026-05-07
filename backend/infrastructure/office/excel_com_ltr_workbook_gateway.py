@@ -84,6 +84,16 @@ class LtrWorkbookRowPointer:
     dl_number: str
 
 
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookExistingRow:
+    """Existing workbook row located by DL number."""
+
+    sheet_name: str
+    row_number: int
+    dl_number: str
+    values: tuple[object, ...]
+
+
 class ExcelComLTRWorkbookGateway:
     """Open `.xls` LTR workbooks through OfficeFacade and Excel COM."""
 
@@ -167,6 +177,81 @@ class ExcelComLTRWorkbookWriteSession:
             dl_number=row_data.dl_number,
         )
 
+    def write_registration_row(
+        self,
+        sheet_name: str,
+        row_number: int,
+        row_data: LtrWorkbookRowData,
+    ) -> LtrWorkbookRowPointer:
+        """Write one registration row to an existing A:Q row."""
+        if row_number < 2:
+            raise LtrWorkbookWriteError("LTR workbook write row must be 2 or greater.")
+        sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+        sheet.Range(f"A{row_number}:Q{row_number}").Value = [row_data.as_excel_row()]
+        return LtrWorkbookRowPointer(
+            sheet_name=sheet_name,
+            row_number=row_number,
+            dl_number=row_data.dl_number,
+        )
+
+    def bootstrap_year_sheet(
+        self,
+        target_sheet_name: str,
+        *,
+        template_sheet_name: str,
+        clear_start_row: int = 2,
+    ) -> bool:
+        """Copy a template year sheet, rename it, and clear configured data rows."""
+        if target_sheet_name in self.list_sheets():
+            return False
+        if clear_start_row < 2:
+            raise LtrWorkbookWriteError(
+                "Year sheet bootstrap clear_start_row must be 2 or greater."
+            )
+        workbook = self._handle.workbook
+        try:
+            template_sheet = workbook.Worksheets.Item(template_sheet_name)
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                f"Template sheet not found for year-sheet bootstrap: {template_sheet_name}"
+            ) from exc
+        template_sheet.Copy(After=workbook.Worksheets.Item(workbook.Worksheets.Count))
+        created_sheet = workbook.Worksheets.Item(workbook.Worksheets.Count)
+        created_sheet.Name = target_sheet_name
+        self._clear_sheet_rows(created_sheet, clear_start_row)
+        return True
+
+    def find_ltr_number(
+        self,
+        ltr_number: str,
+        sheet_names: tuple[str, ...] | None = None,
+    ) -> LtrWorkbookExistingRow | None:
+        """Return the first workbook row whose column D exactly matches the LTR number."""
+        candidates = sheet_names or tuple(self.list_sheets())
+        for sheet_name in candidates:
+            for index, row in enumerate(self.read_annual_sheet(sheet_name), start=2):
+                if len(row) >= 4 and str(row[3]).strip().upper() == ltr_number.upper():
+                    return LtrWorkbookExistingRow(
+                        sheet_name=sheet_name,
+                        row_number=index,
+                        dl_number=str(row[3]).strip().upper(),
+                        values=row,
+                    )
+        return None
+
+    def list_ltr_numbers(
+        self,
+        sheet_names: tuple[str, ...] | None = None,
+    ) -> tuple[str, ...]:
+        """Return visible LTR numbers from column D across selected sheets."""
+        numbers: list[str] = []
+        candidates = sheet_names or tuple(self.list_sheets())
+        for sheet_name in candidates:
+            for row in self.read_annual_sheet(sheet_name):
+                if len(row) >= 4 and row[3]:
+                    numbers.append(str(row[3]).strip().upper())
+        return tuple(dict.fromkeys(numbers))
+
     def append_next_normal_registration(
         self,
         sheet_name: str,
@@ -205,6 +290,13 @@ class ExcelComLTRWorkbookWriteSession:
             return
         self._closed = True
         self._handle.close(save_changes=save_changes)
+
+    def _clear_sheet_rows(self, sheet, clear_start_row: int) -> None:
+        """Clear A:Q data rows on a newly copied annual sheet."""
+        last_row = int(sheet.UsedRange.Rows.Count)
+        if last_row < clear_start_row:
+            return
+        sheet.Range(f"A{clear_start_row}:Q{last_row}").ClearContents()
 
 
 def _tuple_rows(values) -> tuple[tuple[object, ...], ...]:

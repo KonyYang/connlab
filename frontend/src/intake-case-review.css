@@ -231,7 +231,7 @@
 
 .precheck-form-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 0.95fr 1fr 0.9fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px 20px;
   margin-top: 14px;
 }
@@ -271,6 +271,14 @@
   font: inherit;
   font-size: 13px;
   font-weight: var(--precheck-data-weight);
+}
+
+.draft-field-textarea {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .precheck-workflow input[type="checkbox"],
@@ -347,6 +355,11 @@
 
 .sample-table-wrap {
   margin-top: 18px;
+  overflow-x: auto;
+}
+
+.precheck-sample-table {
+  min-width: 760px;
 }
 
 .sample-table-header {
@@ -381,8 +394,9 @@
 }
 
 .precheck-sample-table,
-.requested-testing-panel table {
+.requested-testing-edit-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin-top: 8px;
   overflow: hidden;
@@ -393,7 +407,8 @@
 
 .precheck-sample-table th,
 .precheck-sample-table td,
-.requested-testing-panel td {
+.requested-testing-edit-table th,
+.requested-testing-edit-table td {
   padding: 8px 10px;
   border-right: 1px solid #d8e4f5;
   border-bottom: 1px solid #d8e4f5;
@@ -403,14 +418,20 @@
 .precheck-sample-table th {
   background: #f0f4fa;
   color: var(--precheck-label-ink);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
+  line-height: 1.3;
 }
 
 .precheck-sample-table td,
-.requested-testing-panel td {
+.requested-testing-edit-table td {
   color: var(--precheck-data-ink);
   font-weight: var(--precheck-data-weight);
+  vertical-align: top;
+}
+
+.precheck-sample-table tbody tr:focus-within td {
+  background: #f7fbff;
 }
 
 .precheck-sample-table button {
@@ -422,23 +443,36 @@
   font-weight: 800;
 }
 
-.precheck-sample-table input {
+.precheck-sample-table input,
+.precheck-sample-cell-input {
   width: 100%;
-  min-width: var(--precheck-control-min-width);
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: #fbfdff;
+  min-width: 0;
+  min-height: 1.35em;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--precheck-data-ink);
+  font: inherit;
   font-size: 12px;
   font-weight: var(--precheck-data-weight);
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.precheck-sample-table input:focus {
-  border-color: #6d98e7;
-  outline: 2px solid rgba(11, 97, 232, 0.16);
+.precheck-sample-table input:focus,
+.precheck-sample-cell-input:focus {
+  border: 0;
+  outline: none;
+  box-shadow: none;
 }
 
-.precheck-sample-table input:disabled {
+.precheck-sample-table input:disabled,
+.precheck-sample-cell-input:disabled {
   background: #eef3f9;
   color: #7988a0;
 }
@@ -456,6 +490,7 @@
   height: 28px;
   place-items: center;
   border-radius: 6px;
+  color: #2f5fa9;
 }
 
 .sample-row-actions button:hover:not(:disabled) {
@@ -464,9 +499,43 @@
 }
 
 .sample-row-actions button:disabled {
-  color: #aab6c8;
+  color: #87a7dc;
   cursor: not-allowed;
 }
+
+.sample-col-product-name {
+  width: 21%;
+}
+
+.sample-col-part-number {
+  width: 17%;
+}
+
+.sample-col-traceability {
+  width: 12%;
+}
+
+.sample-col-contact-base-material,
+.sample-col-contact-plating {
+  width: 9%;
+}
+
+.sample-col-contact-lubricant {
+  width: 7%;
+}
+
+.sample-col-housing-material {
+  width: 7%;
+}
+
+.sample-col-quantity {
+  width: 8%;
+}
+
+.sample-col-actions {
+  width: 10%;
+}
+
 
 .precheck-lower-grid {
   display: grid;
@@ -518,7 +587,14 @@
   font-weight: 800;
 }
 
-.requested-testing-panel table {
+.radio-line input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  accent-color: var(--precheck-blue);
+}
+
+.requested-testing-edit-table {
   margin-bottom: 0;
 }
 
@@ -578,12 +654,12 @@
 
 .requested-testing-edit-table th:first-child,
 .requested-testing-edit-table td:first-child {
-  width: 80%;
+  width: 58%;
 }
 
 .requested-testing-edit-table th:nth-child(2),
 .requested-testing-edit-table td:nth-child(2) {
-  width: auto;
+  width: 30%;
 }
 
 .requested-testing-edit-table th:last-child,
@@ -609,26 +685,31 @@
 
 .requested-testing-cell-input {
   width: 100%;
+  min-width: 0;
   min-height: 34px;
-  padding: 6px 8px;
-  resize: vertical;
+  padding: 7px 10px;
   border: 1px solid transparent;
-  background: transparent;
+  border-radius: 7px;
+  background: #fbfdff;
   color: var(--precheck-data-ink);
   font: inherit;
+  font-size: 13px;
   font-weight: var(--precheck-data-weight);
+  line-height: 1.6;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .requested-testing-cell-input:focus {
-  border-color: #0b61e8;
-  border-radius: 6px;
-  outline: 3px solid #d9e8ff;
-  background: #fbfdff;
+  border-color: #6d98e7;
+  outline: 2px solid rgba(11, 97, 232, 0.16);
 }
 
 .requested-testing-cell-input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  background: #eef3f9;
+  color: #7988a0;
 }
 
 .requested-testing-row-actions {
@@ -684,6 +765,16 @@
 
 .precheck-additional-panel textarea {
   min-height: 118px;
+  resize: none;
+  overflow: hidden;
+  border: 1px solid #cddcf1;
+  border-radius: 7px;
+}
+
+.precheck-additional-input {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .recipients-panel {

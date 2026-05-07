@@ -79,6 +79,7 @@ class IntakePackageStatus(StrEnum):
     """Lifecycle status for an intake package."""
 
     IMPORTED = "imported"
+    DRAFT_SAVED = "draft_saved"
     NEEDS_APPLICATION_FORM_SELECTION = "needs_application_form_selection"
     READY_FOR_REVIEW = "ready_for_review"
     PARTIALLY_CONFIRMED = "partially_confirmed"
@@ -106,3 +107,21 @@ class IntakeCaseStatus(StrEnum):
     NEEDS_REVIEW = "needs_review"
     CONFIRMED = "confirmed"
     REJECTED = "rejected"
+
+
+class ExternalResourceType(StrEnum):
+    """Supported external resource registry entries."""
+
+    LTR_WORKBOOK = "ltr_workbook"
+    APPLICATION_FORM_TEMPLATE = "application_form_template"
+    PROJECT_FOLDER_TEMPLATE = "project_folder_template"
+    STANDARD_RECORD_EXCEL = "standard_record_excel"
+    EQUIPMENT_CALIBRATION_EXCEL = "equipment_calibration_excel"
+
+
+class ExternalResourceValidationStatus(StrEnum):
+    """Validation state for an external resource path."""
+
+    NOT_VALIDATED = "not_validated"
+    VALID = "valid"
+    INVALID = "invalid"

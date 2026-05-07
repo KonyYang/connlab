@@ -30,30 +30,10 @@ class ApplicationFormCandidateDetectionResult:
 
 
 class ApplicationFormCandidateDetector:
-    """Scores stored intake assets without opening Office documents."""
+    """Scores stored intake assets without filename heuristics."""
 
-    _candidate_threshold = 60
+    _candidate_threshold = 1
     _document_extensions = {".docx"}
-    _positive_name_terms = (
-        "application form",
-        "application",
-        "app form",
-        "request form",
-        "e-3718",
-        "3718",
-        "申请表",
-        "申请",
-    )
-    _negative_name_terms = (
-        "spec",
-        "drawing",
-        "photo",
-        "image",
-        "report",
-        "result",
-        "matrix",
-        "ltr",
-    )
     _protected_roles = {
         IntakeAssetRole.EMAIL_SOURCE,
         IntakeAssetRole.SELECTED_APPLICATION_FORM,
@@ -93,25 +73,12 @@ class ApplicationFormCandidateDetector:
         score = 0
         reasons: list[str] = []
         extension = self._normalized_extension(asset)
-        name = asset.original_name.lower()
 
         if extension in self._document_extensions:
-            score += 45
+            score = 100
             reasons.append("word_document_extension")
         elif extension:
             reasons.append("non_word_extension")
-
-        for term in self._positive_name_terms:
-            if term in name:
-                score += 35
-                reasons.append(f"name_contains:{term}")
-                break
-
-        for term in self._negative_name_terms:
-            if term in name:
-                score -= 25
-                reasons.append(f"name_penalty:{term}")
-                break
 
         if asset.asset_role is IntakeAssetRole.APPLICATION_FORM_CANDIDATE:
             score += 15

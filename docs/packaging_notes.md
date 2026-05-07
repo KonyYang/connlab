@@ -43,6 +43,25 @@ Environment overrides:
 - `CONNLAB_DATABASE_PATH`
 - `CONNLAB_LOG_LEVEL`
 
+## Local Secret And Workbook Settings Policy
+
+External LTR workbook settings are operator-managed local settings. The committed
+`connlab.local.example.toml` contains placeholders only. The real
+`connlab.local.toml` file is ignored by Git and must stay local to the workstation.
+
+Current short-term supported inputs:
+
+- `connlab.local.toml` under `[ltr_workbook]`
+- `CONNLAB_LTR_WORKBOOK_*` environment variable overrides
+
+Rules:
+
+- Do not hard-code the workbook modify password in source, tests, docs screenshots, or committed config.
+- Do not log `modify_password`; use the redacted `safe_summary()` diagnostic shape.
+- Keep `lock_timeout_seconds` and `sheet_bootstrap_clear_start_row` positive integers.
+- Keep write mode disabled unless a later approved task enables a guarded write path.
+- Future Windows Credential Manager integration must be a separate task and should replace, not duplicate, plaintext local password handling.
+
 ## Future Packaging Placeholder
 
 PyWebView or PyInstaller packaging can be considered after MVP validation, but should be implemented as a separate task. Before that task, define:

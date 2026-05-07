@@ -264,6 +264,32 @@ def test_selection_preserves_manual_overrides_for_same_selected_asset() -> None:
     assert draft_store.drafts["draft-1"].manual_overrides_json == '{"requester":"Corrected"}'
 
 
+def test_selection_replaces_manual_overrides_when_explicitly_requested() -> None:
+    """TASK_103 confirmed import replacement clears current editor overrides."""
+    existing_case = IntakeCase(
+        case_id="case-1",
+        package_id="pkg-1",
+        selected_form_asset_id="asset-a",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    existing_draft = IntakeDraft(
+        draft_id="draft-1",
+        case_id="case-1",
+        parsed_fields_json='{"requester":"Parsed"}',
+        manual_overrides_json='{"requester":"Corrected"}',
+    )
+    service, _, _, draft_store = _service(
+        [_asset("asset-a", IntakeAssetRole.APPLICATION_FORM_CANDIDATE)],
+        cases=[existing_case],
+        drafts=[existing_draft],
+    )
+
+    result = service.select_form_asset("pkg-1", "asset-a", replace_existing=True)
+
+    assert result.case.case_id == "case-1"
+    assert draft_store.drafts["draft-1"].manual_overrides_json is None
+
+
 def test_selection_clears_manual_overrides_when_rebinding_reusable_case() -> None:
     reusable_case = IntakeCase(
         case_id="case-1",

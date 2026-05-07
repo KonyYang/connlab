@@ -56,7 +56,7 @@ export const PRECHECK_PROJECT_FIELDS: PrecheckFieldSpec[] = [
     kind: "select",
     lookupGroup: "manufacturing_site"
   },
-  { key: "project_no", label: "Project #", required: true },
+  { key: "project_no", label: "Project #" },
   {
     key: "results_format",
     label: "Results Format",

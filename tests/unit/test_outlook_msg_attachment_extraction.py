@@ -111,3 +111,15 @@ def test_outlook_msg_gateway_uses_unique_attachment_file_names(tmp_path: Path) -
     ]
     assert package.attachments[0].stored_path.read_text(encoding="utf-8") == "first"
     assert package.attachments[1].stored_path.read_text(encoding="utf-8") == "second"
+
+
+def test_outlook_msg_gateway_preserves_embedded_msg_payload(tmp_path: Path) -> None:
+    """Real Outlook `.msg` attachments keep their stored payload, not a summary stub."""
+    source = Path("tests/fixtures/msg_samples/msg_samplesreal_request_with_msg.msg")
+
+    package = OfficeFacade().import_outlook_msg(source, tmp_path / "intake" / "pkg-5")
+
+    msg_attachments = [attachment for attachment in package.attachments if attachment.extension == "msg"]
+    assert len(msg_attachments) == 1
+    assert msg_attachments[0].size_bytes > 10_000
+    assert msg_attachments[0].stored_path.stat().st_size == msg_attachments[0].size_bytes

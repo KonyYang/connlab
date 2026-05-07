@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useLayoutEffect, useRef, type ReactElement } from "react";
 import { UiIcon } from "../../components/common/UiIcon";
 import {
   PRECHECK_REQUESTED_TESTING_COLUMNS,
@@ -9,6 +9,7 @@ type PrecheckLowerPanelsProps = {
   additionalInformation: string;
   confidential: string;
   disabled?: boolean;
+  missingRequiredKeys?: Set<string>;
   requestedTestingRows: PrecheckRequestedTestingRow[];
   subcontract: string;
   onAdditionalInformationChange: (value: string) => void;
@@ -21,7 +22,6 @@ type PrecheckLowerPanelsProps = {
   ) => void;
   onRequestedTestingRowCopy: (rowIndex: number) => void;
   onRequestedTestingRowDelete: (rowIndex: number) => void;
-  onRequestedTestingRowEdit: (rowIndex: number) => void;
   onSubcontractChange: (value: string) => void;
 };
 
@@ -29,6 +29,7 @@ export function PrecheckLowerPanels({
   additionalInformation,
   confidential,
   disabled,
+  missingRequiredKeys,
   requestedTestingRows,
   subcontract,
   onAdditionalInformationChange,
@@ -37,33 +38,34 @@ export function PrecheckLowerPanels({
   onRequestedTestingRowChange,
   onRequestedTestingRowCopy,
   onRequestedTestingRowDelete,
-  onRequestedTestingRowEdit,
   onSubcontractChange
 }: PrecheckLowerPanelsProps): ReactElement {
   return (
     <div className="precheck-lower-grid">
       <section className="precheck-consent-row">
         <RadioLine
-          disabled={disabled}
-          label="Confidential test or samples?"
+        disabled={disabled}
+        missing={missingRequiredKeys?.has("confidential")}
+        label="Confidential test or samples?"
           value={confidential}
           onChange={onConfidentialChange}
         />
         <RadioLine
-          disabled={disabled}
-          label="Can testing be subcontracted?"
+        disabled={disabled}
+        missing={missingRequiredKeys?.has("subcontract")}
+        label="Can testing be subcontracted?"
           value={subcontract}
           onChange={onSubcontractChange}
         />
       </section>
       <RequestedTestingPanel
         disabled={disabled}
+        missing={missingRequiredKeys?.has("requested_testing")}
         rows={requestedTestingRows}
         onAdd={onRequestedTestingRowAdd}
         onChange={onRequestedTestingRowChange}
         onCopy={onRequestedTestingRowCopy}
         onDelete={onRequestedTestingRowDelete}
-        onEdit={onRequestedTestingRowEdit}
       />
       <AdditionalInfoPanel
         additionalInformation={additionalInformation}
@@ -79,11 +81,13 @@ export function PrecheckLowerPanels({
 function RadioLine({
   disabled,
   label,
+  missing,
   value,
   onChange
 }: {
   disabled?: boolean;
   label: string;
+  missing?: boolean;
   value: string;
   onChange: (value: string) => void;
 }): ReactElement {
@@ -91,7 +95,7 @@ function RadioLine({
   const yes = ["yes", "y", "true", "1", "是"].includes(normalized);
   const no = value ? ["no", "n", "false", "0", "否"].includes(normalized) : false;
   return (
-    <div className="radio-line">
+    <div className={missing ? "radio-line radio-line-required-missing" : "radio-line"}>
       <strong>
         {label}<b>*</b>
       </strong>
@@ -121,14 +125,15 @@ function RadioLine({
 
 function RequestedTestingPanel({
   disabled,
+  missing,
   rows,
   onAdd,
   onChange,
   onCopy,
-  onDelete,
-  onEdit
+  onDelete
 }: {
   disabled?: boolean;
+  missing?: boolean;
   rows: PrecheckRequestedTestingRow[];
   onAdd: () => void;
   onChange: (
@@ -138,10 +143,9 @@ function RequestedTestingPanel({
   ) => void;
   onCopy: (rowIndex: number) => void;
   onDelete: (rowIndex: number) => void;
-  onEdit: (rowIndex: number) => void;
 }): ReactElement {
   return (
-    <section className="requested-testing-panel">
+    <section className={missing ? "requested-testing-panel requested-testing-required-missing" : "requested-testing-panel"}>
       <div className="requested-testing-header">
         <h4 className="ui-section-title">Description of Requested Testing</h4>
         <button
@@ -150,7 +154,7 @@ function RequestedTestingPanel({
           type="button"
           onClick={onAdd}
         >
-          + Add Row
+          Add Row
         </button>
       </div>
       <table className="requested-testing-edit-table">
@@ -167,10 +171,8 @@ function RequestedTestingPanel({
             <tr key={rowIndex}>
               {PRECHECK_REQUESTED_TESTING_COLUMNS.map((column) => (
                 <td key={column.key}>
-                  <textarea
-                    className="requested-testing-cell-input"
+                  <AutoGrowTextarea
                     disabled={disabled}
-                    rows={1}
                     value={(row as Record<string, string>)[column.key] ?? ""}
                     onChange={(event) => onChange(rowIndex, column.key, event.target.value)}
                   />
@@ -178,15 +180,6 @@ function RequestedTestingPanel({
               ))}
               <td>
                 <div className="requested-testing-row-actions">
-                  <button
-                    disabled={disabled}
-                    title="Edit requested testing row"
-                    type="button"
-                    onClick={() => onEdit(rowIndex)}
-                  >
-                    <UiIcon name="edit" />
-                    <span className="sr-only">Edit requested testing row</span>
-                  </button>
                   <button
                     disabled={disabled}
                     title="Copy requested testing row"
@@ -227,12 +220,82 @@ function AdditionalInfoPanel({
   return (
     <section className="precheck-additional-panel">
       <h4 className="ui-section-title">Additional Information</h4>
-      <textarea
+      <AutoGrowPanelTextarea
+        className="precheck-additional-input"
         disabled={disabled}
-        value={additionalInformation}
         placeholder="No additional information extracted from the selected application form."
-        onChange={(event) => onChange(event.target.value)}
+        value={additionalInformation}
+        onChange={onChange}
       />
     </section>
+  );
+}
+
+function AutoGrowPanelTextarea({
+  className,
+  disabled,
+  placeholder,
+  value,
+  onChange
+}: {
+  className?: string;
+  disabled?: boolean;
+  placeholder?: string;
+  value: string;
+  onChange: (value: string) => void;
+}): ReactElement {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      disabled={disabled}
+      placeholder={placeholder}
+      rows={1}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+function AutoGrowTextarea({
+  disabled,
+  value,
+  onChange
+}: {
+  disabled?: boolean;
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}): ReactElement {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className="requested-testing-cell-input"
+      disabled={disabled}
+      rows={1}
+      value={value}
+      onChange={onChange}
+    />
   );
 }

@@ -23,6 +23,9 @@ from backend.api.dependencies import (
     get_intake_precheck_service,
     get_manual_intake_service,
     get_msg_package_intake_service,
+    get_new_project_application_draft_service,
+    get_project_creation_draft_lifecycle_service,
+    get_project_creation_draft_query_service,
 )
 from backend.application.intake_asset_download_service import (
     IntakeAssetDownloadError,
@@ -79,6 +82,22 @@ from backend.application.msg_package_intake_service import (
     MsgPackageIntakeError,
     MsgPackageIntakeResult,
     MsgPackageIntakeService,
+)
+from backend.application.new_project_application_draft_service import (
+    NewProjectApplicationDraftNotFoundError,
+    NewProjectApplicationDraftResult,
+    NewProjectApplicationDraftService,
+)
+from backend.application.project_creation_draft_lifecycle_service import (
+    ProjectCreationDraftLifecycleError,
+    ProjectCreationDraftLifecycleNotFoundError,
+    ProjectCreationDraftLifecycleResult,
+    ProjectCreationDraftLifecycleService,
+)
+from backend.application.project_creation_draft_query_service import (
+    ProjectCreationDraftQueryError,
+    ProjectCreationDraftQueryService,
+    ProjectCreationDraftRow,
 )
 from backend.application.manual_intake_service import (
     ManualIntakeError,
@@ -223,6 +242,7 @@ class ApplicationFormEligibilityResponse(BaseModel):
     reason_code: str
     message: str
     observed_header_cell: str | None = None
+    observed_footer_text: str | None = None
     expected_text: str
 
 
@@ -313,10 +333,51 @@ class ManualIntakeResponse(BaseModel):
     next_action: str
 
 
+class NewProjectApplicationDraftResponse(BaseModel):
+    """Prepared editable draft for the single-page New Project editor."""
+
+    package_id: str
+    case_id: str
+    draft_id: str
+    package_status: str
+    selected_form_asset_id: str | None = None
+    next_action: str
+
+
+class ProjectCreationDraftLifecycleResponse(BaseModel):
+    """Response for saving or discarding a New Project creation draft."""
+
+    package_id: str
+    action: str
+    package_status: str | None = None
+    deleted_package: bool = False
+    deleted_assets: int = 0
+    deleted_cases: int = 0
+    deleted_drafts: int = 0
+    deleted_files: bool = False
+    message: str
+
+
+class ProjectCreationDraftRowResponse(BaseModel):
+    """One saved creation draft row for Drafts / In Progress."""
+
+    package_id: str
+    source_type: str
+    source_name: str
+    subject: str | None = None
+    requester: str | None = None
+    product_name: str | None = None
+    updated_at: str | None = None
+    current_step: str
+    selected_form_asset_id: str | None = None
+    active_case_id: str | None = None
+
+
 class SelectApplicationFormRequest(BaseModel):
     """Human selected application form asset request."""
 
     asset_id: str
+    replace_existing: bool = False
 
 
 class SelectApplicationFormResponse(BaseModel):
@@ -500,12 +561,33 @@ def select_application_form_asset(
     """Select one intake asset as the source application form for Precheck."""
     try:
         return _form_selection_response(
-            service.select_form_asset(package_id, request.asset_id)
+            service.select_form_asset(
+                package_id,
+                request.asset_id,
+                replace_existing=request.replace_existing,
+            )
         )
     except IntakeSelectionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except IntakeSelectionError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/{package_id}/application-draft",
+    response_model=NewProjectApplicationDraftResponse,
+)
+def ensure_new_project_application_draft(
+    package_id: str,
+    service: NewProjectApplicationDraftService = Depends(
+        get_new_project_application_draft_service
+    ),
+) -> NewProjectApplicationDraftResponse:
+    """Prepare a blank editable application draft without importing a form."""
+    try:
+        return _new_project_application_draft_response(service.ensure_draft(package_id))
+    except NewProjectApplicationDraftNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post(
@@ -523,6 +605,86 @@ def create_manual_intake(
             service.create_manual_case(_manual_intake_input(request))
         )
     except ManualIntakeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/{package_id}/draft/save",
+    response_model=ProjectCreationDraftLifecycleResponse,
+)
+def save_project_creation_draft(
+    package_id: str,
+    service: ProjectCreationDraftLifecycleService = Depends(
+        get_project_creation_draft_lifecycle_service
+    ),
+) -> ProjectCreationDraftLifecycleResponse:
+    """Persist one New Project creation draft for later continuation."""
+    try:
+        return _project_creation_draft_lifecycle_response(service.save_draft(package_id))
+    except ProjectCreationDraftLifecycleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectCreationDraftLifecycleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/intake-packages/{package_id}/draft/discard",
+    response_model=ProjectCreationDraftLifecycleResponse,
+)
+def discard_unsaved_project_creation_draft(
+    package_id: str,
+    service: ProjectCreationDraftLifecycleService = Depends(
+        get_project_creation_draft_lifecycle_service
+    ),
+) -> ProjectCreationDraftLifecycleResponse:
+    """Delete one unsaved New Project creation package and stored files."""
+    try:
+        return _project_creation_draft_lifecycle_response(
+            service.discard_unsaved(package_id)
+        )
+    except ProjectCreationDraftLifecycleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectCreationDraftLifecycleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get(
+    "/api/project-creation-drafts",
+    response_model=list[ProjectCreationDraftRowResponse],
+)
+def list_project_creation_drafts(
+    service: ProjectCreationDraftQueryService = Depends(
+        get_project_creation_draft_query_service
+    ),
+) -> list[ProjectCreationDraftRowResponse]:
+    """Return saved New Project creation drafts for continuation."""
+    try:
+        return [
+            _project_creation_draft_row_response(row)
+            for row in service.list_saved_drafts()
+        ]
+    except ProjectCreationDraftQueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/project-creation-drafts/{package_id}/discard",
+    response_model=ProjectCreationDraftLifecycleResponse,
+)
+def discard_saved_project_creation_draft(
+    package_id: str,
+    service: ProjectCreationDraftLifecycleService = Depends(
+        get_project_creation_draft_lifecycle_service
+    ),
+) -> ProjectCreationDraftLifecycleResponse:
+    """Discard one saved creation draft from Drafts / In Progress."""
+    try:
+        return _project_creation_draft_lifecycle_response(
+            service.discard_saved_draft(package_id)
+        )
+    except ProjectCreationDraftLifecycleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectCreationDraftLifecycleError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -735,6 +897,47 @@ def _manual_intake_response(result: ManualIntakeResult) -> ManualIntakeResponse:
     )
 
 
+def _project_creation_draft_lifecycle_response(
+    result: ProjectCreationDraftLifecycleResult,
+) -> ProjectCreationDraftLifecycleResponse:
+    """Convert creation draft lifecycle result to API response."""
+    if result.action == "save_draft":
+        message = "Creation draft saved. Continue it later from Drafts / In Progress."
+    elif result.action == "discard_saved_draft":
+        message = "Saved creation draft discarded. ConnLab imported copies were removed."
+    else:
+        message = "Unsaved creation session discarded. ConnLab imported copies were removed."
+    return ProjectCreationDraftLifecycleResponse(
+        package_id=result.package_id,
+        action=result.action,
+        package_status=result.package_status,
+        deleted_package=result.deleted_package,
+        deleted_assets=result.deleted_assets,
+        deleted_cases=result.deleted_cases,
+        deleted_drafts=result.deleted_drafts,
+        deleted_files=result.deleted_files,
+        message=message,
+    )
+
+
+def _project_creation_draft_row_response(
+    row: ProjectCreationDraftRow,
+) -> ProjectCreationDraftRowResponse:
+    """Convert saved creation draft row to API response."""
+    return ProjectCreationDraftRowResponse(
+        package_id=row.package_id,
+        source_type=row.source_type,
+        source_name=row.source_name,
+        subject=row.subject,
+        requester=row.requester,
+        product_name=row.product_name,
+        updated_at=row.updated_at,
+        current_step=row.current_step,
+        selected_form_asset_id=row.selected_form_asset_id,
+        active_case_id=row.active_case_id,
+    )
+
+
 def _form_selection_response(
     result: FormSelectionResult,
 ) -> SelectApplicationFormResponse:
@@ -746,6 +949,20 @@ def _form_selection_response(
         selected_form_asset_id=result.selected_asset.asset_id,
         package_status="ready_for_review",
         next_action="review_selected_application_form",
+    )
+
+
+def _new_project_application_draft_response(
+    result: NewProjectApplicationDraftResult,
+) -> NewProjectApplicationDraftResponse:
+    """Convert an editable application draft result to an API response."""
+    return NewProjectApplicationDraftResponse(
+        package_id=result.package.package_id,
+        case_id=result.case.case_id,
+        draft_id=result.draft.draft_id,
+        package_status=result.package.status.value,
+        selected_form_asset_id=result.case.selected_form_asset_id,
+        next_action="edit_application_information",
     )
 
 
@@ -796,6 +1013,7 @@ def _application_form_eligibility_response(
         reason_code=result.reason_code,
         message=result.message,
         observed_header_cell=result.observed_header_cell,
+        observed_footer_text=result.observed_footer_text,
         expected_text=result.expected_text,
     )
 

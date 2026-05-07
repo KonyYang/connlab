@@ -109,6 +109,39 @@ def test_excel_com_write_session_uses_batch_read_and_row_write() -> None:
     assert office.handle.closed is True
 
 
+def test_excel_com_write_session_finds_and_replaces_existing_ltr_row() -> None:
+    """Existing workbook rows can be located and replaced in A:Q."""
+    office = _FakeOfficeFacade(rows=(("Apr", 30, 30, "DL-2026-04-030"),))
+    gateway = ExcelComLTRWorkbookGateway(
+        office,
+        LtrWorkbookWriteConfig(
+            path=Path("ltr.xls"),
+            write_enabled=True,
+            modify_password="operator-secret",
+        ),
+    )
+
+    with gateway.open_write_session() as session:
+        existing = session.find_ltr_number("DL-2026-04-030")
+        assert existing is not None
+        pointer = session.write_registration_row(
+            existing.sheet_name,
+            existing.row_number,
+            LtrWorkbookRowData(
+                month="Apr",
+                total=30,
+                monthly_number=30,
+                dl_number="DL-2026-04-030",
+                project_type="Replacement",
+            ),
+        )
+
+    sheet = office.handle.workbook.Worksheets.Item("2026")
+    assert pointer.row_number == 2
+    assert sheet.range_writes == ["A2:Q2"]
+    assert sheet.last_written_rows[0][4] == "Replacement"
+
+
 def test_excel_com_write_session_calculates_normal_number_after_open() -> None:
     office = _FakeOfficeFacade(
         rows=(("Apr", 30, 30, "DL-2026-04-030A"),),
@@ -141,6 +174,32 @@ def test_excel_com_write_session_calculates_normal_number_after_open() -> None:
     assert sheet.last_written_rows[0][3] == "DL-2026-04-031"
     assert sheet.last_written_rows[0][2] == 31
     assert pointer.dl_number == "DL-2026-04-031"
+
+
+def test_excel_com_write_session_bootstraps_missing_year_sheet() -> None:
+    """Write session can copy a template year sheet and clear data rows."""
+    office = _FakeOfficeFacade()
+    gateway = ExcelComLTRWorkbookGateway(
+        office,
+        LtrWorkbookWriteConfig(
+            path=Path("ltr.xls"),
+            write_enabled=True,
+            modify_password="operator-secret",
+        ),
+    )
+
+    with gateway.open_write_session() as session:
+        created = session.bootstrap_year_sheet(
+            "2027",
+            template_sheet_name="2026",
+            clear_start_row=2,
+        )
+
+    workbook = office.handle.workbook
+    created_sheet = workbook.Worksheets.Item("2027")
+    assert created is True
+    assert "2027" in session.list_sheets()
+    assert created_sheet.clear_calls == ["A2:Q2"]
 
 
 class _FakeOfficeFacade:
@@ -198,26 +257,74 @@ class _FakeWorkbook:
 
 class _FakeWorksheets:
     def __init__(self, rows: tuple[tuple[object, ...], ...] | None) -> None:
-        self._sheets = {"2026": _FakeSheet("2026", rows)}
+        base = _FakeSheet("2026", rows)
+        self._sheets = {"2026": base}
+        self._order = ["2026"]
+        base._owner = self
 
     def __iter__(self):
-        return iter(self._sheets.values())
+        return iter(self._sheets[name] for name in self._order)
 
-    def Item(self, name: str):
-        return self._sheets[name]
+    @property
+    def Count(self) -> int:
+        return len(self._order)
+
+    def Item(self, name_or_index):
+        if isinstance(name_or_index, int):
+            return self._sheets[self._order[name_or_index - 1]]
+        return self._sheets[name_or_index]
+
+    def _copy_sheet_after(self, source_name: str, after_name: str) -> "_FakeSheet":
+        source = self._sheets[source_name]
+        copied = _FakeSheet(source.Name, source.rows)
+        insert_at = self._order.index(after_name) + 1
+        temp_name = f"_copy_{len(self._order) + 1}"
+        copied.Name = temp_name
+        copied._owner = self
+        self._order.insert(insert_at, temp_name)
+        self._sheets[temp_name] = copied
+        return copied
+
+    def _rename_sheet(self, old_name: str, new_name: str) -> None:
+        if new_name in self._sheets:
+            raise ValueError("sheet already exists")
+        sheet = self._sheets.pop(old_name)
+        self._sheets[new_name] = sheet
+        self._order[self._order.index(old_name)] = new_name
 
 
 class _FakeSheet:
     def __init__(self, name: str, rows: tuple[tuple[object, ...], ...] | None) -> None:
-        self.Name = name
-        self.UsedRange = _FakeUsedRange(rows=2)
+        self._owner = None
+        self._name = name
         self.rows = rows or (("Apr", 30, 30, "DL-2026-04-030"),)
+        self.UsedRange = _FakeUsedRange(rows=len(self.rows) + 1)
         self.range_reads: list[str] = []
         self.range_writes: list[str] = []
+        self.clear_calls: list[str] = []
         self.last_written_rows: list[list[object]] = []
+
+    @property
+    def Name(self) -> str:
+        return self._name
+
+    @Name.setter
+    def Name(self, value: str) -> None:
+        if self._owner is None:
+            self._name = value
+            return
+        self._owner._rename_sheet(self._name, value)
+        self._name = value
 
     def Range(self, address: str):
         return _FakeRange(self, address)
+
+    def Copy(self, *, After) -> None:
+        after_name = After.Name
+        owner = self._owner
+        if owner is None:
+            raise ValueError("owner not set")
+        owner._copy_sheet_after(self.Name, after_name)
 
 
 class _FakeUsedRange:
@@ -244,3 +351,6 @@ class _FakeRange:
     def Value(self, rows) -> None:
         self._sheet.range_writes.append(self._address)
         self._sheet.last_written_rows.extend(rows)
+
+    def ClearContents(self) -> None:
+        self._sheet.clear_calls.append(self._address)

@@ -53,18 +53,21 @@ def test_direct_word_import_preserves_source_and_registers_candidate(tmp_path: P
     assert len(asset_store.items) == 1
 
 
-def test_direct_word_import_allows_doc_but_keeps_low_score_as_supporting(tmp_path: Path) -> None:
+def test_direct_word_import_rejects_legacy_doc_sources(tmp_path: Path) -> None:
     source = tmp_path / "customer supplied file.doc"
     source.write_bytes(b"fake doc content")
+    package_store = PackageStore()
+    asset_store = AssetStore()
 
-    result = DirectWordIntakeService(
-        IntakeStorage(tmp_path / "intake"),
-        PackageStore(),
-        AssetStore(),
-    ).import_word_form(source)
+    with pytest.raises(DirectWordIntakeError):
+        DirectWordIntakeService(
+            IntakeStorage(tmp_path / "intake"),
+            package_store,
+            asset_store,
+        ).import_word_form(source)
 
-    assert result.asset.extension == ".doc"
-    assert result.asset.asset_role is IntakeAssetRole.SUPPORTING_ATTACHMENT
+    assert package_store.items == {}
+    assert asset_store.items == {}
 
 
 def test_direct_word_import_rejects_non_word_sources(tmp_path: Path) -> None:

@@ -57,5 +57,9 @@ class IntakeAssetDownloadService:
         return DownloadableIntakeAsset(
             path=asset.stored_path,
             filename=asset.original_name,
-            media_type=asset.mime_type or "application/octet-stream",
+            media_type=(
+                "application/octet-stream"
+                if asset.original_name.lower().endswith(".msg")
+                else asset.mime_type or "application/octet-stream"
+            ),
         )

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
 
 from backend.application import (
+    IntakeCaseReviewFrozenError,
     IntakeCaseReviewNotFoundError,
     IntakeCaseReviewService,
 )
@@ -18,6 +20,8 @@ from backend.domain import (
     IntakePackage,
     IntakePackageSourceType,
     IntakePackageStatus,
+    LtrRecord,
+    LtrStatus,
 )
 
 
@@ -66,6 +70,16 @@ class DraftStore:
     def update(self, draft: IntakeDraft) -> IntakeDraft:
         self.items[draft.case_id] = draft
         return draft
+
+
+class LtrStore:
+    """In-memory LTR record read store."""
+
+    def __init__(self, *records: LtrRecord) -> None:
+        self.records = list(records)
+
+    def list_by_project(self, project_id: str) -> list[LtrRecord]:
+        return [record for record in self.records if record.project_id == project_id]
 
 
 def test_review_service_returns_complete_case_without_blockers(tmp_path: Path) -> None:
@@ -357,6 +371,67 @@ def test_review_service_saves_and_returns_additional_information_overrides(tmp_p
     assert item.parsed_fields.get("additional_information") == "Modified additional info"
 
 
+def test_review_service_marks_case_frozen_after_registered_ltr(tmp_path: Path) -> None:
+    """Review responses expose frozen base editing state after LTR registration."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(confirmed_project_id="project-1"),
+        _draft(_complete_section1_fields()),
+        ltr_store=LtrStore(_registered_ltr()),
+    )
+
+    item = service.get_package_review("pkg-1").cases[0]
+
+    assert item.base_editing_frozen is True
+    assert item.frozen_reason == "LTR registered. Base application fields require revise/exception handling."
+    assert "product_name" in item.frozen_field_keys
+    assert "samples" in item.frozen_field_keys
+
+
+def test_review_service_blocks_changed_frozen_fields_after_registered_ltr(
+    tmp_path: Path,
+) -> None:
+    """Frozen base field changes require a future revise/exception path."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(confirmed_project_id="project-1"),
+        _draft(_complete_section1_fields()),
+        ltr_store=LtrStore(_registered_ltr()),
+    )
+
+    with pytest.raises(IntakeCaseReviewFrozenError) as exc_info:
+        service.update_case_fields("case-1", {"product_name": "Renamed connector"})
+
+    assert "revise/exception" in str(exc_info.value)
+    assert exc_info.value.field_keys == ("product_name",)
+
+
+def test_review_service_allows_non_frozen_note_after_registered_ltr(tmp_path: Path) -> None:
+    """Non-identity notes remain editable when frozen values are unchanged."""
+    fields = _complete_section1_fields()
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(confirmed_project_id="project-1"),
+        _draft(fields),
+        ltr_store=LtrStore(_registered_ltr()),
+    )
+
+    item = service.update_case_fields(
+        "case-1",
+        {
+            **{key: str(value) for key, value in fields.items() if not isinstance(value, list)},
+            "additional_information": "Note after LTR registration",
+        },
+        sample_rows=fields["samples"],  # type: ignore[arg-type]
+    )
+
+    assert item.base_editing_frozen is True
+    assert item.parsed_fields["additional_information"] == "Note after LTR registration"
+
+
 def test_review_service_raises_for_missing_package(tmp_path: Path) -> None:
     """Unknown package IDs fail explicitly."""
     service = _service(None, _asset(tmp_path), _case(), _draft({}))
@@ -370,12 +445,15 @@ def _service(
     asset: IntakeAsset,
     case: IntakeCase,
     draft: IntakeDraft,
+    *,
+    ltr_store: LtrStore | None = None,
 ) -> IntakeCaseReviewService:
     return IntakeCaseReviewService(
         PackageStore(package),
         AssetStore(asset),
         CaseStore(case),
         DraftStore(draft),
+        ltr_store=ltr_store,
     )
 
 
@@ -403,12 +481,13 @@ def _asset(tmp_path: Path) -> IntakeAsset:
     )
 
 
-def _case() -> IntakeCase:
+def _case(*, confirmed_project_id: str | None = None) -> IntakeCase:
     return IntakeCase(
         case_id="case-1",
         package_id="pkg-1",
         selected_form_asset_id="asset-1",
         status=IntakeCaseStatus.NEEDS_REVIEW,
+        confirmed_project_id=confirmed_project_id,
     )
 
 
@@ -458,3 +537,13 @@ def _complete_section1_fields() -> dict[str, object]:
             }
         ],
     }
+
+
+def _registered_ltr() -> LtrRecord:
+    return LtrRecord(
+        ltr_id="ltr-1",
+        project_id="project-1",
+        ltr_number="DL-2026-05-001",
+        status=LtrStatus.REGISTERED,
+        registered_on=date(2026, 5, 7),
+    )

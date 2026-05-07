@@ -9,6 +9,7 @@ from backend.application import (
     IntakeConfirmationService,
     IntakeFormSelectionService,
 )
+from backend.application.application_form_eligibility_service import ApplicationFormEligibility
 from backend.domain import (
     IntakeAsset,
     IntakeAssetRole,
@@ -228,7 +229,7 @@ def test_candidate_detector_persists_asset_roles_and_scores() -> None:
         assert [candidate.asset_id for candidate in result.candidates] == ["asset-3a"]
         updated_assets = {asset.asset_id: asset for asset in asset_repository.list_by_package("pkg-3")}
         assert updated_assets["asset-3a"].asset_role is IntakeAssetRole.APPLICATION_FORM_CANDIDATE
-        assert updated_assets["asset-3a"].candidate_score == 80
+        assert updated_assets["asset-3a"].candidate_score == 100
         assert updated_assets["asset-3b"].asset_role is IntakeAssetRole.SUPPORTING_ATTACHMENT
     finally:
         session.close()
@@ -271,6 +272,7 @@ def test_form_selection_service_creates_case_and_draft_with_repositories() -> No
             asset_repository,
             case_repository,
             draft_repository,
+            eligibility_validator=PassingEligibilityValidator(),
         ).select_form_asset("pkg-4", "asset-4a")
         session.commit()
 
@@ -283,6 +285,15 @@ def test_form_selection_service_creates_case_and_draft_with_repositories() -> No
         assert draft_repository.get_by_case(result.case.case_id).parsed_fields_json == "{}"
     finally:
         session.close()
+
+
+class PassingEligibilityValidator:
+    def evaluate(self, asset: IntakeAsset) -> ApplicationFormEligibility:
+        return ApplicationFormEligibility(
+            eligible=True,
+            reason_code="ok",
+            message="Application form is ready for Precheck.",
+        )
 
 
 def test_confirmation_service_creates_project_records_with_repositories() -> None:

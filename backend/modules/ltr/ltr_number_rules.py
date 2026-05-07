@@ -43,10 +43,11 @@ class ParsedLtrNumber:
 
 
 _STANDARD_DL_PATTERN = re.compile(
-    r"^DL-(?P<year>\d{4})-(?P<month>\d{2})-(?P<sequence>\d{3})(?P<suffix>[A-Z])?$",
+    r"^DL-(?P<year>\d{4})-(?P<month>\d{2})-(?P<sequence>\d{3})(?P<suffix>[A-Z0-9]+)?$",
     flags=re.IGNORECASE,
 )
 _W_PREFIX_PATTERN = re.compile(r"^W(?P<value>[A-Z0-9]+)$", flags=re.IGNORECASE)
+_ALNUM_TOKEN_PATTERN = re.compile(r"^[A-Z0-9]+$", flags=re.IGNORECASE)
 
 
 def parse_ltr_number(value: str) -> ParsedLtrNumber:
@@ -93,6 +94,14 @@ def validate_new_registration_number(value: str) -> bool:
     if parsed.kind is not LtrNumberKind.STANDARD_DL:
         raise LtrNumberError("New LTR registrations must use DL-YYYY-MM-NNN format.")
     return True
+
+
+def is_alphanumeric_ltr_suffix_token(value: str) -> bool:
+    """Return whether the raw token can be used as a suffix-only specified input."""
+    token = value.strip().upper()
+    if not token:
+        return False
+    return _ALNUM_TOKEN_PATTERN.fullmatch(token) is not None
 
 
 def format_standard_dl_number(year: int, month: int, sequence: int) -> str:

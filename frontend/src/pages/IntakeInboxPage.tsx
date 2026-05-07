@@ -1,20 +1,39 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from "react";
 import {
-  getIntakeAssetPreview,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactElement
+} from "react";
+import {
+  discardUnsavedProjectCreationDraft,
+  ensureNewProjectApplicationDraft,
+  getIntakeCaseReview,
   getIntakePackageDetail,
+  getNewProjectCompletionOptions,
+  getIntakePrecheckLookupOptions,
   importDirectWordApplicationForm,
   importMsgPackage,
+  downloadIntakeAsset,
   selectIntakeApplicationForm,
+  updateIntakeCaseReviewFields,
   uploadEmailPackageApplicationForm,
-  validateIntakeAssetApplicationForm,
-  type ApplicationFormEligibility,
-  type IntakeAssetPreview,
+  type IntakeCaseReview,
   type IntakePackageDetail,
-  type IntakePackageImport
+  type IntakePackageImport,
+  type IntakePrecheckLookupOptions,
+  type IntakeAsset,
+  type NewProjectCompletionOptions
 } from "../api/client";
-import { NewProjectWorkflowHeader } from "../components/workflow/NewProjectWorkflow";
+import { NewProjectApplicationEditor } from "../features/new-project/NewProjectApplicationEditor";
+import { buildNewProjectRequiredState } from "../features/new-project/newProjectRequiredState";
+import {
+  NewProjectSetupConfirmationPanel,
+  type NewProjectSetupConfirmationValues
+} from "../features/new-project/NewProjectSetupConfirmationPanel";
+import { useNewProjectCompletion } from "../features/new-project/useNewProjectCompletion";
 import { AttachmentList } from "../features/intake/AttachmentList";
-import { AttachmentPreviewPanel } from "../features/intake/AttachmentPreviewPanel";
 import { IntakeSourcePanel } from "../features/intake/IntakeSourcePanel";
 import {
   EMPTY_INTAKE_SESSION,
@@ -22,41 +41,78 @@ import {
 } from "../features/intake/intakeSession";
 import {
   buildAttachmentViewModels,
-  intakeContinueState,
-  isWordAsset,
-  selectedIntakeAsset,
+  type IntakeAttachmentViewModel,
   visibleIntakeAttachments
 } from "../features/intake/intakeSelectors";
+import {
+  emptyPrecheckRequestedTestingRow,
+  emptyPrecheckSampleRow,
+  PRECHECK_PROJECT_FIELDS,
+  type PrecheckRequestedTestingRow,
+  type PrecheckSampleRow
+} from "../features/precheck/precheckFieldConfig";
+import {
+  editableValue,
+  fieldsWithLookupOptions,
+  normalizedRequestedTestingRows,
+  normalizedSampleRows,
+  preferredCaseId,
+  requestedTestingText
+} from "../features/precheck/precheckReviewSelectors";
+import "../intake-case-review.css";
 import "../intake-inbox.css";
 
 type IntakeInboxPageProps = {
   session: IntakeSessionState;
   onSessionChange: (session: IntakeSessionState) => void;
-  onOpenPackage: (packageId: string, caseId?: string | null) => void;
+  onExit: () => void;
+  onProjectCreated: (projectId: string) => void;
 };
 
 export function IntakeInboxPage({
   session,
   onSessionChange,
-  onOpenPackage
+  onExit,
+  onProjectCreated
 }: IntakeInboxPageProps): ReactElement {
   const msgInputRef = useRef<HTMLInputElement | null>(null);
   const wordInputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
-  const [preparingPrecheck, setPreparingPrecheck] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<IntakeAssetPreview | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [applicationFormEligibility, setApplicationFormEligibility] =
-    useState<ApplicationFormEligibility | null>(null);
-  const [validatingApplicationForm, setValidatingApplicationForm] = useState(false);
+  const [review, setReview] = useState<IntakeCaseReview | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [editorLoading, setEditorLoading] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
+  const [lookupOptions, setLookupOptions] = useState<IntakePrecheckLookupOptions | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [sampleRows, setSampleRows] = useState<PrecheckSampleRow[]>([emptyPrecheckSampleRow()]);
+  const [requestedTestingRows, setRequestedTestingRows] = useState<PrecheckRequestedTestingRow[]>([
+    emptyPrecheckRequestedTestingRow()
+  ]);
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const [importingAssetId, setImportingAssetId] = useState<string | null>(null);
+  const [pendingImportAsset, setPendingImportAsset] = useState<IntakeAsset | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importVersion, setImportVersion] = useState(0);
+  const [exiting, setExiting] = useState<"discard" | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [setupOptions, setSetupOptions] = useState<NewProjectCompletionOptions | null>(null);
+  const [setupValues, setSetupValues] = useState<NewProjectSetupConfirmationValues>({
+    ltrMode: "auto",
+    specifiedLtrNumber: "",
+    workbookWriteAcknowledged: false,
+    testItem: "",
+    sampleDescription: "",
+    location: "",
+    testTypeInSheet: "",
+    projectLeader: ""
+  });
+  const [completionSetupError, setCompletionSetupError] = useState<string | null>(null);
+  const fieldValuesRef = useRef<Record<string, string>>({});
+  const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
+  const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
   const { packageImport, selectedAssetId, sourceMode, directWordName } = session;
-
-  const selectedAsset = useMemo(
-    () => selectedIntakeAsset(packageImport, selectedAssetId),
-    [packageImport, selectedAssetId]
-  );
   const visibleAttachmentAssets = useMemo(
     () => visibleIntakeAttachments(packageImport),
     [packageImport]
@@ -65,108 +121,267 @@ export function IntakeInboxPage({
     () => buildAttachmentViewModels(visibleAttachmentAssets, selectedAssetId),
     [selectedAssetId, visibleAttachmentAssets]
   );
-  const continueState = useMemo(
+  const activeCase = useMemo(() => {
+    if (!review) {
+      return null;
+    }
+    return review.cases.find((item) => item.case_id === selectedCaseId) ?? review.cases[0] ?? null;
+  }, [review, selectedCaseId]);
+  const projectFields = useMemo(
+    () => fieldsWithLookupOptions(PRECHECK_PROJECT_FIELDS, lookupOptions),
+    [lookupOptions]
+  );
+  const requiredState = useMemo(
     () =>
-      intakeContinueState(
-        packageImport,
-        selectedAsset,
-        applicationFormEligibility,
-        validatingApplicationForm,
+      buildNewProjectRequiredState(
+        activeCase?.fields ?? [],
+        fieldValues,
+        sampleRows,
+        requestedTestingRows
       ),
-    [
-      applicationFormEligibility,
-      packageImport,
-      selectedAsset,
-      validatingApplicationForm,
-    ]
+    [activeCase, fieldValues, requestedTestingRows, sampleRows]
+  );
+  const setupMissingKeys = useMemo(() => {
+    const missing = new Set<string>();
+    if (setupValues.ltrMode === "specified" && !setupValues.specifiedLtrNumber.trim()) {
+      missing.add("specified_ltr_number");
+    }
+    if (!setupValues.workbookWriteAcknowledged) missing.add("workbook_write_acknowledged");
+    if (!setupValues.testItem.trim()) missing.add("test_item");
+    if (!setupValues.sampleDescription.trim()) missing.add("sample_description");
+    if (!setupValues.location.trim()) missing.add("location");
+    if (!setupValues.testTypeInSheet.trim()) missing.add("test_type_in_sheet");
+    if (!setupValues.projectLeader.trim()) missing.add("project_leader");
+    return missing;
+  }, [setupValues]);
+  const completionText = useMemo(() => {
+    const missingCount = requiredState.missingCount + setupMissingKeys.size;
+    return missingCount === 0
+      ? "Required project information complete"
+      : `${missingCount} required fields remaining`;
+  }, [requiredState.missingCount, setupMissingKeys.size]);
+  const {
+    complete: completeProject,
+    completionError,
+    completionLoading,
+    completionResult
+  } = useNewProjectCompletion({
+    activeCase,
+    resetKey: `${packageImport?.package_id ?? ""}:${selectedAssetId ?? ""}`,
+    setupValues,
+    onCompleted: (projectId) => {
+      onSessionChange(EMPTY_INTAKE_SESSION);
+      onProjectCreated(projectId);
+    }
+  });
+  const displayedCompletionError = completionError ?? completionSetupError;
+  const completionDisabled =
+    editorLoading
+    || completionLoading
+    || Boolean(activeCase?.confirmed_project_id)
+    || requiredState.missingCount > 0
+    || setupMissingKeys.size > 0;
+  const importedFormDisplayName = useMemo(() => {
+    if (!packageImport) {
+      return null;
+    }
+    if (importMessage) {
+      return importMessage;
+    }
+    const selectedFormAsset =
+      packageImport.assets.find((asset) => asset.asset_id === session.selectedWordAssetId)
+      ?? packageImport.assets.find((asset) => asset.asset_id === selectedAssetId);
+    return selectedFormAsset?.original_name ?? null;
+  }, [importMessage, packageImport, selectedAssetId, session.selectedWordAssetId]);
+  const draftChanged = activeCase
+    ? activeCase.fields.some((field) => fieldValues[field.key] !== editableValue(field.value))
+      || JSON.stringify(sampleRows) !== JSON.stringify(normalizedSampleRows(activeCase.sample_rows))
+      || JSON.stringify(requestedTestingRows)
+        !== JSON.stringify(normalizedRequestedTestingRows(activeCase.requested_testing_rows))
+    : false;
+  const editorHasData = useMemo(
+    () =>
+      Object.values(fieldValues).some((value) => value.trim())
+      || sampleRows.some((row) => Object.values(row).some((value) => String(value).trim()))
+      || requestedTestingRows.some((row) => row.test_to_be_performed.trim() || row.applicable_specification.trim()),
+    [fieldValues, requestedTestingRows, sampleRows]
   );
 
   useEffect(() => {
-    if (!selectedAssetId) {
-      setPreview(null);
-      setPreviewError(null);
-      setPreviewLoading(false);
-      return;
+    let active = true;
+    async function loadLookupOptions(): Promise<void> {
+      setLookupError(null);
+      try {
+        const nextOptions = await getIntakePrecheckLookupOptions();
+        if (active) {
+          setLookupOptions(nextOptions);
+        }
+      } catch (error) {
+        if (active) {
+          setLookupError(error instanceof Error ? error.message : "Unable to load lookup options.");
+        }
+      }
     }
-    let cancelled = false;
-    setPreviewLoading(true);
-    setPreviewError(null);
-    getIntakeAssetPreview(selectedAssetId)
-      .then((result) => {
-        if (!cancelled) {
-          setPreview(result);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setPreview(null);
-          setPreviewError(error instanceof Error ? error.message : "Attachment preview failed.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setPreviewLoading(false);
-        }
-      });
+    void loadLookupOptions();
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [selectedAssetId]);
+  }, []);
 
   useEffect(() => {
-    if (!selectedAsset || !isWordAsset(selectedAsset)) {
-      setApplicationFormEligibility(null);
-      setValidatingApplicationForm(false);
+    let active = true;
+    async function loadCompletionOptions(): Promise<void> {
+      try {
+        const options = await getNewProjectCompletionOptions();
+        if (!active) {
+          return;
+        }
+        setSetupOptions(options);
+        setSetupValues((current) => ({
+          ...current,
+          projectLeader: current.projectLeader || options.default_project_leader
+        }));
+      } catch (error) {
+        if (active) {
+          setCompletionSetupError(
+            error instanceof Error ? error.message : "Unable to load project setup options."
+          );
+        }
+      }
+    }
+    void loadCompletionOptions();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setConfirmDiscard(false);
+    setPendingImportAsset(null);
+  }, [packageImport?.package_id, selectedAssetId]);
+
+  useEffect(() => {
+    const manufacturingSite = fieldValues.manufacturing_site?.trim();
+    if (!manufacturingSite || !setupOptions || setupValues.location) {
       return;
     }
+    const matched = setupOptions.location_options.find(
+      (option) => option.toLowerCase() === manufacturingSite.toLowerCase()
+    );
+    if (matched) {
+      setSetupValues((current) => ({ ...current, location: matched }));
+    }
+  }, [fieldValues.manufacturing_site, setupOptions, setupValues.location]);
+
+  useEffect(() => {
+    if (!packageImport) {
+      setReview(null);
+      setSelectedCaseId(null);
+      return;
+    }
+    const packageId = packageImport.package_id;
     let cancelled = false;
-    setValidatingApplicationForm(true);
-    setApplicationFormEligibility(null);
-    validateIntakeAssetApplicationForm(selectedAsset.asset_id)
-      .then((result) => {
+    async function prepareEditor(): Promise<void> {
+      setEditorLoading(true);
+      setEditorError(null);
+      try {
+        const draft = await ensureNewProjectApplicationDraft(packageId);
+        const nextReview = await getIntakeCaseReview(packageId);
         if (!cancelled) {
-          setApplicationFormEligibility(result);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setApplicationFormEligibility({
-            eligible: false,
-            reason_code: "word_header_unreadable",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Unable to verify the Word header. Open the document in Word and check the form header.",
-            observed_header_cell: null,
-            expected_text: "Laboratory Testing Request",
+          setReview(nextReview);
+          setSelectedCaseId((current) =>
+            preferredCaseId(nextReview, session.selectedPrecheckCaseId ?? draft.case_id, current)
+          );
+          onSessionChange({
+            ...session,
+            selectedPrecheckCaseId: draft.case_id,
+            selectedWordAssetId: draft.selected_form_asset_id ?? session.selectedWordAssetId
           });
         }
-      })
-      .finally(() => {
+      } catch (error) {
         if (!cancelled) {
-          setValidatingApplicationForm(false);
+          setReview(null);
+          setEditorError(
+            error instanceof Error ? error.message : "Unable to prepare the application editor."
+          );
         }
-      });
+      } finally {
+        if (!cancelled) setEditorLoading(false);
+      }
+    }
+    void prepareEditor();
     return () => {
       cancelled = true;
     };
-  }, [selectedAsset]);
+  }, [packageImport?.package_id]);
+
+  useEffect(() => {
+    if (!activeCase) {
+      setFieldValues({});
+      fieldValuesRef.current = {};
+      sampleRowsRef.current = [];
+      requestedTestingRowsRef.current = [];
+      return;
+    }
+    const nextFieldValues = Object.fromEntries(
+      activeCase.fields.map((field) => [field.key, editableValue(field.value)])
+    );
+    const nextSampleRows = normalizedSampleRows(activeCase.sample_rows);
+    const nextRequestedTestingRows = normalizedRequestedTestingRows(activeCase.requested_testing_rows);
+    setFieldValues(nextFieldValues);
+    setSampleRows(nextSampleRows);
+    setRequestedTestingRows(nextRequestedTestingRows);
+    fieldValuesRef.current = nextFieldValues;
+    sampleRowsRef.current = nextSampleRows;
+    requestedTestingRowsRef.current = nextRequestedTestingRows;
+    setAutoSaveError(null);
+  }, [activeCase?.case_id, importVersion]);
+
+  useEffect(() => {
+    if (!activeCase || activeCase.base_editing_frozen || !draftChanged) {
+      return;
+    }
+    setAutoSaveError(null);
+    const timeoutId = window.setTimeout(() => {
+      updateIntakeCaseReviewFields(activeCase.case_id, {
+        fields: {
+          ...fieldValuesRef.current,
+          requested_testing: requestedTestingText(requestedTestingRowsRef.current)
+        },
+        sample_rows: sampleRowsRef.current,
+        requested_testing_rows: requestedTestingRowsRef.current
+      })
+        .then((updatedCase) => {
+          setReview((current) =>
+            current
+              ? {
+                  ...current,
+                  cases: current.cases.map((item) =>
+                    item.case_id === updatedCase.case_id ? updatedCase : item
+                  )
+                }
+              : current
+          );
+        })
+        .catch((error: unknown) => {
+          setAutoSaveError(error instanceof Error ? error.message : "Unable to save draft edits.");
+        });
+    }, 700);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeCase, draftChanged, fieldValues, requestedTestingRows, sampleRows]);
 
   async function handleMsgFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     setImporting(true);
     setImportError(null);
     try {
       const imported = await importMsgPackage(file);
-      const firstWord = imported.assets.find(isWordAsset) ?? null;
       onSessionChange({
         packageImport: imported,
-        selectedAssetId: firstWord?.asset_id ?? imported.assets[0]?.asset_id ?? null,
-        selectedWordAssetId: firstWord?.asset_id ?? null,
+        selectedAssetId: imported.assets[0]?.asset_id ?? null,
+        selectedWordAssetId: null,
         selectedPrecheckCaseId: null,
         sourceMode: "msg",
         directWordName: null
@@ -182,9 +397,7 @@ export function IntakeInboxPage({
   async function handleDirectWordChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     setImporting(true);
     setImportError(null);
     try {
@@ -195,69 +408,109 @@ export function IntakeInboxPage({
         onSessionChange({
           packageImport: refreshed,
           selectedAssetId: selection.selected_form_asset_id,
-          selectedWordAssetId: selection.selected_form_asset_id,
-          selectedPrecheckCaseId: selection.case_id,
+          selectedWordAssetId: null,
+          selectedPrecheckCaseId: session.selectedPrecheckCaseId,
           sourceMode: "msg",
           directWordName: null
         });
       } else {
         const imported = await importDirectWordApplicationForm(file);
-        const firstWord = imported.assets.find(isWordAsset) ?? imported.assets[0] ?? null;
         onSessionChange({
           packageImport: imported,
-          selectedAssetId: firstWord?.asset_id ?? null,
-          selectedWordAssetId: firstWord?.asset_id ?? null,
+          selectedAssetId: imported.assets[0]?.asset_id ?? null,
+          selectedWordAssetId: null,
           selectedPrecheckCaseId: null,
           sourceMode: "word",
           directWordName: file.name
         });
       }
     } catch (error) {
-      if (!packageImport) {
-        onSessionChange(EMPTY_INTAKE_SESSION);
-      }
-      setImportError(
-        error instanceof Error
-          ? error.message
-          : packageImport
-            ? "Application form upload failed."
-            : "Direct application form import failed."
-      );
+      if (!packageImport) onSessionChange(EMPTY_INTAKE_SESSION);
+      setImportError(error instanceof Error ? error.message : "Application form upload failed.");
     } finally {
       setImporting(false);
     }
   }
 
-  async function handleContinueToPrecheck(): Promise<void> {
-    if (!packageImport || !selectedAsset || !continueState.canContinue) {
+  async function handleImportApplicationForm(asset: IntakeAsset): Promise<void> {
+    if (!packageImport) {
       return;
     }
-    setPreparingPrecheck(true);
+    if ((editorHasData || draftChanged) && pendingImportAsset?.asset_id !== asset.asset_id) {
+      setPendingImportAsset(asset);
+      setImportMessage(null);
+      return;
+    }
+    setImportingAssetId(asset.asset_id);
     setImportError(null);
+    setImportMessage(null);
     try {
       const selection = await selectIntakeApplicationForm(
         packageImport.package_id,
-        selectedAsset.asset_id
+        asset.asset_id,
+        pendingImportAsset?.asset_id === asset.asset_id
       );
+      const nextReview = await getIntakeCaseReview(packageImport.package_id);
+      setReview(nextReview);
+      setSelectedCaseId(selection.case_id);
+      setPendingImportAsset(null);
+      setImportMessage(asset.original_name);
+      setImportVersion((current) => current + 1);
       onSessionChange({
         ...session,
-        selectedPrecheckCaseId: selection.case_id,
+        selectedAssetId: asset.asset_id,
         selectedWordAssetId: selection.selected_form_asset_id,
-        selectedAssetId: selection.selected_form_asset_id
+        selectedPrecheckCaseId: selection.case_id
       });
-      onOpenPackage(packageImport.package_id, selection.case_id);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Unable to prepare Precheck review case.");
+      setImportError(error instanceof Error ? error.message : "Application form import failed.");
     } finally {
-      setPreparingPrecheck(false);
+      setImportingAssetId(null);
+    }
+  }
+
+  async function handleDiscardAndExit(): Promise<void> {
+    if (!packageImport) return;
+    if (!confirmDiscard) {
+      setConfirmDiscard(true);
+      return;
+    }
+    setExiting("discard");
+    setImportError(null);
+    try {
+      await discardUnsavedProjectCreationDraft(packageImport.package_id);
+      onSessionChange(EMPTY_INTAKE_SESSION);
+      onExit();
+    } catch (error) {
+      setImportError(
+        error instanceof Error ? error.message : "Unable to discard this unsaved creation session."
+      );
+    } finally {
+      setExiting(null);
+    }
+  }
+
+  async function handleOpenAttachment(attachment: IntakeAttachmentViewModel): Promise<void> {
+    try {
+      const blob = await downloadIntakeAsset(attachment.asset.asset_id);
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = attachment.asset.original_name;
+      link.rel = "noopener";
+      link.style.display = "none";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 0);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Attachment download failed.");
     }
   }
 
   return (
-    <section className="intake-workflow">
-      <NewProjectWorkflowHeader currentStep="intake" />
-
-      <div className="intake-step-grid">
+    <section className="intake-workflow new-project-single-page">
+      <div className="new-project-single-grid">
         <aside className="intake-left-stack">
           <IntakeSourcePanel
             directWordName={directWordName}
@@ -269,46 +522,133 @@ export function IntakeInboxPage({
             wordInputRef={wordInputRef}
             onDirectWordChange={(event) => void handleDirectWordChange(event)}
             onMsgFileChange={(event) => void handleMsgFileChange(event)}
-            onSelectSourceMode={(mode) => {
-              onSessionChange({ ...session, sourceMode: mode });
-            }}
+            onSelectSourceMode={(mode) => onSessionChange({ ...session, sourceMode: mode })}
           />
           <AttachmentList
             attachments={attachmentViewModels}
+            importingAssetId={importingAssetId}
             packageLoaded={Boolean(packageImport)}
+            onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
+            onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {
               onSessionChange({
                 ...session,
-                selectedAssetId: attachment.asset.asset_id,
-                selectedWordAssetId: attachment.word ? attachment.asset.asset_id : null,
-                selectedPrecheckCaseId: null
+                selectedAssetId: attachment.asset.asset_id
               });
             }}
           />
+          <NewProjectSetupConfirmationPanel
+            disabled={completionLoading || editorLoading || Boolean(activeCase?.confirmed_project_id)}
+            locationOptions={setupOptions?.location_options ?? []}
+            missingKeys={setupMissingKeys}
+            testTypeInSheetOptions={setupOptions?.test_type_in_sheet_options ?? []}
+            values={setupValues}
+              onChange={(values) => {
+                setSetupValues(values);
+                setCompletionSetupError(null);
+              }}
+          />
         </aside>
 
-        <AttachmentPreviewPanel
-          directWordName={directWordName}
-          error={previewError}
-          loading={previewLoading}
-          preview={preview}
-          selectedAsset={selectedAsset}
-        />
+        <main className="new-project-editor-stack">
+          {pendingImportAsset ? (
+            <section className="new-project-import-confirmation">
+              <strong>Replace current application information?</strong>
+              <p>
+                Importing {pendingImportAsset.original_name} will replace the current editor values.
+                Existing source files stay attached for traceability.
+              </p>
+              <div className="new-project-import-confirmation-actions">
+                <button
+                  className="new-project-secondary-action ui-secondary-action"
+                  type="button"
+                  onClick={() => setPendingImportAsset(null)}
+                >
+                  Keep current data
+                </button>
+                <button
+                  className="new-project-primary-action ui-primary-action"
+                  type="button"
+                  onClick={() => void handleImportApplicationForm(pendingImportAsset)}
+                >
+                  Replace with import
+                </button>
+              </div>
+            </section>
+          ) : null}
+          {editorLoading ? (
+            <section className="new-project-editor-panel new-project-editor-empty">
+              <strong>Preparing application editor</strong>
+              <span>Creating the durable draft for this request package.</span>
+            </section>
+          ) : null}
+          {editorError ? <p className="intake-error">{editorError}</p> : null}
+          {packageImport && activeCase ? (
+            <NewProjectApplicationEditor
+              activeCase={activeCase}
+              autoSaveError={autoSaveError}
+              completionDisabled={completionDisabled}
+              disabled={
+                editorLoading ||
+                Boolean(activeCase.confirmed_project_id) ||
+                Boolean(activeCase.base_editing_frozen)
+              }
+              fieldValues={fieldValues}
+              importMessage={importedFormDisplayName}
+              completionError={displayedCompletionError}
+              completionLoading={completionLoading}
+              completionResult={completionResult}
+              completionText={completionText}
+              lookupError={lookupError}
+              projectFields={projectFields}
+              requestedTestingRows={requestedTestingRows}
+              requiredState={requiredState}
+              sampleRows={sampleRows}
+              sourceFields={activeCase.fields}
+              onComplete={() => void completeProject()}
+              onFieldValuesChange={(values) => {
+                setFieldValues(values);
+                fieldValuesRef.current = values;
+              }}
+              onRequestedTestingRowsChange={(rows) => {
+                setRequestedTestingRows(rows);
+                requestedTestingRowsRef.current = rows;
+              }}
+              onSampleRowsChange={(rows) => {
+                setSampleRows(rows);
+                sampleRowsRef.current = rows;
+              }}
+            />
+          ) : !packageImport ? (
+            <section className="new-project-editor-panel new-project-editor-empty">
+              <strong>Import a request email to start</strong>
+            </section>
+          ) : null}
+        </main>
       </div>
 
-      <div className="step-footer">
-        <span className="step-footer-guidance">
-          {continueState.guidance}
-        </span>
-        <button
-          className="new-project-primary-action continue-action ui-primary-action"
-          disabled={!continueState.canContinue || preparingPrecheck}
-          type="button"
-          onClick={() => void handleContinueToPrecheck()}
-        >
-          {preparingPrecheck ? "Preparing Precheck..." : "Continue to Precheck"}
-          <span aria-hidden="true">&gt;</span>
-        </button>
+      <div className="step-footer new-project-single-footer">
+        {confirmDiscard || !packageImport ? (
+          <span className="step-footer-guidance">
+            {confirmDiscard
+              ? "Cancel removes ConnLab's imported copies and draft records. Original email files are not changed."
+              : "Import the request source before editing application information."}
+          </span>
+        ) : <span aria-hidden="true" />}
+        {packageImport ? (
+          <button
+            className="new-project-secondary-action ui-secondary-action"
+            disabled={Boolean(exiting)}
+            type="button"
+            onClick={() => void handleDiscardAndExit()}
+          >
+            {exiting === "discard"
+              ? "Cancelling..."
+              : confirmDiscard
+                ? "Confirm cancel"
+                : "Cancel and remove draft"}
+          </button>
+        ) : null}
       </div>
     </section>
   );

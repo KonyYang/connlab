@@ -12,6 +12,55 @@
   background: var(--color-surface);
 }
 
+.project-workbench-status {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.project-workbench-status h3,
+.project-workbench-status p {
+  margin: 0;
+}
+
+.project-workbench-status p {
+  color: var(--color-ink-muted);
+}
+
+.project-workbench-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.project-workbench-status-grid div {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.project-workbench-status-grid dt {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-workbench-status-grid dd {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+.action-row {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .project-summary-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(420px, 0.9fr);
@@ -709,6 +758,7 @@
 
 @media (max-width: 960px) {
   .project-summary-grid,
+  .project-workbench-status-grid,
   .workflow-stepper,
   .precheck-summary,
   .operator-panel,

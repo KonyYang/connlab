@@ -20,6 +20,7 @@ from backend.modules.ltr import (
     family_stem,
     next_monthly_dl_number,
     parse_ltr_number,
+    validate_new_registration_number,
 )
 
 
@@ -151,24 +152,39 @@ class LtrRegistrationPreviewService:
         command: PreviewLtrRegistrationCommand,
     ) -> LtrRegistrationPreview:
         """Return readiness-only preflight for normal registration."""
-        readiness = self._readiness.evaluate_project(project_id, None)
+        proposed_number = _normal_ltr_number(command.proposed_ltr_number)
+        readiness = self._readiness.evaluate_project(project_id, proposed_number)
+        project_ltrs = self._ltrs.list_by_project(project_id)
+        local_numbers = _normalized_ltr_numbers(
+            ltr.ltr_number for ltr in self._ltrs.search("DL-")
+        )
+        conflicts = (
+            _conflicts(
+                proposed_number=proposed_number,
+                project_ltrs=project_ltrs,
+                local_numbers=local_numbers,
+                workbook_numbers=(),
+            )
+            if proposed_number
+            else ()
+        )
         warnings = tuple(field.operator_action for field in readiness.warnings)
         return LtrRegistrationPreview(
             project_id=project_id,
-            status=_preview_status(readiness, ()),
-            proposed_ltr_number=None,
+            status=_preview_status(readiness, conflicts),
+            proposed_ltr_number=proposed_number,
             registration_type=LtrRegistrationType.NORMAL,
             mode=command.mode,
             target_write_year_sheet=f"{command.year:04d}",
-            number_preflight_required=False,
-            number_preview_allowed=False,
+            number_preflight_required=proposed_number is not None,
+            number_preview_allowed=proposed_number is not None,
             final_number_reserved=False,
             target_sheet=f"{command.year:04d}",
             target_row=None,
             snapshot_fingerprint=None,
-            source_numbers=(),
+            source_numbers=local_numbers,
             readiness=readiness,
-            conflicts=(),
+            conflicts=conflicts,
             warnings=warnings,
         )
 
@@ -262,6 +278,20 @@ def _associated_ltr_number(value: str) -> str:
         raise LtrPreviewError(str(exc)) from exc
     if not parsed.is_associated_dl:
         raise LtrPreviewError("Associated LTR preflight requires a DL suffix number.")
+    return parsed.normalized
+
+
+def _normal_ltr_number(value: str | None) -> str | None:
+    """Return a normalized base DL number for a normal registration."""
+    if not value:
+        return None
+    try:
+        validate_new_registration_number(value)
+        parsed = parse_ltr_number(value)
+    except LtrNumberError as exc:
+        raise LtrPreviewError(str(exc)) from exc
+    if not parsed.is_base_monthly_dl:
+        raise LtrPreviewError("Normal LTR registration requires a base DL number.")
     return parsed.normalized
 
 

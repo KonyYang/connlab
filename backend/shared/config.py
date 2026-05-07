@@ -27,6 +27,26 @@ class LtrWorkbookSettings:
     template_sheet_name: str | None = None
     sheet_bootstrap_clear_start_row: int = 2
 
+    def safe_summary(self) -> dict[str, object]:
+        """Return settings suitable for logs or diagnostics without secrets."""
+        return {
+            "path": str(self.path) if self.path else None,
+            "mode": self.mode,
+            "write_enabled": self.write_enabled,
+            "lock_dir": str(self.lock_dir) if self.lock_dir else None,
+            "lock_timeout_seconds": self.lock_timeout_seconds,
+            "backup_dir": str(self.backup_dir) if self.backup_dir else None,
+            "modify_password_configured": self.modify_password is not None,
+            "require_operator_confirmation_for_year_sheet_bootstrap": (
+                self.require_operator_confirmation_for_year_sheet_bootstrap
+            ),
+            "allow_system_assisted_create_year_sheet": (
+                self.allow_system_assisted_create_year_sheet
+            ),
+            "template_sheet_name_configured": self.template_sheet_name is not None,
+            "sheet_bootstrap_clear_start_row": self.sheet_bootstrap_clear_start_row,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class Settings:
@@ -130,11 +150,12 @@ def _load_ltr_workbook_settings(
             os.getenv("CONNLAB_LTR_WORKBOOK_LOCK_DIR", str(config.get("lock_dir", ""))),
             base_dir,
         ),
-        lock_timeout_seconds=int(
+        lock_timeout_seconds=_positive_int_setting(
+            "lock_timeout_seconds",
             os.getenv(
                 "CONNLAB_LTR_WORKBOOK_LOCK_TIMEOUT_SECONDS",
                 str(config.get("lock_timeout_seconds", 120)),
-            )
+            ),
         ),
         backup_dir=_optional_path(
             os.getenv("CONNLAB_LTR_WORKBOOK_BACKUP_DIR", str(config.get("backup_dir", ""))),
@@ -155,7 +176,10 @@ def _load_ltr_workbook_settings(
             bool(config.get("allow_system_assisted_create_year_sheet", False)),
         ),
         template_sheet_name=_optional_secret(str(config.get("template_sheet_name", ""))),
-        sheet_bootstrap_clear_start_row=int(config.get("sheet_bootstrap_clear_start_row", 2)),
+        sheet_bootstrap_clear_start_row=_positive_int_setting(
+            "sheet_bootstrap_clear_start_row",
+            str(config.get("sheet_bootstrap_clear_start_row", 2)),
+        ),
     )
 
 
@@ -180,3 +204,14 @@ def _bool_setting(raw_value: str | None, default: bool) -> bool:
     if raw_value is None:
         return default
     return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _positive_int_setting(name: str, raw_value: str) -> int:
+    """Parse a positive integer local setting."""
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer.") from exc
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer.")
+    return value

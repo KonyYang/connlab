@@ -103,3 +103,17 @@ class LtrWorkbookSnapshot:
     sheet_strategy: str
     existing_ltr_numbers: tuple[str, ...]
     unsupported_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExcelStructureProbeResult:
+    """Read-only workbook structure probe result."""
+
+    workbook_path: Path
+    sheet_names: tuple[str, ...]
+    matched_sheet_names: tuple[str, ...]
+    observed_headers: tuple[str, ...]
+    missing_headers: tuple[str, ...]
+    missing_date_headers: tuple[str, ...]
+    valid: bool
+    failure_reason: str | None = None

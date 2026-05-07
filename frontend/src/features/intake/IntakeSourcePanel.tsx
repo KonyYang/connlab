@@ -61,18 +61,6 @@ export function IntakeSourcePanel({
             <UiIcon name="outlook" />
             {importing ? "Importing from Outlook..." : "Import from Outlook"}
           </button>
-          <button
-            className={sourceMode === "word" ? "source-button source-button-active" : "source-button"}
-            disabled={importing}
-            type="button"
-            onClick={() => {
-              onSelectSourceMode("word");
-              wordInputRef.current?.click();
-            }}
-          >
-            <UiIcon name="upload" />
-            {importing && sourceMode === "word" ? "Uploading application form..." : "Upload application form"}
-          </button>
         </div>
         {importError ? <p className="intake-error">{importError}</p> : null}
       </section>

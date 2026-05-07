@@ -105,7 +105,11 @@ class LtrLocalCommitService:
         if preview.status == "blocked":
             raise LtrLocalCommitError("LTR preview is blocked by missing readiness fields.")
         if preview.status == "conflict":
-            raise LtrLocalCommitError("LTR preview has conflicts and cannot be committed.")
+            detail = "; ".join(preview.conflicts)
+            raise LtrLocalCommitError(
+                "LTR preview has conflicts and cannot be committed."
+                + (f" {detail}" if detail else "")
+            )
 
         ltr = self._ltr_service.register_ltr(
             project_id,

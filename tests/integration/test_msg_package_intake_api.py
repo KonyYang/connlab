@@ -797,6 +797,69 @@ def test_intake_asset_download_api_returns_file_with_original_name(
         engine.dispose()
 
 
+def test_intake_asset_download_api_for_msg_uses_binary_download_headers(
+    tmp_path: Path,
+) -> None:
+    """The download endpoint forces `.msg` files to download as binary files."""
+    file_content = b"test msg file content"
+    stored_file = tmp_path / "source.msg"
+    stored_file.write_bytes(file_content)
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        """Yield one test database session."""
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        with session_factory() as session:
+            asset_repo = IntakeAssetRepository(session)
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="asset-msg-download",
+                    package_id="pkg-msg-download",
+                    original_name="Original Source.msg",
+                    stored_path=stored_file,
+                    extension=".msg",
+                    mime_type="application/vnd.ms-outlook",
+                    size_bytes=len(file_content),
+                    sha256="f" * 64,
+                    asset_role=IntakeAssetRole.EMAIL_SOURCE,
+                )
+            )
+            session.commit()
+
+        response = client.get("/api/intake-assets/asset-msg-download/download")
+
+        assert response.status_code == 200
+        assert response.content == file_content
+        assert response.headers["content-type"].lower().startswith("application/octet-stream")
+        content_disposition = response.headers["content-disposition"].lower()
+        assert "filename" in content_disposition
+        assert "filename*" in content_disposition
+        assert "source.msg" in content_disposition
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_msg_package_import_api_rejects_non_msg_upload(tmp_path: Path) -> None:
     """The API rejects non-msg files before intake records are created."""
     settings = Settings(

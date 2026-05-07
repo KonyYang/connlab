@@ -82,14 +82,19 @@ def test_ltr_workbook_snapshot_rejects_corrupt_xlsx(tmp_path: Path) -> None:
 
 
 def test_ltr_workbook_gateway_has_no_write_method() -> None:
-    """TASK_041 must remain read-only."""
+    """The workbook gateway must remain read-only."""
     public_methods = {
         name
         for name in dir(ExcelWorkbookGateway)
         if not name.startswith("_") and callable(getattr(ExcelWorkbookGateway, name))
     }
 
-    assert public_methods == {"read_ltr_workbook_snapshot", "read_workbook"}
+    assert public_methods == {
+        "probe_structure",
+        "read_ltr_workbook_snapshot",
+        "read_workbook",
+    }
+    assert not any("write" in name or "save" in name for name in public_methods)
 
 
 def _write_minimal_xlsx(

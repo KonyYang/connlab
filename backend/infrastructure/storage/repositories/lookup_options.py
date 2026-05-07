@@ -62,6 +62,24 @@ class LookupOptionRepository:
             grouped.setdefault(row.group_key, []).append(_option_to_domain(row))
         return grouped
 
+    def upsert_many(self, options: tuple[LookupOption, ...]) -> None:
+        """Create or update lookup options by group and value."""
+        if not options:
+            return
+        existing = {
+            (row.group_key, row.value): row
+            for row in self._session.scalars(select(LookupOptionModel)).all()
+        }
+        for option in options:
+            row = existing.get((option.group_key, option.value))
+            if row is None:
+                self._session.add(_option_to_model(option))
+                continue
+            row.label = option.label
+            row.sort_order = option.sort_order
+            row.active = option.active
+        self._session.flush()
+
 
 def _option_to_model(option: LookupOption) -> LookupOptionModel:
     """Convert a lookup option to a database model."""

@@ -8,10 +8,11 @@ import {
   type IntakeSessionState
 } from "./features/intake/intakeSession";
 import { IntakeInboxPage } from "./pages/IntakeInboxPage";
-import { IntakeCaseReviewPage, type PrecheckBackSnapshot } from "./pages/IntakeCaseReviewPage";
+import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
+import { getIntakePackageDetail, type ProjectCreationDraft } from "./api/client";
 import "./styles.css";
 
 type Route =
@@ -54,6 +55,10 @@ function navigate(path: string): void {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+function draftSourceMode(draft: ProjectCreationDraft): "msg" | "word" {
+  return draft.source_type === "direct_application_form" ? "word" : "msg";
+}
+
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
   const [intakeSession, setIntakeSession] =
@@ -80,6 +85,33 @@ export default function App(): ReactElement {
     <AppShell activeRoute={activeRoute}>
       {route.name === "projects" && (
         <ProjectListPage
+          onContinueDraft={async (draft) => {
+            const detail = await getIntakePackageDetail(draft.package_id);
+            setIntakeSession({
+              packageImport: {
+                package_id: detail.package_id,
+                source_type: detail.source_type,
+                package_status: detail.package_status,
+                source_original_name: detail.source_original_name,
+                subject: detail.subject,
+                sender_name: detail.sender_name,
+                sender_email: detail.sender_email,
+                received_at: detail.received_at,
+                asset_count: detail.asset_count,
+                candidate_count: detail.candidate_count,
+                next_action: draft.current_step === "precheck"
+                  ? "review_selected_application_form"
+                  : "review_application_form_candidates",
+                assets: detail.assets
+              },
+              selectedAssetId: draft.selected_form_asset_id ?? null,
+              selectedWordAssetId: draft.selected_form_asset_id ?? null,
+              selectedPrecheckCaseId: draft.active_case_id ?? null,
+              sourceMode: draftSourceMode(draft),
+              directWordName: draft.source_type === "direct_application_form" ? draft.source_name : null
+            });
+            navigate("/intake");
+          }}
           onNewProject={() => navigate("/intake")}
           onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)}
         />
@@ -87,14 +119,17 @@ export default function App(): ReactElement {
       {route.name === "intake" && (
         <IntakeInboxPage
           session={intakeSession}
-          onSessionChange={setIntakeSession}
-          onOpenPackage={(id, caseId) => {
-            setIntakeSession((current) => ({
-              ...current,
-              selectedPrecheckCaseId: caseId ?? current.selectedPrecheckCaseId
-            }));
-            navigate(`/intake/${encodeURIComponent(id)}/case-review`);
+          onExit={() => {
+            clearIntakeSession();
+            setIntakeSession(EMPTY_INTAKE_SESSION);
+            navigate("/projects");
           }}
+          onProjectCreated={(projectId) => {
+            clearIntakeSession();
+            setIntakeSession(EMPTY_INTAKE_SESSION);
+            navigate(`/projects/${encodeURIComponent(projectId)}`);
+          }}
+          onSessionChange={setIntakeSession}
         />
       )}
       {route.name === "intakePackage" && (
@@ -108,14 +143,10 @@ export default function App(): ReactElement {
         <IntakeCaseReviewPage
           initialCaseId={intakeSession.selectedPrecheckCaseId}
           packageId={route.packageId}
-          onBack={(snapshot?: PrecheckBackSnapshot) => {
-            setIntakeSession((current) => ({
-              ...current,
-              selectedAssetId: snapshot?.selectedFormAssetId ?? current.selectedAssetId,
-              selectedWordAssetId: snapshot?.selectedFormAssetId ?? current.selectedWordAssetId,
-              selectedPrecheckCaseId: snapshot?.caseId ?? current.selectedPrecheckCaseId
-            }));
-            navigate("/intake");
+          onExit={() => {
+            clearIntakeSession();
+            setIntakeSession(EMPTY_INTAKE_SESSION);
+            navigate("/projects");
           }}
           onProjectConfirmed={() => {
             clearIntakeSession();

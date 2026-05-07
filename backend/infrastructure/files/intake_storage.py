@@ -37,6 +37,23 @@ class IntakeStorage:
         safe_package_id = self._safe_package_id(package_id)
         return self._intake_root / safe_package_id
 
+    def delete_package(self, package_id: str) -> bool:
+        """Delete one ConnLab-owned intake package directory if it exists."""
+        target = self.package_root(package_id).resolve()
+        root = self._intake_root.resolve()
+        try:
+            target.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"Refusing to delete intake path outside storage root: {target}") from exc
+        if target == root:
+            raise ValueError("Refusing to delete the intake storage root.")
+        if not target.exists():
+            return False
+        if not target.is_dir():
+            raise ValueError(f"Intake package path is not a directory: {target}")
+        shutil.rmtree(target)
+        return True
+
     def source_dir(self, package_id: str) -> Path:
         """Return the source directory for one intake package."""
         return self.package_root(package_id) / "source"

@@ -10,6 +10,9 @@ from backend.infrastructure.storage.repositories.intake_package import (
     IntakeDraftRepository,
     IntakePackageRepository,
 )
+from backend.infrastructure.storage.repositories.external_resources import (
+    ExternalResourceRepository,
+)
 from backend.infrastructure.storage.repositories.lookup_options import LookupOptionRepository
 from backend.infrastructure.storage.repositories.precheck import PrecheckResultRepository
 from backend.infrastructure.storage.repositories.project import ProjectRepository
@@ -21,6 +24,7 @@ from backend.infrastructure.storage.repositories.records import (
 
 __all__ = [
     "ApplicationFormRepository",
+    "ExternalResourceRepository",
     "FileAssetRepository",
     "IntakeAssetRepository",
     "IntakeCaseRepository",

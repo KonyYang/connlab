@@ -7,6 +7,8 @@ from datetime import date
 from pathlib import Path
 
 from backend.domain.enums import (
+    ExternalResourceType,
+    ExternalResourceValidationStatus,
     FileAssetType,
     IntakeAssetRole,
     IntakeCaseStatus,
@@ -222,3 +224,18 @@ class IntakeDraft:
     parser_warnings_json: str | None = None
     manual_overrides_json: str | None = None
     updated_at: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalResource:
+    """Registered external resource used by controlled ConnLab workflows."""
+
+    resource_id: str
+    resource_type: ExternalResourceType
+    path: Path
+    active: bool = True
+    validation_status: ExternalResourceValidationStatus = (
+        ExternalResourceValidationStatus.NOT_VALIDATED
+    )
+    last_validated_at: str | None = None
+    validation_failure_reason: str | None = None

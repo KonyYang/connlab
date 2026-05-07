@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from docx import Document
+from docx.shared import Inches
 
 from backend.api.dependencies import get_session, get_settings
 from backend.api.routes_intake import router as intake_router
@@ -18,9 +20,25 @@ from backend.infrastructure.storage.database import (
     init_db,
 )
 from backend.infrastructure.storage.repositories.intake_package import (
+    IntakeAssetRepository,
     IntakeCaseRepository,
     IntakeDraftRepository,
     IntakePackageRepository,
+)
+from backend.infrastructure.storage.repositories.intake import (
+    ApplicationFormRepository,
+    SampleInfoRepository,
+)
+from backend.infrastructure.storage.repositories.project import ProjectRepository
+from backend.infrastructure.storage.repositories import LtrRecordRepository
+from backend.domain import (
+    IntakeAsset,
+    IntakeAssetRole,
+    IntakePackage,
+    IntakePackageSourceType,
+    IntakePackageStatus,
+    LtrRecord,
+    LtrStatus,
 )
 from backend.shared.config import Settings
 
@@ -240,6 +258,291 @@ def test_manual_intake_api_returns_missing_required_fields(tmp_path: Path) -> No
             draft = IntakeDraftRepository(session).get(payload["draft_id"])
             assert draft is not None
             assert "Corrected connector" in (draft.manual_overrides_json or "")
+            project_id = confirm_after_update_response.json()["project_id"]
+            project = ProjectRepository(session).get(project_id)
+            forms = ApplicationFormRepository(session).list_by_project(project_id)
+            samples = SampleInfoRepository(session).list_by_project(project_id)
+            assert project is not None
+            assert project.product_name == "Corrected connector"
+            assert project.requestor == "White"
+            assert project.business_unit == "Power Solutions"
+            assert forms[0].requested_testing == "Bend testing"
+            assert forms[0].requester == "White"
+            assert samples[0].product_name == "Corrected connector"
+            assert samples[0].part_number == "PN-082"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_new_project_application_draft_endpoint_reuses_durable_case(tmp_path: Path) -> None:
+    """TASK_102 endpoint prepares the single-page editor through API routing."""
+    settings, engine, session_factory = _test_database(tmp_path)
+    app.dependency_overrides[get_session] = _override_session(session_factory)
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={"product_name": "", "requester": ""},
+        )
+        assert create_response.status_code == 201
+        created = create_response.json()
+
+        draft_response = client.post(
+            f"/api/intake-packages/{created['package_id']}/application-draft"
+        )
+
+        assert draft_response.status_code == 200
+        payload = draft_response.json()
+        assert payload["package_id"] == created["package_id"]
+        assert payload["case_id"] == created["case_id"]
+        assert payload["draft_id"] == created["draft_id"]
+        assert payload["next_action"] == "edit_application_information"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_new_project_application_draft_endpoint_defaults_highest_ranked_candidate(
+    tmp_path: Path,
+) -> None:
+    """The single-page editor opens with the strongest candidate form by default."""
+    settings, engine, session_factory = _test_database(tmp_path)
+    app.dependency_overrides[get_session] = _override_session(session_factory)
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        form_a = _create_application_docx(tmp_path / "candidate-a.docx")
+        form_b = _create_application_docx(tmp_path / "candidate-b.docx")
+        with session_factory() as session:
+            package_repo = IntakePackageRepository(session)
+            asset_repo = IntakeAssetRepository(session)
+            package_repo.create(
+                IntakePackage(
+                    package_id="pkg-draft-default",
+                    source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                    status=IntakePackageStatus.READY_FOR_REVIEW,
+                    source_original_name="request.msg",
+                    source_stored_path=tmp_path / "request.msg",
+                )
+            )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="asset-low",
+                    package_id="pkg-draft-default",
+                    original_name=form_a.name,
+                    stored_path=form_a,
+                    extension=".docx",
+                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    size_bytes=form_a.stat().st_size,
+                    sha256="a" * 64,
+                    asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,
+                    candidate_score=60,
+                )
+            )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="asset-high",
+                    package_id="pkg-draft-default",
+                    original_name=form_b.name,
+                    stored_path=form_b,
+                    extension=".docx",
+                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    size_bytes=form_b.stat().st_size,
+                    sha256="b" * 64,
+                    asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,
+                    candidate_score=90,
+                )
+            )
+            session.commit()
+
+        draft_response = client.post(
+            "/api/intake-packages/pkg-draft-default/application-draft"
+        )
+
+        assert draft_response.status_code == 200
+        payload = draft_response.json()
+        assert payload["package_id"] == "pkg-draft-default"
+        assert payload["selected_form_asset_id"] == "asset-high"
+        assert payload["next_action"] == "edit_application_information"
+
+        review_response = client.get("/api/intake-packages/pkg-draft-default/case-review")
+        assert review_response.status_code == 200
+        cases = review_response.json()["cases"]
+        assert len(cases) == 1
+        assert cases[0]["selected_form_asset_id"] == "asset-high"
+        field_values = {field["key"]: field["value"] for field in cases[0]["fields"]}
+        assert field_values["form_no"] == "E-3718"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_unsaved_creation_draft_discard_removes_records_and_files(tmp_path: Path) -> None:
+    """Exit without saving removes ConnLab-owned temporary intake state."""
+    settings, engine, session_factory = _test_database(tmp_path)
+    app.dependency_overrides[get_session] = _override_session(session_factory)
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={"product_name": "Connector sample", "requester": "White"},
+        )
+        assert create_response.status_code == 201
+        created = create_response.json()
+        package_id = created["package_id"]
+        package_dir = settings.data_dir / "intake" / package_id
+        assert package_dir.exists()
+
+        discard_response = client.post(
+            f"/api/intake-packages/{package_id}/draft/discard"
+        )
+
+        assert discard_response.status_code == 200
+        payload = discard_response.json()
+        assert payload["action"] == "discard_unsaved"
+        assert payload["deleted_package"] is True
+        assert payload["deleted_assets"] == 1
+        assert payload["deleted_cases"] == 1
+        assert payload["deleted_drafts"] == 1
+        assert payload["deleted_files"] is True
+        assert "imported copies were removed" in payload["message"]
+        assert not package_dir.exists()
+        with session_factory() as session:
+            assert IntakePackageRepository(session).get(package_id) is None
+            assert IntakeAssetRepository(session).list_by_package(package_id) == []
+            assert IntakeCaseRepository(session).list_by_package(package_id) == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def _create_application_docx(path: Path) -> Path:
+    """Create a small real application form for endpoint tests."""
+    document = Document()
+    header = document.sections[0].header.add_table(rows=1, cols=2, width=Inches(6))
+    header.cell(0, 1).text = "Laboratory Testing Request"
+    footer = document.sections[0].footer
+    footer.paragraphs[0].text = "Form No. E-3718 Rev H"
+    table = document.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Form No."
+    table.cell(0, 1).text = "E-3718"
+    table.cell(1, 0).text = "Requested By"
+    table.cell(1, 1).text = "Alice Requestor"
+    document.save(path)
+    return path
+
+
+def test_saved_creation_draft_is_not_removed_by_unsaved_discard(tmp_path: Path) -> None:
+    """Save draft protects the package from the unsaved-session discard path."""
+    settings, engine, session_factory = _test_database(tmp_path)
+    app.dependency_overrides[get_session] = _override_session(session_factory)
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={"product_name": "Connector sample", "requester": "White"},
+        )
+        assert create_response.status_code == 201
+        package_id = create_response.json()["package_id"]
+        package_dir = settings.data_dir / "intake" / package_id
+
+        save_response = client.post(f"/api/intake-packages/{package_id}/draft/save")
+        assert save_response.status_code == 200
+        saved = save_response.json()
+        assert saved["action"] == "save_draft"
+        assert saved["package_status"] == "draft_saved"
+
+        discard_response = client.post(
+            f"/api/intake-packages/{package_id}/draft/discard"
+        )
+
+        assert discard_response.status_code == 400
+        assert package_dir.exists()
+        with session_factory() as session:
+            package = IntakePackageRepository(session).get(package_id)
+            assert package is not None
+            assert package.status.value == "draft_saved"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_saved_creation_drafts_list_returns_continue_metadata(tmp_path: Path) -> None:
+    """Drafts / In Progress API lists saved drafts with continuation metadata."""
+    settings, engine, _ = _test_database(tmp_path)
+    test_app = FastAPI(title="Test App")
+    test_app.include_router(intake_router)
+    test_app.include_router(intake_review_router)
+    session_factory = create_session_factory(engine)
+    test_app.dependency_overrides[get_session] = _override_session(session_factory)
+    test_app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(test_app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={"product_name": "Connector sample", "requester": "White"},
+        )
+        assert create_response.status_code == 201
+        created = create_response.json()
+
+        save_response = client.post(
+            f"/api/intake-packages/{created['package_id']}/draft/save"
+        )
+        assert save_response.status_code == 200
+
+        list_response = client.get("/api/project-creation-drafts")
+
+        assert list_response.status_code == 200
+        drafts = list_response.json()
+        assert len(drafts) == 1
+        draft = drafts[0]
+        assert draft["package_id"] == created["package_id"]
+        assert draft["product_name"] == "Connector sample"
+        assert draft["requester"] == "White"
+        assert draft["current_step"] == "precheck"
+        assert draft["selected_form_asset_id"] == created["selected_form_asset_id"]
+        assert draft["active_case_id"] == created["case_id"]
+    finally:
+        test_app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_saved_creation_draft_discard_endpoint_removes_draft(tmp_path: Path) -> None:
+    """Drafts / In Progress discard removes a saved draft through its own endpoint."""
+    settings, engine, session_factory = _test_database(tmp_path)
+    app.dependency_overrides[get_session] = _override_session(session_factory)
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={"product_name": "Connector sample", "requester": "White"},
+        )
+        assert create_response.status_code == 201
+        package_id = create_response.json()["package_id"]
+        assert client.post(f"/api/intake-packages/{package_id}/draft/save").status_code == 200
+
+        discard_response = client.post(
+            f"/api/project-creation-drafts/{package_id}/discard"
+        )
+
+        assert discard_response.status_code == 200
+        payload = discard_response.json()
+        assert payload["action"] == "discard_saved_draft"
+        assert "Saved creation draft discarded" in payload["message"]
+        assert client.get("/api/project-creation-drafts").json() == []
+        with session_factory() as session:
+            assert IntakePackageRepository(session).get(package_id) is None
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -362,6 +665,104 @@ def test_review_fields_persists_requested_testing_rows(tmp_path: Path) -> None:
             assert overrides["requested_testing_rows"][0]["test_to_be_performed"] == "Qualification test"
             # Compatibility field should also be in overrides
             assert "requested_testing" in overrides
+    finally:
+        test_app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_review_fields_returns_conflict_after_registered_ltr(tmp_path: Path) -> None:
+    """PATCH /review-fields rejects frozen base edits after registered LTR."""
+    settings, engine, session_factory = _test_database(tmp_path)
+
+    test_app = FastAPI(title="Test App")
+    test_app.include_router(intake_router)
+    test_app.include_router(intake_review_router)
+    test_app.dependency_overrides[get_session] = _override_session(session_factory)
+    test_app.dependency_overrides[get_settings] = lambda: settings
+
+    client = TestClient(test_app)
+
+    try:
+        create_response = client.post(
+            "/api/intake-packages/manual",
+            json={
+                "product_name": "Connector sample",
+                "requester": "Test user",
+                "email": "test@example.com",
+                "business_unit": "Power Solutions",
+                "project_no": "PRJ-001",
+            },
+        )
+        assert create_response.status_code == 201
+        created = create_response.json()
+        update_response = client.patch(
+            f"/api/intake-cases/{created['case_id']}/review-fields",
+            json={
+                "fields": {
+                    "form_no": "E-3718",
+                    "revision": "H",
+                    "product_name": "Connector sample",
+                    "requester": "Test user",
+                    "phone": "555-0100",
+                    "request_date": "2026-05-03",
+                    "email": "test@example.com",
+                    "business_unit": "Power Solutions",
+                    "manufacturing_site": "Nantong",
+                    "results_format": "Formal Report (Customer)",
+                    "requested_completion_date": "2026-05-10",
+                    "test_type": "Customer Specific Testing",
+                    "sample_status": "Production",
+                    "project_type": "New Product Development",
+                    "post_testing_disposition": "Keep in the Lab",
+                    "requested_testing": "Bend testing",
+                    "confidential": "No",
+                    "subcontract": "Yes",
+                    "send_copies_recipients": "Team",
+                },
+                "sample_rows": [
+                    {
+                        "product_name": "Connector sample",
+                        "part_number": "PN-100",
+                        "quantity": "20 pcs",
+                    }
+                ],
+            },
+        )
+        assert update_response.status_code == 200
+        confirm_response = client.post(
+            f"/api/intake-cases/{created['case_id']}/confirm",
+            json={"operator_confirmed": True},
+        )
+        assert confirm_response.status_code == 200
+        project_id = confirm_response.json()["project_id"]
+        with session_factory() as session:
+            LtrRecordRepository(session).create(
+                LtrRecord(
+                    ltr_id="ltr-registered-1",
+                    project_id=project_id,
+                    ltr_number="DL-2026-05-001",
+                    status=LtrStatus.REGISTERED,
+                    registered_on=date(2026, 5, 7),
+                )
+            )
+            session.commit()
+
+        review_response = client.get(
+            f"/api/intake-packages/{created['package_id']}/case-review"
+        )
+        assert review_response.status_code == 200
+        review_case = review_response.json()["cases"][0]
+        assert review_case["base_editing_frozen"] is True
+        assert "product_name" in review_case["frozen_field_keys"]
+
+        frozen_update_response = client.patch(
+            f"/api/intake-cases/{created['case_id']}/review-fields",
+            json={"fields": {"product_name": "Renamed connector"}},
+        )
+
+        assert frozen_update_response.status_code == 409
+        assert "revise/exception" in frozen_update_response.json()["detail"]["message"]
+        assert frozen_update_response.json()["detail"]["field_keys"] == ["product_name"]
     finally:
         test_app.dependency_overrides.clear()
         engine.dispose()

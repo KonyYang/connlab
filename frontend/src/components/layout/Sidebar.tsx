@@ -3,7 +3,9 @@ import { UiIcon, type UiIconName } from "../common/UiIcon";
 
 type SidebarProps = {
   activeRoute: string;
+  collapsed?: boolean;
   onNavigate?: (path: string) => void;
+  onToggleCollapsed?: () => void;
 };
 
 type NavItem = {
@@ -25,12 +27,26 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Settings", route: "settings", hint: null, icon: "settings", disabled: true }
 ];
 
-export function Sidebar({ activeRoute, onNavigate }: SidebarProps): ReactElement {
+export function Sidebar({
+  activeRoute,
+  collapsed,
+  onNavigate,
+  onToggleCollapsed
+}: SidebarProps): ReactElement {
   return (
-    <aside className="sidebar" aria-label="Primary navigation">
+    <aside className={`sidebar${collapsed ? " sidebar-collapsed" : ""}`} aria-label="Primary navigation">
       <div className="sidebar-brand">
         <img className="brand-mark" src="/connlab-icon.svg" alt="" aria-hidden="true" />
         <strong>ConnLab</strong>
+        <button
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="sidebar-toggle"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          type="button"
+          onClick={onToggleCollapsed}
+        >
+          <UiIcon name="columns" />
+        </button>
       </div>
       <nav className="sidebar-nav">
         {NAV_ITEMS.map((item) => {

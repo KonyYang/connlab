@@ -5,12 +5,18 @@ import type { IntakeAttachmentViewModel } from "./intakeSelectors";
 
 type AttachmentListProps = {
   attachments: IntakeAttachmentViewModel[];
-  packageLoaded: boolean;
+  importingAssetId?: string | null;
+  onImport?: (attachment: IntakeAttachmentViewModel) => void;
+  onOpen?: (attachment: IntakeAttachmentViewModel) => void;
   onSelect: (attachment: IntakeAttachmentViewModel) => void;
+  packageLoaded: boolean;
 };
 
 export function AttachmentList({
   attachments,
+  importingAssetId,
+  onImport,
+  onOpen,
   onSelect,
   packageLoaded,
 }: AttachmentListProps): ReactElement {
@@ -22,17 +28,32 @@ export function AttachmentList({
       {packageLoaded ? (
         <div className="attachment-list" role="list">
           {attachments.map((attachment) => (
-            <button
+            <div
               className={attachment.selected ? "attachment-row attachment-row-active" : "attachment-row"}
               key={attachment.asset.asset_id}
-              type="button"
-              onClick={() => onSelect(attachment)}
+              onDoubleClick={() => onOpen?.(attachment)}
             >
-              <span className={`file-chip file-chip-${attachment.kind}`}>{attachment.label}</span>
-              <span className="attachment-name">
-                <span className="attachment-title">{attachment.asset.original_name}</span>
-              </span>
-            </button>
+              <button
+                className="attachment-select-button"
+                type="button"
+                onClick={() => onSelect(attachment)}
+              >
+                <span className={`file-chip file-chip-${attachment.kind}`}>{attachment.label}</span>
+                <span className="attachment-name">
+                  <span className="attachment-title">{attachment.asset.original_name}</span>
+                </span>
+              </button>
+              {attachment.word && onImport ? (
+                <button
+                  className="attachment-import-button ui-compact-action"
+                  disabled={importingAssetId === attachment.asset.asset_id}
+                  type="button"
+                  onClick={() => onImport?.(attachment)}
+                >
+                  {importingAssetId === attachment.asset.asset_id ? "Importing" : "Import"}
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       ) : (
