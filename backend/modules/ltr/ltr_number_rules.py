@@ -11,7 +11,6 @@ class LtrNumberKind(StrEnum):
     """Supported LTR number families."""
 
     STANDARD_DL = "standard_dl"
-    W_PREFIX = "w_prefix"
 
 
 class LtrNumberError(ValueError):
@@ -29,7 +28,6 @@ class ParsedLtrNumber:
     month: int | None = None
     sequence: int | None = None
     suffix: str | None = None
-    w_value: str | None = None
 
     @property
     def is_base_monthly_dl(self) -> bool:
@@ -43,11 +41,10 @@ class ParsedLtrNumber:
 
 
 _STANDARD_DL_PATTERN = re.compile(
-    r"^DL-(?P<year>\d{4})-(?P<month>\d{2})-(?P<sequence>\d{3})(?P<suffix>[A-Z0-9]+)?$",
+    r"^DL-(?P<year>\d{4})-(?P<month>\d{2})-(?P<sequence>\d{3})(?P<suffix>[A-Z][A-Z0-9]*)?$",
     flags=re.IGNORECASE,
 )
-_W_PREFIX_PATTERN = re.compile(r"^W(?P<value>[A-Z0-9]+)$", flags=re.IGNORECASE)
-_ALNUM_TOKEN_PATTERN = re.compile(r"^[A-Z0-9]+$", flags=re.IGNORECASE)
+_ALNUM_TOKEN_PATTERN = re.compile(r"^[A-Z][A-Z0-9]*$", flags=re.IGNORECASE)
 
 
 def parse_ltr_number(value: str) -> ParsedLtrNumber:
@@ -56,16 +53,8 @@ def parse_ltr_number(value: str) -> ParsedLtrNumber:
     match = _STANDARD_DL_PATTERN.fullmatch(normalized)
     if match:
         return _parse_standard_dl(normalized, match)
-    match = _W_PREFIX_PATTERN.fullmatch(normalized)
-    if match:
-        return ParsedLtrNumber(
-            raw=value,
-            normalized=normalized,
-            kind=LtrNumberKind.W_PREFIX,
-            w_value=match.group("value"),
-        )
     raise LtrNumberError(
-        "LTR number must match DL-YYYY-MM-NNN, DL-YYYY-MM-NNN suffix, or W-prefix format."
+        "LTR number must match DL-YYYY-MM-NNN or DL-YYYY-MM-NNN with letter-led suffix."
     )
 
 
@@ -90,7 +79,12 @@ def family_stem(value: str) -> str:
 
 def validate_new_registration_number(value: str) -> bool:
     """Validate a new workbook registration number."""
-    parsed = parse_ltr_number(value)
+    try:
+        parsed = parse_ltr_number(value)
+    except LtrNumberError as exc:
+        raise LtrNumberError(
+            "New LTR registrations must use DL-YYYY-MM-NNN format."
+        ) from exc
     if parsed.kind is not LtrNumberKind.STANDARD_DL:
         raise LtrNumberError("New LTR registrations must use DL-YYYY-MM-NNN format.")
     return True

@@ -1482,7 +1482,11 @@ Prior completed note:
 
 Next recommended action:
 
-- Propose and review the next controlled task after `TASK_139` (approval/apply workflow remains out of scope).
+- Review the proposed Phase 10C New Project intake-flow cleanup sequence:
+  - `TASK_140_NEW_PROJECT_DRAFT_FRICTION_CLEANUP`
+  - `TASK_141_EMAIL_PACKAGE_DUPLICATE_DETECTION_BACKEND`
+  - `TASK_142_EMAIL_PACKAGE_DUPLICATE_RESOLUTION_UI`
+- If approved, open `TASK_140` first. Do not implement `TASK_141` or `TASK_142` before their prerequisites are complete and explicitly approved.
 
 Implemented LTR number rule clarification:
 

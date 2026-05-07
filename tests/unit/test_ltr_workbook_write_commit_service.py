@@ -96,10 +96,13 @@ def test_ltr_workbook_commit_associated_existing_full_replaces_across_year_sheet
 
 
 def test_ltr_workbook_commit_rejects_invalid_specified_input() -> None:
-    """Non-alphanumeric non-DL inputs are rejected."""
+    """Non-letter-led token and non-DL inputs are rejected."""
     service, _, _ = _service({"2026": []})
 
-    with pytest.raises(LtrWorkbookWriteCommitError, match="DL number or an alphanumeric"):
+    with pytest.raises(
+        LtrWorkbookWriteCommitError,
+        match="DL number or a letter-led alphanumeric",
+    ):
         service.commit_project("P1", _command(number_input="A-9"))
 
 

@@ -227,7 +227,7 @@ def _resolve_number_decision(
             )
             return _suffix_token_decision(session, command, sheet_names, target_sheet, raw_input)
         raise LtrWorkbookWriteCommitError(
-            "Specified LTR input must be a DL number or an alphanumeric suffix token."
+            "Specified LTR input must be a DL number or a letter-led alphanumeric suffix token."
         )
     if parsed.is_base_monthly_dl:
         existing = session.find_ltr_number(parsed.normalized, sheet_names)
@@ -264,7 +264,7 @@ def _resolve_number_decision(
             action="append_associated",
             target_sheet=target_sheet,
         )
-    raise LtrWorkbookWriteCommitError("W-prefix LTR values cannot be committed to the workbook.")
+    raise LtrWorkbookWriteCommitError("Specified LTR number is not supported.")
 
 
 def _auto_base_decision(

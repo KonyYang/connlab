@@ -32,16 +32,6 @@ def test_parse_standard_dl_number() -> None:
     assert validate_ltr_number("DL-2026-04-001") is True
 
 
-def test_parse_w_prefix_number() -> None:
-    """W-prefix values are accepted for existing or special external numbers."""
-    parsed = parse_ltr_number("w123")
-
-    assert parsed.kind is LtrNumberKind.W_PREFIX
-    assert parsed.normalized == "W123"
-    assert parsed.w_value == "123"
-    assert not parsed.is_base_monthly_dl
-
-
 def test_parse_standard_dl_number_with_suffix() -> None:
     """Standard DL values can carry an alphanumeric association suffix."""
     parsed = parse_ltr_number("DL-2026-04-001A9")
@@ -64,6 +54,7 @@ def test_parse_standard_dl_number_with_suffix() -> None:
         ("DL-26-4-1", "LTR number must match"),
         ("abc", "LTR number must match"),
         ("DL-2026-04-001-A", "LTR number must match"),
+        ("DL-2026-04-0011", "LTR number must match"),
         ("DL-2026-13-001", "DL month must be between 01 and 12"),
         ("DL-2026-04-000", "DL sequence must be between 001 and 999"),
     ],
@@ -131,7 +122,8 @@ def test_ltr_number_rules_are_pure_python_boundary() -> None:
     [
         ("A9", True),
         ("sample2", True),
-        ("123", True),
+        ("W123", True),
+        ("123", False),
         ("A-9", False),
         ("A 9", False),
         ("A_9", False),
