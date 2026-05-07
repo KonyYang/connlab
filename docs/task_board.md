@@ -1,9 +1,9 @@
 ﻿# ConnLab Task Board
 
-> Status: TASK_139 plan ready for review; LTR frozen-field revision request record
-> Last Updated: 2026-05-07
+> Status: TASK_139 complete; LTR frozen-field revision request record
+> Last Updated: 2026-05-08
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: None - TASK_139 plan under user review
+> Current Active Task: None - awaiting next approved task
 > Current Phase: `Phase 10B - LTR workbook write hardening`
 
 ---
@@ -1379,7 +1379,7 @@ Why this is next:
 
 Active implementation task:
 
-- None (`TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD` is plan-only and awaiting user approval)
+- None (`TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD` is complete; awaiting next approved task)
 
 Reason:
 
@@ -1475,9 +1475,14 @@ Prior completed note:
 - `TASK_104_NEW_PROJECT_LTR_AND_FOLDER_ONE_ACTION_ORCHESTRATION` is complete. New Project now has a one-action completion path for intake confirmation, LTR registration, folder preview, folder generation, and Workbench routing.
 - Validation: `py -m pytest tests\integration\test_new_project_completion_api.py tests\integration\test_ltr_local_commit_api.py -q` passed; `npm run build` passed from `frontend`. Follow-up TASK_125 full-suite stabilization is complete; `py -m pytest tests\unit tests\integration -q` now passes with 347 tests.
 
+Prior completed note:
+
+- `TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD` is complete. Added a structured frozen-field revision request record path after LTR registration freeze with typed create/list/detail APIs, strict frozen-field validation against `IntakeCaseReviewService` authoritative keys, and persisted backend current-value snapshots plus operator proposed values/reason without mutating intake draft data, project identity, workbook, or folder.
+- Validation: `py -m pytest tests\unit\test_frozen_field_revision_request_service.py tests\integration\test_frozen_field_revision_request_api.py tests\unit\test_intake_case_review_service.py -q` passed, 19 passed; `git diff --check` passed with LF/CRLF working-copy warnings only.
+
 Next recommended action:
 
-- Review `tasks/TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD.md`. If approved, open TASK_139 implementation as the next controlled task. Do not implement it before approval.
+- Propose and review the next controlled task after `TASK_139` (approval/apply workflow remains out of scope).
 
 Implemented LTR number rule clarification:
 

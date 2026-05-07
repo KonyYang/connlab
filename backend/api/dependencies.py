@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.exception_workflow_service import ExceptionWorkflowService
 from backend.application.external_resource_service import ExternalResourceService
+from backend.application.frozen_field_revision_request_service import (
+    FrozenFieldRevisionRequestService,
+)
 from backend.application.intake_asset_download_service import (
     IntakeAssetDownloadService,
 )
@@ -76,6 +79,7 @@ from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
     ExternalResourceRepository,
     FileAssetRepository,
+    FrozenFieldRevisionRequestRepository,
     LtrRecordRepository,
     PrecheckResultRepository,
     ProjectFolderRecordRepository,
@@ -344,6 +348,23 @@ def get_intake_confirmation_service(
         application_form_store=ApplicationFormRepository(session),
         sample_store=SampleInfoRepository(session),
         file_asset_store=FileAssetRepository(session),
+    )
+
+
+def get_frozen_field_revision_request_service(
+    session: Session = Depends(get_session),
+) -> FrozenFieldRevisionRequestService:
+    """Build a frozen-field revision request service for API routes."""
+    return FrozenFieldRevisionRequestService(
+        request_store=FrozenFieldRevisionRequestRepository(session),
+        review_service=IntakeCaseReviewService(
+            package_store=IntakePackageRepository(session),
+            asset_store=IntakeAssetRepository(session),
+            case_store=IntakeCaseRepository(session),
+            draft_store=IntakeDraftRepository(session),
+            ltr_store=LtrRecordRepository(session),
+        ),
+        ltr_store=LtrRecordRepository(session),
     )
 
 

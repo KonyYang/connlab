@@ -1,6 +1,7 @@
 """Pure domain types exported by the ConnLab backend."""
 
 from backend.domain.enums import (
+    FrozenFieldRevisionRequestStatus,
     ExternalResourceType,
     ExternalResourceValidationStatus,
     FileAssetType,
@@ -18,6 +19,7 @@ from backend.domain.models import (
     ApplicationForm,
     ExternalResource,
     FileAsset,
+    FrozenFieldRevisionRequest,
     IntakeAsset,
     IntakeCase,
     IntakeDraft,
@@ -37,6 +39,8 @@ __all__ = [
     "ExternalResourceValidationStatus",
     "FileAsset",
     "FileAssetType",
+    "FrozenFieldRevisionRequest",
+    "FrozenFieldRevisionRequestStatus",
     "IntakeAsset",
     "IntakeAssetRole",
     "IntakeCase",

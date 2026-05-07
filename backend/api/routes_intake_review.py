@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 from typing import Any
+import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.api.dependencies import (
+    get_frozen_field_revision_request_service,
     get_intake_case_review_service,
     get_intake_confirmation_service,
+)
+from backend.application.frozen_field_revision_request_service import (
+    FrozenFieldRevisionRequestNotFoundError,
+    FrozenFieldRevisionRequestService,
+    FrozenFieldRevisionRequestValidationError,
 )
 from backend.application.intake_case_review_service import (
     DraftPrecheckIssue,
@@ -105,6 +112,46 @@ class ConfirmIntakeCaseResponse(BaseModel):
     file_asset_count: int
 
 
+class FrozenFieldRevisionChangeRequest(BaseModel):
+    """One requested frozen-field change."""
+
+    field_key: str
+    proposed_value: Any = None
+
+
+class CreateFrozenFieldRevisionRequestRequest(BaseModel):
+    """Create payload for frozen-field revision request."""
+
+    reason: str
+    requested_by: str | None = None
+    changes: list[FrozenFieldRevisionChangeRequest]
+
+
+class FrozenFieldRevisionChangeResponse(BaseModel):
+    """One stored frozen-field change entry."""
+
+    field_key: str
+    field_label: str | None = None
+    current_value: Any = None
+    proposed_value: Any = None
+
+
+class FrozenFieldRevisionRequestResponse(BaseModel):
+    """Frozen-field revision request response."""
+
+    request_id: str
+    intake_case_id: str
+    project_id: str | None = None
+    ltr_record_id: str | None = None
+    ltr_number: str | None = None
+    status: str
+    requested_by: str | None = None
+    reason: str
+    changes: list[FrozenFieldRevisionChangeResponse]
+    created_at: str
+    updated_at: str
+
+
 @router.get(
     "/api/intake-packages/{package_id}/case-review",
     response_model=IntakeCaseReviewResponse,
@@ -169,6 +216,73 @@ def update_intake_case_review_fields(
                 "field_keys": list(exc.field_keys),
             },
         ) from exc
+
+
+@router.post(
+    "/api/intake-cases/{case_id}/frozen-field-revision-requests",
+    response_model=FrozenFieldRevisionRequestResponse,
+    status_code=201,
+)
+def create_frozen_field_revision_request(
+    case_id: str,
+    request: CreateFrozenFieldRevisionRequestRequest,
+    service: FrozenFieldRevisionRequestService = Depends(get_frozen_field_revision_request_service),
+) -> FrozenFieldRevisionRequestResponse:
+    """Create one frozen-field revision request for a frozen intake case."""
+    try:
+        record = service.create_request(
+            case_id,
+            reason=request.reason,
+            requested_by=request.requested_by,
+            changes=[item.model_dump() for item in request.changes],
+        )
+        return _frozen_field_revision_request_response(record)
+    except IntakeCaseReviewNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except FrozenFieldRevisionRequestValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get(
+    "/api/intake-cases/{case_id}/frozen-field-revision-requests",
+    response_model=list[FrozenFieldRevisionRequestResponse],
+)
+def list_frozen_field_revision_requests_by_case(
+    case_id: str,
+    service: FrozenFieldRevisionRequestService = Depends(get_frozen_field_revision_request_service),
+) -> list[FrozenFieldRevisionRequestResponse]:
+    """List frozen-field revision requests for one intake case."""
+    return [_frozen_field_revision_request_response(item) for item in service.list_by_case(case_id)]
+
+
+@router.get(
+    "/api/projects/{project_id}/frozen-field-revision-requests",
+    response_model=list[FrozenFieldRevisionRequestResponse],
+)
+def list_frozen_field_revision_requests_by_project(
+    project_id: str,
+    service: FrozenFieldRevisionRequestService = Depends(get_frozen_field_revision_request_service),
+) -> list[FrozenFieldRevisionRequestResponse]:
+    """List frozen-field revision requests for one confirmed project."""
+    return [
+        _frozen_field_revision_request_response(item)
+        for item in service.list_by_project(project_id)
+    ]
+
+
+@router.get(
+    "/api/frozen-field-revision-requests/{request_id}",
+    response_model=FrozenFieldRevisionRequestResponse,
+)
+def get_frozen_field_revision_request(
+    request_id: str,
+    service: FrozenFieldRevisionRequestService = Depends(get_frozen_field_revision_request_service),
+) -> FrozenFieldRevisionRequestResponse:
+    """Get one frozen-field revision request by id."""
+    try:
+        return _frozen_field_revision_request_response(service.get(request_id))
+    except FrozenFieldRevisionRequestNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 def _case_review_response(review: IntakeCaseReview) -> IntakeCaseReviewResponse:
@@ -313,6 +427,40 @@ def _confirmation_response(result: IntakeConfirmationResult) -> ConfirmIntakeCas
         application_form_id=result.application_form.form_id,
         sample_count=len(result.sample_infos),
         file_asset_count=len(result.file_assets),
+    )
+
+
+def _frozen_field_revision_request_response(item) -> FrozenFieldRevisionRequestResponse:
+    """Convert frozen-field revision request record to API response."""
+    changes: list[FrozenFieldRevisionChangeResponse] = []
+    try:
+        decoded = json.loads(item.field_changes_json)
+    except json.JSONDecodeError:
+        decoded = []
+    if isinstance(decoded, list):
+        for entry in decoded:
+            if not isinstance(entry, dict):
+                continue
+            changes.append(
+                FrozenFieldRevisionChangeResponse(
+                    field_key=str(entry.get("field_key", "")),
+                    field_label=entry.get("field_label"),
+                    current_value=entry.get("current_value"),
+                    proposed_value=entry.get("proposed_value"),
+                )
+            )
+    return FrozenFieldRevisionRequestResponse(
+        request_id=item.request_id,
+        intake_case_id=item.intake_case_id,
+        project_id=item.project_id,
+        ltr_record_id=item.ltr_record_id,
+        ltr_number=item.ltr_number,
+        status=item.status.value,
+        requested_by=item.requested_by,
+        reason=item.reason,
+        changes=changes,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
     )
 
 

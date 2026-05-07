@@ -177,24 +177,28 @@ class IntakeCaseReviewService:
                 if case.selected_form_asset_id
                 else None
             )
-            draft_fields = self._merged_draft_fields(draft)
-            precheck_issues = evaluate_section1_precheck(draft_fields)
-            parsed_fields = clear_disallowed_section1_values(draft_fields)
-            freeze_state = self._freeze_state(case)
-            items.append(
-                IntakeCaseReviewItem(
-                    case=case,
-                    draft=draft,
-                    selected_asset=selected_asset,
-                    parsed_fields=parsed_fields,
-                    missing_required_fields=blocking_issue_fields(precheck_issues),
-                    precheck_issues=precheck_issues,
-                    base_editing_frozen=freeze_state,
-                    frozen_field_keys=self._frozen_field_keys if freeze_state else (),
-                    frozen_reason=self.FROZEN_REASON if freeze_state else None,
-                )
-            )
+            items.append(self._build_case_review_item(case, draft, selected_asset=selected_asset))
         return IntakeCaseReview(package=package, cases=tuple(items))
+
+    @classmethod
+    def frozen_field_keys(cls) -> tuple[str, ...]:
+        """Return the authoritative frozen field list for post-LTR base edits."""
+        return cls._frozen_field_keys
+
+    def get_case_review_item(self, case_id: str) -> IntakeCaseReviewItem:
+        """Return one case review item by case id."""
+        intake_case = self._cases.get(case_id)
+        if intake_case is None:
+            raise IntakeCaseReviewNotFoundError(f"Intake case not found: {case_id}")
+        draft = self._drafts.get_by_case(case_id)
+        if draft is None:
+            raise IntakeCaseReviewNotFoundError(f"Intake draft not found for case: {case_id}")
+        selected_asset = (
+            self._assets.get(intake_case.selected_form_asset_id)
+            if intake_case.selected_form_asset_id
+            else None
+        )
+        return self._build_case_review_item(intake_case, draft, selected_asset=selected_asset)
 
     def update_case_fields(
         self,
@@ -260,20 +264,10 @@ class IntakeCaseReviewService:
             if intake_case.selected_form_asset_id
             else None
         )
-        draft_fields = self._merged_draft_fields(updated_draft)
-        precheck_issues = evaluate_section1_precheck(draft_fields)
-        parsed_fields = clear_disallowed_section1_values(draft_fields)
-        freeze_state = self._freeze_state(intake_case)
-        return IntakeCaseReviewItem(
-            case=intake_case,
-            draft=updated_draft,
+        return self._build_case_review_item(
+            intake_case,
+            updated_draft,
             selected_asset=selected_asset,
-            parsed_fields=parsed_fields,
-            missing_required_fields=blocking_issue_fields(precheck_issues),
-            precheck_issues=precheck_issues,
-            base_editing_frozen=freeze_state,
-            frozen_field_keys=self._frozen_field_keys if freeze_state else (),
-            frozen_reason=self.FROZEN_REASON if freeze_state else None,
         )
 
     def _merged_draft_fields(self, draft: IntakeDraft) -> dict[str, Any]:
@@ -366,3 +360,27 @@ class IntakeCaseReviewService:
             ):
                 changed.append("requested_testing_rows")
         return tuple(dict.fromkeys(changed))
+
+    def _build_case_review_item(
+        self,
+        intake_case: IntakeCase,
+        draft: IntakeDraft,
+        *,
+        selected_asset: IntakeAsset | None,
+    ) -> IntakeCaseReviewItem:
+        """Build one review item from a case and draft."""
+        draft_fields = self._merged_draft_fields(draft)
+        precheck_issues = evaluate_section1_precheck(draft_fields)
+        parsed_fields = clear_disallowed_section1_values(draft_fields)
+        freeze_state = self._freeze_state(intake_case)
+        return IntakeCaseReviewItem(
+            case=intake_case,
+            draft=draft,
+            selected_asset=selected_asset,
+            parsed_fields=parsed_fields,
+            missing_required_fields=blocking_issue_fields(precheck_issues),
+            precheck_issues=precheck_issues,
+            base_editing_frozen=freeze_state,
+            frozen_field_keys=self._frozen_field_keys if freeze_state else (),
+            frozen_reason=self.FROZEN_REASON if freeze_state else None,
+        )

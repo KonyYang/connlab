@@ -188,11 +188,14 @@ export function IntakeInboxPage({
     if (importMessage) {
       return importMessage;
     }
-    const selectedFormAsset =
-      packageImport.assets.find((asset) => asset.asset_id === session.selectedWordAssetId)
-      ?? packageImport.assets.find((asset) => asset.asset_id === selectedAssetId);
+    if (!session.selectedWordAssetId) {
+      return null;
+    }
+    const selectedFormAsset = packageImport.assets.find(
+      (asset) => asset.asset_id === session.selectedWordAssetId
+    );
     return selectedFormAsset?.original_name ?? null;
-  }, [importMessage, packageImport, selectedAssetId, session.selectedWordAssetId]);
+  }, [importMessage, packageImport, session.selectedWordAssetId]);
   const draftChanged = activeCase
     ? activeCase.fields.some((field) => fieldValues[field.key] !== editableValue(field.value))
       || JSON.stringify(sampleRows) !== JSON.stringify(normalizedSampleRows(activeCase.sample_rows))
@@ -376,6 +379,7 @@ export function IntakeInboxPage({
     if (!file) return;
     setImporting(true);
     setImportError(null);
+    setImportMessage(null);
     try {
       const imported = await importMsgPackage(file);
       onSessionChange({
@@ -400,6 +404,7 @@ export function IntakeInboxPage({
     if (!file) return;
     setImporting(true);
     setImportError(null);
+    setImportMessage(null);
     try {
       if (packageImport?.source_type === "outlook_msg") {
         const selection = await uploadEmailPackageApplicationForm(packageImport.package_id, file);
@@ -583,7 +588,7 @@ export function IntakeInboxPage({
             </section>
           ) : null}
           {editorError ? <p className="intake-error">{editorError}</p> : null}
-          {packageImport && activeCase ? (
+          {packageImport && activeCase != null ? (
             <NewProjectApplicationEditor
               activeCase={activeCase}
               autoSaveError={autoSaveError}

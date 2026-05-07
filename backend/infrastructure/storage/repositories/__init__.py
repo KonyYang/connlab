@@ -13,6 +13,9 @@ from backend.infrastructure.storage.repositories.intake_package import (
 from backend.infrastructure.storage.repositories.external_resources import (
     ExternalResourceRepository,
 )
+from backend.infrastructure.storage.repositories.frozen_field_revision_request import (
+    FrozenFieldRevisionRequestRepository,
+)
 from backend.infrastructure.storage.repositories.lookup_options import LookupOptionRepository
 from backend.infrastructure.storage.repositories.precheck import PrecheckResultRepository
 from backend.infrastructure.storage.repositories.project import ProjectRepository
@@ -26,6 +29,7 @@ __all__ = [
     "ApplicationFormRepository",
     "ExternalResourceRepository",
     "FileAssetRepository",
+    "FrozenFieldRevisionRequestRepository",
     "IntakeAssetRepository",
     "IntakeCaseRepository",
     "IntakeDraftRepository",

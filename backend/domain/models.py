@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from backend.domain.enums import (
+    FrozenFieldRevisionRequestStatus,
     ExternalResourceType,
     ExternalResourceValidationStatus,
     FileAssetType,
@@ -239,3 +240,20 @@ class ExternalResource:
     )
     last_validated_at: str | None = None
     validation_failure_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenFieldRevisionRequest:
+    """Structured request to revise fields frozen after LTR registration."""
+
+    request_id: str
+    intake_case_id: str
+    project_id: str | None
+    ltr_record_id: str | None
+    ltr_number: str | None
+    status: FrozenFieldRevisionRequestStatus
+    requested_by: str | None
+    reason: str
+    field_changes_json: str
+    created_at: str
+    updated_at: str

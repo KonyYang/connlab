@@ -259,3 +259,28 @@ class ExternalResourceModel(Base):
     validation_status: Mapped[str] = mapped_column(String(64), nullable=False)
     last_validated_at: Mapped[str | None] = mapped_column(String(64))
     validation_failure_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class FrozenFieldRevisionRequestModel(Base):
+    """Database row for one frozen-field revision request."""
+
+    __tablename__ = "frozen_field_revision_requests"
+
+    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    intake_case_id: Mapped[str] = mapped_column(
+        ForeignKey("intake_cases.case_id"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    ltr_record_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ltr_records.ltr_id"),
+        nullable=True,
+    )
+    ltr_number: Mapped[str | None] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(64), nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(255))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    field_changes_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -60,6 +60,11 @@ from backend.application.exception_workflow_service import (
     ExceptionWorkflowReview,
     ExceptionWorkflowService,
 )
+from backend.application.frozen_field_revision_request_service import (
+    FrozenFieldRevisionRequestNotFoundError,
+    FrozenFieldRevisionRequestService,
+    FrozenFieldRevisionRequestValidationError,
+)
 
 __all__ = [
     "ApplicationFormCandidate",
@@ -79,6 +84,9 @@ __all__ = [
     "ExceptionWorkflowReview",
     "ExceptionWorkflowService",
     "FormSelectionResult",
+    "FrozenFieldRevisionRequestNotFoundError",
+    "FrozenFieldRevisionRequestService",
+    "FrozenFieldRevisionRequestValidationError",
     "IntakeConfirmationError",
     "IntakeConfirmationNotFoundError",
     "IntakeConfirmationResult",

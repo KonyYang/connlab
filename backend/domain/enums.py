@@ -125,3 +125,10 @@ class ExternalResourceValidationStatus(StrEnum):
     NOT_VALIDATED = "not_validated"
     VALID = "valid"
     INVALID = "invalid"
+
+
+class FrozenFieldRevisionRequestStatus(StrEnum):
+    """Lifecycle status for one frozen-field revision request record."""
+
+    REQUESTED = "requested"
+    CANCELLED = "cancelled"
