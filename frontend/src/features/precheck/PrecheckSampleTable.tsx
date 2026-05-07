@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactElement } from "react";
+import { useState, useLayoutEffect, useRef, type ReactElement } from "react";
 
 import { UiIcon } from "../../components/common/UiIcon";
 import {
@@ -25,13 +25,47 @@ export function PrecheckSampleTable({
   onCopy,
   onDelete
 }: PrecheckSampleTableProps): ReactElement {
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+  const canDelete = selectedRowIndex !== null && rows.length > 1;
+
   return (
     <div className="sample-table-wrap">
       <div className="sample-table-header">
         <h4 className="ui-section-title">Test Sample Information</h4>
-        <button className="sample-add-button ui-compact-action" disabled={disabled} type="button" onClick={onAdd}>
-          Add Row
-        </button>
+        <div className="sample-table-toolbar">
+          <button
+            className="sample-tool-button"
+            disabled={disabled || selectedRowIndex === null}
+            title="Copy selected sample row"
+            type="button"
+            onClick={() => {
+              if (selectedRowIndex !== null) {
+                onCopy(selectedRowIndex);
+              }
+            }}
+          >
+            <UiIcon name="copy" />
+            <span className="sr-only">Copy selected sample row</span>
+          </button>
+          <button
+            className="sample-tool-button"
+            disabled={disabled || !canDelete}
+            title="Delete selected sample row"
+            type="button"
+            onClick={() => {
+              if (selectedRowIndex !== null) {
+                onDelete(selectedRowIndex);
+                setSelectedRowIndex(null);
+              }
+            }}
+          >
+            <UiIcon name="trash" />
+            <span className="sr-only">Delete selected sample row</span>
+          </button>
+          <button className="sample-add-button" disabled={disabled} type="button" onClick={onAdd}>
+            +
+          </button>
+        </div>
       </div>
       <table className="precheck-sample-table">
         <colgroup>
@@ -43,17 +77,19 @@ export function PrecheckSampleTable({
           <col className="sample-col-contact-lubricant" />
           <col className="sample-col-housing-material" />
           <col className="sample-col-quantity" />
-          <col className="sample-col-actions" />
         </colgroup>
         <thead>
           <tr>
             {PRECHECK_SAMPLE_COLUMNS.map((column) => <th key={column.key}>{column.label}</th>)}
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={`sample-${rowIndex}`}>
+            <tr
+              className={selectedRowIndex === rowIndex ? "sample-row-selected" : undefined}
+              key={`sample-${rowIndex}`}
+              onClick={() => setSelectedRowIndex(rowIndex)}
+            >
               {PRECHECK_SAMPLE_COLUMNS.map((column) => (
                 <td
                   className={missingCells?.has(`${rowIndex}:${column.key}`) ? "sample-cell-required-missing" : undefined}
@@ -69,18 +105,6 @@ export function PrecheckSampleTable({
                   />
                 </td>
               ))}
-              <td>
-                <div className="sample-row-actions">
-                  <button disabled={disabled} title="Copy sample row" type="button" onClick={() => onCopy(rowIndex)}>
-                    <UiIcon name="copy" />
-                    <span className="sr-only">Copy sample row</span>
-                  </button>
-                  <button disabled={disabled || rows.length <= 1} title="Delete sample row" type="button" onClick={() => onDelete(rowIndex)}>
-                    <UiIcon name="trash" />
-                    <span className="sr-only">Delete sample row</span>
-                  </button>
-                </div>
-              </td>
             </tr>
           ))}
         </tbody>

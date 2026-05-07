@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactElement } from "react";
+import { useState, useLayoutEffect, useRef, type ReactElement } from "react";
 import { UiIcon } from "../../components/common/UiIcon";
 import {
   PRECHECK_REQUESTED_TESTING_COLUMNS,
@@ -144,18 +144,47 @@ function RequestedTestingPanel({
   onCopy: (rowIndex: number) => void;
   onDelete: (rowIndex: number) => void;
 }): ReactElement {
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+  const canDelete = selectedRowIndex !== null && rows.length > 1;
+
   return (
     <section className={missing ? "requested-testing-panel requested-testing-required-missing" : "requested-testing-panel"}>
       <div className="requested-testing-header">
         <h4 className="ui-section-title">Description of Requested Testing</h4>
-        <button
-          className="requested-testing-add-button ui-compact-action"
-          disabled={disabled}
-          type="button"
-          onClick={onAdd}
-        >
-          Add Row
-        </button>
+        <div className="sample-table-toolbar">
+          <button
+            className="sample-tool-button"
+            disabled={disabled || selectedRowIndex === null}
+            title="Copy selected testing row"
+            type="button"
+            onClick={() => {
+              if (selectedRowIndex !== null) {
+                onCopy(selectedRowIndex);
+              }
+            }}
+          >
+            <UiIcon name="copy" />
+            <span className="sr-only">Copy selected testing row</span>
+          </button>
+          <button
+            className="sample-tool-button"
+            disabled={disabled || !canDelete}
+            title="Delete selected testing row"
+            type="button"
+            onClick={() => {
+              if (selectedRowIndex !== null) {
+                onDelete(selectedRowIndex);
+                setSelectedRowIndex(null);
+              }
+            }}
+          >
+            <UiIcon name="trash" />
+            <span className="sr-only">Delete selected testing row</span>
+          </button>
+          <button className="sample-add-button" disabled={disabled} type="button" onClick={onAdd}>
+            +
+          </button>
+        </div>
       </div>
       <table className="requested-testing-edit-table">
         <thead>
@@ -163,12 +192,15 @@ function RequestedTestingPanel({
             {PRECHECK_REQUESTED_TESTING_COLUMNS.map((column) => (
               <th key={column.key}>{column.label}</th>
             ))}
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <tr
+              className={selectedRowIndex === rowIndex ? "sample-row-selected" : undefined}
+              key={rowIndex}
+              onClick={() => setSelectedRowIndex(rowIndex)}
+            >
               {PRECHECK_REQUESTED_TESTING_COLUMNS.map((column) => (
                 <td key={column.key}>
                   <AutoGrowTextarea
@@ -178,28 +210,6 @@ function RequestedTestingPanel({
                   />
                 </td>
               ))}
-              <td>
-                <div className="requested-testing-row-actions">
-                  <button
-                    disabled={disabled}
-                    title="Copy requested testing row"
-                    type="button"
-                    onClick={() => onCopy(rowIndex)}
-                  >
-                    <UiIcon name="copy" />
-                    <span className="sr-only">Copy requested testing row</span>
-                  </button>
-                  <button
-                    disabled={disabled || rows.length <= 1}
-                    title="Delete requested testing row"
-                    type="button"
-                    onClick={() => onDelete(rowIndex)}
-                  >
-                    <UiIcon name="trash" />
-                    <span className="sr-only">Delete requested testing row</span>
-                  </button>
-                </div>
-              </td>
             </tr>
           ))}
         </tbody>

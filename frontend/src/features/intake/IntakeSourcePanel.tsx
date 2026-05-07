@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactElement, RefObject } from "react";
+import { useState, type ChangeEvent, type DragEvent, type ReactElement, type RefObject } from "react";
 
 import type { IntakePackageImport } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
@@ -30,58 +30,103 @@ export function IntakeSourcePanel({
   sourceMode,
   wordInputRef,
 }: IntakeSourcePanelProps): ReactElement {
-  return (
-    <>
-      <section className="intake-panel">
-        <h3 className="ui-panel-title">Import source</h3>
-        <div className="import-source-actions">
-          <input
-            ref={msgInputRef}
-            accept=".msg"
-            className="file-input-hidden"
-            type="file"
-            onChange={onMsgFileChange}
-          />
-          <input
-            ref={wordInputRef}
-            accept=".docx"
-            className="file-input-hidden"
-            type="file"
-            onChange={onDirectWordChange}
-          />
-          <button
-            className={sourceMode === "msg" ? "source-button source-button-active" : "source-button"}
-            disabled={importing}
-            type="button"
-            onClick={() => {
-              onSelectSourceMode("msg");
-              msgInputRef.current?.click();
-            }}
-          >
-            <UiIcon name="outlook" />
-            {importing ? "Importing from Outlook..." : "Import from Outlook"}
-          </button>
-        </div>
-        {importError ? <p className="intake-error">{importError}</p> : null}
-      </section>
+  const [isDragOver, setIsDragOver] = useState(false);
 
-      <section className="intake-panel">
-        <h3 className="ui-panel-title">Email information</h3>
-        <dl className="email-info-list">
-          <div>
-            <dt>From</dt>
-            <dd>{senderEmailText(packageImport)}</dd>
+  function handleDragOver(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    setIsDragOver(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    setIsDragOver(false);
+    const file = event.dataTransfer.files[0];
+    if (!file || !file.name.toLowerCase().endsWith(".msg")) {
+      return;
+    }
+    onSelectSourceMode("msg");
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    const syntheticEvent = {
+      target: {
+        files: dataTransfer.files,
+        value: "",
+      } as HTMLInputElement,
+    } as ChangeEvent<HTMLInputElement>;
+    onMsgFileChange(syntheticEvent);
+  }
+
+  const hasPackage = packageImport !== null;
+
+  return (
+    <section className="intake-panel email-source-panel">
+      <div className="email-source-header">
+        <h3 className="ui-panel-title">Email source</h3>
+        <input
+          ref={msgInputRef}
+          accept=".msg"
+          className="file-input-hidden"
+          type="file"
+          onChange={onMsgFileChange}
+        />
+        <input
+          ref={wordInputRef}
+          accept=".docx"
+          className="file-input-hidden"
+          type="file"
+          onChange={onDirectWordChange}
+        />
+        <button
+          className={sourceMode === "msg" ? "source-button source-button-active" : "source-button"}
+          disabled={importing}
+          type="button"
+          onClick={() => {
+            onSelectSourceMode("msg");
+            msgInputRef.current?.click();
+          }}
+        >
+          <UiIcon name="outlook" />
+          Import
+        </button>
+      </div>
+
+      <div
+        className={"email-drop-zone"
+          + (isDragOver ? " email-drop-zone-active" : "")
+          + (hasPackage ? " email-drop-zone-filled" : "")}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {!hasPackage ? (
+          <div className="email-drop-zone-prompt">
+            <UiIcon name="upload" />
+            <span>Drop a .msg email file here</span>
           </div>
-          <div>
-            <dt>Subject</dt>
-            <dd>{packageImport?.subject || directWordName || "No subject"}</dd>
-          </div>
-          <div>
-            <dt>Date</dt>
-            <dd>{mailDateText(packageImport)}</dd>
-          </div>
-        </dl>
-      </section>
-    </>
+        ) : (
+          <dl className="email-info-list">
+            <div>
+              <dt>From</dt>
+              <dd>{senderEmailText(packageImport)}</dd>
+            </div>
+            <div>
+              <dt>Subject</dt>
+              <dd>{packageImport?.subject || directWordName || "No subject"}</dd>
+            </div>
+            <div>
+              <dt>Date</dt>
+              <dd>{mailDateText(packageImport)}</dd>
+            </div>
+          </dl>
+        )}
+      </div>
+
+      {importError ? <p className="intake-error">{importError}</p> : null}
+    </section>
   );
 }

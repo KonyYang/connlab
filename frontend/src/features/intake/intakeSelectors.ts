@@ -5,7 +5,7 @@ import type {
   IntakePackageImport
 } from "../../api/client";
 
-export type IntakeAttachmentKind = "word" | "pdf" | "image" | "msg" | "file";
+export type IntakeAttachmentKind = "word" | "excel" | "pdf" | "image" | "msg" | "file";
 
 export type IntakeAttachmentViewModel = {
   asset: IntakeAsset;
@@ -161,6 +161,9 @@ export function assetKind(asset: IntakeAsset): IntakeAttachmentKind {
   if (extension === ".doc" || extension === ".docx") {
     return "word";
   }
+  if (extension === ".xls" || extension === ".xlsx") {
+    return "excel";
+  }
   if (extension === ".pdf") {
     return "pdf";
   }
@@ -215,6 +218,9 @@ export function attachmentRoleText(asset: IntakeAsset): string {
 function assetKindLabelFromKind(kind: IntakeAttachmentKind, extension: string): string {
   if (kind === "word") {
     return "W";
+  }
+  if (kind === "excel") {
+    return "XLS";
   }
   if (kind === "pdf") {
     return "PDF";
