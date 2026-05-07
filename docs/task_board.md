@@ -1,10 +1,10 @@
 ﻿# ConnLab Task Board
 
-> Status: TASK_139 complete; LTR frozen-field revision request record
+> Status: TASK_140 complete; New Project draft friction cleanup
 > Last Updated: 2026-05-08
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: None - awaiting next approved task
-> Current Phase: `Phase 10B - LTR workbook write hardening`
+> Current Phase: `Phase 10C - New Project intake flow friction cleanup`
 
 ---
 
@@ -1379,7 +1379,7 @@ Why this is next:
 
 Active implementation task:
 
-- None (`TASK_139_LTR_FROZEN_FIELD_REVISION_REQUEST_RECORD` is complete; awaiting next approved task)
+- None (`TASK_140_NEW_PROJECT_DRAFT_FRICTION_CLEANUP` is complete; awaiting next approved task)
 
 Reason:
 
@@ -1389,6 +1389,12 @@ Reason:
 - The user explicitly confirmed the attached blocker message should not block project creation at this stage; this task narrows the rule to warning-only.
 - The user approved opening `TASK_137`; this task aligns specified-number classification and workbook commit guards with the confirmed `DL-YYYY-MM-NNN` baseline and suffix-token handling.
 - `TASK_139` is allowed for plan review because `TASK_099` froze normal base-field editing after LTR registration and `TASK_100` bounded Project Workbench to post-creation work. The next safe mainline gap is a traceable request record for frozen-field corrections, without applying changes to workbook, folder, or project identity.
+- `TASK_140` is allowed because the user explicitly approved the Phase 10C sequence and requested implementation. The change stays in New Project UX scope only: remove in-page draft delete/replacement confirmation friction while preserving backend confirmed-case protection and existing Drafts/In Progress draft-discard path.
+
+Prior completed note:
+
+- `TASK_140_NEW_PROJECT_DRAFT_FRICTION_CLEANUP` is complete. New Project no longer shows `Cancel and remove draft`, form switching now directly replaces/rebinds the active unconfirmed creation draft, and the inline replacement confirmation panel is removed. Draft discard remains available in `Drafts / In Progress`.
+- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "task096 or task102 or task103_application_form_import_is_explicit_and_confirmed or task103_new_project_page_chrome_is_minimal"` passed, 4 passed; `npm run build` passed from `frontend`; `py -m pytest tests\unit\test_frontend_shell_files.py -q` has existing unrelated baseline failures in `test_task087_intake_information_density_cleanup`, `test_task082_precheck_sample_rows_are_editable_with_icon_actions`, and `test_task091_intake_precheck_typography_uses_shared_ui_vocabulary`; `git diff --check` passed.
 
 Prior completed note:
 
@@ -1482,11 +1488,8 @@ Prior completed note:
 
 Next recommended action:
 
-- Review the proposed Phase 10C New Project intake-flow cleanup sequence:
-  - `TASK_140_NEW_PROJECT_DRAFT_FRICTION_CLEANUP`
-  - `TASK_141_EMAIL_PACKAGE_DUPLICATE_DETECTION_BACKEND`
-  - `TASK_142_EMAIL_PACKAGE_DUPLICATE_RESOLUTION_UI`
-- If approved, open `TASK_140` first. Do not implement `TASK_141` or `TASK_142` before their prerequisites are complete and explicitly approved.
+- Open `TASK_141_EMAIL_PACKAGE_DUPLICATE_DETECTION_BACKEND`.
+- Do not implement `TASK_142_EMAIL_PACKAGE_DUPLICATE_RESOLUTION_UI` before `TASK_141` is complete and explicitly approved.
 
 Implemented LTR number rule clarification:
 

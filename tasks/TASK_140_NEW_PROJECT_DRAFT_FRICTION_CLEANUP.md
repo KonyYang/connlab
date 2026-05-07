@@ -2,7 +2,7 @@
 
 ## Status
 
-plan_review
+done
 
 ## Phase / Active Task Justification
 
@@ -130,3 +130,20 @@ Risk: direct replacement may surprise an operator who clicked the wrong file.
 ## Approval Gate
 
 After user explicitly approves this task, Step 2 implementation may start.
+
+## Implementation Notes
+
+- New Project page removed `Cancel and remove draft` and related double-confirm state.
+- New Project attachment import now directly rebinds/replaces the active unconfirmed creation draft via `selectIntakeApplicationForm(..., true)`.
+- Replacement confirmation panel and styles were removed.
+- Draft discard capability remains on `Drafts / In Progress` (not on the New Project editing page).
+
+## Validation Summary
+
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "task096 or task102 or task103_application_form_import_is_explicit_and_confirmed or task103_new_project_page_chrome_is_minimal"` passed (`4 passed`).
+- `npm run build` passed from `frontend/`.
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q` has existing unrelated baseline failures in:
+  - `test_task087_intake_information_density_cleanup`
+  - `test_task082_precheck_sample_rows_are_editable_with_icon_actions`
+  - `test_task091_intake_precheck_typography_uses_shared_ui_vocabulary`
+- `git diff --check` passed.

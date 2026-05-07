@@ -1721,8 +1721,9 @@ def test_task096_creation_draft_lifecycle_frontend_actions() -> None:
 
     for source in [intake_source, precheck_source]:
         if "NewProjectApplicationEditor" in source:
-            assert "Cancel and remove draft" in source
-            assert "discardUnsavedProjectCreationDraft" in source
+            assert "Cancel and remove draft" not in source
+            assert "discardUnsavedProjectCreationDraft" not in source
+            assert "Draft changes save automatically while you edit this package." in source
             continue
         assert "Save draft and exit" in source
         assert "Exit without saving" in source
@@ -1818,7 +1819,6 @@ def test_task102_new_project_single_page_editor_shell() -> None:
         "updateIntakeCaseReviewFields",
         "NewProjectApplicationEditor",
         "AttachmentList",
-        "Cancel and remove draft",
     ]:
         assert term in page_source
 
@@ -1857,10 +1857,7 @@ def test_task103_application_form_import_is_explicit_and_confirmed() -> None:
 
     for term in [
         "selectIntakeApplicationForm",
-        "pendingImportAsset",
-        "Replace current application information?",
-        "Keep current data",
-        "Replace with import",
+        "selectIntakeApplicationForm(packageImport.package_id, asset.asset_id, true)",
         "setImportMessage(asset.original_name)",
         "downloadIntakeAsset",
     ]:

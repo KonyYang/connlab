@@ -7,7 +7,6 @@ import {
   type ReactElement
 } from "react";
 import {
-  discardUnsavedProjectCreationDraft,
   ensureNewProjectApplicationDraft,
   getIntakeCaseReview,
   getIntakePackageDetail,
@@ -72,7 +71,6 @@ type IntakeInboxPageProps = {
 export function IntakeInboxPage({
   session,
   onSessionChange,
-  onExit,
   onProjectCreated
 }: IntakeInboxPageProps): ReactElement {
   const msgInputRef = useRef<HTMLInputElement | null>(null);
@@ -92,11 +90,8 @@ export function IntakeInboxPage({
   ]);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [importingAssetId, setImportingAssetId] = useState<string | null>(null);
-  const [pendingImportAsset, setPendingImportAsset] = useState<IntakeAsset | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importVersion, setImportVersion] = useState(0);
-  const [exiting, setExiting] = useState<"discard" | null>(null);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [setupOptions, setSetupOptions] = useState<NewProjectCompletionOptions | null>(null);
   const [setupValues, setSetupValues] = useState<NewProjectSetupConfirmationValues>({
     ltrMode: "auto",
@@ -202,14 +197,6 @@ export function IntakeInboxPage({
       || JSON.stringify(requestedTestingRows)
         !== JSON.stringify(normalizedRequestedTestingRows(activeCase.requested_testing_rows))
     : false;
-  const editorHasData = useMemo(
-    () =>
-      Object.values(fieldValues).some((value) => value.trim())
-      || sampleRows.some((row) => Object.values(row).some((value) => String(value).trim()))
-      || requestedTestingRows.some((row) => row.test_to_be_performed.trim() || row.applicable_specification.trim()),
-    [fieldValues, requestedTestingRows, sampleRows]
-  );
-
   useEffect(() => {
     let active = true;
     async function loadLookupOptions(): Promise<void> {
@@ -257,11 +244,6 @@ export function IntakeInboxPage({
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    setConfirmDiscard(false);
-    setPendingImportAsset(null);
-  }, [packageImport?.package_id, selectedAssetId]);
 
   useEffect(() => {
     const manufacturingSite = fieldValues.manufacturing_site?.trim();
@@ -441,24 +423,14 @@ export function IntakeInboxPage({
     if (!packageImport) {
       return;
     }
-    if ((editorHasData || draftChanged) && pendingImportAsset?.asset_id !== asset.asset_id) {
-      setPendingImportAsset(asset);
-      setImportMessage(null);
-      return;
-    }
     setImportingAssetId(asset.asset_id);
     setImportError(null);
     setImportMessage(null);
     try {
-      const selection = await selectIntakeApplicationForm(
-        packageImport.package_id,
-        asset.asset_id,
-        pendingImportAsset?.asset_id === asset.asset_id
-      );
+      const selection = await selectIntakeApplicationForm(packageImport.package_id, asset.asset_id, true);
       const nextReview = await getIntakeCaseReview(packageImport.package_id);
       setReview(nextReview);
       setSelectedCaseId(selection.case_id);
-      setPendingImportAsset(null);
       setImportMessage(asset.original_name);
       setImportVersion((current) => current + 1);
       onSessionChange({
@@ -471,27 +443,6 @@ export function IntakeInboxPage({
       setImportError(error instanceof Error ? error.message : "Application form import failed.");
     } finally {
       setImportingAssetId(null);
-    }
-  }
-
-  async function handleDiscardAndExit(): Promise<void> {
-    if (!packageImport) return;
-    if (!confirmDiscard) {
-      setConfirmDiscard(true);
-      return;
-    }
-    setExiting("discard");
-    setImportError(null);
-    try {
-      await discardUnsavedProjectCreationDraft(packageImport.package_id);
-      onSessionChange(EMPTY_INTAKE_SESSION);
-      onExit();
-    } catch (error) {
-      setImportError(
-        error instanceof Error ? error.message : "Unable to discard this unsaved creation session."
-      );
-    } finally {
-      setExiting(null);
     }
   }
 
@@ -556,31 +507,6 @@ export function IntakeInboxPage({
         </aside>
 
         <main className="new-project-editor-stack">
-          {pendingImportAsset ? (
-            <section className="new-project-import-confirmation">
-              <strong>Replace current application information?</strong>
-              <p>
-                Importing {pendingImportAsset.original_name} will replace the current editor values.
-                Existing source files stay attached for traceability.
-              </p>
-              <div className="new-project-import-confirmation-actions">
-                <button
-                  className="new-project-secondary-action ui-secondary-action"
-                  type="button"
-                  onClick={() => setPendingImportAsset(null)}
-                >
-                  Keep current data
-                </button>
-                <button
-                  className="new-project-primary-action ui-primary-action"
-                  type="button"
-                  onClick={() => void handleImportApplicationForm(pendingImportAsset)}
-                >
-                  Replace with import
-                </button>
-              </div>
-            </section>
-          ) : null}
           {editorLoading ? (
             <section className="new-project-editor-panel new-project-editor-empty">
               <strong>Preparing application editor</strong>
@@ -633,27 +559,12 @@ export function IntakeInboxPage({
       </div>
 
       <div className="step-footer new-project-single-footer">
-        {confirmDiscard || !packageImport ? (
-          <span className="step-footer-guidance">
-            {confirmDiscard
-              ? "Cancel removes ConnLab's imported copies and draft records. Original email files are not changed."
-              : "Import the request source before editing application information."}
-          </span>
-        ) : <span aria-hidden="true" />}
-        {packageImport ? (
-          <button
-            className="new-project-secondary-action ui-secondary-action"
-            disabled={Boolean(exiting)}
-            type="button"
-            onClick={() => void handleDiscardAndExit()}
-          >
-            {exiting === "discard"
-              ? "Cancelling..."
-              : confirmDiscard
-                ? "Confirm cancel"
-                : "Cancel and remove draft"}
-          </button>
-        ) : null}
+        <span className="step-footer-guidance">
+          {packageImport
+            ? "Draft changes save automatically while you edit this package."
+            : "Import the request source before editing application information."}
+        </span>
+        <span aria-hidden="true" />
       </div>
     </section>
   );
