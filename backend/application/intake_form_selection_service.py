@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
@@ -29,14 +29,30 @@ class IntakeSelectionNotFoundError(LookupError):
     """Raised when intake package or asset records are missing."""
 
 
+class IntakeDraftDuplicateResolutionRequiredError(IntakeSelectionError):
+    """Raised when an application draft identity already exists."""
+
+    def __init__(self, check: "IntakeDraftDuplicateCheck") -> None:
+        super().__init__("Application draft already exists. Choose how to continue.")
+        self.check = check
+
+
 class IntakePackageStore(Protocol):
     def get(self, package_id: str) -> IntakePackage | None: ...
+
+    def list(self) -> list[IntakePackage]: ...
+
+    def delete(self, package_id: str) -> bool: ...
 
 
 class IntakeAssetStore(Protocol):
     def get(self, asset_id: str) -> IntakeAsset | None: ...
 
+    def list_by_package(self, package_id: str) -> list[IntakeAsset]: ...
+
     def update(self, asset: IntakeAsset) -> IntakeAsset: ...
+
+    def delete_by_package(self, package_id: str) -> int: ...
 
 
 class IntakeCaseStore(Protocol):
@@ -46,6 +62,8 @@ class IntakeCaseStore(Protocol):
 
     def update(self, case: IntakeCase) -> IntakeCase: ...
 
+    def delete_by_package(self, package_id: str) -> int: ...
+
 
 class IntakeDraftStore(Protocol):
     def create(self, draft: IntakeDraft) -> IntakeDraft: ...
@@ -53,6 +71,8 @@ class IntakeDraftStore(Protocol):
     def get_by_case(self, case_id: str) -> IntakeDraft | None: ...
 
     def update(self, draft: IntakeDraft) -> IntakeDraft: ...
+
+    def delete_by_package(self, package_id: str) -> int: ...
 
 
 class ApplicationFormEligibilityValidator(Protocol):
@@ -67,6 +87,26 @@ class FormSelectionResult:
     case: IntakeCase
     draft: IntakeDraft
     selected_asset: IntakeAsset
+
+
+@dataclass(frozen=True)
+class IntakeDraftDuplicateCheck:
+    """Business-safe duplicate draft identity summary."""
+
+    classification: str
+    existing_package_id: str
+    existing_case_id: str
+    existing_source_original_name: str
+    incoming_source_original_name: str
+    existing_source_size_bytes: int
+    incoming_source_size_bytes: int
+    existing_application_form_name: str | None = None
+    incoming_application_form_name: str | None = None
+    allowed_actions: tuple[str, ...] = ("open_existing", "replace_existing")
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-safe payload for API conflict responses."""
+        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -107,6 +147,8 @@ class IntakeFormSelectionService:
         package_id: str,
         asset_id: str,
         replace_existing: bool = False,
+        resolution_action: str | None = None,
+        resolution_case_id: str | None = None,
     ) -> FormSelectionResult:
         """Select and parse one application form asset for review."""
         package = self._package_store.get(package_id)
@@ -123,6 +165,16 @@ class IntakeFormSelectionService:
         eligibility = self._eligibility_validator.evaluate(asset)
         if not eligibility.eligible:
             raise IntakeSelectionError(eligibility.message)
+
+        duplicate = self._find_selected_form_duplicate(package, asset)
+        if duplicate is not None:
+            resolved = self._resolve_duplicate(
+                duplicate,
+                resolution_action,
+                resolution_case_id,
+            )
+            if resolved is not None:
+                return resolved
 
         selected_asset = self._asset_store.update(
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)
@@ -143,6 +195,123 @@ class IntakeFormSelectionService:
             draft=draft,
             selected_asset=selected_asset,
         )
+
+    def _find_selected_form_duplicate(
+        self,
+        package: IntakePackage,
+        selected_asset: IntakeAsset,
+    ) -> IntakeDraftDuplicateCheck | None:
+        """Return an existing draft matching selected form + email identity."""
+        incoming_source = self._email_source_asset(package.package_id)
+        if incoming_source is None:
+            return None
+        for existing_package in self._package_store.list():
+            existing_source = self._email_source_asset(existing_package.package_id)
+            if existing_source is None:
+                continue
+            if existing_source.original_name != incoming_source.original_name:
+                continue
+            if existing_source.size_bytes != incoming_source.size_bytes:
+                continue
+            for existing_case in self._case_store.list_by_package(existing_package.package_id):
+                if not self._can_reuse_case(existing_case):
+                    continue
+                if existing_case.package_id == package.package_id:
+                    continue
+                if existing_case.selected_form_asset_id is None:
+                    continue
+                existing_form = self._asset_store.get(existing_case.selected_form_asset_id)
+                if existing_form is None:
+                    continue
+                if existing_form.original_name != selected_asset.original_name:
+                    continue
+                return IntakeDraftDuplicateCheck(
+                    classification="exact_existing_application_draft",
+                    existing_package_id=existing_package.package_id,
+                    existing_case_id=existing_case.case_id,
+                    existing_source_original_name=existing_source.original_name,
+                    incoming_source_original_name=incoming_source.original_name,
+                    existing_source_size_bytes=existing_source.size_bytes,
+                    incoming_source_size_bytes=incoming_source.size_bytes,
+                    existing_application_form_name=existing_form.original_name,
+                    incoming_application_form_name=selected_asset.original_name,
+                )
+        return None
+
+    def _resolve_duplicate(
+        self,
+        duplicate: IntakeDraftDuplicateCheck,
+        resolution_action: str | None,
+        resolution_case_id: str | None,
+    ) -> FormSelectionResult | None:
+        """Apply a selected duplicate resolution or require operator choice."""
+        if resolution_case_id and resolution_case_id != duplicate.existing_case_id:
+            raise IntakeSelectionError("Duplicate resolution target does not match.")
+        if resolution_action is None:
+            raise IntakeDraftDuplicateResolutionRequiredError(duplicate)
+        if resolution_action not in duplicate.allowed_actions + ("create_separate",):
+            raise IntakeSelectionError("Unsupported duplicate resolution action.")
+        if resolution_action == "create_separate":
+            return None
+        if resolution_action == "open_existing":
+            return self._open_existing_duplicate(duplicate)
+        if resolution_action == "replace_existing":
+            self._ensure_replace_allowed(duplicate.existing_package_id)
+            self._delete_package_records(duplicate.existing_package_id)
+            return None
+        raise IntakeSelectionError("Unsupported duplicate resolution action.")
+
+    def _open_existing_duplicate(
+        self,
+        duplicate: IntakeDraftDuplicateCheck,
+    ) -> FormSelectionResult:
+        """Return the existing duplicate draft target."""
+        case = next(
+            (
+                current
+                for current in self._case_store.list_by_package(duplicate.existing_package_id)
+                if current.case_id == duplicate.existing_case_id
+            ),
+            None,
+        )
+        if case is None or case.selected_form_asset_id is None:
+            raise IntakeSelectionNotFoundError("Existing application draft not found.")
+        draft = self._draft_store.get_by_case(case.case_id)
+        selected_asset = self._asset_store.get(case.selected_form_asset_id)
+        if draft is None or selected_asset is None:
+            raise IntakeSelectionNotFoundError("Existing application draft is incomplete.")
+        return FormSelectionResult(
+            package_id=duplicate.existing_package_id,
+            case=case,
+            draft=draft,
+            selected_asset=selected_asset,
+        )
+
+    def _email_source_asset(self, package_id: str) -> IntakeAsset | None:
+        """Return the email source asset for one package when present."""
+        return next(
+            (
+                asset
+                for asset in self._asset_store.list_by_package(package_id)
+                if asset.asset_role is IntakeAssetRole.EMAIL_SOURCE
+            ),
+            None,
+        )
+
+    def _ensure_replace_allowed(self, package_id: str) -> None:
+        """Reject replacing a draft that already created a project."""
+        for case in self._case_store.list_by_package(package_id):
+            if not self._can_reuse_case(case):
+                raise IntakeSelectionError(
+                    "Replacement is allowed only for unconfirmed creation drafts."
+                )
+
+    def _delete_package_records(self, package_id: str) -> None:
+        """Delete old unconfirmed duplicate records after replacement is chosen."""
+        self._draft_store.delete_by_package(package_id)
+        self._case_store.delete_by_package(package_id)
+        self._asset_store.delete_by_package(package_id)
+        self._package_store.delete(package_id)
 
     def _is_selectable_application_form(self, asset: IntakeAsset) -> bool:
         if asset.asset_role in self._blocked_roles:
@@ -168,24 +337,6 @@ class IntakeFormSelectionService:
                     ),
                     same_selected_asset=True,
                 )
-        reusable_cases = [
-            case
-            for case in existing_cases
-            if self._can_reuse_case(case)
-        ]
-        if reusable_cases:
-            current = reusable_cases[0]
-            return _CaseSelection(
-                case=self._case_store.update(
-                    replace(
-                        current,
-                        selected_form_asset_id=selected_asset_id,
-                        status=IntakeCaseStatus.NEEDS_REVIEW,
-                        confirmed_project_id=None,
-                    )
-                ),
-                same_selected_asset=False,
-            )
         return _CaseSelection(
             case=self._case_store.create(
                 IntakeCase(

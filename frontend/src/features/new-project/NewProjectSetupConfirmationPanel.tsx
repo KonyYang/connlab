@@ -3,7 +3,6 @@ import type { ReactElement } from "react";
 export type NewProjectSetupConfirmationValues = {
   ltrMode: "auto" | "specified";
   specifiedLtrNumber: string;
-  workbookWriteAcknowledged: boolean;
   testItem: string;
   sampleDescription: string;
   location: string;
@@ -70,22 +69,6 @@ export function NewProjectSetupConfirmationPanel({
           value={values.specifiedLtrNumber}
           onChange={(event) => update({ specifiedLtrNumber: event.target.value })}
         />
-      </label>
-
-      <label
-        className={`new-project-workbook-ack ${
-          missingKeys.has("workbook_write_acknowledged") ? "setup-field-missing" : ""
-        }`}
-      >
-        <input
-          checked={values.workbookWriteAcknowledged}
-          disabled={disabled}
-          type="checkbox"
-          onChange={(event) => update({ workbookWriteAcknowledged: event.target.checked })}
-        />
-        <span>
-          I confirm ConnLab may write this LTR registration to the controlled workbook.
-        </span>
       </label>
 
       <label className="new-project-setup-field">

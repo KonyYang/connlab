@@ -61,7 +61,7 @@ export function useNewProjectCompletion({
         const workbookCommit = await commitLtrWorkbookWrite(projectId, {
           plan_date: planDate,
           operator_confirmed: true,
-          preview_acknowledged: setupValues.workbookWriteAcknowledged,
+          preview_acknowledged: true,
           number_input:
             setupValues.ltrMode === "specified" ? setupValues.specifiedLtrNumber.trim() : null,
           test_item: setupValues.testItem,

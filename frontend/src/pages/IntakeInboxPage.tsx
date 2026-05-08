@@ -7,6 +7,7 @@ import {
   type ReactElement
 } from "react";
 import {
+  ApiRequestError,
   ensureNewProjectApplicationDraft,
   getIntakeCaseReview,
   getIntakePackageDetail,
@@ -18,6 +19,8 @@ import {
   selectIntakeApplicationForm,
   updateIntakeCaseReviewFields,
   uploadEmailPackageApplicationForm,
+  type DraftDuplicateAction,
+  type DraftDuplicateCheck,
   type IntakeCaseReview,
   type IntakePackageDetail,
   type IntakePackageImport,
@@ -68,6 +71,12 @@ type IntakeInboxPageProps = {
   onProjectCreated: (projectId: string) => void;
 };
 
+type DuplicateImportState = {
+  check: DraftDuplicateCheck;
+  packageId: string;
+  asset?: IntakeAsset | null;
+};
+
 export function IntakeInboxPage({
   session,
   onSessionChange,
@@ -77,6 +86,8 @@ export function IntakeInboxPage({
   const wordInputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [duplicateDraft, setDuplicateDraft] = useState<DuplicateImportState | null>(null);
+  const [resolvingDuplicateAction, setResolvingDuplicateAction] = useState<string | null>(null);
   const [review, setReview] = useState<IntakeCaseReview | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [editorLoading, setEditorLoading] = useState(false);
@@ -96,7 +107,6 @@ export function IntakeInboxPage({
   const [setupValues, setSetupValues] = useState<NewProjectSetupConfirmationValues>({
     ltrMode: "auto",
     specifiedLtrNumber: "",
-    workbookWriteAcknowledged: false,
     testItem: "",
     sampleDescription: "",
     location: "",
@@ -111,6 +121,10 @@ export function IntakeInboxPage({
   const visibleAttachmentAssets = useMemo(
     () => visibleIntakeAttachments(packageImport),
     [packageImport]
+  );
+  const hasSelectableApplicationForms = useMemo(
+    () => visibleAttachmentAssets.some((asset) => asset.extension.toLowerCase() === ".docx"),
+    [visibleAttachmentAssets]
   );
   const attachmentViewModels = useMemo(
     () => buildAttachmentViewModels(visibleAttachmentAssets, selectedAssetId),
@@ -141,7 +155,6 @@ export function IntakeInboxPage({
     if (setupValues.ltrMode === "specified" && !setupValues.specifiedLtrNumber.trim()) {
       missing.add("specified_ltr_number");
     }
-    if (!setupValues.workbookWriteAcknowledged) missing.add("workbook_write_acknowledged");
     if (!setupValues.testItem.trim()) missing.add("test_item");
     if (!setupValues.sampleDescription.trim()) missing.add("sample_description");
     if (!setupValues.location.trim()) missing.add("location");
@@ -265,6 +278,47 @@ export function IntakeInboxPage({
       return;
     }
     const packageId = packageImport.package_id;
+    if (session.selectedPrecheckCaseId) {
+      let cancelled = false;
+      async function loadSelectedReview(): Promise<void> {
+        setEditorLoading(true);
+        setEditorError(null);
+        try {
+          const nextReview = await getIntakeCaseReview(packageId);
+          if (!cancelled) {
+            setReview(nextReview);
+            setSelectedCaseId((current) =>
+              preferredCaseId(nextReview, session.selectedPrecheckCaseId, current)
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setReview(null);
+            setEditorError(
+              error instanceof Error ? error.message : "Unable to load the selected application draft."
+            );
+          }
+        } finally {
+          if (!cancelled) setEditorLoading(false);
+        }
+      }
+      void loadSelectedReview();
+      return () => {
+        cancelled = true;
+      };
+    }
+    const waitsForApplicationFormSelection =
+      packageImport.source_type === "outlook_msg"
+      && hasSelectableApplicationForms
+      && !session.selectedWordAssetId
+      && !session.selectedPrecheckCaseId;
+    if (waitsForApplicationFormSelection) {
+      setReview(null);
+      setSelectedCaseId(null);
+      setEditorLoading(false);
+      setEditorError(null);
+      return;
+    }
     let cancelled = false;
     async function prepareEditor(): Promise<void> {
       setEditorLoading(true);
@@ -284,11 +338,18 @@ export function IntakeInboxPage({
           });
         }
       } catch (error) {
+        const duplicate = draftDuplicateConflictFromError(error);
         if (!cancelled) {
-          setReview(null);
-          setEditorError(
-            error instanceof Error ? error.message : "Unable to prepare the application editor."
-          );
+          if (duplicate) {
+            setDuplicateDraft({ check: duplicate, packageId });
+            setReview(null);
+            setEditorError(null);
+          } else {
+            setReview(null);
+            setEditorError(
+              error instanceof Error ? error.message : "Unable to prepare the application editor."
+            );
+          }
         }
       } finally {
         if (!cancelled) setEditorLoading(false);
@@ -298,7 +359,13 @@ export function IntakeInboxPage({
     return () => {
       cancelled = true;
     };
-  }, [packageImport?.package_id]);
+  }, [
+    hasSelectableApplicationForms,
+    packageImport?.package_id,
+    packageImport?.source_type,
+    session.selectedPrecheckCaseId,
+    session.selectedWordAssetId
+  ]);
 
   useEffect(() => {
     if (!activeCase) {
@@ -361,17 +428,11 @@ export function IntakeInboxPage({
     if (!file) return;
     setImporting(true);
     setImportError(null);
+    setDuplicateDraft(null);
     setImportMessage(null);
     try {
       const imported = await importMsgPackage(file);
-      onSessionChange({
-        packageImport: imported,
-        selectedAssetId: imported.assets[0]?.asset_id ?? null,
-        selectedWordAssetId: null,
-        selectedPrecheckCaseId: null,
-        sourceMode: "msg",
-        directWordName: null
-      });
+      applyImportedMsgPackage(imported);
     } catch (error) {
       onSessionChange(EMPTY_INTAKE_SESSION);
       setImportError(error instanceof Error ? error.message : "Import failed.");
@@ -380,12 +441,97 @@ export function IntakeInboxPage({
     }
   }
 
+  async function handleResolveDuplicateDraft(action: DraftDuplicateAction): Promise<void> {
+    if (!duplicateDraft) {
+      return;
+    }
+    setResolvingDuplicateAction(action);
+    setImportError(null);
+    try {
+      const resolution = { action, caseId: duplicateDraft.check.existing_case_id };
+      if (duplicateDraft.asset) {
+        const selection = await selectIntakeApplicationForm(
+          duplicateDraft.packageId,
+          duplicateDraft.asset.asset_id,
+          true,
+          resolution
+        );
+        await applySelectedDraft(selection, duplicateDraft.asset.original_name);
+      } else {
+        const draft = await ensureNewProjectApplicationDraft(duplicateDraft.packageId, resolution);
+        await applyPreparedDraft(draft);
+      }
+      setDuplicateDraft(null);
+    } catch (error) {
+      const duplicate = draftDuplicateConflictFromError(error);
+      if (duplicate) {
+        setDuplicateDraft({ ...duplicateDraft, check: duplicate });
+      }
+      setImportError(error instanceof Error ? error.message : "Import failed.");
+    } finally {
+      setResolvingDuplicateAction(null);
+    }
+  }
+
+  function applyImportedMsgPackage(imported: IntakePackageImport): void {
+    onSessionChange({
+      packageImport: imported,
+      selectedAssetId: null,
+      selectedWordAssetId: null,
+      selectedPrecheckCaseId: null,
+      sourceMode: "msg",
+      directWordName: null
+    });
+  }
+
+  async function applyPreparedDraft(draft: {
+    package_id: string;
+    case_id: string;
+    selected_form_asset_id?: string | null;
+  }): Promise<void> {
+    const detail = await getIntakePackageDetail(draft.package_id);
+    const refreshed = packageDetailToImport(detail);
+    const nextReview = await getIntakeCaseReview(draft.package_id);
+    setReview(nextReview);
+    setSelectedCaseId(draft.case_id);
+    onSessionChange({
+      packageImport: refreshed,
+      selectedAssetId: draft.selected_form_asset_id ?? refreshed.assets[0]?.asset_id ?? null,
+      selectedWordAssetId: draft.selected_form_asset_id ?? null,
+      selectedPrecheckCaseId: draft.case_id,
+      sourceMode: refreshed.source_type === "outlook_msg" ? "msg" : "word",
+      directWordName: null
+    });
+  }
+
+  async function applySelectedDraft(
+    selection: { package_id: string; case_id: string; selected_form_asset_id: string },
+    importMessageText: string
+  ): Promise<void> {
+    const detail = await getIntakePackageDetail(selection.package_id);
+    const refreshed = packageDetailToImport(detail);
+    const nextReview = await getIntakeCaseReview(selection.package_id);
+    setReview(nextReview);
+    setSelectedCaseId(selection.case_id);
+    setImportMessage(importMessageText);
+    setImportVersion((current) => current + 1);
+    onSessionChange({
+      packageImport: refreshed,
+      selectedAssetId: selection.selected_form_asset_id,
+      selectedWordAssetId: selection.selected_form_asset_id,
+      selectedPrecheckCaseId: selection.case_id,
+      sourceMode: refreshed.source_type === "outlook_msg" ? "msg" : "word",
+      directWordName: null
+    });
+  }
+
   async function handleDirectWordChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     setImporting(true);
     setImportError(null);
+    setDuplicateDraft(null);
     setImportMessage(null);
     try {
       if (packageImport?.source_type === "outlook_msg") {
@@ -428,19 +574,15 @@ export function IntakeInboxPage({
     setImportMessage(null);
     try {
       const selection = await selectIntakeApplicationForm(packageImport.package_id, asset.asset_id, true);
-      const nextReview = await getIntakeCaseReview(packageImport.package_id);
-      setReview(nextReview);
-      setSelectedCaseId(selection.case_id);
-      setImportMessage(asset.original_name);
-      setImportVersion((current) => current + 1);
-      onSessionChange({
-        ...session,
-        selectedAssetId: asset.asset_id,
-        selectedWordAssetId: selection.selected_form_asset_id,
-        selectedPrecheckCaseId: selection.case_id
-      });
+      await applySelectedDraft(selection, asset.original_name);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Application form import failed.");
+      const duplicate = draftDuplicateConflictFromError(error);
+      if (duplicate) {
+        setDuplicateDraft({ check: duplicate, packageId: packageImport.package_id, asset });
+        setImportError(null);
+      } else {
+        setImportError(error instanceof Error ? error.message : "Application form import failed.");
+      }
     } finally {
       setImportingAssetId(null);
     }
@@ -482,11 +624,15 @@ export function IntakeInboxPage({
           />
           <AttachmentList
             attachments={attachmentViewModels}
+            duplicateDraft={duplicateDraft?.check ?? null}
             importingAssetId={importingAssetId}
             packageLoaded={Boolean(packageImport)}
+            resolvingDuplicateAction={resolvingDuplicateAction}
+            onDuplicateAction={(action) => void handleResolveDuplicateDraft(action)}
             onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
             onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {
+              setDuplicateDraft(null);
               onSessionChange({
                 ...session,
                 selectedAssetId: attachment.asset.asset_id
@@ -568,6 +714,20 @@ export function IntakeInboxPage({
       </div>
     </section>
   );
+}
+
+function draftDuplicateConflictFromError(error: unknown): DraftDuplicateCheck | null {
+  if (
+    !(error instanceof ApiRequestError) ||
+    error.status !== 409 ||
+    !error.detail ||
+    typeof error.detail !== "object" ||
+    !("classification" in error.detail) ||
+    !("allowed_actions" in error.detail)
+  ) {
+    return null;
+  }
+  return error.detail as DraftDuplicateCheck;
 }
 
 function packageDetailToImport(detail: IntakePackageDetail): IntakePackageImport {

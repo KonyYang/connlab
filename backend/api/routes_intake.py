@@ -7,7 +7,7 @@ import tempfile
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -69,6 +69,7 @@ from backend.application.intake_precheck_service import (
 )
 from backend.application.intake_form_selection_service import (
     FormSelectionResult,
+    IntakeDraftDuplicateResolutionRequiredError,
     IntakeFormSelectionService,
     IntakeSelectionError,
     IntakeSelectionNotFoundError,
@@ -261,6 +262,8 @@ class IntakePackageImportResponse(BaseModel):
     candidate_count: int
     next_action: str
     assets: list[IntakeAssetResponse]
+    duplicate_check: dict[str, object] | None = None
+    resolution_action: str | None = None
 
 
 class IntakeCaseSummaryResponse(BaseModel):
@@ -344,6 +347,13 @@ class NewProjectApplicationDraftResponse(BaseModel):
     next_action: str
 
 
+class NewProjectApplicationDraftRequest(BaseModel):
+    """Optional duplicate resolution for preparing an application draft."""
+
+    resolution_action: str | None = None
+    resolution_case_id: str | None = None
+
+
 class ProjectCreationDraftLifecycleResponse(BaseModel):
     """Response for saving or discarding a New Project creation draft."""
 
@@ -378,6 +388,8 @@ class SelectApplicationFormRequest(BaseModel):
 
     asset_id: str
     replace_existing: bool = False
+    resolution_action: str | None = None
+    resolution_case_id: str | None = None
 
 
 class SelectApplicationFormResponse(BaseModel):
@@ -416,12 +428,19 @@ def upload_application_form(
 )
 def import_msg_package(
     file: UploadFile = File(...),
+    resolution_action: str | None = Form(default=None),
+    resolution_package_id: str | None = Form(default=None),
     service: MsgPackageIntakeService = Depends(get_msg_package_intake_service),
 ) -> IntakePackageImportResponse:
     """Import one manually selected Outlook `.msg` package."""
     try:
         return _msg_import_response(
-            service.import_msg_package(file.filename or "source.msg", file.file)
+            service.import_msg_package(
+                file.filename or "source.msg",
+                file.file,
+                resolution_action=resolution_action,
+                resolution_package_id=resolution_package_id,
+            )
         )
     except MsgPackageIntakeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -473,6 +492,8 @@ def upload_email_package_application_form(
             )
         except EmailPackageApplicationFormNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except IntakeDraftDuplicateResolutionRequiredError as exc:
+            raise HTTPException(status_code=409, detail=exc.check.as_dict()) from exc
         except IntakeSelectionNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except IntakeSelectionError as exc:
@@ -565,8 +586,12 @@ def select_application_form_asset(
                 package_id,
                 request.asset_id,
                 replace_existing=request.replace_existing,
+                resolution_action=request.resolution_action,
+                resolution_case_id=request.resolution_case_id,
             )
         )
+    except IntakeDraftDuplicateResolutionRequiredError as exc:
+        raise HTTPException(status_code=409, detail=exc.check.as_dict()) from exc
     except IntakeSelectionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except IntakeSelectionError as exc:
@@ -579,15 +604,26 @@ def select_application_form_asset(
 )
 def ensure_new_project_application_draft(
     package_id: str,
+    request: NewProjectApplicationDraftRequest | None = None,
     service: NewProjectApplicationDraftService = Depends(
         get_new_project_application_draft_service
     ),
 ) -> NewProjectApplicationDraftResponse:
     """Prepare a blank editable application draft without importing a form."""
     try:
-        return _new_project_application_draft_response(service.ensure_draft(package_id))
+        return _new_project_application_draft_response(
+            service.ensure_draft(
+                package_id,
+                resolution_action=request.resolution_action if request else None,
+                resolution_case_id=request.resolution_case_id if request else None,
+            )
+        )
+    except IntakeDraftDuplicateResolutionRequiredError as exc:
+        raise HTTPException(status_code=409, detail=exc.check.as_dict()) from exc
     except NewProjectApplicationDraftNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IntakeSelectionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post(
@@ -809,6 +845,8 @@ def _msg_import_response(result: MsgPackageIntakeResult) -> IntakePackageImportR
             else "resolve_missing_application_form"
         ),
         assets=[_intake_asset_response(asset) for asset in result.assets],
+        duplicate_check=result.duplicate_check.as_dict() if result.duplicate_check else None,
+        resolution_action=result.resolution_action,
     )
 
 

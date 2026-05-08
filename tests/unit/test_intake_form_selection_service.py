@@ -33,6 +33,12 @@ class PackageStore:
     def get(self, package_id: str) -> IntakePackage | None:
         return self.packages.get(package_id)
 
+    def list(self) -> list[IntakePackage]:
+        return list(self.packages.values())
+
+    def delete(self, package_id: str) -> bool:
+        return self.packages.pop(package_id, None) is not None
+
 
 class AssetStore:
     def __init__(self, assets: list[IntakeAsset]) -> None:
@@ -41,9 +47,18 @@ class AssetStore:
     def get(self, asset_id: str) -> IntakeAsset | None:
         return self.assets.get(asset_id)
 
+    def list_by_package(self, package_id: str) -> list[IntakeAsset]:
+        return [asset for asset in self.assets.values() if asset.package_id == package_id]
+
     def update(self, asset: IntakeAsset) -> IntakeAsset:
         self.assets[asset.asset_id] = asset
         return asset
+
+    def delete_by_package(self, package_id: str) -> int:
+        keys = [key for key, asset in self.assets.items() if asset.package_id == package_id]
+        for key in keys:
+            del self.assets[key]
+        return len(keys)
 
 
 class CaseStore:
@@ -61,6 +76,12 @@ class CaseStore:
         self.cases[case.case_id] = case
         return case
 
+    def delete_by_package(self, package_id: str) -> int:
+        keys = [key for key, case in self.cases.items() if case.package_id == package_id]
+        for key in keys:
+            del self.cases[key]
+        return len(keys)
+
 
 class DraftStore:
     def __init__(self, drafts: list[IntakeDraft] | None = None) -> None:
@@ -76,6 +97,17 @@ class DraftStore:
     def update(self, draft: IntakeDraft) -> IntakeDraft:
         self.drafts[draft.draft_id] = draft
         return draft
+
+    def delete_by_package(self, package_id: str) -> int:
+        case_ids = {
+            draft.case_id
+            for draft in self.drafts.values()
+            if draft.case_id.startswith(package_id)
+        }
+        keys = [key for key, draft in self.drafts.items() if draft.case_id in case_ids]
+        for key in keys:
+            del self.drafts[key]
+        return len(keys)
 
 
 class FakeEligibilityValidator:
@@ -115,6 +147,20 @@ def _asset(asset_id: str, role: IntakeAssetRole, extension: str = ".docx") -> In
     )
 
 
+def _email_asset(asset_id: str = "email", package_id: str = "pkg-1", size: int = 1000) -> IntakeAsset:
+    return IntakeAsset(
+        asset_id=asset_id,
+        package_id=package_id,
+        original_name="request.msg",
+        stored_path=Path(f"data/intake/{package_id}/source/request.msg"),
+        extension=".msg",
+        mime_type="application/vnd.ms-outlook",
+        size_bytes=size,
+        sha256="e" * 64,
+        asset_role=IntakeAssetRole.EMAIL_SOURCE,
+    )
+
+
 def _asset_with_path(
     asset_id: str,
     role: IntakeAssetRole,
@@ -138,13 +184,14 @@ def _service(
     cases: list[IntakeCase] | None = None,
     drafts: list[IntakeDraft] | None = None,
     eligibility: ApplicationFormEligibility | None = None,
+    packages: list[IntakePackage] | None = None,
 ) -> tuple[IntakeFormSelectionService, AssetStore, CaseStore, DraftStore]:
     asset_store = AssetStore(assets)
     case_store = CaseStore(cases)
     draft_store = DraftStore(drafts)
     return (
         IntakeFormSelectionService(
-            PackageStore([_package()]),
+            PackageStore(packages or [_package()]),
             asset_store,
             case_store,
             draft_store,
@@ -232,11 +279,11 @@ def test_selection_updates_existing_case_and_draft() -> None:
 
     result = service.select_form_asset("pkg-1", "asset-a")
 
-    assert result.case.case_id == "case-1"
+    assert result.case.case_id != "case-1"
     assert result.case.selected_form_asset_id == "asset-a"
     assert result.case.confirmed_project_id is None
-    assert case_store.cases["case-1"].status is IntakeCaseStatus.NEEDS_REVIEW
-    assert draft_store.drafts["draft-1"].parsed_fields_json == "{}"
+    assert case_store.cases["case-1"].selected_form_asset_id == "old-asset"
+    assert draft_store.drafts["draft-1"].parsed_fields_json == '{"old":true}'
 
 
 def test_selection_preserves_manual_overrides_for_same_selected_asset() -> None:
@@ -311,9 +358,9 @@ def test_selection_clears_manual_overrides_when_rebinding_reusable_case() -> Non
 
     result = service.select_form_asset("pkg-1", "asset-a")
 
-    assert result.case.case_id == "case-1"
+    assert result.case.case_id != "case-1"
     assert result.case.selected_form_asset_id == "asset-a"
-    assert draft_store.drafts["draft-1"].manual_overrides_json is None
+    assert draft_store.drafts["draft-1"].manual_overrides_json == '{"requester":"Old corrected"}'
 
 
 def test_selection_rebinds_unconfirmed_case_when_package_has_other_form_case() -> None:
@@ -333,10 +380,10 @@ def test_selection_rebinds_unconfirmed_case_when_package_has_other_form_case() -
 
     result = service.select_form_asset("pkg-1", "asset-b")
 
-    assert result.case.case_id == "case-1"
+    assert result.case.case_id != "case-1"
     assert result.case.selected_form_asset_id == "asset-b"
-    assert len(case_store.cases) == 1
-    assert case_store.cases["case-1"].selected_form_asset_id == "asset-b"
+    assert len(case_store.cases) == 2
+    assert case_store.cases["case-1"].selected_form_asset_id == "asset-a"
 
 
 def test_selection_creates_new_case_when_existing_case_is_confirmed() -> None:
@@ -361,6 +408,91 @@ def test_selection_creates_new_case_when_existing_case_is_confirmed() -> None:
     assert result.case.selected_form_asset_id == "asset-b"
     assert len(case_store.cases) == 2
     assert case_store.cases["case-1"].confirmed_project_id == "project-1"
+
+
+def test_selection_requires_resolution_for_existing_application_draft() -> None:
+    from backend.application.intake_form_selection_service import (
+        IntakeDraftDuplicateResolutionRequiredError,
+    )
+
+    existing_package = replace(_package(), package_id="pkg-existing")
+    incoming_package = _package()
+    existing_form = replace(
+        _asset("asset-existing", IntakeAssetRole.SELECTED_APPLICATION_FORM),
+        package_id="pkg-existing",
+        original_name="application.docx",
+    )
+    incoming_form = replace(
+        _asset("asset-incoming", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        original_name="application.docx",
+    )
+    existing_case = IntakeCase(
+        case_id="case-existing",
+        package_id="pkg-existing",
+        selected_form_asset_id="asset-existing",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    service, _, _, _ = _service(
+        [
+            _email_asset("email-existing", "pkg-existing", 2048),
+            _email_asset("email-incoming", "pkg-1", 2048),
+            existing_form,
+            incoming_form,
+        ],
+        cases=[existing_case],
+        drafts=[
+            IntakeDraft(
+                draft_id="draft-existing",
+                case_id="case-existing",
+                parsed_fields_json="{}",
+            )
+        ],
+        packages=[existing_package, incoming_package],
+    )
+
+    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-incoming")
+
+    check = exc_info.value.check
+    assert check.classification == "exact_existing_application_draft"
+    assert check.existing_case_id == "case-existing"
+    assert check.incoming_application_form_name == "application.docx"
+
+
+def test_selection_creates_separate_case_for_same_email_different_form() -> None:
+    existing_package = replace(_package(), package_id="pkg-existing")
+    incoming_package = _package()
+    existing_form = replace(
+        _asset("asset-existing", IntakeAssetRole.SELECTED_APPLICATION_FORM),
+        package_id="pkg-existing",
+        original_name="old-application.docx",
+    )
+    incoming_form = replace(
+        _asset("asset-incoming", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        original_name="new-application.docx",
+    )
+    existing_case = IntakeCase(
+        case_id="case-existing",
+        package_id="pkg-existing",
+        selected_form_asset_id="asset-existing",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    service, _, case_store, _ = _service(
+        [
+            _email_asset("email-existing", "pkg-existing", 2048),
+            _email_asset("email-incoming", "pkg-1", 2048),
+            existing_form,
+            incoming_form,
+        ],
+        cases=[existing_case],
+        packages=[existing_package, incoming_package],
+    )
+
+    result = service.select_form_asset("pkg-1", "asset-incoming")
+
+    assert result.case.package_id == "pkg-1"
+    assert result.case.case_id != "case-existing"
+    assert len(case_store.cases) == 2
 
 
 def test_selection_rejects_non_word_non_candidate_asset() -> None:

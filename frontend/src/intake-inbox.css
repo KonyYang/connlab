@@ -413,6 +413,76 @@
   font-weight: 700;
 }
 
+.email-duplicate-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #ead7b9;
+  border-radius: 10px;
+  background: #fff8ed;
+}
+
+.email-duplicate-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.email-duplicate-heading strong {
+  color: var(--color-warning);
+  font-size: 13px;
+}
+
+.email-duplicate-heading span {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.email-duplicate-facts {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.email-duplicate-facts div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.email-duplicate-facts dt {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.email-duplicate-facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.email-duplicate-difference {
+  margin: 0;
+  color: var(--color-warning);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.email-duplicate-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.email-duplicate-actions button {
+  width: 100%;
+  justify-content: center;
+}
+
 .new-project-frozen-notice {
   margin: 0;
   padding: 10px 12px;
@@ -1201,6 +1271,10 @@
 
   .intake-attachments-panel {
     grid-template-rows: auto;
+  }
+
+  .email-duplicate-actions {
+    grid-template-columns: 1fr;
   }
 
   .attachment-list {

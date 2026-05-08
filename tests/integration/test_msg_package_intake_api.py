@@ -25,6 +25,9 @@ from backend.shared.config import Settings
 from backend.domain import (
     IntakeAsset,
     IntakeAssetRole,
+    IntakeCase,
+    IntakeCaseStatus,
+    IntakeDraft,
     IntakePackage,
     IntakePackageSourceType,
     IntakePackageStatus,
@@ -257,20 +260,25 @@ def test_select_form_api_binds_selected_docx_to_precheck_case(tmp_path: Path) ->
 
         assert second_response.status_code == 200
         second = second_response.json()
-        assert second["case_id"] == selected["case_id"]
+        assert second["case_id"] != selected["case_id"]
         assert second["selected_form_asset_id"] == "asset-other"
 
         second_review_response = client.get("/api/intake-packages/pkg-select/case-review")
         assert second_review_response.status_code == 200
         second_cases = second_review_response.json()["cases"]
-        assert len(second_cases) == 1
-        assert second_cases[0]["case_id"] == selected["case_id"]
-        assert second_cases[0]["selected_form_asset_id"] == "asset-other"
+        assert len(second_cases) == 2
+        assert {case["selected_form_asset_id"] for case in second_cases} == {
+            "asset-selected",
+            "asset-other",
+        }
 
         with session_factory() as session:
             persisted_cases = IntakeCaseRepository(session).list_by_package("pkg-select")
-            assert len(persisted_cases) == 1
-            assert persisted_cases[0].selected_form_asset_id == "asset-other"
+            assert len(persisted_cases) == 2
+            assert {case.selected_form_asset_id for case in persisted_cases} == {
+                "asset-selected",
+                "asset-other",
+            }
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -386,6 +394,235 @@ def test_email_package_without_form_accepts_supplemental_application_form(
             assert settings.data_dir / "intake" in selected_asset.stored_path.parents
             assert selected_asset.stored_path.is_file()
             assert IntakeDraftRepository(session).get_by_case(selected["case_id"]) is not None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_select_form_api_reports_existing_application_draft_duplicate(
+    tmp_path: Path,
+) -> None:
+    """Selecting the same form/email identity prompts draft-level resolution."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        docx_path = _create_application_docx(tmp_path / "application.docx")
+        with session_factory() as session:
+            package_repo = IntakePackageRepository(session)
+            asset_repo = IntakeAssetRepository(session)
+            case_repo = IntakeCaseRepository(session)
+            draft_repo = IntakeDraftRepository(session)
+            for package_id in ("pkg-existing", "pkg-incoming"):
+                package_repo.create(
+                    IntakePackage(
+                        package_id=package_id,
+                        source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                        status=IntakePackageStatus.READY_FOR_REVIEW,
+                        source_original_name="request.msg",
+                        source_stored_path=tmp_path / f"{package_id}.msg",
+                    )
+                )
+                asset_repo.create(
+                    IntakeAsset(
+                        asset_id=f"email-{package_id}",
+                        package_id=package_id,
+                        original_name="request.msg",
+                        stored_path=tmp_path / f"{package_id}.msg",
+                        extension=".msg",
+                        mime_type="application/vnd.ms-outlook",
+                        size_bytes=2048,
+                        sha256="e" * 64,
+                        asset_role=IntakeAssetRole.EMAIL_SOURCE,
+                    )
+                )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="form-existing",
+                    package_id="pkg-existing",
+                    original_name=docx_path.name,
+                    stored_path=docx_path,
+                    extension=".docx",
+                    mime_type="application/octet-stream",
+                    size_bytes=docx_path.stat().st_size,
+                    sha256="a" * 64,
+                    asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM,
+                )
+            )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="form-incoming",
+                    package_id="pkg-incoming",
+                    original_name=docx_path.name,
+                    stored_path=docx_path,
+                    extension=".docx",
+                    mime_type="application/octet-stream",
+                    size_bytes=docx_path.stat().st_size,
+                    sha256="b" * 64,
+                    asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,
+                )
+            )
+            case_repo.create(
+                IntakeCase(
+                    case_id="case-existing",
+                    package_id="pkg-existing",
+                    selected_form_asset_id="form-existing",
+                    status=IntakeCaseStatus.NEEDS_REVIEW,
+                )
+            )
+            draft_repo.create(
+                IntakeDraft(
+                    draft_id="draft-existing",
+                    case_id="case-existing",
+                    parsed_fields_json="{}",
+                )
+            )
+            session.commit()
+
+        conflict = client.post(
+            "/api/intake-packages/pkg-incoming/select-form",
+            json={"asset_id": "form-incoming"},
+        )
+
+        assert conflict.status_code == 409
+        detail = conflict.json()["detail"]
+        assert detail["classification"] == "exact_existing_application_draft"
+        assert detail["existing_case_id"] == "case-existing"
+        assert detail["incoming_application_form_name"] == docx_path.name
+
+        opened = client.post(
+            "/api/intake-packages/pkg-incoming/select-form",
+            json={
+                "asset_id": "form-incoming",
+                "resolution_action": "open_existing",
+                "resolution_case_id": "case-existing",
+            },
+        )
+
+        assert opened.status_code == 200
+        payload = opened.json()
+        assert payload["package_id"] == "pkg-existing"
+        assert payload["case_id"] == "case-existing"
+        assert payload["selected_form_asset_id"] == "form-existing"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_application_draft_api_reports_existing_no_form_email_duplicate(
+    tmp_path: Path,
+) -> None:
+    """No-form email drafts are deduplicated separately by email name and size."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        with session_factory() as session:
+            package_repo = IntakePackageRepository(session)
+            asset_repo = IntakeAssetRepository(session)
+            case_repo = IntakeCaseRepository(session)
+            draft_repo = IntakeDraftRepository(session)
+            for package_id in ("pkg-existing", "pkg-incoming"):
+                package_repo.create(
+                    IntakePackage(
+                        package_id=package_id,
+                        source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                        status=IntakePackageStatus.NEEDS_APPLICATION_FORM_SELECTION,
+                        source_original_name="request.msg",
+                        source_stored_path=tmp_path / f"{package_id}.msg",
+                    )
+                )
+                asset_repo.create(
+                    IntakeAsset(
+                        asset_id=f"email-{package_id}",
+                        package_id=package_id,
+                        original_name="request.msg",
+                        stored_path=tmp_path / f"{package_id}.msg",
+                        extension=".msg",
+                        mime_type="application/vnd.ms-outlook",
+                        size_bytes=2048,
+                        sha256="e" * 64,
+                        asset_role=IntakeAssetRole.EMAIL_SOURCE,
+                    )
+                )
+            case_repo.create(
+                IntakeCase(
+                    case_id="case-existing",
+                    package_id="pkg-existing",
+                    selected_form_asset_id=None,
+                    status=IntakeCaseStatus.NEEDS_REVIEW,
+                )
+            )
+            draft_repo.create(
+                IntakeDraft(
+                    draft_id="draft-existing",
+                    case_id="case-existing",
+                    parsed_fields_json="{}",
+                )
+            )
+            session.commit()
+
+        conflict = client.post("/api/intake-packages/pkg-incoming/application-draft")
+
+        assert conflict.status_code == 409
+        detail = conflict.json()["detail"]
+        assert detail["classification"] == "exact_existing_no_form_draft"
+        assert detail["existing_case_id"] == "case-existing"
+        assert detail["incoming_application_form_name"] is None
+
+        opened = client.post(
+            "/api/intake-packages/pkg-incoming/application-draft",
+            json={
+                "resolution_action": "open_existing",
+                "resolution_case_id": "case-existing",
+            },
+        )
+
+        assert opened.status_code == 200
+        payload = opened.json()
+        assert payload["package_id"] == "pkg-existing"
+        assert payload["case_id"] == "case-existing"
+        assert payload["selected_form_asset_id"] is None
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -935,3 +1172,129 @@ def _create_application_docx(
         sample_table.cell(1, index).text = value
     document.save(path)
     return path
+
+def test_msg_package_import_api_allows_same_email_until_draft_identity_is_known(
+    tmp_path: Path,
+) -> None:
+    """Import API stores same-name email packages until a draft identity exists."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        first = client.post(
+            "/api/intake-packages/import-msg",
+            files={
+                "file": (
+                    "request.msg",
+                    _msg_bytes(
+                        [
+                            "Subject: Connector qualification request",
+                            "From: Jane Engineer <jane@example.com>",
+                            "Attachment: drawing.pdf; content=pdf bytes",
+                        ]
+                    ),
+                    "application/vnd.ms-outlook",
+                )
+            },
+        )
+        assert first.status_code == 201
+        first_payload = first.json()
+
+        second = client.post(
+            "/api/intake-packages/import-msg",
+            files={
+                "file": (
+                    "request.msg",
+                    _msg_bytes(
+                        [
+                            "Subject: Connector qualification request",
+                            "From: Jane Engineer <jane@example.com>",
+                            "Attachment: drawing.pdf; content=pdf bytes",
+                        ]
+                    ),
+                    "application/vnd.ms-outlook",
+                )
+            },
+        )
+        assert second.status_code == 201
+        second_payload = second.json()
+        assert second_payload["package_id"] != first_payload["package_id"]
+        assert second_payload["duplicate_check"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_msg_package_import_api_rejects_import_time_duplicate_resolution(
+    tmp_path: Path,
+) -> None:
+    """Duplicate resolution is handled when a draft is created, not at import time."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/api/intake-packages/import-msg",
+            data={
+                "resolution_action": "replace_existing",
+                "resolution_package_id": "pkg-existing",
+            },
+            files={
+                "file": (
+                    "request.msg",
+                    _msg_bytes(
+                        [
+                            "Subject: Connector qualification request",
+                            "From: Jane Engineer <jane@example.com>",
+                            "Attachment: drawing.pdf; content=updated bytes",
+                        ]
+                    ),
+                    "application/vnd.ms-outlook",
+                )
+            },
+        )
+        assert response.status_code == 400
+        assert "when a draft is created" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()

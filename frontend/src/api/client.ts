@@ -114,6 +114,21 @@ export type IntakeAsset = {
   candidate_score?: number | null;
 };
 
+export type DraftDuplicateAction = "open_existing" | "replace_existing" | "create_separate";
+
+export type DraftDuplicateCheck = {
+  classification: "exact_existing_application_draft" | "exact_existing_no_form_draft";
+  existing_package_id: string;
+  existing_case_id: string;
+  existing_source_original_name: string;
+  incoming_source_original_name: string;
+  existing_source_size_bytes: number;
+  incoming_source_size_bytes: number;
+  existing_application_form_name?: string | null;
+  incoming_application_form_name?: string | null;
+  allowed_actions: DraftDuplicateAction[];
+};
+
 export type IntakeAssetPreviewMetadata = {
   asset_id: string;
   original_name: string;
@@ -167,6 +182,8 @@ export type IntakePackageImport = {
   candidate_count: number;
   next_action: string;
   assets: IntakeAsset[];
+  duplicate_check?: DraftDuplicateCheck | null;
+  resolution_action?: string | null;
 };
 
 export type IntakeCaseSummary = {
@@ -528,6 +545,18 @@ export type LtrWorkbookWriteCommit = {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
+export class ApiRequestError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(message: string, status: number, detail: unknown) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -539,22 +568,22 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const message = await responseErrorMessage(response);
-    throw new Error(message || `Request failed with ${response.status}`);
+    const error = await responseError(response);
+    throw error;
   }
 
   return response.json() as Promise<T>;
 }
 
-async function responseErrorMessage(response: Response): Promise<string> {
+async function responseError(response: Response): Promise<ApiRequestError> {
   const raw = await response.text();
   if (!raw) {
-    return "";
+    return new ApiRequestError(`Request failed with ${response.status}`, response.status, null);
   }
   try {
     const parsed = JSON.parse(raw) as { detail?: unknown };
     if (typeof parsed.detail === "string") {
-      return parsed.detail;
+      return new ApiRequestError(parsed.detail, response.status, parsed.detail);
     }
     if (
       parsed.detail &&
@@ -562,11 +591,15 @@ async function responseErrorMessage(response: Response): Promise<string> {
       "message" in parsed.detail &&
       typeof parsed.detail.message === "string"
     ) {
-      return parsed.detail.message;
+      return new ApiRequestError(parsed.detail.message, response.status, parsed.detail);
     }
-    return raw;
+    return new ApiRequestError(
+      response.status === 409 ? "Duplicate draft detected." : raw,
+      response.status,
+      parsed.detail ?? parsed
+    );
   } catch {
-    return raw;
+    return new ApiRequestError(raw, response.status, raw);
   }
 }
 
@@ -580,8 +613,8 @@ async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
   });
 
   if (!response.ok) {
-    const message = await responseErrorMessage(response);
-    throw new Error(message || `Request failed with ${response.status}`);
+    const error = await responseError(response);
+    throw error;
   }
 
   return response.blob();
@@ -663,9 +696,21 @@ export function reviewIntakePackageExceptions(
   );
 }
 
-export function importMsgPackage(file: File): Promise<IntakePackageImport> {
+export function importMsgPackage(
+  file: File,
+  resolution?: {
+    action: "open_existing" | "replace_existing" | "create_separate";
+    packageId?: string | null;
+  }
+): Promise<IntakePackageImport> {
   const formData = new FormData();
   formData.append("file", file);
+  if (resolution) {
+    formData.append("resolution_action", resolution.action);
+    if (resolution.packageId) {
+      formData.append("resolution_package_id", resolution.packageId);
+    }
+  }
   return requestJson<IntakePackageImport>("/api/intake-packages/import-msg", {
     method: "POST",
     body: formData
@@ -728,23 +773,38 @@ export function downloadIntakeAsset(assetId: string): Promise<Blob> {
 export function selectIntakeApplicationForm(
   packageId: string,
   assetId: string,
-  replaceExisting = false
+  replaceExisting = false,
+  resolution?: { action: DraftDuplicateAction; caseId?: string | null }
 ): Promise<SelectedApplicationForm> {
   return requestJson<SelectedApplicationForm>(
     `/api/intake-packages/${encodeURIComponent(packageId)}/select-form`,
     {
       method: "POST",
-      body: JSON.stringify({ asset_id: assetId, replace_existing: replaceExisting })
+      body: JSON.stringify({
+        asset_id: assetId,
+        replace_existing: replaceExisting,
+        resolution_action: resolution?.action ?? null,
+        resolution_case_id: resolution?.caseId ?? null
+      })
     }
   );
 }
 
 export function ensureNewProjectApplicationDraft(
-  packageId: string
+  packageId: string,
+  resolution?: { action: DraftDuplicateAction; caseId?: string | null }
 ): Promise<NewProjectApplicationDraft> {
   return requestJson<NewProjectApplicationDraft>(
     `/api/intake-packages/${encodeURIComponent(packageId)}/application-draft`,
-    { method: "POST" }
+    {
+      method: "POST",
+      body: resolution
+        ? JSON.stringify({
+            resolution_action: resolution.action,
+            resolution_case_id: resolution.caseId ?? null
+          })
+        : undefined
+    }
   );
 }
 

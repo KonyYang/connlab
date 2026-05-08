@@ -53,6 +53,8 @@ class MsgPackageIntakeResult:
     package: IntakePackage
     assets: tuple[IntakeAsset, ...]
     candidates: tuple[ApplicationFormCandidate, ...]
+    duplicate_check: None = None
+    resolution_action: str | None = None
 
 
 class MsgPackageIntakeService:
@@ -75,6 +77,8 @@ class MsgPackageIntakeService:
         self,
         filename: str,
         source: BinaryIO,
+        resolution_action: str | None = None,
+        resolution_package_id: str | None = None,
     ) -> MsgPackageIntakeResult:
         """Import an uploaded `.msg` file and register extracted attachments."""
         safe_name = self._safe_msg_filename(filename)
@@ -91,6 +95,12 @@ class MsgPackageIntakeService:
                 )
             except OutlookMsgImportError as exc:
                 raise MsgPackageIntakeError(str(exc)) from exc
+
+        if resolution_action is not None or resolution_package_id is not None:
+            self._storage.delete_package(package_id)
+            raise MsgPackageIntakeError(
+                "Email package duplicate resolution now happens when a draft is created."
+            )
 
         package = self._package_store.create(
             IntakePackage(
@@ -154,6 +164,7 @@ class MsgPackageIntakeService:
             package=updated_package,
             assets=tuple(self._asset_store.list_by_package(package.package_id)),
             candidates=detection.candidates,
+            resolution_action=None,
         )
 
     def _safe_msg_filename(self, filename: str) -> str:

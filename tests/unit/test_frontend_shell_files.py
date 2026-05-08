@@ -1858,7 +1858,7 @@ def test_task103_application_form_import_is_explicit_and_confirmed() -> None:
     for term in [
         "selectIntakeApplicationForm",
         "selectIntakeApplicationForm(packageImport.package_id, asset.asset_id, true)",
-        "setImportMessage(asset.original_name)",
+        "applySelectedDraft(selection, asset.original_name)",
         "downloadIntakeAsset",
     ]:
         assert term in page_source
@@ -1874,9 +1874,73 @@ def test_task103_application_form_import_is_explicit_and_confirmed() -> None:
 
     assert "Import application form (next)" not in source_panel_source
     assert "replace_existing" in client_source
-    assert "body: JSON.stringify({ asset_id: assetId, replace_existing: replaceExisting })" in client_source
+    assert "resolution_action: resolution?.action ?? null" in client_source
     assert "downloadIntakeAsset" in client_source
     assert "requestBlob" in client_source
+
+
+def test_task142_draft_duplicate_resolution_is_business_readable() -> None:
+    """TASK_142 resolves duplicate drafts at draft identity boundaries."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    source_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "IntakeSourcePanel.tsx"
+    ).read_text(encoding="utf-8")
+    attachment_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "DraftDuplicateCheck" in client_source
+    assert "exact_existing_application_draft" in client_source
+    assert "exact_existing_no_form_draft" in client_source
+    assert "Duplicate draft detected." in client_source
+    assert "draftDuplicateConflictFromError" in page_source
+    assert "ensureNewProjectApplicationDraft(duplicateDraft.packageId, resolution)" in page_source
+    assert "selectIntakeApplicationForm(" in page_source
+    assert "This application draft already exists" in attachment_source
+    assert "This application draft already exists" not in source_panel_source
+    assert "This email already has a no-form draft" not in source_panel_source + attachment_source
+    assert "All draft identity fields match" not in source_panel_source + attachment_source
+    assert "Create separate draft" not in source_panel_source + attachment_source
+    assert "Load existing" in attachment_source
+    assert "Reinitialize" in attachment_source
+    assert "Open existing draft" not in attachment_source
+    assert "Replace existing draft" not in attachment_source
+    assert "JSON.stringify(error)" not in page_source
+
+
+def test_task143_email_import_waits_for_application_form_selection() -> None:
+    """TASK_143 keeps duplicate draft handling behind selected application forms."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    source_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "IntakeSourcePanel.tsx"
+    ).read_text(encoding="utf-8")
+    attachment_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "hasSelectableApplicationForms" in page_source
+    assert "waitsForApplicationFormSelection" in page_source
+    assert "loadSelectedReview" in page_source
+    assert "Unable to load the selected application draft." in page_source
+    assert 'packageImport.source_type === "outlook_msg"' in page_source
+    assert "selectedAssetId: null" in page_source
+    assert "applySelectedDraft(selection, asset.original_name)" in page_source
+    assert "applySelectedDraft(selection, duplicateDraft.asset.original_name)" in page_source
+    assert "duplicateDraft={duplicateDraft?.check ?? null}" in page_source
+    assert "onDuplicateAction={(action) => void handleResolveDuplicateDraft(action)}" in page_source
+    assert "This application draft already exists" not in source_panel_source
+    assert "This application draft already exists" in attachment_source
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in (
+        FRONTEND_ROOT / "src" / "intake-inbox.css"
+    ).read_text(encoding="utf-8")
+    assert "email-duplicate-facts" not in attachment_source
 
 
 def test_task103_new_project_page_chrome_is_minimal() -> None:
@@ -1937,12 +2001,14 @@ def test_task134_new_project_uses_ltr_workbook_commit_before_folder() -> None:
         "commitLtrWorkbookWrite",
         "/ltr-workbook/write-commit",
         "confirmIntakeCase(activeCase.case_id)",
-        "workbookWriteAcknowledged",
-        "preview_acknowledged: setupValues.workbookWriteAcknowledged",
+        "preview_acknowledged: true",
         "LTR workbook",
         "Backup:",
     ]:
         assert term in page_source + setup_source + editor_source + hook_source + client_source
+
+    assert "workbook_write_acknowledged" not in page_source + setup_source
+    assert "I confirm ConnLab may write this LTR registration" not in setup_source
 
     assert hook_source.index("confirmIntakeCase(activeCase.case_id)") < hook_source.index(
         "const workbookCommit = await commitLtrWorkbookWrite"

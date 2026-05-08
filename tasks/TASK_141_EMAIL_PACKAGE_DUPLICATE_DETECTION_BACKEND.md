@@ -2,7 +2,7 @@
 
 ## Status
 
-plan_review
+done
 
 ## Phase / Active Task Justification
 
@@ -193,3 +193,23 @@ Risk: attachment comparison is unstable due to extraction ordering.
 ## Approval Gate
 
 After user explicitly approves this task, Step 2 implementation may start.
+
+## Implementation Notes
+
+- `POST /api/intake-packages/import-msg` now supports duplicate resolution inputs:
+  - `resolution_action`: `open_existing` / `replace_existing` / `create_separate`
+  - `resolution_package_id`
+- Backend duplicate check now classifies same-name existing unconfirmed Outlook `.msg` drafts as:
+  - `exact_existing_draft`
+  - `same_name_different_content`
+- On duplicate without explicit resolution, API returns `409` with structured duplicate detail.
+- `open_existing` returns existing package state.
+- `replace_existing` stages the new package first, then removes the old unconfirmed package records. Old stored files are not deleted inside the uncommitted database request to avoid rollback leaving restored rows pointing to missing files.
+- Replacement for confirmed/project-linked package is blocked.
+- `open_existing` treats an already selected application form as ready so the response does not regress to the missing-form action.
+
+## Validation Summary
+
+- `py -m pytest tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py -q` passed (`21 passed`).
+- `py -m pytest tests\unit tests\integration -q` currently has existing unrelated baseline failures (frontend shell historical checks, board-phase historical checks, and LTR workbook snapshot legacy expectation).
+- `git diff --check` passed with LF/CRLF working-copy warnings only.

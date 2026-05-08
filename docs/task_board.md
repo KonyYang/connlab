@@ -1,9 +1,9 @@
 ﻿# ConnLab Task Board
 
-> Status: TASK_140 complete; New Project draft friction cleanup
+> Status: TASK_143 complete; Email package selection-time draft loading hotfix
 > Last Updated: 2026-05-08
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: None - awaiting next approved task
+> Current Active Task: none; awaiting user approval for next controlled task
 > Current Phase: `Phase 10C - New Project intake flow friction cleanup`
 
 ---
@@ -1379,7 +1379,7 @@ Why this is next:
 
 Active implementation task:
 
-- None (`TASK_140_NEW_PROJECT_DRAFT_FRICTION_CLEANUP` is complete; awaiting next approved task)
+- None. `TASK_143_EMAIL_PACKAGE_SELECTION_TIME_DRAFT_LOADING_HOTFIX` is complete; do not start another task until the user explicitly approves the next controlled task.
 
 Reason:
 
@@ -1390,6 +1390,25 @@ Reason:
 - The user approved opening `TASK_137`; this task aligns specified-number classification and workbook commit guards with the confirmed `DL-YYYY-MM-NNN` baseline and suffix-token handling.
 - `TASK_139` is allowed for plan review because `TASK_099` froze normal base-field editing after LTR registration and `TASK_100` bounded Project Workbench to post-creation work. The next safe mainline gap is a traceable request record for frozen-field corrections, without applying changes to workbook, folder, or project identity.
 - `TASK_140` is allowed because the user explicitly approved the Phase 10C sequence and requested implementation. The change stays in New Project UX scope only: remove in-page draft delete/replacement confirmation friction while preserving backend confirmed-case protection and existing Drafts/In Progress draft-discard path.
+- `TASK_141` is allowed because `TASK_140` removed New Project in-page confirmation friction and the next controlled prerequisite is backend duplicate classification/resolution so UI can safely wire resolution actions in `TASK_142`.
+- `TASK_142` is allowed for plan review because user review found the package-level duplicate model is wrong for multi-application-form emails; draft identity must be corrected before the duplicate UI is finalized.
+- `TASK_143` is allowed for plan review because manual smoke testing of `TASK_142` found the duplicate card still appears too early after email import and the operator flow must wait for application-form selection before loading or resolving the right-side `Application information` editor.
+
+Prior completed note:
+
+- `TASK_143_EMAIL_PACKAGE_SELECTION_TIME_DRAFT_LOADING_HOTFIX` is complete. `.msg` import now preserves source and attachments without immediately selecting the first attachment or preparing a draft when selectable Word forms are present; duplicate handling runs after explicit application-form selection; new, opened, and replaced drafts all load into right-side `Application information`; the duplicate card now lives in the Attachments selection context and shows only the application-form filename plus `Load existing` and `Reinitialize`. Follow-up manual-smoke fix: duplicate resolution now reloads an existing selected review directly instead of calling blank draft preparation again, preventing the right-side editor from flashing and then clearing.
+- Follow-up completion friction cleanup: removed the extra controlled-workbook acknowledgement checkbox from New Project setup; the workflow now treats this risk as accepted and sends the existing backend preview acknowledgement automatically.
+- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "duplicate or msg_package or application_form_import"` passed, 3 passed and 52 deselected; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 1 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 2 passed; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+
+Prior completed note:
+
+- `TASK_142_EMAIL_PACKAGE_DRAFT_IDENTITY_AND_DUPLICATE_RESOLUTION` is complete. `.msg` import no longer blocks on package-level duplicate identity before a draft exists; selected-form draft identity is checked by selected application form filename + email source filename + email source size; no-form email drafts are checked only against other no-form drafts; duplicate conflicts return structured business-safe details and the New Project UI renders inline actions to open, replace, or create a separate draft only when allowed.
+- Validation: `py -m pytest tests\unit\test_intake_form_selection_service.py tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py -q` passed, 36 passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "duplicate or msg_package or application_form_import"` passed, 3 passed and 51 deselected; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only. Full `py -m pytest tests\unit tests\integration -q` currently reports 415 passed and 9 existing unrelated baseline failures in historical frontend shell checks, board phase checks, and the legacy LTR workbook snapshot expectation.
+
+Prior completed note:
+
+- `TASK_141_EMAIL_PACKAGE_DUPLICATE_DETECTION_BACKEND` is complete. Manual `.msg` import now supports backend duplicate classification and explicit resolution actions (`open_existing`, `replace_existing`, `create_separate`). Duplicate imports without explicit resolution return structured `409` conflict detail. Replacement stages the new package before removing old unconfirmed package records and does not delete old stored files inside the uncommitted request; confirmed/project-linked packages remain protected.
+- Validation: `py -m pytest tests\unit\test_msg_package_intake_service.py tests\integration\test_msg_package_intake_api.py -q` passed, 21 passed; `py -m pytest tests\unit tests\integration -q` currently has existing unrelated baseline failures in frontend shell historical checks, board-phase historical checks, and legacy LTR workbook snapshot expectation; `git diff --check` passed with LF/CRLF working-copy warnings only.
 
 Prior completed note:
 
@@ -1488,8 +1507,8 @@ Prior completed note:
 
 Next recommended action:
 
-- Open `TASK_141_EMAIL_PACKAGE_DUPLICATE_DETECTION_BACKEND`.
-- Do not implement `TASK_142_EMAIL_PACKAGE_DUPLICATE_RESOLUTION_UI` before `TASK_141` is complete and explicitly approved.
+- Review TASK_143 manual smoke results and approve the next controlled Phase 10C task if more intake-flow cleanup should continue.
+- Do not implement code or any later task before the next task is explicitly approved.
 
 Implemented LTR number rule clarification:
 

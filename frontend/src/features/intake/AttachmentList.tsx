@@ -1,11 +1,15 @@
 import type { ReactElement } from "react";
 
+import type { DraftDuplicateAction, DraftDuplicateCheck } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
 import type { IntakeAttachmentViewModel, IntakeAttachmentKind } from "./intakeSelectors";
 
 type AttachmentListProps = {
   attachments: IntakeAttachmentViewModel[];
+  duplicateDraft?: DraftDuplicateCheck | null;
   importingAssetId?: string | null;
+  resolvingDuplicateAction?: string | null;
+  onDuplicateAction?: (action: DraftDuplicateAction) => void;
   onImport?: (attachment: IntakeAttachmentViewModel) => void;
   onOpen?: (attachment: IntakeAttachmentViewModel) => void;
   onSelect: (attachment: IntakeAttachmentViewModel) => void;
@@ -14,7 +18,10 @@ type AttachmentListProps = {
 
 export function AttachmentList({
   attachments,
+  duplicateDraft,
   importingAssetId,
+  resolvingDuplicateAction,
+  onDuplicateAction,
   onImport,
   onOpen,
   onSelect,
@@ -25,6 +32,13 @@ export function AttachmentList({
       <div className="attachments-heading">
         <h3 className="ui-panel-title">Attachments ({attachments.length})</h3>
       </div>
+      {duplicateDraft && onDuplicateAction ? (
+        <DraftDuplicateResolution
+          duplicate={duplicateDraft}
+          resolvingAction={resolvingDuplicateAction ?? null}
+          onAction={onDuplicateAction}
+        />
+      ) : null}
       {packageLoaded ? (
         <div className="attachment-list" role="list">
           {attachments.map((attachment) => (
@@ -68,6 +82,51 @@ export function AttachmentList({
           <span>Import a .msg package or upload an application form.</span>
         </div>
       )}
+    </section>
+  );
+}
+
+type DraftDuplicateResolutionProps = {
+  duplicate: DraftDuplicateCheck;
+  resolvingAction: string | null;
+  onAction: (action: DraftDuplicateAction) => void;
+};
+
+function DraftDuplicateResolution({
+  duplicate,
+  resolvingAction,
+  onAction,
+}: DraftDuplicateResolutionProps): ReactElement {
+  const formName = duplicate.incoming_application_form_name
+    || duplicate.existing_application_form_name
+    || "Selected application form";
+  const canOpen = duplicate.allowed_actions.includes("open_existing");
+  const canReplace = duplicate.allowed_actions.includes("replace_existing");
+
+  return (
+    <section className="email-duplicate-panel" aria-live="polite">
+      <div className="email-duplicate-heading">
+        <strong>This application draft already exists</strong>
+        <span>{formName}</span>
+      </div>
+      <div className="email-duplicate-actions">
+        <button
+          className="new-project-secondary-action ui-secondary-action"
+          disabled={Boolean(resolvingAction) || !canOpen}
+          type="button"
+          onClick={() => onAction("open_existing")}
+        >
+          {resolvingAction === "open_existing" ? "Loading..." : "Load existing"}
+        </button>
+        <button
+          className="new-project-primary-action ui-primary-action"
+          disabled={Boolean(resolvingAction) || !canReplace}
+          type="button"
+          onClick={() => onAction("replace_existing")}
+        >
+          {resolvingAction === "replace_existing" ? "Reinitializing..." : "Reinitialize"}
+        </button>
+      </div>
     </section>
   );
 }
