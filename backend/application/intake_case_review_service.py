@@ -78,6 +78,7 @@ class IntakeCaseReviewItem:
     parsed_fields: dict[str, Any]
     missing_required_fields: tuple[str, ...]
     precheck_issues: tuple[DraftPrecheckIssue, ...]
+    project_setup: dict[str, Any]
     base_editing_frozen: bool = False
     frozen_field_keys: tuple[str, ...] = ()
     frozen_reason: str | None = None
@@ -206,6 +207,7 @@ class IntakeCaseReviewService:
         fields: dict[str, Any],
         sample_rows: list[dict[str, Any]] | None = None,
         requested_testing_rows: list[dict[str, Any]] | None = None,
+        project_setup: dict[str, Any] | None = None,
     ) -> IntakeCaseReviewItem:
         """Persist operator field corrections and return the refreshed case review."""
         intake_case = self._cases.get(case_id)
@@ -248,6 +250,12 @@ class IntakeCaseReviewService:
                 )
                 if tests_text:
                     overrides["requested_testing"] = tests_text
+        if project_setup is not None:
+            normalized_setup = self._normalized_project_setup(project_setup)
+            if normalized_setup:
+                overrides["project_setup"] = normalized_setup
+            else:
+                overrides.pop("project_setup", None)
         updated_draft = self._drafts.update(
             replace(
                 draft,
@@ -322,6 +330,24 @@ class IntakeCaseReviewService:
                 normalized_rows.append(normalized_row)
         return normalized_rows
 
+    def _normalized_project_setup(self, values: dict[str, Any]) -> dict[str, str]:
+        """Return persistable New Project setup values."""
+        allowed_keys = {
+            "ltr_mode",
+            "specified_ltr_number",
+            "test_item",
+            "sample_description",
+            "location",
+            "test_type_in_sheet",
+            "project_leader",
+        }
+        normalized: dict[str, str] = {}
+        for key in allowed_keys:
+            value = self._normalized_override(values.get(key))
+            if value is not None:
+                normalized[key] = value
+        return normalized
+
     def _freeze_state(self, intake_case: IntakeCase) -> bool:
         """Return whether base review edits are frozen by registered LTR state."""
         if self._ltrs is None or not intake_case.confirmed_project_id:
@@ -370,6 +396,8 @@ class IntakeCaseReviewService:
     ) -> IntakeCaseReviewItem:
         """Build one review item from a case and draft."""
         draft_fields = self._merged_draft_fields(draft)
+        overrides = self._json_object(draft.manual_overrides_json or "{}")
+        raw_project_setup = overrides.get("project_setup")
         precheck_issues = evaluate_section1_precheck(draft_fields)
         parsed_fields = clear_disallowed_section1_values(draft_fields)
         freeze_state = self._freeze_state(intake_case)
@@ -380,6 +408,7 @@ class IntakeCaseReviewService:
             parsed_fields=parsed_fields,
             missing_required_fields=blocking_issue_fields(precheck_issues),
             precheck_issues=precheck_issues,
+            project_setup=raw_project_setup if isinstance(raw_project_setup, dict) else {},
             base_editing_frozen=freeze_state,
             frozen_field_keys=self._frozen_field_keys if freeze_state else (),
             frozen_reason=self.FROZEN_REASON if freeze_state else None,

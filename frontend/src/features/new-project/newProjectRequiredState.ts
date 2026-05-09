@@ -38,13 +38,17 @@ export function buildNewProjectRequiredState(
       missingFieldKeys.add(key);
     }
   }
-  const rowsWithProduct = sampleRows
+  const rowsWithAnyContent = sampleRows
     .map((row, rowIndex) => ({ row, rowIndex }))
-    .filter(({ row }) => String(row.product_name ?? "").trim());
-  if (rowsWithProduct.length === 0) {
-    missingSampleCells.add("0:product_name");
-  }
-  for (const { row, rowIndex } of rowsWithProduct) {
+    .filter(({ row }) => rowHasAnySampleValue(row));
+  const rowsToValidate = rowsWithAnyContent.length > 0
+    ? rowsWithAnyContent
+    : [{ row: sampleRows[0] ?? ({} as PrecheckSampleRow), rowIndex: 0 }];
+
+  for (const { row, rowIndex } of rowsToValidate) {
+    if (!String(row.product_name ?? "").trim()) {
+      missingSampleCells.add(`${rowIndex}:product_name`);
+    }
     if (!/\d/.test(String(row.quantity ?? ""))) {
       missingSampleCells.add(`${rowIndex}:quantity`);
     }
@@ -54,6 +58,10 @@ export function buildNewProjectRequiredState(
     missingSampleCells,
     missingCount: missingFieldKeys.size + missingSampleCells.size
   };
+}
+
+function rowHasAnySampleValue(row: PrecheckSampleRow): boolean {
+  return PRECHECK_SAMPLE_COLUMNS.some((column) => String(row[column.key] ?? "").trim());
 }
 
 function fieldValue(

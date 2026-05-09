@@ -247,6 +247,11 @@ Implementation was completed after user approval.
 - Follow-up manual-smoke fix: when a resolved duplicate draft already has `selectedPrecheckCaseId`, the New Project page now reloads the selected review directly instead of calling blank draft preparation again, preventing the right-side editor from flashing and then clearing.
 - Follow-up UI copy polish: duplicate actions now read `Load existing` and `Reinitialize`, and the action row uses two equal columns on normal workbench widths.
 - Follow-up completion friction cleanup: removed the extra controlled-workbook acknowledgement checkbox from New Project setup. ConnLab now treats this risk as accepted in this workflow and sends the existing backend preview acknowledgement automatically.
+- Follow-up completion dock cleanup: replaced the sticky autosave guidance with the final completion dock, moved LTR mode and specified-number input beside `Apply LTR Number and Create Folder`, and kept the left setup panel focused on workbook row metadata.
+- Follow-up specified LTR input clarity: specified-number mode now keeps the input highlighted and completion blocked until the value matches `DL-YYYY-MM-NNN`, `DL-YYYY-MM-NNN` plus letter-led suffix, or a letter-led alphanumeric suffix token; a `?` help control explains accepted examples.
+- Follow-up sample-table blocker clarity: required empty sample cells now highlight the whole cell with a non-obstructive tint instead of adding capsule borders or placeholder text that would obscure table content; each non-empty sample row independently checks Product Name and Quantity.
+- Follow-up default application-form loading: `.msg` import now preselects the first `.docx` application form and immediately runs the selected-form import/duplicate path; emails with no application form still prepare the no-form draft path. Duplicate buttons now place `Load existing` on the right as the primary/recommended action.
+- Follow-up import logic review: selected-form and no-form duplicate enforcement were rechecked against the backend services. A stale duplicate-card state was fixed so any successful prepared or selected draft load clears previous duplicate state before showing right-side `Application information`.
 
 ## Validation Results
 
@@ -267,6 +272,63 @@ py -m pytest tests\unit\test_frontend_shell_files.py::test_task142_draft_duplica
 ```
 
 Result: `2 passed`.
+
+```powershell
+py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task103_new_project_page_chrome_is_minimal tests\unit\test_frontend_shell_files.py::test_task134_new_project_uses_ltr_workbook_commit_before_folder -q
+```
+
+Result: `3 passed`.
+
+```powershell
+cd frontend
+npm run build
+```
+
+Result: passed.
+
+```powershell
+py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable tests\unit\test_frontend_shell_files.py::test_task103_application_form_import_is_explicit_and_confirmed -q
+```
+
+Result: `3 passed`.
+
+```powershell
+cd frontend
+npm run build
+```
+
+Result: passed.
+
+```powershell
+git diff --check
+```
+
+Result: passed with LF/CRLF working-copy warnings only.
+
+```powershell
+py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable -q
+```
+
+Result: `2 passed`.
+
+```powershell
+py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task103_application_form_import_is_explicit_and_confirmed -q
+```
+
+Result: `2 passed`.
+
+```powershell
+cd frontend
+npm run build
+```
+
+Result: passed.
+
+```powershell
+py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell -q
+```
+
+Result: `1 passed`.
 
 ```powershell
 cd frontend

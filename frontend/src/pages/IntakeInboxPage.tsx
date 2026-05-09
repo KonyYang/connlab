@@ -29,6 +29,10 @@ import {
   type NewProjectCompletionOptions
 } from "../api/client";
 import { NewProjectApplicationEditor } from "../features/new-project/NewProjectApplicationEditor";
+import {
+  NewProjectCompletionDock,
+  isValidSpecifiedLtrInput
+} from "../features/new-project/NewProjectCompletionDock";
 import { buildNewProjectRequiredState } from "../features/new-project/newProjectRequiredState";
 import {
   NewProjectSetupConfirmationPanel,
@@ -117,13 +121,14 @@ export function IntakeInboxPage({
   const fieldValuesRef = useRef<Record<string, string>>({});
   const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
   const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
+  const setupValuesRef = useRef<NewProjectSetupConfirmationValues>(setupValues);
   const { packageImport, selectedAssetId, sourceMode, directWordName } = session;
   const visibleAttachmentAssets = useMemo(
     () => visibleIntakeAttachments(packageImport),
     [packageImport]
   );
-  const hasSelectableApplicationForms = useMemo(
-    () => visibleAttachmentAssets.some((asset) => asset.extension.toLowerCase() === ".docx"),
+  const defaultApplicationFormAsset = useMemo(
+    () => visibleAttachmentAssets.find((asset) => asset.extension.toLowerCase() === ".docx") ?? null,
     [visibleAttachmentAssets]
   );
   const attachmentViewModels = useMemo(
@@ -152,7 +157,10 @@ export function IntakeInboxPage({
   );
   const setupMissingKeys = useMemo(() => {
     const missing = new Set<string>();
-    if (setupValues.ltrMode === "specified" && !setupValues.specifiedLtrNumber.trim()) {
+    if (
+      setupValues.ltrMode === "specified" &&
+      !isValidSpecifiedLtrInput(setupValues.specifiedLtrNumber)
+    ) {
       missing.add("specified_ltr_number");
     }
     if (!setupValues.testItem.trim()) missing.add("test_item");
@@ -204,11 +212,16 @@ export function IntakeInboxPage({
     );
     return selectedFormAsset?.original_name ?? null;
   }, [importMessage, packageImport, session.selectedWordAssetId]);
+  const setupChanged = activeCase
+    ? stableSetupJson(projectSetupPayload(setupValues))
+      !== stableSetupJson(activeCase.project_setup ?? {})
+    : false;
   const draftChanged = activeCase
     ? activeCase.fields.some((field) => fieldValues[field.key] !== editableValue(field.value))
       || JSON.stringify(sampleRows) !== JSON.stringify(normalizedSampleRows(activeCase.sample_rows))
       || JSON.stringify(requestedTestingRows)
         !== JSON.stringify(normalizedRequestedTestingRows(activeCase.requested_testing_rows))
+      || setupChanged
     : false;
   useEffect(() => {
     let active = true;
@@ -240,10 +253,14 @@ export function IntakeInboxPage({
           return;
         }
         setSetupOptions(options);
-        setSetupValues((current) => ({
-          ...current,
-          projectLeader: current.projectLeader || options.default_project_leader
-        }));
+        setSetupValues((current) => {
+          const next = {
+            ...current,
+            projectLeader: current.projectLeader || options.default_project_leader
+          };
+          setupValuesRef.current = next;
+          return next;
+        });
       } catch (error) {
         if (active) {
           setCompletionSetupError(
@@ -267,7 +284,11 @@ export function IntakeInboxPage({
       (option) => option.toLowerCase() === manufacturingSite.toLowerCase()
     );
     if (matched) {
-      setSetupValues((current) => ({ ...current, location: matched }));
+      setSetupValues((current) => {
+        const next = { ...current, location: matched };
+        setupValuesRef.current = next;
+        return next;
+      });
     }
   }, [fieldValues.manufacturing_site, setupOptions, setupValues.location]);
 
@@ -307,16 +328,68 @@ export function IntakeInboxPage({
         cancelled = true;
       };
     }
-    const waitsForApplicationFormSelection =
+    const defaultFormAsset = defaultApplicationFormAsset;
+    const shouldSelectDefaultApplicationForm =
       packageImport.source_type === "outlook_msg"
-      && hasSelectableApplicationForms
+      && defaultFormAsset
       && !session.selectedWordAssetId
       && !session.selectedPrecheckCaseId;
-    if (waitsForApplicationFormSelection) {
-      setReview(null);
-      setSelectedCaseId(null);
-      setEditorLoading(false);
-      setEditorError(null);
+    if (shouldSelectDefaultApplicationForm) {
+      if (!defaultFormAsset) {
+        return;
+      }
+      const selectedDefaultFormAsset = defaultFormAsset;
+      let cancelled = false;
+      async function selectDefaultApplicationForm(): Promise<void> {
+        setEditorLoading(true);
+        setEditorError(null);
+        setImportingAssetId(selectedDefaultFormAsset.asset_id);
+        try {
+          const selection = await selectIntakeApplicationForm(
+            packageId,
+            selectedDefaultFormAsset.asset_id,
+            true
+          );
+          if (!cancelled) {
+            await applySelectedDraft(selection, selectedDefaultFormAsset.original_name);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            const duplicate = draftDuplicateConflictFromError(error);
+            if (duplicate) {
+              setDuplicateDraft({
+                check: duplicate,
+                packageId,
+                asset: selectedDefaultFormAsset
+              });
+              onSessionChange({
+                ...session,
+                selectedAssetId: selectedDefaultFormAsset.asset_id
+              });
+              setReview(null);
+              setSelectedCaseId(null);
+              setEditorError(null);
+            } else {
+              setReview(null);
+              setSelectedCaseId(null);
+              setEditorError(
+                error instanceof Error ? error.message : "Unable to select the first application form."
+              );
+            }
+          }
+        } finally {
+          if (!cancelled) {
+            setImportingAssetId(null);
+            setEditorLoading(false);
+          }
+        }
+      }
+      void selectDefaultApplicationForm();
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (packageImport.source_type === "outlook_msg" && defaultApplicationFormAsset) {
       return;
     }
     let cancelled = false;
@@ -360,7 +433,7 @@ export function IntakeInboxPage({
       cancelled = true;
     };
   }, [
-    hasSelectableApplicationForms,
+    defaultApplicationFormAsset?.asset_id,
     packageImport?.package_id,
     packageImport?.source_type,
     session.selectedPrecheckCaseId,
@@ -373,6 +446,9 @@ export function IntakeInboxPage({
       fieldValuesRef.current = {};
       sampleRowsRef.current = [];
       requestedTestingRowsRef.current = [];
+      const nextSetupValues = emptySetupValues(setupOptions?.default_project_leader ?? "");
+      setSetupValues(nextSetupValues);
+      setupValuesRef.current = nextSetupValues;
       return;
     }
     const nextFieldValues = Object.fromEntries(
@@ -383,9 +459,15 @@ export function IntakeInboxPage({
     setFieldValues(nextFieldValues);
     setSampleRows(nextSampleRows);
     setRequestedTestingRows(nextRequestedTestingRows);
+    const nextSetupValues = setupValuesFromProjectSetup(
+      activeCase.project_setup,
+      setupOptions?.default_project_leader ?? ""
+    );
     fieldValuesRef.current = nextFieldValues;
     sampleRowsRef.current = nextSampleRows;
     requestedTestingRowsRef.current = nextRequestedTestingRows;
+    setupValuesRef.current = nextSetupValues;
+    setSetupValues(nextSetupValues);
     setAutoSaveError(null);
   }, [activeCase?.case_id, importVersion]);
 
@@ -401,7 +483,8 @@ export function IntakeInboxPage({
           requested_testing: requestedTestingText(requestedTestingRowsRef.current)
         },
         sample_rows: sampleRowsRef.current,
-        requested_testing_rows: requestedTestingRowsRef.current
+        requested_testing_rows: requestedTestingRowsRef.current,
+        project_setup: projectSetupPayload(setupValuesRef.current)
       })
         .then((updatedCase) => {
           setReview((current) =>
@@ -420,7 +503,7 @@ export function IntakeInboxPage({
         });
     }, 700);
     return () => window.clearTimeout(timeoutId);
-  }, [activeCase, draftChanged, fieldValues, requestedTestingRows, sampleRows]);
+  }, [activeCase, draftChanged, fieldValues, requestedTestingRows, sampleRows, setupValues]);
 
   async function handleMsgFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
@@ -474,9 +557,11 @@ export function IntakeInboxPage({
   }
 
   function applyImportedMsgPackage(imported: IntakePackageImport): void {
+    const firstApplicationForm = visibleIntakeAttachments(imported)
+      .find((asset) => asset.extension.toLowerCase() === ".docx");
     onSessionChange({
       packageImport: imported,
-      selectedAssetId: null,
+      selectedAssetId: firstApplicationForm?.asset_id ?? null,
       selectedWordAssetId: null,
       selectedPrecheckCaseId: null,
       sourceMode: "msg",
@@ -492,6 +577,7 @@ export function IntakeInboxPage({
     const detail = await getIntakePackageDetail(draft.package_id);
     const refreshed = packageDetailToImport(detail);
     const nextReview = await getIntakeCaseReview(draft.package_id);
+    setDuplicateDraft(null);
     setReview(nextReview);
     setSelectedCaseId(draft.case_id);
     onSessionChange({
@@ -511,6 +597,7 @@ export function IntakeInboxPage({
     const detail = await getIntakePackageDetail(selection.package_id);
     const refreshed = packageDetailToImport(detail);
     const nextReview = await getIntakeCaseReview(selection.package_id);
+    setDuplicateDraft(null);
     setReview(nextReview);
     setSelectedCaseId(selection.case_id);
     setImportMessage(importMessageText);
@@ -571,6 +658,7 @@ export function IntakeInboxPage({
     }
     setImportingAssetId(asset.asset_id);
     setImportError(null);
+    setDuplicateDraft(null);
     setImportMessage(null);
     try {
       const selection = await selectIntakeApplicationForm(packageImport.package_id, asset.asset_id, true);
@@ -647,6 +735,7 @@ export function IntakeInboxPage({
             values={setupValues}
               onChange={(values) => {
                 setSetupValues(values);
+                setupValuesRef.current = values;
                 setCompletionSetupError(null);
               }}
           />
@@ -664,7 +753,6 @@ export function IntakeInboxPage({
             <NewProjectApplicationEditor
               activeCase={activeCase}
               autoSaveError={autoSaveError}
-              completionDisabled={completionDisabled}
               disabled={
                 editorLoading ||
                 Boolean(activeCase.confirmed_project_id) ||
@@ -673,16 +761,13 @@ export function IntakeInboxPage({
               fieldValues={fieldValues}
               importMessage={importedFormDisplayName}
               completionError={displayedCompletionError}
-              completionLoading={completionLoading}
               completionResult={completionResult}
-              completionText={completionText}
               lookupError={lookupError}
               projectFields={projectFields}
               requestedTestingRows={requestedTestingRows}
               requiredState={requiredState}
               sampleRows={sampleRows}
               sourceFields={activeCase.fields}
-              onComplete={() => void completeProject()}
               onFieldValuesChange={(values) => {
                 setFieldValues(values);
                 fieldValuesRef.current = values;
@@ -704,14 +789,28 @@ export function IntakeInboxPage({
         </main>
       </div>
 
-      <div className="step-footer new-project-single-footer">
-        <span className="step-footer-guidance">
-          {packageImport
-            ? "Draft changes save automatically while you edit this package."
-            : "Import the request source before editing application information."}
-        </span>
-        <span aria-hidden="true" />
-      </div>
+      {packageImport && activeCase != null ? (
+        <NewProjectCompletionDock
+          completionDisabled={completionDisabled}
+          completionLoading={completionLoading}
+          completionText={completionText}
+          disabled={completionLoading || editorLoading || Boolean(activeCase.confirmed_project_id)}
+          missingKeys={setupMissingKeys}
+          values={setupValues}
+          onChange={(values) => {
+            setSetupValues(values);
+            setupValuesRef.current = values;
+            setCompletionSetupError(null);
+          }}
+          onComplete={() => void completeProject()}
+        />
+      ) : (
+        <div className="step-footer new-project-completion-dock new-project-completion-dock-empty">
+          <span>Import the request source before editing application information.</span>
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </div>
+      )}
     </section>
   );
 }
@@ -728,6 +827,71 @@ function draftDuplicateConflictFromError(error: unknown): DraftDuplicateCheck | 
     return null;
   }
   return error.detail as DraftDuplicateCheck;
+}
+
+function emptySetupValues(defaultProjectLeader = ""): NewProjectSetupConfirmationValues {
+  return {
+    ltrMode: "auto",
+    specifiedLtrNumber: "",
+    testItem: "",
+    sampleDescription: "",
+    location: "",
+    testTypeInSheet: "",
+    projectLeader: defaultProjectLeader
+  };
+}
+
+function setupValuesFromProjectSetup(
+  projectSetup: Record<string, unknown> | undefined,
+  defaultProjectLeader = ""
+): NewProjectSetupConfirmationValues {
+  const rawLtrMode = stringValue(projectSetup?.ltr_mode);
+  return {
+    ltrMode: rawLtrMode === "specified" ? "specified" : "auto",
+    specifiedLtrNumber: stringValue(projectSetup?.specified_ltr_number),
+    testItem: stringValue(projectSetup?.test_item),
+    sampleDescription: stringValue(projectSetup?.sample_description),
+    location: stringValue(projectSetup?.location),
+    testTypeInSheet: stringValue(projectSetup?.test_type_in_sheet),
+    projectLeader: stringValue(projectSetup?.project_leader) || defaultProjectLeader
+  };
+}
+
+function projectSetupPayload(
+  values: NewProjectSetupConfirmationValues
+): Record<string, string> {
+  const payload: Record<string, string> = {
+    ltr_mode: values.ltrMode
+  };
+  if (values.ltrMode === "specified") {
+    assignText(payload, "specified_ltr_number", values.specifiedLtrNumber);
+  }
+  assignText(payload, "test_item", values.testItem);
+  assignText(payload, "sample_description", values.sampleDescription);
+  assignText(payload, "location", values.location);
+  assignText(payload, "test_type_in_sheet", values.testTypeInSheet);
+  assignText(payload, "project_leader", values.projectLeader);
+  return payload;
+}
+
+function assignText(payload: Record<string, string>, key: string, value: string): void {
+  const text = value.trim();
+  if (text) {
+    payload[key] = text;
+  }
+}
+
+function stableSetupJson(values: Record<string, unknown>): string {
+  const sorted = Object.fromEntries(
+    Object.keys(values)
+      .sort()
+      .map((key) => [key, values[key]])
+  );
+  return JSON.stringify(sorted);
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function packageDetailToImport(detail: IntakePackageDetail): IntakePackageImport {

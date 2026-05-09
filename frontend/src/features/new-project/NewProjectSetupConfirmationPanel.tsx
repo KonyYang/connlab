@@ -36,41 +36,6 @@ export function NewProjectSetupConfirmationPanel({
         <strong>Project setup confirmation</strong>
       </div>
 
-      <div className="new-project-ltr-mode-row" role="radiogroup" aria-label="LTR number mode">
-        <label>
-          <input
-            checked={values.ltrMode === "auto"}
-            disabled={disabled}
-            name="new-project-ltr-mode"
-            type="radio"
-            onChange={() => update({ ltrMode: "auto" })}
-          />
-          Auto assign next LTR number
-        </label>
-        <label>
-          <input
-            checked={values.ltrMode === "specified"}
-            disabled={disabled}
-            name="new-project-ltr-mode"
-            type="radio"
-            onChange={() => update({ ltrMode: "specified" })}
-          />
-          Use specified LTR number
-        </label>
-      </div>
-
-      <label className="new-project-setup-field">
-        <span>Specified LTR number</span>
-        <input
-          className={missingKeys.has("specified_ltr_number") ? "setup-field-missing" : ""}
-          disabled={disabled || values.ltrMode !== "specified"}
-          placeholder="DL-YYYY-MM-NNN"
-          type="text"
-          value={values.specifiedLtrNumber}
-          onChange={(event) => update({ specifiedLtrNumber: event.target.value })}
-        />
-      </label>
-
       <label className="new-project-setup-field">
         <span>Test Item*</span>
         <input

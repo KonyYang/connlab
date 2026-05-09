@@ -83,6 +83,7 @@ def test_msg_package_import_api_persists_package_and_assets(tmp_path: Path) -> N
         payload = response.json()
         assert payload["source_type"] == "outlook_msg"
         assert payload["package_status"] == "ready_for_review"
+        assert payload["source_original_name"] == "request.msg"
         assert payload["subject"] == "Connector qualification request"
         assert payload["sender_email"] == "jane@example.com"
         assert payload["asset_count"] == 3
@@ -93,6 +94,7 @@ def test_msg_package_import_api_persists_package_and_assets(tmp_path: Path) -> N
         assert detail_response.status_code == 200
         detail = detail_response.json()
         assert detail["package_id"] == payload["package_id"]
+        assert detail["source_original_name"] == "request.msg"
         assert detail["source_stored"] is True
         assert detail["asset_count"] == 3
         assert detail["candidate_count"] == 1

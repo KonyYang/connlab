@@ -70,9 +70,19 @@ class OfficeFacade:
         """Read one Word header table cell through the configured gateway."""
         return self._word_gateway.read_header_table_cell(source_path, row, column)
 
-    def import_outlook_msg(self, source_path: Path, target_dir: Path) -> ImportedMailPackage:
+    def import_outlook_msg(
+        self,
+        source_path: Path,
+        target_dir: Path,
+        *,
+        original_name: str | None = None,
+    ) -> ImportedMailPackage:
         """Import an Outlook `.msg` file through the configured gateway."""
-        return self._outlook_gateway.import_outlook_msg(source_path, target_dir)
+        return self._outlook_gateway.import_outlook_msg(
+            source_path,
+            target_dir,
+            original_name=original_name,
+        )
 
     def read_excel_workbook(self, source_path: Path) -> object:
         """Read an Excel workbook through the configured gateway."""

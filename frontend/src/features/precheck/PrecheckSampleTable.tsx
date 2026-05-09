@@ -90,21 +90,25 @@ export function PrecheckSampleTable({
               key={`sample-${rowIndex}`}
               onClick={() => setSelectedRowIndex(rowIndex)}
             >
-              {PRECHECK_SAMPLE_COLUMNS.map((column) => (
-                <td
-                  className={missingCells?.has(`${rowIndex}:${column.key}`) ? "sample-cell-required-missing" : undefined}
-                  key={column.key}
-                >
-                  <AutoGrowTextarea
-                    ariaLabel={`${column.label} row ${rowIndex + 1}`}
-                    columnKey={column.key}
-                    disabled={disabled}
-                    rowIndex={rowIndex}
-                    value={row[column.key] ?? ""}
-                    onChange={(value) => onChange(rowIndex, column.key, value)}
-                  />
-                </td>
-              ))}
+              {PRECHECK_SAMPLE_COLUMNS.map((column) => {
+                const missing = missingCells?.has(`${rowIndex}:${column.key}`) ?? false;
+
+                return (
+                  <td
+                    className={missing ? "sample-cell-required-missing" : undefined}
+                    key={column.key}
+                  >
+                    <AutoGrowTextarea
+                      ariaLabel={`${column.label} row ${rowIndex + 1}`}
+                      columnKey={column.key}
+                      disabled={disabled}
+                      rowIndex={rowIndex}
+                      value={row[column.key] ?? ""}
+                      onChange={(value) => onChange(rowIndex, column.key, value)}
+                    />
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>

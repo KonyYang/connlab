@@ -6,14 +6,8 @@ import json
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
-from pathlib import Path
 from typing import Protocol
 
-from backend.application.folder_service import (
-    FolderCommand,
-    FolderGenerationRecord,
-    FolderService,
-)
 from backend.application.intake_confirmation_service import (
     IntakeConfirmationResult,
     IntakeConfirmationService,
@@ -28,7 +22,6 @@ from backend.application.ltr_registration_preview_service import (
     LtrRegistrationType,
 )
 from backend.domain import IntakeCase, LtrRecord, LtrStatus, Project, ProjectStatus
-from backend.modules.folder import FolderPlan
 from backend.modules.ltr import LtrNumberError, next_monthly_dl_number, parse_ltr_number
 
 
@@ -49,13 +42,11 @@ class NewProjectLtrMode(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class CompleteNewProjectCommand:
-    """Input command for one-action New Project completion."""
+    """Input command for New Project LTR application."""
 
     case_id: str
     ltr_mode: NewProjectLtrMode
     specified_ltr_number: str | None = None
-    folder_template_path: Path | None = None
-    folder_target_root: Path | None = None
     operator_confirmed: bool = True
     plan_date: date | None = None
     test_item: str | None = None
@@ -67,17 +58,15 @@ class CompleteNewProjectCommand:
 
 @dataclass(frozen=True, slots=True)
 class NewProjectCompletionResult:
-    """Result returned after project, LTR, and folder creation are complete."""
+    """Result returned after project creation and LTR application."""
 
     project: Project
     ltr: LtrRecord
-    folder: FolderGenerationRecord
-    folder_preview: FolderPlan
 
 
 @dataclass(frozen=True, slots=True)
 class ExistingLtrCommitResult:
-    """Compatibility result for an LTR already committed before folder generation."""
+    """Compatibility result for an LTR already applied to the project."""
 
     ltr: LtrRecord
 
@@ -120,38 +109,23 @@ class NewProjectCompletionService:
         ltr_store: LtrRecordStore,
         confirmation_service: IntakeConfirmationService,
         ltr_commit_service: LtrLocalCommitService,
-        folder_service: FolderService,
-        default_folder_template_path: Path,
-        default_folder_target_root: Path,
     ) -> None:
         self._intake_cases = intake_case_store
         self._projects = project_store
         self._ltrs = ltr_store
         self._confirmation = confirmation_service
         self._ltr_commit = ltr_commit_service
-        self._folders = folder_service
-        self._default_template = default_folder_template_path
-        self._default_target_root = default_folder_target_root
 
     def complete(self, command: CompleteNewProjectCommand) -> NewProjectCompletionResult:
-        """Confirm intake data, commit LTR, preview folder, and generate folder."""
+        """Confirm intake data and apply an LTR without generating folders."""
         self._validate_setup_confirmation(command)
         project = self._confirm_or_load_project(command.case_id)
         project = self._ensure_ltr_ready_status(project)
         ltr_result = self._commit_or_load_ltr(project, command)
-        folder_command = self._folder_command(command, ltr_result.ltr.ltr_number)
-        folder_preview = self._folders.preview_folder(project.project_id, folder_command)
-        if folder_preview.conflict or any(item.conflict for item in folder_preview.items):
-            raise NewProjectCompletionError(
-                f"Project folder target already exists: {folder_preview.project_folder_path}"
-            )
-        folder = self._folders.generate_folder(project.project_id, folder_command)
         final_project = self._projects.get(project.project_id) or project
         return NewProjectCompletionResult(
             project=final_project,
             ltr=ltr_result.ltr,
-            folder=folder,
-            folder_preview=folder_preview,
         )
 
     def _confirm_or_load_project(self, case_id: str) -> Project:
@@ -190,7 +164,7 @@ class NewProjectCompletionService:
             if len(active_ltrs) > 1:
                 raise NewProjectCompletionError(
                     "Project has more than one registered LTR; open the project workbench "
-                    "for correction or folder recovery."
+                    "for correction."
                 )
             return ExistingLtrCommitResult(active_ltrs[0])
 
@@ -248,20 +222,6 @@ class NewProjectCompletionService:
             month=today.month,
             existing_numbers=existing,
         )
-
-    def _folder_command(
-        self,
-        command: CompleteNewProjectCommand,
-        ltr_number: str,
-    ) -> FolderCommand:
-        """Build the existing folder service command with defaults."""
-        return FolderCommand(
-            template_path=command.folder_template_path or self._default_template,
-            target_root=command.folder_target_root or self._default_target_root,
-            dl_number=ltr_number,
-            plan_date=command.plan_date or date.today(),
-        )
-
 
 def _operator_note(command: CompleteNewProjectCommand) -> str:
     """Build audit context for values that will later map to LTR.xls."""

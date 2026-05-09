@@ -316,6 +316,7 @@ export type IntakeCaseReviewItem = {
   fields: IntakeCaseReviewField[];
   sample_rows: Record<string, unknown>[];
   requested_testing_rows: Record<string, unknown>[];
+  project_setup?: Record<string, unknown>;
   precheck_issues: DraftPrecheckIssue[];
 };
 
@@ -362,6 +363,7 @@ export type UpdateIntakeCaseReviewFieldsInput = {
   fields: Record<string, string | null>;
   sample_rows?: Record<string, string>[];
   requested_testing_rows?: RequestedTestingRowInput[];
+  project_setup?: Record<string, string | null>;
 };
 
 export type LtrRecord = {
@@ -506,10 +508,6 @@ export type CompleteNewProject = {
   project_id: string;
   project_status: string;
   ltr_number: string;
-  folder_id: string;
-  project_folder_path: string;
-  preview_item_count: number;
-  generated_paths: string[];
 };
 
 export type NewProjectCompletionOptions = {

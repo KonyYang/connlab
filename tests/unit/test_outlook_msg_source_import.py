@@ -50,6 +50,31 @@ def test_outlook_msg_gateway_copies_source_and_reads_minimal_metadata(
     assert package.attachments == []
 
 
+def test_outlook_msg_gateway_preserves_original_display_name(
+    tmp_path: Path,
+) -> None:
+    """The display name remains the original uploaded `.msg` filename."""
+    source = tmp_path / "safe-source.msg"
+    source.write_text(
+        "\n".join(
+            [
+                "Subject: Connector qualification request",
+                "From: Jane Engineer <jane@example.com>",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    package = OfficeFacade().import_outlook_msg(
+        source,
+        tmp_path / "intake" / "pkg-1",
+        original_name="连接器主板对busbar对接测试副本.msg",
+    )
+
+    assert package.source_original_name == "连接器主板对busbar对接测试副本.msg"
+    assert package.source_stored_path.is_file()
+
+
 def test_outlook_msg_gateway_preserves_source_when_metadata_parse_fails(
     tmp_path: Path,
 ) -> None:

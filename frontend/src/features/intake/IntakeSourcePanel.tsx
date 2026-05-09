@@ -111,6 +111,12 @@ export function IntakeSourcePanel({
         ) : (
           <dl className="email-info-list">
             <div>
+              <dt>Source file</dt>
+              <dd className="email-source-filename" title={packageImport?.source_original_name ?? ""}>
+                {packageImport?.source_original_name || "No source file"}
+              </dd>
+            </div>
+            <div>
               <dt>From</dt>
               <dd>{senderEmailText(packageImport)}</dd>
             </div>

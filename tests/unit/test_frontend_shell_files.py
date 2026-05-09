@@ -572,9 +572,11 @@ def test_msg_package_import_frontend_wires_intake_step_entry() -> None:
 
     if "NewProjectApplicationEditor" in inbox_source:
         assert "ensureNewProjectApplicationDraft" in inbox_source
-        assert "Apply LTR Number and Create Folder" in inbox_source + (
-            FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
-        ).read_text(encoding="utf-8")
+        assert "Apply LTR Number" in inbox_source + "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((FRONTEND_ROOT / "src" / "features" / "new-project").glob("*.tsx"))
+        )
+        assert "Apply LTR Number and Create Folder" not in inbox_source
         return
 
     for term in [
@@ -857,9 +859,10 @@ def test_task089_new_project_workflow_shell_is_shared() -> None:
     if "NewProjectApplicationEditor" in inbox_source:
         assert "new-project-single-page" in page_source
         assert "AttachmentPreviewPanel" not in page_source
-        assert "Apply LTR Number and Create Folder" in (
-            FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectApplicationEditor.tsx"
-        ).read_text(encoding="utf-8")
+        assert "Apply LTR Number" in "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((FRONTEND_ROOT / "src" / "features" / "new-project").glob("*.tsx"))
+        )
         return
 
     for term in [
@@ -1808,6 +1811,15 @@ def test_task102_new_project_single_page_editor_shell() -> None:
         for path in sorted((FRONTEND_ROOT / "src" / "features" / "new-project").glob("*.tsx"))
         + sorted((FRONTEND_ROOT / "src" / "features" / "new-project").glob("*.ts"))
     )
+    sample_table_source = (
+        FRONTEND_ROOT / "src" / "features" / "precheck" / "PrecheckSampleTable.tsx"
+    ).read_text(encoding="utf-8")
+    required_state_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "newProjectRequiredState.ts"
+    ).read_text(encoding="utf-8")
+    inbox_styles = (FRONTEND_ROOT / "src" / "intake-inbox.css").read_text(
+        encoding="utf-8"
+    )
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
         encoding="utf-8"
     )
@@ -1826,16 +1838,48 @@ def test_task102_new_project_single_page_editor_shell() -> None:
         "Application information",
         "missingRequiredByField",
         "missingSampleCells",
-        "Apply LTR Number and Create Folder",
+        "Apply LTR Number",
+        "NewProjectCompletionDock",
+        "isValidSpecifiedLtrInput",
         "required fields remaining",
     ]:
         assert term in new_project_source
 
+    for term in [
+        "projectSetupPayload",
+        "setupValuesFromProjectSetup",
+        "setupValuesRef",
+        "project_setup: projectSetupPayload(setupValuesRef.current)",
+    ]:
+        assert term in page_source
+
+    for term in [
+        "sample-cell-required-missing",
+    ]:
+        assert term in sample_table_source
+
+    for term in [
+        "rowsWithAnyContent",
+        "rowHasAnySampleValue",
+        "`${rowIndex}:product_name`",
+        "`${rowIndex}:quantity`",
+    ]:
+        assert term in required_state_source
+
+    for term in [
+        ".sample-cell-required-missing",
+        "box-shadow: inset 0 0 0 1px rgba(194, 65, 58, 0.44)",
+    ]:
+        assert term in inbox_styles
+
     assert "/application-draft" in client_source
+    assert "project_setup?: Record<string, unknown>" in client_source
+    assert "project_setup?: Record<string, string | null>" in client_source
     assert 'navigate("/intake")' in app_source
     assert "Continue to Precheck" not in page_source
     assert "AttachmentPreviewPanel" not in page_source
     assert "Draft saved automatically" not in page_source
+    assert "Draft changes save automatically while you edit this package." not in page_source
     assert "No application form imported. Fill SECTION 1 manually." not in new_project_source
     assert "Import application form (next)" not in page_source
 
@@ -1914,7 +1958,7 @@ def test_task142_draft_duplicate_resolution_is_business_readable() -> None:
 
 
 def test_task143_email_import_waits_for_application_form_selection() -> None:
-    """TASK_143 keeps duplicate draft handling behind selected application forms."""
+    """TASK_143 keeps duplicate checks at the selected application-form boundary."""
     page_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
     ).read_text(encoding="utf-8")
@@ -1925,18 +1969,27 @@ def test_task143_email_import_waits_for_application_form_selection() -> None:
         FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
     ).read_text(encoding="utf-8")
 
-    assert "hasSelectableApplicationForms" in page_source
-    assert "waitsForApplicationFormSelection" in page_source
+    assert "defaultApplicationFormAsset" in page_source
+    assert "selectDefaultApplicationForm" in page_source
+    assert "visibleIntakeAttachments(imported)" in page_source
+    assert "Source file" in source_panel_source
+    assert "source_original_name" in source_panel_source
+    assert "email-source-filename" in source_panel_source
+    assert "source_stored_path" not in source_panel_source
+    assert "selectedAssetId: firstApplicationForm?.asset_id ?? null" in page_source
     assert "loadSelectedReview" in page_source
     assert "Unable to load the selected application draft." in page_source
     assert 'packageImport.source_type === "outlook_msg"' in page_source
-    assert "selectedAssetId: null" in page_source
+    assert "Unable to select the first application form." in page_source
     assert "applySelectedDraft(selection, asset.original_name)" in page_source
+    assert "applySelectedDraft(selection, selectedDefaultFormAsset.original_name)" in page_source
     assert "applySelectedDraft(selection, duplicateDraft.asset.original_name)" in page_source
+    assert page_source.count("setDuplicateDraft(null)") >= 6
     assert "duplicateDraft={duplicateDraft?.check ?? null}" in page_source
     assert "onDuplicateAction={(action) => void handleResolveDuplicateDraft(action)}" in page_source
     assert "This application draft already exists" not in source_panel_source
     assert "This application draft already exists" in attachment_source
+    assert attachment_source.index("Reinitialize") < attachment_source.index("Load existing")
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in (
         FRONTEND_ROOT / "src" / "intake-inbox.css"
     ).read_text(encoding="utf-8")
@@ -1979,8 +2032,8 @@ def test_task103_new_project_page_chrome_is_minimal() -> None:
         assert term in page_source + editor_source + styles_source
 
 
-def test_task134_new_project_uses_ltr_workbook_commit_before_folder() -> None:
-    """TASK_134 wires external LTR workbook commit into New Project completion."""
+def test_task146_new_project_applies_ltr_before_project_handoff() -> None:
+    """TASK_146 keeps New Project completion scoped to LTR application."""
     page_source = (
         FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
     ).read_text(encoding="utf-8")
@@ -1993,6 +2046,9 @@ def test_task134_new_project_uses_ltr_workbook_commit_before_folder() -> None:
     hook_source = (
         FRONTEND_ROOT / "src" / "features" / "new-project" / "useNewProjectCompletion.ts"
     ).read_text(encoding="utf-8")
+    dock_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectCompletionDock.tsx"
+    ).read_text(encoding="utf-8")
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
         encoding="utf-8"
     )
@@ -2004,11 +2060,23 @@ def test_task134_new_project_uses_ltr_workbook_commit_before_folder() -> None:
         "preview_acknowledged: true",
         "LTR workbook",
         "Backup:",
+        "NewProjectCompletionDock",
+        "isValidSpecifiedLtrInput",
+        "Applying LTR number...",
+        "Apply LTR Number",
+        "DL-YYYY-MM-NNN or A1",
+        "Valid specified LTR input",
+        "Suffix tokens start with a letter",
     ]:
-        assert term in page_source + setup_source + editor_source + hook_source + client_source
+        assert term in page_source + setup_source + editor_source + hook_source + dock_source + client_source
 
     assert "workbook_write_acknowledged" not in page_source + setup_source
     assert "I confirm ConnLab may write this LTR registration" not in setup_source
+    assert "Auto assign next LTR number" not in setup_source
+    assert "Use specified LTR number" not in setup_source
+    assert "Apply LTR Number and Create Folder" not in dock_source
+    assert "Writing LTR and creating folder" not in dock_source
+    assert "export type CompleteNewProject = {\n  project_id: string;\n  project_status: string;\n  ltr_number: string;\n};" in client_source
 
     assert hook_source.index("confirmIntakeCase(activeCase.case_id)") < hook_source.index(
         "const workbookCommit = await commitLtrWorkbookWrite"

@@ -132,8 +132,8 @@ export function ProjectWorkbenchPage({
             </dl>
             {!folderReady ? (
               <p className="blocking-copy">
-                Project folder is not recorded for this project. Complete New Project folder
-                creation or use a future recovery task.
+                Project folder is not recorded for this project. Use the project folder workflow
+                when this project is ready for folder creation.
               </p>
             ) : null}
           </section>

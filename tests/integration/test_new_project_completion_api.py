@@ -41,7 +41,7 @@ from backend.infrastructure.storage.repositories.intake_package import (
 from backend.shared.config import Settings
 
 
-def test_complete_new_project_auto_ltr_creates_folder_and_routes_payload(
+def test_complete_new_project_auto_ltr_applies_ltr_without_folder(
     tmp_path: Path,
 ) -> None:
     settings = Settings(
@@ -78,10 +78,10 @@ def test_complete_new_project_auto_ltr_creates_folder_and_routes_payload(
 
         assert response.status_code == 201
         payload = response.json()
-        assert payload["project_status"] == "folder_created"
+        assert payload["project_status"] == "ltr_registered"
         assert payload["ltr_number"] == "DL-2026-05-001"
-        assert Path(payload["project_folder_path"]).is_dir()
-        assert "DL-2026-05-001" in payload["project_folder_path"]
+        assert "project_folder_path" not in payload
+        assert "folder_id" not in payload
 
         project_id = payload["project_id"]
         with session_factory() as session:
@@ -89,9 +89,9 @@ def test_complete_new_project_auto_ltr_creates_folder_and_routes_payload(
             ltrs = LtrRecordRepository(session).list_by_project(project_id)
             folders = ProjectFolderRecordRepository(session).list_by_project(project_id)
             assert project is not None
-            assert project.status.value == "folder_created"
+            assert project.status.value == "ltr_registered"
             assert [ltr.ltr_number for ltr in ltrs] == ["DL-2026-05-001"]
-            assert len(folders) == 1
+            assert folders == []
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -148,10 +148,70 @@ def test_complete_new_project_rejects_duplicate_specified_ltr(tmp_path: Path) ->
         engine.dispose()
 
 
-def test_complete_new_project_continues_after_external_ltr_commit(
+def test_complete_new_project_is_idempotent_for_completed_case(tmp_path: Path) -> None:
+    """Repeating completion for one case returns the same project instead of duplicating."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="IDEM")
+
+        first = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json=_completion_payload("auto"),
+        )
+        second = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json=_completion_payload("auto"),
+        )
+
+        assert first.status_code == 201
+        assert second.status_code == 201
+        first_payload = first.json()
+        second_payload = second.json()
+        assert second_payload["project_id"] == first_payload["project_id"]
+        assert second_payload["ltr_number"] == first_payload["ltr_number"]
+        assert second_payload["project_status"] == "ltr_registered"
+
+        with session_factory() as session:
+            projects = ProjectRepository(session).list()
+            ltrs = LtrRecordRepository(session).list_by_project(first_payload["project_id"])
+            folders = ProjectFolderRecordRepository(session).list_by_project(
+                first_payload["project_id"]
+            )
+            assert len(projects) == 1
+            assert [ltr.ltr_number for ltr in ltrs] == ["DL-2026-05-001"]
+            assert folders == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_complete_new_project_returns_existing_external_ltr_without_folder(
     tmp_path: Path,
 ) -> None:
-    """A prior workbook-backed LTR commit can continue into folder generation."""
+    """A prior workbook-backed LTR commit is returned without folder generation."""
     settings = Settings(
         data_dir=tmp_path / "data",
         projects_dir=tmp_path / "projects",
@@ -213,8 +273,10 @@ def test_complete_new_project_continues_after_external_ltr_commit(
         assert response.status_code == 201
         payload = response.json()
         assert payload["ltr_number"] == "DL-2026-05-009"
-        assert payload["project_status"] == "folder_created"
-        assert Path(payload["project_folder_path"]).is_dir()
+        assert payload["project_status"] == "ltr_registered"
+        assert "project_folder_path" not in payload
+        with session_factory() as session:
+            assert ProjectFolderRecordRepository(session).list_by_project(project_id) == []
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

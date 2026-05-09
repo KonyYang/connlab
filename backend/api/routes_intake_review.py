@@ -64,6 +64,7 @@ class IntakeCaseReviewItemResponse(BaseModel):
     fields: list[IntakeCaseReviewFieldResponse]
     sample_rows: list[dict[str, Any]]
     requested_testing_rows: list[dict[str, Any]]
+    project_setup: dict[str, Any] = Field(default_factory=dict)
     precheck_issues: list["DraftPrecheckIssueResponse"]
 
 
@@ -100,6 +101,7 @@ class UpdateIntakeCaseReviewFieldsRequest(BaseModel):
     fields: dict[str, Any]
     sample_rows: list[dict[str, Any]] | None = None
     requested_testing_rows: list[dict[str, Any]] | None = None
+    project_setup: dict[str, Any] | None = None
 
 
 class ConfirmIntakeCaseResponse(BaseModel):
@@ -204,6 +206,7 @@ def update_intake_case_review_fields(
                 request.fields,
                 sample_rows=request.sample_rows,
                 requested_testing_rows=request.requested_testing_rows,
+                project_setup=request.project_setup,
             )
         )
     except IntakeCaseReviewNotFoundError as exc:
@@ -317,6 +320,7 @@ def _case_item_response(item: IntakeCaseReviewItem) -> IntakeCaseReviewItemRespo
         frozen_reason=item.frozen_reason,
         sample_rows=_sample_rows(item.parsed_fields),
         requested_testing_rows=_requested_testing_rows(item.parsed_fields),
+        project_setup=item.project_setup,
         precheck_issues=[_precheck_issue_response(issue) for issue in item.precheck_issues],
         fields=[
             _field_response("form_no", "Form No.", item.parsed_fields, required=False),

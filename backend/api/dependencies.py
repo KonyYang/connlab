@@ -530,7 +530,6 @@ def get_ltr_workbook_write_commit_service(
 
 def get_new_project_completion_service(
     session: Session = Depends(get_session),
-    settings: Settings = Depends(get_settings),
 ) -> NewProjectCompletionService:
     """Build the New Project single-page completion orchestration service."""
     project_repository = ProjectRepository(session)
@@ -566,21 +565,12 @@ def get_new_project_completion_service(
             lifecycle_guard=lifecycle_guard,
         ),
     )
-    folder_service = FolderService(
-        project_repository=project_repository,
-        folder_repository=ProjectFolderRecordRepository(session),
-        file_asset_repository=file_asset_repository,
-        lifecycle_guard=lifecycle_guard,
-    )
     return NewProjectCompletionService(
         intake_case_store=IntakeCaseRepository(session),
         project_store=project_repository,
         ltr_store=ltr_repository,
         confirmation_service=confirmation_service,
         ltr_commit_service=ltr_commit_service,
-        folder_service=folder_service,
-        default_folder_template_path=_default_folder_template_path(settings.templates_dir),
-        default_folder_target_root=settings.projects_dir,
     )
 
 

@@ -635,6 +635,15 @@ def test_review_fields_persists_requested_testing_rows(tmp_path: Path) -> None:
                         "applicable_specification": "QG-03-016E_Rev2",
                     },
                 ],
+                "project_setup": {
+                    "ltr_mode": "specified",
+                    "specified_ltr_number": "A1",
+                    "test_item": "Qualification",
+                    "sample_description": "Two busbar samples",
+                    "location": "AIPG Guangzhou",
+                    "test_type_in_sheet": "Qualification",
+                    "project_leader": "White",
+                },
             },
         )
         assert rows_update_response.status_code == 200
@@ -651,6 +660,8 @@ def test_review_fields_persists_requested_testing_rows(tmp_path: Path) -> None:
         assert "requested_testing" in fields_dict
         assert "Qualification test" in fields_dict["requested_testing"]
         assert "Environmental test" in fields_dict["requested_testing"]
+        assert updated_case["project_setup"]["test_item"] == "Qualification"
+        assert updated_case["project_setup"]["specified_ltr_number"] == "A1"
 
         # Verify draft persistence
         with session_factory() as session:
@@ -663,6 +674,7 @@ def test_review_fields_persists_requested_testing_rows(tmp_path: Path) -> None:
             assert "requested_testing_rows" in overrides
             assert len(overrides["requested_testing_rows"]) == 2
             assert overrides["requested_testing_rows"][0]["test_to_be_performed"] == "Qualification test"
+            assert overrides["project_setup"]["sample_description"] == "Two busbar samples"
             # Compatibility field should also be in overrides
             assert "requested_testing" in overrides
     finally:

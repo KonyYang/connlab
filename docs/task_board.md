@@ -1,10 +1,10 @@
 ﻿# ConnLab Task Board
 
-> Status: TASK_143 complete; Email package selection-time draft loading hotfix
-> Last Updated: 2026-05-08
+> Status: TASK_146 complete; New Project Apply-LTR only handoff
+> Last Updated: 2026-05-09
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: none; awaiting user approval for next controlled task
-> Current Phase: `Phase 10C - New Project intake flow friction cleanup`
+> Current Phase: `Phase 10D - New Project completion handoff and Project workspace boundary`
 
 ---
 
@@ -1379,7 +1379,7 @@ Why this is next:
 
 Active implementation task:
 
-- None. `TASK_143_EMAIL_PACKAGE_SELECTION_TIME_DRAFT_LOADING_HOTFIX` is complete; do not start another task until the user explicitly approves the next controlled task.
+- None. `TASK_146_NEW_PROJECT_APPLY_LTR_ONLY_AND_COMPLETION_HANDOFF` is complete; do not start another task until the user explicitly approves the next controlled task.
 
 Reason:
 
@@ -1393,12 +1393,34 @@ Reason:
 - `TASK_141` is allowed because `TASK_140` removed New Project in-page confirmation friction and the next controlled prerequisite is backend duplicate classification/resolution so UI can safely wire resolution actions in `TASK_142`.
 - `TASK_142` is allowed for plan review because user review found the package-level duplicate model is wrong for multi-application-form emails; draft identity must be corrected before the duplicate UI is finalized.
 - `TASK_143` is allowed for plan review because manual smoke testing of `TASK_142` found the duplicate card still appears too early after email import and the operator flow must wait for application-form selection before loading or resolving the right-side `Application information` editor.
+- `TASK_144` is allowed because user review found `Project setup confirmation` was page-local state that could leak across application-form switches and could not restore with existing draft loads.
+- `TASK_145` is allowed for plan review because `TASK_144` is complete, the user has completed manual smoke testing, and Phase 10C needs validation and board sync before any next phase is activated.
+- `TASK_146` is allowed for plan review because Phase 10C is validated and closed, the user explicitly deprioritized Drafts / In Progress, and the next mainline business boundary is New Project applying LTR only before handing off to Project workspace.
+
+Prior completed note:
+
+- `TASK_146_NEW_PROJECT_APPLY_LTR_ONLY_AND_COMPLETION_HANDOFF` is complete. New Project now applies/registers the LTR number and hands off to the Project workspace without previewing or generating the project folder. The completion API no longer returns folder fields, repeat completion for the same intake case returns the existing confirmed Project/LTR instead of creating a duplicate Project, and the frontend action now reads `Apply LTR Number`.
+- Validation: `py -m pytest tests\integration\test_new_project_completion_api.py -q` passed, 4 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task146_new_project_applies_ltr_before_project_handoff -q` passed, 2 passed; `py -m pytest tests\integration\test_new_project_completion_api.py tests\integration\test_ltr_workbook_write_commit_api.py tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task146_new_project_applies_ltr_before_project_handoff -q` passed, 8 passed; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+
+- `TASK_145_PHASE10C_VALIDATION_AND_BOARD_SYNC` is complete. The user-completed manual smoke test is recorded as Phase 10C manual validation evidence, targeted intake/New Project automated checks passed, frontend build passed, and the board is synced back to no active task pending the next explicit approval.
+- Validation: broad selector `py -m pytest tests\unit\test_outlook_msg_source_import.py tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py tests\unit\test_intake_case_review_service.py tests\unit\test_frontend_shell_files.py -q -k "msg or intake or task102 or task103 or task142 or task143 or task144 or project_setup"` returned 68 passed, 34 deselected, and 3 historical frontend shell expectation failures from older TASK_069/TASK_087/TASK_091 checks pulled in by the broad selector. Narrowed validation passed: `py -m pytest tests\unit\test_outlook_msg_source_import.py tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py tests\unit\test_intake_case_review_service.py -q` passed, 50 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task103_application_form_import_is_explicit_and_confirmed tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 4 passed; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+
+- `TASK_144_PROJECT_SETUP_DRAFT_SCOPED_AUTOSAVE` is complete. New Project setup confirmation values are now persisted per intake case draft under `project_setup`, returned by case review APIs, included in review-field autosave, restored when switching/loading application drafts, and used by completion from the currently loaded draft-scoped state.
+- Follow-up email source provenance display: the Email source panel now shows only the original source filename returned by the intake package response; the ConnLab storage path is no longer exposed in the UI.
+- Follow-up email source filename wrapping: long filenames now wrap in the Email source panel, so suffixes such as `副本` stay visible instead of being clipped.
+- Follow-up email source Unicode preservation: uploaded `.msg` display names now keep the original Unicode filename rather than the sanitized storage filename.
+- Validation: `py -m pytest tests\unit\test_intake_case_review_service.py::test_review_service_persists_project_setup_per_draft tests\integration\test_manual_intake_api.py::test_review_fields_persists_requested_testing_rows tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell -q` passed, 3 passed; `npm run build` passed from `frontend`.
 
 Prior completed note:
 
 - `TASK_143_EMAIL_PACKAGE_SELECTION_TIME_DRAFT_LOADING_HOTFIX` is complete. `.msg` import now preserves source and attachments without immediately selecting the first attachment or preparing a draft when selectable Word forms are present; duplicate handling runs after explicit application-form selection; new, opened, and replaced drafts all load into right-side `Application information`; the duplicate card now lives in the Attachments selection context and shows only the application-form filename plus `Load existing` and `Reinitialize`. Follow-up manual-smoke fix: duplicate resolution now reloads an existing selected review directly instead of calling blank draft preparation again, preventing the right-side editor from flashing and then clearing.
 - Follow-up completion friction cleanup: removed the extra controlled-workbook acknowledgement checkbox from New Project setup; the workflow now treats this risk as accepted and sends the existing backend preview acknowledgement automatically.
-- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "duplicate or msg_package or application_form_import"` passed, 3 passed and 52 deselected; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 1 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 2 passed; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+- Follow-up completion dock cleanup: replaced the sticky autosave guidance with the final completion dock, moved LTR mode and specified-number input beside `Apply LTR Number and Create Folder`, and kept the left setup panel focused on workbook row metadata.
+- Follow-up specified LTR input clarity: specified-number mode now keeps the input highlighted and completion blocked until the value matches `DL-YYYY-MM-NNN`, `DL-YYYY-MM-NNN` plus letter-led suffix, or a letter-led alphanumeric suffix token; a `?` help control explains accepted examples.
+- Follow-up sample-table blocker clarity: required empty sample cells now highlight the whole cell with a non-obstructive tint instead of adding capsule borders or placeholder text that would obscure table content; each non-empty sample row independently checks Product Name and Quantity.
+- Follow-up default application-form loading: `.msg` import now preselects the first `.docx` application form and immediately runs the selected-form import/duplicate path; emails with no application form still prepare the no-form draft path. Duplicate buttons now place `Load existing` on the right as the primary/recommended action.
+- Follow-up import logic review: selected-form and no-form duplicate enforcement were rechecked against the backend services. A stale duplicate-card state was fixed so any successful prepared or selected draft load clears previous duplicate state before showing right-side `Application information`.
+- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "duplicate or msg_package or application_form_import"` passed, 3 passed and 52 deselected; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 1 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection -q` passed, 2 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task103_new_project_page_chrome_is_minimal tests\unit\test_frontend_shell_files.py::test_task134_new_project_uses_ltr_workbook_commit_before_folder -q` passed, 3 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell -q` passed, 1 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable -q` passed, 2 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task102_new_project_single_page_editor_shell tests\unit\test_frontend_shell_files.py::test_task103_application_form_import_is_explicit_and_confirmed -q` passed, 2 passed; `py -m pytest tests\unit\test_frontend_shell_files.py::test_task143_email_import_waits_for_application_form_selection tests\unit\test_frontend_shell_files.py::test_task142_draft_duplicate_resolution_is_business_readable tests\unit\test_frontend_shell_files.py::test_task103_application_form_import_is_explicit_and_confirmed -q` passed, 3 passed; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
 
 Prior completed note:
 
@@ -1507,7 +1529,7 @@ Prior completed note:
 
 Next recommended action:
 
-- Review TASK_143 manual smoke results and approve the next controlled Phase 10C task if more intake-flow cleanup should continue.
+- Approve the next controlled Phase 10D task. Recommended next boundary: Project Workbench folder creation UX now that New Project only applies LTR and hands off.
 - Do not implement code or any later task before the next task is explicitly approved.
 
 Implemented LTR number rule clarification:

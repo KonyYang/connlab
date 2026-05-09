@@ -248,8 +248,40 @@ def test_review_service_updates_requested_testing_rows_as_manual_overrides(tmp_p
         },
     ]
 
-    # Verify compatibility field is synced from first column
-    assert item.parsed_fields["requested_testing"] == "Qualification test\nEnvironmental test"
+
+def test_review_service_persists_project_setup_per_draft(tmp_path: Path) -> None:
+    """New Project setup confirmation values are stored with the selected draft."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(_complete_section1_fields()),
+    )
+
+    item = service.update_case_fields(
+        "case-1",
+        {},
+        project_setup={
+            "ltr_mode": "specified",
+            "specified_ltr_number": "A1",
+            "test_item": "Busbar qualification",
+            "sample_description": "Two plated busbar samples",
+            "location": "AIPG Guangzhou",
+            "test_type_in_sheet": "Qualification",
+            "project_leader": "White",
+            "ignored": "not persisted",
+        },
+    )
+
+    assert item.project_setup == {
+        "ltr_mode": "specified",
+        "specified_ltr_number": "A1",
+        "test_item": "Busbar qualification",
+        "sample_description": "Two plated busbar samples",
+        "location": "AIPG Guangzhou",
+        "test_type_in_sheet": "Qualification",
+        "project_leader": "White",
+    }
 
 
 def test_review_service_requested_testing_rows_syncs_to_compatibility_field(tmp_path: Path) -> None:

@@ -92,6 +92,7 @@ class MsgPackageIntakeService:
                 imported = self._office.import_outlook_msg(
                     uploaded_path,
                     self._storage.package_root(package_id),
+                    original_name=filename,
                 )
             except OutlookMsgImportError as exc:
                 raise MsgPackageIntakeError(str(exc)) from exc

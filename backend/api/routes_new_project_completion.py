@@ -4,19 +4,13 @@ from __future__ import annotations
 
 import getpass
 from datetime import date
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from backend.api.dependencies import (
     get_lookup_option_service,
     get_new_project_completion_service,
-)
-from backend.application.folder_service import (
-    FolderConflictError,
-    FolderError,
-    FolderNotFoundError,
 )
 from backend.application.intake_confirmation_service import (
     IntakeConfirmationError,
@@ -50,8 +44,6 @@ class CompleteNewProjectRequest(BaseModel):
 
     ltr_mode: NewProjectLtrMode
     specified_ltr_number: str | None = None
-    folder_template_path: str | None = Field(default=None, min_length=1)
-    folder_target_root: str | None = Field(default=None, min_length=1)
     operator_confirmed: bool = True
     plan_date: date | None = None
     test_item: str | None = None
@@ -75,10 +67,6 @@ class CompleteNewProjectResponse(BaseModel):
     project_id: str
     project_status: str
     ltr_number: str
-    folder_id: str
-    project_folder_path: str
-    preview_item_count: int
-    generated_paths: list[str]
 
 
 @router.get(
@@ -107,7 +95,7 @@ def complete_new_project(
     request: CompleteNewProjectRequest,
     service: NewProjectCompletionService = Depends(get_new_project_completion_service),
 ) -> CompleteNewProjectResponse:
-    """Confirm New Project data, register LTR, and create the project folder."""
+    """Confirm New Project data and apply an LTR before workspace handoff."""
     try:
         return _to_response(
             service.complete(
@@ -115,8 +103,6 @@ def complete_new_project(
                     case_id=case_id,
                     ltr_mode=request.ltr_mode,
                     specified_ltr_number=request.specified_ltr_number,
-                    folder_template_path=_optional_path(request.folder_template_path),
-                    folder_target_root=_optional_path(request.folder_target_root),
                     operator_confirmed=request.operator_confirmed,
                     plan_date=request.plan_date,
                     test_item=request.test_item,
@@ -130,11 +116,10 @@ def complete_new_project(
     except (
         IntakeConfirmationNotFoundError,
         NewProjectCompletionNotFoundError,
-        FolderNotFoundError,
         ProjectLifecycleNotFoundError,
     ) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (DuplicateActiveLtrError, FolderConflictError) as exc:
+    except DuplicateActiveLtrError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (
         IntakeConfirmationError,
@@ -143,17 +128,11 @@ def complete_new_project(
         LtrReadinessError,
         LtrError,
         NewProjectCompletionError,
-        FolderError,
         ProjectLifecycleError,
         ValueError,
         FileNotFoundError,
     ) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-def _optional_path(value: str | None) -> Path | None:
-    """Convert optional path text to Path."""
-    return Path(value) if value else None
 
 
 def _to_response(result: NewProjectCompletionResult) -> CompleteNewProjectResponse:
@@ -162,10 +141,6 @@ def _to_response(result: NewProjectCompletionResult) -> CompleteNewProjectRespon
         project_id=result.project.project_id,
         project_status=result.project.status.value,
         ltr_number=result.ltr.ltr_number,
-        folder_id=result.folder.record.folder_id,
-        project_folder_path=str(result.folder.result.project_folder_path),
-        preview_item_count=len(result.folder_preview.items),
-        generated_paths=[str(path) for path in result.folder.result.generated_paths],
     )
 
 

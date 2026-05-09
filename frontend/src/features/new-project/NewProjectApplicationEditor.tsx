@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 
 import type { IntakeCaseReviewItem, IntakeCaseReviewField } from "../../api/client";
-import { UiIcon } from "../../components/common/UiIcon";
 import {
   emptyPrecheckRequestedTestingRow,
   emptyPrecheckSampleRow,
@@ -24,9 +23,6 @@ type NewProjectApplicationEditorProps = {
   activeCase: IntakeCaseReviewItem | null;
   autoSaveError: string | null;
   completionError: string | null;
-  completionLoading: boolean;
-  completionDisabled: boolean;
-  completionText: string;
   completionResult: string | null;
   disabled: boolean;
   fieldValues: Record<string, string>;
@@ -37,7 +33,6 @@ type NewProjectApplicationEditorProps = {
   requiredState: NewProjectRequiredState;
   sampleRows: PrecheckSampleRow[];
   sourceFields: IntakeCaseReviewField[];
-  onComplete: () => void;
   onFieldValuesChange: (values: Record<string, string>) => void;
   onRequestedTestingRowsChange: (rows: PrecheckRequestedTestingRow[]) => void;
   onSampleRowsChange: (rows: PrecheckSampleRow[]) => void;
@@ -47,9 +42,6 @@ export function NewProjectApplicationEditor({
   activeCase,
   autoSaveError,
   completionError,
-  completionLoading,
-  completionDisabled,
-  completionText,
   completionResult,
   disabled,
   fieldValues,
@@ -60,7 +52,6 @@ export function NewProjectApplicationEditor({
   requiredState,
   sampleRows,
   sourceFields,
-  onComplete,
   onFieldValuesChange,
   onRequestedTestingRowsChange,
   onSampleRowsChange
@@ -159,21 +150,6 @@ export function NewProjectApplicationEditor({
 
       {completionResult ? <p className="new-project-completion-result">{completionResult}</p> : null}
 
-      <footer className="new-project-completion-panel">
-        <span>
-          <UiIcon name="clock" />
-          <span title="required fields remaining">{completionText}</span>
-        </span>
-        <button
-          className="new-project-primary-action ui-primary-action"
-          disabled={completionDisabled}
-          type="button"
-          onClick={onComplete}
-        >
-          {completionLoading ? "Writing LTR and creating folder..." : "Apply LTR Number and Create Folder"}
-          <span aria-hidden="true">&gt;</span>
-        </button>
-      </footer>
     </section>
   );
 }

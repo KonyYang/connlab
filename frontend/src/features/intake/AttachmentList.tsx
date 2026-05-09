@@ -112,19 +112,19 @@ function DraftDuplicateResolution({
       <div className="email-duplicate-actions">
         <button
           className="new-project-secondary-action ui-secondary-action"
-          disabled={Boolean(resolvingAction) || !canOpen}
-          type="button"
-          onClick={() => onAction("open_existing")}
-        >
-          {resolvingAction === "open_existing" ? "Loading..." : "Load existing"}
-        </button>
-        <button
-          className="new-project-primary-action ui-primary-action"
           disabled={Boolean(resolvingAction) || !canReplace}
           type="button"
           onClick={() => onAction("replace_existing")}
         >
           {resolvingAction === "replace_existing" ? "Reinitializing..." : "Reinitialize"}
+        </button>
+        <button
+          className="new-project-primary-action ui-primary-action"
+          disabled={Boolean(resolvingAction) || !canOpen}
+          type="button"
+          onClick={() => onAction("open_existing")}
+        >
+          {resolvingAction === "open_existing" ? "Loading..." : "Load existing"}
         </button>
       </div>
     </section>

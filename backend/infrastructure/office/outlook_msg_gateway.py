@@ -67,7 +67,13 @@ class _ParsedAttachment:
 class OutlookMsgGateway:
     """Boundary for reading Outlook `.msg` files without automating Outlook."""
 
-    def import_outlook_msg(self, source_path: Path, target_dir: Path) -> ImportedMailPackage:
+    def import_outlook_msg(
+        self,
+        source_path: Path,
+        target_dir: Path,
+        *,
+        original_name: str | None = None,
+    ) -> ImportedMailPackage:
         """Copy a `.msg` source and read minimal metadata when possible."""
         source = Path(source_path)
         if source.suffix.lower() != ".msg":
@@ -85,7 +91,7 @@ class OutlookMsgGateway:
             )
 
         return ImportedMailPackage(
-            source_original_name=source.name,
+            source_original_name=Path(original_name).name if original_name else source.name,
             source_stored_path=stored_path,
             subject=metadata.subject,
             sender_name=metadata.sender_name,
