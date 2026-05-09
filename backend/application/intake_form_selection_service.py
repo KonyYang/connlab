@@ -17,6 +17,8 @@ from backend.domain import (
     IntakeCaseStatus,
     IntakeDraft,
     IntakePackage,
+    LtrRecord,
+    LtrStatus,
 )
 from backend.modules.intake import ApplicationFormParser, ParsedApplicationForm
 
@@ -34,6 +36,14 @@ class IntakeDraftDuplicateResolutionRequiredError(IntakeSelectionError):
 
     def __init__(self, check: "IntakeDraftDuplicateCheck") -> None:
         super().__init__("Application draft already exists. Choose how to continue.")
+        self.check = check
+
+
+class IntakeConfirmedProjectDuplicateError(IntakeSelectionError):
+    """Raised when the selected form already produced a confirmed Project/LTR."""
+
+    def __init__(self, check: "IntakeConfirmedProjectDuplicateCheck") -> None:
+        super().__init__("Application has already been registered as a project.")
         self.check = check
 
 
@@ -75,6 +85,12 @@ class IntakeDraftStore(Protocol):
     def delete_by_package(self, package_id: str) -> int: ...
 
 
+class LtrRecordStore(Protocol):
+    """Optional LTR lookup port for confirmed project reminders."""
+
+    def list_by_project(self, project_id: str) -> list[LtrRecord]: ...
+
+
 class ApplicationFormEligibilityValidator(Protocol):
     """Port for checking whether an intake asset can be selected for Precheck."""
 
@@ -110,6 +126,28 @@ class IntakeDraftDuplicateCheck:
 
 
 @dataclass(frozen=True)
+class IntakeConfirmedProjectDuplicateCheck:
+    """Business-safe summary for a selected form that already created a project."""
+
+    classification: str
+    existing_package_id: str
+    existing_case_id: str
+    existing_project_id: str
+    existing_ltr_number: str | None
+    existing_source_original_name: str
+    incoming_source_original_name: str
+    existing_source_size_bytes: int
+    incoming_source_size_bytes: int
+    existing_application_form_name: str | None = None
+    incoming_application_form_name: str | None = None
+    allowed_actions: tuple[str, ...] = ("open_project",)
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-safe payload for API conflict responses."""
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class _CaseSelection:
     """Selected or reused case plus whether it already belonged to this asset."""
 
@@ -131,6 +169,7 @@ class IntakeFormSelectionService:
         draft_store: IntakeDraftStore,
         parser: ApplicationFormParser | None = None,
         eligibility_validator: ApplicationFormEligibilityValidator | None = None,
+        ltr_store: LtrRecordStore | None = None,
     ) -> None:
         """Create the selection service from explicit stores and parser."""
         self._package_store = package_store
@@ -141,6 +180,7 @@ class IntakeFormSelectionService:
         self._eligibility_validator = (
             eligibility_validator or ApplicationFormEligibilityService()
         )
+        self._ltr_store = ltr_store
 
     def select_form_asset(
         self,
@@ -167,14 +207,23 @@ class IntakeFormSelectionService:
             raise IntakeSelectionError(eligibility.message)
 
         duplicate = self._find_selected_form_duplicate(package, asset)
+        reinitialize_same_package_draft = (
+            duplicate is not None
+            and duplicate.existing_package_id == package.package_id
+            and resolution_action == "replace_existing"
+        )
         if duplicate is not None:
             resolved = self._resolve_duplicate(
                 duplicate,
                 resolution_action,
                 resolution_case_id,
+                package.package_id,
             )
             if resolved is not None:
                 return resolved
+        confirmed_duplicate = self._find_confirmed_project_duplicate(package, asset)
+        if confirmed_duplicate is not None:
+            raise IntakeConfirmedProjectDuplicateError(confirmed_duplicate)
 
         selected_asset = self._asset_store.update(
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)
@@ -187,6 +236,7 @@ class IntakeFormSelectionService:
             parser_warnings,
             keep_manual_overrides=case_selection.same_selected_asset
             and not replace_existing,
+            reinitialize=reinitialize_same_package_draft,
         )
 
         return FormSelectionResult(
@@ -209,21 +259,28 @@ class IntakeFormSelectionService:
             existing_source = self._email_source_asset(existing_package.package_id)
             if existing_source is None:
                 continue
-            if existing_source.original_name != incoming_source.original_name:
-                continue
-            if existing_source.size_bytes != incoming_source.size_bytes:
+            if not self._same_email_source(existing_source, incoming_source):
                 continue
             for existing_case in self._case_store.list_by_package(existing_package.package_id):
                 if not self._can_reuse_case(existing_case):
                     continue
-                if existing_case.package_id == package.package_id:
-                    continue
                 if existing_case.selected_form_asset_id is None:
+                    continue
+                if (
+                    existing_case.package_id == package.package_id
+                    and existing_case.selected_form_asset_id == selected_asset.asset_id
+                    and not self._package_has_other_selected_form_case(
+                        package.package_id,
+                        selected_asset.asset_id,
+                    )
+                ):
                     continue
                 existing_form = self._asset_store.get(existing_case.selected_form_asset_id)
                 if existing_form is None:
                     continue
                 if existing_form.original_name != selected_asset.original_name:
+                    continue
+                if self._draft_store.get_by_case(existing_case.case_id) is None:
                     continue
                 return IntakeDraftDuplicateCheck(
                     classification="exact_existing_application_draft",
@@ -238,11 +295,54 @@ class IntakeFormSelectionService:
                 )
         return None
 
+    def _find_confirmed_project_duplicate(
+        self,
+        package: IntakePackage,
+        selected_asset: IntakeAsset,
+    ) -> IntakeConfirmedProjectDuplicateCheck | None:
+        """Return a reminder when this selected form already created a Project/LTR."""
+        incoming_source = self._email_source_asset(package.package_id)
+        if incoming_source is None:
+            return None
+        for existing_package in self._package_store.list():
+            existing_source = self._email_source_asset(existing_package.package_id)
+            if existing_source is None:
+                continue
+            if not self._same_email_source(existing_source, incoming_source):
+                continue
+            for existing_case in self._case_store.list_by_package(existing_package.package_id):
+                if existing_case.confirmed_project_id is None:
+                    continue
+                if existing_case.selected_form_asset_id is None:
+                    continue
+                existing_form = self._asset_store.get(existing_case.selected_form_asset_id)
+                if existing_form is None:
+                    continue
+                if existing_form.original_name != selected_asset.original_name:
+                    continue
+                return IntakeConfirmedProjectDuplicateCheck(
+                    classification="existing_confirmed_project_ltr",
+                    existing_package_id=existing_package.package_id,
+                    existing_case_id=existing_case.case_id,
+                    existing_project_id=existing_case.confirmed_project_id,
+                    existing_ltr_number=self._registered_ltr_number(
+                        existing_case.confirmed_project_id
+                    ),
+                    existing_source_original_name=existing_source.original_name,
+                    incoming_source_original_name=incoming_source.original_name,
+                    existing_source_size_bytes=existing_source.size_bytes,
+                    incoming_source_size_bytes=incoming_source.size_bytes,
+                    existing_application_form_name=existing_form.original_name,
+                    incoming_application_form_name=selected_asset.original_name,
+                )
+        return None
+
     def _resolve_duplicate(
         self,
         duplicate: IntakeDraftDuplicateCheck,
         resolution_action: str | None,
         resolution_case_id: str | None,
+        current_package_id: str,
     ) -> FormSelectionResult | None:
         """Apply a selected duplicate resolution or require operator choice."""
         if resolution_case_id and resolution_case_id != duplicate.existing_case_id:
@@ -256,6 +356,8 @@ class IntakeFormSelectionService:
         if resolution_action == "open_existing":
             return self._open_existing_duplicate(duplicate)
         if resolution_action == "replace_existing":
+            if duplicate.existing_package_id == current_package_id:
+                return None
             self._ensure_replace_allowed(duplicate.existing_package_id)
             self._delete_package_records(duplicate.existing_package_id)
             return None
@@ -296,6 +398,39 @@ class IntakeFormSelectionService:
                 if asset.asset_role is IntakeAssetRole.EMAIL_SOURCE
             ),
             None,
+        )
+
+    def _same_email_source(self, existing: IntakeAsset, incoming: IntakeAsset) -> bool:
+        """Compare source email content without depending on display filenames."""
+        if existing.sha256 and incoming.sha256:
+            return (
+                existing.sha256 == incoming.sha256
+                and existing.size_bytes == incoming.size_bytes
+            )
+        return (
+            existing.original_name == incoming.original_name
+            and existing.size_bytes == incoming.size_bytes
+        )
+
+    def _registered_ltr_number(self, project_id: str) -> str | None:
+        """Return the first registered local LTR number for a confirmed project."""
+        if self._ltr_store is None:
+            return None
+        for record in self._ltr_store.list_by_project(project_id):
+            if record.status is LtrStatus.REGISTERED:
+                return record.ltr_number
+        return None
+
+    def _package_has_other_selected_form_case(
+        self,
+        package_id: str,
+        selected_asset_id: str,
+    ) -> bool:
+        """Return whether this package already has another selected-form draft."""
+        return any(
+            current.selected_form_asset_id not in (None, selected_asset_id)
+            and self._can_reuse_case(current)
+            for current in self._case_store.list_by_package(package_id)
         )
 
     def _ensure_replace_allowed(self, package_id: str) -> None:
@@ -362,13 +497,16 @@ class IntakeFormSelectionService:
         parsed_fields: dict[str, object],
         parser_warnings: list[str],
         keep_manual_overrides: bool,
+        reinitialize: bool = False,
     ) -> IntakeDraft:
         existing_draft = self._draft_store.get_by_case(case_id)
         parsed_fields_json = json.dumps(parsed_fields, ensure_ascii=False, sort_keys=True)
         parser_warnings_json = json.dumps(parser_warnings, ensure_ascii=False)
         if existing_draft is not None:
             manual_overrides_json = (
-                existing_draft.manual_overrides_json if keep_manual_overrides else None
+                existing_draft.manual_overrides_json
+                if keep_manual_overrides and not reinitialize
+                else None
             )
             return self._draft_store.update(
                 replace(

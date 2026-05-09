@@ -44,6 +44,32 @@ def test_external_resource_api_registers_lists_and_validates_folder(
         engine.dispose()
 
 
+def test_external_resource_api_registers_project_output_root(
+    tmp_path: Path,
+) -> None:
+    client, engine = _client(tmp_path)
+    output_root = tmp_path / "project-output"
+    output_root.mkdir()
+    try:
+        registered = client.put(
+            "/api/external-resources/project_output_root",
+            json={"path": str(output_root), "active": True},
+        )
+        validated = client.post(
+            "/api/external-resources/project_output_root/validate"
+        )
+
+        assert registered.status_code == 200
+        assert registered.json()["resource_type"] == "project_output_root"
+        assert registered.json()["validation_status"] == "not_validated"
+        assert validated.status_code == 200
+        assert validated.json()["validation_status"] == "valid"
+        assert validated.json()["validation_failure_reason"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_external_resource_api_records_invalid_excel_path(tmp_path: Path) -> None:
     client, engine = _client(tmp_path)
     try:

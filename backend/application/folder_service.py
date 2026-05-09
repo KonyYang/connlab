@@ -48,6 +48,9 @@ class ProjectFolderRecordRepositoryPort(Protocol):
     def create(self, folder: ProjectFolderRecord) -> ProjectFolderRecord:
         """Persist a project folder record."""
 
+    def list_by_project(self, project_id: str) -> list[ProjectFolderRecord]:
+        """Return folder records for a project."""
+
 
 class FileAssetRepositoryPort(Protocol):
     """File asset repository operations required by folder service."""
@@ -137,6 +140,19 @@ class FolderService:
         self._projects.update(project.with_status(ProjectStatus.FOLDER_CREATED))
         self._logger.info("Generated project folder at %s", result.project_folder_path)
         return FolderGenerationRecord(result=result, record=record)
+
+    def latest_folder(self, project_id: str) -> ProjectFolderRecord:
+        """Return the latest generated folder record for a project."""
+        self._get_project(project_id)
+        folders = self._folders.list_by_project(project_id)
+        if not folders:
+            raise FolderNotFoundError(
+                f"Project folder record not found for project: {project_id}"
+            )
+        return max(
+            folders,
+            key=lambda folder: (folder.created_on or date.min, folder.folder_id),
+        )
 
     def _get_project(self, project_id: str) -> Project:
         """Load a project or raise not found."""

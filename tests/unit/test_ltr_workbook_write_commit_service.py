@@ -66,11 +66,11 @@ def test_ltr_workbook_commit_suffix_token_auto_allocates_base_and_suffix() -> No
     """Alphanumeric token input appends to an auto-allocated base DL number."""
     service, session, _ = _service({"2026": [("May", 1, 1, "DL-2026-05-001")]})
 
-    result = service.commit_project("P1", _command(number_input="A9"))
+    result = service.commit_project("P1", _command(number_input="AA"))
 
     assert result.action == "append_auto_suffix"
-    assert result.ltr_number == "DL-2026-05-002A9"
-    assert session.appended[0].dl_number == "DL-2026-05-002A9"
+    assert result.ltr_number == "DL-2026-05-002AA"
+    assert session.appended[0].dl_number == "DL-2026-05-002AA"
 
 
 def test_ltr_workbook_commit_rejects_associated_number_when_base_missing() -> None:
@@ -104,6 +104,18 @@ def test_ltr_workbook_commit_rejects_invalid_specified_input() -> None:
         match="DL number or a letter-led alphanumeric",
     ):
         service.commit_project("P1", _command(number_input="A-9"))
+
+    with pytest.raises(
+        LtrWorkbookWriteCommitError,
+        match="DL number or a letter-led alphanumeric",
+    ):
+        service.commit_project("P1", _command(number_input="123"))
+
+    with pytest.raises(
+        LtrWorkbookWriteCommitError,
+        match="DL number or a letter-led alphanumeric",
+    ):
+        service.commit_project("P1", _command(number_input="DL-2026-05-003123"))
 
 
 def test_ltr_workbook_commit_rejects_missing_specified_base() -> None:

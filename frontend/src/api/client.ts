@@ -115,18 +115,24 @@ export type IntakeAsset = {
 };
 
 export type DraftDuplicateAction = "open_existing" | "replace_existing" | "create_separate";
+export type DuplicateAction = DraftDuplicateAction | "open_project";
 
 export type DraftDuplicateCheck = {
-  classification: "exact_existing_application_draft" | "exact_existing_no_form_draft";
+  classification:
+    | "exact_existing_application_draft"
+    | "exact_existing_no_form_draft"
+    | "existing_confirmed_project_ltr";
   existing_package_id: string;
   existing_case_id: string;
+  existing_project_id?: string | null;
+  existing_ltr_number?: string | null;
   existing_source_original_name: string;
   incoming_source_original_name: string;
   existing_source_size_bytes: number;
   incoming_source_size_bytes: number;
   existing_application_form_name?: string | null;
   incoming_application_form_name?: string | null;
-  allowed_actions: DraftDuplicateAction[];
+  allowed_actions: DuplicateAction[];
 };
 
 export type IntakeAssetPreviewMetadata = {
@@ -346,6 +352,26 @@ export type IntakePrecheckLookupOptions = {
   post_testing_disposition: LookupOption[];
 };
 
+export type ExternalResourceType =
+  | "ltr_workbook"
+  | "application_form_template"
+  | "project_folder_template"
+  | "project_output_root"
+  | "standard_record_excel"
+  | "equipment_calibration_excel";
+
+export type ExternalResourceValidationStatus = "not_validated" | "valid" | "invalid";
+
+export type ExternalResource = {
+  resource_id: string;
+  resource_type: ExternalResourceType;
+  path: string;
+  active: boolean;
+  validation_status: ExternalResourceValidationStatus;
+  last_validated_at: string | null;
+  validation_failure_reason: string | null;
+};
+
 export type ConfirmIntakeCase = {
   case_id: string;
   project_id: string;
@@ -457,6 +483,13 @@ export type FolderGeneration = {
   folder_id: string;
   project_folder_path: string;
   generated_paths: string[];
+};
+
+export type ProjectFolderRecord = {
+  folder_id: string;
+  project_id: string;
+  project_folder_path: string;
+  created_on?: string | null;
 };
 
 export type EvidencePlacementItem = {
@@ -854,6 +887,32 @@ export function getIntakePrecheckLookupOptions(): Promise<IntakePrecheckLookupOp
   return requestJson<IntakePrecheckLookupOptions>("/api/lookups/intake-precheck");
 }
 
+export function listExternalResources(): Promise<ExternalResource[]> {
+  return requestJson<ExternalResource[]>("/api/external-resources");
+}
+
+export function saveExternalResource(
+  resourceType: ExternalResourceType,
+  input: { path: string; active: boolean }
+): Promise<ExternalResource> {
+  return requestJson<ExternalResource>(
+    `/api/external-resources/${encodeURIComponent(resourceType)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function validateExternalResource(
+  resourceType: ExternalResourceType
+): Promise<ExternalResource> {
+  return requestJson<ExternalResource>(
+    `/api/external-resources/${encodeURIComponent(resourceType)}/validate`,
+    { method: "POST" }
+  );
+}
+
 export function confirmIntakeCase(caseId: string): Promise<ConfirmIntakeCase> {
   return requestJson<ConfirmIntakeCase>(
     `/api/intake-cases/${encodeURIComponent(caseId)}/confirm`,
@@ -983,6 +1042,12 @@ export function generateFolder(
       method: "POST",
       body: JSON.stringify(input)
     }
+  );
+}
+
+export function getLatestProjectFolder(projectId: string): Promise<ProjectFolderRecord> {
+  return requestJson<ProjectFolderRecord>(
+    `/api/projects/${encodeURIComponent(projectId)}/folder/latest`
   );
 }
 

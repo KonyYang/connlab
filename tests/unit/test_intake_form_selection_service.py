@@ -10,6 +10,7 @@ from backend.application.application_form_eligibility_service import (
     ApplicationFormEligibility,
 )
 from backend.application.intake_form_selection_service import (
+    IntakeConfirmedProjectDuplicateError,
     IntakeFormSelectionService,
     IntakeSelectionError,
     IntakeSelectionNotFoundError,
@@ -23,6 +24,8 @@ from backend.domain import (
     IntakePackage,
     IntakePackageSourceType,
     IntakePackageStatus,
+    LtrRecord,
+    LtrStatus,
 )
 
 
@@ -110,6 +113,14 @@ class DraftStore:
         return len(keys)
 
 
+class LtrStore:
+    def __init__(self, records: list[LtrRecord] | None = None) -> None:
+        self.records = records or []
+
+    def list_by_project(self, project_id: str) -> list[LtrRecord]:
+        return [record for record in self.records if record.project_id == project_id]
+
+
 class FakeEligibilityValidator:
     def __init__(self, result: ApplicationFormEligibility | None = None) -> None:
         self.result = result or ApplicationFormEligibility(
@@ -147,16 +158,23 @@ def _asset(asset_id: str, role: IntakeAssetRole, extension: str = ".docx") -> In
     )
 
 
-def _email_asset(asset_id: str = "email", package_id: str = "pkg-1", size: int = 1000) -> IntakeAsset:
+def _email_asset(
+    asset_id: str = "email",
+    package_id: str = "pkg-1",
+    size: int = 1000,
+    *,
+    original_name: str = "request.msg",
+    sha256: str = "e" * 64,
+) -> IntakeAsset:
     return IntakeAsset(
         asset_id=asset_id,
         package_id=package_id,
-        original_name="request.msg",
-        stored_path=Path(f"data/intake/{package_id}/source/request.msg"),
+        original_name=original_name,
+        stored_path=Path(f"data/intake/{package_id}/source/{original_name}"),
         extension=".msg",
         mime_type="application/vnd.ms-outlook",
         size_bytes=size,
-        sha256="e" * 64,
+        sha256=sha256,
         asset_role=IntakeAssetRole.EMAIL_SOURCE,
     )
 
@@ -185,6 +203,7 @@ def _service(
     drafts: list[IntakeDraft] | None = None,
     eligibility: ApplicationFormEligibility | None = None,
     packages: list[IntakePackage] | None = None,
+    ltrs: list[LtrRecord] | None = None,
 ) -> tuple[IntakeFormSelectionService, AssetStore, CaseStore, DraftStore]:
     asset_store = AssetStore(assets)
     case_store = CaseStore(cases)
@@ -196,6 +215,7 @@ def _service(
             case_store,
             draft_store,
             eligibility_validator=FakeEligibilityValidator(eligibility),
+            ltr_store=LtrStore(ltrs),
         ),
         asset_store,
         case_store,
@@ -457,6 +477,226 @@ def test_selection_requires_resolution_for_existing_application_draft() -> None:
     assert check.classification == "exact_existing_application_draft"
     assert check.existing_case_id == "case-existing"
     assert check.incoming_application_form_name == "application.docx"
+
+
+def test_selection_duplicate_uses_email_hash_not_display_filename() -> None:
+    from backend.application.intake_form_selection_service import (
+        IntakeDraftDuplicateResolutionRequiredError,
+    )
+
+    existing_package = replace(_package(), package_id="pkg-existing")
+    incoming_package = replace(
+        _package(),
+        source_original_name="连接器主板对busbar对接测试副本.msg",
+    )
+    existing_form = replace(
+        _asset("asset-existing", IntakeAssetRole.SELECTED_APPLICATION_FORM),
+        package_id="pkg-existing",
+        original_name="application.docx",
+    )
+    incoming_form = replace(
+        _asset("asset-incoming", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        original_name="application.docx",
+    )
+    service, _, _, _ = _service(
+        [
+            _email_asset(
+                "email-existing",
+                "pkg-existing",
+                2048,
+                original_name="_busbar_.msg",
+                sha256="5" * 64,
+            ),
+            _email_asset(
+                "email-incoming",
+                "pkg-1",
+                2048,
+                original_name="连接器主板对busbar对接测试副本.msg",
+                sha256="5" * 64,
+            ),
+            existing_form,
+            incoming_form,
+        ],
+        cases=[
+            IntakeCase(
+                case_id="case-existing",
+                package_id="pkg-existing",
+                selected_form_asset_id="asset-existing",
+                status=IntakeCaseStatus.NEEDS_REVIEW,
+            )
+        ],
+        drafts=[
+            IntakeDraft(
+                draft_id="draft-existing",
+                case_id="case-existing",
+                parsed_fields_json="{}",
+            )
+        ],
+        packages=[existing_package, incoming_package],
+    )
+
+    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-incoming")
+
+    check = exc_info.value.check
+    assert check.existing_source_original_name == "_busbar_.msg"
+    assert check.incoming_source_original_name == "连接器主板对busbar对接测试副本.msg"
+
+
+def test_selection_reports_confirmed_project_duplicate_before_creating_draft() -> None:
+    existing_package = replace(_package(), package_id="pkg-existing")
+    incoming_package = replace(
+        _package(),
+        source_original_name="连接器主板对busbar对接测试副本.msg",
+    )
+    existing_form = replace(
+        _asset("asset-existing", IntakeAssetRole.SELECTED_APPLICATION_FORM),
+        package_id="pkg-existing",
+        original_name="application.docx",
+    )
+    incoming_form = replace(
+        _asset("asset-incoming", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        original_name="application.docx",
+    )
+    service, _, case_store, draft_store = _service(
+        [
+            _email_asset(
+                "email-existing",
+                "pkg-existing",
+                2048,
+                original_name="_busbar_.msg",
+                sha256="5" * 64,
+            ),
+            _email_asset(
+                "email-incoming",
+                "pkg-1",
+                2048,
+                original_name="连接器主板对busbar对接测试副本.msg",
+                sha256="5" * 64,
+            ),
+            existing_form,
+            incoming_form,
+        ],
+        cases=[
+            IntakeCase(
+                case_id="case-existing",
+                package_id="pkg-existing",
+                selected_form_asset_id="asset-existing",
+                status=IntakeCaseStatus.CONFIRMED,
+                confirmed_project_id="project-existing",
+            )
+        ],
+        packages=[existing_package, incoming_package],
+        ltrs=[
+            LtrRecord(
+                ltr_id="ltr-existing",
+                project_id="project-existing",
+                ltr_number="DL-2026-05-001",
+                status=LtrStatus.REGISTERED,
+            )
+        ],
+    )
+
+    with pytest.raises(IntakeConfirmedProjectDuplicateError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-incoming")
+
+    check = exc_info.value.check
+    assert check.classification == "existing_confirmed_project_ltr"
+    assert check.existing_project_id == "project-existing"
+    assert check.existing_ltr_number == "DL-2026-05-001"
+    assert check.allowed_actions == ("open_project",)
+    assert len(case_store.cases) == 1
+    assert draft_store.drafts == {}
+
+
+def test_selection_requires_resolution_when_switching_back_to_same_package_form() -> None:
+    from backend.application.intake_form_selection_service import (
+        IntakeDraftDuplicateResolutionRequiredError,
+    )
+
+    asset_a = _asset("asset-a", IntakeAssetRole.SELECTED_APPLICATION_FORM)
+    asset_b = _asset("asset-b", IntakeAssetRole.SELECTED_APPLICATION_FORM)
+    case_a = IntakeCase(
+        case_id="case-a",
+        package_id="pkg-1",
+        selected_form_asset_id="asset-a",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    case_b = IntakeCase(
+        case_id="case-b",
+        package_id="pkg-1",
+        selected_form_asset_id="asset-b",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    service, _, _, _ = _service(
+        [_email_asset(), asset_a, asset_b],
+        cases=[case_a, case_b],
+        drafts=[
+            IntakeDraft(
+                draft_id="draft-a",
+                case_id="case-a",
+                parsed_fields_json="{}",
+                manual_overrides_json='{"test_item":"Edited"}',
+            ),
+            IntakeDraft(
+                draft_id="draft-b",
+                case_id="case-b",
+                parsed_fields_json="{}",
+            ),
+        ],
+    )
+
+    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-a")
+
+    check = exc_info.value.check
+    assert check.existing_package_id == "pkg-1"
+    assert check.existing_case_id == "case-a"
+
+
+def test_selection_reinitialize_same_package_form_clears_manual_overrides() -> None:
+    asset_a = _asset("asset-a", IntakeAssetRole.SELECTED_APPLICATION_FORM)
+    asset_b = _asset("asset-b", IntakeAssetRole.SELECTED_APPLICATION_FORM)
+    service, _, _, draft_store = _service(
+        [_email_asset(), asset_a, asset_b],
+        cases=[
+            IntakeCase(
+                case_id="case-a",
+                package_id="pkg-1",
+                selected_form_asset_id="asset-a",
+                status=IntakeCaseStatus.NEEDS_REVIEW,
+            ),
+            IntakeCase(
+                case_id="case-b",
+                package_id="pkg-1",
+                selected_form_asset_id="asset-b",
+                status=IntakeCaseStatus.NEEDS_REVIEW,
+            ),
+        ],
+        drafts=[
+            IntakeDraft(
+                draft_id="draft-a",
+                case_id="case-a",
+                parsed_fields_json="{}",
+                manual_overrides_json='{"test_item":"Edited"}',
+            ),
+            IntakeDraft(
+                draft_id="draft-b",
+                case_id="case-b",
+                parsed_fields_json="{}",
+            ),
+        ],
+    )
+
+    result = service.select_form_asset(
+        "pkg-1",
+        "asset-a",
+        resolution_action="replace_existing",
+        resolution_case_id="case-a",
+    )
+
+    assert result.case.case_id == "case-a"
+    assert draft_store.get_by_case("case-a").manual_overrides_json is None
 
 
 def test_selection_creates_separate_case_for_same_email_different_form() -> None:

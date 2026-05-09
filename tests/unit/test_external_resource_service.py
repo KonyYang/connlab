@@ -38,6 +38,25 @@ def test_external_resource_service_upserts_and_validates_folder_template(
     assert validated.last_validated_at
 
 
+def test_external_resource_service_validates_empty_project_output_root(
+    tmp_path: Path,
+) -> None:
+    output_root = tmp_path / "projects"
+    output_root.mkdir()
+    store = _Store()
+    service = ExternalResourceService(store, office=_FakeOffice())
+
+    service.upsert_resource(
+        ExternalResourceType.PROJECT_OUTPUT_ROOT,
+        output_root,
+        active=True,
+    )
+    validated = service.validate_resource(ExternalResourceType.PROJECT_OUTPUT_ROOT)
+
+    assert validated.validation_status is ExternalResourceValidationStatus.VALID
+    assert validated.validation_failure_reason is None
+
+
 def test_external_resource_service_records_invalid_excel_reason(tmp_path: Path) -> None:
     missing = tmp_path / "missing.xlsx"
     store = _Store()

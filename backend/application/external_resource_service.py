@@ -98,6 +98,8 @@ class ExternalResourceService:
         path = resource.path
         if resource.resource_type is ExternalResourceType.PROJECT_FOLDER_TEMPLATE:
             return _folder_template_failure(path)
+        if resource.resource_type is ExternalResourceType.PROJECT_OUTPUT_ROOT:
+            return _directory_failure(path, "Project output root")
         if not path.is_file():
             return f"Expected an existing file: {path}"
         if resource.resource_type is ExternalResourceType.APPLICATION_FORM_TEMPLATE:
@@ -155,14 +157,26 @@ class ExternalResourceService:
 
 def _folder_template_failure(path: Path) -> str | None:
     """Return why a project folder template directory is invalid."""
-    if not path.is_dir():
-        return f"Expected an existing directory: {path}"
+    directory_failure = _directory_failure(path, "Project folder template directory")
+    if directory_failure:
+        return directory_failure
     try:
         next(path.iterdir())
     except StopIteration:
         return f"Project folder template directory is empty: {path}"
     except OSError as exc:
         return f"Project folder template directory is not readable: {exc}"
+    return None
+
+
+def _directory_failure(path: Path, label: str) -> str | None:
+    """Return why a directory resource is invalid."""
+    if not path.is_dir():
+        return f"Expected an existing directory: {path}"
+    try:
+        next(path.iterdir(), None)
+    except OSError as exc:
+        return f"{label} is not readable: {exc}"
     return None
 
 

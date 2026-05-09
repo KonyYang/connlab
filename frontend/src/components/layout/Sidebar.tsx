@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Folders", route: "folders", hint: null, icon: "folder", disabled: true },
   { label: "Templates", route: "templates", hint: null, icon: "templates", disabled: true },
   { label: "Reference Library", route: "reference", hint: null, icon: "library", disabled: true },
-  { label: "Settings", route: "settings", hint: null, icon: "settings", disabled: true }
+  { label: "Settings", route: "settings", hint: null, icon: "settings" }
 ];
 
 export function Sidebar({

@@ -12,6 +12,7 @@ import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { getIntakePackageDetail, type ProjectCreationDraft } from "./api/client";
 import "./styles.css";
 
@@ -21,6 +22,7 @@ type Route =
   | { name: "intakePackage"; packageId: string }
   | { name: "intakeCaseReview"; packageId: string }
   | { name: "projectDetail"; projectId: string }
+  | { name: "settings" }
   | { name: "notFound" };
 
 function parseRoute(pathname: string): Route {
@@ -30,6 +32,10 @@ function parseRoute(pathname: string): Route {
 
   if (pathname === "/intake") {
     return { name: "intake" };
+  }
+
+  if (pathname === "/settings") {
+    return { name: "settings" };
   }
 
   const intakePackageMatch = pathname.match(/^\/intake\/([^/]+)$/);
@@ -157,6 +163,7 @@ export default function App(): ReactElement {
       {route.name === "projectDetail" && (
         <ProjectWorkbenchPage projectId={route.projectId} onBack={() => navigate("/projects")} />
       )}
+      {route.name === "settings" && <SettingsPage />}
       {route.name === "notFound" && (
         <section className="panel">
           <h2>Page not found</h2>

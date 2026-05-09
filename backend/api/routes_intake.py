@@ -69,6 +69,7 @@ from backend.application.intake_precheck_service import (
 )
 from backend.application.intake_form_selection_service import (
     FormSelectionResult,
+    IntakeConfirmedProjectDuplicateError,
     IntakeDraftDuplicateResolutionRequiredError,
     IntakeFormSelectionService,
     IntakeSelectionError,
@@ -591,6 +592,8 @@ def select_application_form_asset(
             )
         )
     except IntakeDraftDuplicateResolutionRequiredError as exc:
+        raise HTTPException(status_code=409, detail=exc.check.as_dict()) from exc
+    except IntakeConfirmedProjectDuplicateError as exc:
         raise HTTPException(status_code=409, detail=exc.check.as_dict()) from exc
     except IntakeSelectionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

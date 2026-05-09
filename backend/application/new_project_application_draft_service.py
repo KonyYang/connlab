@@ -239,9 +239,7 @@ class NewProjectApplicationDraftService:
             existing_source = self._email_source_asset(existing_package.package_id)
             if existing_source is None:
                 continue
-            if existing_source.original_name != incoming_source.original_name:
-                continue
-            if existing_source.size_bytes != incoming_source.size_bytes:
+            if not self._same_email_source(existing_source, incoming_source):
                 continue
             for existing_case in self._cases.list_by_package(existing_package.package_id):
                 if (
@@ -321,6 +319,18 @@ class NewProjectApplicationDraftService:
                 if asset.asset_role is IntakeAssetRole.EMAIL_SOURCE
             ),
             None,
+        )
+
+    def _same_email_source(self, existing: IntakeAsset, incoming: IntakeAsset) -> bool:
+        """Compare source email content without depending on display filenames."""
+        if existing.sha256 and incoming.sha256:
+            return (
+                existing.sha256 == incoming.sha256
+                and existing.size_bytes == incoming.size_bytes
+            )
+        return (
+            existing.original_name == incoming.original_name
+            and existing.size_bytes == incoming.size_bytes
         )
 
     def _delete_package_records(self, package_id: str) -> None:

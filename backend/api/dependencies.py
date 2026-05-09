@@ -258,6 +258,7 @@ def get_intake_form_selection_service(
         asset_store=IntakeAssetRepository(session),
         case_store=IntakeCaseRepository(session),
         draft_store=IntakeDraftRepository(session),
+        ltr_store=LtrRecordRepository(session),
     )
 
 
@@ -279,6 +280,7 @@ def get_new_project_application_draft_service(
             asset_store=asset_store,
             case_store=case_store,
             draft_store=draft_store,
+            ltr_store=LtrRecordRepository(session),
         ),
     )
 

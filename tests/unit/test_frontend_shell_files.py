@@ -35,6 +35,7 @@ def test_frontend_shell_core_files_exist() -> None:
         "src/main.tsx",
         "src/App.tsx",
         "src/api/client.ts",
+        "src/pages/SettingsPage.tsx",
         "src/components/layout/AppShell.tsx",
         "src/components/layout/Sidebar.tsx",
         "src/components/layout/TopBar.tsx",
@@ -51,12 +52,17 @@ def test_frontend_shell_core_files_exist() -> None:
         "src/components/workflow/FolderActionPanel.tsx",
         "src/components/workflow/workflowState.ts",
         "src/components/project/ProjectSummaryPanel.tsx",
+        "src/features/project-workbench/ProjectFolderCreationPanel.tsx",
+        "src/features/settings/SettingsExternalResourcesPanel.tsx",
+        "src/features/settings/settingsResourceConfig.ts",
+        "src/features/settings/settingsSelectors.ts",
         "src/components/precheck/PrecheckSummary.tsx",
         "src/components/precheck/PrecheckIssueCard.tsx",
         "src/components/precheck/IssueSeverityBadge.tsx",
         "src/styles.css",
         "src/project-dashboard.css",
         "src/workbench.css",
+        "src/settings.css",
     ]
 
     for relative_path in expected_files:
@@ -99,9 +105,12 @@ def test_frontend_shell_shows_only_mvp_workflow_steps() -> None:
 
 
 def test_frontend_workflow_integration_calls_mvp_actions() -> None:
-    """Workbench integration follows either legacy wizard or TASK_100 post-creation boundary."""
+    """Workbench keeps intake/LTR creation out while exposing folder workspace setup."""
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+    project_folder_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectFolderCreationPanel.tsx"
     ).read_text(encoding="utf-8")
 
     if "Project workbench boundary" in workbench_source:
@@ -111,8 +120,6 @@ def test_frontend_workflow_integration_calls_mvp_actions() -> None:
             "getLtrReadiness",
             "previewLtrRegistration",
             "commitLtrLocally",
-            "previewFolder",
-            "generateFolder",
             "resolvePrecheckIssue",
             "ApplicationFormActionPanel",
             "LtrActionPanel",
@@ -123,8 +130,12 @@ def test_frontend_workflow_integration_calls_mvp_actions() -> None:
             "previewEvidencePlacement",
             "placeEvidence",
             "ProjectLookupPanel",
+            "ProjectFolderCreationPanel",
         ]:
             assert term in workbench_source
+        assert "previewFolder" in project_folder_source
+        assert "generateFolder" in project_folder_source
+        assert "getLatestProjectFolder" in project_folder_source
         return
 
     for api_name in [
@@ -194,6 +205,52 @@ def test_frontend_app_shell_uses_left_navigation_without_hero_layout() -> None:
     assert ".ui-icon" in styles_source
     assert ".hero" not in styles_source
     assert "scrollbar-gutter: stable" in styles_source
+
+
+def test_task149_settings_external_resources_ui_is_wired() -> None:
+    """TASK_149 exposes registry-backed external resources through Settings UI."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    sidebar_source = (
+        FRONTEND_ROOT / "src" / "components" / "layout" / "Sidebar.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "SettingsPage.tsx"
+    ).read_text(encoding="utf-8")
+    panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "settings" / "SettingsExternalResourcesPanel.tsx"
+    ).read_text(encoding="utf-8")
+    config_source = (
+        FRONTEND_ROOT / "src" / "features" / "settings" / "settingsResourceConfig.ts"
+    ).read_text(encoding="utf-8")
+    selectors_source = (
+        FRONTEND_ROOT / "src" / "features" / "settings" / "settingsSelectors.ts"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "settings.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'pathname === "/settings"' in app_source
+    assert "SettingsPage" in app_source
+    assert '{ label: "Settings", route: "settings", hint: null, icon: "settings" }' in sidebar_source
+    assert '"/api/external-resources"' in client_source
+    assert "listExternalResources" in client_source
+    assert "saveExternalResource" in client_source
+    assert "validateExternalResource" in client_source
+    assert "fetch(" not in page_source
+    assert "fetch(" not in panel_source
+    assert "project_output_root" in config_source
+    assert "Project output root" in config_source
+    assert "Shared resources" in config_source
+    assert "Local machine paths" in config_source
+    assert "LTR workbook backup directory" in config_source
+    assert "Configured by local TOML or environment settings" in config_source
+    assert "Use local paths during development" in panel_source
+    assert "buildSettingsResourceRows" in selectors_source
+    assert ".settings-resource-row" in styles_source
+    assert ".settings-status-success" in styles_source
 
 
 def test_project_dashboard_uses_dense_registry_components() -> None:
@@ -2066,7 +2123,9 @@ def test_task146_new_project_applies_ltr_before_project_handoff() -> None:
         "Apply LTR Number",
         "DL-YYYY-MM-NNN or A1",
         "Valid specified LTR input",
-        "Suffix tokens start with a letter",
+        "Suffix only: A, AA, A1, or SAMPLE2",
+        "Suffixes must start with a letter",
+        "DL-2026-05-001123 are invalid",
     ]:
         assert term in page_source + setup_source + editor_source + hook_source + dock_source + client_source
 
@@ -2084,6 +2143,25 @@ def test_task146_new_project_applies_ltr_before_project_handoff() -> None:
     assert hook_source.index("const workbookCommit = await commitLtrWorkbookWrite") < hook_source.index(
         "completeNewProject(activeCase.case_id"
     )
+
+
+def test_task147_confirmed_project_duplicate_reminder_is_not_draft_resolution() -> None:
+    """TASK_147 shows confirmed Project/LTR matches as a project reminder."""
+    attachment_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
+    ).read_text(encoding="utf-8")
+    page_source = (FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "existing_confirmed_project_ltr" in client_source + attachment_source
+    assert "This application already has a project" in attachment_source
+    assert "Open project" in attachment_source
+    assert "onOpenConfirmedProject" in page_source + attachment_source
+    assert "onProjectCreated(projectId)" in page_source
 
 
 def test_task099_new_project_editor_exposes_ltr_registered_freeze_state() -> None:
@@ -2111,7 +2189,7 @@ def test_task099_new_project_editor_exposes_ltr_registered_freeze_state() -> Non
 
 
 def test_task100_workbench_keeps_post_creation_boundary() -> None:
-    """TASK_100 keeps Workbench focused on confirmed project state and evidence management."""
+    """Workbench stays bounded while TASK_148 adds folder creation to the workspace."""
     project_list_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectListPage.tsx"
     ).read_text(encoding="utf-8")
@@ -2121,6 +2199,9 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
+    project_folder_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectFolderCreationPanel.tsx"
+    ).read_text(encoding="utf-8")
 
     for term in ["Open", "onOpenProject", "Continue", "onContinueDraft"]:
         assert term in project_list_source
@@ -2129,7 +2210,8 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
         "Project workbench boundary",
         "previewEvidencePlacement",
         "placeEvidence",
-        "Project folder is not recorded for this project.",
+        "Create it here after LTR registration.",
+        "ProjectFolderCreationPanel",
     ]:
         assert term in workbench_source
 
@@ -2137,11 +2219,14 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
         "uploadApplicationForm",
         "runPrecheck",
         "commitLtrLocally",
-        "generateFolder",
         "ApplicationFormActionPanel",
         "LtrActionPanel",
         "FolderActionPanel",
     ]:
         assert removed_term not in workbench_source
 
+    assert "previewFolder" in project_folder_source
+    assert "generateFolder" in project_folder_source
+    assert "Create project folder" in project_folder_source
     assert ".project-workbench-status" in styles_source
+    assert ".project-folder-workbench-panel" in styles_source

@@ -4,6 +4,7 @@ import {
   listProjectLtrs,
   placeEvidence,
   previewEvidencePlacement,
+  type FolderGeneration,
   type EvidencePlacementPlan,
   type EvidencePlacementResult,
   type LtrRecord,
@@ -13,6 +14,7 @@ import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
 import { ProjectLookupPanel } from "../components/project/ProjectLookupPanel";
 import { ProjectSummaryPanel } from "../components/project/ProjectSummaryPanel";
+import { ProjectFolderCreationPanel } from "../features/project-workbench/ProjectFolderCreationPanel";
 import "../workbench.css";
 
 type ProjectWorkbenchPageProps = {
@@ -38,7 +40,7 @@ export function ProjectWorkbenchPage({
   }, [projectId]);
 
   const folderReady = project?.status === "folder_created";
-  const latestLtr = ltrs[0]?.ltr_number ?? null;
+  const latestLtr = ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null;
   const baselineItems = useMemo(
     () => [
       {
@@ -103,6 +105,13 @@ export function ProjectWorkbenchPage({
     }
   }
 
+  async function folderCreated(_generation: FolderGeneration): Promise<void> {
+    setEvidencePlan(null);
+    setEvidenceResult(null);
+    setMessage("Project folder created. Evidence placement is now available.");
+    await loadWorkbench();
+  }
+
   if (!project && !error) {
     return <LoadingState label="Loading project workbench..." />;
   }
@@ -132,11 +141,17 @@ export function ProjectWorkbenchPage({
             </dl>
             {!folderReady ? (
               <p className="blocking-copy">
-                Project folder is not recorded for this project. Use the project folder workflow
-                when this project is ready for folder creation.
+                Project folder is not recorded for this project. Create it here after LTR registration.
               </p>
             ) : null}
           </section>
+          <ProjectFolderCreationPanel
+            folderReady={folderReady}
+            latestLtrNumber={latestLtr}
+            onFolderCreated={folderCreated}
+            projectId={project.project_id}
+            projectStatus={project.status}
+          />
           <ProjectLookupPanel projectId={project.project_id} />
           <section className="evidence-placement-panel">
             <div className="evidence-placement-heading">

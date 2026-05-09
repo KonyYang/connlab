@@ -79,6 +79,9 @@ def test_folder_api_preview_generate_refuse_overwrite_and_persist(
             "plan_date": "2026-04-26",
         }
 
+        latest_before_response = client.get(
+            f"/api/projects/{project_id}/folder/latest",
+        )
         preview_response = client.post(
             f"/api/projects/{project_id}/folder/preview",
             json=payload,
@@ -87,19 +90,28 @@ def test_folder_api_preview_generate_refuse_overwrite_and_persist(
             f"/api/projects/{project_id}/folder/generate",
             json=payload,
         )
+        latest_after_response = client.get(
+            f"/api/projects/{project_id}/folder/latest",
+        )
         overwrite_response = client.post(
             f"/api/projects/{project_id}/folder/generate",
             json=payload,
         )
 
+        assert latest_before_response.status_code == 404
         assert preview_response.status_code == 200
         assert preview_response.json()["conflict"] is False
         assert generate_response.status_code == 201
+        assert latest_after_response.status_code == 200
         assert overwrite_response.status_code == 400
         assert "already been created" in overwrite_response.json()["detail"]
 
         generated = generate_response.json()
+        latest = latest_after_response.json()
         assert Path(generated["project_folder_path"]).is_dir()
+        assert latest["folder_id"] == generated["folder_id"]
+        assert latest["project_id"] == project_id
+        assert latest["project_folder_path"] == generated["project_folder_path"]
         request_dir = Path(generated["project_folder_path"]) / "request"
         assert (request_dir / "form.txt").is_file()
         assert (request_dir / "application.docx").is_file()

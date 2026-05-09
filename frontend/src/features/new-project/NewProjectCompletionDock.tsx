@@ -78,9 +78,9 @@ export function NewProjectCompletionDock({
             <div>
               <strong>Valid specified LTR input</strong>
               <span>Base: DL-2026-05-001</span>
-              <span>Full with suffix: DL-2026-05-001A1</span>
-              <span>Suffix only: A1 or SAMPLE2</span>
-              <span>Suffix tokens start with a letter and use letters/numbers only.</span>
+              <span>Full with suffix: DL-2026-05-001A or DL-2026-05-001AA</span>
+              <span>Suffix only: A, AA, A1, or SAMPLE2</span>
+              <span>Suffixes must start with a letter. 123 and DL-2026-05-001123 are invalid.</span>
             </div>
           </details>
         </div>

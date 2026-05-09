@@ -60,6 +60,33 @@ class FolderGenerationResponse(BaseModel):
     generated_paths: list[str]
 
 
+class ProjectFolderResponse(BaseModel):
+    """Read-only project folder record response."""
+
+    folder_id: str
+    project_id: str
+    project_folder_path: str
+    created_on: date | None = None
+
+
+@router.get("/latest", response_model=ProjectFolderResponse)
+def get_latest_folder(
+    project_id: str,
+    service: FolderService = Depends(get_folder_service),
+) -> ProjectFolderResponse:
+    """Return the latest generated folder record for display."""
+    try:
+        record = service.latest_folder(project_id)
+        return ProjectFolderResponse(
+            folder_id=record.folder_id,
+            project_id=record.project_id,
+            project_folder_path=str(record.folder_path),
+            created_on=record.created_on,
+        )
+    except FolderNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.post("/preview", response_model=FolderPlanResponse)
 def preview_folder(
     project_id: str,

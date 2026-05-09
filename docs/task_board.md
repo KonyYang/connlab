@@ -1,10 +1,10 @@
 ﻿# ConnLab Task Board
 
-> Status: TASK_146 complete; New Project Apply-LTR only handoff
+> Status: TASK_149 complete; TASK_150-TASK_153 proposed; external resource settings and LTR authority sequence
 > Last Updated: 2026-05-09
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: none; awaiting user approval for next controlled task
-> Current Phase: `Phase 10D - New Project completion handoff and Project workspace boundary`
+> Current Active Task: none; awaiting user approval for TASK_150
+> Current Phase: `Phase 10E - External resource settings and LTR workbook authority`
 
 ---
 
@@ -1529,8 +1529,34 @@ Prior completed note:
 
 Next recommended action:
 
-- Approve the next controlled Phase 10D task. Recommended next boundary: Project Workbench folder creation UX now that New Project only applies LTR and hands off.
-- Do not implement code or any later task before the next task is explicitly approved.
+- `TASK_149_SETTINGS_EXTERNAL_RESOURCES_UI_AND_LOCAL_PATHS` is complete. Settings is now reachable from the sidebar, lists registry-backed external resources, supports manual path paste, active-state save, per-resource validation, and business-readable validation state. `project_output_root` is represented as a directory-style external resource and validates existing readable directories without requiring them to be non-empty. Local LTR workbook backup and lock directories are shown as local-machine settings still owned by TOML/environment configuration.
+- Validation: `py -m pytest tests\integration\test_external_resource_api.py tests\unit\test_external_resource_service.py -q` passed, 12 passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "settings or external"` passed, 1 passed and 56 deselected; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+
+- Review and approve `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES` before implementation.
+
+- Review the proposed Phase 10E task sequence:
+  - `TASK_149_SETTINGS_EXTERNAL_RESOURCES_UI_AND_LOCAL_PATHS`
+  - `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES`
+  - `TASK_151_NEW_PROJECT_LTR_WORKBOOK_AUTHORITY`
+  - `TASK_152_STANDARD_AND_EQUIPMENT_RESOURCE_READ_MODELS`
+  - `TASK_153_LTR_AUTHORITY_SERVER_CUTOVER_SEAM`
+- Recommended next implementation task: `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES`.
+- Do not implement code or any later task before `TASK_150` is explicitly approved.
+
+Planning note:
+
+- Phase 10E recognizes the current lab reality: public-drive Excel files remain authoritative for LTR numbering and other shared lab resources, while ConnLab stores structured local records and prepares for a future server/database authority.
+- Development should use local simulated public-drive paths configured through Settings, not hard-coded paths and not the real public-drive workbook.
+
+Prior completed note:
+
+- `TASK_148_PROJECT_WORKBENCH_FOLDER_CREATION_UX` is complete. Project Workbench now owns initial project folder creation after LTR registration: it previews folder generation, blocks conflicts, creates the folder through existing APIs, refreshes project state, shows the recorded folder path, and then enables evidence placement. A read-only `GET /api/projects/{project_id}/folder/latest` endpoint supports persisted folder-path display after reload. New Project remains LTR-only and does not create folders.
+- Validation: `py -m pytest tests\integration\test_folder_generation_api.py tests\integration\test_project_lifecycle_gating_api.py -q` passed, 4 passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "workbench or folder"` passed, 4 passed and 52 deselected; `py -m pytest tests\integration\test_new_project_completion_api.py -q` passed, 4 passed; `npm run build` passed from `frontend`; `git diff --check` passed with CRLF working-copy warnings only.
+- Known validation note: full `tests\unit\test_frontend_shell_files.py` still has 4 historical static assertion failures in Intake/Precheck/Draft expectations, outside TASK_148 Workbench/folder scope.
+
+Backlog note:
+
+- `TASK_147` implemented confirmed Project/LTR duplicate reminders for imported email/application-form identity matches. `Import as new anyway` remains deferred unless explicitly approved in a future task.
 
 Implemented LTR number rule clarification:
 

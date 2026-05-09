@@ -15,6 +15,9 @@ const ROUTE_TITLES: Record<string, { title: string }> = {
   workbench: {
     title: "Project workbench"
   },
+  settings: {
+    title: "Settings"
+  },
   unknown: {
     title: "ConnLab"
   }

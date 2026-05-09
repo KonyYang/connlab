@@ -21,6 +21,7 @@ from backend.infrastructure.storage.repositories.intake_package import (
     IntakeDraftRepository,
     IntakePackageRepository,
 )
+from backend.infrastructure.storage.repositories.records import LtrRecordRepository
 from backend.shared.config import Settings
 from backend.domain import (
     IntakeAsset,
@@ -31,6 +32,8 @@ from backend.domain import (
     IntakePackage,
     IntakePackageSourceType,
     IntakePackageStatus,
+    LtrRecord,
+    LtrStatus,
 )
 
 
@@ -534,7 +537,7 @@ def test_select_form_api_reports_existing_application_draft_duplicate(
 def test_application_draft_api_reports_existing_no_form_email_duplicate(
     tmp_path: Path,
 ) -> None:
-    """No-form email drafts are deduplicated separately by email name and size."""
+    """No-form email drafts are deduplicated by email content, not display name."""
     settings = Settings(
         data_dir=tmp_path / "data",
         projects_dir=tmp_path / "projects",
@@ -565,12 +568,17 @@ def test_application_draft_api_reports_existing_no_form_email_duplicate(
             case_repo = IntakeCaseRepository(session)
             draft_repo = IntakeDraftRepository(session)
             for package_id in ("pkg-existing", "pkg-incoming"):
+                source_name = (
+                    "_busbar_.msg"
+                    if package_id == "pkg-existing"
+                    else "连接器主板对busbar对接测试副本.msg"
+                )
                 package_repo.create(
                     IntakePackage(
                         package_id=package_id,
                         source_type=IntakePackageSourceType.OUTLOOK_MSG,
                         status=IntakePackageStatus.NEEDS_APPLICATION_FORM_SELECTION,
-                        source_original_name="request.msg",
+                        source_original_name=source_name,
                         source_stored_path=tmp_path / f"{package_id}.msg",
                     )
                 )
@@ -578,7 +586,7 @@ def test_application_draft_api_reports_existing_no_form_email_duplicate(
                     IntakeAsset(
                         asset_id=f"email-{package_id}",
                         package_id=package_id,
-                        original_name="request.msg",
+                        original_name=source_name,
                         stored_path=tmp_path / f"{package_id}.msg",
                         extension=".msg",
                         mime_type="application/vnd.ms-outlook",
@@ -625,6 +633,127 @@ def test_application_draft_api_reports_existing_no_form_email_duplicate(
         assert payload["package_id"] == "pkg-existing"
         assert payload["case_id"] == "case-existing"
         assert payload["selected_form_asset_id"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_select_form_api_reports_existing_confirmed_project_ltr_duplicate(
+    tmp_path: Path,
+) -> None:
+    """Selecting an already-registered application shows a Project/LTR reminder."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(app)
+
+    try:
+        docx_path = _create_application_docx(tmp_path / "application.docx")
+        with session_factory() as session:
+            package_repo = IntakePackageRepository(session)
+            asset_repo = IntakeAssetRepository(session)
+            case_repo = IntakeCaseRepository(session)
+            ltr_repo = LtrRecordRepository(session)
+            for package_id, source_name in (
+                ("pkg-existing", "_busbar_.msg"),
+                ("pkg-incoming", "连接器主板对busbar对接测试副本.msg"),
+            ):
+                package_repo.create(
+                    IntakePackage(
+                        package_id=package_id,
+                        source_type=IntakePackageSourceType.OUTLOOK_MSG,
+                        status=IntakePackageStatus.READY_FOR_REVIEW,
+                        source_original_name=source_name,
+                        source_stored_path=tmp_path / f"{package_id}.msg",
+                    )
+                )
+                asset_repo.create(
+                    IntakeAsset(
+                        asset_id=f"email-{package_id}",
+                        package_id=package_id,
+                        original_name=source_name,
+                        stored_path=tmp_path / f"{package_id}.msg",
+                        extension=".msg",
+                        mime_type="application/vnd.ms-outlook",
+                        size_bytes=2048,
+                        sha256="e" * 64,
+                        asset_role=IntakeAssetRole.EMAIL_SOURCE,
+                    )
+                )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="form-existing",
+                    package_id="pkg-existing",
+                    original_name=docx_path.name,
+                    stored_path=docx_path,
+                    extension=".docx",
+                    mime_type="application/octet-stream",
+                    size_bytes=docx_path.stat().st_size,
+                    sha256="a" * 64,
+                    asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM,
+                )
+            )
+            asset_repo.create(
+                IntakeAsset(
+                    asset_id="form-incoming",
+                    package_id="pkg-incoming",
+                    original_name=docx_path.name,
+                    stored_path=docx_path,
+                    extension=".docx",
+                    mime_type="application/octet-stream",
+                    size_bytes=docx_path.stat().st_size,
+                    sha256="b" * 64,
+                    asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE,
+                )
+            )
+            case_repo.create(
+                IntakeCase(
+                    case_id="case-existing",
+                    package_id="pkg-existing",
+                    selected_form_asset_id="form-existing",
+                    status=IntakeCaseStatus.CONFIRMED,
+                    confirmed_project_id="project-existing",
+                )
+            )
+            ltr_repo.create(
+                LtrRecord(
+                    ltr_id="ltr-existing",
+                    project_id="project-existing",
+                    ltr_number="DL-2026-05-001",
+                    status=LtrStatus.REGISTERED,
+                )
+            )
+            session.commit()
+
+        conflict = client.post(
+            "/api/intake-packages/pkg-incoming/select-form",
+            json={"asset_id": "form-incoming"},
+        )
+
+        assert conflict.status_code == 409
+        detail = conflict.json()["detail"]
+        assert detail["classification"] == "existing_confirmed_project_ltr"
+        assert detail["existing_project_id"] == "project-existing"
+        assert detail["existing_ltr_number"] == "DL-2026-05-001"
+        assert detail["allowed_actions"] == ["open_project"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

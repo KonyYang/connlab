@@ -115,6 +115,7 @@ class ExternalResourceType(StrEnum):
     LTR_WORKBOOK = "ltr_workbook"
     APPLICATION_FORM_TEMPLATE = "application_form_template"
     PROJECT_FOLDER_TEMPLATE = "project_folder_template"
+    PROJECT_OUTPUT_ROOT = "project_output_root"
     STANDARD_RECORD_EXCEL = "standard_record_excel"
     EQUIPMENT_CALIBRATION_EXCEL = "equipment_calibration_excel"
 

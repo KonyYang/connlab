@@ -717,6 +717,10 @@ export function IntakeInboxPage({
             packageLoaded={Boolean(packageImport)}
             resolvingDuplicateAction={resolvingDuplicateAction}
             onDuplicateAction={(action) => void handleResolveDuplicateDraft(action)}
+            onOpenConfirmedProject={(projectId) => {
+              onSessionChange(EMPTY_INTAKE_SESSION);
+              onProjectCreated(projectId);
+            }}
             onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
             onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {
@@ -821,8 +825,7 @@ function draftDuplicateConflictFromError(error: unknown): DraftDuplicateCheck | 
     error.status !== 409 ||
     !error.detail ||
     typeof error.detail !== "object" ||
-    !("classification" in error.detail) ||
-    !("allowed_actions" in error.detail)
+    !("classification" in error.detail)
   ) {
     return null;
   }

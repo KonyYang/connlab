@@ -46,6 +46,9 @@ def test_parse_standard_dl_number_with_suffix() -> None:
     assert base_ltr_number("DL-2026-04-001A9") == "DL-2026-04-001"
     assert family_stem("DL-2026-04-001A9") == "DL-2026-04-001"
 
+    assert parse_ltr_number("DL-2026-02-003A").suffix == "A"
+    assert parse_ltr_number("DL-2026-02-056AA").suffix == "AA"
+
 
 @pytest.mark.parametrize(
     "value, message",
@@ -55,6 +58,7 @@ def test_parse_standard_dl_number_with_suffix() -> None:
         ("abc", "LTR number must match"),
         ("DL-2026-04-001-A", "LTR number must match"),
         ("DL-2026-04-0011", "LTR number must match"),
+        ("DL-2026-02-003123", "LTR number must match"),
         ("DL-2026-13-001", "DL month must be between 01 and 12"),
         ("DL-2026-04-000", "DL sequence must be between 001 and 999"),
     ],
@@ -121,6 +125,8 @@ def test_ltr_number_rules_are_pure_python_boundary() -> None:
     "value, expected",
     [
         ("A9", True),
+        ("A", True),
+        ("AA", True),
         ("sample2", True),
         ("W123", True),
         ("123", False),
