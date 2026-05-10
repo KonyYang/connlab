@@ -100,6 +100,32 @@
   box-shadow: 0 8px 22px rgba(36, 54, 84, 0.05);
 }
 
+.registry-result-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #b9d7e6;
+  border-radius: 10px;
+  background: #eef8fb;
+}
+
+.registry-result-banner-text {
+  display: grid;
+  gap: 2px;
+}
+
+.registry-result-banner-text strong {
+  font-size: 13px;
+}
+
+.registry-result-banner-text span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
 .register-toolbar {
   display: grid;
   grid-template-columns: minmax(230px, 1fr) minmax(0, auto);
@@ -178,6 +204,33 @@
 .toolbar-icon-button {
   width: 40px;
   padding: 8px;
+}
+
+.registry-scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.registry-scope-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-primary);
+}
+
+.registry-scope-note {
+  margin: -6px 0 12px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
 }
 
 .view-toggle {
@@ -272,6 +325,12 @@
   padding: 13px 2px 2px;
   color: var(--color-ink-muted);
   font-size: 13px;
+}
+
+.registry-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .row-action {

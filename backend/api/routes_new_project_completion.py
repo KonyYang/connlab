@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import getpass
+import logging
+import traceback
 from datetime import date
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 
 from backend.api.dependencies import (
     get_lookup_option_service,
@@ -16,7 +20,7 @@ from backend.application.intake_confirmation_service import (
     IntakeConfirmationError,
     IntakeConfirmationNotFoundError,
 )
-from backend.application.ltr_local_commit_service import LtrLocalCommitError
+from backend.application.ltr_authority import LtrAuthorityCommitError
 from backend.application.ltr_registration_preview_service import LtrPreviewError
 from backend.application.ltr_readiness_service import LtrReadinessError
 from backend.application.ltr_service import DuplicateActiveLtrError, LtrError
@@ -37,6 +41,7 @@ from backend.application.project_lifecycle_service import (
 
 
 router = APIRouter(tags=["new-project"])
+logger = logging.getLogger(__name__)
 
 
 class CompleteNewProjectRequest(BaseModel):
@@ -67,6 +72,10 @@ class CompleteNewProjectResponse(BaseModel):
     project_id: str
     project_status: str
     ltr_number: str
+    workbook_path: str | None = None
+    workbook_sheet_name: str | None = None
+    workbook_row_number: int | None = None
+    workbook_backup_path: str | None = None
 
 
 @router.get(
@@ -121,9 +130,14 @@ def complete_new_project(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DuplicateActiveLtrError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="LTR number already exists in local records. Refresh and retry with the next available number.",
+        ) from exc
     except (
         IntakeConfirmationError,
-        LtrLocalCommitError,
+        LtrAuthorityCommitError,
         LtrPreviewError,
         LtrReadinessError,
         LtrError,
@@ -133,6 +147,13 @@ def complete_new_project(
         FileNotFoundError,
     ) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected New Project LTR completion failure for case_id=%s", case_id)
+        _write_unexpected_error_log(case_id, exc)
+        raise HTTPException(
+            status_code=500,
+            detail=_unexpected_error_detail(exc),
+        ) from exc
 
 
 def _to_response(result: NewProjectCompletionResult) -> CompleteNewProjectResponse:
@@ -141,9 +162,33 @@ def _to_response(result: NewProjectCompletionResult) -> CompleteNewProjectRespon
         project_id=result.project.project_id,
         project_status=result.project.status.value,
         ltr_number=result.ltr.ltr_number,
+        workbook_path=result.workbook_path,
+        workbook_sheet_name=result.workbook_sheet_name,
+        workbook_row_number=result.workbook_row_number,
+        workbook_backup_path=result.workbook_backup_path,
     )
 
 
 def _option_values(options: tuple[LookupOption, ...]) -> list[str]:
     """Return option values for New Project setup dropdowns."""
     return [option.value for option in options]
+
+
+def _unexpected_error_detail(exc: Exception) -> str:
+    """Return a compact diagnostic message for local operator troubleshooting."""
+    text = str(exc).strip() or exc.__class__.__name__
+    return f"Unexpected LTR application failure: {exc.__class__.__name__}: {text[:500]}"
+
+
+def _write_unexpected_error_log(case_id: str, exc: Exception) -> None:
+    """Write local troubleshooting details when the hidden backend has no console."""
+    try:
+        log_dir = Path("logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with (log_dir / "new_project_ltr_errors.log").open("a", encoding="utf-8") as handle:
+            handle.write(f"\ncase_id={case_id}\n")
+            handle.write(f"error={exc.__class__.__name__}: {exc}\n")
+            handle.write(traceback.format_exc())
+            handle.write("\n")
+    except Exception:
+        logger.exception("Failed to write New Project LTR diagnostic log.")

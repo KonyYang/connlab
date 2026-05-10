@@ -18,7 +18,6 @@ from backend.domain import (
     IntakeDraft,
     IntakePackage,
     LtrRecord,
-    LtrStatus,
 )
 from backend.modules.intake import ApplicationFormParser, ParsedApplicationForm
 
@@ -36,14 +35,6 @@ class IntakeDraftDuplicateResolutionRequiredError(IntakeSelectionError):
 
     def __init__(self, check: "IntakeDraftDuplicateCheck") -> None:
         super().__init__("Application draft already exists. Choose how to continue.")
-        self.check = check
-
-
-class IntakeConfirmedProjectDuplicateError(IntakeSelectionError):
-    """Raised when the selected form already produced a confirmed Project/LTR."""
-
-    def __init__(self, check: "IntakeConfirmedProjectDuplicateCheck") -> None:
-        super().__init__("Application has already been registered as a project.")
         self.check = check
 
 
@@ -86,7 +77,7 @@ class IntakeDraftStore(Protocol):
 
 
 class LtrRecordStore(Protocol):
-    """Optional LTR lookup port for confirmed project reminders."""
+    """Optional LTR lookup port for draft/workflow services."""
 
     def list_by_project(self, project_id: str) -> list[LtrRecord]: ...
 
@@ -119,28 +110,6 @@ class IntakeDraftDuplicateCheck:
     existing_application_form_name: str | None = None
     incoming_application_form_name: str | None = None
     allowed_actions: tuple[str, ...] = ("open_existing", "replace_existing")
-
-    def as_dict(self) -> dict[str, object]:
-        """Return a JSON-safe payload for API conflict responses."""
-        return asdict(self)
-
-
-@dataclass(frozen=True)
-class IntakeConfirmedProjectDuplicateCheck:
-    """Business-safe summary for a selected form that already created a project."""
-
-    classification: str
-    existing_package_id: str
-    existing_case_id: str
-    existing_project_id: str
-    existing_ltr_number: str | None
-    existing_source_original_name: str
-    incoming_source_original_name: str
-    existing_source_size_bytes: int
-    incoming_source_size_bytes: int
-    existing_application_form_name: str | None = None
-    incoming_application_form_name: str | None = None
-    allowed_actions: tuple[str, ...] = ("open_project",)
 
     def as_dict(self) -> dict[str, object]:
         """Return a JSON-safe payload for API conflict responses."""
@@ -221,10 +190,6 @@ class IntakeFormSelectionService:
             )
             if resolved is not None:
                 return resolved
-        confirmed_duplicate = self._find_confirmed_project_duplicate(package, asset)
-        if confirmed_duplicate is not None:
-            raise IntakeConfirmedProjectDuplicateError(confirmed_duplicate)
-
         selected_asset = self._asset_store.update(
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)
         )
@@ -286,48 +251,6 @@ class IntakeFormSelectionService:
                     classification="exact_existing_application_draft",
                     existing_package_id=existing_package.package_id,
                     existing_case_id=existing_case.case_id,
-                    existing_source_original_name=existing_source.original_name,
-                    incoming_source_original_name=incoming_source.original_name,
-                    existing_source_size_bytes=existing_source.size_bytes,
-                    incoming_source_size_bytes=incoming_source.size_bytes,
-                    existing_application_form_name=existing_form.original_name,
-                    incoming_application_form_name=selected_asset.original_name,
-                )
-        return None
-
-    def _find_confirmed_project_duplicate(
-        self,
-        package: IntakePackage,
-        selected_asset: IntakeAsset,
-    ) -> IntakeConfirmedProjectDuplicateCheck | None:
-        """Return a reminder when this selected form already created a Project/LTR."""
-        incoming_source = self._email_source_asset(package.package_id)
-        if incoming_source is None:
-            return None
-        for existing_package in self._package_store.list():
-            existing_source = self._email_source_asset(existing_package.package_id)
-            if existing_source is None:
-                continue
-            if not self._same_email_source(existing_source, incoming_source):
-                continue
-            for existing_case in self._case_store.list_by_package(existing_package.package_id):
-                if existing_case.confirmed_project_id is None:
-                    continue
-                if existing_case.selected_form_asset_id is None:
-                    continue
-                existing_form = self._asset_store.get(existing_case.selected_form_asset_id)
-                if existing_form is None:
-                    continue
-                if existing_form.original_name != selected_asset.original_name:
-                    continue
-                return IntakeConfirmedProjectDuplicateCheck(
-                    classification="existing_confirmed_project_ltr",
-                    existing_package_id=existing_package.package_id,
-                    existing_case_id=existing_case.case_id,
-                    existing_project_id=existing_case.confirmed_project_id,
-                    existing_ltr_number=self._registered_ltr_number(
-                        existing_case.confirmed_project_id
-                    ),
                     existing_source_original_name=existing_source.original_name,
                     incoming_source_original_name=incoming_source.original_name,
                     existing_source_size_bytes=existing_source.size_bytes,
@@ -411,15 +334,6 @@ class IntakeFormSelectionService:
             existing.original_name == incoming.original_name
             and existing.size_bytes == incoming.size_bytes
         )
-
-    def _registered_ltr_number(self, project_id: str) -> str | None:
-        """Return the first registered local LTR number for a confirmed project."""
-        if self._ltr_store is None:
-            return None
-        for record in self._ltr_store.list_by_project(project_id):
-            if record.status is LtrStatus.REGISTERED:
-                return record.ltr_number
-        return None
 
     def _package_has_other_selected_form_case(
         self,

@@ -10,7 +10,6 @@ type AttachmentListProps = {
   importingAssetId?: string | null;
   resolvingDuplicateAction?: string | null;
   onDuplicateAction?: (action: DraftDuplicateAction) => void;
-  onOpenConfirmedProject?: (projectId: string) => void;
   onImport?: (attachment: IntakeAttachmentViewModel) => void;
   onOpen?: (attachment: IntakeAttachmentViewModel) => void;
   onSelect: (attachment: IntakeAttachmentViewModel) => void;
@@ -23,7 +22,6 @@ export function AttachmentList({
   importingAssetId,
   resolvingDuplicateAction,
   onDuplicateAction,
-  onOpenConfirmedProject,
   onImport,
   onOpen,
   onSelect,
@@ -34,12 +32,7 @@ export function AttachmentList({
       <div className="attachments-heading">
         <h3 className="ui-panel-title">Attachments ({attachments.length})</h3>
       </div>
-      {duplicateDraft?.classification === "existing_confirmed_project_ltr" && onOpenConfirmedProject ? (
-        <ConfirmedProjectReminder
-          duplicate={duplicateDraft}
-          onOpenProject={onOpenConfirmedProject}
-        />
-      ) : duplicateDraft && onDuplicateAction ? (
+      {duplicateDraft && onDuplicateAction ? (
         <DraftDuplicateResolution
           duplicate={duplicateDraft}
           resolvingAction={resolvingDuplicateAction ?? null}
@@ -89,42 +82,6 @@ export function AttachmentList({
           <span>Import a .msg package or upload an application form.</span>
         </div>
       )}
-    </section>
-  );
-}
-
-type ConfirmedProjectReminderProps = {
-  duplicate: DraftDuplicateCheck;
-  onOpenProject: (projectId: string) => void;
-};
-
-function ConfirmedProjectReminder({
-  duplicate,
-  onOpenProject,
-}: ConfirmedProjectReminderProps): ReactElement {
-  const formName = duplicate.incoming_application_form_name
-    || duplicate.existing_application_form_name
-    || "Selected application form";
-  const projectId = duplicate.existing_project_id ?? "";
-  const ltrNumber = duplicate.existing_ltr_number;
-
-  return (
-    <section className="email-duplicate-panel" aria-live="polite">
-      <div className="email-duplicate-heading">
-        <strong>This application already has a project</strong>
-        <span>{formName}</span>
-        {ltrNumber ? <span>LTR {ltrNumber}</span> : null}
-      </div>
-      <div className="email-duplicate-actions">
-        <button
-          className="new-project-primary-action ui-primary-action"
-          disabled={!projectId}
-          type="button"
-          onClick={() => onOpenProject(projectId)}
-        >
-          Open project
-        </button>
-      </div>
     </section>
   );
 }

@@ -115,11 +115,18 @@ class ExcelComLTRWorkbookGateway:
         if not self._config.modify_password:
             raise LtrWorkbookWriteError("LTR workbook modify password is not configured.")
 
-        handle = self._office.open_excel_workbook(
-            self._config.path,
-            modify_password=self._config.modify_password,
-            read_only=False,
-        )
+        try:
+            handle = self._office.open_excel_workbook(
+                self._config.path,
+                modify_password=self._config.modify_password,
+                read_only=False,
+            )
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                "Unable to open LTR workbook with modify permission. "
+                "Check workbook path, modify password, and Excel file lock state. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
         return ExcelComLTRWorkbookWriteSession(handle)
 
 
@@ -155,12 +162,43 @@ class ExcelComLTRWorkbookWriteSession:
 
     def read_annual_sheet(self, sheet_name: str) -> tuple[tuple[object, ...], ...]:
         """Read annual sheet A:Q data in one batch range call."""
-        sheet = self._handle.workbook.Worksheets.Item(sheet_name)
-        last_row = int(sheet.UsedRange.Rows.Count)
-        if last_row < 2:
-            return ()
-        values = sheet.Range(f"A2:Q{last_row}").Value
+        try:
+            sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+            last_row = int(sheet.UsedRange.Rows.Count)
+            if last_row < 2:
+                return ()
+            try:
+                values = sheet.Range(f"A2:Q{last_row}").Value2
+            except Exception:
+                values = sheet.Range(f"A2:Q{last_row}").Value
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                f"Unable to read LTR workbook sheet {sheet_name}. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
         return _tuple_rows(values)
+
+    def read_ltr_number_column(self, sheet_name: str) -> tuple[str, ...]:
+        """Read visible DL numbers from column D only."""
+        try:
+            sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+            last_row = int(sheet.UsedRange.Rows.Count)
+            if last_row < 2:
+                return ()
+            try:
+                values = sheet.Range(f"D2:D{last_row}").Value2
+            except Exception:
+                values = sheet.Range(f"D2:D{last_row}").Value
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                f"Unable to read LTR numbers from workbook sheet {sheet_name}. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
+        return tuple(
+            str(value).strip().upper()
+            for value in _tuple_column_values(values)
+            if str(value or "").strip()
+        )
 
     def append_registration_row(
         self,
@@ -247,9 +285,7 @@ class ExcelComLTRWorkbookWriteSession:
         numbers: list[str] = []
         candidates = sheet_names or tuple(self.list_sheets())
         for sheet_name in candidates:
-            for row in self.read_annual_sheet(sheet_name):
-                if len(row) >= 4 and row[3]:
-                    numbers.append(str(row[3]).strip().upper())
+            numbers.extend(self.read_ltr_number_column(sheet_name))
         return tuple(dict.fromkeys(numbers))
 
     def append_next_normal_registration(
@@ -308,3 +344,22 @@ def _tuple_rows(values) -> tuple[tuple[object, ...], ...]:
     if values and not isinstance(values[0], tuple):
         return (values,)
     return tuple(tuple(row) for row in values)
+
+
+def _tuple_column_values(values) -> tuple[object, ...]:
+    """Normalize a single-column Excel range to flat values."""
+    if values is None:
+        return ()
+    if not isinstance(values, tuple):
+        return (values,)
+    if values and isinstance(values[0], tuple):
+        return tuple(row[0] if row else None for row in values)
+    return values
+
+
+def _exception_summary(exc: Exception) -> str:
+    """Return a compact exception summary safe for operator-facing diagnostics."""
+    text = str(exc).strip()
+    if not text:
+        text = exc.__class__.__name__
+    return text[:500]

@@ -117,3 +117,13 @@ class ExcelStructureProbeResult:
     missing_date_headers: tuple[str, ...]
     valid: bool
     failure_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExcelTabularReadResult:
+    """Read-only tabular rows extracted from one or more worksheets."""
+
+    workbook_path: Path
+    matched_sheet_names: tuple[str, ...]
+    headers: tuple[str, ...]
+    rows: tuple[dict[str, str], ...]

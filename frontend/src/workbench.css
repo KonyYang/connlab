@@ -82,17 +82,40 @@
 
 .project-folder-form {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(160px, 0.7fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
 
-.project-folder-form label {
+.configured-resource-grid {
   display: grid;
-  gap: 6px;
-  color: var(--color-ink);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.configured-resource-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.configured-resource-card span {
+  color: var(--color-ink-muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.configured-resource-card code {
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.configured-resource-card strong {
+  color: var(--color-primary-strong);
+  font-size: 12px;
 }
 
 .project-folder-path-card {
@@ -824,6 +847,7 @@
 @media (max-width: 960px) {
   .project-summary-grid,
   .project-workbench-status-grid,
+  .configured-resource-grid,
   .workflow-stepper,
   .precheck-summary,
   .operator-panel,

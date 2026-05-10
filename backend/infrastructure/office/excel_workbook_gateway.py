@@ -9,6 +9,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from backend.infrastructure.office.models import (
+    ExcelTabularReadResult,
     ExcelStructureProbeResult,
     LtrWorkbookFormat,
     LtrWorkbookSnapshot,
@@ -122,6 +123,76 @@ class ExcelWorkbookGateway:
             missing_date_headers=missing_date_headers,
             valid=failure is None,
             failure_reason=failure,
+        )
+
+    def read_tabular_rows(
+        self,
+        source_path: Path,
+        *,
+        expected_headers: tuple[str, ...],
+        expected_sheet_names: tuple[str, ...] = (),
+        expected_sheet_name_patterns: tuple[str, ...] = (),
+    ) -> ExcelTabularReadResult:
+        """Read header-aligned worksheet rows from matching worksheets."""
+        path = Path(source_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Excel workbook does not exist: {path}")
+        if _workbook_format(path) is not LtrWorkbookFormat.XLSX:
+            raise UnsupportedLtrWorkbookError(
+                f"Excel tabular read supports .xlsx only: {path.suffix or '<none>'}"
+            )
+        sheet_names, sheet_xml_paths = _read_xlsx_workbook_manifest(path)
+        matched_pairs = _matching_sheets(
+            sheet_names,
+            sheet_xml_paths,
+            expected_sheet_names,
+            expected_sheet_name_patterns,
+        )
+        if not matched_pairs:
+            raise UnsupportedLtrWorkbookError(
+                "No worksheet matched the expected sheet rules."
+            )
+        shared_strings = _read_xlsx_shared_strings(path)
+        canonical_headers = tuple(expected_headers)
+        normalized_canonical = [_normalize_header(value) for value in canonical_headers]
+        collected_rows: list[dict[str, str]] = []
+        matched_sheet_names: list[str] = []
+        for sheet_name, sheet_xml_path in matched_pairs:
+            rows = _read_xlsx_sheet_rows(path, sheet_xml_path, shared_strings)
+            header_row = _first_non_empty_row(rows)
+            if not header_row:
+                continue
+            index_map = _header_index_map(
+                header_row,
+                canonical_headers,
+                normalized_canonical,
+            )
+            if index_map is None:
+                continue
+            matched_sheet_names.append(sheet_name)
+            for raw_row in rows:
+                row = [_normalize_cell(value) for value in raw_row]
+                if not any(row):
+                    continue
+                # Skip the header row itself.
+                if _row_is_header(row, header_row):
+                    continue
+                mapped: dict[str, str] = {}
+                has_value = False
+                for header, index in zip(canonical_headers, index_map, strict=True):
+                    value = row[index] if index < len(row) else ""
+                    mapped[header] = value
+                    has_value = has_value or bool(value)
+                if has_value:
+                    mapped["__sheet_name"] = sheet_name
+                    collected_rows.append(mapped)
+        if not matched_sheet_names:
+            raise UnsupportedLtrWorkbookError("Expected headers were not found.")
+        return ExcelTabularReadResult(
+            workbook_path=path,
+            matched_sheet_names=tuple(matched_sheet_names),
+            headers=canonical_headers,
+            rows=tuple(collected_rows),
         )
 
 
@@ -322,6 +393,37 @@ def _probe_failure(
     if missing_date_headers:
         return f"Missing required date headers: {', '.join(missing_date_headers)}"
     return None
+
+
+def _header_index_map(
+    header_row: list[str],
+    canonical_headers: tuple[str, ...],
+    normalized_canonical: list[str],
+) -> tuple[int, ...] | None:
+    """Return canonical header indexes for one sheet header row."""
+    normalized_header = [_normalize_header(value) for value in header_row]
+    indexes: list[int] = []
+    for normalized_name in normalized_canonical:
+        try:
+            indexes.append(normalized_header.index(normalized_name))
+        except ValueError:
+            return None
+    return tuple(indexes)
+
+
+def _normalize_cell(value: str) -> str:
+    """Return stripped cell text."""
+    return value.strip()
+
+
+def _row_is_header(row: list[str], header_row: list[str]) -> bool:
+    """Return whether a row equals the header row after trimming."""
+    if len(row) < len(header_row):
+        return False
+    return all(
+        _normalize_cell(row[index]) == _normalize_cell(header_row[index])
+        for index in range(len(header_row))
+    )
 
 
 def _sheet_strategy(sheet_names: list[str]) -> str:

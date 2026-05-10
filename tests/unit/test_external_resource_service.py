@@ -144,6 +144,42 @@ def test_external_resource_service_rejects_xlsx_with_missing_structure(
     assert "Missing required headers" in (validated.validation_failure_reason or "")
 
 
+def test_external_resource_service_rejects_legacy_xls_for_standard_and_equipment(
+    tmp_path: Path,
+) -> None:
+    standard = tmp_path / "standard-record.xls"
+    equipment = tmp_path / "equipment.xls"
+    standard.write_bytes(b"legacy")
+    equipment.write_bytes(b"legacy")
+    service = ExternalResourceService(_Store())
+    service.upsert_resource(
+        ExternalResourceType.STANDARD_RECORD_EXCEL,
+        standard,
+        active=True,
+    )
+    service.upsert_resource(
+        ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL,
+        equipment,
+        active=True,
+    )
+
+    standard_validated = service.validate_resource(
+        ExternalResourceType.STANDARD_RECORD_EXCEL
+    )
+    equipment_validated = service.validate_resource(
+        ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL
+    )
+
+    assert standard_validated.validation_status is ExternalResourceValidationStatus.INVALID
+    assert "Expected a .xlsx Excel file" in (
+        standard_validated.validation_failure_reason or ""
+    )
+    assert equipment_validated.validation_status is ExternalResourceValidationStatus.INVALID
+    assert "Expected a .xlsx Excel file" in (
+        equipment_validated.validation_failure_reason or ""
+    )
+
+
 def test_external_resource_service_rejects_unregistered_resource() -> None:
     service = ExternalResourceService(_Store(), office=_FakeOffice())
 

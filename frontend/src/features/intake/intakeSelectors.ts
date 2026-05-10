@@ -22,7 +22,8 @@ export type IntakeContinueState = {
 };
 
 export function visibleIntakeAttachments(packageImport: IntakePackageImport | null): IntakeAsset[] {
-  return packageImport?.assets.filter((asset) => asset.asset_role !== "email_source") ?? [];
+  const attachments = packageImport?.assets.filter((asset) => asset.asset_role !== "email_source") ?? [];
+  return [...attachments].sort(compareAttachments);
 }
 
 export function buildAttachmentViewModels(
@@ -232,4 +233,41 @@ function assetKindLabelFromKind(kind: IntakeAttachmentKind, extension: string): 
     return "MSG";
   }
   return extension.replace(".", "").toUpperCase() || "FILE";
+}
+
+function compareAttachments(left: IntakeAsset, right: IntakeAsset): number {
+  const kindRankDiff = attachmentKindRank(left) - attachmentKindRank(right);
+  if (kindRankDiff !== 0) {
+    return kindRankDiff;
+  }
+
+  const nameDiff = left.original_name.localeCompare(right.original_name, undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+  if (nameDiff !== 0) {
+    return nameDiff;
+  }
+
+  return left.asset_id.localeCompare(right.asset_id);
+}
+
+function attachmentKindRank(asset: IntakeAsset): number {
+  const extension = asset.extension.toLowerCase();
+  if (extension === ".doc" || extension === ".docx") {
+    return 0;
+  }
+  if (extension === ".pdf") {
+    return 1;
+  }
+  if (extension === ".xls" || extension === ".xlsx") {
+    return 2;
+  }
+  if ([".png", ".jpg", ".jpeg", ".tif", ".tiff"].includes(extension)) {
+    return 3;
+  }
+  if (extension === ".msg") {
+    return 4;
+  }
+  return 5;
 }

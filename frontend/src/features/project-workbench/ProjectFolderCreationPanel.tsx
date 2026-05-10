@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from "react";
 import {
   ApiRequestError,
+  type ExternalResource,
   generateFolder,
   getLatestProjectFolder,
   previewFolder,
@@ -12,6 +13,8 @@ import {
 } from "../../api/client";
 
 type ProjectFolderCreationPanelProps = {
+  configuredOutputRoot: ExternalResource | null;
+  configuredTemplate: ExternalResource | null;
   folderReady: boolean;
   latestLtrNumber: string | null;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
@@ -20,29 +23,20 @@ type ProjectFolderCreationPanelProps = {
 };
 
 export function ProjectFolderCreationPanel({
+  configuredOutputRoot,
+  configuredTemplate,
   folderReady,
   latestLtrNumber,
   onFolderCreated,
   projectId,
   projectStatus
 }: ProjectFolderCreationPanelProps): ReactElement {
-  const [folderInput, setFolderInput] = useState<FolderRequest>({
-    template_path: "",
-    target_root: "",
-    dl_number: latestLtrNumber ?? ""
-  });
   const [folderPlan, setFolderPlan] = useState<FolderPlan | null>(null);
   const [folderGeneration, setFolderGeneration] = useState<FolderGeneration | null>(null);
   const [folderRecord, setFolderRecord] = useState<ProjectFolderRecord | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!folderInput.dl_number && latestLtrNumber) {
-      setFolderInput((current) => ({ ...current, dl_number: latestLtrNumber }));
-    }
-  }, [folderInput.dl_number, latestLtrNumber]);
 
   useEffect(() => {
     if (!folderReady) {
@@ -74,19 +68,50 @@ export function ProjectFolderCreationPanel({
     if (projectStatus !== "ltr_registered") {
       return "Folder creation is available only after LTR registration.";
     }
+    if (!configuredTemplate) {
+      return "Configure Project folder template in Settings before previewing the project folder.";
+    }
+    if (!configuredTemplate.active) {
+      return "Project folder template is inactive in Settings. Enable it before previewing the project folder.";
+    }
+    if (configuredTemplate.validation_status !== "valid") {
+      if (configuredTemplate.validation_failure_reason) {
+        return `Project folder template is not valid: ${configuredTemplate.validation_failure_reason}`;
+      }
+      return "Project folder template must be validated in Settings before previewing the project folder.";
+    }
+    if (!configuredOutputRoot) {
+      return "Configure Project output root in Settings before previewing the project folder.";
+    }
+    if (!configuredOutputRoot.active) {
+      return "Project output root is inactive in Settings. Enable it before previewing the project folder.";
+    }
+    if (configuredOutputRoot.validation_status !== "valid") {
+      if (configuredOutputRoot.validation_failure_reason) {
+        return `Project output root is not valid: ${configuredOutputRoot.validation_failure_reason}`;
+      }
+      return "Project output root must be validated in Settings before previewing the project folder.";
+    }
     return null;
-  }, [latestLtrNumber, projectStatus]);
+  }, [configuredOutputRoot, configuredTemplate, latestLtrNumber, projectStatus]);
 
-  const canPreview =
-    !actionBlockedReason &&
-    folderInput.template_path.trim().length > 0 &&
-    folderInput.target_root.trim().length > 0;
+  const folderRequest = useMemo(() => {
+    if (!configuredTemplate || !configuredOutputRoot) {
+      return null;
+    }
+    return cleanInput(configuredTemplate.path, configuredOutputRoot.path, latestLtrNumber);
+  }, [configuredOutputRoot, configuredTemplate, latestLtrNumber]);
+
+  const canPreview = !actionBlockedReason && Boolean(folderRequest);
 
   async function previewFolderNow(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (!folderRequest) {
+      return;
+    }
     setPreviewing(true);
     try {
-      setFolderPlan(await previewFolder(projectId, cleanInput(folderInput, latestLtrNumber)));
+      setFolderPlan(await previewFolder(projectId, folderRequest));
       setFolderGeneration(null);
       setError(null);
     } catch (err) {
@@ -97,9 +122,12 @@ export function ProjectFolderCreationPanel({
   }
 
   async function generateFolderNow(): Promise<void> {
+    if (!folderRequest) {
+      return;
+    }
     setGenerating(true);
     try {
-      const generation = await generateFolder(projectId, cleanInput(folderInput, latestLtrNumber));
+      const generation = await generateFolder(projectId, folderRequest);
       setFolderGeneration(generation);
       setFolderPlan(null);
       setError(null);
@@ -143,40 +171,23 @@ export function ProjectFolderCreationPanel({
       </div>
 
       <form className="project-folder-form" onSubmit={(event) => void previewFolderNow(event)}>
-        <label>
-          Template path
-          <input
-            required
-            placeholder="Project folder template path"
-            value={folderInput.template_path}
-            onChange={(event) => {
-              setFolderInput({ ...folderInput, template_path: event.target.value });
-              setFolderPlan(null);
-            }}
-          />
-        </label>
-        <label>
-          Target root
-          <input
-            required
-            placeholder="Project folder target root"
-            value={folderInput.target_root}
-            onChange={(event) => {
-              setFolderInput({ ...folderInput, target_root: event.target.value });
-              setFolderPlan(null);
-            }}
-          />
-        </label>
-        <label>
-          LTR number
-          <input
-            value={folderInput.dl_number ?? ""}
-            onChange={(event) => {
-              setFolderInput({ ...folderInput, dl_number: event.target.value });
-              setFolderPlan(null);
-            }}
-          />
-        </label>
+        <div className="configured-resource-grid">
+          <article className="configured-resource-card">
+            <span>Project folder template</span>
+            <code>{configuredTemplate?.path ?? "Not configured"}</code>
+            <strong>{resourceStateLabel(configuredTemplate)}</strong>
+          </article>
+          <article className="configured-resource-card">
+            <span>Project output root</span>
+            <code>{configuredOutputRoot?.path ?? "Not configured"}</code>
+            <strong>{resourceStateLabel(configuredOutputRoot)}</strong>
+          </article>
+          <article className="configured-resource-card">
+            <span>LTR number</span>
+            <code>{latestLtrNumber ?? "Not available"}</code>
+            <strong>{latestLtrNumber ? "Ready" : "Missing"}</strong>
+          </article>
+        </div>
         <button className="primary-action" disabled={!canPreview || previewing || generating} type="submit">
           {previewing ? "Previewing..." : "Preview folder"}
         </button>
@@ -218,13 +229,33 @@ export function ProjectFolderCreationPanel({
   );
 }
 
-function cleanInput(input: FolderRequest, latestLtrNumber: string | null): FolderRequest {
-  const dlNumber = input.dl_number?.trim() || latestLtrNumber || undefined;
+function cleanInput(
+  templatePath: string,
+  targetRoot: string,
+  latestLtrNumber: string | null
+): FolderRequest {
+  const dlNumber = latestLtrNumber || undefined;
   return {
-    template_path: input.template_path.trim(),
-    target_root: input.target_root.trim(),
+    template_path: templatePath.trim(),
+    target_root: targetRoot.trim(),
     dl_number: dlNumber
   };
+}
+
+function resourceStateLabel(resource: ExternalResource | null): string {
+  if (!resource) {
+    return "Not configured";
+  }
+  if (!resource.active) {
+    return "Inactive";
+  }
+  if (resource.validation_status === "valid") {
+    return "Valid";
+  }
+  if (resource.validation_status === "invalid") {
+    return "Invalid";
+  }
+  return "Not checked";
 }
 
 function leafName(path: string): string {

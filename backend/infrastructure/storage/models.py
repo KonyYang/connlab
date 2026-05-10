@@ -126,6 +126,26 @@ class LtrRecordModel(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
 
+class ProjectCleanupAuditRecordModel(Base):
+    """Database row for one controlled project cleanup action."""
+
+    __tablename__ = "project_cleanup_audit_records"
+
+    cleanup_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    cleanup_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    previous_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    new_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    operator: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[str | None] = mapped_column(Text)
+
+
 class ProjectFolderRecordModel(Base):
     """Database row for a generated project folder."""
 

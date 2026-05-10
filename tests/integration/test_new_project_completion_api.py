@@ -3,12 +3,22 @@ from __future__ import annotations
 import json
 from collections.abc import Generator
 from pathlib import Path
+from uuid import uuid4
 
+from fastapi import Depends
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_session, get_settings
+from backend.api.dependencies import (
+    get_ltr_authority_service,
+    get_session,
+    get_settings,
+)
 from backend.api.main import app
+from backend.application.ltr_authority import LtrAuthorityCommitResult
+from backend.application.ltr_workbook_write_commit_service import (
+    LtrWorkbookWriteCommitError,
+)
 from backend.domain import (
     IntakeAsset,
     IntakeAssetRole,
@@ -21,7 +31,9 @@ from backend.domain import (
     LtrRecord,
     LtrStatus,
     ProjectStatus,
+    Project,
 )
+from backend.modules.ltr import next_monthly_dl_number, parse_ltr_number
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -66,6 +78,16 @@ def test_complete_new_project_auto_ltr_applies_ltr_without_folder(
 
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = (
+        override_ltr_commit_service
+    )
     client = TestClient(app)
 
     try:
@@ -80,6 +102,8 @@ def test_complete_new_project_auto_ltr_applies_ltr_without_folder(
         payload = response.json()
         assert payload["project_status"] == "ltr_registered"
         assert payload["ltr_number"] == "DL-2026-05-001"
+        assert payload["workbook_sheet_name"] == "2026"
+        assert payload["workbook_row_number"] == 3
         assert "project_folder_path" not in payload
         assert "folder_id" not in payload
 
@@ -120,6 +144,16 @@ def test_complete_new_project_rejects_duplicate_specified_ltr(tmp_path: Path) ->
 
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = (
+        override_ltr_commit_service
+    )
     client = TestClient(app)
 
     try:
@@ -172,6 +206,16 @@ def test_complete_new_project_is_idempotent_for_completed_case(tmp_path: Path) -
 
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = (
+        override_ltr_commit_service
+    )
     client = TestClient(app)
 
     try:
@@ -234,6 +278,16 @@ def test_complete_new_project_returns_existing_external_ltr_without_folder(
 
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = (
+        override_ltr_commit_service
+    )
     client = TestClient(app)
 
     try:
@@ -277,6 +331,124 @@ def test_complete_new_project_returns_existing_external_ltr_without_folder(
         assert "project_folder_path" not in payload
         with session_factory() as session:
             assert ProjectFolderRecordRepository(session).list_by_project(project_id) == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_complete_new_project_does_not_register_local_ltr_when_workbook_commit_fails(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_ltr_authority_service] = (
+        lambda: _FailingWorkbookCommitService()
+    )
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="FAIL")
+        response = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json=_completion_payload("auto"),
+        )
+        assert response.status_code == 400
+        assert "workbook locked" in response.json()["detail"]
+        with session_factory() as session:
+            intake_case = IntakeCaseRepository(session).get(case_id)
+            assert intake_case is not None
+            assert intake_case.confirmed_project_id is None
+            assert ProjectRepository(session).list() == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_complete_new_project_returns_409_when_local_ltr_unique_conflicts(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_ltr_authority_service] = (
+        lambda session=Depends(get_session): _DuplicateLtrNumberCommitService(session)
+    )
+    client = TestClient(app)
+
+    try:
+        _seed_intake_case(session_factory, tmp_path, suffix="BASE")
+        conflict_case_id = _seed_intake_case(session_factory, tmp_path, suffix="CONFLICT")
+
+        with session_factory() as session:
+            project_id = uuid4().hex
+            ProjectRepository(session).create(
+                Project(
+                    project_id=project_id,
+                    project_no="BASELINE",
+                    product_name="Baseline",
+                    requestor="Alice",
+                    status=ProjectStatus.LTR_REGISTERED,
+                    business_unit="Power Solutions",
+                )
+            )
+            LtrRecordRepository(session).create(
+                LtrRecord(
+                    ltr_id="LTR-BASE-001",
+                    project_id=project_id,
+                    ltr_number="DL-2026-05-777",
+                    status=LtrStatus.REGISTERED,
+                    requested_by="Alice",
+                    requested_date=None,
+                    notes="baseline",
+                )
+            )
+            session.commit()
+
+        response = client.post(
+            f"/api/intake-cases/{conflict_case_id}/complete-new-project",
+            json=_completion_payload("auto"),
+        )
+        assert response.status_code == 409
+        assert "already exists in local records" in response.json()["detail"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -389,3 +561,94 @@ def _create_template(template: Path) -> Path:
     (template / "request").mkdir(parents=True)
     (template / "request" / "form.txt").write_text("template", encoding="utf-8")
     return template
+
+
+class _FakeWorkbookNumberState:
+    def __init__(self) -> None:
+        self.numbers = ["DL-2026-05-000"]
+
+
+class _FakeWorkbookCommitService:
+    def __init__(self, session: Session, state: _FakeWorkbookNumberState) -> None:
+        self._session = session
+        self._state = state
+
+    def commit_project(self, project_id: str, command):
+        if not command.operator_confirmed:
+            raise LtrWorkbookWriteCommitError("Operator confirmation is required.")
+
+        plan = command.plan_date
+        raw = (command.number_input or "").strip()
+        if raw:
+            try:
+                number = parse_ltr_number(raw).normalized
+            except Exception:
+                number = raw.upper()
+            if number in self._state.numbers:
+                raise LtrWorkbookWriteCommitError(
+                    f"LTR number already exists in the workbook: {number}"
+                )
+        else:
+            number = next_monthly_dl_number(
+                year=plan.year,
+                month=plan.month,
+                existing_numbers=self._state.numbers,
+            )
+        self._state.numbers.append(number)
+        row_number = len(self._state.numbers) + 1
+        ltr = LtrRecord(
+            ltr_id=f"LTR-{project_id}",
+            project_id=project_id,
+            ltr_number=number,
+            status=LtrStatus.REGISTERED,
+            requested_by=command.requested_by,
+            requested_date=command.requested_date,
+            notes=command.operator_note,
+        )
+        projects = ProjectRepository(self._session)
+        ltrs = LtrRecordRepository(self._session)
+        project = projects.get(project_id)
+        assert project is not None
+        ltrs.create(ltr)
+        projects.update(project.with_status(ProjectStatus.LTR_REGISTERED))
+        return LtrAuthorityCommitResult(
+            ltr=ltr,
+            workbook_path="D:/simulated/LTR_number.xlsx",
+            workbook_sheet_name=f"{plan.year:04d}",
+            workbook_row_number=row_number,
+            workbook_backup_path="D:/simulated/backups/LTR_number.xlsx",
+        )
+
+
+class _FailingWorkbookCommitService:
+    def commit_project(self, project_id: str, command):
+        raise LtrWorkbookWriteCommitError("LTR workbook locked by another operator.")
+
+
+class _DuplicateLtrNumberCommitService:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def commit_project(self, project_id: str, command):
+        ltr = LtrRecord(
+            ltr_id=f"LTR-{project_id}",
+            project_id=project_id,
+            ltr_number="DL-2026-05-777",
+            status=LtrStatus.REGISTERED,
+            requested_by=command.requested_by,
+            requested_date=command.requested_date,
+            notes=command.operator_note,
+        )
+        projects = ProjectRepository(self._session)
+        ltrs = LtrRecordRepository(self._session)
+        project = projects.get(project_id)
+        assert project is not None
+        ltrs.create(ltr)
+        projects.update(project.with_status(ProjectStatus.LTR_REGISTERED))
+        return LtrAuthorityCommitResult(
+            ltr=ltr,
+            workbook_path="D:/simulated/LTR_number.xlsx",
+            workbook_sheet_name=f"{command.plan_date.year:04d}",
+            workbook_row_number=9,
+            workbook_backup_path="D:/simulated/backups/LTR_number.xlsx",
+        )

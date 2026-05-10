@@ -128,10 +128,15 @@ class ExternalResourceService:
         resource_type: ExternalResourceType,
     ) -> str | None:
         """Return why an Excel resource cannot be read."""
-        if path.suffix.lower() not in {".xlsx", ".xls"}:
-            return f"Expected an Excel file (.xlsx or .xls): {path}"
-        if path.suffix.lower() == ".xls":
-            return None if path.stat().st_size > 0 else f"Excel file is empty: {path}"
+        suffix = path.suffix.lower()
+        if resource_type is ExternalResourceType.LTR_WORKBOOK:
+            if suffix not in {".xlsx", ".xls"}:
+                return f"Expected an Excel file (.xlsx or .xls): {path}"
+            if suffix == ".xls":
+                return None if path.stat().st_size > 0 else f"Excel file is empty: {path}"
+        else:
+            if suffix != ".xlsx":
+                return f"Expected a .xlsx Excel file: {path}"
         try:
             self._probe_excel_resource(path, resource_type)
         except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
@@ -189,7 +194,11 @@ def _excel_probe_rules(resource_type: ExternalResourceType) -> dict[str, tuple[s
     """Return expected read-only structure rules for an Excel resource."""
     if resource_type is ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL:
         return {
-            "expected_headers": ("Equipment ID", "Calibration Due Date"),
+            "expected_headers": (
+                "Equipment ID",
+                "Equipment Name",
+                "Calibration Due Date",
+            ),
             "expected_date_headers": ("Calibration Due Date",),
             "expected_sheet_name_patterns": (r".*calibration.*", r".*equipment.*"),
         }

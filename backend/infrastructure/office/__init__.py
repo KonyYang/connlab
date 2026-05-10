@@ -1,6 +1,7 @@
 """Office gateway package."""
 
 from backend.infrastructure.office.models import (
+    ExcelTabularReadResult,
     ExcelStructureProbeResult,
     ImportedMailAttachment,
     ImportedMailPackage,
@@ -55,6 +56,7 @@ __all__ = [
     "ImportedMailAttachment",
     "ImportedMailPackage",
     "ExcelWorkbookGateway",
+    "ExcelTabularReadResult",
     "ExcelStructureProbeResult",
     "ExcelComLTRWorkbookGateway",
     "LtrWorkbookFormat",

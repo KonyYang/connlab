@@ -717,10 +717,6 @@ export function IntakeInboxPage({
             packageLoaded={Boolean(packageImport)}
             resolvingDuplicateAction={resolvingDuplicateAction}
             onDuplicateAction={(action) => void handleResolveDuplicateDraft(action)}
-            onOpenConfirmedProject={(projectId) => {
-              onSessionChange(EMPTY_INTAKE_SESSION);
-              onProjectCreated(projectId);
-            }}
             onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
             onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {

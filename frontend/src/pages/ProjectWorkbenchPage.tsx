@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
+  listExternalResources,
   getProject,
   listProjectLtrs,
   placeEvidence,
   previewEvidencePlacement,
+  type ExternalResource,
   type FolderGeneration,
   type EvidencePlacementPlan,
   type EvidencePlacementResult,
@@ -15,6 +17,7 @@ import { LoadingState } from "../components/common/LoadingState";
 import { ProjectLookupPanel } from "../components/project/ProjectLookupPanel";
 import { ProjectSummaryPanel } from "../components/project/ProjectSummaryPanel";
 import { ProjectFolderCreationPanel } from "../features/project-workbench/ProjectFolderCreationPanel";
+import { configuredFolderResources } from "../features/project-workbench/projectFolderResourceSelectors";
 import "../workbench.css";
 
 type ProjectWorkbenchPageProps = {
@@ -28,6 +31,7 @@ export function ProjectWorkbenchPage({
 }: ProjectWorkbenchPageProps): ReactElement {
   const [project, setProject] = useState<Project | null>(null);
   const [ltrs, setLtrs] = useState<LtrRecord[]>([]);
+  const [resources, setResources] = useState<ExternalResource[]>([]);
   const [evidencePlan, setEvidencePlan] = useState<EvidencePlacementPlan | null>(null);
   const [evidenceResult, setEvidenceResult] = useState<EvidencePlacementResult | null>(null);
   const [previewingEvidence, setPreviewingEvidence] = useState(false);
@@ -69,6 +73,7 @@ export function ProjectWorkbenchPage({
     try {
       setProject(await getProject(projectId));
       setLtrs(await listProjectLtrs(projectId));
+      setResources(await listExternalResources());
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -116,6 +121,8 @@ export function ProjectWorkbenchPage({
     return <LoadingState label="Loading project workbench..." />;
   }
 
+  const folderResources = configuredFolderResources(resources);
+
   return (
     <section className="workbench-page">
       {error && <ErrorMessage message={error} />}
@@ -146,6 +153,8 @@ export function ProjectWorkbenchPage({
             ) : null}
           </section>
           <ProjectFolderCreationPanel
+            configuredOutputRoot={folderResources.outputRoot}
+            configuredTemplate={folderResources.template}
             folderReady={folderReady}
             latestLtrNumber={latestLtr}
             onFolderCreated={folderCreated}

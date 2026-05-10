@@ -57,6 +57,21 @@ def test_excel_com_gateway_opens_with_configured_modify_password() -> None:
     session.close()
 
 
+def test_excel_com_gateway_wraps_open_failure_as_business_error() -> None:
+    office = _FakeOfficeFacade(open_error=RuntimeError("com open failed"))
+    gateway = ExcelComLTRWorkbookGateway(
+        office,
+        LtrWorkbookWriteConfig(
+            path=Path("ltr.xls"),
+            write_enabled=True,
+            modify_password="operator-secret",
+        ),
+    )
+
+    with pytest.raises(LtrWorkbookWriteError, match="Unable to open LTR workbook"):
+        gateway.open_write_session()
+
+
 def test_excel_com_write_session_blocks_read_only_workbook() -> None:
     office = _FakeOfficeFacade(read_only=True)
     gateway = ExcelComLTRWorkbookGateway(
@@ -207,9 +222,11 @@ class _FakeOfficeFacade:
         self,
         read_only: bool = False,
         rows: tuple[tuple[object, ...], ...] | None = None,
+        open_error: Exception | None = None,
     ) -> None:
         self.handle = _FakeHandle(read_only=read_only, rows=rows)
         self.open_calls: list[dict] = []
+        self.open_error = open_error
 
     def open_excel_workbook(
         self,
@@ -218,6 +235,8 @@ class _FakeOfficeFacade:
         modify_password: str | None = None,
         read_only: bool = False,
     ):
+        if self.open_error is not None:
+            raise self.open_error
         self.open_calls.append(
             {
                 "path": source_path,

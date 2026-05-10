@@ -115,24 +115,20 @@ export type IntakeAsset = {
 };
 
 export type DraftDuplicateAction = "open_existing" | "replace_existing" | "create_separate";
-export type DuplicateAction = DraftDuplicateAction | "open_project";
 
 export type DraftDuplicateCheck = {
   classification:
     | "exact_existing_application_draft"
-    | "exact_existing_no_form_draft"
-    | "existing_confirmed_project_ltr";
+    | "exact_existing_no_form_draft";
   existing_package_id: string;
   existing_case_id: string;
-  existing_project_id?: string | null;
-  existing_ltr_number?: string | null;
   existing_source_original_name: string;
   incoming_source_original_name: string;
   existing_source_size_bytes: number;
   incoming_source_size_bytes: number;
   existing_application_form_name?: string | null;
   incoming_application_form_name?: string | null;
-  allowed_actions: DuplicateAction[];
+  allowed_actions: DraftDuplicateAction[];
 };
 
 export type IntakeAssetPreviewMetadata = {
@@ -541,6 +537,10 @@ export type CompleteNewProject = {
   project_id: string;
   project_status: string;
   ltr_number: string;
+  workbook_path?: string | null;
+  workbook_sheet_name?: string | null;
+  workbook_row_number?: number | null;
+  workbook_backup_path?: string | null;
 };
 
 export type NewProjectCompletionOptions = {

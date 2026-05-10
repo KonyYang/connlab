@@ -33,6 +33,7 @@ export function SettingsExternalResourcesPanel({
   const [drafts, setDrafts] = useState<Record<ExternalResourceType, DraftValue>>(
     () => initialDrafts(rows)
   );
+  const [browseHintType, setBrowseHintType] = useState<ExternalResourceType | null>(null);
 
   useEffect(() => {
     setDrafts(initialDrafts(rows));
@@ -68,6 +69,8 @@ export function SettingsExternalResourcesPanel({
               row={row}
               saving={savingType === row.resourceType}
               validating={validatingType === row.resourceType}
+              showBrowseHint={browseHintType === row.resourceType}
+              onBrowseRequest={() => setBrowseHintType(row.resourceType)}
               onDraftChange={(value) => updateDraft(row.resourceType, value)}
               onSave={() => onSave(row.resourceType, drafts[row.resourceType] ?? row)}
               onValidate={() => onValidate(row.resourceType)}
@@ -100,6 +103,8 @@ function ResourceRow({
   draft,
   saving,
   validating,
+  showBrowseHint,
+  onBrowseRequest,
   onDraftChange,
   onSave,
   onValidate
@@ -108,6 +113,8 @@ function ResourceRow({
   draft: DraftValue;
   saving: boolean;
   validating: boolean;
+  showBrowseHint: boolean;
+  onBrowseRequest: () => void;
   onDraftChange: (value: Partial<DraftValue>) => void;
   onSave: () => void;
   onValidate: () => void;
@@ -123,12 +130,27 @@ function ResourceRow({
       </div>
       <label className="settings-path-field">
         <span>Path</span>
-        <input
-          aria-label={`${row.label} path`}
-          value={draft.path}
-          onChange={(event) => onDraftChange({ path: event.target.value })}
-          placeholder="Paste local or public-drive path"
-        />
+        <div className="settings-path-control">
+          <input
+            aria-label={`${row.label} path`}
+            value={draft.path}
+            onChange={(event) => onDraftChange({ path: event.target.value })}
+            placeholder="Paste local or public-drive path"
+          />
+          <button
+            aria-label={`Browse for ${row.label}`}
+            title="Browse path"
+            type="button"
+            onClick={onBrowseRequest}
+          >
+            ...
+          </button>
+        </div>
+        {showBrowseHint && (
+          <small className="settings-browse-hint">
+            Desktop path browsing will open a Windows {row.expectedKind === "Folder" ? "folder" : "file"} picker here. Paste the path for now, then Save and Validate.
+          </small>
+        )}
       </label>
       <label className="settings-active-toggle">
         <input

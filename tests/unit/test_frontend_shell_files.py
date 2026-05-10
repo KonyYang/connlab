@@ -248,9 +248,47 @@ def test_task149_settings_external_resources_ui_is_wired() -> None:
     assert "LTR workbook backup directory" in config_source
     assert "Configured by local TOML or environment settings" in config_source
     assert "Use local paths during development" in panel_source
+    assert "Browse for" in panel_source
+    assert "Desktop path browsing will open a Windows" in panel_source
+    assert "type=\"file\"" not in panel_source
+    assert "webkitdirectory" not in panel_source
     assert "buildSettingsResourceRows" in selectors_source
     assert ".settings-resource-row" in styles_source
+    assert ".settings-path-control" in styles_source
+    assert ".settings-browse-hint" in styles_source
     assert ".settings-status-success" in styles_source
+
+
+def test_task150_workbench_folder_uses_configured_resources() -> None:
+    """TASK_150 removes normal raw path entry and resolves folder resources from Settings."""
+    workbench_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+    folder_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectFolderCreationPanel.tsx"
+    ).read_text(encoding="utf-8")
+    selector_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "projectFolderResourceSelectors.ts"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "listExternalResources" in workbench_source
+    assert "configuredFolderResources" in workbench_source
+    assert "configuredTemplate" in folder_panel_source
+    assert "configuredOutputRoot" in folder_panel_source
+    assert "Project folder template" in folder_panel_source
+    assert "Project output root" in folder_panel_source
+    assert "Configure Project folder template in Settings" in folder_panel_source
+    assert "Configure Project output root in Settings" in folder_panel_source
+    assert "Project folder template path" not in folder_panel_source
+    assert "Project folder target root" not in folder_panel_source
+    assert "configured-resource-grid" in folder_panel_source
+    assert "configuredFolderResources" in selector_source
+    assert "resourceBlockedReason" in selector_source
+    assert ".configured-resource-grid" in styles_source
+    assert ".configured-resource-card" in styles_source
 
 
 def test_project_dashboard_uses_dense_registry_components() -> None:
@@ -288,11 +326,20 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "Filter" in list_page_source
     assert "Columns" in list_page_source
     assert "view-toggle" in list_page_source
+    assert "showCancelled" in list_page_source
+    assert "visibleRowsForScope" in list_page_source
+    assert "cancelledRowCount" in list_page_source
+    assert "Show cancelled" in list_page_source
+    assert "cancelled project" in list_page_source
+    assert "No active projects in this view" in list_page_source
+    assert 'Enable "Show cancelled" to inspect cancelled projects.' in list_page_source
     assert ".project-table" in styles_source
     assert ".project-metric-card" in styles_source
     assert ".progress-cell" in styles_source
     assert ".registry-tools" in styles_source
     assert ".toolbar-button" in styles_source
+    assert ".registry-scope-toggle" in styles_source
+    assert ".registry-scope-note" in styles_source
     assert "@media (min-width: 761px) and (max-width: 1366px)" in styles_source
 
 
@@ -1791,8 +1838,8 @@ def test_task096_creation_draft_lifecycle_frontend_actions() -> None:
         assert "ConnLab imported copies" in source or "ConnLab's imported copies" in source
 
 
-def test_task097_drafts_surface_uses_continue_not_open() -> None:
-    """TASK_097 keeps saved drafts separate from confirmed project Open actions."""
+def test_projects_page_removes_drafts_surface_after_task163() -> None:
+    """Projects page is project-only; draft management is no longer rendered here."""
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
         encoding="utf-8"
     )
@@ -1809,19 +1856,13 @@ def test_task097_drafts_surface_uses_continue_not_open() -> None:
     ]:
         assert term in client_source
 
-    for term in [
-        "Drafts / In Progress",
-        "Continue",
-        "Discard",
-        "saved New Project",
-        "Drafts are separate from confirmed Projects",
-    ]:
-        assert term in project_list_source
+    for term in ["Drafts / In Progress", "Drafts are separate from confirmed Projects"]:
+        assert term not in project_list_source
 
     assert "onOpenProject" in project_list_source
     assert "Open" in project_list_source
-    assert "onContinueDraft" in project_list_source
-    assert "getIntakePackageDetail" in app_source
+    assert "onContinueDraft" not in project_list_source
+    assert "getIntakePackageDetail" not in app_source
 
 
 def test_task098_precheck_confirmed_application_editing_boundary() -> None:
@@ -1949,6 +1990,9 @@ def test_task103_application_form_import_is_explicit_and_confirmed() -> None:
     attachment_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
     ).read_text(encoding="utf-8")
+    selectors_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "intakeSelectors.ts"
+    ).read_text(encoding="utf-8")
     source_panel_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "IntakeSourcePanel.tsx"
     ).read_text(encoding="utf-8")
@@ -2025,10 +2069,15 @@ def test_task143_email_import_waits_for_application_form_selection() -> None:
     attachment_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
     ).read_text(encoding="utf-8")
+    selectors_source = (
+        FRONTEND_ROOT / "src" / "features" / "intake" / "intakeSelectors.ts"
+    ).read_text(encoding="utf-8")
 
     assert "defaultApplicationFormAsset" in page_source
     assert "selectDefaultApplicationForm" in page_source
     assert "visibleIntakeAttachments(imported)" in page_source
+    assert "compareAttachments" in selectors_source
+    assert "attachmentKindRank" in selectors_source
     assert "Source file" in source_panel_source
     assert "source_original_name" in source_panel_source
     assert "email-source-filename" in source_panel_source
@@ -2113,8 +2162,6 @@ def test_task146_new_project_applies_ltr_before_project_handoff() -> None:
     for term in [
         "commitLtrWorkbookWrite",
         "/ltr-workbook/write-commit",
-        "confirmIntakeCase(activeCase.case_id)",
-        "preview_acknowledged: true",
         "LTR workbook",
         "Backup:",
         "NewProjectCompletionDock",
@@ -2135,18 +2182,19 @@ def test_task146_new_project_applies_ltr_before_project_handoff() -> None:
     assert "Use specified LTR number" not in setup_source
     assert "Apply LTR Number and Create Folder" not in dock_source
     assert "Writing LTR and creating folder" not in dock_source
-    assert "export type CompleteNewProject = {\n  project_id: string;\n  project_status: string;\n  ltr_number: string;\n};" in client_source
+    assert "confirmIntakeCase(activeCase.case_id)" not in hook_source
+    assert "commitLtrWorkbookWrite(projectId" not in hook_source
+    assert "preview_acknowledged: true" not in hook_source
+    assert "export type CompleteNewProject = {" in client_source
+    assert "project_id: string;" in client_source
+    assert "project_status: string;" in client_source
+    assert "ltr_number: string;" in client_source
 
-    assert hook_source.index("confirmIntakeCase(activeCase.case_id)") < hook_source.index(
-        "const workbookCommit = await commitLtrWorkbookWrite"
-    )
-    assert hook_source.index("const workbookCommit = await commitLtrWorkbookWrite") < hook_source.index(
-        "completeNewProject(activeCase.case_id"
-    )
+    assert hook_source.count("completeNewProject(activeCase.case_id") == 1
 
 
-def test_task147_confirmed_project_duplicate_reminder_is_not_draft_resolution() -> None:
-    """TASK_147 shows confirmed Project/LTR matches as a project reminder."""
+def test_new_project_duplicate_scope_is_draft_only() -> None:
+    """Confirmed Project/LTR duplicate reminder branch is removed from New Project."""
     attachment_source = (
         FRONTEND_ROOT / "src" / "features" / "intake" / "AttachmentList.tsx"
     ).read_text(encoding="utf-8")
@@ -2157,11 +2205,10 @@ def test_task147_confirmed_project_duplicate_reminder_is_not_draft_resolution() 
         encoding="utf-8"
     )
 
-    assert "existing_confirmed_project_ltr" in client_source + attachment_source
-    assert "This application already has a project" in attachment_source
-    assert "Open project" in attachment_source
-    assert "onOpenConfirmedProject" in page_source + attachment_source
-    assert "onProjectCreated(projectId)" in page_source
+    assert "existing_confirmed_project_ltr" not in client_source + attachment_source
+    assert "This application already has a project" not in attachment_source
+    assert "Open project" not in attachment_source
+    assert "onOpenConfirmedProject" not in page_source + attachment_source
 
 
 def test_task099_new_project_editor_exposes_ltr_registered_freeze_state() -> None:
@@ -2203,8 +2250,10 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectFolderCreationPanel.tsx"
     ).read_text(encoding="utf-8")
 
-    for term in ["Open", "onOpenProject", "Continue", "onContinueDraft"]:
+    for term in ["Open", "onOpenProject"]:
         assert term in project_list_source
+    for term in ["Continue", "onContinueDraft"]:
+        assert term not in project_list_source
 
     for term in [
         "Project workbench boundary",

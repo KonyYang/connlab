@@ -31,11 +31,6 @@ export function NewProjectCompletionDock({
 
   return (
     <footer className="step-footer new-project-completion-dock">
-      <span className="new-project-required-count">
-        <UiIcon name="clock" />
-        <span title="required fields remaining">{completionText}</span>
-      </span>
-
       <div className="new-project-dock-ltr-control">
         <div className="new-project-ltr-mode-row" role="radiogroup" aria-label="LTR number mode">
           <label>
@@ -86,15 +81,22 @@ export function NewProjectCompletionDock({
         </div>
       </div>
 
-      <button
-        className="new-project-primary-action ui-primary-action"
-        disabled={completionDisabled}
-        type="button"
-        onClick={onComplete}
-      >
-        {completionLoading ? "Applying LTR number..." : "Apply LTR Number"}
-        <span aria-hidden="true">&gt;</span>
-      </button>
+      <div className="new-project-dock-summary">
+        <span className="new-project-required-count">
+          <UiIcon name="clock" />
+          <span title="required fields remaining">{completionText}</span>
+        </span>
+
+        <button
+          className="new-project-primary-action ui-primary-action"
+          disabled={completionDisabled}
+          type="button"
+          onClick={onComplete}
+        >
+          {completionLoading ? "Applying LTR number..." : "Apply LTR Number"}
+          <span aria-hidden="true">&gt;</span>
+        </button>
+      </div>
     </footer>
   );
 }

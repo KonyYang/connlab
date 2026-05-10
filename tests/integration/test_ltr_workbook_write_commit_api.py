@@ -11,6 +11,7 @@ from backend.application.ltr_workbook_write_commit_service import (
 )
 from backend.domain import LtrRecord, LtrStatus
 from backend.infrastructure.office import LtrWorkbookRowPointer
+from backend.infrastructure.office import LtrWorkbookLockTimeoutError
 
 
 def test_ltr_workbook_write_commit_api_requires_service_confirmation_contract() -> None:
@@ -78,15 +79,46 @@ def test_ltr_workbook_write_commit_api_returns_business_error() -> None:
         app.dependency_overrides.clear()
 
 
+def test_ltr_workbook_write_commit_api_returns_conflict_for_lock_timeout() -> None:
+    """Lock-timeout errors are returned as HTTP 409 conflict."""
+    app.dependency_overrides[get_ltr_workbook_write_commit_service] = (
+        lambda: _FakeCommitService(lock_timeout=True)
+    )
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/api/projects/P1/ltr-workbook/write-commit",
+            json={
+                "plan_date": "2026-05-07",
+                "operator_confirmed": True,
+                "preview_acknowledged": True,
+                "test_item": "Qualification bend testing",
+                "sample_description": "CoolPower connector samples",
+                "location": "AIPG Guangzhou",
+                "test_type_in_sheet": "Qualification",
+                "project_leader": "Alice",
+            },
+        )
+
+        assert response.status_code == 409
+        assert "locked" in response.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
 class _FakeCommitService:
-    def __init__(self, error: str | None = None) -> None:
+    def __init__(self, error: str | None = None, lock_timeout: bool = False) -> None:
         self.error = error
+        self.lock_timeout = lock_timeout
         self.received_project_id = ""
         self.received_command = None
 
     def commit_project(self, project_id: str, command):
         self.received_project_id = project_id
         self.received_command = command
+        if self.lock_timeout:
+            raise LtrWorkbookLockTimeoutError("LTR workbook is locked: test.lock")
         if self.error:
             raise LtrWorkbookWriteCommitError(self.error)
         ltr = LtrRecord(

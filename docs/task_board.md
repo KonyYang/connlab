@@ -1,10 +1,10 @@
 ﻿# ConnLab Task Board
 
-> Status: TASK_149 complete; TASK_150-TASK_153 proposed; external resource settings and LTR authority sequence
-> Last Updated: 2026-05-09
+> Status: TASK_149-TASK_156 complete + TASK_159 hotfix complete + TASK_160 complete + TASK_161 complete + TASK_162 complete + TASK_163 complete + TASK_164 complete + TASK_165 complete; Phase 10F in progress for real public-drive LTR workbook operational closure
+> Last Updated: 2026-05-10
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: none; awaiting user approval for TASK_150
-> Current Phase: `Phase 10E - External resource settings and LTR workbook authority`
+> Current Active Task: none; awaiting user direction for the next controlled task
+> Current Phase: `Phase 10F - Real public-drive LTR workbook operational closure`
 
 ---
 
@@ -1531,22 +1531,76 @@ Next recommended action:
 
 - `TASK_149_SETTINGS_EXTERNAL_RESOURCES_UI_AND_LOCAL_PATHS` is complete. Settings is now reachable from the sidebar, lists registry-backed external resources, supports manual path paste, active-state save, per-resource validation, and business-readable validation state. `project_output_root` is represented as a directory-style external resource and validates existing readable directories without requiring them to be non-empty. Local LTR workbook backup and lock directories are shown as local-machine settings still owned by TOML/environment configuration.
 - Validation: `py -m pytest tests\integration\test_external_resource_api.py tests\unit\test_external_resource_service.py -q` passed, 12 passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "settings or external"` passed, 1 passed and 56 deselected; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+- TASK_149 manual usability follow-up is complete. Settings path rows now include a `...` browse entry beside the path input and show an inline desktop-shell guidance message when clicked. The current Web UI still uses manual path paste; no native file picker, upload flow, workbook write behavior, or folder generation behavior was added.
+- Follow-up validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "settings or external"` passed, 1 passed and 56 deselected; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
+- `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES` is complete. Project Workbench folder creation now resolves `project_folder_template` and `project_output_root` from Settings resources, shows configured resource state inline, blocks preview/generation when required resources are missing/inactive/invalid, and preserves existing preview-before-write plus conflict blocking behavior. Raw template/target path entry is no longer the normal business path.
+- Validation: `py -m pytest tests\integration\test_folder_generation_api.py tests\integration\test_external_resource_api.py -q` passed, 5 passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "workbench or folder or settings"` passed, 6 passed and 52 deselected; `npm run build` passed from `frontend`; `git diff --check` passed with LF/CRLF working-copy warnings only.
 
-- Review and approve `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES` before implementation.
+- Phase 10E task sequence is complete.
+- The next business mainline is no longer additional standard/equipment Excel expansion.
+- The next business mainline is real-world LTR application against the configured public-drive workbook path.
 
-- Review the proposed Phase 10E task sequence:
-  - `TASK_149_SETTINGS_EXTERNAL_RESOURCES_UI_AND_LOCAL_PATHS`
-  - `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES`
-  - `TASK_151_NEW_PROJECT_LTR_WORKBOOK_AUTHORITY`
-  - `TASK_152_STANDARD_AND_EQUIPMENT_RESOURCE_READ_MODELS`
-  - `TASK_153_LTR_AUTHORITY_SERVER_CUTOVER_SEAM`
-- Recommended next implementation task: `TASK_150_PROJECT_FOLDER_USES_CONFIGURED_RESOURCES`.
-- Do not implement code or any later task before `TASK_150` is explicitly approved.
+- `TASK_162_NO_LTR_PROJECT_CLEANUP_EXECUTION` is complete.
+
+- Proposed Phase 10F task sequence:
+  - `TASK_154_PHASE10F_SCOPE_AND_BOARD_ACTIVATION`
+  - `TASK_155_REAL_PUBLIC_DRIVE_LTR_WORKBOOK_COMPATIBILITY_BASELINE`
+  - `TASK_156_REAL_LTR_APPLICATION_SMOKE_AND_FAILURE_HANDLING`
+  - `TASK_160_NEW_PROJECT_LTR_ATOMIC_COMPLETION_GATE`
+  - `TASK_161_HISTORICAL_PROJECT_LTR_CLEANUP_DRY_RUN`
+  - `TASK_162_NO_LTR_PROJECT_CLEANUP_EXECUTION`
+  - `TASK_157_LTR_WORKBOOK_SQLITE_RECONCILIATION_AND_AUDIT_CHECK`
+- Recommended next action: use the dry-run result to select explicit no-LTR Project IDs for cleanup execution, or open the next controlled task.
+- Do not implement code or any later task before the next task is explicitly approved.
+
+- `TASK_162_NO_LTR_PROJECT_CLEANUP_EXECUTION` is complete. Added `NoLtrProjectCleanupService`, `project_cleanup_audit_records`, repository wiring, and `POST /api/cleanup/project-ltr/no-ltr-projects/execute`. The endpoint requires explicit Project IDs and a cleanup reason, re-checks that each Project has no registered LTR before mutation, marks eligible Projects as `cancelled`, and writes one audit row per changed Project. It does not physically delete rows, touch files, mutate workbook data, recycle LTR numbers, or handle invalid registered LTR records.
+- Validation: `py -m pytest tests\unit\test_no_ltr_project_cleanup_service.py tests\integration\test_cleanup_api.py -q` passed (6 passed).
+- Live cleanup execution after user approval: selected 25 `project_without_registered_ltr` candidates from dry-run, cancelled all 25, rejected 0, and wrote 25 cleanup audit records. Post-check status distribution in `data\connlab.sqlite3`: `cancelled=25`, `folder_created=1`, `ltr_registered=2`.
+
+- `TASK_163_PROJECT_REGISTRY_CANCELLED_VISIBILITY_FILTER` is proposed. This task updates the Project Registry UI to hide `cancelled` Projects by default after TASK_162 cleanup, adds an explicit `Show cancelled` operator control, and keeps search, metrics, pagination, and empty states aligned with the visible registry scope. Plan: `docs/task_163_project_registry_cancelled_visibility_filter_plan.md`.
+- `TASK_163_PROJECT_REGISTRY_CANCELLED_VISIBILITY_FILTER` is complete. Project Registry now hides `cancelled` Projects by default, adds a `Show cancelled` toolbar control, aligns metrics/search/pagination with visible scope, and shows dedicated scope empty-state guidance plus a hidden-cancelled count note.
+- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "project_dashboard"` passed (`1 passed, 57 deselected`); `npm run build` from `frontend` passed.
+
+- `TASK_164_NEW_PROJECT_DRAFT_SCOPE_DUPLICATE_ONLY` is complete. New Project duplicate checks are now limited to draft/package scope. Confirmed-project duplicate conflict branch (`existing_confirmed_project_ltr`) was removed from intake selected-form flow, API mapping, frontend duplicate DTO union, and attachment-panel reminder/action wiring. Draft duplicate resolution behavior remains unchanged.
+- Validation: `py -m pytest tests\unit\test_intake_form_selection_service.py tests\integration\test_msg_package_intake_api.py -q` passed (`36 passed`); `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "duplicate_scope or task147 or duplicate"` passed (`2 passed, 56 deselected`); `npm run build` from `frontend` passed.
+
+- `TASK_165_PROJECTS_PAGE_REMOVE_DRAFTS_SURFACE` is complete. Projects page now removes the `Drafts / In Progress` section and related continue/discard actions. Draft data and backend APIs are preserved; this task is UI-scope cleanup only.
+- Validation: `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "project_dashboard or projects_page_removes_drafts_surface_after_task163 or task100_workbench"` passed (`3 passed, 55 deselected`); `npm run build` from `frontend` passed.
+
+- Product decision update (2026-05-10): do not add a separate Draft list/management surface in Projects or New Project for now. Draft recovery remains selection-time/import-time only (`Load existing` / `Reinitialize`) within New Project. This is intentional scope control to keep duplicate and workflow boundaries simple.
+
+- `TASK_161_HISTORICAL_PROJECT_LTR_CLEANUP_DRY_RUN` is complete. Added a read-only cleanup audit service and `GET /api/cleanup/project-ltr/dry-run`, classifying no-registered-LTR projects, invalid registered LTR numbers, multiple registered LTRs per project, and orphan LTR records. No database mutation or workbook operation is performed. Live local dry-run found `total_projects=28`, `total_ltr_records=5`, and `project_without_registered_ltr=25`.
+- Validation: `py -m pytest tests/unit/test_project_ltr_cleanup_audit_service.py -q` passed (1 passed); `py -m pytest tests/integration/test_cleanup_api.py -q` passed (1 passed).
+
+- `TASK_160_NEW_PROJECT_LTR_ATOMIC_COMPLETION_GATE` is complete. New Project frontend completion now calls only backend `complete-new-project`; it no longer directly confirms intake cases or directly calls workbook write commit before backend orchestration. The failure regression now asserts workbook commit failure leaves no confirmed project link and no Project record, preventing new no-LTR Project Registry entries from this path.
+- Validation: `py -m pytest tests/integration/test_new_project_completion_api.py -q` passed (5 passed); `py -m pytest tests/unit/test_frontend_shell_files.py -q -k "new_project or project"` passed (10 passed, 48 deselected); `npm run build` passed from `frontend`.
+
+- `TASK_156_REAL_LTR_APPLICATION_SMOKE_AND_FAILURE_HANDLING` is complete. LTR authority commit failures now return clearer operator guidance for lock timeout/read-only/write-disabled/backup-failure classes, and direct workbook commit API now maps lock-timeout to `409 Conflict` with existing business failures kept as `400`. Real configured workbook compatibility baseline was manually verified at `D:\LabShare\LTR\LTR.xls` (`compatible=true`, no blockers).
+- Validation: `py -m pytest tests/unit/test_ltr_excel_authority_adapter.py tests/integration/test_ltr_workbook_write_commit_api.py tests/integration/test_new_project_completion_api.py -q` passed (13 passed).
+- `TASK_159_NEW_PROJECT_LTR_RESULT_VISIBILITY_AND_PROJECT_REGISTRY_PAGINATION` is complete (approved hotfix). New Project completion now writes a one-time result snapshot into session storage before redirect; Project Registry displays the latest apply result (LTR number + workbook sheet/row/backup when available) and supports dismiss. Project Registry `20 / page` is now real client-side pagination with Prev/Next page controls.
+- Validation: `npm run build` passed from `frontend`.
+- `TASK_155_REAL_PUBLIC_DRIVE_LTR_WORKBOOK_COMPATIBILITY_BASELINE` is complete. Added a read-only compatibility baseline service and API for configured `ltr_workbook` resources (`GET /api/external-resources/ltr-workbook/compatibility-baseline`) that checks resource registration/active state, file/open-read viability through the Office boundary, year-sheet presence, and write prerequisites (write enabled, password, lock/backup dirs), and reports blockers as actionable diagnostics.
+- Validation: `py -m pytest tests\unit\test_ltr_workbook_compatibility_service.py tests\integration\test_ltr_workbook_compatibility_api.py -q` passed (5 passed); `py -m pytest tests\unit\test_ltr_workbook_write_commit_service.py tests\integration\test_ltr_workbook_write_commit_api.py tests\integration\test_new_project_completion_api.py -q` passed (19 passed).
+- Operational note update (2026-05-10): real configured workbook path is now active and compatibility baseline is manually verified; operator-smoke hardening moved from deferred state to completed under `TASK_156`.
+
+- `TASK_154_PHASE10F_SCOPE_AND_BOARD_ACTIVATION` is complete. Phase 10F is now formally activated and the business mainline is explicitly focused on real public-drive LTR workbook operations (`LTR.XLS`/configured workbook path) instead of further standard/equipment Excel expansion.
+- Validation: board/document sync only (no runtime code changes and no test scope required for this activation task).
+
+- `TASK_153_LTR_AUTHORITY_SERVER_CUTOVER_SEAM` is complete. Added explicit LTR authority seam (`LtrAuthorityPort`), Excel authority adapter wiring, New Project authority-based orchestration dependency, static boundary tests preventing route-level workbook/COM leakage, and migration note document `docs/ltr_authority_cutover_seam.md`.
+- Validation: `py -m pytest tests\integration\test_new_project_completion_api.py -q` passed (5 passed); `py -m pytest tests\unit\test_ltr_workbook_write_commit_service.py tests\integration\test_ltr_workbook_write_commit_api.py -q` passed (14 passed); `py -m pytest tests\unit\test_ltr_authority_boundary.py tests\unit\test_frontend_shell_files.py -q -k "new_project or ltr or authority"` passed (10 passed, 50 deselected).
+
+- `TASK_152_STANDARD_AND_EQUIPMENT_RESOURCE_READ_MODELS` is complete. Added read-only structured models and APIs for configured `standard_record_excel` and `equipment_calibration_excel` resources, with query filtering and sheet/header-based XLSX parsing through OfficeFacade/ExcelWorkbookGateway without write behavior.
+- Validation: `py -m pytest tests\unit\test_excel_structure_probe.py tests\unit\test_external_resource_service.py -q` passed (12 passed); `py -m pytest tests\unit\test_external_excel_read_service.py -q` passed (3 passed); `py -m pytest tests\integration\test_external_resource_api.py tests\integration\test_external_excel_read_api.py -q` passed (6 passed).
+
+- `TASK_151_NEW_PROJECT_LTR_WORKBOOK_AUTHORITY` is complete. New Project `complete-new-project` now commits through workbook-authority LTR write service, uses workbook-visible numbers for auto allocation, supports specified-number/suffix-token input pass-through, returns workbook write metadata (path/sheet/row/backup), and blocks local LTR registration when workbook write fails.
+- Validation: `py -m pytest tests\unit\test_ltr_number_rules.py tests\unit\test_ltr_workbook_write_commit_service.py tests\integration\test_ltr_workbook_write_commit_api.py -q` passed (39 passed); `py -m pytest tests\integration\test_new_project_completion_api.py -q` passed (5 passed); `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "new_project or ltr"` passed (8 passed, 50 deselected); `npm run build` passed from `frontend`.
 
 Planning note:
 
 - Phase 10E recognizes the current lab reality: public-drive Excel files remain authoritative for LTR numbering and other shared lab resources, while ConnLab stores structured local records and prepares for a future server/database authority.
 - Development should use local simulated public-drive paths configured through Settings, not hard-coded paths and not the real public-drive workbook.
+- Phase 10F shifts the mainline from architecture expansion back to operational closure on the real LTR workbook business path.
+- Standard/equipment Excel read-model work is no longer the immediate priority; real LTR application behavior against the configured workbook path is.
 
 Prior completed note:
 

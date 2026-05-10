@@ -45,6 +45,13 @@ class LtrRecordRepository:
         rows = self._session.scalars(_by_project(LtrRecordModel, project_id)).all()
         return [_ltr_to_domain(row) for row in rows]
 
+    def list(self) -> list[LtrRecord]:
+        """Return all LTR records ordered by LTR number."""
+        rows = self._session.scalars(
+            select(LtrRecordModel).order_by(LtrRecordModel.ltr_number)
+        ).all()
+        return [_ltr_to_domain(row) for row in rows]
+
     def search(self, query: str) -> list[LtrRecord]:
         """Search LTR records by LTR number or project ID."""
         pattern = f"%{query}%"

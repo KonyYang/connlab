@@ -638,10 +638,10 @@ def test_application_draft_api_reports_existing_no_form_email_duplicate(
         engine.dispose()
 
 
-def test_select_form_api_reports_existing_confirmed_project_ltr_duplicate(
+def test_select_form_api_allows_same_source_after_existing_project_confirmed(
     tmp_path: Path,
 ) -> None:
-    """Selecting an already-registered application shows a Project/LTR reminder."""
+    """Selected-form creation is draft-scoped and does not block on confirmed projects."""
     settings = Settings(
         data_dir=tmp_path / "data",
         projects_dir=tmp_path / "projects",
@@ -743,17 +743,22 @@ def test_select_form_api_reports_existing_confirmed_project_ltr_duplicate(
             )
             session.commit()
 
-        conflict = client.post(
+        selected = client.post(
             "/api/intake-packages/pkg-incoming/select-form",
             json={"asset_id": "form-incoming"},
         )
 
-        assert conflict.status_code == 409
-        detail = conflict.json()["detail"]
-        assert detail["classification"] == "existing_confirmed_project_ltr"
-        assert detail["existing_project_id"] == "project-existing"
-        assert detail["existing_ltr_number"] == "DL-2026-05-001"
-        assert detail["allowed_actions"] == ["open_project"]
+        assert selected.status_code == 200
+        payload = selected.json()
+        assert payload["package_id"] == "pkg-incoming"
+        assert payload["selected_form_asset_id"] == "form-incoming"
+        assert payload["case_id"]
+
+        review = client.get("/api/intake-packages/pkg-incoming/case-review")
+        assert review.status_code == 200
+        cases = review.json()["cases"]
+        assert len(cases) == 1
+        assert cases[0]["selected_form_asset_id"] == "form-incoming"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

@@ -10,6 +10,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.exception_workflow_service import ExceptionWorkflowService
+from backend.application.external_excel_read_service import ExternalExcelReadService
 from backend.application.external_resource_service import ExternalResourceService
 from backend.application.frozen_field_revision_request_service import (
     FrozenFieldRevisionRequestService,
@@ -32,6 +33,10 @@ from backend.application.intake_case_review_service import IntakeCaseReviewServi
 from backend.application.intake_confirmation_service import IntakeConfirmationService
 from backend.application.intake_form_selection_service import IntakeFormSelectionService
 from backend.application.intake_package_query_service import IntakePackageQueryService
+from backend.application.ltr_authority import LtrAuthorityPort
+from backend.application.ltr_excel_authority_adapter import (
+    ExcelWorkbookLtrAuthorityAdapter,
+)
 from backend.application.ltr_local_commit_service import LtrLocalCommitService
 from backend.application.ltr_renumber_preview_service import LtrRenumberPreviewService
 from backend.application.ltr_registration_preview_service import (
@@ -39,6 +44,9 @@ from backend.application.ltr_registration_preview_service import (
 )
 from backend.application.ltr_workbook_write_preview_service import (
     LtrWorkbookWritePreviewService,
+)
+from backend.application.ltr_workbook_compatibility_service import (
+    LtrWorkbookCompatibilityService,
 )
 from backend.application.ltr_workbook_write_commit_service import (
     LtrWorkbookYearSheetBootstrapPolicy,
@@ -56,6 +64,9 @@ from backend.application.new_project_application_draft_service import (
 from backend.application.new_project_completion_service import (
     NewProjectCompletionService,
 )
+from backend.application.no_ltr_project_cleanup_service import (
+    NoLtrProjectCleanupService,
+)
 from backend.application.project_creation_draft_lifecycle_service import (
     ProjectCreationDraftLifecycleService,
 )
@@ -63,6 +74,9 @@ from backend.application.project_creation_draft_query_service import (
     ProjectCreationDraftQueryService,
 )
 from backend.application.project_lifecycle_service import ProjectLifecycleService
+from backend.application.project_ltr_cleanup_audit_service import (
+    ProjectLtrCleanupAuditService,
+)
 from backend.application.project_service import ProjectService
 from backend.infrastructure.files import IntakeStorage
 from backend.infrastructure.office import (
@@ -82,6 +96,7 @@ from backend.infrastructure.storage.repositories import (
     FrozenFieldRevisionRequestRepository,
     LtrRecordRepository,
     PrecheckResultRepository,
+    ProjectCleanupAuditRecordRepository,
     ProjectFolderRecordRepository,
     ProjectRepository,
     SampleInfoRepository,
@@ -128,6 +143,27 @@ def get_project_service(session: Session = Depends(get_session)) -> ProjectServi
     return ProjectService(ProjectRepository(session))
 
 
+def get_project_ltr_cleanup_audit_service(
+    session: Session = Depends(get_session),
+) -> ProjectLtrCleanupAuditService:
+    """Build the read-only Project/LTR cleanup audit service."""
+    return ProjectLtrCleanupAuditService(
+        project_store=ProjectRepository(session),
+        ltr_store=LtrRecordRepository(session),
+    )
+
+
+def get_no_ltr_project_cleanup_service(
+    session: Session = Depends(get_session),
+) -> NoLtrProjectCleanupService:
+    """Build the controlled no-LTR project cleanup execution service."""
+    return NoLtrProjectCleanupService(
+        project_store=ProjectRepository(session),
+        ltr_store=LtrRecordRepository(session),
+        audit_store=ProjectCleanupAuditRecordRepository(session),
+    )
+
+
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings.load()
@@ -165,6 +201,24 @@ def get_external_resource_service(
 ) -> ExternalResourceService:
     """Build the external resource registry service."""
     return ExternalResourceService(ExternalResourceRepository(session))
+
+
+def get_external_excel_read_service(
+    session: Session = Depends(get_session),
+) -> ExternalExcelReadService:
+    """Build the read-only external Excel structured read service."""
+    return ExternalExcelReadService(ExternalResourceRepository(session))
+
+
+def get_ltr_workbook_compatibility_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> LtrWorkbookCompatibilityService:
+    """Build the real-workbook compatibility baseline service."""
+    return LtrWorkbookCompatibilityService(
+        resource_store=ExternalResourceRepository(session),
+        workbook_settings=settings.ltr_workbook,
+    )
 
 
 def get_msg_package_intake_service(
@@ -530,25 +584,26 @@ def get_ltr_workbook_write_commit_service(
     )
 
 
+def get_ltr_authority_service(
+    workbook_service: LtrWorkbookWriteCommitService = Depends(
+        get_ltr_workbook_write_commit_service
+    ),
+) -> LtrAuthorityPort:
+    """Build the active LTR authority adapter (Excel mode for Phase 10E)."""
+    return ExcelWorkbookLtrAuthorityAdapter(workbook_service)
+
+
 def get_new_project_completion_service(
     session: Session = Depends(get_session),
+    ltr_commit_service: LtrAuthorityPort = Depends(
+        get_ltr_authority_service
+    ),
 ) -> NewProjectCompletionService:
     """Build the New Project single-page completion orchestration service."""
     project_repository = ProjectRepository(session)
     ltr_repository = LtrRecordRepository(session)
     file_asset_repository = FileAssetRepository(session)
     lifecycle_guard = ProjectLifecycleService(project_repository)
-    readiness_service = LtrReadinessService(
-        project_repository=project_repository,
-        form_repository=ApplicationFormRepository(session),
-        sample_repository=SampleInfoRepository(session),
-        file_asset_repository=file_asset_repository,
-    )
-    preview_service = LtrRegistrationPreviewService(
-        ltr_repository=ltr_repository,
-        readiness_service=readiness_service,
-        lifecycle_guard=lifecycle_guard,
-    )
     confirmation_service = IntakeConfirmationService(
         package_store=IntakePackageRepository(session),
         intake_asset_store=IntakeAssetRepository(session),
@@ -558,14 +613,6 @@ def get_new_project_completion_service(
         application_form_store=ApplicationFormRepository(session),
         sample_store=SampleInfoRepository(session),
         file_asset_store=file_asset_repository,
-    )
-    ltr_commit_service = LtrLocalCommitService(
-        preview_service=preview_service,
-        ltr_service=LtrService(
-            project_repository=project_repository,
-            ltr_repository=ltr_repository,
-            lifecycle_guard=lifecycle_guard,
-        ),
     )
     return NewProjectCompletionService(
         intake_case_store=IntakeCaseRepository(session),

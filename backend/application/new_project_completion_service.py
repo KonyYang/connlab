@@ -12,17 +12,13 @@ from backend.application.intake_confirmation_service import (
     IntakeConfirmationResult,
     IntakeConfirmationService,
 )
-from backend.application.ltr_local_commit_service import (
-    CommitLocalLtrCommand,
-    LtrLocalCommitResult,
-    LtrLocalCommitService,
-)
-from backend.application.ltr_registration_preview_service import (
-    LtrPreviewMode,
-    LtrRegistrationType,
+from backend.application.ltr_authority import (
+    CommitLtrAuthorityCommand,
+    LtrAuthorityCommitResult,
+    LtrAuthorityPort,
 )
 from backend.domain import IntakeCase, LtrRecord, LtrStatus, Project, ProjectStatus
-from backend.modules.ltr import LtrNumberError, next_monthly_dl_number, parse_ltr_number
+from backend.modules.ltr import LtrNumberError, parse_ltr_number
 
 
 class NewProjectCompletionError(ValueError):
@@ -62,6 +58,10 @@ class NewProjectCompletionResult:
 
     project: Project
     ltr: LtrRecord
+    workbook_path: str | None = None
+    workbook_sheet_name: str | None = None
+    workbook_row_number: int | None = None
+    workbook_backup_path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +108,7 @@ class NewProjectCompletionService:
         project_store: ProjectStore,
         ltr_store: LtrRecordStore,
         confirmation_service: IntakeConfirmationService,
-        ltr_commit_service: LtrLocalCommitService,
+        ltr_commit_service: LtrAuthorityPort,
     ) -> None:
         self._intake_cases = intake_case_store
         self._projects = project_store
@@ -126,6 +126,10 @@ class NewProjectCompletionService:
         return NewProjectCompletionResult(
             project=final_project,
             ltr=ltr_result.ltr,
+            workbook_path=getattr(ltr_result, "workbook_path", None),
+            workbook_sheet_name=getattr(ltr_result, "workbook_sheet_name", None),
+            workbook_row_number=getattr(ltr_result, "workbook_row_number", None),
+            workbook_backup_path=getattr(ltr_result, "workbook_backup_path", None),
         )
 
     def _confirm_or_load_project(self, case_id: str) -> Project:
@@ -153,7 +157,7 @@ class NewProjectCompletionService:
         self,
         project: Project,
         command: CompleteNewProjectCommand,
-    ) -> LtrLocalCommitResult:
+    ) -> ExistingLtrCommitResult | LtrAuthorityCommitResult:
         """Commit a new LTR unless a previous partial completion already did it."""
         active_ltrs = [
             ltr
@@ -168,19 +172,20 @@ class NewProjectCompletionService:
                 )
             return ExistingLtrCommitResult(active_ltrs[0])
 
-        ltr_number = self._resolve_ltr_number(command)
-        parsed = parse_ltr_number(ltr_number)
+        plan_date = command.plan_date or date.today()
         return self._ltr_commit.commit_project(
             project.project_id,
-            CommitLocalLtrCommand(
-                year=parsed.year or date.today().year,
-                month=parsed.month or date.today().month,
+            CommitLtrAuthorityCommand(
+                plan_date=plan_date,
                 operator_confirmed=command.operator_confirmed,
-                registration_type=LtrRegistrationType.NORMAL,
-                mode=LtrPreviewMode.LOCAL_ONLY,
-                proposed_ltr_number=ltr_number,
+                number_input=self._resolve_ltr_input(command),
+                test_item=_text(command.test_item) or "",
+                sample_description=_text(command.sample_description) or "",
+                location=_text(command.location) or "",
+                test_type_in_sheet=_text(command.test_type_in_sheet) or "",
+                project_leader=_text(command.project_leader) or "",
                 requested_by=project.requestor,
-                requested_date=command.plan_date or date.today(),
+                requested_date=plan_date,
                 operator_note=_operator_note(command),
             ),
         )
@@ -200,28 +205,22 @@ class NewProjectCompletionService:
                 "Project setup confirmation is incomplete: " + ", ".join(missing)
             )
 
-    def _resolve_ltr_number(self, command: CompleteNewProjectCommand) -> str:
-        """Return the explicit LTR number to pass through existing LTR services."""
+    def _resolve_ltr_input(self, command: CompleteNewProjectCommand) -> str | None:
+        """Resolve operator LTR number input for workbook-authority commit."""
         if command.ltr_mode is NewProjectLtrMode.SPECIFIED:
             if not command.specified_ltr_number:
                 raise NewProjectCompletionError("Specified LTR number is required.")
             try:
                 parsed = parse_ltr_number(command.specified_ltr_number)
             except LtrNumberError as exc:
+                # Let suffix-token input pass through for TASK_137/TASK_138 behavior.
+                token = command.specified_ltr_number.strip()
+                if token:
+                    return token
                 raise NewProjectCompletionError(str(exc)) from exc
-            if not parsed.is_base_monthly_dl:
-                raise NewProjectCompletionError(
-                    "Specified LTR number must use DL-YYYY-MM-NNN format."
-                )
             return parsed.normalized
 
-        today = command.plan_date or date.today()
-        existing = [ltr.ltr_number for ltr in self._ltrs.search("DL-")]
-        return next_monthly_dl_number(
-            year=today.year,
-            month=today.month,
-            existing_numbers=existing,
-        )
+        return None
 
 def _operator_note(command: CompleteNewProjectCommand) -> str:
     """Build audit context for values that will later map to LTR.xls."""

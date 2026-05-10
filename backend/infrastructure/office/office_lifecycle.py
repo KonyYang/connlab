@@ -17,6 +17,7 @@ class ExcelWorkbookHandle:
     excel_app: object
     workbook: object
     previous_settings: dict[str, object]
+    pythoncom: object | None = None
 
     def save(self) -> None:
         """Save the workbook."""
@@ -29,6 +30,8 @@ class ExcelWorkbookHandle:
         finally:
             _restore_excel_settings(self.excel_app, self.previous_settings)
             self.excel_app.Quit()
+            if self.pythoncom is not None:
+                self.pythoncom.CoUninitialize()
 
 
 class OfficeLifecycleManager:
@@ -48,31 +51,48 @@ class OfficeLifecycleManager:
     ) -> ExcelWorkbookHandle:
         """Open an Excel workbook in a dedicated hidden COM instance."""
         try:
+            import pythoncom  # type: ignore[import-not-found]
             import win32com.client  # type: ignore[import-not-found]
         except ImportError as exc:  # pragma: no cover - depends on Windows host
             raise OfficeAutomationUnavailable(
                 "Excel COM automation requires pywin32 on Windows."
             ) from exc
 
-        excel = win32com.client.DispatchEx("Excel.Application")
+        pythoncom.CoInitialize()
+        excel = None
+        try:
+            excel = win32com.client.DispatchEx("Excel.Application")
+        except Exception:
+            pythoncom.CoUninitialize()
+            raise
         previous_settings = _apply_excel_automation_settings(excel)
         workbook = None
         try:
             workbook = excel.Workbooks.Open(
-                str(path),
+                Filename=str(path),
+                UpdateLinks=0,
                 ReadOnly=read_only,
-                WriteResPassword=modify_password or "",
+                Format=None,
+                WriteResPassword=modify_password if (modify_password and not read_only) else "",
+                Password=modify_password if (modify_password and read_only) else "",
+                Origin=None,
+                Delimiter=None,
+                IgnoreReadOnlyRecommended=True,
+                AddToMru=False,
+                CorruptLoad=2,
             )
             return ExcelWorkbookHandle(
                 excel_app=excel,
                 workbook=workbook,
                 previous_settings=previous_settings,
+                pythoncom=pythoncom,
             )
         except Exception:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
             _restore_excel_settings(excel, previous_settings)
             excel.Quit()
+            pythoncom.CoUninitialize()
             raise
 
 
@@ -89,7 +109,11 @@ def _apply_excel_automation_settings(excel: object) -> dict[str, object]:
     excel.DisplayAlerts = False
     excel.ScreenUpdating = False
     excel.EnableEvents = False
-    excel.Calculation = -4135
+    # Some lab-host Excel builds reject Calculation assignment; degrade safely.
+    try:
+        excel.Calculation = -4135
+    except Exception:
+        previous["Calculation"] = None
     return previous
 
 

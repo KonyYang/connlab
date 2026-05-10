@@ -18,6 +18,9 @@ from backend.infrastructure.storage.repositories.frozen_field_revision_request i
 )
 from backend.infrastructure.storage.repositories.lookup_options import LookupOptionRepository
 from backend.infrastructure.storage.repositories.precheck import PrecheckResultRepository
+from backend.infrastructure.storage.repositories.project_cleanup import (
+    ProjectCleanupAuditRecordRepository,
+)
 from backend.infrastructure.storage.repositories.project import ProjectRepository
 from backend.infrastructure.storage.repositories.records import (
     FileAssetRepository,
@@ -37,6 +40,7 @@ __all__ = [
     "LtrRecordRepository",
     "LookupOptionRepository",
     "PrecheckResultRepository",
+    "ProjectCleanupAuditRecordRepository",
     "ProjectFolderRecordRepository",
     "ProjectRepository",
     "SampleInfoRepository",

@@ -18,6 +18,7 @@ from backend.application.ltr_workbook_write_commit_service import (
 from backend.application.project_lifecycle_service import ProjectLifecycleError
 from backend.domain import LtrRecord
 from backend.infrastructure.office import LtrWorkbookWriteError
+from backend.infrastructure.office import LtrWorkbookLockTimeoutError
 
 
 router = APIRouter(tags=["ltr-workbook"])
@@ -100,6 +101,8 @@ def commit_ltr_workbook_write(
                 ),
             )
         )
+    except LtrWorkbookLockTimeoutError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (LtrWorkbookWriteCommitError, LtrWorkbookWriteError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (LtrError, ProjectLifecycleError) as exc:

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.infrastructure.office.excel_workbook_gateway import ExcelWorkbookGateway
 from backend.infrastructure.office.models import (
+    ExcelTabularReadResult,
     ExcelStructureProbeResult,
     ImportedMailPackage,
     OfficeFileClassification,
@@ -102,6 +103,22 @@ class OfficeFacade:
             source_path,
             expected_headers=expected_headers,
             expected_date_headers=expected_date_headers,
+            expected_sheet_names=expected_sheet_names,
+            expected_sheet_name_patterns=expected_sheet_name_patterns,
+        )
+
+    def read_excel_tabular_rows(
+        self,
+        source_path: Path,
+        *,
+        expected_headers: tuple[str, ...],
+        expected_sheet_names: tuple[str, ...] = (),
+        expected_sheet_name_patterns: tuple[str, ...] = (),
+    ) -> ExcelTabularReadResult:
+        """Read header-aligned worksheet rows through the Excel gateway."""
+        return self._excel_gateway.read_tabular_rows(
+            source_path,
+            expected_headers=expected_headers,
             expected_sheet_names=expected_sheet_names,
             expected_sheet_name_patterns=expected_sheet_name_patterns,
         )

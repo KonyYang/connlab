@@ -10,7 +10,6 @@ from backend.application.application_form_eligibility_service import (
     ApplicationFormEligibility,
 )
 from backend.application.intake_form_selection_service import (
-    IntakeConfirmedProjectDuplicateError,
     IntakeFormSelectionService,
     IntakeSelectionError,
     IntakeSelectionNotFoundError,
@@ -543,7 +542,7 @@ def test_selection_duplicate_uses_email_hash_not_display_filename() -> None:
     assert check.incoming_source_original_name == "连接器主板对busbar对接测试副本.msg"
 
 
-def test_selection_reports_confirmed_project_duplicate_before_creating_draft() -> None:
+def test_selection_allows_same_source_when_existing_project_already_confirmed() -> None:
     existing_package = replace(_package(), package_id="pkg-existing")
     incoming_package = replace(
         _package(),
@@ -597,16 +596,13 @@ def test_selection_reports_confirmed_project_duplicate_before_creating_draft() -
         ],
     )
 
-    with pytest.raises(IntakeConfirmedProjectDuplicateError) as exc_info:
-        service.select_form_asset("pkg-1", "asset-incoming")
+    result = service.select_form_asset("pkg-1", "asset-incoming")
 
-    check = exc_info.value.check
-    assert check.classification == "existing_confirmed_project_ltr"
-    assert check.existing_project_id == "project-existing"
-    assert check.existing_ltr_number == "DL-2026-05-001"
-    assert check.allowed_actions == ("open_project",)
-    assert len(case_store.cases) == 1
-    assert draft_store.drafts == {}
+    assert result.case.package_id == "pkg-1"
+    assert result.case.selected_form_asset_id == "asset-incoming"
+    assert result.case.case_id != "case-existing"
+    assert len(case_store.cases) == 2
+    assert len(draft_store.drafts) == 1
 
 
 def test_selection_requires_resolution_when_switching_back_to_same_package_form() -> None:
