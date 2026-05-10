@@ -118,10 +118,48 @@ def test_excel_com_write_session_uses_batch_read_and_row_write() -> None:
     sheet = office.handle.workbook.Worksheets.Item("2026")
     assert rows == (("Apr", 30, 30, "DL-2026-04-030"),)
     assert sheet.range_reads == ["A2:Q2"]
-    assert sheet.range_writes == ["A3:Q3"]
+    assert sheet.range_writes == ["A3:Q3", "A2:A3"]
     assert pointer.row_number == 3
     assert office.handle.saved is True
     assert office.handle.closed is True
+
+
+def test_excel_com_write_session_appends_at_first_blank_ltr_number_cell() -> None:
+    office = _FakeOfficeFacade(
+        rows=(
+            ("Apr", 30, 30, "DL-2026-04-030"),
+            ("Apr", 31, 31, None),
+            ("Apr", 32, 32, None),
+        ),
+        used_rows=10,
+    )
+    gateway = ExcelComLTRWorkbookGateway(
+        office,
+        LtrWorkbookWriteConfig(
+            path=Path("ltr.xls"),
+            write_enabled=True,
+            modify_password="operator-secret",
+        ),
+    )
+
+    with gateway.open_write_session() as session:
+        pointer = session.append_registration_row(
+            "2026",
+            LtrWorkbookRowData(
+                month="Apr",
+                total=0,
+                monthly_number=31,
+                dl_number="DL-2026-04-031",
+                project_type="Qualification",
+            ),
+        )
+
+    sheet = office.handle.workbook.Worksheets.Item("2026")
+    assert pointer.row_number == 3
+    assert sheet.range_writes == ["A3:Q3", "A2:A3"]
+    assert sheet.last_written_rows[0][1] == 31
+    assert sheet.last_written_rows[0][2] == 31
+    assert sheet.last_written_rows[0][3] == "DL-2026-04-031"
 
 
 def test_excel_com_write_session_finds_and_replaces_existing_ltr_row() -> None:
@@ -222,9 +260,10 @@ class _FakeOfficeFacade:
         self,
         read_only: bool = False,
         rows: tuple[tuple[object, ...], ...] | None = None,
+        used_rows: int | None = None,
         open_error: Exception | None = None,
     ) -> None:
-        self.handle = _FakeHandle(read_only=read_only, rows=rows)
+        self.handle = _FakeHandle(read_only=read_only, rows=rows, used_rows=used_rows)
         self.open_calls: list[dict] = []
         self.open_error = open_error
 
@@ -252,8 +291,9 @@ class _FakeHandle:
         self,
         read_only: bool,
         rows: tuple[tuple[object, ...], ...] | None = None,
+        used_rows: int | None = None,
     ) -> None:
-        self.workbook = _FakeWorkbook(read_only, rows)
+        self.workbook = _FakeWorkbook(read_only, rows, used_rows)
         self.saved = False
         self.closed = False
 
@@ -269,14 +309,19 @@ class _FakeWorkbook:
         self,
         read_only: bool,
         rows: tuple[tuple[object, ...], ...] | None,
+        used_rows: int | None,
     ) -> None:
         self.ReadOnly = read_only
-        self.Worksheets = _FakeWorksheets(rows)
+        self.Worksheets = _FakeWorksheets(rows, used_rows)
 
 
 class _FakeWorksheets:
-    def __init__(self, rows: tuple[tuple[object, ...], ...] | None) -> None:
-        base = _FakeSheet("2026", rows)
+    def __init__(
+        self,
+        rows: tuple[tuple[object, ...], ...] | None,
+        used_rows: int | None,
+    ) -> None:
+        base = _FakeSheet("2026", rows, used_rows)
         self._sheets = {"2026": base}
         self._order = ["2026"]
         base._owner = self
@@ -295,7 +340,7 @@ class _FakeWorksheets:
 
     def _copy_sheet_after(self, source_name: str, after_name: str) -> "_FakeSheet":
         source = self._sheets[source_name]
-        copied = _FakeSheet(source.Name, source.rows)
+        copied = _FakeSheet(source.Name, source.rows, source.UsedRange.Rows.Count)
         insert_at = self._order.index(after_name) + 1
         temp_name = f"_copy_{len(self._order) + 1}"
         copied.Name = temp_name
@@ -313,11 +358,17 @@ class _FakeWorksheets:
 
 
 class _FakeSheet:
-    def __init__(self, name: str, rows: tuple[tuple[object, ...], ...] | None) -> None:
+    def __init__(
+        self,
+        name: str,
+        rows: tuple[tuple[object, ...], ...] | None,
+        used_rows: int | None = None,
+    ) -> None:
         self._owner = None
         self._name = name
         self.rows = rows or (("Apr", 30, 30, "DL-2026-04-030"),)
-        self.UsedRange = _FakeUsedRange(rows=len(self.rows) + 1)
+        self._cells = _rows_to_cells(self.rows)
+        self.UsedRange = _FakeUsedRange(rows=used_rows or len(self.rows) + 1)
         self.range_reads: list[str] = []
         self.range_writes: list[str] = []
         self.clear_calls: list[str] = []
@@ -337,6 +388,9 @@ class _FakeSheet:
 
     def Range(self, address: str):
         return _FakeRange(self, address)
+
+    def Cells(self, row: int, column: int):
+        return _FakeCell(self, row, column)
 
     def Copy(self, *, After) -> None:
         after_name = After.Name
@@ -369,7 +423,72 @@ class _FakeRange:
     @Value.setter
     def Value(self, rows) -> None:
         self._sheet.range_writes.append(self._address)
+        if ":" not in self._address:
+            self._set_single_value(rows)
+            return
+        start = self._address.split(":", 1)[0]
+        end = self._address.split(":", 1)[1]
+        start_row = _row_number(start)
+        end_row = _row_number(end)
+        if not isinstance(rows, list):
+            for row_number in range(start_row, end_row + 1):
+                self._sheet._cells[(row_number, 1)] = rows
+            return
         self._sheet.last_written_rows.extend(rows)
+        for offset, row_values in enumerate(rows):
+            row_number = start_row + offset
+            for index, value in enumerate(row_values, start=1):
+                self._sheet._cells[(row_number, index)] = value
 
     def ClearContents(self) -> None:
         self._sheet.clear_calls.append(self._address)
+
+    def Merge(self) -> None:
+        return None
+
+    def UnMerge(self) -> None:
+        return None
+
+    @property
+    def Row(self) -> int:
+        return _row_number(self._address.split(":", 1)[0])
+
+    @property
+    def Rows(self):
+        return _FakeRows(1)
+
+    def Cells(self, row: int, column: int):
+        return _FakeCell(self._sheet, self.Row + row - 1, column)
+
+    def _set_single_value(self, value) -> None:
+        return None
+
+
+class _FakeCell:
+    MergeCells = False
+
+    def __init__(self, sheet: _FakeSheet, row: int, column: int) -> None:
+        self._sheet = sheet
+        self._row = row
+        self._column = column
+
+    @property
+    def Value(self):
+        return self._sheet._cells.get((self._row, self._column))
+
+    @Value.setter
+    def Value(self, value) -> None:
+        self._sheet._cells[(self._row, self._column)] = value
+
+
+def _rows_to_cells(rows: tuple[tuple[object, ...], ...]) -> dict[tuple[int, int], object]:
+    cells: dict[tuple[int, int], object] = {}
+    for row_offset, row in enumerate(rows, start=2):
+        for column, value in enumerate(row, start=1):
+            cells[(row_offset, column)] = value
+    return cells
+
+
+def _row_number(address: str) -> int:
+    digits = "".join(character for character in address if character.isdigit())
+    return int(digits)

@@ -195,9 +195,18 @@ class _FakeSheet:
         self.Name = "2026"
         self.UsedRange = _FakeUsedRange()
         self.last_written_rows: list[list[object]] = []
+        self._cells = {
+            (2, 1): "Apr",
+            (2, 2): 30,
+            (2, 3): 30,
+            (2, 4): "DL-2026-04-030",
+        }
 
     def Range(self, address: str):
-        return _FakeRange(self)
+        return _FakeRange(self, address)
+
+    def Cells(self, row: int, column: int):
+        return _FakeCell(self, row, column)
 
 
 class _FakeUsedRange:
@@ -210,8 +219,9 @@ class _FakeRows:
 
 
 class _FakeRange:
-    def __init__(self, sheet: _FakeSheet) -> None:
+    def __init__(self, sheet: _FakeSheet, address: str) -> None:
         self._sheet = sheet
+        self._address = address
 
     @property
     def Value(self):
@@ -219,4 +229,39 @@ class _FakeRange:
 
     @Value.setter
     def Value(self, rows) -> None:
+        if not isinstance(rows, list):
+            return
         self._sheet.last_written_rows.extend(rows)
+        start_row = _row_number(self._address.split(":", 1)[0])
+        for offset, row_values in enumerate(rows):
+            row_number = start_row + offset
+            for column, value in enumerate(row_values, start=1):
+                self._sheet._cells[(row_number, column)] = value
+
+    def Merge(self) -> None:
+        return None
+
+    def UnMerge(self) -> None:
+        return None
+
+
+class _FakeCell:
+    MergeCells = False
+
+    def __init__(self, sheet: _FakeSheet, row: int, column: int) -> None:
+        self._sheet = sheet
+        self._row = row
+        self._column = column
+
+    @property
+    def Value(self):
+        return self._sheet._cells.get((self._row, self._column))
+
+    @Value.setter
+    def Value(self, value) -> None:
+        self._sheet._cells[(self._row, self._column)] = value
+
+
+def _row_number(address: str) -> int:
+    digits = "".join(character for character in address if character.isdigit())
+    return int(digits)

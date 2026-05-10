@@ -205,14 +205,22 @@ class ExcelComLTRWorkbookWriteSession:
         sheet_name: str,
         row_data: LtrWorkbookRowData,
     ) -> LtrWorkbookRowPointer:
-        """Append one registration row using a single row-range assignment."""
+        """Append one registration row at the first empty LTR-number cell."""
         sheet = self._handle.workbook.Worksheets.Item(sheet_name)
-        target_row = int(sheet.UsedRange.Rows.Count) + 1
-        sheet.Range(f"A{target_row}:Q{target_row}").Value = [row_data.as_excel_row()]
+        target_row = _first_blank_ltr_row(sheet)
+        adjusted_row_data = replace(
+            row_data,
+            total=_next_total_before_row(sheet, target_row, row_data.total),
+        )
+        _prepare_month_cell(sheet, target_row, adjusted_row_data.month)
+        sheet.Range(f"A{target_row}:Q{target_row}").Value = [
+            adjusted_row_data.as_excel_row()
+        ]
+        _merge_adjacent_month_cells(sheet, target_row, adjusted_row_data.month)
         return LtrWorkbookRowPointer(
             sheet_name=sheet_name,
             row_number=target_row,
-            dl_number=row_data.dl_number,
+            dl_number=adjusted_row_data.dl_number,
         )
 
     def write_registration_row(
@@ -355,6 +363,93 @@ def _tuple_column_values(values) -> tuple[object, ...]:
     if values and isinstance(values[0], tuple):
         return tuple(row[0] if row else None for row in values)
     return values
+
+
+def _first_blank_ltr_row(sheet) -> int:
+    """Return the first row whose LTR-number column is empty."""
+    last_row = max(int(sheet.UsedRange.Rows.Count), 2)
+    for row_number in range(2, last_row + 2):
+        value = sheet.Cells(row_number, 4).Value
+        if not str(value or "").strip():
+            return row_number
+    return last_row + 1
+
+
+def _next_total_before_row(sheet, target_row: int, fallback_total: int) -> int:
+    """Return the next annual total based on the previous occupied LTR row."""
+    for row_number in range(target_row - 1, 1, -1):
+        ltr_number = sheet.Cells(row_number, 4).Value
+        if not str(ltr_number or "").strip():
+            continue
+        total = sheet.Cells(row_number, 2).Value
+        try:
+            return int(total) + 1
+        except (TypeError, ValueError):
+            return fallback_total
+    return max(fallback_total, 1)
+
+
+def _prepare_month_cell(sheet, target_row: int, month: str) -> None:
+    """Split an existing month merge so the target row can carry its own month."""
+    cell = sheet.Cells(target_row, 1)
+    if not bool(getattr(cell, "MergeCells", False)):
+        return
+    merge_area = cell.MergeArea
+    start_row = int(merge_area.Row)
+    row_count = int(merge_area.Rows.Count)
+    end_row = start_row + row_count - 1
+    if row_count <= 1:
+        return
+    old_month = merge_area.Cells(1, 1).Value
+    merge_area.UnMerge()
+    _restore_month_merge(sheet, start_row, target_row - 1, old_month)
+    _restore_month_merge(sheet, target_row + 1, end_row, old_month)
+    sheet.Cells(target_row, 1).Value = month
+
+
+def _restore_month_merge(sheet, start_row: int, end_row: int, value) -> None:
+    """Restore one side of a split month merge."""
+    if end_row < start_row:
+        return
+    target = sheet.Range(f"A{start_row}:A{end_row}")
+    target.Value = value
+    if end_row > start_row:
+        target.Merge()
+
+
+def _merge_adjacent_month_cells(sheet, target_row: int, month: str) -> None:
+    """Merge the contiguous occupied rows that share the target month label."""
+    start_row = target_row
+    end_row = target_row
+    while start_row > 2 and _occupied_row_month(sheet, start_row - 1) == month:
+        start_row -= 1
+    last_row = max(int(sheet.UsedRange.Rows.Count), target_row)
+    while end_row < last_row and _occupied_row_month(sheet, end_row + 1) == month:
+        end_row += 1
+    if end_row <= start_row:
+        sheet.Cells(target_row, 1).Value = month
+        return
+    target = sheet.Range(f"A{start_row}:A{end_row}")
+    try:
+        target.UnMerge()
+    except Exception:
+        pass
+    target.Value = month
+    target.Merge()
+
+
+def _occupied_row_month(sheet, row_number: int) -> str | None:
+    """Return a row's month label only when the LTR-number cell is occupied."""
+    ltr_number = sheet.Cells(row_number, 4).Value
+    if not str(ltr_number or "").strip():
+        return None
+    cell = sheet.Cells(row_number, 1)
+    if bool(getattr(cell, "MergeCells", False)):
+        value = cell.MergeArea.Cells(1, 1).Value
+    else:
+        value = cell.Value
+    text = str(value or "").strip()
+    return text or None
 
 
 def _exception_summary(exc: Exception) -> str:
