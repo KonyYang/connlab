@@ -6,8 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import (
+    get_duplicate_draft_history_cleanup_service,
     get_no_ltr_project_cleanup_service,
     get_project_ltr_cleanup_audit_service,
+)
+from backend.application.duplicate_draft_history_cleanup_service import (
+    DuplicateDraftCleanupDryRun,
+    DuplicateDraftCleanupExecuteResult,
+    DuplicateDraftHistoryCleanupService,
 )
 from backend.application.no_ltr_project_cleanup_service import (
     NoLtrProjectCleanupCommand,
@@ -80,6 +86,34 @@ class NoLtrProjectCleanupExecuteResponse(BaseModel):
     rejected: list[NoLtrProjectCleanupRejectedProjectResponse]
 
 
+class DuplicateDraftCleanupSkipResponse(BaseModel):
+    """One package skipped by duplicate draft cleanup."""
+
+    package_id: str
+    reason: str
+
+
+class DuplicateDraftCleanupDryRunResponse(BaseModel):
+    """Read-only duplicate draft history cleanup report."""
+
+    generated_at: str
+    total_packages: int
+    candidate_count: int
+    duplicate_group_count: int
+    keep_package_ids: list[str]
+    remove_package_ids: list[str]
+    skipped: list[DuplicateDraftCleanupSkipResponse]
+
+
+class DuplicateDraftCleanupExecuteResponse(BaseModel):
+    """Duplicate draft history cleanup execution summary."""
+
+    removed_count: int
+    removed_package_ids: list[str]
+    skipped_count: int
+    skipped: list[DuplicateDraftCleanupSkipResponse]
+
+
 @router.get(
     "/project-ltr/dry-run",
     response_model=ProjectLtrCleanupAuditResponse,
@@ -115,6 +149,32 @@ def execute_no_ltr_project_cleanup(
     except NoLtrProjectCleanupError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _to_execute_response(result)
+
+
+@router.get(
+    "/intake-drafts/duplicate-history/dry-run",
+    response_model=DuplicateDraftCleanupDryRunResponse,
+)
+def duplicate_draft_history_dry_run(
+    service: DuplicateDraftHistoryCleanupService = Depends(
+        get_duplicate_draft_history_cleanup_service
+    ),
+) -> DuplicateDraftCleanupDryRunResponse:
+    """Return read-only duplicate intake draft cleanup candidates."""
+    return _to_duplicate_dry_run_response(service.dry_run())
+
+
+@router.post(
+    "/intake-drafts/duplicate-history/execute",
+    response_model=DuplicateDraftCleanupExecuteResponse,
+)
+def duplicate_draft_history_execute(
+    service: DuplicateDraftHistoryCleanupService = Depends(
+        get_duplicate_draft_history_cleanup_service
+    ),
+) -> DuplicateDraftCleanupExecuteResponse:
+    """Delete redundant duplicate intake draft package history."""
+    return _to_duplicate_execute_response(service.execute())
 
 
 def _to_response(report: ProjectLtrCleanupAuditReport) -> ProjectLtrCleanupAuditResponse:
@@ -160,5 +220,42 @@ def _to_execute_response(
                 reason=project.reason,
             )
             for project in result.rejected
+        ],
+    )
+
+
+def _to_duplicate_dry_run_response(
+    report: DuplicateDraftCleanupDryRun,
+) -> DuplicateDraftCleanupDryRunResponse:
+    return DuplicateDraftCleanupDryRunResponse(
+        generated_at=report.generated_at,
+        total_packages=report.total_packages,
+        candidate_count=report.candidate_count,
+        duplicate_group_count=report.duplicate_group_count,
+        keep_package_ids=list(report.keep_package_ids),
+        remove_package_ids=list(report.remove_package_ids),
+        skipped=[
+            DuplicateDraftCleanupSkipResponse(
+                package_id=item.package_id,
+                reason=item.reason,
+            )
+            for item in report.skipped
+        ],
+    )
+
+
+def _to_duplicate_execute_response(
+    result: DuplicateDraftCleanupExecuteResult,
+) -> DuplicateDraftCleanupExecuteResponse:
+    return DuplicateDraftCleanupExecuteResponse(
+        removed_count=result.removed_count,
+        removed_package_ids=list(result.removed_package_ids),
+        skipped_count=result.skipped_count,
+        skipped=[
+            DuplicateDraftCleanupSkipResponse(
+                package_id=item.package_id,
+                reason=item.reason,
+            )
+            for item in result.skipped
         ],
     )

@@ -120,12 +120,12 @@ class LtrWorkbookWritePreviewService:
             total=max((target_row or 2) - 2, 0),
             monthly_number=parsed_number.sequence or 0,
             dl_number=parsed_number.normalized,
-            project_type=_text(getattr(form, "project_type", None)),
+            project_type=_project_type_to_ltr_value(getattr(form, "project_type", None)),
             description_pn=_text(command.sample_description) or _sample_description(samples),
             test_item=_required_text(command.test_item, "Test Item"),
             test_type=_required_text(command.test_type_in_sheet, "Test Type in sheet"),
             requested_by=_text(project.requestor) or _text(getattr(form, "requester", None)),
-            location=_required_text(command.location, "Location"),
+            location=_required_mfg_site(form),
             project_leader=_required_text(command.project_leader, "Project Leader"),
             test_result=None,
             failed_item=None,
@@ -251,6 +251,35 @@ def _required_text(value: str, label: str) -> str:
     if text is None:
         raise LtrWorkbookWritePreviewError(f"{label} is required.")
     return text
+
+
+def _required_mfg_site(form: ApplicationForm | None) -> str:
+    """Return required Mfg. Site workbook value from the application form."""
+    text = _text(getattr(form, "manufacturing_site", None))
+    if text is None:
+        raise LtrWorkbookWritePreviewError("Mfg. Site is required.")
+    return text
+
+
+def _project_type_to_ltr_value(project_type: object) -> str:
+    """Map ConnLab project type to LTR workbook E-column value."""
+    source = _text(project_type)
+    if source is None:
+        raise LtrWorkbookWritePreviewError("Project Type has no LTR workbook mapping: <empty>")
+    mapping = {
+        "New Product Development": "NPD",
+        "Product Extension": "PEX",
+        "Innovation": "ADM",
+        "Lab Activities (Lab Use Only)": "ADM",
+        "Operational Support": "OPS",
+        "Cost Reduction": "CR",
+    }
+    target = mapping.get(source)
+    if target is None:
+        raise LtrWorkbookWritePreviewError(
+            f"Project Type has no LTR workbook mapping: {source}"
+        )
+    return target
 
 
 def _text(value: object) -> str | None:

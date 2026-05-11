@@ -47,7 +47,7 @@ class LtrWorkbookWriteCommitRequest(BaseModel):
     number_input: str | None = None
     test_item: str = Field(min_length=1)
     sample_description: str = Field(min_length=1)
-    location: str = Field(min_length=1)
+    location: str | None = None
     test_type_in_sheet: str = Field(min_length=1)
     project_leader: str = Field(min_length=1)
     requested_by: str | None = None
@@ -92,7 +92,7 @@ def commit_ltr_workbook_write(
                     number_input=request.number_input,
                     test_item=request.test_item,
                     sample_description=request.sample_description,
-                    location=request.location,
+                    location=request.location or "",
                     test_type_in_sheet=request.test_type_in_sheet,
                     project_leader=request.project_leader,
                     requested_by=request.requested_by,

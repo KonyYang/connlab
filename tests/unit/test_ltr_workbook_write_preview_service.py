@@ -49,12 +49,12 @@ def test_ltr_workbook_write_preview_maps_new_project_setup_to_columns(
         "B": 2,
         "C": 7,
         "D": "DL-2026-05-007",
-        "E": "New Product Development",
+        "E": "NPD",
         "F": "CoolPower connector samples",
         "G": "Qualification bend testing",
         "H": "Qualification",
         "I": "Alice",
-        "J": "AIPG Guangzhou",
+        "J": "Nantong",
         "K": "Alice",
         "L": None,
         "M": None,
@@ -114,6 +114,38 @@ def test_ltr_workbook_write_preview_requires_setup_values(tmp_path: Path) -> Non
         service.preview_project("P1", _command(test_item=" "))
 
 
+def test_ltr_workbook_write_preview_maps_innovation_and_lab_activities_to_adm(
+    tmp_path: Path,
+) -> None:
+    """Both confirmed project types are merged to ADM for workbook output."""
+    for project_type in ("Innovation", "Lab Activities (Lab Use Only)"):
+        service = LtrWorkbookWritePreviewService(
+            project_store=_ProjectStore(),
+            application_form_store=_FormStore(project_type=project_type),
+            sample_store=_SampleStore(),
+            workbook_settings=LtrWorkbookSettings(path=tmp_path / "LTR_number.xls"),
+        )
+        preview = service.preview_project("P1", _command())
+        assert preview.row_data.project_type == "ADM"
+
+
+def test_ltr_workbook_write_preview_rejects_unmapped_project_type(
+    tmp_path: Path,
+) -> None:
+    """Unknown project types are blocked before workbook write."""
+    service = LtrWorkbookWritePreviewService(
+        project_store=_ProjectStore(),
+        application_form_store=_FormStore(project_type="Unknown Type"),
+        sample_store=_SampleStore(),
+        workbook_settings=LtrWorkbookSettings(path=tmp_path / "LTR_number.xls"),
+    )
+    with pytest.raises(
+        LtrWorkbookWritePreviewError,
+        match="Project Type has no LTR workbook mapping: Unknown Type",
+    ):
+        service.preview_project("P1", _command())
+
+
 def _command(
     *,
     ltr_number: str = "DL-2026-05-007",
@@ -144,6 +176,15 @@ class _ProjectStore:
 
 
 class _FormStore:
+    def __init__(
+        self,
+        *,
+        project_type: str = "New Product Development",
+        manufacturing_site: str = "Nantong",
+    ) -> None:
+        self._project_type = project_type
+        self._manufacturing_site = manufacturing_site
+
     def list_by_project(self, project_id: str) -> list[ApplicationForm]:
         return [
             ApplicationForm(
@@ -152,7 +193,8 @@ class _FormStore:
                 form_no="E-3718",
                 revision="H",
                 requester="Alice",
-                project_type="New Product Development",
+                project_type=self._project_type,
+                manufacturing_site=self._manufacturing_site,
                 post_testing_disposition="Keep in the Lab",
                 subcontract_allowed=False,
                 additional_information="PO pending",

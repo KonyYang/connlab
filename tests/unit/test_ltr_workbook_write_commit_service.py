@@ -15,8 +15,10 @@ from backend.application.ltr_workbook_write_preview_service import (
 )
 from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
 from backend.infrastructure.office import (
+    LtrWorkbookDropdownEnsureResult,
     LtrWorkbookExistingRow,
     LtrWorkbookRowPointer,
+    LtrWorkbookSheetPreparationResult,
 )
 from backend.shared.config import LtrWorkbookSettings
 
@@ -31,8 +33,25 @@ def test_ltr_workbook_commit_auto_appends_next_base_number() -> None:
 
     assert result.action == "append_auto"
     assert result.ltr_number == "DL-2026-05-002"
+    assert session.prepared_calls == [("2026", "write")]
     assert session.appended[0].dl_number == "DL-2026-05-002"
+    assert session.dropdown_calls == [("2026", "Nantong", None)]
     assert ltr_service.created[0].ltr_number == "DL-2026-05-002"
+
+
+def test_ltr_workbook_commit_appends_missing_location_to_dropdown_source() -> None:
+    """When location is missing in dropdown source, commit appends it once."""
+    service, session, ltr_service = _service(
+        {"2026": [("May", 1, 1, "DL-2026-05-001")]},
+        dropdown_contains_location=False,
+    )
+
+    service.commit_project("P1", _command(number_input=None))
+
+    assert session.dropdown_calls == [("2026", "Nantong", None)]
+    note = ltr_service.created[0].notes or ""
+    assert '"location_dropdown_appended": true' in note
+    assert '"location_dropdown_source_range_after": "=$AB$1:$AB$37"' in note
 
 
 def test_ltr_workbook_commit_specified_base_replaces_existing_row() -> None:
@@ -181,6 +200,20 @@ def test_ltr_workbook_commit_requires_operator_confirmation() -> None:
         service.commit_project("P1", _command(operator_confirmed=False))
 
 
+def test_ltr_workbook_commit_rejects_unmapped_project_type() -> None:
+    """Commit is blocked when project type has no workbook mapping."""
+    service, _, _ = _service(
+        {"2026": []},
+        project_type="Unknown Type",
+    )
+
+    with pytest.raises(
+        LtrWorkbookWriteCommitError,
+        match="Project Type has no LTR workbook mapping: Unknown Type",
+    ):
+        service.commit_project("P1", _command(number_input=None))
+
+
 def _command(
     *,
     number_input: str | None = None,
@@ -210,15 +243,20 @@ def _service(
     bootstrap_policy: LtrWorkbookYearSheetBootstrapPolicy = (
         LtrWorkbookYearSheetBootstrapPolicy()
     ),
+    project_type: str = "New Product Development",
+    dropdown_contains_location: bool = True,
 ):
     """Return service and fakes for one commit test."""
-    session = _FakeWorkbookSession(rows_by_sheet)
+    session = _FakeWorkbookSession(
+        rows_by_sheet,
+        dropdown_contains_location=dropdown_contains_location,
+    )
     transaction = _FakeTransactionGateway(session)
     ltr_service = _FakeLtrService()
     service = LtrWorkbookWriteCommitService(
         preview_service=LtrWorkbookWritePreviewService(
             project_store=_ProjectStore(),
-            application_form_store=_FormStore(),
+            application_form_store=_FormStore(project_type=project_type),
             sample_store=_SampleStore(),
             workbook_settings=LtrWorkbookSettings(path=Path("LTR_number.xls")),
         ),
@@ -246,11 +284,19 @@ class _FakeTransactionGateway:
 
 
 class _FakeWorkbookSession:
-    def __init__(self, rows_by_sheet: dict[str, list[tuple[object, ...]]]) -> None:
+    def __init__(
+        self,
+        rows_by_sheet: dict[str, list[tuple[object, ...]]],
+        *,
+        dropdown_contains_location: bool = True,
+    ) -> None:
         self.rows_by_sheet = rows_by_sheet
         self.appended: list[LtrWorkbookRowPointer] = []
         self.replaced: list[LtrWorkbookRowPointer] = []
         self.bootstrap_calls: list[tuple[str, str, int]] = []
+        self.prepared_calls: list[tuple[str, str]] = []
+        self.dropdown_calls: list[tuple[str, str, int | None]] = []
+        self.dropdown_contains_location = dropdown_contains_location
         self.saved = False
 
     def list_sheets(self) -> list[str]:
@@ -288,6 +334,44 @@ class _FakeWorkbookSession:
         pointer = LtrWorkbookRowPointer(sheet_name, row_number, row_data.dl_number)
         self.replaced.append(pointer)
         return pointer
+
+    def ensure_location_dropdown_value(
+        self,
+        sheet_name: str,
+        location: str,
+        *,
+        row_number: int | None = None,
+    ) -> LtrWorkbookDropdownEnsureResult:
+        self.dropdown_calls.append((sheet_name, location, row_number))
+        if self.dropdown_contains_location:
+            return LtrWorkbookDropdownEnsureResult(
+                appended=False,
+                appended_value=None,
+                source_range_before="=$AB$1:$AB$36",
+                source_range_after="=$AB$1:$AB$36",
+            )
+        return LtrWorkbookDropdownEnsureResult(
+            appended=True,
+            appended_value=location,
+            source_range_before="=$AB$1:$AB$36",
+            source_range_after="=$AB$1:$AB$37",
+        )
+
+    def prepare_sheet_for_operation(
+        self,
+        sheet_name: str,
+        *,
+        mode: str = "write",
+    ) -> LtrWorkbookSheetPreparationResult:
+        self.prepared_calls.append((sheet_name, mode))
+        return LtrWorkbookSheetPreparationResult(
+            sheet_name=sheet_name,
+            mode=mode,
+            filter_cleared=False,
+            hidden_rows_detected=False,
+            hidden_columns_detected=False,
+            warnings=(),
+        )
 
     def bootstrap_year_sheet(
         self,
@@ -340,6 +424,15 @@ class _ProjectStore:
 
 
 class _FormStore:
+    def __init__(
+        self,
+        *,
+        project_type: str = "New Product Development",
+        manufacturing_site: str = "Nantong",
+    ) -> None:
+        self._project_type = project_type
+        self._manufacturing_site = manufacturing_site
+
     def list_by_project(self, project_id: str) -> list[ApplicationForm]:
         return [
             ApplicationForm(
@@ -348,7 +441,8 @@ class _FormStore:
                 form_no="E-3718",
                 revision="H",
                 requester="Alice",
-                project_type="New Product Development",
+                project_type=self._project_type,
+                manufacturing_site=self._manufacturing_site,
                 post_testing_disposition="Keep in the Lab",
                 subcontract_allowed=False,
                 additional_information="PO pending",

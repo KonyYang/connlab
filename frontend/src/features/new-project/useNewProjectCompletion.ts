@@ -52,7 +52,6 @@ export function useNewProjectCompletion({
         plan_date: planDate,
         test_item: setupValues.testItem,
         sample_description: setupValues.sampleDescription,
-        location: setupValues.location,
         test_type_in_sheet: setupValues.testTypeInSheet,
         project_leader: setupValues.projectLeader
       });

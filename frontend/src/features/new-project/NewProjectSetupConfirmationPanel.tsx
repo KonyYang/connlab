@@ -5,14 +5,12 @@ export type NewProjectSetupConfirmationValues = {
   specifiedLtrNumber: string;
   testItem: string;
   sampleDescription: string;
-  location: string;
   testTypeInSheet: string;
   projectLeader: string;
 };
 
 type NewProjectSetupConfirmationPanelProps = {
   disabled: boolean;
-  locationOptions: string[];
   missingKeys: Set<string>;
   testTypeInSheetOptions: string[];
   values: NewProjectSetupConfirmationValues;
@@ -21,7 +19,6 @@ type NewProjectSetupConfirmationPanelProps = {
 
 export function NewProjectSetupConfirmationPanel({
   disabled,
-  locationOptions,
   missingKeys,
   testTypeInSheetOptions,
   values,
@@ -56,23 +53,6 @@ export function NewProjectSetupConfirmationPanel({
           value={values.sampleDescription}
           onChange={(event) => update({ sampleDescription: event.target.value })}
         />
-      </label>
-
-      <label className="new-project-setup-field">
-        <span>Location*</span>
-        <select
-          className={missingKeys.has("location") ? "setup-field-missing" : ""}
-          disabled={disabled}
-          value={values.location}
-          onChange={(event) => update({ location: event.target.value })}
-        >
-          <option value="">Select location</option>
-          {locationOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
       </label>
 
       <label className="new-project-setup-field">

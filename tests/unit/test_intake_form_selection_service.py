@@ -100,6 +100,12 @@ class DraftStore:
         self.drafts[draft.draft_id] = draft
         return draft
 
+    def delete_by_case(self, case_id: str) -> int:
+        keys = [key for key, draft in self.drafts.items() if draft.case_id == case_id]
+        for key in keys:
+            del self.drafts[key]
+        return len(keys)
+
     def delete_by_package(self, package_id: str) -> int:
         case_ids = {
             draft.case_id
@@ -650,6 +656,41 @@ def test_selection_requires_resolution_when_switching_back_to_same_package_form(
     assert check.existing_case_id == "case-a"
 
 
+def test_selection_requires_resolution_for_same_package_single_form_repeat() -> None:
+    from backend.application.intake_form_selection_service import (
+        IntakeDraftDuplicateResolutionRequiredError,
+    )
+
+    service, _, _, _ = _service(
+        [
+            _email_asset(),
+            _asset("asset-a", IntakeAssetRole.SELECTED_APPLICATION_FORM),
+        ],
+        cases=[
+            IntakeCase(
+                case_id="case-a",
+                package_id="pkg-1",
+                selected_form_asset_id="asset-a",
+                status=IntakeCaseStatus.NEEDS_REVIEW,
+            )
+        ],
+        drafts=[
+            IntakeDraft(
+                draft_id="draft-a",
+                case_id="case-a",
+                parsed_fields_json="{}",
+            )
+        ],
+    )
+
+    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-a")
+
+    check = exc_info.value.check
+    assert check.existing_package_id == "pkg-1"
+    assert check.existing_case_id == "case-a"
+
+
 def test_selection_reinitialize_same_package_form_clears_manual_overrides() -> None:
     asset_a = _asset("asset-a", IntakeAssetRole.SELECTED_APPLICATION_FORM)
     asset_b = _asset("asset-b", IntakeAssetRole.SELECTED_APPLICATION_FORM)
@@ -692,7 +733,11 @@ def test_selection_reinitialize_same_package_form_clears_manual_overrides() -> N
     )
 
     assert result.case.case_id == "case-a"
-    assert draft_store.get_by_case("case-a").manual_overrides_json is None
+    rebuilt = draft_store.get_by_case("case-a")
+    assert rebuilt is not None
+    assert rebuilt.manual_overrides_json is None
+    assert rebuilt.draft_id != "draft-a"
+    assert "draft-a" not in draft_store.drafts
 
 
 def test_selection_creates_separate_case_for_same_email_different_form() -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -92,6 +93,28 @@ class LtrWorkbookExistingRow:
     row_number: int
     dl_number: str
     values: tuple[object, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookDropdownEnsureResult:
+    """Result of ensuring one workbook dropdown list contains a value."""
+
+    appended: bool
+    appended_value: str | None
+    source_range_before: str
+    source_range_after: str
+
+
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookSheetPreparationResult:
+    """Result of preparing one workbook sheet for operation."""
+
+    sheet_name: str
+    mode: str
+    filter_cleared: bool
+    hidden_rows_detected: bool
+    hidden_columns_detected: bool
+    warnings: tuple[str, ...] = ()
 
 
 class ExcelComLTRWorkbookGateway:
@@ -324,6 +347,61 @@ class ExcelComLTRWorkbookWriteSession:
             ),
         )
 
+    def ensure_location_dropdown_value(
+        self,
+        sheet_name: str,
+        location: str,
+        *,
+        row_number: int | None = None,
+    ) -> LtrWorkbookDropdownEnsureResult:
+        """Ensure J-column dropdown source list includes the given location."""
+        text = str(location or "").strip()
+        if not text:
+            raise LtrWorkbookWriteError("Location is required.")
+        sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+        target_row = row_number or max(_first_blank_ltr_row(sheet), 2)
+        source, validation_cell = _dropdown_source_formula(sheet, target_row)
+        source_values = _tuple_column_values(sheet.Range(source.address).Value2)
+        normalized = _normalize_dropdown_text(text)
+        exists = any(_normalize_dropdown_text(value) == normalized for value in source_values)
+        if exists:
+            return LtrWorkbookDropdownEnsureResult(
+                appended=False,
+                appended_value=None,
+                source_range_before=source.formula,
+                source_range_after=source.formula,
+            )
+        next_row = source.end_row + 1
+        sheet.Cells(next_row, _column_index(source.column)).Value = text
+        updated_formula = source.formula_for_end_row(next_row)
+        _set_validation_formula(validation_cell, updated_formula)
+        return LtrWorkbookDropdownEnsureResult(
+            appended=True,
+            appended_value=text,
+            source_range_before=source.formula,
+            source_range_after=updated_formula,
+        )
+
+    def prepare_sheet_for_operation(
+        self,
+        sheet_name: str,
+        *,
+        mode: str = "write",
+    ) -> LtrWorkbookSheetPreparationResult:
+        """Normalize filter/view state before read/write operations."""
+        sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+        filter_cleared = _clear_sheet_filter(sheet)
+        hidden_rows_detected = _unhide_sheet_rows(sheet)
+        hidden_columns_detected = _unhide_sheet_columns(sheet)
+        return LtrWorkbookSheetPreparationResult(
+            sheet_name=sheet_name,
+            mode=mode,
+            filter_cleared=filter_cleared,
+            hidden_rows_detected=hidden_rows_detected,
+            hidden_columns_detected=hidden_columns_detected,
+            warnings=(),
+        )
+
     def save(self) -> None:
         """Save the workbook."""
         self._handle.save()
@@ -458,3 +536,170 @@ def _exception_summary(exc: Exception) -> str:
     if not text:
         text = exc.__class__.__name__
     return text[:500]
+
+
+@dataclass(frozen=True, slots=True)
+class _DropdownSource:
+    """Parsed dropdown source formula and range details."""
+
+    formula: str
+    column: str
+    start_row: int
+    end_row: int
+    sheet_prefix: str = ""
+
+    @property
+    def address(self) -> str:
+        return f"{self.column}{self.start_row}:{self.column}{self.end_row}"
+
+    def formula_for_end_row(self, end_row: int) -> str:
+        prefix = f"{self.sheet_prefix}!" if self.sheet_prefix else ""
+        return f"={prefix}${self.column}${self.start_row}:${self.column}${end_row}"
+
+
+def _dropdown_source_formula(sheet, target_row: int):
+    """Parse J-column validation source formula for the target row."""
+    primary_cell = sheet.Cells(target_row, 10)
+    formula = _validation_formula(primary_cell)
+    validation_cell = primary_cell
+    if formula is None:
+        fallback_cell = sheet.Cells(2, 10)
+        formula = _validation_formula(fallback_cell)
+        if formula is not None:
+            validation_cell = fallback_cell
+    if formula is None:
+        formula = "=$AB$1:$AB$36"
+    parsed = _parse_dropdown_source(formula)
+    if parsed is None:
+        raise LtrWorkbookWriteError(
+            f"Unsupported J-column dropdown source formula: {formula}"
+        )
+    return parsed, validation_cell
+
+
+def _validation_formula(cell) -> str | None:
+    """Return one cell validation formula when available."""
+    validation = getattr(cell, "Validation", None)
+    if validation is None:
+        return None
+    text = str(getattr(validation, "Formula1", "") or "").strip()
+    return text or None
+
+
+def _set_validation_formula(cell, formula: str) -> None:
+    """Set one cell validation formula."""
+    validation = getattr(cell, "Validation", None)
+    if validation is None:
+        return
+    try:
+        validation.Formula1 = formula
+        return
+    except Exception:
+        pass
+    try:
+        validation.Modify(
+            getattr(validation, "Type", 3),
+            getattr(validation, "AlertStyle", 1),
+            getattr(validation, "Operator", 1),
+            formula,
+            getattr(validation, "Formula2", ""),
+        )
+    except Exception as exc:
+        raise LtrWorkbookWriteError(
+            f"Unable to update J-column dropdown source formula: {formula}. "
+            f"Excel error: {_exception_summary(exc)}"
+        ) from exc
+
+
+def _clear_sheet_filter(sheet) -> bool:
+    """Clear active AutoFilter state when possible."""
+    auto_filter_mode = bool(getattr(sheet, "AutoFilterMode", False))
+    filter_mode = bool(getattr(sheet, "FilterMode", False))
+    if not auto_filter_mode and not filter_mode:
+        return False
+    try:
+        sheet.ShowAllData()
+        return True
+    except Exception:
+        auto_filter = getattr(sheet, "AutoFilter", None)
+        if auto_filter is None:
+            return False
+        filter_obj = getattr(auto_filter, "FilterMode", None)
+        if filter_obj:
+            try:
+                auto_filter.ShowAllData()
+                return True
+            except Exception:
+                return False
+        return False
+
+
+def _unhide_sheet_rows(sheet) -> bool:
+    """Unhide worksheet rows in used range scope and return whether hidden rows were detected."""
+    try:
+        rows = sheet.UsedRange.Rows
+        hidden = bool(getattr(rows, "Hidden", False))
+        try:
+            rows.Hidden = False
+        except Exception:
+            sheet.Rows.Hidden = False
+        return hidden
+    except Exception as exc:
+        raise LtrWorkbookWriteError(
+            f"Unable to unhide worksheet rows. Excel error: {_exception_summary(exc)}"
+        ) from exc
+
+
+def _unhide_sheet_columns(sheet) -> bool:
+    """Unhide worksheet columns in used range scope and return whether hidden columns were detected."""
+    try:
+        columns = sheet.UsedRange.Columns
+        hidden = bool(getattr(columns, "Hidden", False))
+        try:
+            columns.Hidden = False
+        except Exception:
+            sheet.Columns.Hidden = False
+        return hidden
+    except Exception as exc:
+        raise LtrWorkbookWriteError(
+            f"Unable to unhide worksheet columns. Excel error: {_exception_summary(exc)}"
+        ) from exc
+
+
+def _parse_dropdown_source(formula: str) -> _DropdownSource | None:
+    """Parse formulas such as =$AB$1:$AB$36 or ='2026'!$AB$1:$AB$36."""
+    text = formula.strip()
+    pattern = re.compile(
+        r"^=(?:(?P<prefix>'[^']+'|[^!]+)!)?\$(?P<col1>[A-Z]+)\$(?P<start>\d+):\$(?P<col2>[A-Z]+)\$(?P<end>\d+)$"
+    )
+    match = pattern.match(text)
+    if match is None:
+        return None
+    col1 = match.group("col1")
+    col2 = match.group("col2")
+    if col1 != col2:
+        return None
+    start_row = int(match.group("start"))
+    end_row = int(match.group("end"))
+    if start_row < 1 or end_row < start_row:
+        return None
+    return _DropdownSource(
+        formula=text,
+        column=col1,
+        start_row=start_row,
+        end_row=end_row,
+        sheet_prefix=match.group("prefix") or "",
+    )
+
+
+def _column_index(column: str) -> int:
+    """Convert an Excel column label to a 1-based index."""
+    result = 0
+    for character in column:
+        result = result * 26 + (ord(character.upper()) - ord("A") + 1)
+    return result
+
+
+def _normalize_dropdown_text(value: object) -> str:
+    """Return normalized text for dropdown duplicate checks."""
+    return str(value or "").strip().casefold()

@@ -200,7 +200,7 @@ class LtrWorkbookWritePreviewRequest(BaseModel):
     plan_date: date
     test_item: str = Field(min_length=1)
     sample_description: str = Field(min_length=1)
-    location: str = Field(min_length=1)
+    location: str | None = None
     test_type_in_sheet: str = Field(min_length=1)
     project_leader: str = Field(min_length=1)
 
@@ -412,7 +412,7 @@ def preview_ltr_workbook_write(
                     plan_date=request.plan_date,
                     test_item=request.test_item,
                     sample_description=request.sample_description,
-                    location=request.location,
+                    location=request.location or "",
                     test_type_in_sheet=request.test_type_in_sheet,
                     project_leader=request.project_leader,
                 ),

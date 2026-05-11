@@ -73,6 +73,8 @@ class IntakeDraftStore(Protocol):
 
     def update(self, draft: IntakeDraft) -> IntakeDraft: ...
 
+    def delete_by_case(self, case_id: str) -> int: ...
+
     def delete_by_package(self, package_id: str) -> int: ...
 
 
@@ -231,15 +233,6 @@ class IntakeFormSelectionService:
                     continue
                 if existing_case.selected_form_asset_id is None:
                     continue
-                if (
-                    existing_case.package_id == package.package_id
-                    and existing_case.selected_form_asset_id == selected_asset.asset_id
-                    and not self._package_has_other_selected_form_case(
-                        package.package_id,
-                        selected_asset.asset_id,
-                    )
-                ):
-                    continue
                 existing_form = self._asset_store.get(existing_case.selected_form_asset_id)
                 if existing_form is None:
                     continue
@@ -335,18 +328,6 @@ class IntakeFormSelectionService:
             and existing.size_bytes == incoming.size_bytes
         )
 
-    def _package_has_other_selected_form_case(
-        self,
-        package_id: str,
-        selected_asset_id: str,
-    ) -> bool:
-        """Return whether this package already has another selected-form draft."""
-        return any(
-            current.selected_form_asset_id not in (None, selected_asset_id)
-            and self._can_reuse_case(current)
-            for current in self._case_store.list_by_package(package_id)
-        )
-
     def _ensure_replace_allowed(self, package_id: str) -> None:
         """Reject replacing a draft that already created a project."""
         for case in self._case_store.list_by_package(package_id):
@@ -417,9 +398,19 @@ class IntakeFormSelectionService:
         parsed_fields_json = json.dumps(parsed_fields, ensure_ascii=False, sort_keys=True)
         parser_warnings_json = json.dumps(parser_warnings, ensure_ascii=False)
         if existing_draft is not None:
+            if reinitialize:
+                self._draft_store.delete_by_case(case_id)
+                return self._draft_store.create(
+                    IntakeDraft(
+                        draft_id=f"draft-{uuid4().hex}",
+                        case_id=case_id,
+                        parsed_fields_json=parsed_fields_json,
+                        parser_warnings_json=parser_warnings_json,
+                    )
+                )
             manual_overrides_json = (
                 existing_draft.manual_overrides_json
-                if keep_manual_overrides and not reinitialize
+                if keep_manual_overrides
                 else None
             )
             return self._draft_store.update(

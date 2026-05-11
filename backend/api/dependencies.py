@@ -21,6 +21,9 @@ from backend.application.intake_asset_download_service import (
 from backend.application.evidence_placement_service import EvidencePlacementService
 from backend.application.folder_service import FolderService
 from backend.application.direct_word_intake_service import DirectWordIntakeService
+from backend.application.duplicate_draft_history_cleanup_service import (
+    DuplicateDraftHistoryCleanupService,
+)
 from backend.application.email_package_application_form_service import (
     EmailPackageApplicationFormService,
 )
@@ -167,6 +170,20 @@ def get_no_ltr_project_cleanup_service(
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings.load()
+
+
+def get_duplicate_draft_history_cleanup_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> DuplicateDraftHistoryCleanupService:
+    """Build duplicate draft history cleanup service."""
+    return DuplicateDraftHistoryCleanupService(
+        package_store=IntakePackageRepository(session),
+        asset_store=IntakeAssetRepository(session),
+        case_store=IntakeCaseRepository(session),
+        draft_store=IntakeDraftRepository(session),
+        storage=IntakeStorage(settings.data_dir / "intake"),
+    )
 
 
 def get_intake_precheck_service(

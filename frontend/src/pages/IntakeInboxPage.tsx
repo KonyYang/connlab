@@ -81,6 +81,12 @@ type DuplicateImportState = {
   asset?: IntakeAsset | null;
 };
 
+type DuplicateDecisionMemo = {
+  caseId: string;
+  assetId: string | null;
+  action: DraftDuplicateAction;
+};
+
 export function IntakeInboxPage({
   session,
   onSessionChange,
@@ -91,6 +97,8 @@ export function IntakeInboxPage({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<DuplicateImportState | null>(null);
+  const [lastDuplicateDecision, setLastDuplicateDecision] = useState<DuplicateDecisionMemo | null>(null);
+  const [hasDraftEditsSinceDecision, setHasDraftEditsSinceDecision] = useState(false);
   const [resolvingDuplicateAction, setResolvingDuplicateAction] = useState<string | null>(null);
   const [review, setReview] = useState<IntakeCaseReview | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -113,7 +121,6 @@ export function IntakeInboxPage({
     specifiedLtrNumber: "",
     testItem: "",
     sampleDescription: "",
-    location: "",
     testTypeInSheet: "",
     projectLeader: ""
   });
@@ -165,7 +172,6 @@ export function IntakeInboxPage({
     }
     if (!setupValues.testItem.trim()) missing.add("test_item");
     if (!setupValues.sampleDescription.trim()) missing.add("sample_description");
-    if (!setupValues.location.trim()) missing.add("location");
     if (!setupValues.testTypeInSheet.trim()) missing.add("test_type_in_sheet");
     if (!setupValues.projectLeader.trim()) missing.add("project_leader");
     return missing;
@@ -276,26 +282,10 @@ export function IntakeInboxPage({
   }, []);
 
   useEffect(() => {
-    const manufacturingSite = fieldValues.manufacturing_site?.trim();
-    if (!manufacturingSite || !setupOptions || setupValues.location) {
-      return;
-    }
-    const matched = setupOptions.location_options.find(
-      (option) => option.toLowerCase() === manufacturingSite.toLowerCase()
-    );
-    if (matched) {
-      setSetupValues((current) => {
-        const next = { ...current, location: matched };
-        setupValuesRef.current = next;
-        return next;
-      });
-    }
-  }, [fieldValues.manufacturing_site, setupOptions, setupValues.location]);
-
-  useEffect(() => {
     if (!packageImport) {
       setReview(null);
       setSelectedCaseId(null);
+      setHasDraftEditsSinceDecision(false);
       return;
     }
     const packageId = packageImport.package_id;
@@ -357,6 +347,15 @@ export function IntakeInboxPage({
           if (!cancelled) {
             const duplicate = draftDuplicateConflictFromError(error);
             if (duplicate) {
+              const reused = await tryResolveDuplicateWithMemo(
+                duplicate,
+                packageId,
+                selectedDefaultFormAsset,
+                selectedDefaultFormAsset.original_name
+              );
+              if (reused) {
+                return;
+              }
               setDuplicateDraft({
                 check: duplicate,
                 packageId,
@@ -414,6 +413,15 @@ export function IntakeInboxPage({
         const duplicate = draftDuplicateConflictFromError(error);
         if (!cancelled) {
           if (duplicate) {
+            const reused = await tryResolveDuplicateWithMemo(
+              duplicate,
+              packageId,
+              null,
+              null
+            );
+            if (reused) {
+              return;
+            }
             setDuplicateDraft({ check: duplicate, packageId });
             setReview(null);
             setEditorError(null);
@@ -512,6 +520,8 @@ export function IntakeInboxPage({
     setImporting(true);
     setImportError(null);
     setDuplicateDraft(null);
+    setLastDuplicateDecision(null);
+    setHasDraftEditsSinceDecision(false);
     setImportMessage(null);
     try {
       const imported = await importMsgPackage(file);
@@ -544,6 +554,12 @@ export function IntakeInboxPage({
         const draft = await ensureNewProjectApplicationDraft(duplicateDraft.packageId, resolution);
         await applyPreparedDraft(draft);
       }
+      setLastDuplicateDecision({
+        caseId: duplicateDraft.check.existing_case_id,
+        assetId: duplicateDraft.asset?.asset_id ?? null,
+        action,
+      });
+      setHasDraftEditsSinceDecision(false);
       setDuplicateDraft(null);
     } catch (error) {
       const duplicate = draftDuplicateConflictFromError(error);
@@ -578,6 +594,7 @@ export function IntakeInboxPage({
     const refreshed = packageDetailToImport(detail);
     const nextReview = await getIntakeCaseReview(draft.package_id);
     setDuplicateDraft(null);
+    setHasDraftEditsSinceDecision(false);
     setReview(nextReview);
     setSelectedCaseId(draft.case_id);
     onSessionChange({
@@ -598,6 +615,7 @@ export function IntakeInboxPage({
     const refreshed = packageDetailToImport(detail);
     const nextReview = await getIntakeCaseReview(selection.package_id);
     setDuplicateDraft(null);
+    setHasDraftEditsSinceDecision(false);
     setReview(nextReview);
     setSelectedCaseId(selection.case_id);
     setImportMessage(importMessageText);
@@ -619,6 +637,8 @@ export function IntakeInboxPage({
     setImporting(true);
     setImportError(null);
     setDuplicateDraft(null);
+    setLastDuplicateDecision(null);
+    setHasDraftEditsSinceDecision(false);
     setImportMessage(null);
     try {
       if (packageImport?.source_type === "outlook_msg") {
@@ -666,6 +686,15 @@ export function IntakeInboxPage({
     } catch (error) {
       const duplicate = draftDuplicateConflictFromError(error);
       if (duplicate) {
+        const reused = await tryResolveDuplicateWithMemo(
+          duplicate,
+          packageImport.package_id,
+          asset,
+          asset.original_name
+        );
+        if (reused) {
+          return;
+        }
         setDuplicateDraft({ check: duplicate, packageId: packageImport.package_id, asset });
         setImportError(null);
       } else {
@@ -729,15 +758,15 @@ export function IntakeInboxPage({
           />
           <NewProjectSetupConfirmationPanel
             disabled={completionLoading || editorLoading || Boolean(activeCase?.confirmed_project_id)}
-            locationOptions={setupOptions?.location_options ?? []}
             missingKeys={setupMissingKeys}
             testTypeInSheetOptions={setupOptions?.test_type_in_sheet_options ?? []}
             values={setupValues}
               onChange={(values) => {
-                setSetupValues(values);
-                setupValuesRef.current = values;
-                setCompletionSetupError(null);
-              }}
+      setSetupValues(values);
+      setupValuesRef.current = values;
+      setHasDraftEditsSinceDecision(true);
+      setCompletionSetupError(null);
+    }}
           />
         </aside>
 
@@ -771,14 +800,17 @@ export function IntakeInboxPage({
               onFieldValuesChange={(values) => {
                 setFieldValues(values);
                 fieldValuesRef.current = values;
+                setHasDraftEditsSinceDecision(true);
               }}
               onRequestedTestingRowsChange={(rows) => {
                 setRequestedTestingRows(rows);
                 requestedTestingRowsRef.current = rows;
+                setHasDraftEditsSinceDecision(true);
               }}
               onSampleRowsChange={(rows) => {
                 setSampleRows(rows);
                 sampleRowsRef.current = rows;
+                setHasDraftEditsSinceDecision(true);
               }}
             />
           ) : !packageImport ? (
@@ -800,6 +832,7 @@ export function IntakeInboxPage({
           onChange={(values) => {
             setSetupValues(values);
             setupValuesRef.current = values;
+            setHasDraftEditsSinceDecision(true);
             setCompletionSetupError(null);
           }}
           onComplete={() => void completeProject()}
@@ -813,6 +846,46 @@ export function IntakeInboxPage({
       )}
     </section>
   );
+
+  async function tryResolveDuplicateWithMemo(
+    duplicate: DraftDuplicateCheck,
+    packageId: string,
+    asset: IntakeAsset | null,
+    importMessageText: string | null
+  ): Promise<boolean> {
+    if (!lastDuplicateDecision || hasDraftEditsSinceDecision) {
+      return false;
+    }
+    const assetId = asset?.asset_id ?? null;
+    if (
+      lastDuplicateDecision.caseId !== duplicate.existing_case_id
+      || lastDuplicateDecision.assetId !== assetId
+      || !duplicate.allowed_actions.includes(lastDuplicateDecision.action)
+    ) {
+      return false;
+    }
+    const resolution = {
+      action: lastDuplicateDecision.action,
+      caseId: duplicate.existing_case_id,
+    };
+    try {
+      if (asset && importMessageText) {
+        const selection = await selectIntakeApplicationForm(
+          packageId,
+          asset.asset_id,
+          true,
+          resolution
+        );
+        await applySelectedDraft(selection, importMessageText);
+      } else {
+        const draft = await ensureNewProjectApplicationDraft(packageId, resolution);
+        await applyPreparedDraft(draft);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 function draftDuplicateConflictFromError(error: unknown): DraftDuplicateCheck | null {
@@ -834,7 +907,6 @@ function emptySetupValues(defaultProjectLeader = ""): NewProjectSetupConfirmatio
     specifiedLtrNumber: "",
     testItem: "",
     sampleDescription: "",
-    location: "",
     testTypeInSheet: "",
     projectLeader: defaultProjectLeader
   };
@@ -850,7 +922,6 @@ function setupValuesFromProjectSetup(
     specifiedLtrNumber: stringValue(projectSetup?.specified_ltr_number),
     testItem: stringValue(projectSetup?.test_item),
     sampleDescription: stringValue(projectSetup?.sample_description),
-    location: stringValue(projectSetup?.location),
     testTypeInSheet: stringValue(projectSetup?.test_type_in_sheet),
     projectLeader: stringValue(projectSetup?.project_leader) || defaultProjectLeader
   };
@@ -867,7 +938,6 @@ function projectSetupPayload(
   }
   assignText(payload, "test_item", values.testItem);
   assignText(payload, "sample_description", values.sampleDescription);
-  assignText(payload, "location", values.location);
   assignText(payload, "test_type_in_sheet", values.testTypeInSheet);
   assignText(payload, "project_leader", values.projectLeader);
   return payload;

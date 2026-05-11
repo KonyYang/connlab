@@ -195,7 +195,6 @@ class NewProjectCompletionService:
         required = {
             "Test Item": command.test_item,
             "Sample Description": command.sample_description,
-            "Location": command.location,
             "Test Type in sheet": command.test_type_in_sheet,
             "Project Leader": command.project_leader,
         }

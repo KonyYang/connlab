@@ -11,11 +11,13 @@ from typing import Protocol
 
 from backend.application.ltr_service import LtrService, RegisterLtrCommand
 from backend.application.ltr_workbook_write_preview_service import (
+    LtrWorkbookWritePreviewError,
     LtrWorkbookWritePreviewService,
     PreviewLtrWorkbookWriteCommand,
 )
 from backend.domain import LtrRecord, LtrStatus
 from backend.infrastructure.office import (
+    LtrWorkbookDropdownEnsureResult,
     LtrWorkbookExistingRow,
     LtrWorkbookRowPointer,
     LtrWorkbookTransactionGateway,
@@ -143,16 +145,32 @@ class LtrWorkbookWriteCommitService:
                 sheet_names,
                 self._bootstrap_policy,
             )
-            preview = self._preview.preview_project(
-                project_id,
-                PreviewLtrWorkbookWriteCommand(
-                    ltr_number=decision.ltr_number,
-                    plan_date=command.plan_date,
-                    test_item=command.test_item,
-                    sample_description=command.sample_description,
-                    location=command.location,
-                    test_type_in_sheet=command.test_type_in_sheet,
-                    project_leader=command.project_leader,
+            try:
+                preview = self._preview.preview_project(
+                    project_id,
+                    PreviewLtrWorkbookWriteCommand(
+                        ltr_number=decision.ltr_number,
+                        plan_date=command.plan_date,
+                        test_item=command.test_item,
+                        sample_description=command.sample_description,
+                        location=command.location,
+                        test_type_in_sheet=command.test_type_in_sheet,
+                        project_leader=command.project_leader,
+                    ),
+                )
+            except LtrWorkbookWritePreviewError as exc:
+                raise LtrWorkbookWriteCommitError(str(exc)) from exc
+            context.session.prepare_sheet_for_operation(
+                decision.target_sheet,
+                mode="write",
+            )
+            dropdown_result = context.session.ensure_location_dropdown_value(
+                decision.target_sheet,
+                preview.row_data.location or "",
+                row_number=(
+                    decision.existing_row.row_number
+                    if decision.existing_row is not None
+                    else None
                 ),
             )
             if decision.existing_row is not None:
@@ -166,10 +184,16 @@ class LtrWorkbookWriteCommitService:
                     decision.target_sheet,
                     preview.row_data,
                 )
-            return decision, pointer, context.workbook_path, context.backup_path
+            return (
+                decision,
+                pointer,
+                context.workbook_path,
+                context.backup_path,
+                dropdown_result,
+            )
 
-        decision, pointer, workbook_path, backup_path = self._transaction.run_short_transaction(
-            _operation
+        decision, pointer, workbook_path, backup_path, dropdown_result = (
+            self._transaction.run_short_transaction(_operation)
         )
         ltr = self._ltr_service.register_ltr(
             project_id,
@@ -177,7 +201,7 @@ class LtrWorkbookWriteCommitService:
                 ltr_number=pointer.dl_number,
                 requested_by=command.requested_by,
                 requested_date=command.requested_date or command.plan_date,
-                notes=_audit_notes(command, decision, pointer, backup_path),
+                notes=_audit_notes(command, decision, pointer, backup_path, dropdown_result),
             ),
         )
         return LtrWorkbookWriteCommitResult(
@@ -357,6 +381,7 @@ def _audit_notes(
     decision: _NumberDecision,
     pointer: LtrWorkbookRowPointer,
     backup_path: Path,
+    dropdown_result: LtrWorkbookDropdownEnsureResult,
 ) -> str:
     """Return local LTR audit notes for the committed workbook write."""
     return json.dumps(
@@ -366,6 +391,10 @@ def _audit_notes(
             "sheet_name": pointer.sheet_name,
             "row_number": pointer.row_number,
             "backup_path": str(backup_path),
+            "location_dropdown_appended": dropdown_result.appended,
+            "location_dropdown_appended_value": dropdown_result.appended_value,
+            "location_dropdown_source_range_before": dropdown_result.source_range_before,
+            "location_dropdown_source_range_after": dropdown_result.source_range_after,
             "operator_note": command.operator_note,
         },
         ensure_ascii=True,

@@ -30,7 +30,9 @@ from backend.infrastructure.office.excel_workbook_gateway import (
 )
 from backend.infrastructure.office.excel_com_ltr_workbook_gateway import (
     ExcelComLTRWorkbookGateway,
+    LtrWorkbookDropdownEnsureResult,
     LtrWorkbookExistingRow,
+    LtrWorkbookSheetPreparationResult,
     LtrWorkbookReadOnlyError,
     LtrWorkbookRowData,
     LtrWorkbookRowPointer,
@@ -61,7 +63,9 @@ __all__ = [
     "ExcelComLTRWorkbookGateway",
     "LtrWorkbookFormat",
     "LtrWorkbookBackupError",
+    "LtrWorkbookDropdownEnsureResult",
     "LtrWorkbookExistingRow",
+    "LtrWorkbookSheetPreparationResult",
     "LtrWorkbookGatewayError",
     "LtrWorkbookLockTimeoutError",
     "LtrWorkbookReadOnlyError",

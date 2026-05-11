@@ -81,10 +81,11 @@ def test_ltr_workbook_write_preview_api_returns_no_write_mapping(
         assert payload["target_row"] is None
         values = {column["column"]: column["value"] for column in payload["columns"]}
         assert values["D"] == "DL-2026-05-007"
+        assert values["E"] == "NPD"
         assert values["F"] == "CoolPower connector samples"
         assert values["G"] == "Qualification bend testing"
         assert values["H"] == "Qualification"
-        assert values["J"] == "AIPG Guangzhou"
+        assert values["J"] == "Nantong"
         assert values["K"] == "Alice"
         assert "target row is unknown" in payload["warnings"][0]
         assert client.get(f"/api/projects/{project_id}/ltr").json() == []
@@ -104,6 +105,7 @@ def _seed_inputs(session_factory, project_id: str) -> None:
                 revision="H",
                 requester="Alice",
                 project_type="New Product Development",
+                manufacturing_site="Nantong",
                 post_testing_disposition="Keep in the Lab",
                 subcontract_allowed=False,
                 additional_information="PO pending",

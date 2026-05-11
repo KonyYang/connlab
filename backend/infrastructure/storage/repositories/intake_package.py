@@ -197,6 +197,16 @@ class IntakeDraftRepository:
         self._session.flush()
         return draft
 
+    def delete_by_case(self, case_id: str) -> int:
+        """Delete draft rows for one case and return row count."""
+        rows = self._session.scalars(
+            select(IntakeDraftModel).where(IntakeDraftModel.case_id == case_id)
+        ).all()
+        for row in rows:
+            self._session.delete(row)
+        self._session.flush()
+        return len(rows)
+
     def delete_by_package(self, package_id: str) -> int:
         """Delete all drafts for cases in one package and return the row count."""
         case_ids = select(IntakeCaseModel.case_id).where(
