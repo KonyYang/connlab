@@ -1,4 +1,4 @@
-"""Data models shared by ConnLab Office infrastructure gateways."""
+﻿"""Data models shared by ConnLab Office infrastructure gateways."""
 
 from __future__ import annotations
 
@@ -91,6 +91,26 @@ class WordHeaderCellResult:
 
 
 @dataclass(frozen=True, slots=True)
+class WordSection2FieldChange:
+    """Single Word Section 2 field update result."""
+
+    field_key: str
+    label: str
+    old_value: str
+    new_value: str
+    location: str
+
+
+@dataclass(frozen=True, slots=True)
+class WordSection2WriteResult:
+    """Result from writing Section 2 fields into a Word document."""
+
+    changed_fields: tuple[WordSection2FieldChange, ...]
+    unchanged_fields: tuple[WordSection2FieldChange, ...]
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class LtrWorkbookSnapshot:
     """Read-only metadata and existing LTR numbers from a workbook."""
 
@@ -127,3 +147,22 @@ class ExcelTabularReadResult:
     matched_sheet_names: tuple[str, ...]
     headers: tuple[str, ...]
     rows: tuple[dict[str, str], ...]
+
+@dataclass(frozen=True, slots=True)
+class TestRecordDocumentWriteResult:
+    """Result from generating a test-record document file."""
+
+    output_path: Path
+    status: str
+    group_count: int
+    warning_count: int
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class FeeEvaluationWorkbookWriteResult:
+    """Result from generating a fee-evaluation workbook file."""
+
+    output_path: Path
+    status: str
+    warnings: tuple[str, ...] = ()

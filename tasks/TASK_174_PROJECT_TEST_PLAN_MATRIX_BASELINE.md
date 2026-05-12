@@ -1,6 +1,6 @@
-# TASK_174 Project Test Plan Matrix Baseline
+﻿# TASK_174 Project Test Plan Matrix Baseline
 
-> Status: proposed; awaiting explicit implementation approval
+> Status: complete
 > Created: 2026-05-12
 > Phase: Phase 11 - Project planning data foundation before downstream document automation
 
@@ -363,7 +363,7 @@ Recommended next controlled tasks after TASK_174:
 1. `TASK_175_PROJECT_TEST_PLAN_REVIEW_AND_DRAFT_PERSISTENCE`
 2. `TASK_176_PROJECT_FOLDER_EVIDENCE_CLASSIFICATION_FOR_APPROVAL_PACKAGE`
 3. `TASK_177_SECTION2_COMPLETION_PREVIEW`
-4. `TASK_178_SECTION2_WRITE_BACK_TO_APPLICATION_FORM`
+4. `TASK_179_SECTION2_WRITE_BACK_TO_APPLICATION_FORM`
 5. `TASK_179_TEST_RECORD_AND_FEE_INPUT_DATASET_PREVIEW`
 6. `TASK_180_TEST_RECORD_TEMPLATE_AND_FEE_FORM_GENERATION`
 7. `TASK_181_REPORT_LIVE_DATASET_BASELINE`
@@ -380,3 +380,56 @@ Do not implement until the user explicitly approves with wording equivalent to:
 批准执行 TASK_174
 ```
 
+---
+
+## 14. Completion Notes
+
+Implemented:
+
+- Added a read-only project test-plan Matrix preview service.
+- Added deterministic `.docx` Matrix table parsing for headers such as `test Items`, `Section`, and `Group N`.
+- Expanded comma-separated group sequence cells into ordered group steps.
+- Preserved source traceability:
+  - document path/name;
+  - selected table index;
+  - source row index;
+  - source section reference.
+- Added clear deferred capability responses for `.doc` and `.pdf` inputs.
+- Added API:
+  - `POST /api/test-plan/matrix-preview-from-path`
+- Kept scope read-only:
+  - no Section 2 writing;
+  - no original application form mutation;
+  - no test record generation;
+  - no fee evaluation generation;
+  - no report generation;
+  - no persistence schema.
+
+Manual real-sample validation:
+
+- Source:
+  `C:\Users\White\Desktop\AI information\2\PRODSPEC GS-12-2005 EnergyKlip 500A product specification_1.docx`
+- Result:
+  - `capability_status=supported`
+  - `selected_table_index=21`
+  - groups extracted: `Group 1` through `Group 8`
+  - examples extracted:
+    - `Group 1`, sequence `1`, `Examination of Product`, section `5.4`
+    - `Group 1`, sequence `2`, `Contact Resistance (Low Level)`, section `6.1`
+    - `Group 2`, sequence `4`, `Thermal Shock`, section `8.1`
+
+Known extraction limitation:
+
+- Cells such as `10(a)` are reported as malformed sequence warnings in TASK_174 instead of being interpreted. This is intentional for the baseline task; subsection suffix handling should be refined after operator review requirements are clear.
+
+Validation:
+
+- `py -m pytest tests\unit\test_product_spec_matrix_parser.py tests\integration\test_project_test_plan_preview_api.py -q` passed, 7 passed.
+- `py -m pytest tests\unit\test_product_spec_matrix_parser.py tests\integration\test_project_test_plan_preview_api.py tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py tests\unit\test_phase9_scope_activation.py -q` passed, 24 passed.
+- `py -m pytest tests\unit tests\integration -q` reported 489 passed and 6 historical failures outside TASK_174:
+  - `tests/unit/test_frontend_shell_files.py::test_task087_intake_information_density_cleanup`
+  - `tests/unit/test_frontend_shell_files.py::test_task082_precheck_sample_rows_are_editable_with_icon_actions`
+  - `tests/unit/test_frontend_shell_files.py::test_task091_intake_precheck_typography_uses_shared_ui_vocabulary`
+  - `tests/unit/test_frontend_shell_files.py::test_task096_creation_draft_lifecycle_frontend_actions`
+  - `tests/unit/test_ltr_workbook_snapshot_gateway.py::test_ltr_workbook_snapshot_reads_xlsx_metadata_and_numbers`
+  - `tests/unit/test_ltr_workbook_snapshot_gateway.py::test_ltr_workbook_gateway_has_no_write_method`

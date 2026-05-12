@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -14,6 +14,8 @@ def test_phase9_board_closes_after_task059_completion() -> None:
         "Current Phase: `Phase 10A follow-up redirection - New Project single-page redesign`"
         in board
         or "Current Phase: `Phase 10B - LTR workbook write hardening`" in board
+        or "Current Phase: `Phase 11 - Project planning data foundation before downstream document automation`"
+        in board
     )
     assert (
         "Current Active Task: None - pending user approval for next phase" in board
@@ -43,6 +45,28 @@ def test_phase9_board_closes_after_task059_completion() -> None:
         or "Current Active Task: None - TASK_099 complete, pending user decision for next task" in board
         or "Current Active Task: TASK_100_PROJECT_WORKBENCH_BOUNDARY_AFTER_FOLDER_CREATION" in board
         or "Current Active Task: None - TASK_100 complete, pending user decision for next task" in board
+        or "Current Active Task: `TASK_174_PROJECT_TEST_PLAN_MATRIX_BASELINE`" in board
+        or "Current Active Task: none; TASK_174 complete" in board
+        or "Current Active Task: `TASK_175_PROJECT_TEST_PLAN_REVIEW_AND_DRAFT_PERSISTENCE`" in board
+        or "Current Active Task: none; TASK_175 complete" in board
+        or "Current Active Task: `TASK_176_PROJECT_FOLDER_EVIDENCE_CLASSIFICATION_FOR_APPROVAL_PACKAGE`" in board
+        or "Current Active Task: none; TASK_176 complete" in board
+        or "Current Active Task: `TASK_177_SECTION2_COMPLETION_PREVIEW`" in board
+        or "Current Active Task: none; TASK_177 complete" in board
+        or "Current Active Task: none; TASK_178 complete" in board
+        or "Current Active Task: `TASK_179_SECTION2_WRITE_BACK_TO_APPLICATION_FORM`" in board
+        or "Current Active Task: none; TASK_179 complete" in board
+        or "Current Active Task: `TASK_180_TEST_RECORD_AND_FEE_INPUT_DATASET_PREVIEW`" in board
+        or "Current Active Task: none; TASK_180 complete" in board
+        or "Current Active Task: `TASK_181_TEST_RECORD_TEMPLATE_AND_FEE_FORM_GENERATION`" in board
+        or "Current Active Task: none; TASK_181 complete" in board
+        or "Current Active Task: `TASK_182_APPROVAL_PACKAGE_GENERATION_AND_PROJECT_FOLDER_PLACEMENT`" in board
+            or "Current Active Task: none; TASK_182 complete" in board
+            or "Current Active Task: `TASK_183_PROJECT_WORKBENCH_APPROVAL_PACKAGE_UI_WIRING`" in board
+            or "Current Active Task: `TASK_184_PROJECT_WORKBENCH_MATRIX_FIRST_REDESIGN_BASELINE`" in board
+            or "Current Active Task: `TASK_185_PROJECT_WORKBENCH_STATE_MODEL_AND_LAYOUT_REFACTOR`" in board
+            or "Current Active Task: `TASK_186_PROJECT_WORKBENCH_MATRIX_REVIEW_SURFACE`" in board
+            or "Current Active Task: none; TASK_186 complete, pending user approval for TASK_187" in board
     )
     assert "Phase 10A" in board
     assert "| T9-1 | `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` | done |" in board

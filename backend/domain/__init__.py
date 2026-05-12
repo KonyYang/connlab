@@ -14,6 +14,7 @@ from backend.domain.enums import (
     LtrStatus,
     PrecheckStatus,
     ProjectStatus,
+    ProjectTestPlanDraftStatus,
 )
 from backend.domain.models import (
     ApplicationForm,
@@ -29,6 +30,7 @@ from backend.domain.models import (
     PrecheckResult,
     Project,
     ProjectFolderRecord,
+    ProjectTestPlanDraft,
     SampleInfo,
 )
 
@@ -59,5 +61,7 @@ __all__ = [
     "Project",
     "ProjectFolderRecord",
     "ProjectStatus",
+    "ProjectTestPlanDraft",
+    "ProjectTestPlanDraftStatus",
     "SampleInfo",
 ]

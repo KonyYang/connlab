@@ -192,9 +192,31 @@ class NewProjectApplicationDraftService:
     def _auto_select_application_form(
         self, package_id: str
     ) -> tuple[IntakeCase, IntakeDraft] | None:
-        """Select the highest-ranked candidate form when the editor opens blank."""
+        """Select the highest-ranked candidate form when the editor opens blank.
+
+        If a reusable case with an already selected form exists, it is returned directly
+        to avoid re-parsing and potential duplicate conflicts. Otherwise duplicate
+        candidates are skipped so page load never creates separate drafts implicitly.
+        """
         if self._assets is None or self._selection_service is None:
             return None
+
+        # First, check if there's a reusable case with an already selected form
+        # This prevents re-parsing and potential duplicate conflicts on page refresh
+        reusable_case = self._reusable_case_with_selected_form(package_id)
+        if reusable_case is not None:
+            draft = self._drafts.get_by_case(reusable_case.case_id)
+            if draft is not None:
+                logger.debug(
+                    "auto_select_reused_existing_case",
+                    extra={
+                        "package_id": package_id,
+                        "case_id": reusable_case.case_id,
+                        "asset_id": reusable_case.selected_form_asset_id,
+                    },
+                )
+                return reusable_case, draft
+
         candidates = [
             asset
             for asset in self._assets.list_by_package(package_id)
@@ -207,7 +229,15 @@ class NewProjectApplicationDraftService:
                     asset.asset_id,
                 )
             except IntakeDraftDuplicateResolutionRequiredError:
-                raise
+                logger.info(
+                    "auto_select_skipped_duplicate",
+                    extra={
+                        "package_id": package_id,
+                        "asset_id": asset.asset_id,
+                        "reason": "duplicate_resolution_required",
+                    },
+                )
+                continue
             except (IntakeSelectionError, IntakeSelectionNotFoundError) as exc:
                 logger.info(
                     "new_project_default_application_form_rejected",
@@ -218,7 +248,30 @@ class NewProjectApplicationDraftService:
                     },
                 )
                 continue
+            logger.debug(
+                "auto_select_succeeded",
+                extra={
+                    "package_id": package_id,
+                    "case_id": selection.case.case_id,
+                    "asset_id": asset.asset_id,
+                },
+            )
             return selection.case, selection.draft
+        return None
+
+    def _reusable_case_with_selected_form(self, package_id: str) -> IntakeCase | None:
+        """Return the first unconfirmed case that already has a selected form.
+
+        This prevents re-parsing and potential duplicate conflicts when the user
+        refreshes the page or re-enters the New Project editor.
+        """
+        for case in self._cases.list_by_package(package_id):
+            if (
+                case.confirmed_project_id is None
+                and case.status is not IntakeCaseStatus.CONFIRMED
+                and case.selected_form_asset_id is not None
+            ):
+                return case
         return None
 
     def _find_no_form_duplicate(

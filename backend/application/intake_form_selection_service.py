@@ -161,7 +161,12 @@ class IntakeFormSelectionService:
         resolution_action: str | None = None,
         resolution_case_id: str | None = None,
     ) -> FormSelectionResult:
-        """Select and parse one application form asset for review."""
+        """Select and parse one application form asset for review.
+
+        If the asset is already selected for an unconfirmed case in this package,
+        returns the existing case/draft directly without re-parsing or duplicate checks.
+        This prevents unnecessary duplicate detection when the user re-clicks the same attachment.
+        """
         package = self._package_store.get(package_id)
         if package is None:
             raise IntakeSelectionNotFoundError(f"Intake package not found: {package_id}")
@@ -171,6 +176,27 @@ class IntakeFormSelectionService:
             raise IntakeSelectionNotFoundError(f"Intake asset not found: {asset_id}")
         if asset.package_id != package.package_id:
             raise IntakeSelectionError("Selected asset does not belong to the intake package.")
+
+        # Check if this asset is already selected for an unconfirmed case
+        # This prevents duplicate detection when user re-clicks the same attachment
+        # Skip this optimization when explicitly requesting replace/reinitialize
+        if not replace_existing and resolution_action != "replace_existing":
+            existing_cases = self._case_store.list_by_package(package_id)
+            for case in existing_cases:
+                if (
+                    case.selected_form_asset_id == asset_id
+                    and case.confirmed_project_id is None
+                    and case.status is not IntakeCaseStatus.CONFIRMED
+                ):
+                    draft = self._draft_store.get_by_case(case.case_id)
+                    if draft is not None:
+                        return FormSelectionResult(
+                            package_id=package_id,
+                            case=case,
+                            draft=draft,
+                            selected_asset=asset,
+                        )
+
         if not self._is_selectable_application_form(asset):
             raise IntakeSelectionError("Selected asset is not an application form candidate.")
         eligibility = self._eligibility_validator.evaluate(asset)

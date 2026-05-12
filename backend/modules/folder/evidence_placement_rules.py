@@ -172,7 +172,7 @@ class EvidencePlacementPlanner:
         if category is EvidencePlacementCategory.PHOTO:
             return evidence_root / "Photos"
         if category is EvidencePlacementCategory.SPECIFICATION:
-            return evidence_root / "Submitted Material" / "Specifications"
+            return evidence_root / "Submitted Material"
         if category is EvidencePlacementCategory.LTR_EVIDENCE:
             return evidence_root / "Submitted Material" / "LTR Evidence"
         if category is EvidencePlacementCategory.CORRECTION:

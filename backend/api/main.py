@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from backend.api.routes_cleanup import router as cleanup_router
+from backend.api.routes_approval_package import router as approval_package_router
 from backend.api.routes_evidence import router as evidence_router
 from backend.api.routes_external_excel_resources import (
     router as external_excel_read_router,
@@ -20,10 +21,27 @@ from backend.api.routes_ltr_workbook_compatibility import (
 )
 from backend.api.routes_new_project_completion import router as new_project_router
 from backend.api.routes_project import router as project_router
+from backend.api.routes_project_test_plan import router as project_test_plan_router
+from backend.api.routes_project_test_plan_drafts import (
+    router as project_test_plan_drafts_router,
+)
+from backend.api.routes_section2_completion_preview import (
+    router as section2_completion_preview_router,
+)
+from backend.api.routes_section2_write_back import (
+    router as section2_write_back_router,
+)
+from backend.api.routes_test_record_fee_dataset_preview import (
+    router as test_record_fee_dataset_preview_router,
+)
+from backend.api.routes_test_record_fee_document_generation import (
+    router as test_record_fee_document_generation_router,
+)
 
 
 app = FastAPI(title="ConnLab API")
 app.include_router(cleanup_router)
+app.include_router(approval_package_router)
 app.include_router(evidence_router)
 app.include_router(external_excel_read_router)
 app.include_router(external_resources_router)
@@ -37,6 +55,12 @@ app.include_router(ltr_workbook_router)
 app.include_router(ltr_workbook_compatibility_router)
 app.include_router(new_project_router)
 app.include_router(project_router)
+app.include_router(project_test_plan_router)
+app.include_router(project_test_plan_drafts_router)
+app.include_router(section2_completion_preview_router)
+app.include_router(section2_write_back_router)
+app.include_router(test_record_fee_dataset_preview_router)
+app.include_router(test_record_fee_document_generation_router)
 
 
 @app.get("/health")

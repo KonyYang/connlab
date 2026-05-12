@@ -304,3 +304,28 @@ class FrozenFieldRevisionRequestModel(Base):
     field_changes_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ProjectTestPlanDraftModel(Base):
+    """Database row for one Project-stage test-plan draft snapshot."""
+
+    __tablename__ = "project_test_plan_drafts"
+
+    draft_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    source_document_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    source_document_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_format: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_asset_id: Mapped[str | None] = mapped_column(String(64))
+    source_case_id: Mapped[str | None] = mapped_column(String(64))
+    source_draft_id: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    reviewed_at: Mapped[str | None] = mapped_column(String(64))

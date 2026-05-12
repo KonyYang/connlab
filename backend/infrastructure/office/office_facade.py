@@ -14,6 +14,7 @@ from backend.infrastructure.office.models import (
     OfficeFileKind,
     WordDocumentSnapshot,
     WordHeaderCellResult,
+    WordSection2WriteResult,
 )
 from backend.infrastructure.office.outlook_msg_gateway import OutlookMsgGateway
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
@@ -70,6 +71,14 @@ class OfficeFacade:
     ) -> WordHeaderCellResult:
         """Read one Word header table cell through the configured gateway."""
         return self._word_gateway.read_header_table_cell(source_path, row, column)
+
+    def write_word_section2_fields(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ) -> WordSection2WriteResult:
+        """Write Section 2 fields through the configured Word gateway."""
+        return self._word_gateway.write_section2_fields(source_path, fields)
 
     def import_outlook_msg(
         self,

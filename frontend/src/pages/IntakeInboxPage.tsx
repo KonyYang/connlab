@@ -676,6 +676,17 @@ export function IntakeInboxPage({
     if (!packageImport) {
       return;
     }
+
+    // Guard only when the loaded review case is already bound to this form asset.
+    // selectedAssetId alone can reflect attachment focus before the review has changed.
+    if (activeCase?.selected_form_asset_id === asset.asset_id) {
+      console.info("[IntakeInbox] Asset already selected, skipping redundant import", {
+        assetId: asset.asset_id,
+        assetName: asset.original_name
+      });
+      return;
+    }
+
     setImportingAssetId(asset.asset_id);
     setImportError(null);
     setDuplicateDraft(null);

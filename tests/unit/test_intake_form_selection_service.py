@@ -611,11 +611,11 @@ def test_selection_allows_same_source_when_existing_project_already_confirmed() 
     assert len(draft_store.drafts) == 1
 
 
-def test_selection_requires_resolution_when_switching_back_to_same_package_form() -> None:
-    from backend.application.intake_form_selection_service import (
-        IntakeDraftDuplicateResolutionRequiredError,
-    )
+def test_selection_returns_existing_case_when_reselecting_same_asset() -> None:
+    """When user re-clicks an already selected asset, return existing case directly.
 
+    This prevents unnecessary duplicate confirmation dialogs (Phase 1.2 fix).
+    """
     asset_a = _asset("asset-a", IntakeAssetRole.SELECTED_APPLICATION_FORM)
     asset_b = _asset("asset-b", IntakeAssetRole.SELECTED_APPLICATION_FORM)
     case_a = IntakeCase(
@@ -630,16 +630,17 @@ def test_selection_requires_resolution_when_switching_back_to_same_package_form(
         selected_form_asset_id="asset-b",
         status=IntakeCaseStatus.NEEDS_REVIEW,
     )
+    draft_a = IntakeDraft(
+        draft_id="draft-a",
+        case_id="case-a",
+        parsed_fields_json="{}",
+        manual_overrides_json='{"test_item":"Edited"}',
+    )
     service, _, _, _ = _service(
         [_email_asset(), asset_a, asset_b],
         cases=[case_a, case_b],
         drafts=[
-            IntakeDraft(
-                draft_id="draft-a",
-                case_id="case-a",
-                parsed_fields_json="{}",
-                manual_overrides_json='{"test_item":"Edited"}',
-            ),
+            draft_a,
             IntakeDraft(
                 draft_id="draft-b",
                 case_id="case-b",
@@ -648,19 +649,19 @@ def test_selection_requires_resolution_when_switching_back_to_same_package_form(
         ],
     )
 
-    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
-        service.select_form_asset("pkg-1", "asset-a")
+    # Re-selecting asset-a should return existing case-a directly, no exception
+    result = service.select_form_asset("pkg-1", "asset-a")
 
-    check = exc_info.value.check
-    assert check.existing_package_id == "pkg-1"
-    assert check.existing_case_id == "case-a"
+    assert result.case.case_id == "case-a"
+    assert result.draft.draft_id == "draft-a"
+    assert result.selected_asset.asset_id == "asset-a"
 
 
-def test_selection_requires_resolution_for_same_package_single_form_repeat() -> None:
-    from backend.application.intake_form_selection_service import (
-        IntakeDraftDuplicateResolutionRequiredError,
-    )
+def test_selection_returns_existing_case_for_single_form_repeat() -> None:
+    """When user repeats selection of the only form, return existing case directly.
 
+    This prevents unnecessary duplicate confirmation dialogs (Phase 1.2 fix).
+    """
     service, _, _, _ = _service(
         [
             _email_asset(),
@@ -683,12 +684,12 @@ def test_selection_requires_resolution_for_same_package_single_form_repeat() -> 
         ],
     )
 
-    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
-        service.select_form_asset("pkg-1", "asset-a")
+    # Re-selecting the same asset should return existing case directly, no exception
+    result = service.select_form_asset("pkg-1", "asset-a")
 
-    check = exc_info.value.check
-    assert check.existing_package_id == "pkg-1"
-    assert check.existing_case_id == "case-a"
+    assert result.case.case_id == "case-a"
+    assert result.draft.draft_id == "draft-a"
+    assert result.selected_asset.asset_id == "asset-a"
 
 
 def test_selection_reinitialize_same_package_form_clears_manual_overrides() -> None:

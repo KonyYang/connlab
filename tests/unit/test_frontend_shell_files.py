@@ -53,6 +53,7 @@ def test_frontend_shell_core_files_exist() -> None:
         "src/components/workflow/workflowState.ts",
         "src/components/project/ProjectSummaryPanel.tsx",
         "src/features/project-workbench/ProjectFolderCreationPanel.tsx",
+        "src/features/project-workbench/ProjectWorkbenchMatrixReviewPanel.tsx",
         "src/features/settings/SettingsExternalResourcesPanel.tsx",
         "src/features/settings/settingsResourceConfig.ts",
         "src/features/settings/settingsSelectors.ts",
@@ -264,6 +265,12 @@ def test_task150_workbench_folder_uses_configured_resources() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     folder_panel_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectFolderCreationPanel.tsx"
     ).read_text(encoding="utf-8")
@@ -274,8 +281,10 @@ def test_task150_workbench_folder_uses_configured_resources() -> None:
         encoding="utf-8"
     )
 
-    assert "listExternalResources" in workbench_source
-    assert "configuredFolderResources" in workbench_source
+    assert "useProjectWorkbenchModel" in workbench_source
+    assert "listExternalResources" in model_source
+    assert "configuredFolderResources" in model_source
+    assert "ProjectFolderCreationPanel" in layout_source
     assert "configuredTemplate" in folder_panel_source
     assert "configuredOutputRoot" in folder_panel_source
     assert "Project folder template" in folder_panel_source
@@ -348,6 +357,9 @@ def test_project_workbench_uses_sequential_stepper() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     stepper_source = (
         FRONTEND_ROOT / "src" / "components" / "workflow" / "WorkflowStepper.tsx"
     ).read_text(encoding="utf-8")
@@ -358,10 +370,10 @@ def test_project_workbench_uses_sequential_stepper() -> None:
         encoding="utf-8"
     )
 
-    if "Project workbench boundary" in workbench_source:
+    if "Project workbench boundary" in workbench_source or "Project workbench boundary" in layout_source:
         assert "WorkflowStepper" not in workbench_source
         assert "NextActionPanel" not in workbench_source
-        assert "project-workbench-status" in workbench_source
+        assert "project-workbench-status" in layout_source or "project-workbench-status" in workbench_source
         assert ".project-workbench-status" in styles_source
         return
 
@@ -442,11 +454,14 @@ def test_intake_ltr_folder_panels_show_operator_guidance() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
 
-    if "Project workbench boundary" in workbench_source:
+    if "Project workbench boundary" in workbench_source or "Project workbench boundary" in layout_source:
         assert "ApplicationFormActionPanel" not in workbench_source
         assert "LtrActionPanel" not in workbench_source
         assert "FolderActionPanel" not in workbench_source
@@ -1664,6 +1679,12 @@ def test_folder_evidence_frontend_wires_preview_and_execution() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    evidence_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchEvidencePanel.tsx"
+    ).read_text(encoding="utf-8")
     folder_source = (
         FRONTEND_ROOT / "src" / "components" / "workflow" / "FolderActionPanel.tsx"
     ).read_text(encoding="utf-8")
@@ -1687,16 +1708,16 @@ def test_folder_evidence_frontend_wires_preview_and_execution() -> None:
         "evidencePlan",
         "evidenceResult",
     ]:
-        assert term in workbench_source
+        assert term in model_source or term in evidence_panel_source or term in workbench_source
 
-    if "Project workbench boundary" in workbench_source:
+    if "Project workbench boundary" in workbench_source or "Project workbench boundary" in evidence_panel_source:
         for term in [
             "Evidence placement",
             "Preview evidence placement",
             "Place evidence",
             "Project folder is not recorded for this project.",
         ]:
-            assert term in workbench_source
+            assert term in workbench_source or term in evidence_panel_source
     else:
         for term in [
             "Evidence placement",
@@ -2243,6 +2264,12 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
@@ -2255,14 +2282,14 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     for term in ["Continue", "onContinueDraft"]:
         assert term not in project_list_source
 
-    for term in [
-        "Project workbench boundary",
-        "previewEvidencePlacement",
-        "placeEvidence",
-        "Create it here after LTR registration.",
-        "ProjectFolderCreationPanel",
-    ]:
-        assert term in workbench_source
+    assert (
+        "Project workbench boundary" in workbench_source
+        or "Project workbench boundary" in layout_source
+    )
+    for term in ["previewEvidencePlacement", "placeEvidence"]:
+        assert term in model_source or term in workbench_source
+    for term in ["Create it here after LTR registration.", "ProjectFolderCreationPanel"]:
+        assert term in layout_source or term in workbench_source
 
     for removed_term in [
         "uploadApplicationForm",
@@ -2279,3 +2306,46 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     assert "Create project folder" in project_folder_source
     assert ".project-workbench-status" in styles_source
     assert ".project-folder-workbench-panel" in styles_source
+
+
+def test_task186_workbench_matrix_review_surface_is_feature_wired() -> None:
+    """TASK_186 adds Matrix-first review surface from existing test-plan draft APIs."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/api/projects/" in client_source
+    assert "/test-plan/drafts" in client_source
+    assert "listProjectTestPlanDrafts" in client_source
+    assert "getProjectTestPlanDraft" in client_source
+
+    assert "listProjectTestPlanDrafts" in model_source
+    assert "getProjectTestPlanDraft" in model_source
+    assert "matrixDraft" in model_source
+    assert "matrixDraftLoading" in model_source
+    assert "matrixDraftError" in model_source
+
+    assert "ProjectWorkbenchMatrixReviewPanel" in layout_source
+    assert "draft={matrixDraft}" in layout_source
+    assert "error={matrixDraftError}" in layout_source
+    assert "loading={matrixDraftLoading}" in layout_source
+
+    assert "Matrix review" in matrix_panel_source
+    assert "No active Project test-plan draft is available yet." in matrix_panel_source
+    assert "Draft warnings" in matrix_panel_source
+
+    assert ".matrix-review-panel" in styles_source
+    assert ".matrix-review-summary" in styles_source
+    assert ".matrix-review-step-list" in styles_source

@@ -7,8 +7,30 @@ from pathlib import Path
 
 from docx import Document
 
-from backend.infrastructure.office.models import WordDocumentSnapshot, WordHeaderCellResult
+from backend.infrastructure.office.models import (
+    WordDocumentSnapshot,
+    WordHeaderCellResult,
+    WordSection2FieldChange,
+    WordSection2WriteResult,
+)
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+
+
+SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
+    "lab": ("lab", "laboratory"),
+    "assigned_personnel": (
+        "assigned personnel",
+        "assigned engineer",
+        "test engineer",
+        "tested by",
+    ),
+    "received_date": ("received date", "sample received date"),
+    "estimated_completion_date": (
+        "estimated completion date",
+        "estimated complete date",
+    ),
+    "sample_condition": ("sample condition", "sample received condition"),
+}
 
 
 class WordDocumentGateway:
@@ -56,6 +78,58 @@ class WordDocumentGateway:
             )
         value = _read_header_cell_with_com(path, row, column)
         return WordHeaderCellResult(value=_clean(value or ""), gateway_mode="word_com")
+
+    def write_section2_fields(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ) -> WordSection2WriteResult:
+        """Write known Section 2 fields into adjacent Word table value cells."""
+        path = Path(source_path)
+        if path.suffix.lower() != ".docx":
+            raise ValueError(f"Only .docx files are supported by the Word gateway: {path}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Word document does not exist: {path}")
+        unknown = sorted(key for key in fields if key not in SECTION2_FIELD_LABELS)
+        if unknown:
+            raise ValueError(f"Unsupported Section 2 field(s): {', '.join(unknown)}")
+
+        document = Document(path)
+        locations = _locate_section2_fields(document, fields)
+        missing = [key for key in fields if key not in locations]
+        if missing:
+            raise ValueError(
+                "Section 2 field location(s) not found: " + ", ".join(sorted(missing))
+            )
+
+        changed: list[WordSection2FieldChange] = []
+        unchanged: list[WordSection2FieldChange] = []
+        for field_key, new_value in fields.items():
+            table_index, row_index, label_column, value_column = locations[field_key]
+            row = document.tables[table_index].rows[row_index]
+            label = _clean(row.cells[label_column].text)
+            cell = row.cells[value_column]
+            old_value = _clean(cell.text)
+            update = WordSection2FieldChange(
+                field_key=field_key,
+                label=label,
+                old_value=old_value,
+                new_value=new_value,
+                location=(
+                    f"table[{table_index}].row[{row_index}].cell[{value_column}]"
+                ),
+            )
+            if old_value == new_value:
+                unchanged.append(update)
+            else:
+                cell.text = new_value
+                changed.append(update)
+
+        document.save(path)
+        return WordSection2WriteResult(
+            changed_fields=tuple(changed),
+            unchanged_fields=tuple(unchanged),
+        )
 
 
 def _table_rows(table) -> list[list[str]]:
@@ -150,3 +224,50 @@ def _raw_text(
 def _clean(value: str) -> str:
     """Collapse Word whitespace into a single trimmed string."""
     return re.sub(r"\s+", " ", value.replace("\x07", " ")).strip()
+
+
+def _locate_section2_fields(document, fields: dict[str, str]) -> dict[str, tuple[int, int, int, int]]:
+    """Locate requested Section 2 field value cells without mutating the document."""
+    locations: dict[str, tuple[int, int, int, int]] = {}
+    requested = set(fields)
+    for table_index, table in enumerate(document.tables):
+        for row_index, row in enumerate(table.rows):
+            cells = row.cells
+            for column_index, cell in enumerate(cells):
+                field_key = _field_key_for_label(cell.text, requested - locations.keys())
+                if field_key is None:
+                    continue
+                value_column = _value_column(cells, column_index)
+                if value_column is not None:
+                    locations[field_key] = (
+                        table_index,
+                        row_index,
+                        column_index,
+                        value_column,
+                    )
+    return locations
+
+
+def _field_key_for_label(label: str, candidates: set[str]) -> str | None:
+    """Return the matching field key for a Word table label cell."""
+    normalized = _normalize_label(label)
+    if not normalized:
+        return None
+    for field_key in candidates:
+        aliases = SECTION2_FIELD_LABELS[field_key]
+        if normalized in {_normalize_label(alias) for alias in aliases}:
+            return field_key
+    return None
+
+
+def _value_column(cells, label_column: int) -> int | None:
+    """Return the adjacent value-cell index for a label cell."""
+    if label_column + 1 < len(cells):
+        return label_column + 1
+    return None
+
+
+def _normalize_label(value: str) -> str:
+    """Normalize Word labels for deterministic matching."""
+    text = _clean(value).lower().rstrip(":")
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()

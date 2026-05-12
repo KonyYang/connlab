@@ -133,3 +133,11 @@ class FrozenFieldRevisionRequestStatus(StrEnum):
 
     REQUESTED = "requested"
     CANCELLED = "cancelled"
+
+
+class ProjectTestPlanDraftStatus(StrEnum):
+    """Lifecycle status for a Project-stage test-plan draft snapshot."""
+
+    DRAFT = "draft"
+    REVIEWED = "reviewed"
+    SUPERSEDED = "superseded"

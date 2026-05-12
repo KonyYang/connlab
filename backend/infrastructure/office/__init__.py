@@ -11,6 +11,10 @@ from backend.infrastructure.office.models import (
     OfficeFileKind,
     WordDocumentSnapshot,
     WordHeaderCellResult,
+    WordSection2FieldChange,
+    WordSection2WriteResult,
+    TestRecordDocumentWriteResult,
+    FeeEvaluationWorkbookWriteResult,
 )
 from backend.infrastructure.office.msg_compatibility import (
     MsgCompatibilityResult,
@@ -53,6 +57,8 @@ from backend.infrastructure.office.outlook_msg_gateway import (
     OutlookMsgMetadataError,
 )
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
+from backend.infrastructure.office.test_record_document_gateway import TestRecordDocumentGateway
+from backend.infrastructure.office.fee_evaluation_workbook_gateway import FeeEvaluationWorkbookGateway
 
 __all__ = [
     "ImportedMailAttachment",
@@ -93,5 +99,11 @@ __all__ = [
     "WordDocumentGateway",
     "WordDocumentSnapshot",
     "WordHeaderCellResult",
+    "WordSection2FieldChange",
+    "WordSection2WriteResult",
+    "TestRecordDocumentWriteResult",
+    "FeeEvaluationWorkbookWriteResult",
+    "TestRecordDocumentGateway",
+    "FeeEvaluationWorkbookGateway",
     "probe_msg_samples",
 ]

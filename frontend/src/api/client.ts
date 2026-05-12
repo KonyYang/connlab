@@ -514,6 +514,83 @@ export type EvidencePlacementResult = {
   copied_paths: string[];
 };
 
+export type ApprovalPackageRequest = {
+  project_folder_path: string;
+  completed_application_form_path: string;
+  test_record_output_path: string;
+  fee_evaluation_output_path?: string | null;
+  evidence_source_paths: string[];
+  overwrite: boolean;
+};
+
+export type ApprovalPackageItem = {
+  source_path: string;
+  target_relative_path: string;
+  target_path: string;
+  classification: string;
+  status: string;
+  warnings: string[];
+};
+
+export type ApprovalPackageResponse = {
+  project_id: string;
+  project_folder_path: string;
+  mode: string;
+  items: ApprovalPackageItem[];
+  warnings: string[];
+  blockers: string[];
+};
+
+export type ProjectTestPlanDraftStatus = "draft" | "reviewed" | "superseded";
+
+export type ProjectTestPlanDraftStep = {
+  sequence?: number | null;
+  test_item?: string | null;
+  step_label?: string | null;
+  condition_summary?: string | null;
+  method_summary?: string | null;
+  reference_standard?: string | null;
+  judgement_criteria?: string | null;
+  estimated_duration_hint?: string | null;
+  duration_hint?: string | null;
+  estimated_duration_days?: number | null;
+  duration_days?: number | null;
+  estimated_duration_hours?: number | null;
+  source_section?: string | null;
+  source_table_index?: number | null;
+  source_row_index?: number | null;
+};
+
+export type ProjectTestPlanDraftGroup = {
+  group_key?: string | null;
+  group_label?: string | null;
+  source_table_index?: number | null;
+  steps?: ProjectTestPlanDraftStep[];
+};
+
+export type ProjectTestPlanDraftPayload = {
+  groups?: ProjectTestPlanDraftGroup[];
+  warnings?: string[];
+  blockers?: string[];
+};
+
+export type ProjectTestPlanDraft = {
+  draft_id: string;
+  project_id: string;
+  source_document_path: string;
+  source_document_name: string;
+  source_format: string;
+  source_asset_id?: string | null;
+  source_case_id?: string | null;
+  source_draft_id?: string | null;
+  status: ProjectTestPlanDraftStatus;
+  version: number;
+  payload: ProjectTestPlanDraftPayload;
+  created_at: string;
+  updated_at: string;
+  reviewed_at?: string | null;
+};
+
 export type FolderRequest = {
   template_path: string;
   target_root: string;
@@ -1062,5 +1139,46 @@ export function placeEvidence(projectId: string): Promise<EvidencePlacementResul
   return requestJson<EvidencePlacementResult>(
     `/api/projects/${encodeURIComponent(projectId)}/evidence/place`,
     { method: "POST" }
+  );
+}
+
+export function previewApprovalPackage(
+  projectId: string,
+  input: ApprovalPackageRequest
+): Promise<ApprovalPackageResponse> {
+  return requestJson<ApprovalPackageResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/approval-package/preview`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function executeApprovalPackage(
+  projectId: string,
+  input: ApprovalPackageRequest
+): Promise<ApprovalPackageResponse> {
+  return requestJson<ApprovalPackageResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/approval-package/execute`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function listProjectTestPlanDrafts(projectId: string): Promise<ProjectTestPlanDraft[]> {
+  return requestJson<ProjectTestPlanDraft[]>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts`
+  );
+}
+
+export function getProjectTestPlanDraft(
+  projectId: string,
+  draftId: string
+): Promise<ProjectTestPlanDraft> {
+  return requestJson<ProjectTestPlanDraft>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts/${encodeURIComponent(draftId)}`
   );
 }

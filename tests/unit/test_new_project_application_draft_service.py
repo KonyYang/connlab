@@ -82,14 +82,18 @@ class SelectionService:
 
     def __init__(self) -> None:
         self.selected_asset_ids: list[str] = []
+        self.last_resolution_action: str | None = None
 
     def select_form_asset(
         self,
         package_id: str,
         asset_id: str,
         replace_existing: bool = False,
+        resolution_action: str | None = None,
+        resolution_case_id: str | None = None,
     ) -> FormSelectionResult:
         self.selected_asset_ids.append(asset_id)
+        self.last_resolution_action = resolution_action
         case = IntakeCase(
             case_id="case-selected",
             package_id=package_id,

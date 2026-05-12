@@ -20,6 +20,8 @@ def test_evidence_preview_places_assets_in_real_project_shape(tmp_path: Path) ->
     email = _touch(sources / "DL-2025-09-054 request.msg")
     form = _touch(sources / "E-3718_H Laboratory Test Request-Even.docx")
     spec = _touch(sources / "customer_specification.pdf")
+    fee = _touch(sources / "DL-2025-11-073 Form for Testing Fee Evaluation.xls")
+    record_template = _touch(sources / "FDQF-E-036 Test Record Template-Even.docx")
     photo = _touch(sources / "sample_photo.jpg")
     ltr = _touch(sources / "ltr_commit_audit.json")
     correction = _touch(sources / "corrected_request.docx")
@@ -30,6 +32,8 @@ def test_evidence_preview_places_assets_in_real_project_shape(tmp_path: Path) ->
             _asset("email", FileAssetType.ATTACHMENT, email),
             _asset("form", FileAssetType.APPLICATION_FORM, form),
             _asset("spec", FileAssetType.ATTACHMENT, spec),
+            _asset("fee", FileAssetType.ATTACHMENT, fee),
+            _asset("record", FileAssetType.ATTACHMENT, record_template),
             _asset("photo", FileAssetType.ATTACHMENT, photo),
             _asset("ltr", FileAssetType.LTR, ltr),
             _asset("correction", FileAssetType.ATTACHMENT, correction),
@@ -44,7 +48,10 @@ def test_evidence_preview_places_assets_in_real_project_shape(tmp_path: Path) ->
     assert by_id["email"].category is EvidencePlacementCategory.EMAIL
     assert by_id["email"].target_path.parent.name == "E-mail"
     assert by_id["form"].target_path.parent.name == "Submitted Material"
-    assert by_id["spec"].target_path.parent.name == "Specifications"
+    assert by_id["spec"].category is EvidencePlacementCategory.SPECIFICATION
+    assert by_id["spec"].target_path.parent.name == "Submitted Material"
+    assert by_id["fee"].target_path.parent.name == "Submitted Material"
+    assert by_id["record"].target_path.parent.name == "Submitted Material"
     assert by_id["photo"].target_path.parent.name == "Photos"
     assert by_id["ltr"].target_path.parent.name == "LTR Evidence"
     assert by_id["correction"].target_path.parent.name == "Corrections"

@@ -22,6 +22,9 @@ from backend.infrastructure.storage.repositories.project_cleanup import (
     ProjectCleanupAuditRecordRepository,
 )
 from backend.infrastructure.storage.repositories.project import ProjectRepository
+from backend.infrastructure.storage.repositories.project_test_plan import (
+    ProjectTestPlanDraftRepository,
+)
 from backend.infrastructure.storage.repositories.records import (
     FileAssetRepository,
     LtrRecordRepository,
@@ -43,5 +46,6 @@ __all__ = [
     "ProjectCleanupAuditRecordRepository",
     "ProjectFolderRecordRepository",
     "ProjectRepository",
+    "ProjectTestPlanDraftRepository",
     "SampleInfoRepository",
 ]

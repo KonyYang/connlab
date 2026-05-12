@@ -312,6 +312,12 @@
   background: var(--color-surface);
 }
 
+.approval-evidence-input {
+  width: 100%;
+  margin-top: 10px;
+  resize: vertical;
+}
+
 .fine-print {
   font-size: 12px;
 }
@@ -844,6 +850,115 @@
   color: var(--color-ink-muted);
 }
 
+.matrix-review-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.matrix-review-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.matrix-review-heading h4,
+.matrix-review-heading p {
+  margin: 0;
+}
+
+.matrix-review-heading p {
+  margin-top: 6px;
+  color: var(--color-ink-muted);
+}
+
+.matrix-review-heading strong {
+  font-size: 12px;
+  color: var(--color-primary-strong);
+}
+
+.matrix-review-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.matrix-review-summary div {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.matrix-review-summary dt {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.matrix-review-summary dd {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+.matrix-review-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.matrix-review-group {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.matrix-review-group header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.matrix-review-group header span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.matrix-review-step-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.matrix-review-step-list li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.matrix-review-step-list span,
+.matrix-review-step-list em {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.matrix-review-step-list em {
+  font-style: normal;
+  font-weight: 700;
+}
+
 @media (max-width: 960px) {
   .project-summary-grid,
   .project-workbench-status-grid,
@@ -854,6 +969,7 @@
   .metadata-grid,
   .form-grid-two,
   .lookup-summary-grid,
+  .matrix-review-summary,
   .readiness-list li {
     grid-template-columns: 1fr;
   }

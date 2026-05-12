@@ -31,6 +31,7 @@ from backend.application.intake_precheck_service import IntakePrecheckService
 from backend.application.application_form_eligibility_service import (
     IntakeAssetApplicationFormEligibilityService,
 )
+from backend.application.approval_package_service import ApprovalPackageService
 from backend.application.intake_asset_preview_service import IntakeAssetPreviewService
 from backend.application.intake_case_review_service import IntakeCaseReviewService
 from backend.application.intake_confirmation_service import IntakeConfirmationService
@@ -81,8 +82,28 @@ from backend.application.project_ltr_cleanup_audit_service import (
     ProjectLtrCleanupAuditService,
 )
 from backend.application.project_service import ProjectService
+from backend.application.project_test_plan_matrix_preview_service import (
+    ProjectTestPlanMatrixPreviewService,
+)
+from backend.application.project_test_plan_draft_service import (
+    ProjectTestPlanDraftService,
+)
+from backend.application.section2_completion_preview_service import (
+    Section2CompletionPreviewService,
+)
+from backend.application.section2_write_back_service import (
+    Section2WriteBackService,
+)
+from backend.application.test_record_fee_dataset_preview_service import (
+    TestRecordFeeDatasetPreviewService,
+)
+from backend.application.test_record_fee_document_generation_service import (
+    TestRecordFeeDocumentGenerationService,
+)
 from backend.infrastructure.files import IntakeStorage
 from backend.infrastructure.office import (
+    FeeEvaluationWorkbookGateway,
+    TestRecordDocumentGateway,
     LtrWorkbookTransactionConfig,
     LtrWorkbookTransactionGateway,
     OfficeFacade,
@@ -102,6 +123,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectCleanupAuditRecordRepository,
     ProjectFolderRecordRepository,
     ProjectRepository,
+    ProjectTestPlanDraftRepository,
     SampleInfoRepository,
 )
 from backend.infrastructure.storage.repositories.lookup_options import (
@@ -144,6 +166,76 @@ def get_session() -> Generator[Session, None, None]:
 def get_project_service(session: Session = Depends(get_session)) -> ProjectService:
     """Build a project service for API routes."""
     return ProjectService(ProjectRepository(session))
+
+
+def get_project_test_plan_matrix_preview_service() -> ProjectTestPlanMatrixPreviewService:
+    """Build the read-only project test-plan Matrix preview service."""
+    return ProjectTestPlanMatrixPreviewService()
+
+
+def get_project_test_plan_draft_service(
+    session: Session = Depends(get_session),
+) -> ProjectTestPlanDraftService:
+    """Build the Project test-plan draft persistence service."""
+    return ProjectTestPlanDraftService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+    )
+
+
+def get_section2_completion_preview_service(
+    session: Session = Depends(get_session),
+) -> Section2CompletionPreviewService:
+    """Build the read-only Section 2 completion preview service."""
+    return Section2CompletionPreviewService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+    )
+
+
+def get_section2_write_back_service(
+    session: Session = Depends(get_session),
+) -> Section2WriteBackService:
+    """Build the controlled Section 2 write-back service."""
+    return Section2WriteBackService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+    )
+
+
+def get_test_record_fee_dataset_preview_service(
+    session: Session = Depends(get_session),
+) -> TestRecordFeeDatasetPreviewService:
+    """Build the read-only test record and fee dataset preview service."""
+    return TestRecordFeeDatasetPreviewService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+    )
+
+
+def get_test_record_fee_document_generation_service(
+    session: Session = Depends(get_session),
+) -> TestRecordFeeDocumentGenerationService:
+    """Build the controlled test-record and fee document generation service."""
+    return TestRecordFeeDocumentGenerationService(
+        dataset_preview_service=TestRecordFeeDatasetPreviewService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectTestPlanDraftRepository(session),
+        ),
+        test_record_writer=TestRecordDocumentGateway(),
+        fee_writer=FeeEvaluationWorkbookGateway(),
+    )
+
+
+def get_approval_package_service(
+    session: Session = Depends(get_session),
+) -> ApprovalPackageService:
+    """Build the approval package preview and execute service."""
+    project_repository = ProjectRepository(session)
+    return ApprovalPackageService(
+        project_repository=project_repository,
+        lifecycle_guard=ProjectLifecycleService(project_repository),
+    )
 
 
 def get_project_ltr_cleanup_audit_service(

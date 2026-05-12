@@ -20,6 +20,7 @@ from backend.domain.enums import (
     LtrStatus,
     PrecheckStatus,
     ProjectStatus,
+    ProjectTestPlanDraftStatus,
 )
 
 
@@ -257,3 +258,23 @@ class FrozenFieldRevisionRequest:
     field_changes_json: str
     created_at: str
     updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectTestPlanDraft:
+    """Project-stage structured test-plan draft snapshot."""
+
+    draft_id: str
+    project_id: str
+    source_document_path: str
+    source_document_name: str
+    source_format: str
+    status: ProjectTestPlanDraftStatus
+    version: int
+    payload_json: str
+    created_at: str
+    updated_at: str
+    source_asset_id: str | None = None
+    source_case_id: str | None = None
+    source_draft_id: str | None = None
+    reviewed_at: str | None = None
