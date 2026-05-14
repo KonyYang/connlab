@@ -59,6 +59,7 @@ class CreateProjectTestPlanDraftCommand:
     source_format: str
     payload: dict[str, Any]
     status: ProjectTestPlanDraftStatus = ProjectTestPlanDraftStatus.DRAFT
+    supersede_existing_active: bool = True
     source_asset_id: str | None = None
     source_case_id: str | None = None
     source_draft_id: str | None = None
@@ -112,12 +113,19 @@ class ProjectTestPlanDraftService:
         payload_json = _payload_json(command.payload)
         now = _utc_now()
         next_version = self._next_version(command.project_id, source_document_path)
-        for existing in self._drafts.list_by_project_and_source(
-            command.project_id,
-            source_document_path,
-        ):
-            if existing.status in self._ACTIVE_STATUSES:
-                self._drafts.update(_with_status(existing, ProjectTestPlanDraftStatus.SUPERSEDED, now))
+        if command.supersede_existing_active:
+            for existing in self._drafts.list_by_project_and_source(
+                command.project_id,
+                source_document_path,
+            ):
+                if existing.status in self._ACTIVE_STATUSES:
+                    self._drafts.update(
+                        _with_status(
+                            existing,
+                            ProjectTestPlanDraftStatus.SUPERSEDED,
+                            now,
+                        )
+                    )
         draft = ProjectTestPlanDraft(
             draft_id=f"ptpd-{uuid4().hex}",
             project_id=command.project_id,

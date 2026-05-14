@@ -25,6 +25,15 @@ from backend.api.routes_project_test_plan import router as project_test_plan_rou
 from backend.api.routes_project_test_plan_drafts import (
     router as project_test_plan_drafts_router,
 )
+from backend.api.routes_project_test_plan_matrix_edit import (
+    router as project_test_plan_matrix_edit_router,
+)
+from backend.api.routes_project_test_plan_source_candidates import (
+    router as project_test_plan_source_candidates_router,
+)
+from backend.api.routes_project_output_records import (
+    router as project_output_records_router,
+)
 from backend.api.routes_section2_completion_preview import (
     router as section2_completion_preview_router,
 )
@@ -57,6 +66,9 @@ app.include_router(new_project_router)
 app.include_router(project_router)
 app.include_router(project_test_plan_router)
 app.include_router(project_test_plan_drafts_router)
+app.include_router(project_test_plan_matrix_edit_router)
+app.include_router(project_test_plan_source_candidates_router)
+app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)
 app.include_router(test_record_fee_dataset_preview_router)

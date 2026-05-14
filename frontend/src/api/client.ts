@@ -544,6 +544,8 @@ export type ApprovalPackageResponse = {
 export type ProjectTestPlanDraftStatus = "draft" | "reviewed" | "superseded";
 
 export type ProjectTestPlanDraftStep = {
+  raw_token?: string | null;
+  suffix_note?: string | null;
   sequence?: number | null;
   test_item?: string | null;
   step_label?: string | null;
@@ -559,11 +561,14 @@ export type ProjectTestPlanDraftStep = {
   source_section?: string | null;
   source_table_index?: number | null;
   source_row_index?: number | null;
+  source_trace?: string | null;
+  note?: string | null;
 };
 
 export type ProjectTestPlanDraftGroup = {
   group_key?: string | null;
   group_label?: string | null;
+  sample_size?: number | null;
   source_table_index?: number | null;
   steps?: ProjectTestPlanDraftStep[];
 };
@@ -589,6 +594,122 @@ export type ProjectTestPlanDraft = {
   created_at: string;
   updated_at: string;
   reviewed_at?: string | null;
+};
+
+export type MatrixValidationSummary = {
+  blockers: string[];
+  warnings: string[];
+  group_count: number;
+  step_count: number;
+};
+
+export type ProjectTestPlanMatrixActionResponse = {
+  draft: ProjectTestPlanDraft;
+  validation: MatrixValidationSummary;
+  created_new_draft: boolean;
+};
+
+export type ProjectTestPlanMatrixValidateResponse = {
+  project_id: string;
+  draft_id: string;
+  validation: MatrixValidationSummary;
+};
+
+export type MatrixPreviewFromPathRequest = {
+  source_path: string;
+  project_id?: string | null;
+};
+
+export type MatrixPreviewStep = {
+  sequence: number;
+  test_item: string;
+  source_section?: string | null;
+  condition_summary?: string | null;
+  method_summary?: string | null;
+  reference_standard?: string | null;
+  judgement_criteria?: string | null;
+  estimated_duration_hint?: string | null;
+  duration_source?: string | null;
+  duration_status: string;
+  source_table_index: number;
+  source_row_index: number;
+  warnings: string[];
+};
+
+export type MatrixPreviewGroup = {
+  group_key: string;
+  group_label: string;
+  source_table_index: number;
+  extraction_status: string;
+  steps: MatrixPreviewStep[];
+};
+
+export type MatrixPreviewResponse = {
+  project_id?: string | null;
+  source_document_path: string;
+  source_document_name: string;
+  source_format: string;
+  capability_status: string;
+  generated_at: string;
+  selected_table_index?: number | null;
+  groups: MatrixPreviewGroup[];
+  warnings: string[];
+  blockers: string[];
+};
+
+export type MatrixSourceCandidate = {
+  source_asset_id: string;
+  original_name: string;
+  extension: string;
+  asset_type: string;
+  candidate_kind: string;
+  reason: string;
+  stored_file_available: boolean;
+};
+
+export type MatrixSourceCandidatesResponse = {
+  project_id: string;
+  candidates: MatrixSourceCandidate[];
+  warnings: string[];
+};
+
+export type ProjectTestPlanDraftCreateRequest = {
+  source_document_path: string;
+  source_document_name: string;
+  source_format: string;
+  payload: ProjectTestPlanDraftPayload;
+  status?: ProjectTestPlanDraftStatus;
+  source_asset_id?: string | null;
+  source_case_id?: string | null;
+  source_draft_id?: string | null;
+};
+
+export type ProjectOutputKind =
+  | "section2_write_back"
+  | "test_record_form"
+  | "fee_evaluation"
+  | "approval_package";
+
+export type ProjectOutputStatus = "missing" | "current" | "stale" | "manual" | "failed";
+
+export type ProjectOutputSource = "system_generated" | "system_executed" | "manual";
+
+export type ProjectOutputStatusItem = {
+  output_kind: ProjectOutputKind;
+  status: ProjectOutputStatus;
+  output_path: string | null;
+  source: ProjectOutputSource | null;
+  draft_id: string | null;
+  draft_version: number | null;
+  reason: string;
+  updated_at: string | null;
+};
+
+export type ProjectOutputStatusSummary = {
+  project_id: string;
+  active_draft_id: string | null;
+  active_draft_version: number | null;
+  items: ProjectOutputStatusItem[];
 };
 
 export type FolderRequest = {
@@ -1174,11 +1295,103 @@ export function listProjectTestPlanDrafts(projectId: string): Promise<ProjectTes
   );
 }
 
+export function previewProjectTestPlanMatrixFromPath(
+  input: MatrixPreviewFromPathRequest
+): Promise<MatrixPreviewResponse> {
+  return requestJson<MatrixPreviewResponse>("/api/test-plan/matrix-preview-from-path", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function listProjectTestPlanSourceCandidates(
+  projectId: string
+): Promise<MatrixSourceCandidatesResponse> {
+  return requestJson<MatrixSourceCandidatesResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates`
+  );
+}
+
+export function previewProjectTestPlanMatrixFromSourceCandidate(
+  projectId: string,
+  sourceAssetId: string
+): Promise<MatrixPreviewResponse> {
+  return requestJson<MatrixPreviewResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates/${encodeURIComponent(sourceAssetId)}/matrix-preview`,
+    {
+      method: "POST"
+    }
+  );
+}
+
+export function createProjectTestPlanDraft(
+  projectId: string,
+  input: ProjectTestPlanDraftCreateRequest
+): Promise<ProjectTestPlanDraft> {
+  return requestJson<ProjectTestPlanDraft>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export function getProjectTestPlanDraft(
   projectId: string,
   draftId: string
 ): Promise<ProjectTestPlanDraft> {
   return requestJson<ProjectTestPlanDraft>(
     `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts/${encodeURIComponent(draftId)}`
+  );
+}
+
+export function updateProjectTestPlanMatrixDraft(
+  projectId: string,
+  draftId: string,
+  groups: ProjectTestPlanDraftGroup[]
+): Promise<ProjectTestPlanMatrixActionResponse> {
+  return requestJson<ProjectTestPlanMatrixActionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts/${encodeURIComponent(draftId)}/matrix`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ groups })
+    }
+  );
+}
+
+export function validateProjectTestPlanMatrixDraft(
+  projectId: string,
+  draftId: string,
+  groups?: ProjectTestPlanDraftGroup[]
+): Promise<ProjectTestPlanMatrixValidateResponse> {
+  return requestJson<ProjectTestPlanMatrixValidateResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts/${encodeURIComponent(draftId)}/matrix/validate`,
+    {
+      method: "POST",
+      body: JSON.stringify(groups ? { groups } : {})
+    }
+  );
+}
+
+export function confirmProjectTestPlanMatrixDraft(
+  projectId: string,
+  draftId: string,
+  groups?: ProjectTestPlanDraftGroup[]
+): Promise<ProjectTestPlanMatrixActionResponse> {
+  return requestJson<ProjectTestPlanMatrixActionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts/${encodeURIComponent(draftId)}/matrix/confirm`,
+    {
+      method: "POST",
+      body: JSON.stringify(groups ? { groups } : {})
+    }
+  );
+}
+
+export function getProjectOutputStatusSummary(
+  projectId: string
+): Promise<ProjectOutputStatusSummary> {
+  return requestJson<ProjectOutputStatusSummary>(
+    `/api/projects/${encodeURIComponent(projectId)}/output-records/status`
   );
 }

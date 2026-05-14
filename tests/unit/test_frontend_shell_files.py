@@ -53,7 +53,14 @@ def test_frontend_shell_core_files_exist() -> None:
         "src/components/workflow/workflowState.ts",
         "src/components/project/ProjectSummaryPanel.tsx",
         "src/features/project-workbench/ProjectFolderCreationPanel.tsx",
+        "src/features/project-workbench/ProjectWorkbenchDocumentStatusPanel.tsx",
         "src/features/project-workbench/ProjectWorkbenchMatrixReviewPanel.tsx",
+        "src/features/project-workbench/ProjectWorkbenchMatrixStarter.tsx",
+        "src/features/project-workbench/ProjectWorkbenchMatrixAuthorityBar.tsx",
+        "src/features/project-workbench/ProjectWorkbenchMatrixOverview.tsx",
+        "src/features/project-workbench/ProjectWorkbenchMatrixInspector.tsx",
+        "src/features/project-workbench/projectWorkbenchMatrixHelpers.ts",
+        "src/features/project-workbench/projectWorkbenchVersionSelectors.ts",
         "src/features/settings/SettingsExternalResourcesPanel.tsx",
         "src/features/settings/settingsResourceConfig.ts",
         "src/features/settings/settingsSelectors.ts",
@@ -2322,6 +2329,9 @@ def test_task186_workbench_matrix_review_surface_is_feature_wired() -> None:
     matrix_panel_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
     ).read_text(encoding="utf-8")
+    matrix_inspector_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixInspector.tsx"
+    ).read_text(encoding="utf-8")
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
@@ -2343,9 +2353,315 @@ def test_task186_workbench_matrix_review_surface_is_feature_wired() -> None:
     assert "loading={matrixDraftLoading}" in layout_source
 
     assert "Matrix review" in matrix_panel_source
-    assert "No active Project test-plan draft is available yet." in matrix_panel_source
+    if "ProjectWorkbenchMatrixStarter" in matrix_panel_source:
+        assert "onPreviewStarterFromPath" in matrix_panel_source
+        assert "onCreateManualDraft" in matrix_panel_source
+    else:
+        assert "No active Project test-plan draft is available yet." in matrix_panel_source
     assert "Draft warnings" in matrix_panel_source
 
     assert ".matrix-review-panel" in styles_source
     assert ".matrix-review-summary" in styles_source
     assert ".matrix-review-step-list" in styles_source
+
+
+def test_task187_workbench_document_pipeline_autofill_is_feature_wired() -> None:
+    """TASK_187 auto-fills approval-package inputs from Workbench context with manual override."""
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    panel_source = (
+        FRONTEND_ROOT / "src" / "components" / "workflow" / "ApprovalPackagePanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "approvalInputSources" in model_source
+    assert "deriveApprovalInputAutofill" in model_source
+    assert "mergeApprovalInput" in model_source
+    assert "getLatestProjectFolder" in model_source
+    assert "setApprovalInputSources" in model_source
+    assert "manual" in model_source
+    assert "auto" in model_source
+
+    assert "inputSources={approvalInputSources}" in layout_source
+    assert "ApprovalInputSources" in panel_source
+    assert "Evidence source paths (" in panel_source
+    assert "Completed application form (" in panel_source
+    assert ".approval-input-field" in styles_source
+
+
+def test_task188_workbench_version_and_stale_status_is_feature_wired() -> None:
+    """TASK_188 reads persisted output-status summary and renders downstream status."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    selector_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "projectWorkbenchVersionSelectors.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    status_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchDocumentStatusPanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "deriveWorkbenchVersionStatus" in model_source
+    assert "getProjectOutputStatusSummary" in model_source
+    assert "/output-records/status" in client_source
+    assert "trackedDraftVersion" in model_source
+    assert "versionStatus" in model_source
+
+    assert "WorkbenchDocumentFreshness" in selector_source
+    assert "current" in selector_source
+    assert "stale" in selector_source
+    assert "missing" in selector_source
+    assert "manual" in selector_source
+    assert "failed" in selector_source
+
+    assert "ProjectWorkbenchDocumentStatusPanel" in layout_source
+    assert "status={versionStatus}" in layout_source
+    assert "versionStatus={versionStatus}" in layout_source
+    assert "Downstream outputs are stale" in matrix_panel_source
+    assert "Downstream status" in status_panel_source
+    assert ".workbench-document-status-panel" in styles_source
+    assert ".workbench-status-stale" in styles_source
+
+
+def test_task189_workbench_matrix_edit_and_confirm_is_feature_wired() -> None:
+    """TASK_189 adds Matrix group/step edit, validation, and confirm wiring."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_inspector_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixInspector.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "updateProjectTestPlanMatrixDraft" in client_source
+    assert "validateProjectTestPlanMatrixDraft" in client_source
+    assert "confirmProjectTestPlanMatrixDraft" in client_source
+    assert "/matrix/validate" in client_source
+    assert "/matrix/confirm" in client_source
+
+    assert "matrixDraftEditableGroups" in model_source
+    assert "matrixAuthorityDraft" in model_source
+    assert "matrixCandidateDraft" in model_source
+    assert "matrixValidation" in model_source
+    assert "onSaveMatrixDraft" in model_source
+    assert "onValidateMatrixDraft" in model_source
+    assert "onConfirmMatrixDraft" in model_source
+
+    assert "editableGroups={matrixDraftEditableGroups}" in layout_source
+    assert "onSaveDraft={onSaveMatrixDraft}" in layout_source
+    assert "onValidateDraft={onValidateMatrixDraft}" in layout_source
+    assert "onConfirmDraft={onConfirmMatrixDraft}" in layout_source
+
+    assert "ProjectWorkbenchMatrixInspector" in matrix_panel_source
+    assert "Validation blockers" in matrix_panel_source
+    assert "Group detail" in matrix_inspector_source
+    assert "Confirm Matrix" in matrix_inspector_source
+    assert "matrix-group-step-list" in matrix_inspector_source
+
+    assert ".matrix-edit-surface" in styles_source
+    assert ".matrix-group-nav" in styles_source
+    assert ".matrix-step-editor" in styles_source
+
+
+def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_are_demoted() -> None:
+    """TASK_190 makes Matrix authority workspace primary and keeps other workflows as supporting."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_overview_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixOverview.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_inspector_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixInspector.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_authority_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixAuthorityBar.tsx"
+    ).read_text(encoding="utf-8")
+    status_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchDocumentStatusPanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "project-workbench-matrix-primary" in layout_source
+    assert "project-workbench-supporting" in layout_source
+    assert "workbench-supporting-panel" in layout_source
+    assert "Matrix authority workspace" in layout_source
+    assert "ProjectWorkbenchDocumentStatusPanel" in layout_source
+    assert "Project folder workspace" in layout_source
+    assert 'className="workbench-supporting-panel" open' not in layout_source
+    assert layout_source.index('className="project-workbench-matrix-primary"') < layout_source.index(
+        "Project folder workspace"
+    )
+
+    assert "ProjectWorkbenchMatrixOverview" in matrix_panel_source
+    assert "ProjectWorkbenchMatrixInspector" in matrix_panel_source
+    assert "ProjectWorkbenchMatrixAuthorityBar" in matrix_panel_source
+    assert "Matrix overview" in matrix_overview_source
+    assert "groupColumns.map((column)" in matrix_overview_source
+    assert "<th key={column.key}>{column.label}</th>" in matrix_overview_source
+    assert "aggregateRowGroupCellTokens" in matrix_overview_source
+    assert "rowGroupCellTokens" in matrix_overview_source
+    assert "Group</th>" not in matrix_overview_source
+    assert "Step token</th>" not in matrix_overview_source
+    assert "Confirmed authority v" in matrix_authority_source
+    assert "Editing candidate v" in matrix_authority_source
+    assert "Group detail" in matrix_inspector_source
+    assert "Confirm Matrix" in matrix_inspector_source
+
+    assert "Downstream status" in status_panel_source
+
+    assert ".project-workbench-matrix-primary" in styles_source
+    assert ".project-workbench-supporting" in styles_source
+    assert ".workbench-supporting-panel" in styles_source
+    assert ".matrix-workspace" in styles_source
+    assert ".matrix-overview-table" in styles_source
+
+    for forbidden in ["AI review", "Report generation", "Historical reuse"]:
+        assert forbidden not in layout_source + matrix_panel_source
+
+
+def test_task191_matrix_starter_import_and_manual_empty_state_is_feature_wired() -> None:
+    """TASK_191 adds Matrix starter actions for draftless projects in matrix workspace."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    matrix_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    starter_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixStarter.tsx"
+    ).read_text(encoding="utf-8")
+    helper_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "projectWorkbenchMatrixHelpers.ts"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/api/test-plan/matrix-preview-from-path" in client_source
+    assert "previewProjectTestPlanMatrixFromPath" in client_source
+    assert "createProjectTestPlanDraft" in client_source
+    assert "/test-plan/drafts" in client_source
+
+    assert "matrixStarterSourcePath" in model_source
+    assert "matrixStarterPreview" in model_source
+    assert "matrixStarterPreviewing" in model_source
+    assert "matrixStarterCreatingFromPreview" in model_source
+    assert "matrixStarterCreatingManual" in model_source
+    assert "onPreviewMatrixStarterFromPath" in model_source
+    assert "onCreateMatrixDraftFromPreview" in model_source
+    assert "onCreateManualMatrixDraft" in model_source
+    assert "previewProjectTestPlanMatrixFromPath" in model_source
+    assert "createProjectTestPlanDraft" in model_source
+
+    assert "ProjectWorkbenchMatrixStarter" in matrix_panel_source
+    assert (
+        "Import from product specification" in starter_source
+        or "Candidate source files from this project" in starter_source
+    )
+    assert "Create manual Matrix" in starter_source
+    assert "Create draft from preview" in starter_source
+    assert "preview.blockers.length > 0" in starter_source
+
+    assert "buildDraftCreateRequestFromPreview" in helper_source
+    assert "mapPreviewToDraftPayload" in helper_source
+    assert "buildManualStarterDraftCreateRequest" in helper_source
+    assert "aggregateRowGroupCellTokens" in (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixOverview.tsx"
+    ).read_text(encoding="utf-8")
+    assert '"manual://project-matrix"' in helper_source
+    assert '"group_1"' in helper_source
+    assert '"Group 1"' in helper_source
+
+    assert ".matrix-starter-panel" in styles_source
+    assert ".matrix-starter-grid" in styles_source
+
+
+def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
+    """TASK_192 prioritizes project source candidates before external/manual fallback."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixReviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    starter_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixStarter.tsx"
+    ).read_text(encoding="utf-8")
+    helper_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "projectWorkbenchMatrixHelpers.ts"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/test-plan/source-candidates" in client_source
+    assert "listProjectTestPlanSourceCandidates" in client_source
+    assert "previewProjectTestPlanMatrixFromSourceCandidate" in client_source
+
+    assert "matrixSourceCandidates" in model_source
+    assert "matrixSelectedSourceAssetId" in model_source
+    assert "matrixStarterBrowseHint" in model_source
+    assert "onPreviewMatrixStarterFromCandidate" in model_source
+    assert "onBrowseMatrixStarterFallback" in model_source
+    assert "listProjectTestPlanSourceCandidates" in model_source
+    assert "previewProjectTestPlanMatrixFromSourceCandidate" in model_source
+
+    assert "sourceCandidates={matrixSourceCandidates}" in layout_source
+    assert "onPreviewStarterFromCandidate={onPreviewMatrixStarterFromCandidate}" in layout_source
+    assert "ProjectWorkbenchMatrixStarter" in matrix_panel_source
+
+    assert "Candidate source files from this project" in starter_source
+    assert "Preview selected source" in starter_source
+    assert "External source fallback" in starter_source
+    assert "Browse..." in starter_source
+    assert "Create manual Matrix" in starter_source
+
+    assert "source_asset_id: sourceAssetId" in helper_source
+
+    assert ".matrix-source-candidate-list" in styles_source
+    assert ".matrix-source-candidate-row" in styles_source
+    assert ".matrix-starter-card-secondary" in styles_source

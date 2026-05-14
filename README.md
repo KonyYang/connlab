@@ -1,14 +1,20 @@
 # ConnLab
 
-ConnLab is an offline Windows-first MVP workbench for an electronic connector laboratory.
+ConnLab is an offline Windows-first workbench for an electronic connector laboratory.
 
-Current MVP flow:
+Current working stage:
+
+```text
+Project Workbench / Matrix / Approval Package
+```
+
+Historical MVP baseline (already implemented and extended):
 
 ```text
 Project -> Application form -> Precheck -> LTR -> Project Folder
 ```
 
-Out of scope for the current MVP: Matrix, report generation, AI review, permissions, LAN deployment, full installer, and PyInstaller packaging.
+Current deferred scope (not active in the present stage baseline): AI review, multi-user permissions, LAN deployment, full installer, and PyInstaller packaging.
 
 ## Requirements
 

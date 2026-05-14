@@ -49,6 +49,14 @@ def test_record_fee_document_generation_api_generates_test_record_docx(
         assert body["generated_files"][0]["kind"] == "test_record"
         assert body["generated_files"][0]["status"] == "generated"
         assert Path(body["generated_files"][0]["output_path"]).exists()
+        status_response = client.get("/api/projects/P1/output-records/status")
+        assert status_response.status_code == 200
+        status_body = status_response.json()
+        test_record = next(
+            item for item in status_body["items"] if item["output_kind"] == "test_record_form"
+        )
+        assert test_record["status"] == "current"
+        assert test_record["draft_id"] == draft_id
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

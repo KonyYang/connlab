@@ -60,6 +60,13 @@ def test_section2_write_back_api_updates_docx_and_creates_backup(tmp_path: Path)
         values = _table_values(target)
         assert values["Lab"] == "Connector Lab"
         assert values["Estimated Completion Date"] == "2026-05-19"
+        status_response = client.get("/api/projects/P1/output-records/status")
+        assert status_response.status_code == 200
+        section2 = next(
+            item for item in status_response.json()["items"] if item["output_kind"] == "section2_write_back"
+        )
+        assert section2["status"] == "current"
+        assert section2["draft_id"] == draft_id
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

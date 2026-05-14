@@ -141,3 +141,30 @@ class ProjectTestPlanDraftStatus(StrEnum):
     DRAFT = "draft"
     REVIEWED = "reviewed"
     SUPERSEDED = "superseded"
+
+
+class ProjectOutputKind(StrEnum):
+    """Supported persisted output kinds linked to Project test-plan drafts."""
+
+    SECTION2_WRITE_BACK = "section2_write_back"
+    TEST_RECORD_FORM = "test_record_form"
+    FEE_EVALUATION = "fee_evaluation"
+    APPROVAL_PACKAGE = "approval_package"
+
+
+class ProjectOutputStatus(StrEnum):
+    """Persisted output freshness status for Workbench traceability."""
+
+    MISSING = "missing"
+    CURRENT = "current"
+    STALE = "stale"
+    MANUAL = "manual"
+    FAILED = "failed"
+
+
+class ProjectOutputSource(StrEnum):
+    """Source classification for one output status record."""
+
+    SYSTEM_GENERATED = "system_generated"
+    SYSTEM_EXECUTED = "system_executed"
+    MANUAL = "manual"

@@ -51,6 +51,12 @@ def test_approval_package_preview_and_execute_api(tmp_path: Path) -> None:
         assert (folder / "Submitted Material" / "request.docx").exists()
         assert (folder / "Submitted Material" / "record.docx").exists()
         assert (folder / "E-mail" / "mail.msg").exists()
+        status_response = client.get("/api/projects/P1/output-records/status")
+        assert status_response.status_code == 200
+        approval = next(
+            item for item in status_response.json()["items"] if item["output_kind"] == "approval_package"
+        )
+        assert approval["status"] in {"manual", "current"}
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -132,4 +138,3 @@ def _create_project(project_id: str, status: ProjectStatus, tmp_path: Path) -> N
         )
         session.commit()
     engine.dispose()
-

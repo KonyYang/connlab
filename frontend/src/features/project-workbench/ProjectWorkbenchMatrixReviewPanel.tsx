@@ -1,42 +1,143 @@
 import type { ReactElement } from "react";
-import type { ProjectTestPlanDraft } from "../../api/client";
+import type {
+  MatrixSourceCandidate,
+  MatrixPreviewResponse,
+  MatrixValidationSummary,
+  ProjectTestPlanDraft,
+  ProjectTestPlanDraftGroup
+} from "../../api/client";
+import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors";
+import { ProjectWorkbenchMatrixAuthorityBar } from "./ProjectWorkbenchMatrixAuthorityBar";
+import { ProjectWorkbenchMatrixInspector } from "./ProjectWorkbenchMatrixInspector";
+import { ProjectWorkbenchMatrixOverview } from "./ProjectWorkbenchMatrixOverview";
+import { ProjectWorkbenchMatrixStarter } from "./ProjectWorkbenchMatrixStarter";
+import { buildMatrixSummary } from "./projectWorkbenchMatrixHelpers";
 
 type ProjectWorkbenchMatrixReviewPanelProps = {
   draft: ProjectTestPlanDraft | null;
+  authorityDraft: ProjectTestPlanDraft | null;
+  candidateDraft: ProjectTestPlanDraft | null;
+  editableGroups: ProjectTestPlanDraftGroup[];
   error: string | null;
   loading: boolean;
-};
-
-type MatrixSummary = {
-  groupCount: number;
-  stepCount: number;
-  warningCount: number;
+  saving: boolean;
+  validating: boolean;
+  confirming: boolean;
+  validation: MatrixValidationSummary | null;
+  sourceCandidates: MatrixSourceCandidate[];
+  sourceCandidateWarnings: string[];
+  sourceCandidatesLoading: boolean;
+  selectedSourceAssetId: string | null;
+  starterBrowseHint: string | null;
+  starterSourcePath: string;
+  starterPreview: MatrixPreviewResponse | null;
+  starterPreviewing: boolean;
+  starterCreatingFromPreview: boolean;
+  starterCreatingManual: boolean;
+  starterError: string | null;
+  onSourceCandidateSelect: (value: string | null) => void;
+  onPreviewStarterFromCandidate: () => Promise<void>;
+  onStarterSourcePathChange: (value: string) => void;
+  onBrowseStarterFallback: () => void;
+  onPreviewStarterFromPath: () => Promise<void>;
+  onCreateDraftFromPreview: () => Promise<void>;
+  onCreateManualDraft: () => Promise<void>;
+  onEditableGroupsChange: (groups: ProjectTestPlanDraftGroup[]) => void;
+  onSaveDraft: () => Promise<void>;
+  onValidateDraft: () => Promise<void>;
+  onConfirmDraft: () => Promise<void>;
+  versionStatus: WorkbenchVersionStatus;
 };
 
 export function ProjectWorkbenchMatrixReviewPanel({
   draft,
+  authorityDraft,
+  candidateDraft,
+  editableGroups,
   error,
-  loading
+  loading,
+  saving,
+  validating,
+  confirming,
+  validation,
+  sourceCandidates,
+  sourceCandidateWarnings,
+  sourceCandidatesLoading,
+  selectedSourceAssetId,
+  starterBrowseHint,
+  starterSourcePath,
+  starterPreview,
+  starterPreviewing,
+  starterCreatingFromPreview,
+  starterCreatingManual,
+  starterError,
+  onSourceCandidateSelect,
+  onPreviewStarterFromCandidate,
+  onStarterSourcePathChange,
+  onBrowseStarterFallback,
+  onPreviewStarterFromPath,
+  onCreateDraftFromPreview,
+  onCreateManualDraft,
+  onEditableGroupsChange,
+  onSaveDraft,
+  onValidateDraft,
+  onConfirmDraft,
+  versionStatus
 }: ProjectWorkbenchMatrixReviewPanelProps): ReactElement {
-  const summary = buildMatrixSummary(draft);
+  const summary = buildMatrixSummary(draft?.payload.groups, draft?.payload.warnings?.length ?? 0);
+  const canEdit = draft !== null && draft.status !== "superseded";
+  const hasBlockers = (validation?.blockers.length ?? 0) > 0;
 
   return (
     <section className="matrix-review-panel">
       <header className="matrix-review-heading">
         <div>
           <h4>Matrix review</h4>
-          <p>Use the Project test-plan draft as the primary view before downstream documents.</p>
+          <p>Use the Project test-plan draft as the primary authority workspace before downstream documents.</p>
         </div>
         {draft ? <strong>Draft v{draft.version}</strong> : null}
       </header>
+
+      <ProjectWorkbenchMatrixAuthorityBar
+        authorityDraft={authorityDraft}
+        candidateDraft={candidateDraft}
+        hasBlockers={hasBlockers}
+      />
+
       {loading ? <p className="fine-print">Loading Matrix draft...</p> : null}
       {!loading && error ? <p className="error">Unable to load Matrix draft: {error}</p> : null}
       {!loading && !error && !draft ? (
-        <p className="blocking-copy">
-          No active Project test-plan draft is available yet. Create or review a draft to start
-          Matrix-based project planning.
-        </p>
+        <ProjectWorkbenchMatrixStarter
+          sourceCandidates={sourceCandidates}
+          sourceCandidateWarnings={sourceCandidateWarnings}
+          sourceCandidatesLoading={sourceCandidatesLoading}
+          selectedSourceAssetId={selectedSourceAssetId}
+          browseHint={starterBrowseHint}
+          sourcePath={starterSourcePath}
+          preview={starterPreview}
+          previewing={starterPreviewing}
+          creatingFromPreview={starterCreatingFromPreview}
+          creatingManualDraft={starterCreatingManual}
+          starterError={starterError}
+          onSourceCandidateSelect={onSourceCandidateSelect}
+          onPreviewFromCandidate={onPreviewStarterFromCandidate}
+          onSourcePathChange={onStarterSourcePathChange}
+          onBrowseFallback={onBrowseStarterFallback}
+          onPreviewFromPath={onPreviewStarterFromPath}
+          onCreateFromPreview={onCreateDraftFromPreview}
+          onCreateManualDraft={onCreateManualDraft}
+        />
       ) : null}
+
+      {draft && versionStatus.hasStaleOutputs ? (
+        <div className="message-list message-list-warning">
+          <strong>Downstream outputs are stale</strong>
+          <ul>
+            <li>Active draft version is newer than the latest downstream output linkage in this session.</li>
+          </ul>
+        </div>
+      ) : null}
+
       {draft ? (
         <>
           <dl className="matrix-review-summary">
@@ -60,36 +161,51 @@ export function ProjectWorkbenchMatrixReviewPanel({
               <dt>Warnings</dt>
               <dd>{summary.warningCount}</dd>
             </div>
+            <div>
+              <dt>Validation blockers</dt>
+              <dd>{validation?.blockers.length ?? draft.payload.blockers?.length ?? 0}</dd>
+            </div>
           </dl>
-          <div className="matrix-review-groups">
-            {(draft.payload.groups ?? []).map((group, groupIndex) => (
-              <article
-                className="matrix-review-group"
-                key={`${group.group_key ?? "group"}-${groupIndex}`}
-              >
-                <header>
-                  <strong>{group.group_label ?? `Group ${groupIndex + 1}`}</strong>
-                  {typeof group.source_table_index === "number" ? (
-                    <span>Table {group.source_table_index}</span>
-                  ) : null}
-                </header>
-                <ul className="matrix-review-step-list">
-                  {(group.steps ?? []).map((step, stepIndex) => (
-                    <li key={`${step.sequence ?? stepIndex}-${step.test_item ?? "step"}`}>
-                      <strong>
-                        {step.sequence ? `${step.sequence}. ` : ""}
-                        {step.test_item ?? step.step_label ?? "Unspecified test step"}
-                      </strong>
-                      <span>
-                        {step.method_summary ?? step.reference_standard ?? "Method/reference pending"}
-                      </span>
-                      <em>{durationText(step)}</em>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+
+          <div className="matrix-workspace">
+            <ProjectWorkbenchMatrixOverview draft={draft} />
+            {canEdit ? (
+              <ProjectWorkbenchMatrixInspector
+                editableGroups={editableGroups}
+                validating={validating}
+                saving={saving}
+                confirming={confirming}
+                hasBlockers={hasBlockers}
+                onEditableGroupsChange={onEditableGroupsChange}
+                onValidateDraft={onValidateDraft}
+                onSaveDraft={onSaveDraft}
+                onConfirmDraft={onConfirmDraft}
+              />
+            ) : null}
           </div>
+
+          {validation && validation.blockers.length > 0 ? (
+            <div className="message-list message-list-danger">
+              <strong>Validation blockers</strong>
+              <ul>
+                {validation.blockers.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {validation && validation.warnings.length > 0 ? (
+            <div className="message-list message-list-warning">
+              <strong>Validation warnings</strong>
+              <ul>
+                {validation.warnings.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {(draft.payload.warnings ?? []).length > 0 ? (
             <div className="message-list message-list-warning">
               <strong>Draft warnings</strong>
@@ -104,42 +220,4 @@ export function ProjectWorkbenchMatrixReviewPanel({
       ) : null}
     </section>
   );
-}
-
-function buildMatrixSummary(draft: ProjectTestPlanDraft | null): MatrixSummary {
-  if (!draft) {
-    return { groupCount: 0, stepCount: 0, warningCount: 0 };
-  }
-  const groups = draft.payload.groups ?? [];
-  const stepCount = groups.reduce((total, group) => total + (group.steps?.length ?? 0), 0);
-  return {
-    groupCount: groups.length,
-    stepCount,
-    warningCount: draft.payload.warnings?.length ?? 0
-  };
-}
-
-function durationText(step: {
-  estimated_duration_hint?: string | null;
-  duration_hint?: string | null;
-  estimated_duration_days?: number | null;
-  duration_days?: number | null;
-  estimated_duration_hours?: number | null;
-}): string {
-  if (step.estimated_duration_hint) {
-    return step.estimated_duration_hint;
-  }
-  if (step.duration_hint) {
-    return step.duration_hint;
-  }
-  if (typeof step.estimated_duration_days === "number") {
-    return `${step.estimated_duration_days} day(s)`;
-  }
-  if (typeof step.duration_days === "number") {
-    return `${step.duration_days} day(s)`;
-  }
-  if (typeof step.estimated_duration_hours === "number") {
-    return `${step.estimated_duration_hours} hour(s)`;
-  }
-  return "Duration pending";
 }

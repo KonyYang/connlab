@@ -104,6 +104,18 @@ def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None
             or "Current Active Task: `TASK_185_PROJECT_WORKBENCH_STATE_MODEL_AND_LAYOUT_REFACTOR`" in board
             or "Current Active Task: `TASK_186_PROJECT_WORKBENCH_MATRIX_REVIEW_SURFACE`" in board
             or "Current Active Task: none; TASK_186 complete, pending user approval for TASK_187" in board
+            or "Current Active Task: none; TASK_187 complete, pending user approval for TASK_188" in board
+            or "Current Active Task: none; TASK_188 complete, pending user approval for TASK_189" in board
+            or "Current Active Task: none; TASK_188 ledger correction complete, pending user approval for `TASK_189_MATRIX_EDIT_AND_FREEZE_FOUNDATION`" in board
+            or "Current Active Task: none; TASK_189 complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_189 acceptance mismatch confirmed, pending user approval for `TASK_189_MATRIX_EDIT_FREEZE_AUTHORITY_SEMANTICS_CORRECTION`" in board
+            or "Current Active Task: none; TASK_189 authority semantics correction complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_189 authority read-model/group-identity correction complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_190 complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_190_MATRIX_OVERVIEW_CROSS_TABLE_AND_SUPPORTING_COMPACTNESS_CORRECTION plan proposed; awaiting user approval before implementation" in board
+            or "Current Active Task: none; TASK_190 correction complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_191 complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_192 complete, pending user approval for next controlled task" in board
     )
     assert "TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done" in board
     assert "Phase 6A - Outlook Email Package Intake" in board

@@ -88,6 +88,15 @@ from backend.application.project_test_plan_matrix_preview_service import (
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
+from backend.application.project_test_plan_matrix_edit_service import (
+    ProjectTestPlanMatrixEditService,
+)
+from backend.application.project_test_plan_source_candidate_service import (
+    ProjectTestPlanSourceCandidateService,
+)
+from backend.application.project_output_record_service import (
+    ProjectOutputRecordService,
+)
 from backend.application.section2_completion_preview_service import (
     Section2CompletionPreviewService,
 )
@@ -123,6 +132,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectCleanupAuditRecordRepository,
     ProjectFolderRecordRepository,
     ProjectRepository,
+    ProjectOutputRecordRepository,
     ProjectTestPlanDraftRepository,
     SampleInfoRepository,
 )
@@ -180,6 +190,39 @@ def get_project_test_plan_draft_service(
     return ProjectTestPlanDraftService(
         project_store=ProjectRepository(session),
         draft_store=ProjectTestPlanDraftRepository(session),
+    )
+
+
+def get_project_test_plan_matrix_edit_service(
+    session: Session = Depends(get_session),
+) -> ProjectTestPlanMatrixEditService:
+    """Build the controlled Matrix edit/validate/confirm service."""
+    return ProjectTestPlanMatrixEditService(
+        draft_service=ProjectTestPlanDraftService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectTestPlanDraftRepository(session),
+        )
+    )
+
+
+def get_project_test_plan_source_candidate_service(
+    session: Session = Depends(get_session),
+) -> ProjectTestPlanSourceCandidateService:
+    """Build the Project test-plan source candidate read-model service."""
+    return ProjectTestPlanSourceCandidateService(
+        project_store=ProjectRepository(session),
+        file_asset_store=FileAssetRepository(session),
+    )
+
+
+def get_project_output_record_service(
+    session: Session = Depends(get_session),
+) -> ProjectOutputRecordService:
+    """Build the persisted project output ledger service."""
+    return ProjectOutputRecordService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+        output_store=ProjectOutputRecordRepository(session),
     )
 
 

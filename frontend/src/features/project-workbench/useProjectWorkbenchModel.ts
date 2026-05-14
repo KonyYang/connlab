@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  confirmProjectTestPlanMatrixDraft,
+  createProjectTestPlanDraft,
   executeApprovalPackage,
+  getLatestProjectFolder,
+  getProjectOutputStatusSummary,
   getProjectTestPlanDraft,
   getProject,
+  listProjectTestPlanSourceCandidates,
+  previewProjectTestPlanMatrixFromSourceCandidate,
+  previewProjectTestPlanMatrixFromPath,
   listProjectTestPlanDrafts,
   listExternalResources,
   listProjectLtrs,
   placeEvidence,
   previewApprovalPackage,
   previewEvidencePlacement,
+  updateProjectTestPlanMatrixDraft,
+  validateProjectTestPlanMatrixDraft,
   type ApprovalPackageRequest,
   type ApprovalPackageResponse,
   type EvidencePlacementPlan,
@@ -16,10 +25,24 @@ import {
   type ExternalResource,
   type FolderGeneration,
   type LtrRecord,
+  type MatrixPreviewResponse,
+  type MatrixSourceCandidate,
+  type MatrixSourceCandidatesResponse,
+  type MatrixValidationSummary,
+  type Project,
+  type ProjectTestPlanDraftGroup,
   type ProjectTestPlanDraft,
-  type Project
+  type ProjectOutputStatusSummary
 } from "../../api/client";
+import {
+  deriveWorkbenchVersionStatus,
+  type WorkbenchVersionStatus
+} from "./projectWorkbenchVersionSelectors";
 import { configuredFolderResources } from "./projectFolderResourceSelectors";
+import {
+  buildDraftCreateRequestFromPreview,
+  buildManualStarterDraftCreateRequest
+} from "./projectWorkbenchMatrixHelpers";
 
 export type WorkbenchBaselineItem = {
   title: string;
@@ -28,6 +51,7 @@ export type WorkbenchBaselineItem = {
 
 export type ProjectWorkbenchModel = {
   approvalInput: ApprovalPackageRequest;
+  approvalInputSources: ApprovalInputSources;
   approvalPreview: ApprovalPackageResponse | null;
   approvalResult: ApprovalPackageResponse | null;
   baselineItems: WorkbenchBaselineItem[];
@@ -42,20 +66,68 @@ export type ProjectWorkbenchModel = {
   };
   latestLtr: string | null;
   message: string | null;
+  matrixAuthorityDraft: ProjectTestPlanDraft | null;
+  matrixCandidateDraft: ProjectTestPlanDraft | null;
   matrixDraft: ProjectTestPlanDraft | null;
+  matrixDraftEditableGroups: ProjectTestPlanDraftGroup[];
   matrixDraftError: string | null;
   matrixDraftLoading: boolean;
+  matrixSaving: boolean;
+  matrixValidating: boolean;
+  matrixConfirming: boolean;
+  matrixValidation: MatrixValidationSummary | null;
+  matrixSourceCandidates: MatrixSourceCandidate[];
+  matrixSourceCandidateWarnings: string[];
+  matrixSourceCandidatesLoading: boolean;
+  matrixSelectedSourceAssetId: string | null;
+  matrixStarterBrowseHint: string | null;
+  matrixStarterSourcePath: string;
+  matrixStarterPreview: MatrixPreviewResponse | null;
+  matrixStarterPreviewing: boolean;
+  matrixStarterCreatingFromPreview: boolean;
+  matrixStarterCreatingManual: boolean;
+  matrixStarterError: string | null;
+  versionStatus: WorkbenchVersionStatus;
   placingEvidence: boolean;
   previewingApprovalPackage: boolean;
   previewingEvidence: boolean;
   project: Project | null;
   projectId: string;
   setApprovalInput: (next: ApprovalPackageRequest) => void;
+  setMatrixStarterSourcePath: (value: string) => void;
+  setMatrixSelectedSourceAssetId: (value: string | null) => void;
+  setMatrixDraftEditableGroups: (groups: ProjectTestPlanDraftGroup[]) => void;
+  onPreviewMatrixStarterFromCandidate: () => Promise<void>;
+  onPreviewMatrixStarterFromPath: () => Promise<void>;
+  onBrowseMatrixStarterFallback: () => void;
+  onCreateMatrixDraftFromPreview: () => Promise<void>;
+  onCreateManualMatrixDraft: () => Promise<void>;
+  onSaveMatrixDraft: () => Promise<void>;
+  onValidateMatrixDraft: () => Promise<void>;
+  onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
   onExecuteApprovalPackage: () => Promise<void>;
   onPlaceEvidence: () => Promise<void>;
   onPreviewApprovalPackage: () => Promise<void>;
   onPreviewEvidence: () => Promise<void>;
+};
+
+export type ApprovalInputSource = "auto" | "manual";
+
+export type ApprovalInputSources = {
+  project_folder_path: ApprovalInputSource;
+  completed_application_form_path: ApprovalInputSource;
+  test_record_output_path: ApprovalInputSource;
+  fee_evaluation_output_path: ApprovalInputSource;
+  evidence_source_paths: ApprovalInputSource;
+};
+
+const DEFAULT_APPROVAL_INPUT_SOURCES: ApprovalInputSources = {
+  project_folder_path: "auto",
+  completed_application_form_path: "auto",
+  test_record_output_path: "auto",
+  fee_evaluation_output_path: "auto",
+  evidence_source_paths: "auto"
 };
 
 export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchModel {
@@ -66,7 +138,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [evidenceResult, setEvidenceResult] = useState<EvidencePlacementResult | null>(null);
   const [previewingEvidence, setPreviewingEvidence] = useState(false);
   const [placingEvidence, setPlacingEvidence] = useState(false);
-  const [approvalInput, setApprovalInput] = useState<ApprovalPackageRequest>({
+  const [approvalInput, setApprovalInputState] = useState<ApprovalPackageRequest>({
     project_folder_path: "",
     completed_application_form_path: "",
     test_record_output_path: "",
@@ -74,20 +146,95 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     evidence_source_paths: [],
     overwrite: false
   });
+  const [approvalInputSources, setApprovalInputSources] = useState<ApprovalInputSources>(
+    DEFAULT_APPROVAL_INPUT_SOURCES
+  );
   const [approvalPreview, setApprovalPreview] = useState<ApprovalPackageResponse | null>(null);
   const [approvalResult, setApprovalResult] = useState<ApprovalPackageResponse | null>(null);
   const [previewingApprovalPackage, setPreviewingApprovalPackage] = useState(false);
   const [executingApprovalPackage, setExecutingApprovalPackage] = useState(false);
   const [matrixDraft, setMatrixDraft] = useState<ProjectTestPlanDraft | null>(null);
+  const [matrixAuthorityDraft, setMatrixAuthorityDraft] = useState<ProjectTestPlanDraft | null>(null);
+  const [matrixCandidateDraft, setMatrixCandidateDraft] = useState<ProjectTestPlanDraft | null>(null);
+  const [matrixDraftEditableGroups, setMatrixDraftEditableGroups] = useState<
+    ProjectTestPlanDraftGroup[]
+  >([]);
   const [matrixDraftLoading, setMatrixDraftLoading] = useState(false);
   const [matrixDraftError, setMatrixDraftError] = useState<string | null>(null);
+  const [matrixSaving, setMatrixSaving] = useState(false);
+  const [matrixValidating, setMatrixValidating] = useState(false);
+  const [matrixConfirming, setMatrixConfirming] = useState(false);
+  const [matrixValidation, setMatrixValidation] = useState<MatrixValidationSummary | null>(null);
+  const [matrixSourceCandidates, setMatrixSourceCandidates] = useState<MatrixSourceCandidate[]>([]);
+  const [matrixSourceCandidateWarnings, setMatrixSourceCandidateWarnings] = useState<string[]>([]);
+  const [matrixSourceCandidatesLoading, setMatrixSourceCandidatesLoading] = useState(false);
+  const [matrixSelectedSourceAssetId, setMatrixSelectedSourceAssetIdState] = useState<string | null>(null);
+  const [matrixStarterBrowseHint, setMatrixStarterBrowseHint] = useState<string | null>(null);
+  const [matrixStarterSourcePath, setMatrixStarterSourcePathState] = useState("");
+  const [matrixStarterPreview, setMatrixStarterPreview] = useState<MatrixPreviewResponse | null>(null);
+  const [matrixStarterPreviewSourceAssetId, setMatrixStarterPreviewSourceAssetId] = useState<string | null>(null);
+  const [matrixStarterPreviewing, setMatrixStarterPreviewing] = useState(false);
+  const [matrixStarterCreatingFromPreview, setMatrixStarterCreatingFromPreview] = useState(false);
+  const [matrixStarterCreatingManual, setMatrixStarterCreatingManual] = useState(false);
+  const [matrixStarterError, setMatrixStarterError] = useState<string | null>(null);
+  const [trackedDraftVersion, setTrackedDraftVersion] = useState<number | null>(null);
+  const [outputStatusSummary, setOutputStatusSummary] = useState<ProjectOutputStatusSummary | null>(
+    null
+  );
+  const [latestProjectFolderPath, setLatestProjectFolderPath] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadWorkbench(projectId, setProject, setLtrs, setResources, setError);
-    void loadMatrixDraft(projectId, setMatrixDraft, setMatrixDraftLoading, setMatrixDraftError);
+    void loadWorkbench(
+      projectId,
+      setProject,
+      setLtrs,
+      setResources,
+      setLatestProjectFolderPath,
+      setOutputStatusSummary,
+      setError
+    );
+    void reloadMatrixDraft();
+    void loadMatrixSourceCandidates(
+      projectId,
+      setMatrixSourceCandidates,
+      setMatrixSourceCandidateWarnings,
+      setMatrixSourceCandidatesLoading,
+      setMatrixSelectedSourceAssetIdState
+    );
   }, [projectId]);
+
+  useEffect(() => {
+    const autofill = deriveApprovalInputAutofill({
+      latestProjectFolderPath,
+      evidencePlan,
+      approvalPreview,
+      approvalResult
+    });
+    if (!autofill) {
+      return;
+    }
+    setApprovalInputState((previous) =>
+      mergeApprovalInput(previous, autofill, approvalInputSources)
+    );
+  }, [
+    approvalInputSources,
+    approvalPreview,
+    approvalResult,
+    evidencePlan,
+    latestProjectFolderPath
+  ]);
+
+  useEffect(() => {
+    if (!matrixAuthorityDraft) {
+      setTrackedDraftVersion(null);
+      return;
+    }
+    if (trackedDraftVersion === null) {
+      setTrackedDraftVersion(matrixAuthorityDraft.version);
+    }
+  }, [matrixAuthorityDraft, trackedDraftVersion]);
 
   const folderReady = project?.status === "folder_created";
   const latestLtr = ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null;
@@ -106,6 +253,27 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       }
     ],
     [folderReady, latestLtr, project]
+  );
+  const versionStatus = useMemo(
+    () =>
+      deriveWorkbenchVersionStatus({
+        activeDraftVersion: matrixAuthorityDraft?.version ?? null,
+        trackedDraftVersion,
+        outputStatusSummary,
+        approvalInput,
+        approvalInputSources,
+        approvalPreview,
+        approvalResult
+      }),
+    [
+      approvalInput,
+      approvalInputSources,
+      approvalPreview,
+      approvalResult,
+      matrixAuthorityDraft,
+      outputStatusSummary,
+      trackedDraftVersion
+    ]
   );
 
   async function onPreviewEvidence(): Promise<void> {
@@ -144,7 +312,15 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     setApprovalPreview(null);
     setApprovalResult(null);
     setMessage("Project folder created. Evidence placement is now available.");
-    await loadWorkbench(projectId, setProject, setLtrs, setResources, setError);
+    await loadWorkbench(
+      projectId,
+      setProject,
+      setLtrs,
+      setResources,
+      setLatestProjectFolderPath,
+      setOutputStatusSummary,
+      setError
+    );
   }
 
   async function onPreviewApprovalPackage(): Promise<void> {
@@ -158,6 +334,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
           ? "Approval package preview has blockers."
           : "Approval package preview is ready."
       );
+      if (matrixAuthorityDraft) {
+        setTrackedDraftVersion(matrixAuthorityDraft.version);
+      }
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -173,6 +353,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setApprovalResult(result);
       setApprovalPreview(result);
       setMessage("Approval package placement completed.");
+      if (matrixAuthorityDraft) {
+        setTrackedDraftVersion(matrixAuthorityDraft.version);
+      }
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -181,8 +365,252 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
+  function setApprovalInput(next: ApprovalPackageRequest): void {
+    setApprovalInputSources((previous) => ({
+      project_folder_path:
+        next.project_folder_path !== approvalInput.project_folder_path
+          ? "manual"
+          : previous.project_folder_path,
+      completed_application_form_path:
+        next.completed_application_form_path !== approvalInput.completed_application_form_path
+          ? "manual"
+          : previous.completed_application_form_path,
+      test_record_output_path:
+        next.test_record_output_path !== approvalInput.test_record_output_path
+          ? "manual"
+          : previous.test_record_output_path,
+      fee_evaluation_output_path:
+        (next.fee_evaluation_output_path ?? null) !==
+        (approvalInput.fee_evaluation_output_path ?? null)
+          ? "manual"
+          : previous.fee_evaluation_output_path,
+      evidence_source_paths:
+        normalizeLines(next.evidence_source_paths) !==
+        normalizeLines(approvalInput.evidence_source_paths)
+          ? "manual"
+          : previous.evidence_source_paths
+    }));
+    setApprovalInputState(next);
+  }
+
+  function setMatrixStarterSourcePath(value: string): void {
+    setMatrixStarterSourcePathState(value);
+    setMatrixStarterError(null);
+    setMatrixStarterBrowseHint(null);
+  }
+
+  function setMatrixSelectedSourceAssetId(value: string | null): void {
+    setMatrixSelectedSourceAssetIdState(value);
+    setMatrixStarterError(null);
+    setMatrixStarterBrowseHint(null);
+  }
+
+  function onBrowseMatrixStarterFallback(): void {
+    setMatrixStarterBrowseHint(
+      "Browse is available in the desktop workspace. In browser mode, paste the full `.docx` path."
+    );
+  }
+
+  async function onPreviewMatrixStarterFromCandidate(): Promise<void> {
+    if (!matrixSelectedSourceAssetId) {
+      setMatrixStarterError("Select a project source candidate first.");
+      return;
+    }
+    setMatrixStarterPreviewing(true);
+    try {
+      const preview = await previewProjectTestPlanMatrixFromSourceCandidate(
+        projectId,
+        matrixSelectedSourceAssetId
+      );
+      setMatrixStarterPreview(preview);
+      setMatrixStarterPreviewSourceAssetId(matrixSelectedSourceAssetId);
+      setMatrixStarterError(null);
+      setMatrixStarterBrowseHint(null);
+      setMessage(
+        preview.blockers.length > 0
+          ? "Matrix preview has blockers."
+          : "Matrix preview is ready for draft creation."
+      );
+      setError(null);
+    } catch (err) {
+      setMatrixStarterError((err as Error).message);
+    } finally {
+      setMatrixStarterPreviewing(false);
+    }
+  }
+
+  async function onPreviewMatrixStarterFromPath(): Promise<void> {
+    const sourcePath = matrixStarterSourcePath.trim();
+    if (!sourcePath) {
+      setMatrixStarterError("Source path is required.");
+      return;
+    }
+    setMatrixStarterPreviewing(true);
+    try {
+      const preview = await previewProjectTestPlanMatrixFromPath({
+        source_path: sourcePath,
+        project_id: projectId
+      });
+      setMatrixStarterPreview(preview);
+      setMatrixStarterPreviewSourceAssetId(null);
+      setMatrixStarterError(null);
+      setMessage(
+        preview.blockers.length > 0
+          ? "Matrix preview has blockers."
+          : "Matrix preview is ready for draft creation."
+      );
+      setError(null);
+    } catch (err) {
+      setMatrixStarterError((err as Error).message);
+    } finally {
+      setMatrixStarterPreviewing(false);
+    }
+  }
+
+  async function onCreateMatrixDraftFromPreview(): Promise<void> {
+    if (!matrixStarterPreview) {
+      setMatrixStarterError("Preview the source Matrix before creating a draft.");
+      return;
+    }
+    if (matrixStarterPreview.blockers.length > 0) {
+      setMatrixStarterError("Resolve preview blockers before creating a draft.");
+      return;
+    }
+    setMatrixStarterCreatingFromPreview(true);
+    try {
+      await createProjectTestPlanDraft(
+        projectId,
+        buildDraftCreateRequestFromPreview(
+          matrixStarterPreview,
+          matrixStarterPreviewSourceAssetId
+        )
+      );
+      setMessage("Project test-plan draft created from source preview.");
+      setError(null);
+      setMatrixStarterError(null);
+      setMatrixStarterPreview(null);
+      setMatrixStarterPreviewSourceAssetId(null);
+      await reloadMatrixDraft();
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+    } catch (err) {
+      setMatrixStarterError((err as Error).message);
+    } finally {
+      setMatrixStarterCreatingFromPreview(false);
+    }
+  }
+
+  async function onCreateManualMatrixDraft(): Promise<void> {
+    setMatrixStarterCreatingManual(true);
+    try {
+      await createProjectTestPlanDraft(
+        projectId,
+        buildManualStarterDraftCreateRequest()
+      );
+      setMessage("Manual Matrix draft created with explicit Group 1 identity.");
+      setError(null);
+      setMatrixStarterError(null);
+      setMatrixStarterPreview(null);
+      setMatrixStarterPreviewSourceAssetId(null);
+      await reloadMatrixDraft();
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+    } catch (err) {
+      setMatrixStarterError((err as Error).message);
+    } finally {
+      setMatrixStarterCreatingManual(false);
+    }
+  }
+
+  async function onValidateMatrixDraft(): Promise<void> {
+    if (!matrixDraft) {
+      return;
+    }
+    setMatrixValidating(true);
+    try {
+      const response = await validateProjectTestPlanMatrixDraft(
+        projectId,
+        matrixDraft.draft_id,
+        matrixDraftEditableGroups
+      );
+      setMatrixValidation(response.validation);
+      setMessage(
+        response.validation.blockers.length > 0
+          ? "Matrix validation has blockers."
+          : "Matrix validation passed."
+      );
+      setError(null);
+      setMatrixDraftError(null);
+    } catch (err) {
+      setMatrixDraftError((err as Error).message);
+    } finally {
+      setMatrixValidating(false);
+    }
+  }
+
+  async function onSaveMatrixDraft(): Promise<void> {
+    if (!matrixDraft) {
+      return;
+    }
+    setMatrixSaving(true);
+    try {
+      const response = await updateProjectTestPlanMatrixDraft(
+        projectId,
+        matrixDraft.draft_id,
+        matrixDraftEditableGroups
+      );
+      setMatrixDraft(response.draft);
+      if (response.draft.status === "reviewed") {
+        setMatrixAuthorityDraft(response.draft);
+        setMatrixCandidateDraft(null);
+      } else {
+        setMatrixCandidateDraft(response.draft);
+      }
+      setMatrixDraftEditableGroups(cloneGroups(response.draft.payload.groups));
+      setMatrixValidation(response.validation);
+      setMessage(
+        response.created_new_draft
+          ? "Matrix draft was reviewed before edit. A new draft version is created."
+          : "Matrix draft saved."
+      );
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      setError(null);
+      setMatrixDraftError(null);
+    } catch (err) {
+      setMatrixDraftError((err as Error).message);
+    } finally {
+      setMatrixSaving(false);
+    }
+  }
+
+  async function onConfirmMatrixDraft(): Promise<void> {
+    if (!matrixDraft) {
+      return;
+    }
+    setMatrixConfirming(true);
+    try {
+      const response = await confirmProjectTestPlanMatrixDraft(
+        projectId,
+        matrixDraft.draft_id,
+        matrixDraftEditableGroups
+      );
+      setMatrixDraft(response.draft);
+      setMatrixAuthorityDraft(response.draft);
+      setMatrixCandidateDraft(null);
+      setMatrixDraftEditableGroups(cloneGroups(response.draft.payload.groups));
+      setMatrixValidation(response.validation);
+      setMessage("Matrix draft confirmed as project test-plan authority.");
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      setError(null);
+      setMatrixDraftError(null);
+    } catch (err) {
+      setMatrixDraftError((err as Error).message);
+    } finally {
+      setMatrixConfirming(false);
+    }
+  }
+
   return {
     approvalInput,
+    approvalInputSources,
     approvalPreview,
     approvalResult,
     baselineItems,
@@ -194,21 +622,64 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     folderResources,
     latestLtr,
     message,
+    matrixAuthorityDraft,
+    matrixCandidateDraft,
     matrixDraft,
+    matrixDraftEditableGroups,
     matrixDraftError,
     matrixDraftLoading,
+    matrixSaving,
+    matrixValidating,
+    matrixConfirming,
+    matrixValidation,
+    matrixSourceCandidates,
+    matrixSourceCandidateWarnings,
+    matrixSourceCandidatesLoading,
+    matrixSelectedSourceAssetId,
+    matrixStarterBrowseHint,
+    matrixStarterSourcePath,
+    matrixStarterPreview,
+    matrixStarterPreviewing,
+    matrixStarterCreatingFromPreview,
+    matrixStarterCreatingManual,
+    matrixStarterError,
+    versionStatus,
     placingEvidence,
     previewingApprovalPackage,
     previewingEvidence,
     project,
     projectId,
     setApprovalInput,
+    setMatrixStarterSourcePath,
+    setMatrixSelectedSourceAssetId,
+    setMatrixDraftEditableGroups,
+    onPreviewMatrixStarterFromCandidate,
+    onPreviewMatrixStarterFromPath,
+    onBrowseMatrixStarterFallback,
+    onCreateMatrixDraftFromPreview,
+    onCreateManualMatrixDraft,
+    onSaveMatrixDraft,
+    onValidateMatrixDraft,
+    onConfirmMatrixDraft,
     onFolderCreated,
     onExecuteApprovalPackage,
     onPlaceEvidence,
     onPreviewApprovalPackage,
     onPreviewEvidence
   };
+
+  async function reloadMatrixDraft(): Promise<void> {
+    await loadMatrixDraft(
+      projectId,
+      setMatrixAuthorityDraft,
+      setMatrixCandidateDraft,
+      setMatrixDraft,
+      setMatrixDraftEditableGroups,
+      setMatrixValidation,
+      setMatrixDraftLoading,
+      setMatrixDraftError
+    );
+  }
 }
 
 async function loadWorkbench(
@@ -216,12 +687,26 @@ async function loadWorkbench(
   setProject: (project: Project | null) => void,
   setLtrs: (ltrs: LtrRecord[]) => void,
   setResources: (resources: ExternalResource[]) => void,
+  setLatestProjectFolderPath: (path: string | null) => void,
+  setOutputStatusSummary: (summary: ProjectOutputStatusSummary | null) => void,
   setError: (message: string | null) => void
 ): Promise<void> {
   try {
     setProject(await getProject(projectId));
     setLtrs(await listProjectLtrs(projectId));
     setResources(await listExternalResources());
+    try {
+      const folder = await getLatestProjectFolder(projectId);
+      setLatestProjectFolderPath(folder.project_folder_path);
+    } catch {
+      setLatestProjectFolderPath(null);
+    }
+    try {
+      const outputStatus = await getProjectOutputStatusSummary(projectId);
+      setOutputStatusSummary(outputStatus);
+    } catch {
+      setOutputStatusSummary(null);
+    }
     setError(null);
   } catch (err) {
     setError((err as Error).message);
@@ -230,26 +715,226 @@ async function loadWorkbench(
 
 async function loadMatrixDraft(
   projectId: string,
+  setMatrixAuthorityDraft: (draft: ProjectTestPlanDraft | null) => void,
+  setMatrixCandidateDraft: (draft: ProjectTestPlanDraft | null) => void,
   setMatrixDraft: (draft: ProjectTestPlanDraft | null) => void,
+  setMatrixDraftEditableGroups: (groups: ProjectTestPlanDraftGroup[]) => void,
+  setMatrixValidation: (summary: MatrixValidationSummary | null) => void,
   setMatrixDraftLoading: (loading: boolean) => void,
   setMatrixDraftError: (message: string | null) => void
 ): Promise<void> {
   setMatrixDraftLoading(true);
   try {
     const drafts = await listProjectTestPlanDrafts(projectId);
-    const activeDraftSummary = drafts.find((draft) => draft.status !== "superseded");
-    if (!activeDraftSummary) {
+    const authoritySummary = drafts.find((draft) => draft.status === "reviewed") ?? null;
+    const candidateSummary = drafts.find((draft) => draft.status === "draft") ?? null;
+    const editTargetSummary = candidateSummary ?? authoritySummary;
+    if (!editTargetSummary) {
+      setMatrixAuthorityDraft(null);
+      setMatrixCandidateDraft(null);
       setMatrixDraft(null);
+      setMatrixDraftEditableGroups([]);
+      setMatrixValidation(null);
       setMatrixDraftError(null);
       return;
     }
-    const draft = await getProjectTestPlanDraft(projectId, activeDraftSummary.draft_id);
+    let authorityDraft: ProjectTestPlanDraft | null = null;
+    let candidateDraft: ProjectTestPlanDraft | null = null;
+    if (authoritySummary) {
+      authorityDraft = await getProjectTestPlanDraft(projectId, authoritySummary.draft_id);
+    }
+    if (candidateSummary) {
+      candidateDraft = await getProjectTestPlanDraft(projectId, candidateSummary.draft_id);
+    }
+    const draft = candidateDraft ?? authorityDraft;
+    setMatrixAuthorityDraft(authorityDraft);
+    setMatrixCandidateDraft(candidateDraft);
     setMatrixDraft(draft);
+    setMatrixDraftEditableGroups(cloneGroups(draft?.payload.groups));
+    setMatrixValidation({
+      blockers: draft?.payload.blockers ?? [],
+      warnings: draft?.payload.warnings ?? [],
+      group_count: draft?.payload.groups?.length ?? 0,
+      step_count: (draft?.payload.groups ?? []).reduce(
+        (total, group) => total + (group.steps?.length ?? 0),
+        0
+      )
+    });
     setMatrixDraftError(null);
   } catch (err) {
+    setMatrixAuthorityDraft(null);
+    setMatrixCandidateDraft(null);
     setMatrixDraft(null);
+    setMatrixDraftEditableGroups([]);
+    setMatrixValidation(null);
     setMatrixDraftError((err as Error).message);
   } finally {
     setMatrixDraftLoading(false);
   }
+}
+
+async function loadMatrixSourceCandidates(
+  projectId: string,
+  setCandidates: (items: MatrixSourceCandidate[]) => void,
+  setWarnings: (items: string[]) => void,
+  setLoading: (value: boolean) => void,
+  setSelectedSourceAssetId: (value: string | null) => void
+): Promise<void> {
+  setLoading(true);
+  try {
+    const response: MatrixSourceCandidatesResponse = await listProjectTestPlanSourceCandidates(projectId);
+    setCandidates(response.candidates);
+    setWarnings(response.warnings);
+    setSelectedSourceAssetId(response.candidates[0]?.source_asset_id ?? null);
+  } catch {
+    setCandidates([]);
+    setWarnings([]);
+    setSelectedSourceAssetId(null);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function refreshOutputStatus(
+  projectId: string,
+  setOutputStatusSummary: (summary: ProjectOutputStatusSummary | null) => void
+): Promise<void> {
+  try {
+    setOutputStatusSummary(await getProjectOutputStatusSummary(projectId));
+  } catch {
+    setOutputStatusSummary(null);
+  }
+}
+
+function deriveApprovalInputAutofill(input: {
+  latestProjectFolderPath: string | null;
+  evidencePlan: EvidencePlacementPlan | null;
+  approvalPreview: ApprovalPackageResponse | null;
+  approvalResult: ApprovalPackageResponse | null;
+}): ApprovalPackageRequest | null {
+  const { latestProjectFolderPath, evidencePlan, approvalPreview, approvalResult } = input;
+  const items = approvalResult?.items ?? approvalPreview?.items ?? [];
+  const evidenceItems = evidencePlan?.items ?? [];
+
+  const projectFolderPath =
+    evidencePlan?.project_folder_path ??
+    approvalResult?.project_folder_path ??
+    approvalPreview?.project_folder_path ??
+    latestProjectFolderPath ??
+    "";
+
+  const completedApplicationFormPath =
+    findPathByClassification(items, "application_form") ??
+    findPathByCategory(evidenceItems, "application_form") ??
+    "";
+
+  const testRecordOutputPath =
+    findPathByClassification(items, "test_record") ??
+    findPathByName(evidenceItems.map((item) => item.source_path), /(test[_\s-]*record|record)/i) ??
+    "";
+
+  const feeEvaluationOutputPath =
+    findPathByClassification(items, "fee_evaluation") ??
+    findPathByName(evidenceItems.map((item) => item.source_path), /(fee|quotation|price|cost)/i) ??
+    null;
+
+  const evidenceSourcePaths = uniquePaths(
+    evidenceItems.map((item) => item.source_path)
+  );
+
+  if (
+    !projectFolderPath &&
+    !completedApplicationFormPath &&
+    !testRecordOutputPath &&
+    !feeEvaluationOutputPath &&
+    evidenceSourcePaths.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    project_folder_path: projectFolderPath,
+    completed_application_form_path: completedApplicationFormPath,
+    test_record_output_path: testRecordOutputPath,
+    fee_evaluation_output_path: feeEvaluationOutputPath,
+    evidence_source_paths: evidenceSourcePaths,
+    overwrite: false
+  };
+}
+
+function mergeApprovalInput(
+  current: ApprovalPackageRequest,
+  autofill: ApprovalPackageRequest,
+  sources: ApprovalInputSources
+): ApprovalPackageRequest {
+  return {
+    project_folder_path:
+      sources.project_folder_path === "auto" && autofill.project_folder_path
+        ? autofill.project_folder_path
+        : current.project_folder_path,
+    completed_application_form_path:
+      sources.completed_application_form_path === "auto" &&
+      autofill.completed_application_form_path
+        ? autofill.completed_application_form_path
+        : current.completed_application_form_path,
+    test_record_output_path:
+      sources.test_record_output_path === "auto" && autofill.test_record_output_path
+        ? autofill.test_record_output_path
+        : current.test_record_output_path,
+    fee_evaluation_output_path:
+      sources.fee_evaluation_output_path === "auto"
+        ? (autofill.fee_evaluation_output_path ?? current.fee_evaluation_output_path)
+        : current.fee_evaluation_output_path,
+    evidence_source_paths:
+      sources.evidence_source_paths === "auto" && autofill.evidence_source_paths.length > 0
+        ? autofill.evidence_source_paths
+        : current.evidence_source_paths,
+    overwrite: current.overwrite
+  };
+}
+
+function findPathByClassification(
+  items: ApprovalPackageResponse["items"],
+  classification: string
+): string | null {
+  const match = items.find((item) => item.classification === classification);
+  return match ? match.source_path : null;
+}
+
+function findPathByCategory(
+  items: EvidencePlacementPlan["items"],
+  category: string
+): string | null {
+  const match = items.find((item) => item.category === category);
+  return match ? match.source_path : null;
+}
+
+function findPathByName(paths: string[], pattern: RegExp): string | null {
+  const match = paths.find((path) => pattern.test(path));
+  return match ?? null;
+}
+
+function uniquePaths(paths: string[]): string[] {
+  const unique = new Set<string>();
+  for (const path of paths) {
+    const value = path.trim();
+    if (value.length > 0) {
+      unique.add(value);
+    }
+  }
+  return [...unique];
+}
+
+function normalizeLines(lines: string[]): string {
+  return lines.map((line) => line.trim()).filter(Boolean).join("\n");
+}
+
+function cloneGroups(groups: ProjectTestPlanDraftGroup[] | undefined): ProjectTestPlanDraftGroup[] {
+  if (!groups) {
+    return [];
+  }
+  return groups.map((group) => ({
+    ...group,
+    steps: (group.steps ?? []).map((step) => ({ ...step }))
+  }));
 }

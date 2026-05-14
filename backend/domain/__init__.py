@@ -13,6 +13,9 @@ from backend.domain.enums import (
     IssueLevel,
     LtrStatus,
     PrecheckStatus,
+    ProjectOutputKind,
+    ProjectOutputSource,
+    ProjectOutputStatus,
     ProjectStatus,
     ProjectTestPlanDraftStatus,
 )
@@ -30,6 +33,7 @@ from backend.domain.models import (
     PrecheckResult,
     Project,
     ProjectFolderRecord,
+    ProjectOutputRecord,
     ProjectTestPlanDraft,
     SampleInfo,
 )
@@ -60,6 +64,10 @@ __all__ = [
     "PrecheckStatus",
     "Project",
     "ProjectFolderRecord",
+    "ProjectOutputKind",
+    "ProjectOutputSource",
+    "ProjectOutputStatus",
+    "ProjectOutputRecord",
     "ProjectStatus",
     "ProjectTestPlanDraft",
     "ProjectTestPlanDraftStatus",

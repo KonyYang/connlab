@@ -21,6 +21,9 @@ from backend.domain.enums import (
     PrecheckStatus,
     ProjectStatus,
     ProjectTestPlanDraftStatus,
+    ProjectOutputKind,
+    ProjectOutputSource,
+    ProjectOutputStatus,
 )
 
 
@@ -278,3 +281,20 @@ class ProjectTestPlanDraft:
     source_case_id: str | None = None
     source_draft_id: str | None = None
     reviewed_at: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectOutputRecord:
+    """Persisted output lineage and freshness record for one project output."""
+
+    output_record_id: str
+    project_id: str
+    output_kind: ProjectOutputKind
+    status: ProjectOutputStatus
+    source: ProjectOutputSource
+    created_at: str
+    updated_at: str
+    draft_id: str | None = None
+    draft_version: int | None = None
+    output_path: str | None = None
+    note: str | None = None

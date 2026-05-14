@@ -7,7 +7,11 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_test_record_fee_document_generation_service
+from backend.api.dependencies import (
+    get_project_output_record_service,
+    get_test_record_fee_document_generation_service,
+)
+from backend.application.project_output_record_service import ProjectOutputRecordService, RegisterProjectOutputCommand
 from backend.application.test_record_fee_document_generation_service import (
     GeneratedApprovalDocument,
     TestRecordFeeDocumentGenerationCommand,
@@ -16,6 +20,7 @@ from backend.application.test_record_fee_document_generation_service import (
     TestRecordFeeDocumentGenerationResult,
     TestRecordFeeDocumentGenerationService,
 )
+from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
 
 
 router = APIRouter(
@@ -65,6 +70,7 @@ def generate_test_record_fee_documents(
     service: TestRecordFeeDocumentGenerationService = Depends(
         get_test_record_fee_document_generation_service
     ),
+    output_service: ProjectOutputRecordService = Depends(get_project_output_record_service),
 ) -> TestRecordFeeDocumentGenerationResponse:
     """Generate approval-package test-record and fee documents."""
     try:
@@ -92,7 +98,37 @@ def generate_test_record_fee_documents(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except TestRecordFeeDocumentGenerationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _register_generated_outputs(output_service, result)
     return _to_response(result)
+
+
+def _register_generated_outputs(
+    output_service: ProjectOutputRecordService,
+    result: TestRecordFeeDocumentGenerationResult,
+) -> None:
+    for item in result.generated_files:
+        if item.kind == "test_record":
+            kind = ProjectOutputKind.TEST_RECORD_FORM
+        elif item.kind == "fee_evaluation":
+            kind = ProjectOutputKind.FEE_EVALUATION
+        else:
+            continue
+        status = (
+            ProjectOutputStatus.CURRENT
+            if item.status in {"generated", "copied", "already_in_place"}
+            else ProjectOutputStatus.FAILED
+        )
+        output_service.register_output(
+            RegisterProjectOutputCommand(
+                project_id=result.project_id,
+                output_kind=kind,
+                status=status,
+                source=ProjectOutputSource.SYSTEM_GENERATED,
+                output_path=str(item.output_path) if item.output_path is not None else None,
+                draft_id=result.draft_id if status is ProjectOutputStatus.CURRENT else None,
+                note="; ".join(item.warnings) if item.warnings else None,
+            )
+        )
 
 
 def _to_response(

@@ -8,7 +8,12 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_section2_write_back_service
+from backend.api.dependencies import (
+    get_project_output_record_service,
+    get_section2_write_back_service,
+)
+from backend.application.project_output_record_service import ProjectOutputRecordService, RegisterProjectOutputCommand
+from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
 from backend.application.section2_write_back_service import (
     Section2WriteBackCommand,
     Section2WriteBackError,
@@ -70,6 +75,7 @@ def write_back_section2(
     draft_id: str,
     request: Section2WriteBackRequest,
     service: Section2WriteBackService = Depends(get_section2_write_back_service),
+    output_service: ProjectOutputRecordService = Depends(get_project_output_record_service),
 ) -> Section2WriteBackResponse:
     """Write approved Section 2 values into the target application form."""
     try:
@@ -95,6 +101,16 @@ def write_back_section2(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Section2WriteBackError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    output_service.register_output(
+        RegisterProjectOutputCommand(
+            project_id=project_id,
+            output_kind=ProjectOutputKind.SECTION2_WRITE_BACK,
+            status=ProjectOutputStatus.CURRENT,
+            source=ProjectOutputSource.SYSTEM_EXECUTED,
+            output_path=str(result.target_application_form_path),
+            draft_id=draft_id,
+        )
+    )
     return _to_response(result)
 
 

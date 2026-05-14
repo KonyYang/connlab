@@ -3,10 +3,12 @@ import type {
   ApprovalPackageRequest,
   ApprovalPackageResponse
 } from "../../api/client";
+import type { ApprovalInputSources } from "../../features/project-workbench/useProjectWorkbenchModel";
 
 type ApprovalPackagePanelProps = {
   folderReady: boolean;
   input: ApprovalPackageRequest;
+  inputSources: ApprovalInputSources;
   preview: ApprovalPackageResponse | null;
   result: ApprovalPackageResponse | null;
   previewing: boolean;
@@ -19,6 +21,7 @@ type ApprovalPackagePanelProps = {
 export function ApprovalPackagePanel({
   folderReady,
   input,
+  inputSources,
   preview,
   result,
   previewing,
@@ -58,38 +61,62 @@ export function ApprovalPackagePanel({
 
       <div className="folder-preview-panel">
         <div className="form-grid-two">
-          <input
-            required
-            placeholder="Project folder path"
-            value={input.project_folder_path}
-            onChange={(event) => updateField(event, input, onInputChange, "project_folder_path")}
-          />
-          <input
-            required
-            placeholder="Completed application form path"
-            value={input.completed_application_form_path}
-            onChange={(event) =>
-              updateField(event, input, onInputChange, "completed_application_form_path")
-            }
-          />
-          <input
-            required
-            placeholder="Test record output path"
-            value={input.test_record_output_path}
-            onChange={(event) => updateField(event, input, onInputChange, "test_record_output_path")}
-          />
-          <input
-            placeholder="Fee evaluation output path (optional)"
-            value={input.fee_evaluation_output_path ?? ""}
-            onChange={(event) => {
-              const value = event.target.value.trim();
-              onInputChange({
-                ...input,
-                fee_evaluation_output_path: value ? value : null
-              });
-            }}
-          />
+          <label className="approval-input-field">
+            <span className="fine-print">
+              Project folder path ({inputSources.project_folder_path})
+            </span>
+            <input
+              required
+              placeholder="Project folder path"
+              value={input.project_folder_path}
+              onChange={(event) => updateField(event, input, onInputChange, "project_folder_path")}
+            />
+          </label>
+          <label className="approval-input-field">
+            <span className="fine-print">
+              Completed application form ({inputSources.completed_application_form_path})
+            </span>
+            <input
+              required
+              placeholder="Completed application form path"
+              value={input.completed_application_form_path}
+              onChange={(event) =>
+                updateField(event, input, onInputChange, "completed_application_form_path")
+              }
+            />
+          </label>
+          <label className="approval-input-field">
+            <span className="fine-print">
+              Test record output ({inputSources.test_record_output_path})
+            </span>
+            <input
+              required
+              placeholder="Test record output path"
+              value={input.test_record_output_path}
+              onChange={(event) => updateField(event, input, onInputChange, "test_record_output_path")}
+            />
+          </label>
+          <label className="approval-input-field">
+            <span className="fine-print">
+              Fee evaluation output ({inputSources.fee_evaluation_output_path})
+            </span>
+            <input
+              placeholder="Fee evaluation output path (optional)"
+              value={input.fee_evaluation_output_path ?? ""}
+              onChange={(event) => {
+                const value = event.target.value.trim();
+                onInputChange({
+                  ...input,
+                  fee_evaluation_output_path: value ? value : null
+                });
+              }}
+            />
+          </label>
         </div>
+        <p className="fine-print">
+          Evidence source paths ({inputSources.evidence_source_paths}) are auto-filled from Source
+          Archive when available.
+        </p>
         <textarea
           className="approval-evidence-input"
           placeholder="Evidence source paths (optional, one path per line)"

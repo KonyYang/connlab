@@ -7,6 +7,11 @@ from backend.modules.test_plan.product_spec_matrix_parser import (
     MatrixStepPreview,
     ProductSpecMatrixParser,
 )
+from backend.modules.test_plan.matrix_step_sequence_validation import (
+    ParsedStepToken,
+    parse_step_tokens,
+    validate_group_step_sequences,
+)
 
 __all__ = [
     "DurationHint",
@@ -14,5 +19,8 @@ __all__ = [
     "MatrixGroupPreview",
     "MatrixParseResult",
     "MatrixStepPreview",
+    "ParsedStepToken",
     "ProductSpecMatrixParser",
+    "parse_step_tokens",
+    "validate_group_step_sequences",
 ]

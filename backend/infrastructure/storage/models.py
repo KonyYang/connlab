@@ -329,3 +329,25 @@ class ProjectTestPlanDraftModel(Base):
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
     reviewed_at: Mapped[str | None] = mapped_column(String(64))
+
+
+class ProjectOutputRecordModel(Base):
+    """Database row for one persisted project output lineage/status record."""
+
+    __tablename__ = "project_output_records"
+
+    output_record_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    draft_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    draft_version: Mapped[int | None] = mapped_column(Integer)
+    output_kind: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    output_path: Mapped[str | None] = mapped_column(String(1024))
+    status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
