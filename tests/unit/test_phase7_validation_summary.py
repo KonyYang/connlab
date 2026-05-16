@@ -85,6 +85,14 @@ def test_phase7_validation_summary_closes_phase_without_future_scope() -> None:
             or "Current Active Task: none; TASK_190 correction complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_191 complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_192 complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_194 product realignment complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_195 runtime information architecture complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_196 step-centric domain foundation complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_197 interactive step token read model complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_198 runtime projection service boundary complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_200 first runtime implementation slice planning complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_201 projection dto and token reference builder minimal slice complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_202 runtime projection composition helper minimal slice complete, pending next controlled implementation task" in board
     )
     assert "| T7-16 | `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` | done |" in board
     assert "Current recommendation:" in board

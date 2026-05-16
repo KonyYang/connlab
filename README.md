@@ -8,6 +8,24 @@ Current working stage:
 Project Workbench / Matrix / Approval Package
 ```
 
+Current foundation baseline:
+
+```text
+Phase 11 - controlled foundation baseline
+```
+
+Next product direction:
+
+```text
+Matrix-driven Laboratory Execution Phase
+```
+
+Governance principle:
+
+```text
+Matrix is the execution authority map, Project remains the lifecycle container.
+```
+
 Historical MVP baseline (already implemented and extended):
 
 ```text

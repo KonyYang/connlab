@@ -6,15 +6,15 @@ product
 
 ## Users
 
-ConnLab is used by electronic connector laboratory engineers and lab coordinators on offline Windows workstations. These users are not programmers. Their daily context includes Outlook or exported email, Word application forms, Excel or file attachments, local project folders, LTR tracking, and repeated handoff checks.
+ConnLab is used by electronic connector laboratory engineers and lab coordinators on offline Windows workstations. These users are not programmers. Their daily context includes Outlook or exported email, Word application forms, Excel or file attachments, local project folders, LTR tracking, Matrix review, test execution follow-up, and repeated handoff checks.
 
-The primary user job is to convert incoming request material into a traceable laboratory project, then move that project through precheck, LTR registration, and safe folder creation without losing the original source material.
+The primary user job is to convert incoming request material into a traceable laboratory project, then move that project through precheck, LTR registration, Matrix authority review, test execution tracking, and safe output preparation without losing the original source material.
 
 ## Product Purpose
 
-ConnLab is an offline Windows-first workbench for connector laboratory intake and project preparation.
+ConnLab is an offline Windows-first workbench for connector laboratory project preparation and Matrix-driven laboratory execution.
 
-The current MVP supports:
+The historical MVP baseline supports:
 
 - Project registry
 - Application form upload and parsing
@@ -24,9 +24,11 @@ The current MVP supports:
 - Local SQLite persistence
 - Minimal React frontend connected to FastAPI
 
-The Phase 5 goal is to make the existing MVP flow feel like a credible laboratory workbench. The UI must clarify project state, next action, warnings, and blockers before deeper business workflows are added.
+The current Phase 11 foundation extends that baseline with Project Workbench, Matrix authority draft lifecycle, Section 2 write-back, test-record and fee generation, approval package placement, and output freshness tracking.
 
-Long-term success means a non-programmer lab engineer can start from real request material, review extracted data, confirm project creation, resolve precheck issues, register LTR, and generate the project folder without using code.
+The next product direction is the Matrix-driven Laboratory Execution Phase. Matrix is the execution authority map, Project remains the lifecycle container. Step-level execution data, evidence, images, and lifecycle state should become the structured source for derived outputs such as Test Record, Report, Fee Evaluation, and Approval Package.
+
+Long-term success means a non-programmer lab engineer can start from real request material, establish the authoritative Matrix, track live testing by group and step, keep evidence and outputs synchronized, and close a project without relying on ad hoc Word/Excel state as the source of truth.
 
 ## Brand Personality
 
@@ -52,7 +54,9 @@ ConnLab must not look or behave like:
 - An ERP-style menu maze
 - A dark neon developer tool
 - A decorative glassmorphism concept UI
-- A future-feature showcase that exposes Matrix, Reports, or AI as active features
+- A future-feature showcase that exposes Reports, AI, permissions, or deployment work as active features before task approval
+- An Excel-like Matrix editor where cells remain unstructured strings
+- An approval package dashboard where setup documents crowd out the live Matrix execution view
 
 ## Design Principles
 
@@ -61,6 +65,9 @@ ConnLab must not look or behave like:
 3. Traceability before convenience. Original files, extracted records, warnings, LTR, and generated folders must remain visibly connected.
 4. Familiarity before novelty. Use standard product patterns: sidebar, top bar, table, badges, focused action panels, clear empty states.
 5. Preview before write. Folder and file operations must show preview or conflict state before execution.
+6. Matrix before output. Matrix is the execution authority map; Test Record, Report, Fee Evaluation, and Approval Package are derived outputs.
+7. Step before report. Step-level execution state, data, images, evidence, and lifecycle events must be structured before report automation expands.
+8. Setup supports execution. Folder, source materials, approval package, and fee evaluation should be status entries or setup surfaces, not the Workbench main visual priority once Matrix authority exists.
 
 ## Accessibility & Inclusion
 

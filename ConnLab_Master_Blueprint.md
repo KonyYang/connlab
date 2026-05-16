@@ -2,6 +2,32 @@
 
 本文件是打包版，便于一次性提供给 AI 编程工具。实际开发时建议优先使用拆分文档。
 
+## 2026-05-16 Addendum - Matrix-driven Laboratory Execution Phase
+
+The active source of truth is `docs/task_board.md`, then the current task file, then focused architecture/product documents.
+
+Current foundation baseline:
+
+```text
+Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
+```
+
+Next product direction:
+
+```text
+Matrix-driven Laboratory Execution Phase
+```
+
+Approved authority model:
+
+```text
+Matrix is the execution authority map, Project remains the lifecycle container.
+```
+
+Older MVP-only wording in this packed blueprint is historical context unless it is explicitly confirmed by `docs/task_board.md` and `AGENTS.md`. Use `docs/matrix_execution_phase_principles.md` for the current Matrix / Workbench / Step direction.
+
+TestFlowManager remains lessons-only reference material. Do not copy its architecture or source code into ConnLab.
+
 
 
 ---

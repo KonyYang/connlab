@@ -116,6 +116,14 @@ def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None
             or "Current Active Task: none; TASK_190 correction complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_191 complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_192 complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_194 product realignment complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_195 runtime information architecture complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_196 step-centric domain foundation complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_197 interactive step token read model complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_198 runtime projection service boundary complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_200 first runtime implementation slice planning complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_201 projection dto and token reference builder minimal slice complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_202 runtime projection composition helper minimal slice complete, pending next controlled implementation task" in board
     )
     assert "TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done" in board
     assert "Phase 6A - Outlook Email Package Intake" in board

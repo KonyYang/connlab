@@ -137,12 +137,22 @@ def test_task_board_preserves_phase6a_completion_and_forbids_future_scope() -> N
             or "Current Active Task: none; TASK_190 correction complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_191 complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_192 complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_194 product realignment complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_195 runtime information architecture complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_196 step-centric domain foundation complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_197 interactive step token read model complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_198 runtime projection service boundary complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_200 first runtime implementation slice planning complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_201 projection dto and token reference builder minimal slice complete, pending next controlled implementation task" in board
+            or "Current Active Task: none; TASK_202 runtime projection composition helper minimal slice complete, pending next controlled implementation task" in board
     )
     assert (
         "Current Phase: `Phase 10A follow-up redirection - New Project single-page redesign`"
         in board
         or "Current Phase: `Phase 10B - LTR workbook write hardening`" in board
         or "Current Phase: `Phase 11 - Project planning data foundation before downstream document automation`"
+        in board
+        or "Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`"
         in board
     )
     assert "| T6A-1 | `TASK_025_PHASE6_SCOPE_REVISION_AND_BOARD_ACTIVATION` | done |" in board

@@ -2,19 +2,39 @@
 
 ## 1. Product Mission
 
-ConnLab is an offline Windows-first workbench for an electronic connector laboratory. It supports project intake, application-form precheck, LTR tracking, and project folder creation first, with future expansion to Matrix planning, test records, test result ingestion, image assets, report generation, report audit, knowledge base, and AI review.
+ConnLab is an offline Windows-first workbench for an electronic connector laboratory. It started with project intake, application-form precheck, LTR tracking, and project folder creation, and now has a controlled Project Workbench / Matrix / Approval Package foundation.
+
+The next product direction is the Matrix-driven Laboratory Execution Phase:
+
+```text
+Matrix is the execution authority map, Project remains the lifecycle container.
+```
+
+Project owns lifecycle identity and traceability. Matrix owns the authoritative test execution map. Step-level records will own execution data, evidence, images, lifecycle state, and report bindings when future tasks explicitly implement them. Test Record, Report, Fee Evaluation, and Approval Package are derived outputs.
 
 ConnLab is a new project. Do not copy old TestFlowManager architecture. Old code and documents are reference material only.
 
-## 2. Current MVP Scope
+## 2. Current Stage And Scope
 
-Only implement the MVP unless a task explicitly says otherwise:
+The original MVP baseline is implemented and extended:
 
 1. Application form intake and precheck.
 2. LTR number registration / tracking.
 3. Project folder creation from a template.
 
-Do not implement Matrix, Test Record, Report Generation, AI review, multi-user collaboration, permissions, or LAN deployment during the MVP unless a future task explicitly requests it.
+Current frozen baseline:
+
+```text
+Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
+```
+
+Next direction:
+
+```text
+Matrix-driven Laboratory Execution Phase
+```
+
+Do not implement StepInstance, test execution persistence, image asset management, report generation, AI review, multi-user collaboration, permissions, or LAN deployment unless a current approved task explicitly requests it. Matrix and Step work must remain task-controlled and must not turn into an Excel-like string editor.
 
 ## 3. Mandatory Technical Stack
 
@@ -76,17 +96,20 @@ Frontend architecture control:
 
 ## 5. Core Domain Principles
 
-- Project is the system center.
+- Project is the lifecycle container and traceability center.
+- Matrix is the execution authority map for what must be tested.
+- Step is the future execution data and lifecycle unit.
 - Application form is the project starting point.
 - Precheck is the first quality gate.
 - LTR and project folder creation are downstream of a confirmed project.
 - Word and Excel are input/output formats, not the primary system data model.
 - All extracted or confirmed data must be stored as structured records.
 - Every future feature must attach to a Project lifecycle stage.
+- Test Record, Report, Fee Evaluation, and Approval Package are derived outputs, not primary data sources.
 
-## 6. MVP Domain Objects
+## 6. Domain Objects
 
-Implement these before any advanced objects:
+Historical MVP objects:
 
 - Project
 - ApplicationForm
@@ -97,10 +120,16 @@ Implement these before any advanced objects:
 - ProjectFolderRecord
 - FileAsset
 
-Future reserved objects, not MVP implementation unless requested:
+Current controlled Matrix foundation:
 
-- MatrixPlan
+- ProjectTestPlanDraft
+- ProjectOutputRecord
+
+Future execution objects, not implemented unless a task explicitly requests them:
+
 - TestDefinition
+- TestGroup
+- StepInstance
 - TestRecord
 - TestResult
 - TestAsset
@@ -116,7 +145,8 @@ Do not:
 - Put business logic inside UI click handlers or API route bodies.
 - Let UI or API routes directly call Word/Excel COM.
 - Create a generic “tools” page full of buttons.
-- Treat Matrix as the system center.
+- Treat Matrix as replacing Project as the lifecycle container.
+- Treat Matrix cells as the long-term string-only authority.
 - Treat Word/Excel files as the only source of truth.
 - Create god services or god files.
 - Implement future scope just because it appears in the blueprint.
