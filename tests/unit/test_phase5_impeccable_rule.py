@@ -8,7 +8,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_phase5_plan_and_board_require_impeccable() -> None:
     """Phase 5 docs require impeccable for UX/UI work."""
-    plan = (ROOT / "docs" / "ConnLab_Phase5_Workbench_UX_Plan.md").read_text(
+    plan = (
+        ROOT
+        / "docs"
+        / "archive"
+        / "historical_plans"
+        / "ConnLab_Phase5_Workbench_UX_Plan.md"
+    ).read_text(
         encoding="utf-8"
     )
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")

@@ -1,9 +1,9 @@
-# ConnLab Phase 7 Plan: Real LTR, Folder Evidence, And Lifecycle Governance
+﻿# ConnLab Phase 7 Plan: Real LTR, Folder Evidence, And Lifecycle Governance
 
 > Optimized date: 2026-04-27
 > Current board state: Phase 7 complete; current active task is `NONE_PENDING_USER_APPROVAL`.
 > Plan status: approved Phase 7 execution plan. `docs/task_board.md` remains the source of truth for the active task.
-> Replacement target: `docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
+> Replacement target: `docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
 
 ---
 
@@ -252,7 +252,7 @@ If COM automation is required, keep it behind OfficeLifecycleManager / Excel gat
 Source image:
 
 ```text
-C:\Users\White\Desktop\AI information\申请 LTR 前必须字段.png
+C:\Users\White\Desktop\AI information\鐢宠 LTR 鍓嶅繀椤诲瓧娈?png
 ```
 
 Fields extracted from the image:
@@ -1544,7 +1544,7 @@ known limitation
 | Workbook may be locked on public drive | Gateway must detect lock and return actionable error |
 | Workbook layout may differ by year/sheet | Snapshot task must document sheet and column layout before write task |
 | LTR registration could create mismatched SQLite/Excel state | Commit workflow must coordinate write/local record with failure handling |
-| Future-result fields appear in “required” LTR list | Use severity and placeholder policy, not blind blocking |
+| Future-result fields appear in 鈥渞equired鈥?LTR list | Use severity and placeholder policy, not blind blocking |
 | LTR renumbering can break folder/file names | Always preview rename; never overwrite; preserve old evidence |
 | Lifecycle model could overtake current MVP | Add operation guards around current workflow first; avoid broad enum replacement |
 | Report pain point may pull scope forward | Preserve report-ready structured data, but keep automated report generation out of Phase 7 |
@@ -1586,7 +1586,7 @@ Use this prompt when starting Phase 7:
 ```text
 Read AGENTS.md first.
 Then read docs/task_board.md.
-Then read docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md.
+Then read docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md.
 Implement only the active task allowed by docs/task_board.md.
 Do not implement Matrix, Report, AI review, LAN deployment, permissions, or Outlook inbox auto-scan.
 Do not write to the real LTR workbook unless the active task explicitly allows workbook write and settings enable it.

@@ -1,4 +1,4 @@
-# TASK_194 Matrix Execution Phase Product Realignment
+﻿# TASK_194 Matrix Execution Phase Product Realignment
 
 > Status: done  
 > Created: 2026-05-16  
@@ -70,7 +70,7 @@ Matrix is the execution authority map, Project remains the lifecycle container.
 ## 4. Acceptance Criteria
 
 - `docs/matrix_execution_phase_principles.md` exists.
-- `AGENTS.md`, `README.md`, `PRODUCT.md`, and `ConnLab_Master_Blueprint.md` reflect the Matrix-driven direction without replacing Project as the lifecycle container.
+- `AGENTS.md`, `README.md`, `PRODUCT.md`, and `docs/archive/legacy_blueprints/ConnLab_Master_Blueprint.md` reflect the Matrix-driven direction without replacing Project as the lifecycle container.
 - `docs/task_board.md` records TASK_194 completion and the next recommended task.
 - No runtime source files are changed.
 

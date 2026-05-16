@@ -1,4 +1,4 @@
-# Current Session State
+﻿# Current Session State
 
 Last updated: 2026-05-04 (TASK_092)
 
@@ -61,7 +61,7 @@ Recent validations recorded in `docs/task_board.md`:
 - `py -m pytest tests\unit\test_application_form_parser.py tests\unit\test_intake_asset_preview_service.py tests\unit\test_frontend_shell_files.py -q`: `48 passed` after the parser structural alignment.
 - `py -m pytest tests\integration\test_msg_package_intake_api.py tests\integration\test_manual_intake_api.py -q`: `8 passed` after the parser structural alignment.
 - `npm run build` from `frontend/`: passed after the parser structural alignment.
-- `git diff --check`: currently blocked by pre-existing trailing whitespace in `docs/Other_AI_Modified/2026-05-03_ConnLab_UI_修改记录.md`; TASK_091 files were not reported with whitespace errors.
+- `git diff --check`: currently blocked by pre-existing trailing whitespace in `docs/archive/external_ai/2026-05-03_ConnLab_UI_淇敼璁板綍.md`; TASK_091 files were not reported with whitespace errors.
 
 If the new conversation continues implementation, rerun relevant targeted tests first and update this file only when another task finishes or a new important constraint appears.
 
@@ -107,6 +107,6 @@ Known changed areas include:
 - `frontend/src/features/intake/AttachmentList.tsx`
 - `frontend/src/intake-inbox.css`
 - `frontend/src/styles.css`
-- `docs/Other_AI_Modified/2026-05-03_ConnLab_UI_修改记录.md`
+- `docs/archive/external_ai/2026-05-03_ConnLab_UI_淇敼璁板綍.md`
 
-There is also `docs/Other_AI_Modified/AI prompt.md`; it is a user/other-AI note, not a required architecture document.
+There is also `docs/archive/external_ai/AI prompt.md`; it is a user/other-AI note, not a required architecture document.

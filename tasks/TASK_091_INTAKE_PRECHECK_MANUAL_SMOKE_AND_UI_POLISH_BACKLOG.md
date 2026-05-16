@@ -1,4 +1,4 @@
-# TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG
+﻿# TASK_091_INTAKE_PRECHECK_MANUAL_SMOKE_AND_UI_POLISH_BACKLOG
 
 Status: Done
 
@@ -51,7 +51,7 @@ This task is a controlled UI polish and smoke-validation backlog task. It should
 - `py -m pytest tests\unit\test_frontend_shell_files.py -q`, result `36 passed`.
 - `npm run build` from `frontend/`, result passed.
 - `py -m pytest -q`, result `297 passed`.
-- `git diff --check`, result blocked by pre-existing trailing whitespace in `docs/Other_AI_Modified/2026-05-03_ConnLab_UI_修改记录.md`; no TASK_091 files were reported with whitespace errors.
+- `git diff --check`, result blocked by pre-existing trailing whitespace in `docs/archive/external_ai/2026-05-03_ConnLab_UI_淇敼璁板綍.md`; no TASK_091 files were reported with whitespace errors.
 
 ## Notes
 

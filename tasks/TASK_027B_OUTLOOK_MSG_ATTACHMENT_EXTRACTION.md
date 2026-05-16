@@ -1,4 +1,4 @@
-# TASK 027B — Outlook `.msg` Attachment Extraction
+﻿# TASK 027B 鈥?Outlook `.msg` Attachment Extraction
 
 ## Goal
 
@@ -18,7 +18,7 @@ This task builds on `TASK_027A`, which only preserves the `.msg` source file and
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
-3. `docs/ConnLab_Phase6_Implementation_Plan.md`
+3. `docs/archive/historical_plans/ConnLab_Phase6_Implementation_Plan.md`
 4. this task file
 5. `TASK_EXECUTION_SKILL.md`
 6. `TASK_REVIEW_CHECKLIST.md`

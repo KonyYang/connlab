@@ -772,6 +772,125 @@ export type LtrWorkbookWriteCommit = {
   ltr_number: string;
 };
 
+export type RuntimeProjectionValueCountItem = {
+  value: string | null;
+  count: number;
+};
+
+export type RuntimeProjectionAggregationSummary = {
+  lifecycle_counts: RuntimeProjectionValueCountItem[];
+  evidence_counts: RuntimeProjectionValueCountItem[];
+  report_sync_counts: RuntimeProjectionValueCountItem[];
+  stale_counts: RuntimeProjectionValueCountItem[];
+  attention_counts: RuntimeProjectionValueCountItem[];
+};
+
+export type RuntimeProjectionGroupSummary = {
+  group_identity: string;
+  group_label: string;
+  total_tokens: number;
+  unique_sequences: number;
+  aggregation_summary: RuntimeProjectionAggregationSummary;
+};
+
+export type RuntimeProjectionSummaryResponse = {
+  total_tokens: number;
+  group_count: number;
+  groups: RuntimeProjectionGroupSummary[];
+};
+
+export type RuntimeProjectionMatrixToken = {
+  token_reference: string;
+  raw_token: string;
+  sequence_number: number;
+  suffix_note: string | null;
+  lifecycle_projection: string | null;
+  evidence_projection: string | null;
+  report_sync_projection: string | null;
+  stale_projection: string | null;
+  attention_projection: string | null;
+};
+
+export type RuntimeProjectionMatrixGroup = {
+  group_identity: string;
+  group_label: string;
+  total_tokens: number;
+  unique_sequences: number;
+  tokens: RuntimeProjectionMatrixToken[];
+};
+
+export type RuntimeProjectionMatrixOverview = {
+  total_tokens: number;
+  group_count: number;
+  groups: RuntimeProjectionMatrixGroup[];
+};
+
+export type RuntimeProjectionSelectedToken = {
+  token_reference: string;
+  raw_token: string;
+  sequence_number: number;
+  suffix_note: string | null;
+  lifecycle_projection: string | null;
+  evidence_projection: string | null;
+  report_sync_projection: string | null;
+  stale_projection: string | null;
+  attention_projection: string | null;
+  test_item_label: string;
+  section: string;
+  method: string;
+  condition: string;
+  requirement: string;
+};
+
+export type RuntimeProjectionStepWorkspace = {
+  selected_token_reference: string;
+  found: boolean;
+  group_identity: string | null;
+  group_label: string | null;
+  group_token_references: string[];
+  previous_token_reference: string | null;
+  next_token_reference: string | null;
+  selected_token: RuntimeProjectionSelectedToken | null;
+};
+
+export type RuntimeProjectionSnapshotResponse = {
+  project_reference: string;
+  matrix_reference: string;
+  parser_warnings: string[];
+  runtime_projection_summary: RuntimeProjectionSummaryResponse;
+  matrix_overview: RuntimeProjectionMatrixOverview;
+  step_workspace: RuntimeProjectionStepWorkspace | null;
+};
+
+export type RuntimeProjectionStateInput = {
+  lifecycle?: string | null;
+  evidence?: string | null;
+  report_sync?: string | null;
+  stale?: string | null;
+  attention?: string | null;
+};
+
+export type RuntimeProjectionSnapshotRowInput = {
+  group_identity: string;
+  group_label: string;
+  row_context: {
+    test_item_label: string;
+    section: string;
+    method: string;
+    condition: string;
+    requirement: string;
+  };
+  raw_step_token_value?: string | null;
+  projection_state?: RuntimeProjectionStateInput | null;
+};
+
+export type RuntimeProjectionSnapshotRequest = {
+  project_reference: string;
+  matrix_reference: string;
+  rows: RuntimeProjectionSnapshotRowInput[];
+  selected_token_reference?: string | null;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiRequestError extends Error {
@@ -1393,5 +1512,17 @@ export function getProjectOutputStatusSummary(
 ): Promise<ProjectOutputStatusSummary> {
   return requestJson<ProjectOutputStatusSummary>(
     `/api/projects/${encodeURIComponent(projectId)}/output-records/status`
+  );
+}
+
+export function getRuntimeProjectionReadOnlySnapshot(
+  input: RuntimeProjectionSnapshotRequest
+): Promise<RuntimeProjectionSnapshotResponse> {
+  return requestJson<RuntimeProjectionSnapshotResponse>(
+    "/api/runtime-projection/read-only-snapshot",
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
   );
 }

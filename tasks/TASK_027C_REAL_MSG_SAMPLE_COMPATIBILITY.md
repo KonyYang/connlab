@@ -1,4 +1,4 @@
-# TASK 027C — Real `.msg` Sample Compatibility
+﻿# TASK 027C 鈥?Real `.msg` Sample Compatibility
 
 ## Goal
 
@@ -18,7 +18,7 @@ This task hardens behavior around real Outlook files only after `TASK_027A` and 
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
-3. `docs/ConnLab_Phase6_Implementation_Plan.md`
+3. `docs/archive/historical_plans/ConnLab_Phase6_Implementation_Plan.md`
 4. this task file
 5. `TASK_EXECUTION_SKILL.md`
 6. `TASK_REVIEW_CHECKLIST.md`

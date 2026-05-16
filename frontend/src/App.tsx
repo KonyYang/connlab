@@ -12,6 +12,7 @@ import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
+import { RuntimeProjectionPrototypePage } from "./pages/RuntimeProjectionPrototypePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import "./styles.css";
 
@@ -21,6 +22,7 @@ type Route =
   | { name: "intakePackage"; packageId: string }
   | { name: "intakeCaseReview"; packageId: string }
   | { name: "projectDetail"; projectId: string }
+  | { name: "runtimeProjection" }
   | { name: "settings" }
   | { name: "notFound" };
 
@@ -35,6 +37,10 @@ function parseRoute(pathname: string): Route {
 
   if (pathname === "/settings") {
     return { name: "settings" };
+  }
+
+  if (pathname === "/runtime-projection") {
+    return { name: "runtimeProjection" };
   }
 
   const intakePackageMatch = pathname.match(/^\/intake\/([^/]+)$/);
@@ -80,6 +86,8 @@ export default function App(): ReactElement {
       ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
+        : route.name === "runtimeProjection"
+          ? "runtime-projection"
         : route.name;
 
   return (
@@ -132,6 +140,7 @@ export default function App(): ReactElement {
         <ProjectWorkbenchPage projectId={route.projectId} onBack={() => navigate("/projects")} />
       )}
       {route.name === "settings" && <SettingsPage />}
+      {route.name === "runtimeProjection" && <RuntimeProjectionPrototypePage />}
       {route.name === "notFound" && (
         <section className="panel">
           <h2>Page not found</h2>

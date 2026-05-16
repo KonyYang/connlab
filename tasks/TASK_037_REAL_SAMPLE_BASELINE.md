@@ -1,4 +1,4 @@
-# TASK_037_REAL_SAMPLE_BASELINE
+﻿# TASK_037_REAL_SAMPLE_BASELINE
 
 ## Status
 
@@ -30,7 +30,7 @@ Build a documented compatibility baseline for the four real Outlook `.msg` sampl
 
 ## Inputs
 
-- `docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
+- `docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
 - `docs/phase6a_validation.md`
 - Real files in `C:\Users\White\Desktop\AI information`
 - Existing Phase 6A intake services

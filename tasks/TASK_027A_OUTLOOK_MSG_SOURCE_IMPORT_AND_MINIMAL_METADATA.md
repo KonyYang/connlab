@@ -1,4 +1,4 @@
-# TASK 027A — Outlook `.msg` Source Import And Minimal Metadata
+﻿# TASK 027A 鈥?Outlook `.msg` Source Import And Minimal Metadata
 
 ## Goal
 
@@ -18,7 +18,7 @@ This task is intentionally smaller than full `.msg` package import. Attachment e
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
-3. `docs/ConnLab_Phase6_Implementation_Plan.md`
+3. `docs/archive/historical_plans/ConnLab_Phase6_Implementation_Plan.md`
 4. this task file
 5. `TASK_EXECUTION_SKILL.md`
 6. `TASK_REVIEW_CHECKLIST.md`

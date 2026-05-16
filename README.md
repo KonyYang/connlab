@@ -34,6 +34,26 @@ Project -> Application form -> Precheck -> LTR -> Project Folder
 
 Current deferred scope (not active in the present stage baseline): AI review, multi-user permissions, LAN deployment, full installer, and PyInstaller packaging.
 
+## Documentation Read Order
+
+Current source-of-truth order:
+
+1. `AGENTS.md`
+2. `docs\task_board.md`
+3. current `tasks\TASK_XXX_*.md`
+4. task-specific plan or architecture docs
+5. `docs\README.md`
+
+Current governance and product references:
+
+- Runtime governance: `docs\runtime_governance_freeze_rule.md`
+- Product purpose: `PRODUCT.md`
+- Documentation map: `docs\README.md`
+- Domain snapshot: `docs\03_DOMAIN_MODEL.md`
+- API surface snapshot: `docs\04_API_CONTRACTS.md`
+
+Historical phase plans and packed blueprints are context only unless confirmed by `AGENTS.md`, `docs\task_board.md`, or the active task.
+
 ## Requirements
 
 - Windows development machine.

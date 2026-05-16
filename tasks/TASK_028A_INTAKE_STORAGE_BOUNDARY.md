@@ -1,4 +1,4 @@
-# TASK 028A — Intake Storage Boundary
+﻿# TASK 028A 鈥?Intake Storage Boundary
 
 ## Goal
 
@@ -18,7 +18,7 @@ This task prevents later `.msg`, attachment, direct `.docx`, and confirm flows f
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
-3. `docs/ConnLab_Phase6_Implementation_Plan.md`
+3. `docs/archive/historical_plans/ConnLab_Phase6_Implementation_Plan.md`
 4. this task file
 5. `TASK_EXECUTION_SKILL.md`
 6. `TASK_REVIEW_CHECKLIST.md`

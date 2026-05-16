@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -124,6 +124,17 @@ def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None
             or "Current Active Task: none; TASK_200 first runtime implementation slice planning complete, pending next controlled implementation task" in board
             or "Current Active Task: none; TASK_201 projection dto and token reference builder minimal slice complete, pending next controlled implementation task" in board
             or "Current Active Task: none; TASK_202 runtime projection composition helper minimal slice complete, pending next controlled implementation task" in board
+            or "Current Active Task: TASK_204_RUNTIME_PROJECTION_READ_ONLY_CONSUMER_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_204 runtime projection read-only consumer minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_205_RUNTIME_PROJECTION_SNAPSHOT_ADAPTER_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_205 runtime projection snapshot adapter minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_206_RUNTIME_PROJECTION_READ_ONLY_API_ADAPTER_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_206 runtime projection read-only api adapter minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_207 api contract snapshot sync complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_208_RUNTIME_PROJECTION_READ_ONLY_API_TYPED_CONTRACT_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_208 runtime projection read-only api typed contract minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_209_RUNTIME_PROJECTION_READ_ONLY_FRONTEND_CONSUMER_PROTOTYPE_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_209 runtime projection read-only frontend consumer prototype minimal slice complete, pending user approval for next controlled task" in board
     )
     assert "TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done" in board
     assert "Phase 6A - Outlook Email Package Intake" in board

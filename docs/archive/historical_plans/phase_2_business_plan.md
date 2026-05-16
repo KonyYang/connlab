@@ -1,4 +1,4 @@
-# ConnLab Phase 2 Business Implementation Plan
+﻿# ConnLab Phase 2 Business Implementation Plan
 
 > Status: planning draft  
 > Created: 2026-04-26  
@@ -444,7 +444,7 @@ Recommended read order:
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
-3. `docs/phase_2_business_plan.md`
+3. `docs/archive/historical_plans/phase_2_business_plan.md`
 4. current `tasks/PHASE2_TASK_XXX_*.md`
 5. any real-form or workflow reference docs required by the task
 

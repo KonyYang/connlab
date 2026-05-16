@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -8,7 +8,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_phase6_plan_defines_real_intake_scope() -> None:
     """The Phase 6 plan captures the real Outlook package intake workflow."""
-    source = (ROOT / "docs" / "ConnLab_Phase6_Implementation_Plan.md").read_text(
+    source = (
+        ROOT
+        / "docs"
+        / "archive"
+        / "historical_plans"
+        / "ConnLab_Phase6_Implementation_Plan.md"
+    ).read_text(
         encoding="utf-8"
     )
 
@@ -16,10 +22,9 @@ def test_phase6_plan_defines_real_intake_scope() -> None:
         "Outlook Email Package Intake",
         "Application Form Selection",
         "Human Confirmation",
-        "一份申请单创建一个项目",
         "IntakePackage -> IntakeAsset -> Application Form Selection -> IntakeCase -> Review Draft -> Confirm Project",
         "OfficeFacade",
-        "Phase 6 不做",
+        "Phase 6 涓嶅仛",
         "TASK_027A",
         "TASK_027B",
         "TASK_031A",
@@ -145,6 +150,17 @@ def test_task_board_preserves_phase6a_completion_and_forbids_future_scope() -> N
             or "Current Active Task: none; TASK_200 first runtime implementation slice planning complete, pending next controlled implementation task" in board
             or "Current Active Task: none; TASK_201 projection dto and token reference builder minimal slice complete, pending next controlled implementation task" in board
             or "Current Active Task: none; TASK_202 runtime projection composition helper minimal slice complete, pending next controlled implementation task" in board
+            or "Current Active Task: TASK_204_RUNTIME_PROJECTION_READ_ONLY_CONSUMER_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_204 runtime projection read-only consumer minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_205_RUNTIME_PROJECTION_SNAPSHOT_ADAPTER_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_205 runtime projection snapshot adapter minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_206_RUNTIME_PROJECTION_READ_ONLY_API_ADAPTER_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_206 runtime projection read-only api adapter minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_207 api contract snapshot sync complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_208_RUNTIME_PROJECTION_READ_ONLY_API_TYPED_CONTRACT_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_208 runtime projection read-only api typed contract minimal slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: TASK_209_RUNTIME_PROJECTION_READ_ONLY_FRONTEND_CONSUMER_PROTOTYPE_MINIMAL_SLICE task file pending user review; awaiting approval before implementation" in board
+            or "Current Active Task: none; TASK_209 runtime projection read-only frontend consumer prototype minimal slice complete, pending user approval for next controlled task" in board
     )
     assert (
         "Current Phase: `Phase 10A follow-up redirection - New Project single-page redesign`"

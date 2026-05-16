@@ -3,7 +3,7 @@
 **任务ID**: TASK_178  
 **任务名称**: New Project Intake 逻辑矛盾修复  
 **创建日期**: 2026-05-12  
-**来源文档**: `docs/Other_AI_Modified/new_project_intake_logic_analysis_and_contradictions.md`  
+**来源文档**: `docs/archive/external_ai/new_project_intake_logic_analysis_and_contradictions.md`  
 **状态**: 完成，后续 Phase 2/3 停止  
 
 ---

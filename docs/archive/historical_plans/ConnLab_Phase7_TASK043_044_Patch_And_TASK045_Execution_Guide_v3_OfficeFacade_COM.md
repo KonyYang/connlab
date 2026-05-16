@@ -1,6 +1,6 @@
-# ConnLab Phase 7 TASK_043 / TASK_044 Patch And TASK_045 Execution Guide
+﻿# ConnLab Phase 7 TASK_043 / TASK_044 Patch And TASK_045 Execution Guide
 
-> Revision: v3 — adds OfficeFacade + Excel COM as the recommended local workbook-write implementation for TASK_045, with performance and architecture guardrails.
+> Revision: v3 鈥?adds OfficeFacade + Excel COM as the recommended local workbook-write implementation for TASK_045, with performance and architecture guardrails.
 
 > Date: 2026-04-28  
 > Purpose: give an AI coding agent a focused patch plan after `TASK_043` and `TASK_044` were already completed before the real `LTR_number.xls` details were fully understood.  
@@ -36,7 +36,7 @@ Before coding, read:
 1. `AGENTS.md`
 2. `docs/task_board.md`
 3. Current active task file
-4. `docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
+4. `docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
 5. This patch guide
 6. Existing implementation of completed `TASK_043` and `TASK_044`
 
@@ -1017,7 +1017,7 @@ The patch is complete only when all items below are true:
 Use this prompt with the AI coding agent:
 
 ```text
-Read AGENTS.md first, then docs/task_board.md, then the active task file, then docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md, then this patch guide.
+Read AGENTS.md first, then docs/task_board.md, then the active task file, then docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md, then this patch guide.
 
 TASK_043 and TASK_044 are already completed, but they were completed before the real LTR workbook rules were fully clarified. Do not rewrite them wholesale. Patch them minimally and safely.
 

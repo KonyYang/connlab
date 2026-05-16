@@ -1,4 +1,4 @@
-# TASK 025 — Phase 6 Scope Revision And Board Activation
+﻿# TASK 025 鈥?Phase 6 Scope Revision And Board Activation
 
 ## Goal
 
@@ -21,7 +21,7 @@ Outlook .msg package / direct Word application form
 Phase 5 is complete and the user explicitly approved starting Phase 6 using:
 
 ```text
-docs/ConnLab_Phase6_Implementation_Plan.md
+docs/archive/historical_plans/ConnLab_Phase6_Implementation_Plan.md
 ```
 
 The plan requires this activation task before any implementation work.

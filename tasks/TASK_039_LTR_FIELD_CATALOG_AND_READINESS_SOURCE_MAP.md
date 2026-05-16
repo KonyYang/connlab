@@ -1,4 +1,4 @@
-# TASK_039_LTR_FIELD_CATALOG_AND_READINESS_SOURCE_MAP
+﻿# TASK_039_LTR_FIELD_CATALOG_AND_READINESS_SOURCE_MAP
 
 ## Status
 
@@ -34,7 +34,7 @@ Define the authoritative Phase 7 LTR readiness field catalog before building rea
 
 ## Inputs
 
-- `docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
+- `docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`
 - `docs/phase7_real_sample_baseline.md`
 - Confirmed `Project`, `ApplicationForm`, `SampleInfo`, `IntakeAsset`, and `FileAsset` fields.
 - Existing `backend/modules/ltr/` package.

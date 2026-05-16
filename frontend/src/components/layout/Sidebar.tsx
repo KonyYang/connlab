@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", route: "dashboard", hint: null, icon: "dashboard", disabled: true },
   { label: "Projects", route: "projects", hint: null, icon: "projects" },
   { label: "New Project", route: "intake", hint: null, icon: "new-project" },
+  { label: "Runtime Prototype", route: "runtime-projection", hint: null, icon: "grid" },
   { label: "Reports", route: "reports", hint: null, icon: "reports", disabled: true },
   { label: "Folders", route: "folders", hint: null, icon: "folder", disabled: true },
   { label: "Templates", route: "templates", hint: null, icon: "templates", disabled: true },

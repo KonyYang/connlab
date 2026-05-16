@@ -31,6 +31,9 @@ from backend.api.routes_project_test_plan_matrix_edit import (
 from backend.api.routes_project_test_plan_source_candidates import (
     router as project_test_plan_source_candidates_router,
 )
+from backend.api.routes_runtime_projection_read_only import (
+    router as runtime_projection_read_only_router,
+)
 from backend.api.routes_project_output_records import (
     router as project_output_records_router,
 )
@@ -68,6 +71,7 @@ app.include_router(project_test_plan_router)
 app.include_router(project_test_plan_drafts_router)
 app.include_router(project_test_plan_matrix_edit_router)
 app.include_router(project_test_plan_source_candidates_router)
+app.include_router(runtime_projection_read_only_router)
 app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)

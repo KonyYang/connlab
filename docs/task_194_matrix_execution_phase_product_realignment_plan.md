@@ -1,4 +1,4 @@
-# TASK_194 Matrix Execution Phase Product Realignment Plan
+﻿# TASK_194 Matrix Execution Phase Product Realignment Plan
 
 > Status: draft for review  
 > Created: 2026-05-16  
@@ -67,7 +67,7 @@ TASK_194 uses the following source material:
 - `AGENTS.md`
 - `README.md`
 - `PRODUCT.md`
-- `ConnLab_Master_Blueprint.md`
+- `docs/archive/legacy_blueprints/ConnLab_Master_Blueprint.md`
 - `docs/task_board.md`
 - `docs/stage_freeze_2026-05-15_project_workbench_matrix_approval_package.md`
 - `docs/architecture_inventory_2026-05-15.md`
@@ -93,7 +93,7 @@ TASK_194 should make governance and planning changes only:
    - `AGENTS.md`
    - `README.md`
    - `PRODUCT.md`
-   - `ConnLab_Master_Blueprint.md`
+   - `docs/archive/legacy_blueprints/ConnLab_Master_Blueprint.md`
    - `docs/task_board.md`
 4. Update or add roadmap guidance for the next controlled sequence:
    - Workbench Runtime Console information architecture
@@ -182,7 +182,7 @@ Update product purpose and strategic principles:
 - Matrix owns test execution authority, while Project remains the container;
 - reports and fees are derived outputs.
 
-### 6.6 `ConnLab_Master_Blueprint.md`
+### 6.6 `docs/archive/legacy_blueprints/ConnLab_Master_Blueprint.md`
 
 Because this file contains older packed guidance, update only the high-level source-of-truth sections or add a dated addendum.
 
@@ -230,7 +230,7 @@ TASK_194 is complete when:
 
 - `tasks/TASK_194_MATRIX_EXECUTION_PHASE_PRODUCT_REALIGNMENT.md` exists and matches the approved plan.
 - `docs/matrix_execution_phase_principles.md` exists and records the new authority model.
-- `AGENTS.md`, `README.md`, `PRODUCT.md`, and `ConnLab_Master_Blueprint.md` no longer conflict with the confirmed Matrix-driven direction.
+- `AGENTS.md`, `README.md`, `PRODUCT.md`, and `docs/archive/legacy_blueprints/ConnLab_Master_Blueprint.md` no longer conflict with the confirmed Matrix-driven direction.
 - `docs/task_board.md` records TASK_194 completion, validation, and next recommended task.
 - No backend behavior, frontend behavior, API contract, database schema, or Office gateway behavior is changed.
 

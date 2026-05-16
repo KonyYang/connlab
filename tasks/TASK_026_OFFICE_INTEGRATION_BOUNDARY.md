@@ -1,4 +1,4 @@
-# TASK 026 — Office Integration Boundary
+﻿# TASK 026 鈥?Office Integration Boundary
 
 ## Goal
 
@@ -18,7 +18,7 @@ This task creates infrastructure boundaries only. It must not create projects, i
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
-3. `docs/ConnLab_Phase6_Implementation_Plan.md`
+3. `docs/archive/historical_plans/ConnLab_Phase6_Implementation_Plan.md`
 4. this task file
 5. `TASK_EXECUTION_SKILL.md`
 6. `TASK_REVIEW_CHECKLIST.md`

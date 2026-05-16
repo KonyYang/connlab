@@ -1,4 +1,4 @@
-# TASK_036_PHASE7_SCOPE_AND_BOARD_ACTIVATION
+﻿# TASK_036_PHASE7_SCOPE_AND_BOARD_ACTIVATION
 
 ## Status
 
@@ -10,7 +10,7 @@ Approve Phase 7 scope, add Phase 7 execution control to `docs/task_board.md`, an
 
 ## Scope
 
-- Read `docs/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`.
+- Read `docs/archive/historical_plans/ConnLab_Phase7_Real_LTR_Folder_Lifecycle_Plan.md`.
 - Add Phase 7 status table and acceptance gate to `docs/task_board.md`.
 - Set current phase to Phase 7.
 - Mark this task done.
