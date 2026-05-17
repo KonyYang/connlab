@@ -7,6 +7,7 @@ import {
   getProjectOutputStatusSummary,
   getProjectTestPlanDraft,
   getProject,
+  getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
   previewProjectTestPlanMatrixFromSourceCandidate,
   previewProjectTestPlanMatrixFromPath,
@@ -32,7 +33,9 @@ import {
   type Project,
   type ProjectTestPlanDraftGroup,
   type ProjectTestPlanDraft,
-  type ProjectOutputStatusSummary
+  type ProjectOutputStatusSummary,
+  type RuntimeProjectionSnapshotRequest,
+  type RuntimeProjectionSnapshotResponse
 } from "../../api/client";
 import {
   deriveWorkbenchVersionStatus,
@@ -80,6 +83,18 @@ export type ProjectWorkbenchModel = {
   matrixSourceCandidateWarnings: string[];
   matrixSourceCandidatesLoading: boolean;
   matrixSelectedSourceAssetId: string | null;
+  runtimeProjectionError: string | null;
+  runtimeProjectionLoading: boolean;
+  runtimeProjectionSnapshot: RuntimeProjectionSnapshotResponse | null;
+  runtimeAuthoritySync: {
+    authorityVersion: number | null;
+    candidateVersion: number | null;
+    projectionMatrixReference: string | null;
+    projectionMatchesAuthority: boolean | null;
+    hasUnconfirmedCandidate: boolean;
+    selectedTokenCleared: boolean;
+  };
+  runtimeSelectedTokenReference: string | null;
   matrixStarterBrowseHint: string | null;
   matrixStarterSourcePath: string;
   matrixStarterPreview: MatrixPreviewResponse | null;
@@ -94,6 +109,7 @@ export type ProjectWorkbenchModel = {
   project: Project | null;
   projectId: string;
   setApprovalInput: (next: ApprovalPackageRequest) => void;
+  setRuntimeSelectedTokenReference: (value: string | null) => void;
   setMatrixStarterSourcePath: (value: string) => void;
   setMatrixSelectedSourceAssetId: (value: string | null) => void;
   setMatrixDraftEditableGroups: (groups: ProjectTestPlanDraftGroup[]) => void;
@@ -169,6 +185,12 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [matrixSourceCandidateWarnings, setMatrixSourceCandidateWarnings] = useState<string[]>([]);
   const [matrixSourceCandidatesLoading, setMatrixSourceCandidatesLoading] = useState(false);
   const [matrixSelectedSourceAssetId, setMatrixSelectedSourceAssetIdState] = useState<string | null>(null);
+  const [runtimeProjectionSnapshot, setRuntimeProjectionSnapshot] =
+    useState<RuntimeProjectionSnapshotResponse | null>(null);
+  const [runtimeProjectionLoading, setRuntimeProjectionLoading] = useState(false);
+  const [runtimeProjectionError, setRuntimeProjectionError] = useState<string | null>(null);
+  const [runtimeSelectedTokenReference, setRuntimeSelectedTokenReference] = useState<string | null>(null);
+  const [runtimeSelectedTokenCleared, setRuntimeSelectedTokenCleared] = useState(false);
   const [matrixStarterBrowseHint, setMatrixStarterBrowseHint] = useState<string | null>(null);
   const [matrixStarterSourcePath, setMatrixStarterSourcePathState] = useState("");
   const [matrixStarterPreview, setMatrixStarterPreview] = useState<MatrixPreviewResponse | null>(null);
@@ -236,24 +258,6 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }, [matrixAuthorityDraft, trackedDraftVersion]);
 
-  const folderReady = project?.status === "folder_created";
-  const latestLtr = ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null;
-  const folderResources = configuredFolderResources(resources);
-  const baselineItems = useMemo(
-    () => [
-      { title: "Created project", value: project ? "Yes" : "Loading" },
-      {
-        title: "LTR Number registered",
-        value: latestLtr ? `Yes (${latestLtr})` : "No"
-      },
-      { title: "Project folder", value: folderReady ? "Created" : "Not recorded" },
-      {
-        title: "Source materials",
-        value: folderReady ? "Evidence placement available" : "Available after folder creation"
-      }
-    ],
-    [folderReady, latestLtr, project]
-  );
   const versionStatus = useMemo(
     () =>
       deriveWorkbenchVersionStatus({
@@ -276,6 +280,102 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     ]
   );
 
+  useEffect(() => {
+    const projectionDraft = matrixAuthorityDraft ?? matrixDraft;
+    if (!project || !projectionDraft) {
+      setRuntimeProjectionSnapshot(null);
+      setRuntimeProjectionError(null);
+      return;
+    }
+
+    const request = buildRuntimeProjectionRequest({
+      project,
+      draft: projectionDraft,
+      selectedTokenReference: runtimeSelectedTokenReference,
+      versionStatus,
+      validation: matrixValidation
+    });
+    if (request.rows.length === 0) {
+      setRuntimeProjectionSnapshot(null);
+      setRuntimeProjectionError(null);
+      return;
+    }
+
+    setRuntimeProjectionLoading(true);
+    setRuntimeProjectionError(null);
+    void getRuntimeProjectionReadOnlySnapshot(request)
+      .then((snapshot) => setRuntimeProjectionSnapshot(snapshot))
+      .catch((err) =>
+        setRuntimeProjectionError(
+          err instanceof Error ? err.message : "Failed to load runtime projection snapshot."
+        )
+      )
+      .finally(() => setRuntimeProjectionLoading(false));
+  }, [
+    matrixAuthorityDraft,
+    matrixDraft,
+    matrixValidation,
+    project,
+    runtimeSelectedTokenReference,
+    versionStatus
+  ]);
+
+  useEffect(() => {
+    if (!runtimeProjectionSnapshot || !runtimeSelectedTokenReference) {
+      setRuntimeSelectedTokenCleared(false);
+      return;
+    }
+    const tokenExists = runtimeProjectionSnapshot.matrix_overview.groups.some((group) =>
+      group.tokens.some((token) => token.token_reference === runtimeSelectedTokenReference)
+    );
+    if (!tokenExists) {
+      setRuntimeSelectedTokenReference(null);
+      setRuntimeSelectedTokenCleared(true);
+      setMessage("Selected step token is no longer available in the current projection and was cleared.");
+    } else {
+      setRuntimeSelectedTokenCleared(false);
+    }
+  }, [runtimeProjectionSnapshot, runtimeSelectedTokenReference]);
+
+  const runtimeAuthoritySync = useMemo(() => {
+    const authorityVersion = matrixAuthorityDraft?.version ?? null;
+    const candidateVersion = matrixCandidateDraft?.version ?? null;
+    const projectionMatrixReference = runtimeProjectionSnapshot?.matrix_reference ?? null;
+    const expectedProjectionReference = matrixAuthorityDraft
+      ? `${matrixAuthorityDraft.draft_id}:v${matrixAuthorityDraft.version}`
+      : null;
+    const projectionMatchesAuthority =
+      expectedProjectionReference && projectionMatrixReference
+        ? expectedProjectionReference === projectionMatrixReference
+        : null;
+    return {
+      authorityVersion,
+      candidateVersion,
+      projectionMatrixReference,
+      projectionMatchesAuthority,
+      hasUnconfirmedCandidate: matrixCandidateDraft !== null,
+      selectedTokenCleared: runtimeSelectedTokenCleared
+    };
+  }, [matrixAuthorityDraft, matrixCandidateDraft, runtimeProjectionSnapshot, runtimeSelectedTokenCleared]);
+
+  const folderReady = project?.status === "folder_created";
+  const latestLtr = ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null;
+  const folderResources = configuredFolderResources(resources);
+  const baselineItems = useMemo(
+    () => [
+      { title: "Created project", value: project ? "Yes" : "Loading" },
+      {
+        title: "LTR Number registered",
+        value: latestLtr ? `Yes (${latestLtr})` : "No"
+      },
+      { title: "Project folder", value: folderReady ? "Created" : "Not recorded" },
+      {
+        title: "Source materials",
+        value: folderReady ? "Evidence placement available" : "Available after folder creation"
+      }
+    ],
+    [folderReady, latestLtr, project]
+  );
   async function onPreviewEvidence(): Promise<void> {
     setPreviewingEvidence(true);
     try {
@@ -636,6 +736,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     matrixSourceCandidateWarnings,
     matrixSourceCandidatesLoading,
     matrixSelectedSourceAssetId,
+    runtimeProjectionError,
+    runtimeProjectionLoading,
+    runtimeProjectionSnapshot,
+    runtimeAuthoritySync,
+    runtimeSelectedTokenReference,
     matrixStarterBrowseHint,
     matrixStarterSourcePath,
     matrixStarterPreview,
@@ -650,6 +755,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     project,
     projectId,
     setApprovalInput,
+    setRuntimeSelectedTokenReference,
     setMatrixStarterSourcePath,
     setMatrixSelectedSourceAssetId,
     setMatrixDraftEditableGroups,
@@ -937,4 +1043,66 @@ function cloneGroups(groups: ProjectTestPlanDraftGroup[] | undefined): ProjectTe
     ...group,
     steps: (group.steps ?? []).map((step) => ({ ...step }))
   }));
+}
+
+function buildRuntimeProjectionRequest(input: {
+  project: Project;
+  draft: ProjectTestPlanDraft;
+  selectedTokenReference: string | null;
+  versionStatus: WorkbenchVersionStatus;
+  validation: MatrixValidationSummary | null;
+}): RuntimeProjectionSnapshotRequest {
+  const rows = (input.draft.payload.groups ?? []).flatMap((group, groupIndex) =>
+    (group.steps ?? []).map((step, stepIndex) => ({
+      group_identity: group.group_key?.trim() || `group_${groupIndex + 1}`,
+      group_label: group.group_label?.trim() || `Group ${groupIndex + 1}`,
+      row_context: {
+        test_item_label: step.test_item ?? step.step_label ?? "Unspecified test step",
+        section: step.source_section ?? "Not specified",
+        method: step.method_summary ?? step.reference_standard ?? "Method pending",
+        condition: step.condition_summary ?? "Condition pending",
+        requirement: step.judgement_criteria ?? "Requirement pending"
+      },
+      raw_step_token_value: normalizeRuntimeStepToken(step.sequence, step.raw_token, stepIndex),
+      projection_state: buildRuntimeProjectionState(input.versionStatus, input.validation)
+    }))
+  );
+
+  return {
+    project_reference: input.project.project_no || input.project.project_id,
+    matrix_reference: `${input.draft.draft_id}:v${input.draft.version}`,
+    selected_token_reference: input.selectedTokenReference,
+    rows
+  };
+}
+
+function buildRuntimeProjectionState(
+  versionStatus: WorkbenchVersionStatus,
+  validation: MatrixValidationSummary | null
+): RuntimeProjectionSnapshotRequest["rows"][number]["projection_state"] {
+  const hasBlockers = (validation?.blockers.length ?? 0) > 0;
+  const hasWarnings = (validation?.warnings.length ?? 0) > 0;
+
+  return {
+    lifecycle: hasBlockers ? "blocked" : "not_started",
+    evidence: "unknown",
+    report_sync: versionStatus.hasStaleOutputs ? "stale" : "unknown",
+    stale: versionStatus.hasStaleOutputs ? "stale" : "fresh",
+    attention: hasBlockers ? "p0" : versionStatus.hasStaleOutputs ? "p2" : hasWarnings ? "p4" : "none"
+  };
+}
+
+function normalizeRuntimeStepToken(
+  sequence: number | null | undefined,
+  rawToken: string | null | undefined,
+  stepIndex: number
+): string {
+  const normalizedRaw = rawToken?.trim();
+  if (normalizedRaw) {
+    return normalizedRaw;
+  }
+  if (typeof sequence === "number") {
+    return `${sequence}`;
+  }
+  return `${stepIndex + 1}`;
 }

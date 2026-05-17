@@ -10,6 +10,7 @@ import {
 import { IntakeInboxPage } from "./pages/IntakeInboxPage";
 import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
+import { ProjectMatrixEditorPage } from "./pages/ProjectMatrixEditorPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
 import { RuntimeProjectionPrototypePage } from "./pages/RuntimeProjectionPrototypePage";
@@ -22,6 +23,7 @@ type Route =
   | { name: "intakePackage"; packageId: string }
   | { name: "intakeCaseReview"; packageId: string }
   | { name: "projectDetail"; projectId: string }
+  | { name: "projectMatrixEditor"; projectId: string }
   | { name: "runtimeProjection" }
   | { name: "settings" }
   | { name: "notFound" };
@@ -51,6 +53,11 @@ function parseRoute(pathname: string): Route {
   const intakeCaseReviewMatch = pathname.match(/^\/intake\/([^/]+)\/case-review$/);
   if (intakeCaseReviewMatch) {
     return { name: "intakeCaseReview", packageId: decodeURIComponent(intakeCaseReviewMatch[1]) };
+  }
+
+  const matrixEditorMatch = pathname.match(/^\/projects\/([^/]+)\/matrix-editor$/);
+  if (matrixEditorMatch) {
+    return { name: "projectMatrixEditor", projectId: decodeURIComponent(matrixEditorMatch[1]) };
   }
 
   const match = pathname.match(/^\/projects\/([^/]+)$/);
@@ -84,6 +91,8 @@ export default function App(): ReactElement {
   const activeRoute =
     route.name === "projectDetail"
       ? "workbench"
+      : route.name === "projectMatrixEditor"
+        ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
         : route.name === "runtimeProjection"
@@ -137,9 +146,22 @@ export default function App(): ReactElement {
         />
       )}
       {route.name === "projectDetail" && (
-        <ProjectWorkbenchPage projectId={route.projectId} onBack={() => navigate("/projects")} />
+        <ProjectWorkbenchPage
+          projectId={route.projectId}
+          onBack={() => navigate("/projects")}
+          onOpenMatrixEditor={() =>
+            navigate(`/projects/${encodeURIComponent(route.projectId)}/matrix-editor`)
+          }
+        />
+      )}
+      {route.name === "projectMatrixEditor" && (
+        <ProjectMatrixEditorPage
+          projectId={route.projectId}
+          onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+        />
       )}
       {route.name === "settings" && <SettingsPage />}
+      {/* Runtime Projection Prototype - Development only, read-only validation surface for TASK_209 */}
       {route.name === "runtimeProjection" && <RuntimeProjectionPrototypePage />}
       {route.name === "notFound" && (
         <section className="panel">

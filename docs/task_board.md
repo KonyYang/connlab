@@ -1,9 +1,9 @@
-﻿# ConnLab Task Board
+# ConnLab Task Board
 
-> Status: TASK_149-TASK_156 complete + TASK_159 hotfix complete + TASK_160 complete + TASK_161 complete + TASK_162 complete + TASK_163 complete + TASK_164 complete + TASK_165 complete + TASK_166 complete + TASK_167 complete + TASK_168 complete + TASK_169 complete + TASK_170 complete + TASK_171 complete + TASK_172 complete + TASK_173 complete + TASK_174 complete + TASK_175 complete + TASK_176 complete + TASK_177 complete + TASK_178 complete + TASK_179 complete + TASK_180 complete + TASK_181 complete + TASK_182 complete + TASK_183 complete + TASK_184 complete + TASK_185 complete + TASK_186 complete + TASK_187 complete + TASK_188 frontend status complete + TASK_188 ledger correction complete + TASK_189 corrected + TASK_189 authority read-model correction complete + TASK_190 corrected and accepted + TASK_191 complete + TASK_192 complete + TASK_193 complete + TASK_194 complete + TASK_195 complete + TASK_196 complete + TASK_197 complete + TASK_198 complete + TASK_200 complete + TASK_201 complete + TASK_202 complete + TASK_203 Slice A/B/C/D complete + TASK_204 complete + TASK_205 complete + TASK_206 complete + TASK_207 complete + TASK_208 complete + TASK_209 complete
+> Status: TASK_149-TASK_156 complete + TASK_159 hotfix complete + TASK_160 complete + TASK_161 complete + TASK_162 complete + TASK_163 complete + TASK_164 complete + TASK_165 complete + TASK_166 complete + TASK_167 complete + TASK_168 complete + TASK_169 complete + TASK_170 complete + TASK_171 complete + TASK_172 complete + TASK_173 complete + TASK_174 complete + TASK_175 complete + TASK_176 complete + TASK_177 complete + TASK_178 complete + TASK_179 complete + TASK_180 complete + TASK_181 complete + TASK_182 complete + TASK_183 complete + TASK_184 complete + TASK_185 complete + TASK_186 complete + TASK_187 complete + TASK_188 frontend status complete + TASK_188 ledger correction complete + TASK_189 corrected + TASK_189 authority read-model correction complete + TASK_190 corrected and accepted + TASK_191 complete + TASK_192 complete + TASK_193 complete + TASK_194 complete + TASK_195 complete + TASK_196 complete + TASK_197 complete + TASK_198 complete + TASK_200 complete + TASK_201 complete + TASK_202 complete + TASK_203 Slice A/B/C/D complete + TASK_204 complete + TASK_205 complete + TASK_206 complete + TASK_207 complete + TASK_208 complete + TASK_209 complete + TASK_210 complete + TASK_211 complete + TASK_212 complete + TASK_213 complete + TASK_214 complete + TASK_215 complete + TASK_216 complete + TASK_217 complete + TASK_218 complete + TASK_219 complete
 > Last Updated: 2026-05-16
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: none; TASK_209 runtime projection read-only frontend consumer prototype minimal slice complete, pending user approval for next controlled task
+> Current Active Task: none; TASK_219 matrix editor pixel alignment pass complete, pending user approval for next controlled task
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
 - Runtime governance policy update (post TASK_202): governance-only expansion is frozen by default. New tasks must produce at least one consumable runtime artifact (backend runtime artifact, projection consumer artifact, runtime adapter, immutable read-model output, frontend read-only prototype, aggregation consumer, or runtime projection consumption validation), unless implementation is genuinely blocked by a documented architectural contradiction.
@@ -65,6 +65,66 @@
 - Deliverables: runtime projection typed client additions in `frontend/src/api/client.ts`, prototype feature under `frontend/src/features/runtime-projection-read-only/`, route/page wiring in `frontend/src/App.tsx` and `frontend/src/pages/RuntimeProjectionPrototypePage.tsx`, plus style file `frontend/src/runtime-projection-prototype.css`.
 - Model fit result: `GPT-5.3-codex` suitable and confirmed for this slice.
 - Validation: `npm run build` passed; `tests/unit/test_frontend_shell_files.py -q` currently reports existing historical failures outside TASK_209 scope (legacy static expectation drift).
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_210_RUNTIME_PROJECTION_PROTOTYPE_ISOLATION_HARDENING` is complete in single-file task mode. Task file: `tasks/TASK_210_RUNTIME_PROJECTION_PROTOTYPE_ISOLATION_HARDENING.md`. Added clear isolation markers to prevent user confusion between development prototype and production features: sidebar navigation label changed to "Runtime Prototype (Dev)", page-level warning banner added with dev badge and explanatory text, and route-level comment documenting prototype nature. No functional behavior changes were made.
+- Deliverables: `frontend/src/components/layout/Sidebar.tsx` (navigation label), `frontend/src/features/runtime-projection-read-only/RuntimeProjectionPrototypeView.tsx` (warning banner), `frontend/src/runtime-projection-prototype.css` (banner styles), `frontend/src/App.tsx` (route comment).
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded UI isolation fix.
+- Validation: `npm run build` passed; no new test failures introduced; prototype page remains fully functional with clear dev labeling.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_211_PROJECT_WORKBENCH_RUNTIME_CONSOLE_BASELINE_REPLACEMENT` is complete in single-file task mode. Task file: `tasks/TASK_211_PROJECT_WORKBENCH_RUNTIME_CONSOLE_BASELINE_REPLACEMENT.md`. Replaced the Project Workbench primary IA with a Runtime Console baseline skeleton that consumes the existing read-only runtime projection snapshot API from Matrix draft data, renders runtime summary, Matrix projection tokens, Step Workspace, runtime attention, and report/output sync visibility, while downgrading folder, approval package, evidence placement, and lookup to secondary folded surfaces.
+- Deliverables: runtime projection consumption wiring in `frontend/src/features/project-workbench/useProjectWorkbenchModel.ts`, Runtime Console layout in `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`, projection-driven Matrix Overview in `frontend/src/features/project-workbench/ProjectWorkbenchMatrixOverview.tsx`, related styles in `frontend/src/workbench.css`, and static test alignment in `tests/unit/test_frontend_shell_files.py`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend IA replacement slice.
+- Validation: `npm run build` passed; `py -m pytest tests\unit\test_frontend_shell_files.py -q` reports 9 known historical failures outside TASK_211 scope, with TASK_211 Workbench assertions aligned to the Runtime Console direction.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_212_PROJECT_WORKBENCH_RUNTIME_CONSOLE_MOCKUP_COMPLETENESS_PASS` is complete in single-file task mode. Task file: `tasks/TASK_212_PROJECT_WORKBENCH_RUNTIME_CONSOLE_MOCKUP_COMPLETENESS_PASS.md`. Expanded the Project Workbench first screen to closely match the approved Runtime Console mockup with dense placeholder Matrix table, filter toolbar, full Step Workspace, runtime attention, recent activity, fee estimate, lifecycle/readiness strip, and compact Setup Manager entry. Placeholder/mock surfaces are intentionally used where real runtime data is not implemented yet.
+- Deliverables: enhanced Runtime Console layout in `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`, high-density placeholder/real projection Matrix rendering in `frontend/src/features/project-workbench/ProjectWorkbenchMatrixOverview.tsx`, and related styles in `frontend/src/workbench.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend mockup completeness pass.
+- Validation: `npm run build` passed; board/governance tests passed (`17 passed`); `py -m pytest tests\unit\test_frontend_shell_files.py -q` reports 9 known historical failures outside TASK_212 scope.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_213_PROJECT_WORKBENCH_TOPBAR_AND_FILTER_CONTROL_DENSITY_FIX` is complete in single-file task mode. Task file: `tasks/TASK_213_PROJECT_WORKBENCH_TOPBAR_AND_FILTER_CONTROL_DENSITY_FIX.md`. Corrected the Runtime Console top area to better match the approved mockup, moving project identity, metadata, progress, runtime metrics, last update, and refresh affordance into a compact single top row. Also locked filter checkbox/radio controls to normal 14px sizing and reduced readiness status dot size.
+- Deliverables: `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`, `frontend/src/workbench.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend density correction.
+- Validation: `npm run build` passed.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_214_PROJECT_WORKBENCH_MOCKUP_VISUAL_CLONE_DENSITY_PASS` is complete in single-file task mode. Task file: `tasks/TASK_214_PROJECT_WORKBENCH_MOCKUP_VISUAL_CLONE_DENSITY_PASS.md`. Tightened Workbench visual density and proportions to better clone the approved mockup: reduced page/topbar spacing, Matrix table width/row/cell/token sizes, Step Workspace width and inner density, and bottom surface spacing so more target content is visible at once.
+- Deliverables: `frontend/src/workbench.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded visual density pass.
+- Validation: `npm run build` passed.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_215_DEFAULT_COLLAPSED_ICON_SIDEBAR` is complete in single-file task mode. Task file: `tasks/TASK_215_DEFAULT_COLLAPSED_ICON_SIDEBAR.md`. Changed the application shell sidebar to default collapsed icon-only mode, preserved explicit local expanded/collapsed preference, added native hover tooltip labels for navigation icons, and tightened the collapsed rail to reserve more workspace width.
+- Deliverables: `frontend/src/components/layout/AppShell.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/styles.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded React/CSS shell adjustment.
+- Validation: `npm run build` passed; static governance guard tests passed.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_216_MATRIX_AUTHORITY_TO_RUNTIME_CONSOLE_SYNC_CONTRACT_AND_NAVIGATION_SLICE` is complete in single-file task mode. Task file: `tasks/TASK_216_MATRIX_AUTHORITY_TO_RUNTIME_CONSOLE_SYNC_CONTRACT_AND_NAVIGATION_SLICE.md`. Added a dedicated project-scoped Matrix Editor route/page, wired Workbench-to-Matrix navigation, surfaced runtime authority sync contract fields (authority version, candidate version, projection reference, alignment state), and added selected-token clearing protection when refreshed projection no longer contains the previous token.
+- Deliverables: `frontend/src/pages/ProjectMatrixEditorPage.tsx`, `frontend/src/App.tsx`, `frontend/src/pages/ProjectWorkbenchPage.tsx`, `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`, `frontend/src/features/project-workbench/useProjectWorkbenchModel.ts`, `frontend/src/workbench.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend/runtime-consumer integration slice.
+- Validation: `npm run build` passed; static governance guard tests passed.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_217_MATRIX_EDITOR_PLACEHOLDER_CLONE_AND_WORKBENCH_MATRIX_BUTTON_NAV` is complete in single-file task mode. Task file: `tasks/TASK_217_MATRIX_EDITOR_PLACEHOLDER_CLONE_AND_WORKBENCH_MATRIX_BUTTON_NAV.md`. Replaced Matrix Editor page with a static placeholder clone-oriented layout (toolbar + matrix table + side panel) and wired the Workbench Step Workspace right-side `Matrix` button to open the Matrix Editor route.
+- Deliverables: `frontend/src/pages/ProjectMatrixEditorPage.tsx`, `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`, `frontend/src/workbench.css`, `frontend/src/App.tsx`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend placeholder/navigation slice.
+- Validation: `npm run build` passed; static governance guard tests passed.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_218_MATRIX_EDITOR_VISUAL_ALIGNMENT_DENSITY_PASS` is complete in single-file task mode. Task file: `tasks/TASK_218_MATRIX_EDITOR_VISUAL_ALIGNMENT_DENSITY_PASS.md`. Applied a visual-density alignment pass to Matrix Editor placeholder UI: denser top header hierarchy, summary strip, segmented section tabs, tighter matrix grid typography/spacing, and more structured right-side panel cards, while keeping placeholder-only behavior.
+- Deliverables: `frontend/src/pages/ProjectMatrixEditorPage.tsx`, `frontend/src/workbench.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend visual-alignment slice.
+- Validation: `npm run build` passed; static governance guard tests passed.
+- Next action: wait for user approval of the next controlled task; do not auto-advance.
+
+- `TASK_219_MATRIX_EDITOR_PIXEL_ALIGNMENT_PASS` is complete in single-file task mode. Task file: `tasks/TASK_219_MATRIX_EDITOR_PIXEL_ALIGNMENT_PASS.md`. Added grouped matrix header bands and tighter subheaders, promoted primary action hierarchy, and reorganized right-side panel card flow to better match the target sketch while preserving placeholder-only behavior.
+- Deliverables: `frontend/src/pages/ProjectMatrixEditorPage.tsx`, `frontend/src/workbench.css`.
+- Model fit result: `GPT-5.3-codex` suitable and confirmed for this bounded frontend alignment refinement.
+- Validation: `npm run build` passed; static governance guard tests passed.
 - Next action: wait for user approval of the next controlled task; do not auto-advance.
 
 - `TASK_202_RUNTIME_PROJECTION_COMPOSITION_HELPER_MINIMAL_SLICE` is complete. Implemented a minimal backend-only, in-memory, deterministic runtime composition helper that aggregates already-supplied projection dimensions into read-model summaries. The helper is not a runtime engine and does not evaluate real lifecycle, stale logic, execution state, or orchestration/report/evidence engines. It does not mutate projection fields, token identity, Matrix authority, or Project lifecycle.

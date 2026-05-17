@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", route: "dashboard", hint: null, icon: "dashboard", disabled: true },
   { label: "Projects", route: "projects", hint: null, icon: "projects" },
   { label: "New Project", route: "intake", hint: null, icon: "new-project" },
-  { label: "Runtime Prototype", route: "runtime-projection", hint: null, icon: "grid" },
+  { label: "Runtime Prototype (Dev)", route: "runtime-projection", hint: null, icon: "grid" },
   { label: "Reports", route: "reports", hint: null, icon: "reports", disabled: true },
   { label: "Folders", route: "folders", hint: null, icon: "folder", disabled: true },
   { label: "Templates", route: "templates", hint: null, icon: "templates", disabled: true },
@@ -40,9 +40,9 @@ export function Sidebar({
         <img className="brand-mark" src="/connlab-icon.svg" alt="" aria-hidden="true" />
         <strong>ConnLab</strong>
         <button
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Open sidebar" : "Collapse sidebar"}
           className="sidebar-toggle"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Open sidebar" : "Collapse sidebar"}
           type="button"
           onClick={onToggleCollapsed}
         >
@@ -54,15 +54,17 @@ export function Sidebar({
           const active = item.route === activeRoute;
           return (
             <button
+              aria-disabled={item.disabled ? true : undefined}
               aria-current={active ? "page" : undefined}
-              className={`nav-item${active ? " nav-item-active" : ""}`}
-              disabled={item.disabled}
+              className={`nav-item${active ? " nav-item-active" : ""}${item.disabled ? " nav-item-disabled" : ""}`}
               key={item.route}
               onClick={() => {
                 if (!item.disabled) {
                   onNavigate?.(`/${item.route}`);
                 }
               }}
+              tabIndex={item.disabled ? -1 : undefined}
+              title={item.label}
               type="button"
             >
               <span className="nav-icon"><UiIcon name={item.icon} /></span>

@@ -13,12 +13,10 @@ function navigate(path: string): void {
 }
 
 export function AppShell({ activeRoute, children }: AppShellProps): ReactElement {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-
-  useEffect(() => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     const raw = window.localStorage.getItem("connlab.sidebar.collapsed");
-    setSidebarCollapsed(raw === "1");
-  }, []);
+    return raw !== "0";
+  });
 
   useEffect(() => {
     window.localStorage.setItem("connlab.sidebar.collapsed", sidebarCollapsed ? "1" : "0");

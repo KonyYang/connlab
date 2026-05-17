@@ -12,6 +12,13 @@ export function RuntimeProjectionPrototypeView(): ReactElement {
 
   return (
     <section className="runtime-projection-prototype-page">
+      <div className="runtime-projection-prototype-dev-banner" role="note" aria-label="Development prototype notice">
+        <span className="runtime-projection-prototype-dev-badge">Dev Prototype</span>
+        <span className="runtime-projection-prototype-dev-text">
+          This is a read-only development prototype for validating runtime projection API consumption. Not part of production Workbench.
+        </span>
+      </div>
+
       <header className="runtime-projection-prototype-header">
         <div>
           <p className="runtime-projection-prototype-eyebrow">Read-only prototype</p>

@@ -8,11 +8,13 @@ import "../workbench.css";
 type ProjectWorkbenchPageProps = {
   projectId: string;
   onBack: () => void;
+  onOpenMatrixEditor: () => void;
 };
 
 export function ProjectWorkbenchPage({
   projectId,
-  onBack
+  onBack,
+  onOpenMatrixEditor
 }: ProjectWorkbenchPageProps): ReactElement {
   const model = useProjectWorkbenchModel(projectId);
 
@@ -25,7 +27,12 @@ export function ProjectWorkbenchPage({
       {model.error && <ErrorMessage message={model.error} />}
       {model.message && <p className="success">{model.message}</p>}
       {model.project && (
-        <ProjectWorkbenchLayout model={model} onBack={onBack} project={model.project} />
+        <ProjectWorkbenchLayout
+          model={model}
+          onBack={onBack}
+          onOpenMatrixEditor={onOpenMatrixEditor}
+          project={model.project}
+        />
       )}
     </section>
   );

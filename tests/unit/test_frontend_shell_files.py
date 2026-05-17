@@ -377,6 +377,13 @@ def test_project_workbench_uses_sequential_stepper() -> None:
         encoding="utf-8"
     )
 
+    if "runtime-console-shell" in layout_source:
+        assert "WorkflowStepper" not in workbench_source
+        assert "NextActionPanel" not in workbench_source
+        assert "Runtime Console" in layout_source
+        assert ".runtime-console-shell" in styles_source
+        return
+
     if "Project workbench boundary" in workbench_source or "Project workbench boundary" in layout_source:
         assert "WorkflowStepper" not in workbench_source
         assert "NextActionPanel" not in workbench_source
@@ -425,7 +432,15 @@ def test_precheck_issue_experience_uses_business_readable_cards() -> None:
         encoding="utf-8"
     )
 
-    if "Project workbench boundary" in workbench_source:
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+
+    if "runtime-console-shell" in layout_source:
+        assert "PrecheckSummary" not in workbench_source
+        assert "PrecheckIssueCard" not in workbench_source
+        assert "resolvePrecheckIssue" not in workbench_source
+    elif "Project workbench boundary" in workbench_source:
         assert "PrecheckSummary" not in workbench_source
         assert "PrecheckIssueCard" not in workbench_source
         assert "resolvePrecheckIssue" not in workbench_source
@@ -468,7 +483,11 @@ def test_intake_ltr_folder_panels_show_operator_guidance() -> None:
         encoding="utf-8"
     )
 
-    if "Project workbench boundary" in workbench_source or "Project workbench boundary" in layout_source:
+    if "runtime-console-shell" in layout_source:
+        assert "ApplicationFormActionPanel" not in workbench_source
+        assert "LtrActionPanel" not in workbench_source
+        assert "FolderActionPanel" not in workbench_source
+    elif "Project workbench boundary" in workbench_source or "Project workbench boundary" in layout_source:
         assert "ApplicationFormActionPanel" not in workbench_source
         assert "LtrActionPanel" not in workbench_source
         assert "FolderActionPanel" not in workbench_source
@@ -2292,10 +2311,11 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     assert (
         "Project workbench boundary" in workbench_source
         or "Project workbench boundary" in layout_source
+        or "runtime-console-shell" in layout_source
     )
     for term in ["previewEvidencePlacement", "placeEvidence"]:
         assert term in model_source or term in workbench_source
-    for term in ["Create it here after LTR registration.", "ProjectFolderCreationPanel"]:
+    for term in ["ProjectFolderCreationPanel"]:
         assert term in layout_source or term in workbench_source
 
     for removed_term in [
@@ -2311,7 +2331,7 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     assert "previewFolder" in project_folder_source
     assert "generateFolder" in project_folder_source
     assert "Create project folder" in project_folder_source
-    assert ".project-workbench-status" in styles_source
+    assert ".project-workbench-status" in styles_source or ".runtime-console-shell" in styles_source
     assert ".project-folder-workbench-panel" in styles_source
 
 
@@ -2347,10 +2367,16 @@ def test_task186_workbench_matrix_review_surface_is_feature_wired() -> None:
     assert "matrixDraftLoading" in model_source
     assert "matrixDraftError" in model_source
 
-    assert "ProjectWorkbenchMatrixReviewPanel" in layout_source
-    assert "draft={matrixDraft}" in layout_source
-    assert "error={matrixDraftError}" in layout_source
-    assert "loading={matrixDraftLoading}" in layout_source
+    if "runtime-console-shell" in layout_source:
+        assert "ProjectWorkbenchMatrixOverview" in layout_source
+        assert "runtimeProjectionSnapshot" in layout_source
+        assert "matrixDraftError" in layout_source
+        assert "matrixDraftLoading" in layout_source
+    else:
+        assert "ProjectWorkbenchMatrixReviewPanel" in layout_source
+        assert "draft={matrixDraft}" in layout_source
+        assert "error={matrixDraftError}" in layout_source
+        assert "loading={matrixDraftLoading}" in layout_source
 
     assert "Matrix review" in matrix_panel_source
     if "ProjectWorkbenchMatrixStarter" in matrix_panel_source:
@@ -2360,9 +2386,9 @@ def test_task186_workbench_matrix_review_surface_is_feature_wired() -> None:
         assert "No active Project test-plan draft is available yet." in matrix_panel_source
     assert "Draft warnings" in matrix_panel_source
 
-    assert ".matrix-review-panel" in styles_source
-    assert ".matrix-review-summary" in styles_source
-    assert ".matrix-review-step-list" in styles_source
+    assert ".matrix-review-panel" in styles_source or ".runtime-console-main" in styles_source
+    assert ".matrix-review-summary" in styles_source or ".runtime-console-summary" in styles_source
+    assert ".matrix-review-step-list" in styles_source or ".matrix-runtime-token-list" in styles_source
 
 
 def test_task187_workbench_document_pipeline_autofill_is_feature_wired() -> None:
@@ -2434,7 +2460,7 @@ def test_task188_workbench_version_and_stale_status_is_feature_wired() -> None:
 
     assert "ProjectWorkbenchDocumentStatusPanel" in layout_source
     assert "status={versionStatus}" in layout_source
-    assert "versionStatus={versionStatus}" in layout_source
+    assert "versionStatus={versionStatus}" in layout_source or "RuntimeAttentionSurface" in layout_source
     assert "Downstream outputs are stale" in matrix_panel_source
     assert "Downstream status" in status_panel_source
     assert ".workbench-document-status-panel" in styles_source
@@ -2476,10 +2502,16 @@ def test_task189_workbench_matrix_edit_and_confirm_is_feature_wired() -> None:
     assert "onValidateMatrixDraft" in model_source
     assert "onConfirmMatrixDraft" in model_source
 
-    assert "editableGroups={matrixDraftEditableGroups}" in layout_source
-    assert "onSaveDraft={onSaveMatrixDraft}" in layout_source
-    assert "onValidateDraft={onValidateMatrixDraft}" in layout_source
-    assert "onConfirmDraft={onConfirmMatrixDraft}" in layout_source
+    if "runtime-console-shell" in layout_source:
+        assert "editableGroups={matrixDraftEditableGroups}" not in layout_source
+        assert "onSaveDraft={onSaveMatrixDraft}" not in layout_source
+        assert "onValidateDraft={onValidateMatrixDraft}" not in layout_source
+        assert "onConfirmDraft={onConfirmMatrixDraft}" not in layout_source
+    else:
+        assert "editableGroups={matrixDraftEditableGroups}" in layout_source
+        assert "onSaveDraft={onSaveMatrixDraft}" in layout_source
+        assert "onValidateDraft={onValidateMatrixDraft}" in layout_source
+        assert "onConfirmDraft={onConfirmMatrixDraft}" in layout_source
 
     assert "ProjectWorkbenchMatrixInspector" in matrix_panel_source
     assert "Validation blockers" in matrix_panel_source
@@ -2515,6 +2547,22 @@ def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
+
+    if "runtime-console-shell" in layout_source:
+        assert "runtime-console-shell" in layout_source
+        assert "runtime-console-summary" in layout_source
+        assert "ProjectWorkbenchMatrixOverview" in layout_source
+        assert "runtimeProjectionSnapshot" in layout_source
+        assert "Step Workspace" in layout_source
+        assert "RuntimeAttentionSurface" in layout_source
+        assert "ProjectWorkbenchDocumentStatusPanel" in layout_source
+        assert "ProjectFolderCreationPanel" in layout_source
+        assert "ApprovalPackagePanel" in layout_source
+        assert "ProjectWorkbenchMatrixInspector" not in layout_source
+        assert ".runtime-console-shell" in styles_source
+        assert ".matrix-runtime-grid" in styles_source
+        assert ".runtime-console-step-workspace" in styles_source
+        return
 
     assert "project-workbench-matrix-primary" in layout_source
     assert "project-workbench-supporting" in layout_source
@@ -2603,9 +2651,10 @@ def test_task191_matrix_starter_import_and_manual_empty_state_is_feature_wired()
     assert "buildDraftCreateRequestFromPreview" in helper_source
     assert "mapPreviewToDraftPayload" in helper_source
     assert "buildManualStarterDraftCreateRequest" in helper_source
-    assert "aggregateRowGroupCellTokens" in (
+    matrix_overview_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixOverview.tsx"
     ).read_text(encoding="utf-8")
+    assert "aggregateRowGroupCellTokens" in matrix_overview_source or "RuntimeProjectionMatrixToken" in matrix_overview_source
     assert '"manual://project-matrix"' in helper_source
     assert '"group_1"' in helper_source
     assert '"Group 1"' in helper_source
@@ -2650,9 +2699,13 @@ def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired(
     assert "listProjectTestPlanSourceCandidates" in model_source
     assert "previewProjectTestPlanMatrixFromSourceCandidate" in model_source
 
-    assert "sourceCandidates={matrixSourceCandidates}" in layout_source
-    assert "onPreviewStarterFromCandidate={onPreviewMatrixStarterFromCandidate}" in layout_source
-    assert "ProjectWorkbenchMatrixStarter" in matrix_panel_source
+    if "runtime-console-shell" in layout_source:
+        assert "sourceCandidates={matrixSourceCandidates}" not in layout_source
+        assert "ProjectWorkbenchMatrixStarter" in matrix_panel_source
+    else:
+        assert "sourceCandidates={matrixSourceCandidates}" in layout_source
+        assert "onPreviewStarterFromCandidate={onPreviewMatrixStarterFromCandidate}" in layout_source
+        assert "ProjectWorkbenchMatrixStarter" in matrix_panel_source
 
     assert "Candidate source files from this project" in starter_source
     assert "Preview selected source" in starter_source
