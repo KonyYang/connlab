@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft task document. Pending user review and explicit approval.
+Complete.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Draft task document. Pending user review and explicit approval.
 
 ## Current Active Task
 
-None. This task should run after the first Runtime Console repositioning implementation slice, or earlier if the user wants guardrails before further UI edits.
+None. `TASK_219E` regression guards are implemented.
 
 ## Why This Task Is Allowed Now
 
@@ -84,23 +84,19 @@ Forbidden:
 - changing route behavior
 - broad rewriting of existing historical tests
 
-## Required First Deliverable
+## Execution Result
 
-Before coding, create:
+Implemented static regression guards in:
 
-```text
-docs/task_219e_workbench_runtime_console_regression_guards_plan.md
-```
+- `tests/unit/test_frontend_shell_files.py`
 
-The plan must include:
+Added `test_task219e_runtime_console_regression_guards_keep_workbench_boundary` to assert:
 
-- exact guard assertions
-- files each assertion reads
-- false-positive risks
-- how guards relate to AGENTS.md and frontend architecture rules
-- validation commands
-
-Stop after writing the plan and wait for explicit user approval.
+- Workbench remains Runtime Console first (`runtime-console-shell`, `Step Workspace`, runtime attention surface).
+- Setup/Evidence stays secondary via Setup Manager collapsibles.
+- Matrix edit actions are not hosted in Workbench layout.
+- Matrix definition editing remains routed to `ProjectMatrixEditorPage`.
+- `fetch()` remains outside Workbench page/layout/model and in API client.
 
 ## Implementation Guidance After Approval
 
@@ -134,4 +130,3 @@ If docs/task-board wording is touched:
 ```powershell
 py -m pytest tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py tests\unit\test_phase9_scope_activation.py -q
 ```
-

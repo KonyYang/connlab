@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft task document. Pending user review and explicit approval.
+Approved and executed on 2026-05-17.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Draft task document. Pending user review and explicit approval.
 
 ## Current Active Task
 
-None. This task should run after `TASK_219A` removes the old lower Workbench preparation flow, because the drop surface must be lightweight and must not recreate the old evidence-placement workbench.
+None. `TASK_219A`/`TASK_219B`/`TASK_219C` are complete. This task is executed as a lightweight support-surface slice.
 
 ## Why This Task Is Allowed Now
 
@@ -144,3 +144,22 @@ Manual smoke:
 4. Confirm preview-first behavior or desktop-mode limitation copy.
 5. Confirm no Step evidence or report binding is exposed.
 
+## Execution Result (2026-05-17)
+
+Implemented:
+
+- Added lightweight "Other materials" support panel with explicit browser/desktop limitation copy and preview-first actions:
+  - `frontend/src/features/project-workbench/ProjectWorkbenchMaterialDropPanel.tsx`
+- Wired panel into Workbench advanced support surfaces as secondary runtime support entry:
+  - `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`
+- Kept existing evidence detail panel available as legacy nested surface to avoid workflow breakage:
+  - `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`
+- Added panel styles:
+  - `frontend/src/workbench.css`
+- Added static UI boundary test for TASK_219D:
+  - `tests/unit/test_frontend_shell_files.py`
+
+Validation:
+
+- `npm run build` (frontend) passed.
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q` reports known historical static expectation drift failures outside TASK_219D scope.

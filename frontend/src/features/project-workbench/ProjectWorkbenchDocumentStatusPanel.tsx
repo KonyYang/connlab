@@ -12,8 +12,8 @@ export function ProjectWorkbenchDocumentStatusPanel({
     <section className="workbench-document-status-panel">
       <header className="workbench-document-status-heading">
         <div>
-          <h4>Downstream status</h4>
-          <p>Check which outputs are current with the active Matrix draft.</p>
+          <h4>Derived outputs</h4>
+          <p>Output sync visibility against current Matrix authority.</p>
         </div>
         <strong>
           Draft v{status.activeDraftVersion ?? "-"}
@@ -22,8 +22,8 @@ export function ProjectWorkbenchDocumentStatusPanel({
       </header>
       {status.hasStaleOutputs ? (
         <p className="blocking-copy">
-          Some downstream outputs are stale after draft changes. Regenerate or re-preview before
-          final package placement.
+          Some derived outputs are stale after authority changes. Refresh output generation or
+          preview before final package placement.
         </p>
       ) : null}
       <ul className="workbench-document-status-list">

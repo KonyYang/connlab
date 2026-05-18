@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft task document. Pending user review and explicit approval.
+Approved and executed on 2026-05-17.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Draft task document. Pending user review and explicit approval.
 
 ## Current Active Task
 
-None. This task must run only after `TASK_219A` is approved and completed, or after the user explicitly approves taking this model-boundary slice first.
+None. TASK_219A is complete. TASK_219B is executed as a bounded frontend model-boundary split slice.
 
 ## Why This Task Is Allowed Now
 
@@ -158,3 +158,28 @@ Manual smoke:
 4. Select a Matrix token in Runtime Console.
 5. Confirm output status and authority sync still render.
 
+## Execution Result (2026-05-17)
+
+Implemented:
+
+- Added runtime boundary model file:
+  - `frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts`
+- Added support boundary model file:
+  - `frontend/src/features/project-workbench/useProjectWorkbenchSupportModel.ts`
+- Updated Workbench page to select and pass split boundary models from one shared base model instance:
+  - `frontend/src/pages/ProjectWorkbenchPage.tsx`
+- Updated Workbench layout props and wiring:
+  - `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`
+- Updated Matrix Editor to consume runtime-boundary model instead of full workbench model:
+  - `frontend/src/pages/ProjectMatrixEditorPage.tsx`
+
+Behavior scope:
+
+- No backend/API/DB changes.
+- No Matrix authority semantics change.
+- No route/path contract change.
+
+Validation:
+
+- `npm run build` (frontend) passed.
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q` still reports historical static expectation drift failures outside TASK_219B scope.

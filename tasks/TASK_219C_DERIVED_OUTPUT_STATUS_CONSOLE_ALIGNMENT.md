@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft task document. Pending user review and explicit approval.
+Approved and executed on 2026-05-17.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Draft task document. Pending user review and explicit approval.
 
 ## Current Active Task
 
-None. This task should run after `TASK_219A` clarifies the Workbench Runtime Console IA and after `TASK_219B` if model boundaries are needed first.
+None. `TASK_219A` and `TASK_219B` are complete. `TASK_219C` is executed as a bounded output-status alignment slice.
 
 ## Why This Task Is Allowed Now
 
@@ -157,3 +157,18 @@ If backend contract documentation is touched:
 py -m pytest tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py tests\unit\test_phase9_scope_activation.py -q
 ```
 
+## Execution Result (2026-05-17)
+
+Implemented:
+
+- Updated Runtime Console output panel copy from downstream-workflow wording to derived-output wording:
+  - `frontend/src/features/project-workbench/ProjectWorkbenchDocumentStatusPanel.tsx`
+- Updated selector labels/reasons to authority-derived output semantics:
+  - `frontend/src/features/project-workbench/projectWorkbenchVersionSelectors.ts`
+- Updated static shell test assertion to accept derived-output heading wording:
+  - `tests/unit/test_frontend_shell_files.py`
+
+Validation:
+
+- `npm run build` (frontend) passed.
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q` reports known historical static expectation drift failures outside TASK_219C scope.

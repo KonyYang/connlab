@@ -89,11 +89,14 @@ def test_frontend_shell_uses_api_client_and_mvp_routes() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    workbench_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
 
     assert 'pathname === "/projects"' in app_source
     assert "/projects/" in app_source
     assert "listProjects" in list_page_source
-    assert "getProject" in workbench_source
+    assert "getProject" in workbench_model_source
     assert '"/api/projects"' in client_source
     assert 'fetch(`${API_BASE}${path}`' in client_source
 
@@ -117,11 +120,14 @@ def test_frontend_workflow_integration_calls_mvp_actions() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     project_folder_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectFolderCreationPanel.tsx"
     ).read_text(encoding="utf-8")
 
-    if "Project workbench boundary" in workbench_source:
+    if "Project workbench boundary" in workbench_source or "runtime-console-shell" in layout_source:
         for blocked_term in [
             "uploadApplicationForm",
             "runPrecheck",
@@ -135,12 +141,12 @@ def test_frontend_workflow_integration_calls_mvp_actions() -> None:
         ]:
             assert blocked_term not in workbench_source
         for term in [
-            "previewEvidencePlacement",
-            "placeEvidence",
             "ProjectLookupPanel",
             "ProjectFolderCreationPanel",
+            "previewEvidencePlacement",
+            "placeEvidence",
         ]:
-            assert term in workbench_source
+            assert term not in layout_source
         assert "previewFolder" in project_folder_source
         assert "generateFolder" in project_folder_source
         assert "getLatestProjectFolder" in project_folder_source
@@ -174,6 +180,9 @@ def test_frontend_app_shell_uses_left_navigation_without_hero_layout() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     icon_source = (
         FRONTEND_ROOT / "src" / "components" / "common" / "UiIcon.tsx"
     ).read_text(encoding="utf-8")
@@ -190,7 +199,7 @@ def test_frontend_app_shell_uses_left_navigation_without_hero_layout() -> None:
     assert "Precheck" not in sidebar_source
     assert "LTR Number" not in sidebar_source
     assert "Precheck" in intake_review_source
-    assert "LTR Number" in workbench_source
+    assert "latestLtr" in layout_source
     assert "Folders" in sidebar_source
     assert "Settings" in sidebar_source
     assert "UiIcon" in sidebar_source
@@ -291,7 +300,7 @@ def test_task150_workbench_folder_uses_configured_resources() -> None:
     assert "useProjectWorkbenchModel" in workbench_source
     assert "listExternalResources" in model_source
     assert "configuredFolderResources" in model_source
-    assert "ProjectFolderCreationPanel" in layout_source
+    assert "ProjectFolderCreationPanel" not in layout_source
     assert "configuredTemplate" in folder_panel_source
     assert "configuredOutputRoot" in folder_panel_source
     assert "Project folder template" in folder_panel_source
@@ -536,7 +545,10 @@ def test_ltr_frontend_wires_readiness_preview_and_local_commit() -> None:
         "commitLtrLocally",
     ]:
         assert term in client_source
-    if "Project workbench boundary" not in workbench_source:
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    if "Project workbench boundary" not in workbench_source and "runtime-console-shell" not in layout_source:
         for term in [
             "getLtrReadiness",
             "previewLtrRegistration",
@@ -1705,6 +1717,9 @@ def test_folder_evidence_frontend_wires_preview_and_execution() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     model_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
     ).read_text(encoding="utf-8")
@@ -1770,6 +1785,9 @@ def test_project_lookup_frontend_wires_read_only_summaries() -> None:
     workbench_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
     ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
     lookup_source = (
         FRONTEND_ROOT / "src" / "components" / "project" / "ProjectLookupPanel.tsx"
     ).read_text(encoding="utf-8")
@@ -1790,7 +1808,7 @@ def test_project_lookup_frontend_wires_read_only_summaries() -> None:
     ]:
         assert term in client_source
 
-    assert "ProjectLookupPanel" in workbench_source
+    assert "ProjectLookupPanel" not in layout_source
 
     for term in [
         "Read-only lookup",
@@ -2316,7 +2334,7 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     for term in ["previewEvidencePlacement", "placeEvidence"]:
         assert term in model_source or term in workbench_source
     for term in ["ProjectFolderCreationPanel"]:
-        assert term in layout_source or term in workbench_source
+        assert term not in layout_source + workbench_source
 
     for removed_term in [
         "uploadApplicationForm",
@@ -2414,7 +2432,7 @@ def test_task187_workbench_document_pipeline_autofill_is_feature_wired() -> None
     assert "manual" in model_source
     assert "auto" in model_source
 
-    assert "inputSources={approvalInputSources}" in layout_source
+    assert "inputSources={approvalInputSources}" not in layout_source
     assert "ApprovalInputSources" in panel_source
     assert "Evidence source paths (" in panel_source
     assert "Completed application form (" in panel_source
@@ -2458,11 +2476,11 @@ def test_task188_workbench_version_and_stale_status_is_feature_wired() -> None:
     assert "manual" in selector_source
     assert "failed" in selector_source
 
-    assert "ProjectWorkbenchDocumentStatusPanel" in layout_source
-    assert "status={versionStatus}" in layout_source
+    assert "ProjectWorkbenchDocumentStatusPanel" not in layout_source
+    assert "status={versionStatus}" not in layout_source
     assert "versionStatus={versionStatus}" in layout_source or "RuntimeAttentionSurface" in layout_source
     assert "Downstream outputs are stale" in matrix_panel_source
-    assert "Downstream status" in status_panel_source
+    assert "Derived outputs" in status_panel_source or "Downstream status" in status_panel_source
     assert ".workbench-document-status-panel" in styles_source
     assert ".workbench-status-stale" in styles_source
 
@@ -2550,17 +2568,15 @@ def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_
 
     if "runtime-console-shell" in layout_source:
         assert "runtime-console-shell" in layout_source
-        assert "runtime-console-summary" in layout_source
         assert "ProjectWorkbenchMatrixOverview" in layout_source
         assert "runtimeProjectionSnapshot" in layout_source
         assert "Step Workspace" in layout_source
         assert "RuntimeAttentionSurface" in layout_source
-        assert "ProjectWorkbenchDocumentStatusPanel" in layout_source
-        assert "ProjectFolderCreationPanel" in layout_source
-        assert "ApprovalPackagePanel" in layout_source
+        assert "ProjectWorkbenchDocumentStatusPanel" not in layout_source
+        assert "ProjectFolderCreationPanel" not in layout_source
+        assert "ApprovalPackagePanel" not in layout_source
         assert "ProjectWorkbenchMatrixInspector" not in layout_source
         assert ".runtime-console-shell" in styles_source
-        assert ".matrix-runtime-grid" in styles_source
         assert ".runtime-console-step-workspace" in styles_source
         return
 
@@ -2590,7 +2606,7 @@ def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_
     assert "Group detail" in matrix_inspector_source
     assert "Confirm Matrix" in matrix_inspector_source
 
-    assert "Downstream status" in status_panel_source
+    assert "Derived outputs" in status_panel_source or "Downstream status" in status_panel_source
 
     assert ".project-workbench-matrix-primary" in styles_source
     assert ".project-workbench-supporting" in styles_source
@@ -2600,6 +2616,339 @@ def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_
 
     for forbidden in ["AI review", "Report generation", "Historical reuse"]:
         assert forbidden not in layout_source + matrix_panel_source
+
+
+def test_task219d_lightweight_material_drop_surface_is_secondary_and_preview_first() -> None:
+    """TASK_219D adds lightweight Other materials support surface without runtime evidence domain expansion."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMaterialDropPanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ProjectWorkbenchMaterialDropPanel" not in layout_source
+    assert "Other materials" in panel_source
+    assert "Drop files here (desktop workspace)" in panel_source
+    assert "Browser mode does not expose trusted local absolute paths" in panel_source
+    assert "Preview placement" in panel_source
+    assert "Confirm placement" in panel_source
+    assert "Step evidence persistence" not in panel_source
+    assert "report binding" not in panel_source
+    assert ".material-drop-panel" in styles_source
+
+
+def test_task219e_runtime_console_regression_guards_keep_workbench_boundary() -> None:
+    """TASK_219E keeps Workbench as runtime console and Matrix editing outside Workbench."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    workbench_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    workbench_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    matrix_editor_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "runtime-console-shell" in layout_source
+    assert "ProjectWorkbenchMatrixOverview" in layout_source
+    assert "Step Workspace" in layout_source
+    assert "RuntimeAttentionSurface" in layout_source
+
+    assert "Advanced support: folder, approval, evidence, lookup" not in layout_source
+    assert "Setup Manager: project folder" not in layout_source
+    assert "Output Status: approval package" not in layout_source
+    assert "Legacy: evidence placement detail" not in layout_source
+    assert "Read-only lookup" not in layout_source
+
+    assert "ProjectWorkbenchMatrixInspector" not in layout_source
+    assert "onSaveDraft={onSaveMatrixDraft}" not in layout_source
+    assert "onValidateDraft={onValidateMatrixDraft}" not in layout_source
+    assert "onConfirmDraft={onConfirmMatrixDraft}" not in layout_source
+
+    assert "pathname.match(/^\\/projects\\/([^/]+)\\/matrix-editor$/)" in app_source
+    assert "ProjectMatrixEditorPage" in app_source
+    assert "<h2>Matrix Editor</h2>" in matrix_editor_page_source
+
+    assert "fetch(" not in workbench_page_source
+    assert "fetch(" not in layout_source
+    assert "fetch(" not in workbench_model_source
+    assert 'fetch(`${API_BASE}${path}`' in client_source
+
+
+def test_task219f_removes_legacy_support_surfaces_from_workbench() -> None:
+    """TASK_219F removes legacy support surfaces from visible Workbench UI."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+
+    for removed_label in [
+        "Advanced support: folder, approval, evidence, lookup",
+        "Setup Manager: project folder",
+        "Output Status: approval package",
+        "Legacy: evidence placement detail",
+        "Read-only lookup",
+    ]:
+        assert removed_label not in layout_source
+
+    for removed_component in [
+        "ProjectFolderCreationPanel",
+        "ApprovalPackagePanel",
+        "ProjectWorkbenchEvidencePanel",
+        "ProjectLookupPanel",
+    ]:
+        assert removed_component not in layout_source
+
+    for removed_runtime_label in [
+        "Derived outputs",
+        "Runtime Support",
+        "Project setup status",
+        "Other materials",
+        "Drop files here (desktop workspace)",
+        "Preview placement",
+        "Confirm placement",
+        "Input paths",
+        "Preview items",
+        "Placed files",
+    ]:
+        assert removed_runtime_label not in layout_source
+
+    for removed_runtime_component in [
+        "ProjectWorkbenchMaterialDropPanel",
+        "ProjectWorkbenchDocumentStatusPanel",
+        "RuntimeSupportCard",
+    ]:
+        assert removed_runtime_component not in layout_source
+
+    assert "runtime-support-shell" not in layout_source
+    assert "ProjectWorkbenchMatrixOverview" in layout_source
+
+
+def test_task220_target_ui_alignment_structure_is_present() -> None:
+    """TASK_220 aligns runtime console structure to target workbench UI contract."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_label in [
+        "Project Workbench",
+        "Project readiness status",
+        "Actionable",
+        "Open Setup Manager",
+        "Runtime execution map",
+        "Step Workspace",
+        "Project issues / reminders",
+        "Recent activity",
+        "Fee estimate",
+    ]:
+        assert required_label in layout_source
+
+    for required_style in [
+        ".runtime-console-readiness-title",
+        ".runtime-console-setup-button",
+        ".runtime-console-filter-nav",
+        ".runtime-console-step-breadcrumb",
+    ]:
+        assert required_style in styles_source
+
+    for forbidden_legacy in [
+        "Derived outputs",
+        "Runtime Support",
+        "Project setup status",
+        "Other materials",
+    ]:
+        assert forbidden_legacy not in layout_source
+
+
+def test_task221_matrix_editor_converges_to_definition_studio_structure() -> None:
+    """TASK_221 aligns Matrix Editor to definition-studio workflow structure."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_label in [
+        "Matrix Editor",
+        "Definition Studio",
+        "Back to Workbench",
+        "Test Library",
+        "Group 3",
+        "Step preview",
+        "Templates",
+        "Reference Library",
+        "Publish for approval",
+        "Projection Ref:",
+    ]:
+        assert required_label in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-target-header",
+        ".matrix-editor-actionbar",
+        ".matrix-editor-studio",
+        ".matrix-editor-test-library",
+        ".matrix-editor-grid-surface",
+        ".matrix-editor-step-workspace",
+        ".matrix-editor-supporting",
+        ".matrix-editor-templates",
+        ".matrix-editor-reference-library",
+    ]:
+        assert required_style in styles_source
+
+    for removed_dashboard_label in [
+        "Authority Status",
+        "Step Identity Preview",
+        "Runtime Mapping Notes",
+        "Selected Definition (Placeholder)",
+    ]:
+        assert removed_dashboard_label not in matrix_editor_source
+
+
+def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority() -> None:
+    """TASK_222 keeps definition-studio hierarchy while tuning UI density."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_selector in [
+        ".matrix-editor-target-shell",
+        ".matrix-editor-target-header",
+        ".matrix-editor-actionbar",
+        ".matrix-editor-studio",
+        ".matrix-editor-main-table-wrap",
+        ".matrix-editor-step-workspace",
+        ".matrix-editor-supporting",
+    ]:
+        assert required_selector in styles_source
+
+    for required_label in [
+        "Add test item",
+        "Search conditions/items...",
+        "Group Step Workspace",
+        "Templates",
+        "Reference Library",
+    ]:
+        assert required_label in matrix_editor_source
+
+    assert "runtime-console-shell" not in matrix_editor_source
+
+
+def test_task224_matrix_editor_structural_edit_interactions_are_present() -> None:
+    """TASK_224 adds guarded row/group structural editing interactions."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_label in [
+        "Add test item",
+        "Add group",
+        "Undo",
+        "Header and first five columns are structurally fixed.",
+        "Insert left",
+        "Insert right",
+        "Move left",
+        "Move right",
+        "At least one group column is required",
+        "At least one test item row is required",
+    ]:
+        assert required_label in matrix_editor_source
+
+    for required_selector in [
+        ".matrix-editor-context-actions",
+        ".matrix-editor-context-menu",
+    ]:
+        assert required_selector in styles_source
+
+
+def test_task225_matrix_editor_uses_context_menu_without_inline_action_columns() -> None:
+    """TASK_225 moves structural editing to right-click menus to preserve grid density."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "openRowContextMenu" in matrix_editor_source
+    assert "onContextMenu={(event) => openGroupContextMenu(event, column)}" in matrix_editor_source
+    assert "MatrixContextMenu" in matrix_editor_source
+    assert "Delete group" in matrix_editor_source
+    assert "Delete row" in matrix_editor_source
+    assert ".matrix-editor-context-menu" in styles_source
+
+    for removed_inline_control in [
+        "matrix-editor-control-header",
+        "matrix-editor-row-controls",
+        "matrix-editor-row-menu",
+        "matrix-editor-group-head",
+        "matrix-editor-group-menu",
+    ]:
+        assert removed_inline_control not in matrix_editor_source
+        assert f".{removed_inline_control}" not in styles_source
+
+
+def test_task226_matrix_editor_row_selector_and_selection_highlight_are_wired() -> None:
+    """TASK_226 adds row-number selection and matching row/group highlight targeting."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "matrix-editor-row-selector-head",
+        "matrix-editor-row-selector-cell",
+        "matrix-editor-row-selector-button",
+        "onClick={() => selectRow(row.id)}",
+        "onContextMenu={(event) => openRowContextMenu(event, rowIndex)}",
+        "onClick={() => selectGroup(column)}",
+        "matrix-editor-row-selected",
+        "matrix-editor-group-selected",
+        "matrix-editor-group-selected-cell",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-row-selector-head",
+        ".matrix-editor-row-selector-cell",
+        ".matrix-editor-row-selector-button",
+        ".matrix-editor-row-selected",
+        ".matrix-editor-group-selected",
+        ".matrix-editor-group-selected-cell",
+        ".matrix-editor-main-table th:nth-child(n + 7)",
+    ]:
+        assert required_style in styles_source
+
+    for removed_inline_control in [
+        "matrix-editor-control-header",
+        "matrix-editor-row-controls",
+        "matrix-editor-row-menu",
+        "matrix-editor-group-head",
+        "matrix-editor-group-menu",
+    ]:
+        assert removed_inline_control not in matrix_editor_source
+        assert f".{removed_inline_control}" not in styles_source
 
 
 def test_task191_matrix_starter_import_and_manual_empty_state_is_feature_wired() -> None:

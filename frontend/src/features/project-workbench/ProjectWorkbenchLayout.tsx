@@ -1,16 +1,12 @@
 import type { ReactElement } from "react";
-import { ApprovalPackagePanel } from "../../components/workflow/ApprovalPackagePanel";
-import { ProjectLookupPanel } from "../../components/project/ProjectLookupPanel";
 import { ProjectStatusBadge } from "../../components/project/ProjectStatusBadge";
 import type { Project, RuntimeProjectionSnapshotResponse } from "../../api/client";
-import { ProjectFolderCreationPanel } from "./ProjectFolderCreationPanel";
-import { ProjectWorkbenchEvidencePanel } from "./ProjectWorkbenchEvidencePanel";
-import { ProjectWorkbenchDocumentStatusPanel } from "./ProjectWorkbenchDocumentStatusPanel";
 import { ProjectWorkbenchMatrixOverview } from "./ProjectWorkbenchMatrixOverview";
-import type { ProjectWorkbenchModel, WorkbenchBaselineItem } from "./useProjectWorkbenchModel";
+import type { WorkbenchBaselineItem } from "./useProjectWorkbenchModel";
+import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 type ProjectWorkbenchLayoutProps = {
-  model: ProjectWorkbenchModel;
+  runtimeModel: ProjectRuntimeConsoleModel;
   project: Project;
   onBack: () => void;
   onOpenMatrixEditor: () => void;
@@ -46,22 +42,13 @@ const MOCK_STEP_DETAILS: MockStepDetail[] = [
 ];
 
 export function ProjectWorkbenchLayout({
-  model,
+  runtimeModel,
   project,
   onBack,
   onOpenMatrixEditor
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const {
-    approvalInput,
-    approvalInputSources,
-    approvalPreview,
-    approvalResult,
     baselineItems,
-    executingApprovalPackage,
-    evidencePlan,
-    evidenceResult,
-    folderReady,
-    folderResources,
     latestLtr,
     matrixAuthorityDraft,
     matrixDraft,
@@ -72,18 +59,8 @@ export function ProjectWorkbenchLayout({
     runtimeProjectionSnapshot,
     runtimeAuthoritySync,
     runtimeSelectedTokenReference,
-    versionStatus,
-    placingEvidence,
-    previewingApprovalPackage,
-    previewingEvidence,
-    setApprovalInput,
-    setRuntimeSelectedTokenReference,
-    onExecuteApprovalPackage,
-    onFolderCreated,
-    onPlaceEvidence,
-    onPreviewApprovalPackage,
-    onPreviewEvidence
-  } = model;
+    setRuntimeSelectedTokenReference
+  } = runtimeModel;
 
   const projectionDraft = matrixAuthorityDraft ?? matrixDraft;
   const runtimeMetrics = buildRuntimeMetrics(runtimeProjectionSnapshot);
@@ -171,15 +148,15 @@ export function ProjectWorkbenchLayout({
         </section>
 
         <section className="runtime-console-readiness" aria-label="Runtime readiness">
+          <div className="runtime-console-readiness-title">
+            <p className="eyebrow">Project readiness status</p>
+            <strong>Actionable</strong>
+          </div>
           {baselineItems.map((item) => (
             <RuntimeReadinessItem key={item.title} item={item} />
           ))}
           <RuntimeReadinessItem item={{ title: "Matrix Authority", value: matrixAuthorityDraft ? "Ready" : "Pending confirmation" }} />
-          <RuntimeReadinessItem item={{ title: "Approval Package", value: "Pending generation" }} />
-          <RuntimeReadinessItem item={{ title: "Fee Evaluation", value: "Pending estimate" }} />
-          <button className="runtime-console-setup-button" type="button">
-            Open Setup Manager
-          </button>
+          <button className="runtime-console-setup-button" type="button">Open Setup Manager</button>
         </section>
 
         <section className="runtime-console-filterbar" aria-label="Runtime filters">
@@ -210,6 +187,10 @@ export function ProjectWorkbenchLayout({
                 {item}
               </label>
             ))}
+          </div>
+          <div className="runtime-console-filter-nav" aria-label="Matrix row navigation">
+            <button aria-label="Previous rows" type="button">◀</button>
+            <button aria-label="Next rows" type="button">▶</button>
           </div>
         </section>
 
@@ -247,6 +228,7 @@ export function ProjectWorkbenchLayout({
             <header>
               <div>
                 <p className="eyebrow">Step Workspace</p>
+                <p className="runtime-console-step-breadcrumb">{mockStepDetail.group} › Step {mockStepDetail.token}</p>
                 <h3>{activeStepTitle}</h3>
               </div>
               <div className="runtime-console-step-tools">
@@ -341,59 +323,6 @@ export function ProjectWorkbenchLayout({
           <RecentActivitySurface />
           <FeeEstimateSurface />
         </section>
-      </section>
-
-      <section className="runtime-console-output-secondary">
-        <ProjectWorkbenchDocumentStatusPanel status={versionStatus} />
-      </section>
-
-      <section className="project-workbench-supporting" aria-label="Secondary setup surfaces">
-        <details className="workbench-supporting-panel">
-          <summary>Setup Manager: project folder</summary>
-          <ProjectFolderCreationPanel
-            configuredOutputRoot={folderResources.outputRoot}
-            configuredTemplate={folderResources.template}
-            folderReady={folderReady}
-            latestLtrNumber={latestLtr}
-            onFolderCreated={onFolderCreated}
-            projectId={project.project_id}
-            projectStatus={project.status}
-          />
-        </details>
-
-        <details className="workbench-supporting-panel">
-          <summary>Output Status: approval package</summary>
-          <ApprovalPackagePanel
-            executing={executingApprovalPackage}
-            folderReady={folderReady}
-            input={approvalInput}
-            inputSources={approvalInputSources}
-            onExecute={onExecuteApprovalPackage}
-            onInputChange={setApprovalInput}
-            onPreview={onPreviewApprovalPackage}
-            preview={approvalPreview}
-            previewing={previewingApprovalPackage}
-            result={approvalResult}
-          />
-        </details>
-
-        <details className="workbench-supporting-panel">
-          <summary>Setup Manager: evidence placement</summary>
-          <ProjectWorkbenchEvidencePanel
-            evidencePlan={evidencePlan}
-            evidenceResult={evidenceResult}
-            folderReady={folderReady}
-            onPlaceEvidence={onPlaceEvidence}
-            onPreviewEvidence={onPreviewEvidence}
-            placingEvidence={placingEvidence}
-            previewingEvidence={previewingEvidence}
-          />
-        </details>
-
-        <details className="workbench-supporting-panel">
-          <summary>Read-only lookup</summary>
-          <ProjectLookupPanel projectId={project.project_id} />
-        </details>
       </section>
     </>
   );
@@ -506,7 +435,7 @@ function RecentActivitySurface(): ReactElement {
     <section className="runtime-console-activity" aria-label="Recent activity">
       <header>
         <p className="eyebrow">Recent activity</p>
-        <h3>Latest updates</h3>
+        <h3>Recent activity</h3>
       </header>
       <ul>
         <li><span>Step 2 (Group 3 - LLCR) data updated</span><time>14:20</time></li>
@@ -523,7 +452,7 @@ function FeeEstimateSurface(): ReactElement {
     <section className="runtime-console-fee" aria-label="Fee estimate">
       <header>
         <p className="eyebrow">Fee estimate</p>
-        <h3>Current estimate</h3>
+        <h3>Fee estimate</h3>
       </header>
       <div className="runtime-console-fee-grid">
         <div><span>Estimated</span><strong>RMB 12,450.00</strong></div>
@@ -561,14 +490,14 @@ function RuntimeAttentionSurface({
   return (
     <section className="runtime-console-attention" aria-label="Runtime attention">
       <header>
-        <p className="eyebrow">Runtime Attention</p>
-        <h3>Priority surface</h3>
+        <p className="eyebrow">Project issues / reminders</p>
+        <h3>Project issues / reminders</h3>
       </header>
       <div className="runtime-console-attention-grid">
-        <AttentionTile label="Blocks execution" value={p0} tone="danger" />
-        <AttentionTile label="Integrity risk" value={p1} tone="warning" />
-        <AttentionTile label="Output risk" value={p2 + stale} tone="current" />
-        <AttentionTile label="No attention" value={countProjectionValue(snapshot, "attention_counts", "none")} tone="muted" />
+        <AttentionTile label="Failed items" value={p0} tone="danger" />
+        <AttentionTile label="Missing evidence" value={p1} tone="warning" />
+        <AttentionTile label="Unsynced report" value={p2 + stale} tone="current" />
+        <AttentionTile label="In progress" value={countProjectionValue(snapshot, "attention_counts", "none")} tone="muted" />
       </div>
     </section>
   );

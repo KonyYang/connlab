@@ -42,7 +42,7 @@ export function deriveWorkbenchVersionStatus(
 
   const section2 = classifyPathStatus({
     key: "section2",
-    label: "Section 2",
+    label: "Section 2 completion",
     path: input.approvalInput.completed_application_form_path,
     source: input.approvalInputSources.completed_application_form_path,
     staleByDraft
@@ -84,7 +84,7 @@ function fromPersistedSummary(summary: ProjectOutputStatusSummary): WorkbenchVer
     approval_package: "approval_package"
   };
   const labelMap: Record<WorkbenchDocumentStatus["key"], string> = {
-    section2: "Section 2",
+    section2: "Section 2 completion",
     test_record: "Test record",
     fee_evaluation: "Fee evaluation",
     approval_package: "Approval package"
@@ -136,7 +136,7 @@ function classifyPathStatus(input: {
       label: input.label,
       freshness: "manual",
       path: normalizedPath,
-      reason: "Operator-provided path; draft linkage is not system-verified."
+      reason: "Manual output reference is present; automatic authority linkage is not verified."
     };
   }
   if (input.staleByDraft) {
@@ -145,7 +145,7 @@ function classifyPathStatus(input: {
       label: input.label,
       freshness: "stale",
       path: normalizedPath,
-      reason: "Path was captured before the current active draft version."
+      reason: "Output reference was captured before the current authority version."
     };
   }
   return {
@@ -153,7 +153,7 @@ function classifyPathStatus(input: {
     label: input.label,
     freshness: "current",
     path: normalizedPath,
-    reason: "Path is aligned with the current workbench session context."
+    reason: "Output reference is aligned with the current authority context."
   };
 }
 
@@ -169,7 +169,7 @@ function classifyApprovalPackageStatus(
       label: "Approval package",
       freshness: "missing",
       path: null,
-      reason: "No approval package preview or execute result yet."
+      reason: "Approval package output state is not generated yet."
     };
   }
   if (staleByDraft) {
@@ -178,7 +178,7 @@ function classifyApprovalPackageStatus(
       label: "Approval package",
       freshness: "stale",
       path: latest.project_folder_path,
-      reason: "Preview/execute result was produced before the current active draft."
+      reason: "Package state was produced before the current authority version."
     };
   }
   if (latest.blockers.length > 0) {
@@ -187,7 +187,7 @@ function classifyApprovalPackageStatus(
       label: "Approval package",
       freshness: "failed",
       path: latest.project_folder_path,
-      reason: "Current preview has blockers and cannot be executed."
+      reason: "Current package projection has blockers and cannot proceed."
     };
   }
   return {
@@ -195,6 +195,6 @@ function classifyApprovalPackageStatus(
     label: "Approval package",
     freshness: "current",
     path: latest.project_folder_path,
-    reason: result ? "Execute result is current for this session." : "Preview result is current for this session."
+    reason: result ? "Package output state is current for this authority." : "Package preview state is current for this authority."
   };
 }

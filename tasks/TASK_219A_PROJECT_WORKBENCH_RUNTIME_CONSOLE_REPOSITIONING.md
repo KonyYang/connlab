@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft task document. Pending user review and explicit approval.
+Approved and executed on 2026-05-17.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Draft task document. Pending user review and explicit approval.
 
 ## Current Active Task
 
-None. TASK_218 is complete and TASK_219 pixel alignment already exists. This task is a new planning-controlled `TASK_219A` slice and must not be implemented until the user approves it.
+None. TASK_219 is complete. TASK_219A is executed as a bounded frontend IA repositioning slice.
 
 ## Why This Task Is Allowed Now
 
@@ -100,27 +100,13 @@ Forbidden:
 - turning Matrix into an Excel-like string editor
 - moving complex data entry into Workbench
 
-## Required First Deliverable
+## Plan Deliverable
 
-Before coding, create:
+Plan file created and approved before implementation:
 
-```text
-docs/task_219a_project_workbench_runtime_console_repositioning_plan.md
-```
+`docs/task_219a_project_workbench_runtime_console_repositioning_plan.md`
 
-The plan must include:
-
-- exact current Workbench section inventory
-- proposed before/after IA
-- file-level changes
-- removed vs retained operator actions
-- risk list
-- validation commands
-- manual smoke path
-
-Stop after writing the plan and wait for explicit user approval.
-
-## Implementation Guidance After Approval
+## Implementation Summary
 
 Expected implementation direction:
 
@@ -130,6 +116,13 @@ Expected implementation direction:
 - Convert approval package path-entry UI into a non-primary support detail or hide it behind an explicit advanced/support affordance if still needed for existing backend validation.
 - Keep evidence placement as lightweight status/action only; do not expand into a large workflow.
 - Remove `ProjectLookupPanel` from the main Workbench runtime surface unless the plan proves it is still needed as a status diagnostic.
+
+Implemented changes:
+
+- Added `Runtime support` status-first compact section in Workbench lower half.
+- Demoted heavy setup workflows into one collapsed `Advanced support` surface.
+- Kept folder/approval/evidence/lookup capabilities reachable inside nested collapsibles.
+- Kept output status panel and runtime primary surfaces unchanged.
 
 ## Acceptance Criteria
 
@@ -164,3 +157,15 @@ Manual smoke:
 4. Confirm output status is visible and business-readable.
 5. Confirm lower legacy setup flows are not visually dominant.
 
+## Execution Result (2026-05-17)
+
+- `npm run build` (frontend) passed.
+- Board-state governance tests passed:
+
+```powershell
+py -m pytest tests\unit\test_phase10a_scope_activation.py tests\unit\test_phase5_ux_decision.py tests\unit\test_phase6_scope_activation.py tests\unit\test_phase7_validation_summary.py tests\unit\test_phase9_scope_activation.py -q
+```
+
+`17 passed`.
+
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q` reports 10 failures, all in historical/static expectation drift areas outside TASK_219A scope (legacy assertions around older workbench/inbox contracts). TASK_219A-specific repositioning changes compile and are aligned with runtime-console-first direction.

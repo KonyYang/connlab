@@ -114,6 +114,16 @@ def test_phase7_validation_summary_closes_phase_without_future_scope() -> None:
             or "Current Active Task: none; TASK_217 matrix editor placeholder clone and workbench matrix button navigation complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_218 matrix editor visual alignment density pass complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_219 matrix editor pixel alignment pass complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219A runtime console repositioning complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219B workbench model boundary split complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219C derived output status console alignment complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219D lightweight material drop surface slice complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219E runtime console regression guards complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219F Workbench legacy support removal complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_219F Workbench runtime console responsibility refinement complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
+            or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
     )
     assert "| T7-16 | `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` | done |" in board
     assert "Current recommendation:" in board
