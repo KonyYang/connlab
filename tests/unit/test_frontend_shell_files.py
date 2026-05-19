@@ -2776,8 +2776,10 @@ def test_task220_target_ui_alignment_structure_is_present() -> None:
 def test_task221_matrix_editor_converges_to_definition_studio_structure() -> None:
     """TASK_221 aligns Matrix Editor to definition-studio workflow structure."""
     matrix_editor_source = (
-        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
-    ).read_text(encoding="utf-8")
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
@@ -2786,8 +2788,7 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         "Matrix Editor",
         "Definition Studio",
         "Back to Workbench",
-        "Test Library",
-        "Group 3",
+        "No group selected",
         "Step preview",
         "Templates",
         "Reference Library",
@@ -2800,7 +2801,6 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         ".matrix-editor-target-header",
         ".matrix-editor-actionbar",
         ".matrix-editor-studio",
-        ".matrix-editor-test-library",
         ".matrix-editor-grid-surface",
         ".matrix-editor-step-workspace",
         ".matrix-editor-supporting",
@@ -2821,8 +2821,10 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
 def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority() -> None:
     """TASK_222 keeps definition-studio hierarchy while tuning UI density."""
     matrix_editor_source = (
-        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
-    ).read_text(encoding="utf-8")
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
@@ -2853,8 +2855,10 @@ def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority
 def test_task224_matrix_editor_structural_edit_interactions_are_present() -> None:
     """TASK_224 adds guarded row/group structural editing interactions."""
     matrix_editor_source = (
-        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
-    ).read_text(encoding="utf-8")
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
@@ -2863,7 +2867,6 @@ def test_task224_matrix_editor_structural_edit_interactions_are_present() -> Non
         "Add test item",
         "Add group",
         "Undo",
-        "Header and first five columns are structurally fixed.",
         "Insert left",
         "Insert right",
         "Move left",
@@ -2883,14 +2886,16 @@ def test_task224_matrix_editor_structural_edit_interactions_are_present() -> Non
 def test_task225_matrix_editor_uses_context_menu_without_inline_action_columns() -> None:
     """TASK_225 moves structural editing to right-click menus to preserve grid density."""
     matrix_editor_source = (
-        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
-    ).read_text(encoding="utf-8")
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
 
     assert "openRowContextMenu" in matrix_editor_source
-    assert "onContextMenu={(event) => openGroupContextMenu(event, column)}" in matrix_editor_source
+    assert "openGroupContextMenu(event, group.id)" in matrix_editor_source
     assert "MatrixContextMenu" in matrix_editor_source
     assert "Delete group" in matrix_editor_source
     assert "Delete row" in matrix_editor_source
@@ -2910,8 +2915,10 @@ def test_task225_matrix_editor_uses_context_menu_without_inline_action_columns()
 def test_task226_matrix_editor_row_selector_and_selection_highlight_are_wired() -> None:
     """TASK_226 adds row-number selection and matching row/group highlight targeting."""
     matrix_editor_source = (
-        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
-    ).read_text(encoding="utf-8")
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
@@ -2922,7 +2929,7 @@ def test_task226_matrix_editor_row_selector_and_selection_highlight_are_wired() 
         "matrix-editor-row-selector-button",
         "onClick={() => selectRow(row.id)}",
         "onContextMenu={(event) => openRowContextMenu(event, rowIndex)}",
-        "onClick={() => selectGroup(column)}",
+        "onClick={() => selectGroup(group.id)}",
         "matrix-editor-row-selected",
         "matrix-editor-group-selected",
         "matrix-editor-group-selected-cell",
@@ -2949,6 +2956,486 @@ def test_task226_matrix_editor_row_selector_and_selection_highlight_are_wired() 
     ]:
         assert removed_inline_control not in matrix_editor_source
         assert f".{removed_inline_control}" not in styles_source
+
+
+def test_task227_matrix_editor_group_headers_are_editable() -> None:
+    """TASK_227 makes group header names editable with stable column ids."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+
+    for required_source in [
+        "type GroupColumn = {",
+        "name: string;",
+        "groupId: string",
+        "onChange={(event) => updateGroupName(group.id, event.target.value)}",
+        "{ id: nextId, name: \"\" }",
+    ]:
+        assert required_source in matrix_editor_source
+
+def test_task228_matrix_editor_uses_direct_group_header_selection_without_index_row() -> None:
+    """TASK_228 removes A/B/C index row and uses direct group header context menu."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "onClick={() => selectGroup(group.id)}",
+        "onContextMenu={(event) => openGroupContextMenu(event, group.id)}",
+        "onClick={(event) => event.stopPropagation()}",
+        "matrix-editor-group-name-input",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for removed_source in [
+        "toColumnLabel(",
+        "matrix-editor-group-index",
+        "key={`index-${group.id}`}",
+        "{toColumnLabel(groupIndex)}",
+    ]:
+        assert removed_source not in matrix_editor_source
+
+    assert ".matrix-editor-group-name-input" in styles_source
+
+
+def test_task229_matrix_editor_group_name_uniqueness_guard_is_wired() -> None:
+    """Group names are required and unique (case-insensitive) in Matrix Editor."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "normalizeGroupName(",
+        "Group names duplicated:",
+        "Group name is required",
+        "duplicateGroupIds",
+        "hasGroupNameError",
+        "hasGroupNameError || hasStepTokenError",
+        'is-duplicate',
+    ]:
+        assert required_source in matrix_editor_source
+
+    assert ".matrix-editor-group-name-input.is-duplicate" in styles_source
+
+
+def test_task230_matrix_editor_step_token_validation_guards_are_wired() -> None:
+    """TASK_230 enforces step token format and group sequence rules in matrix cells."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "function parseStepTokens(",
+        "Only digits and commas are allowed",
+        "missing:",
+        "duplicates:",
+        "stepCellErrorMessageByKey",
+        "errorMessage={cellErrorMessage}",
+        "invalidStepFormatCellKeys",
+        "groupStepSequenceErrorIds",
+        "groupStepSequenceErrorCellKeys",
+        "const groupCellClass = `matrix-editor-inline-input",
+        "invalidStepFormatCellKeys.has(cellKey) || groupStepSequenceErrorCellKeys.has(cellKey)",
+        'value={row.groups[group.id] ?? ""}',
+        '[nextId]: ""',
+    ]:
+        assert required_source in matrix_editor_source
+
+    assert ".matrix-editor-inline-input.is-invalid" in styles_source
+
+
+def test_task231_matrix_editor_step_preview_derives_selected_group_output_rows() -> None:
+    """TASK_231 derives selected-group preview rows and keeps output fields editable."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "type StepOutputOverride",
+        "function stepOutputKey(",
+        "function buildSelectedGroupStepPreviewRows(",
+        "const [stepOutputOverrides, setStepOutputOverrides]",
+        "const selectedGroupStepRows = buildSelectedGroupStepPreviewRows(",
+        "parseStepTokens(row.groups[selectedGroup.id] ?? \"\")",
+        "requirementValue: override?.requirement ?? row.requirement",
+        "descriptionValue: override?.description",
+        "updateStepOutputOverride(row.key, \"requirement\", value)",
+        "updateStepOutputOverride(row.key, \"description\", value)",
+        "Step Description",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for removed_placeholder in [
+        "STEP_WORKSPACE_ROWS",
+        "Group contains LLCR steps",
+        "Fee/Time",
+        "Apply to Matrix",
+    ]:
+        assert removed_placeholder not in matrix_editor_source
+
+    assert ".matrix-editor-step-output-table" in styles_source
+    assert ".matrix-editor-step-output-textarea" in styles_source
+
+
+def test_task232_matrix_editor_step_description_defaults_from_test_item_and_removes_test_item_column() -> None:
+    """TASK_232 sets Step Description default from Matrix Test Item and removes preview Test Item column."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "sourceTestItem: row.item",
+        "requirementValue: override?.requirement ?? row.requirement",
+        "descriptionValue: override?.description ?? row.item",
+        "<th>Step</th>",
+        "<th>Requirement</th>",
+        "<th>Step Description</th>",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for removed_source in [
+        "<th>Step</th>\n                  <th>Test Item</th>",
+        "matrix-editor-step-output-test-item",
+    ]:
+        assert removed_source not in matrix_editor_source
+
+    assert "matrix-editor-step-output-test-item" not in styles_source
+
+
+def test_task233_matrix_editor_step_description_special_family_rules_are_wired() -> None:
+    """TASK_233 adds alias-ready family mapping and staged special description defaults."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+
+    for required_source in [
+        "type StepDescriptionFamily",
+        "STEP_DESCRIPTION_FAMILY_ALIASES",
+        "low level contact resistance",
+        'LLCR: ["llcr", "cr", "low level contact resistance"]',
+        "detectStepDescriptionFamily(",
+        "containsAliasToken(",
+        "STEP_DESCRIPTION_FAMILY_LABELS",
+        "specialFamilyRowIndexes",
+        "Initial ${familyLabel}",
+        "Final ${familyLabel}",
+        "After ${previousStepItem}",
+        "stepItemByNumber.get(row.stepNo - 1)",
+        "stepOutputOverrides[row.key]?.description",
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task234_matrix_editor_requirement_split_rules_are_wired() -> None:
+    """TASK_234 adds Initial/After requirement split defaults for repeated special-family steps."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+
+    for required_source in [
+        "function trySplitInitialAfterRequirement(",
+        "const initialMatch = normalized.match(/initial\\b/i)",
+        "const afterMarkerRegex = /\\bafter(?:\\s+test)?\\b\\s*:?/i",
+        "const initialPart = normalized.slice(initialStart, afterStart).trim().replace(/[;:\\s]+$/g, \"\")",
+        "const followPart = normalized.slice(afterStart + afterMatch[0].length).trim().replace(/^[;:\\s]+/g, \"\")",
+        "followPart",
+        "splitByRowId",
+        "stepOutputOverrides[row.key]?.requirement",
+        "row.requirementValue = indexInFamily === 0 ? split.initialPart : split.followPart",
+        "row.requirementValue = split.initialPart",
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task235_matrix_editor_requirement_split_colon_variant_support_is_wired() -> None:
+    """TASK_235 keeps full initial/after blocks for colon-heavy multi-clause requirements."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+
+    for required_source in [
+        "const afterMarkerRegex = /\\bafter(?:\\s+test)?\\b\\s*:?/i",
+        "afterStart <= initialStart",
+        "replace(/[;:\\s]+$/g, \"\")",
+        "replace(/^[;:\\s]+/g, \"\")",
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task236_matrix_editor_main_table_widths_rebalance_for_condition() -> None:
+    """TASK_236 narrows Test Item/Section/Method and widens Condition in matrix main table."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        ".matrix-editor-main-table th:nth-child(2)",
+        "width: 124px;",
+        ".matrix-editor-main-table th:nth-child(3)",
+        "width: 48px;",
+        ".matrix-editor-main-table th:nth-child(4)",
+        "width: 88px;",
+        ".matrix-editor-main-table th:nth-child(5)",
+        "width: 162px;",
+    ]:
+        assert required_source in styles_source
+
+
+def test_task237_matrix_editor_fixed_columns_bg_and_group_header_density_are_wired() -> None:
+    """TASK_237 adds fixed-column background and denser group-header capsule with larger outer click area."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        ".matrix-editor-main-table th:nth-child(-n + 6)",
+        "background: #f5f9ff;",
+        ".matrix-editor-group-band",
+        "padding: 6px 4px !important;",
+        ".matrix-editor-group-name-input",
+        "min-height: 18px;",
+        "padding: 2px 6px;",
+        "font-size: 8px;",
+    ]:
+        assert required_source in styles_source
+
+
+def test_task238_matrix_editor_step_preview_dedupes_duplicate_step_numbers() -> None:
+    """TASK_238 dedupes repeated step numbers in preview derivation."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+
+    for required_source in [
+        "const dedupedBaseRows = baseRows.filter(",
+        "candidate.stepNo === row.stepNo",
+        "return dedupedBaseRows.map(({ rowIndex: _rowIndex, ...row }) => row);",
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task239_matrix_editor_editing_step_cell_auto_selects_group_column() -> None:
+    """TASK_239 editing a group step cell auto-selects its group column."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    for required_source in [
+        "setSelectedGroupId(group.id);",
+        "onFocus={() => {",
+        "setSelectedRowId(null);",
+        "setContextMenu(null);",
+        "event.stopPropagation();",
+        "onChange={(event) => updateGroupName(group.id, event.target.value)}",
+        "updateGroupField(rowIndex, group.id, value);",
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task240_matrix_editor_new_row_empty_field_guards_are_wired() -> None:
+    """TASK_240 adds empty required-field and empty-step-row warning classes."""
+    matrix_editor_source = (
+        (FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx").read_text(encoding="utf-8")
+        + "\n"
+        + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "const rowHasNoGroupSteps = groupColumns.every((group) => (row.groups[group.id] ?? \"\").trim() === \"\")",
+        "className={row.item.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={row.method.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={row.condition.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={row.requirement.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "is-step-missing",
+        "title={rowHasNoGroupSteps ? \"Missing step number\" : undefined}",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-inline-textarea.is-empty-required",
+        ".matrix-editor-row-selector-button.is-step-missing",
+    ]:
+        assert required_style in styles_source
+
+
+def test_task243_matrix_editor_starts_with_minimal_valid_grid() -> None:
+    """TASK_243 keeps the Matrix Editor initial grid to one row and one group."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_source in [
+        '{ label: "Groups", value: "1" }',
+        'groups: { "group-1": "" }',
+        'return [{ id: "group-1", name: "1" }];',
+    ]:
+        assert required_source in matrix_editor_source
+
+    for removed_seed_value in [
+        "Examination of Product",
+        "Contact Resistance - Low Level Circuit",
+        "Visual / Dimensional",
+    ]:
+        assert removed_seed_value not in matrix_editor_source
+
+
+def test_task244_matrix_editor_starts_with_two_row_seed_and_optional_section() -> None:
+    """TASK_244 seeds a practical first row, keeps a blank second row, and makes Section optional."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_source in [
+        '{ label: "Steps", value: "1" }',
+        '{ label: "Items", value: "2" }',
+        'id: "matrix-row-0"',
+        'item: "Visual Examination"',
+        'method: "EIA-364-18B"',
+        'condition: "10x min magnification"',
+        'requirement: "No detrimental condition"',
+        'groups: { "group-1": "1" }',
+        'id: "matrix-row-1"',
+        'groups: { "group-1": "" }',
+        'ariaLabel={`Row ${rowIndex + 1} section`}',
+        'onChange={(value) => updateTextField(rowIndex, "section", value)}',
+        'className={row.item.trim() === "" ? "is-empty-required" : undefined}',
+        'className={row.method.trim() === "" ? "is-empty-required" : undefined}',
+        'className={row.condition.trim() === "" ? "is-empty-required" : undefined}',
+        'className={row.requirement.trim() === "" ? "is-empty-required" : undefined}',
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task249_matrix_editor_removes_grid_toolbar_and_selection_hint() -> None:
+    """TASK_249 removes grid toolbar and selection hint strip in matrix editor edit area."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for removed_source in [
+        "Matrix Version",
+        "All groups",
+        "All sections",
+        "Selection: none",
+        "Header and first five columns are structurally fixed.",
+    ]:
+        assert removed_source not in matrix_editor_source
+
+    assert 'className={row.section.trim() === "" ? "is-empty-required" : undefined}' not in matrix_editor_source
+
+
+def test_task245_matrix_editor_table_columns_have_fixed_min_widths() -> None:
+    """TASK_245 fixes Matrix Editor column widths so extra groups scroll instead of shrinking."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "width: max-content;",
+        "width: 38px;",
+        "min-width: 38px;",
+        "width: 124px;",
+        "min-width: 124px;",
+        "width: 48px;",
+        "min-width: 48px;",
+        "width: 88px;",
+        "min-width: 88px;",
+        "width: 162px;",
+        "min-width: 162px;",
+        "width: 116px;",
+        "min-width: 116px;",
+        "width: 44px;",
+        "min-width: 44px;",
+    ]:
+        assert required_source in styles_source
+
+    assert styles_source.count("width: max-content;") >= 2
+    assert styles_source.count("min-width: 44px;") >= 2
+
+
+def test_task246_matrix_editor_table_uses_compact_fixed_column_widths() -> None:
+    """TASK_246 removes the broad table minimum and caps columns at their fixed widths."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "min-width: max(1180px, 100%);" not in styles_source
+
+    for required_source in [
+        "width: max-content;",
+        "max-width: 38px;",
+        "max-width: 124px;",
+        "max-width: 48px;",
+        "max-width: 88px;",
+        "max-width: 162px;",
+        "max-width: 116px;",
+        "max-width: 44px;",
+    ]:
+        assert required_source in styles_source
+
+    assert styles_source.count("width: max-content;") >= 2
+    assert styles_source.count("max-width: 44px;") >= 2
+
+
+def test_task248_matrix_editor_group_name_wrap_reverted_to_single_line() -> None:
+    """TASK_248 restores single-line clipping for group header names."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+    group_input_block = styles_source.split(".matrix-editor-group-name-input {", 1)[1].split("}", 1)[0]
+
+    for required_source in [
+        "white-space: nowrap;",
+        "overflow: hidden;",
+        "text-overflow: ellipsis;",
+        "width: 44px;",
+        "min-width: 44px;",
+        "max-width: 44px;",
+    ]:
+        assert required_source in styles_source
+
+    assert "white-space: normal;" not in group_input_block
+    assert "overflow-wrap: anywhere;" not in group_input_block
+    assert "word-break: break-word;" not in group_input_block
 
 
 def test_task191_matrix_starter_import_and_manual_empty_state_is_feature_wired() -> None:

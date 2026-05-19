@@ -7,15 +7,18 @@ from dataclasses import asdict
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from backend.application.runtime_projection_read_only_service import (
+    RuntimeProjectionReadOnlyService,
+)
 from backend.modules.runtime_projection.models import MatrixRowTechnicalContext, ProjectionState
 from backend.modules.runtime_projection.snapshot_adapter import (
     SnapshotBuildInput,
     SnapshotMatrixRowInput,
-    build_runtime_projection_snapshot,
 )
 
 
 router = APIRouter(tags=["runtime-projection-read-only"])
+_runtime_projection_read_only_service = RuntimeProjectionReadOnlyService()
 
 
 class ProjectionStateRequest(BaseModel):
@@ -158,7 +161,7 @@ def runtime_projection_read_only_snapshot(
 ) -> RuntimeProjectionReadOnlySnapshotResponse:
     """Return one deterministic read-only runtime projection snapshot."""
     build_input = _to_build_input(request)
-    snapshot = build_runtime_projection_snapshot(build_input)
+    snapshot = _runtime_projection_read_only_service.build_snapshot(build_input)
     return _snapshot_response(snapshot)
 
 
