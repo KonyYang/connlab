@@ -3361,6 +3361,56 @@ def test_task249_matrix_editor_removes_grid_toolbar_and_selection_hint() -> None
     assert 'className={row.section.trim() === "" ? "is-empty-required" : undefined}' not in matrix_editor_source
 
 
+def test_task252ck_matrix_editor_step_notes_use_preview_payload_and_concise_item_section() -> None:
+    """TASK_252CK wires Step preview notes to import payload and keeps concise Item/Section notes."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_source in [
+        "function buildPreviewStepNoteLookup(",
+        "sourceNote: step.source_note ?? null",
+        "sourceItemSectionNote: step.source_item_section_note ?? null",
+        "sampleNote: previewGroup.sample_note ?? null",
+        "function formatConciseItemSectionNote(stepNo: number, noteText: string): string",
+        "const withoutTestItem = normalized.replace(/^Test Item:",
+        "return `Step ${stepNo} | Section:${sectionPayload}`;",
+        "const selectedGroupPreviewNotes = buildPreviewStepNoteLookup(importPreview, selectedGroup);",
+        "const rawNote = mapped?.sourceNote ?? row.sourceStepNote;",
+        "const rawNote = mapped?.sourceItemSectionNote ?? row.sourceItemSectionNote;",
+        "const concise = formatConciseItemSectionNote(row.stepNo, rawNote);",
+        "const selectedGroupSampleNotes = selectedGroupPreviewNotes.sampleNote",
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task252cl_matrix_editor_step_notes_prefix_and_note_cards_are_wired() -> None:
+    """TASK_252CL prefixes Step Notes with token and restores note card visual variants."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required_source in [
+        "function stripLeadingMarkerPrefix(noteText: string): string",
+        ".replace(/^\\((?:\\d*\\s*)?[a-z]\\)\\s*/i, \"\")",
+        "return body.length > 0 ? `${row.rawToken} ${body}` : row.rawToken;",
+        "const dedupedSelectedGroupStepNotes = [...new Set(selectedGroupStepNotes)];",
+        "dedupedSelectedGroupStepNotes.map((note, index)",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-notes-card {",
+        ".matrix-editor-notes-card-step {",
+        ".matrix-editor-notes-card-item-section {",
+        ".matrix-editor-notes-card-samples {",
+        "background: #fff7e6;",
+        "background: #f1effb;",
+    ]:
+        assert required_style in styles_source
+
+
 def test_task245_matrix_editor_table_columns_have_fixed_min_widths() -> None:
     """TASK_245 fixes Matrix Editor column widths so extra groups scroll instead of shrinking."""
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(

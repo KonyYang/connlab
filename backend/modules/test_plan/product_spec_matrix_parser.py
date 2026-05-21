@@ -80,11 +80,14 @@ class ProductSpecMatrixParser:
     _GROUP_RE = re.compile(r"\bgroup\s*(\d+)\b", re.IGNORECASE)
     _GROUP_NUMERIC_RE = re.compile(r"^\s*\d+[a-z]?\s*$", re.IGNORECASE)
     _STEP_TOKEN_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
-    _MARKER_IN_PAREN_RE = re.compile(r"\(([a-z])\)", re.IGNORECASE)
+    _MARKER_IN_PAREN_RE = re.compile(r"\((?:\d*\s*)?([a-z])\)", re.IGNORECASE)
     _SYMBOL_MARKER_RE = re.compile(r"([*#])")
     _SAMPLE_ROW_RE = re.compile(r"\bsamples?\b", re.IGNORECASE)
     _SECTION_STEP_LIKE_RE = re.compile(r"^\s*\d+(\.\d+)*\s*$")
     _LETTER_NOTE_RE = re.compile(r"^\s*\(([a-z])\)\s*(.+)\s*$", re.IGNORECASE)
+    _LETTER_NOTE_ALT_PAREN_RE = re.compile(r"^\s*（([a-z])）\s*(.+)\s*$", re.IGNORECASE)
+    _LETTER_NOTE_SUFFIX_DELIM_RE = re.compile(r"^\s*([a-z])[)\.]\s*(.+)\s*$", re.IGNORECASE)
+    _NOTE_WRAPPED_LETTER_RE = re.compile(r"^\s*note\s*\(([a-z])\)\s*[:：]?\s*(.+)\s*$", re.IGNORECASE)
     _SYMBOL_NOTE_RE = re.compile(r"^\s*([*#])\s*(.+)\s*$")
 
     def parse_tables(
@@ -322,22 +325,128 @@ def _parse_step_tokens(
 
 
 def _collect_marker_notes(paragraphs: list[str]) -> dict[str, str]:
-    """Collect marker notes from paragraphs below/around matrix tables."""
+    """Collect marker notes from the most plausible contiguous note block."""
+    note_blocks = [
+        *_collect_marker_note_blocks(paragraphs),
+        *_collect_backfilled_letter_note_blocks(paragraphs),
+    ]
+    if not note_blocks:
+        return _collect_marker_notes_global(paragraphs)
+    # Prefer the last valid contiguous marker block, which most often matches
+    # the matrix-adjacent footer note area in product specs.
+    return note_blocks[-1]
+
+
+def _collect_marker_note_blocks(paragraphs: list[str]) -> list[dict[str, str]]:
+    """Collect contiguous marker-note blocks from paragraphs in reading order."""
+    blocks: list[dict[str, str]] = []
+    current_block: dict[str, str] = {}
+    current_marker_count = 0
+
+    for raw in paragraphs:
+        text = _clean(raw)
+        if not text:
+            if current_marker_count >= 2:
+                blocks.append(current_block)
+            current_block = {}
+            current_marker_count = 0
+            continue
+
+        parsed = _parse_marker_note_line(text)
+        if parsed is None:
+            if current_marker_count >= 2:
+                blocks.append(current_block)
+            current_block = {}
+            current_marker_count = 0
+            continue
+
+        marker, normalized_note = parsed
+        current_block[marker] = normalized_note
+        current_marker_count += 1
+
+    if current_marker_count >= 2:
+        blocks.append(current_block)
+    return blocks
+
+
+def _collect_backfilled_letter_note_blocks(paragraphs: list[str]) -> list[dict[str, str]]:
+    """Recover Word list-label notes when python-docx drops earlier labels."""
+    blocks: list[dict[str, str]] = []
+    cleaned = [_clean(raw) for raw in paragraphs]
+    for index, text in enumerate(cleaned):
+        parsed = _parse_marker_note_line(text)
+        if parsed is None:
+            continue
+        marker, normalized_note = parsed
+        if len(marker) != 1 or not marker.isalpha():
+            continue
+        marker_index = ord(marker.lower()) - ord("a")
+        if marker_index <= 0:
+            continue
+        start = index - marker_index
+        if start < 0:
+            continue
+        previous_lines = cleaned[start:index]
+        if len(previous_lines) != marker_index:
+            continue
+        if any(not line or _parse_marker_note_line(line) is not None for line in previous_lines):
+            continue
+        if not _looks_like_matrix_note_backfill_context(cleaned, start):
+            continue
+        block = {
+            chr(ord("a") + offset): f"({chr(ord('a') + offset)}) {line.strip()}"
+            for offset, line in enumerate(previous_lines)
+        }
+        block[marker.lower()] = normalized_note
+        blocks.append(block)
+    return blocks
+
+
+def _looks_like_matrix_note_backfill_context(paragraphs: list[str], start: int) -> bool:
+    """Return true when unlabeled note lines follow a matrix/table caption."""
+    context_start = max(0, start - 3)
+    context = " ".join(paragraphs[context_start:start]).lower()
+    return "table" in context and ("qualification" in context or "test" in context)
+
+
+def _collect_marker_notes_global(paragraphs: list[str]) -> dict[str, str]:
+    """Fallback global scan for sparse documents with isolated marker lines."""
     notes: dict[str, str] = {}
     for raw in paragraphs:
         text = _clean(raw)
         if not text:
             continue
-        letter_match = ProductSpecMatrixParser._LETTER_NOTE_RE.match(text)
-        if letter_match:
-            marker = letter_match.group(1).lower()
-            notes[marker] = f"({marker}) {letter_match.group(2).strip()}"
+        parsed = _parse_marker_note_line(text)
+        if parsed is None:
             continue
-        symbol_match = ProductSpecMatrixParser._SYMBOL_NOTE_RE.match(text)
-        if symbol_match:
-            marker = symbol_match.group(1)
-            notes[marker] = f"{marker} {symbol_match.group(2).strip()}"
+        marker, normalized_note = parsed
+        notes[marker] = normalized_note
     return notes
+
+
+def _parse_marker_note_line(text: str) -> tuple[str, str] | None:
+    """Parse one marker-note line into normalized (marker, note text)."""
+    letter_match = ProductSpecMatrixParser._LETTER_NOTE_RE.match(text)
+    if letter_match:
+        marker = letter_match.group(1).lower()
+        return marker, f"({marker}) {letter_match.group(2).strip()}"
+    alt_paren_match = ProductSpecMatrixParser._LETTER_NOTE_ALT_PAREN_RE.match(text)
+    if alt_paren_match:
+        marker = alt_paren_match.group(1).lower()
+        return marker, f"({marker}) {alt_paren_match.group(2).strip()}"
+    suffix_delim_match = ProductSpecMatrixParser._LETTER_NOTE_SUFFIX_DELIM_RE.match(text)
+    if suffix_delim_match:
+        marker = suffix_delim_match.group(1).lower()
+        return marker, f"({marker}) {suffix_delim_match.group(2).strip()}"
+    note_wrapped_match = ProductSpecMatrixParser._NOTE_WRAPPED_LETTER_RE.match(text)
+    if note_wrapped_match:
+        marker = note_wrapped_match.group(1).lower()
+        return marker, f"({marker}) {note_wrapped_match.group(2).strip()}"
+    symbol_match = ProductSpecMatrixParser._SYMBOL_NOTE_RE.match(text)
+    if symbol_match:
+        marker = symbol_match.group(1)
+        return marker, f"{marker} {symbol_match.group(2).strip()}"
+    return None
 
 
 def _extract_marker(token: str | None) -> str | None:

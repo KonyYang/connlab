@@ -59,6 +59,11 @@ type StepPreviewRow = {
   descriptionValue: string;
 };
 
+type PreviewStepNotePayload = {
+  sourceNote: string | null;
+  sourceItemSectionNote: string | null;
+};
+
 type StepDescriptionFamily = "LLCR" | "IR" | "DWV" | "MATING";
 
 type MatrixContextMenu =
@@ -413,6 +418,91 @@ function buildSelectedGroupStepPreviewRows(
   return dedupedBaseRows.map(({ rowIndex: _rowIndex, ...row }) => row);
 }
 
+function extractMarkerKey(token: string | null | undefined): string | null {
+  if (!token) {
+    return null;
+  }
+  const markerMatch = token.match(/\(([a-zA-Z])\)|([*#])/);
+  if (!markerMatch) {
+    return null;
+  }
+  if (markerMatch[1]) {
+    return markerMatch[1].toLowerCase();
+  }
+  return markerMatch[2] ?? null;
+}
+
+function buildPreviewStepNoteLookup(
+  importPreview: MatrixPreviewResponse | null,
+  selectedGroup: GroupColumn | null
+): {
+  byStepAndMarker: Map<string, PreviewStepNotePayload>;
+  byStep: Map<number, PreviewStepNotePayload>;
+  sampleNote: string | null;
+} {
+  const empty = {
+    byStepAndMarker: new Map<string, PreviewStepNotePayload>(),
+    byStep: new Map<number, PreviewStepNotePayload>(),
+    sampleNote: null,
+  };
+  if (!importPreview || !selectedGroup) {
+    return empty;
+  }
+  let groupIndex = -1;
+  const groupIdMatch = selectedGroup.id.match(/^group-(\d+)$/i);
+  if (groupIdMatch) {
+    const value = Number(groupIdMatch[1]);
+    if (Number.isInteger(value) && value > 0) {
+      groupIndex = value - 1;
+    }
+  }
+  let previewGroup = groupIndex >= 0 ? importPreview.groups[groupIndex] : undefined;
+  if (!previewGroup) {
+    previewGroup = importPreview.groups.find((group) => group.group_label === selectedGroup.name);
+  }
+  if (!previewGroup) {
+    return empty;
+  }
+  const byStepAndMarker = new Map<string, PreviewStepNotePayload>();
+  const byStep = new Map<number, PreviewStepNotePayload>();
+  previewGroup.steps.forEach((step) => {
+    const payload = {
+      sourceNote: step.source_note ?? null,
+      sourceItemSectionNote: step.source_item_section_note ?? null,
+    };
+    const marker = extractMarkerKey(step.raw_token) ?? extractMarkerKey(step.suffix_note ?? null);
+    if (marker) {
+      byStepAndMarker.set(`${step.sequence}|${marker}`, payload);
+    }
+    if (!byStep.has(step.sequence)) {
+      byStep.set(step.sequence, payload);
+    }
+  });
+  return { byStepAndMarker, byStep, sampleNote: previewGroup.sample_note ?? null };
+}
+
+function formatConciseItemSectionNote(stepNo: number, noteText: string): string {
+  const normalized = noteText.replace(/\s+/g, " ").trim();
+  if (normalized.length === 0) {
+    return "";
+  }
+  const withoutTestItem = normalized.replace(/^Test Item:\s*[^|]+(?:\|\s*)?/i, "");
+  const sectionMatch = withoutTestItem.match(/^Section:\s*(.+)$/i);
+  if (!sectionMatch) {
+    return `Step ${stepNo} | ${withoutTestItem}`;
+  }
+  const sectionPayload = sectionMatch[1].trim().replace(/([*#])\s+/g, "$1");
+  return `Step ${stepNo} | Section:${sectionPayload}`;
+}
+
+function stripLeadingMarkerPrefix(noteText: string): string {
+  return noteText
+    .trim()
+    .replace(/^\((?:\d*\s*)?[a-z]\)\s*/i, "")
+    .replace(/^[*#]\s*/, "")
+    .trim();
+}
+
 function MatrixAutoGrowTextarea({
   ariaLabel,
   className,
@@ -603,15 +693,41 @@ export function MatrixEditorWorkspace({
     selectedGroup,
     stepOutputOverrides
   );
+  const selectedGroupPreviewNotes = buildPreviewStepNoteLookup(importPreview, selectedGroup);
   const selectedGroupSamplesValue = selectedGroup ? sampleValues[selectedGroup.id] ?? "" : "";
   const selectedGroupStepNotes = selectedGroupStepRows
-    .filter((row) => row.sourceStepNote)
-    .map((row) => row.sourceStepNote as string);
+    .map((row) => {
+      const marker = extractMarkerKey(row.rawToken) ?? extractMarkerKey(row.suffixNote);
+      const mapped = marker
+        ? selectedGroupPreviewNotes.byStepAndMarker.get(`${row.stepNo}|${marker}`) ?? null
+        : selectedGroupPreviewNotes.byStep.get(row.stepNo) ?? null;
+      const rawNote = mapped?.sourceNote ?? row.sourceStepNote;
+      if (!rawNote) {
+        return null;
+      }
+      const body = stripLeadingMarkerPrefix(rawNote);
+      return body.length > 0 ? `${row.rawToken} ${body}` : row.rawToken;
+    })
+    .filter((note): note is string => Boolean(note));
+  const dedupedSelectedGroupStepNotes = [...new Set(selectedGroupStepNotes)];
   const selectedGroupItemSectionNotes = selectedGroupStepRows
-    .filter((row) => row.sourceItemSectionNote)
-    .map((row) => `Step ${row.stepNo} | ${row.sourceItemSectionNote as string}`);
+    .map((row) => {
+      const marker = extractMarkerKey(row.rawToken) ?? extractMarkerKey(row.suffixNote);
+      const mapped = marker
+        ? selectedGroupPreviewNotes.byStepAndMarker.get(`${row.stepNo}|${marker}`) ?? null
+        : selectedGroupPreviewNotes.byStep.get(row.stepNo) ?? null;
+      const rawNote = mapped?.sourceItemSectionNote ?? row.sourceItemSectionNote;
+      if (!rawNote) {
+        return null;
+      }
+      const concise = formatConciseItemSectionNote(row.stepNo, rawNote);
+      return concise.length > 0 ? concise : null;
+    })
+    .filter((note): note is string => Boolean(note));
   const sampleMarker = selectedGroupSamplesValue.match(/\(([a-zA-Z])\)|([*#])/);
-  const selectedGroupSampleNotes = sampleMarker ? [`${sampleMarker[0]}`] : [];
+  const selectedGroupSampleNotes = selectedGroupPreviewNotes.sampleNote
+    ? [selectedGroupPreviewNotes.sampleNote]
+    : sampleMarker ? [`${sampleMarker[0]}`] : [];
 
   const openChooseDocx = (): void => {
     fileInputRef.current?.click();
@@ -1416,7 +1532,7 @@ export function MatrixEditorWorkspace({
               {selectedGroupStepNotes.length > 0 ? (
                 <section className="matrix-editor-notes-card matrix-editor-notes-card-step">
                   <h4>Step Notes</h4>
-                  {selectedGroupStepNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
+                  {dedupedSelectedGroupStepNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
                 </section>
               ) : null}
               {selectedGroupItemSectionNotes.length > 0 ? (

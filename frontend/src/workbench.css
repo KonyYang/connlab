@@ -969,6 +969,39 @@
   padding: 8px;
 }
 
+.matrix-editor-notes-card {
+  border: 1px solid #d7deea;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.matrix-editor-notes-card h4,
+.matrix-editor-notes-card h5,
+.matrix-editor-notes-card p {
+  margin: 0;
+}
+
+.matrix-editor-notes-card p {
+  line-height: 1.35;
+}
+
+.matrix-editor-notes-card-step {
+  border-color: #e2cf9f;
+  background: #fff7e6;
+}
+
+.matrix-editor-notes-card-item-section {
+  border-color: #cfc9ef;
+  background: #f1effb;
+}
+
+.matrix-editor-notes-card-samples {
+  border-color: #d7deea;
+  background: #f8fbff;
+}
+
 .matrix-editor-step-workspace header {
   display: grid;
   gap: 3px;
