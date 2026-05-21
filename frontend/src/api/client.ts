@@ -622,8 +622,13 @@ export type MatrixPreviewFromPathRequest = {
 
 export type MatrixPreviewStep = {
   sequence: number;
+  raw_token: string;
+  suffix_note?: string | null;
   test_item: string;
   source_section?: string | null;
+  source_note?: string | null;
+  source_note_origin?: string | null;
+  source_item_section_note?: string | null;
   condition_summary?: string | null;
   method_summary?: string | null;
   reference_standard?: string | null;
@@ -641,6 +646,9 @@ export type MatrixPreviewGroup = {
   group_label: string;
   source_table_index: number;
   extraction_status: string;
+  sample_size?: number | null;
+  sample_quantity_expression?: string | null;
+  sample_note?: string | null;
   steps: MatrixPreviewStep[];
 };
 
@@ -652,6 +660,10 @@ export type MatrixPreviewResponse = {
   capability_status: string;
   generated_at: string;
   selected_table_index?: number | null;
+  selected_page_number?: number | null;
+  selected_page_table_index?: number | null;
+  candidate_tables: Array<Record<string, unknown>>;
+  preview_pdf_token?: string | null;
   groups: MatrixPreviewGroup[];
   warnings: string[];
   blockers: string[];
@@ -1421,6 +1433,39 @@ export function previewProjectTestPlanMatrixFromPath(
     method: "POST",
     body: JSON.stringify(input)
   });
+}
+
+export function previewProjectTestPlanMatrixFromUpload(
+  file: File,
+  projectId?: string | null,
+  locator?: {
+    pageNumber?: number | null;
+    pageTableIndex?: number | null;
+    tableTextQuery?: string | null;
+  }
+): Promise<MatrixPreviewResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (projectId) {
+    formData.append("project_id", projectId);
+  }
+  if (typeof locator?.pageNumber === "number") {
+    formData.append("page_number", String(locator.pageNumber));
+  }
+  if (typeof locator?.pageTableIndex === "number") {
+    formData.append("page_table_index", String(locator.pageTableIndex));
+  }
+  if ((locator?.tableTextQuery ?? "").trim().length > 0) {
+    formData.append("table_text_query", (locator?.tableTextQuery ?? "").trim());
+  }
+  return requestJson<MatrixPreviewResponse>("/api/test-plan/matrix-preview-from-upload", {
+    method: "POST",
+    body: formData
+  });
+}
+
+export function matrixPreviewPdfUrl(token: string): string {
+  return `${API_BASE}/api/test-plan/matrix-preview-pdf/${encodeURIComponent(token)}`;
 }
 
 export function listProjectTestPlanSourceCandidates(

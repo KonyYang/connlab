@@ -106,10 +106,11 @@ export function mapPreviewToDraftPayload(preview: MatrixPreviewResponse): Projec
     groups: preview.groups.map((group) => ({
       group_key: group.group_key,
       group_label: group.group_label,
-      sample_size: null,
+      sample_size: group.sample_size ?? null,
       source_table_index: group.source_table_index,
       steps: group.steps.map((step) => ({
-        raw_token: `${step.sequence}`,
+        raw_token: step.raw_token,
+        suffix_note: step.suffix_note ?? null,
         sequence: step.sequence,
         test_item: step.test_item,
         source_section: step.source_section,
@@ -120,7 +121,7 @@ export function mapPreviewToDraftPayload(preview: MatrixPreviewResponse): Projec
         estimated_duration_hint: step.estimated_duration_hint,
         source_table_index: step.source_table_index,
         source_row_index: step.source_row_index,
-        note: step.warnings.length > 0 ? step.warnings.join(" | ") : null
+        note: step.source_note ?? (step.warnings.length > 0 ? step.warnings.join(" | ") : null)
       }))
     })),
     warnings: [...preview.warnings],

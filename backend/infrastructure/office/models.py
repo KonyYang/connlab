@@ -83,6 +83,19 @@ class WordDocumentSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class WordTableLocation:
+    """Layout metadata for one Word table."""
+
+    table_index: int
+    page_number: int | None
+    page_table_index: int | None
+    preceding_paragraph: str | None
+    text_preview: str
+    row_count: int
+    column_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class WordHeaderCellResult:
     """Result from reading one Word header table cell."""
 

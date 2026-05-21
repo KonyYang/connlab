@@ -2841,8 +2841,7 @@ def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority
         assert required_selector in styles_source
 
     for required_label in [
-        "Add test item",
-        "Search conditions/items...",
+        "Import Matrix",
         "Group Step Workspace",
         "Templates",
         "Reference Library",
@@ -2864,8 +2863,7 @@ def test_task224_matrix_editor_structural_edit_interactions_are_present() -> Non
     )
 
     for required_label in [
-        "Add test item",
-        "Add group",
+        "Import Matrix",
         "Undo",
         "Insert left",
         "Insert right",

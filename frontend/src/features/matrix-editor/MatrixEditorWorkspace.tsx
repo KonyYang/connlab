@@ -1,6 +1,11 @@
-import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactElement } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
 import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
+import {
+  matrixPreviewPdfUrl,
+  previewProjectTestPlanMatrixFromUpload,
+  type MatrixPreviewResponse,
+} from "../../api/client";
 import "../../workbench.css";
 
 type MatrixEditorWorkspaceProps = {
@@ -42,9 +47,14 @@ type StepOutputOverride = {
 type StepPreviewRow = {
   key: string;
   stepNo: number;
+  rawToken: string;
+  suffixNote: string | null;
   rowId: string;
   sourceRequirement: string;
   sourceTestItem: string;
+  sourceSection: string;
+  sourceItemSectionNote: string | null;
+  sourceStepNote: string | null;
   requirementValue: string;
   descriptionValue: string;
 };
@@ -114,6 +124,59 @@ function buildInitialGroupColumns(): GroupColumn[] {
   return [{ id: "group-1", name: "1" }];
 }
 
+function buildMatrixFromPreview(
+  preview: MatrixPreviewResponse
+): {
+  groups: GroupColumn[];
+  rows: EditableMatrixRow[];
+  samples: Record<string, string>;
+} {
+  const groups: GroupColumn[] = preview.groups.map((group, index) => ({
+    id: `group-${index + 1}`,
+    name: group.group_label,
+  }));
+  const rowMap = new Map<
+    string,
+    { item: string; section: string; groups: Record<string, string[]> }
+  >();
+  preview.groups.forEach((group, groupIndex) => {
+    const groupId = `group-${groupIndex + 1}`;
+    group.steps.forEach((step) => {
+      const key = `${step.test_item}::${step.source_section ?? ""}`;
+      const existing = rowMap.get(key);
+      if (existing) {
+        existing.groups[groupId] = [...(existing.groups[groupId] ?? []), step.raw_token];
+      } else {
+        rowMap.set(key, {
+          item: step.test_item,
+          section: step.source_section ?? "",
+          groups: { [groupId]: [step.raw_token] },
+        });
+      }
+    });
+  });
+  const rows: EditableMatrixRow[] = Array.from(rowMap.values()).map((row, index) => {
+    const groupValues: Record<string, string> = {};
+    groups.forEach((group) => {
+      groupValues[group.id] = (row.groups[group.id] ?? []).join(",");
+    });
+    return {
+      id: `matrix-import-row-${index + 1}`,
+      item: row.item,
+      section: row.section,
+      method: "",
+      condition: "",
+      requirement: "",
+      groups: groupValues,
+    };
+  });
+  const samples: Record<string, string> = {};
+  preview.groups.forEach((group, groupIndex) => {
+    samples[`group-${groupIndex + 1}`] = group.sample_quantity_expression ?? "";
+  });
+  return { groups, rows, samples };
+}
+
 function cloneGroups(groups: GroupColumn[]): GroupColumn[] {
   return groups.map((group) => ({ ...group }));
 }
@@ -137,30 +200,40 @@ function normalizeGroupName(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[]; errorMessage: string } {
+type ParsedStepToken = {
+  sequence: number;
+  rawToken: string;
+  suffixNote: string | null;
+};
+
+function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[]; tokens: ParsedStepToken[]; errorMessage: string } {
   const normalized = rawValue.trim();
   if (normalized === "") {
-    return { isValid: true, numbers: [], errorMessage: "" };
+    return { isValid: true, numbers: [], tokens: [], errorMessage: "" };
   }
-  if (!/^\d+(,\d+)*$/.test(normalized)) {
-    const invalidCharacters = Array.from(
-      new Set(
-        normalized
-          .split("")
-          .filter((char) => !/[0-9,]/.test(char))
-      )
-    );
-    const invalidCharsText =
-      invalidCharacters.length > 0 ? ` Invalid characters: ${invalidCharacters.join(" ")}` : "";
-    return {
-      isValid: false,
-      numbers: [],
-      errorMessage: `Only digits and commas are allowed (example: 1,2,3).${invalidCharsText}`,
-    };
+  const normalizedForSplit = normalized.replaceAll("\n", ",").replaceAll("，", ",").replaceAll(";", ",");
+  const parts = normalizedForSplit.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
+  const tokens: ParsedStepToken[] = [];
+  for (const part of parts) {
+    const match = part.match(/^(\d+)\s*(\([a-zA-Z]\)|[*#])?$/);
+    if (!match) {
+      return {
+        isValid: false,
+        numbers: [],
+        tokens: [],
+        errorMessage: "Only digits and commas are allowed (extended tokens: 3(a), 6#, 10*).",
+      };
+    }
+    tokens.push({
+      sequence: Number(match[1]),
+      rawToken: part,
+      suffixNote: match[2] ?? null
+    });
   }
   return {
     isValid: true,
-    numbers: normalized.split(",").map((token) => Number(token)),
+    numbers: tokens.map((token) => token.sequence),
+    tokens,
     errorMessage: "",
   };
 }
@@ -260,14 +333,22 @@ function buildSelectedGroupStepPreviewRows(
         return [];
       }
       return parsed.numbers.map((stepNo) => {
+        const token = parsed.tokens.find((item) => item.sequence === stepNo);
         const key = stepOutputKey(selectedGroup.id, stepNo, row.id);
         const override = stepOutputOverrides[key];
+        const itemSectionMarker = row.section.match(/([*#]|\([a-zA-Z]\))/)?.[1] ?? row.item.match(/([*#]|\([a-zA-Z]\))/)?.[1] ?? null;
+        const stepMarker = token?.suffixNote ?? token?.rawToken.match(/([*#]|\([a-zA-Z]\))/)?.[1] ?? null;
         return {
           key,
           stepNo,
+          rawToken: token?.rawToken ?? `${stepNo}`,
+          suffixNote: token?.suffixNote ?? null,
           rowId: row.id,
           sourceRequirement: row.requirement,
           sourceTestItem: row.item,
+          sourceSection: row.section,
+          sourceItemSectionNote: itemSectionMarker ? `Section: ${row.section}${itemSectionMarker}` : null,
+          sourceStepNote: stepMarker ? `Step ${stepNo}${stepMarker}` : null,
           requirementValue: override?.requirement ?? row.requirement,
           descriptionValue: override?.description ?? row.item,
           rowIndex
@@ -404,10 +485,26 @@ export function MatrixEditorWorkspace({
   const [undoStack, setUndoStack] = useState<MatrixSnapshot[]>([]);
   const [contextMenu, setContextMenu] = useState<MatrixContextMenu | null>(null);
   const [stepOutputOverrides, setStepOutputOverrides] = useState<Record<string, StepOutputOverride>>({});
+  const [sampleValues, setSampleValues] = useState<Record<string, string>>({ "group-1": "" });
+  const [importPreview, setImportPreview] = useState<MatrixPreviewResponse | null>(null);
+  const [importingPreview, setImportingPreview] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [locatorPage, setLocatorPage] = useState("");
+  const [locatorTableOnPage, setLocatorTableOnPage] = useState("");
+  const [locatorKeyword, setLocatorKeyword] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  if (!model.project && !model.error) {
-    return <LoadingState label="Loading matrix editor..." />;
-  }
+  useLayoutEffect(() => {
+    setSampleValues((previous) => {
+      const next: Record<string, string> = {};
+      groupColumns.forEach((group) => {
+        next[group.id] = previous[group.id] ?? "";
+      });
+      return next;
+    });
+  }, [groupColumns]);
 
   const projectLabel = model.project?.product_name ?? "Connector Project";
   const ltr = model.latestLtr ?? "Not registered";
@@ -519,6 +616,134 @@ export function MatrixEditorWorkspace({
     selectedGroup,
     stepOutputOverrides
   );
+  const selectedGroupSamplesValue = selectedGroup ? sampleValues[selectedGroup.id] ?? "" : "";
+  const selectedGroupStepNotes = selectedGroupStepRows
+    .filter((row) => row.sourceStepNote)
+    .map((row) => row.sourceStepNote as string);
+  const selectedGroupItemSectionNotes = selectedGroupStepRows
+    .filter((row) => row.sourceItemSectionNote)
+    .map((row) => `Step ${row.stepNo} | ${row.sourceItemSectionNote as string}`);
+  const sampleMarker = selectedGroupSamplesValue.match(/\(([a-zA-Z])\)|([*#])/);
+  const selectedGroupSampleNotes = sampleMarker ? [`${sampleMarker[0]}`] : [];
+
+  const openChooseDocx = (): void => {
+    fileInputRef.current?.click();
+  };
+
+  const applyImportPreview = (mode: "replace" | "append"): void => {
+    if (!importPreview) {
+      return;
+    }
+    const mapped = buildMatrixFromPreview(importPreview);
+    if (mode === "replace") {
+      setGroupColumns(mapped.groups);
+      setEditableRows(mapped.rows);
+      setSampleValues(mapped.samples);
+      setSelectedGroupId(mapped.groups[0]?.id ?? null);
+      setSelectedRowId(null);
+      return;
+    }
+    const groupIdMap = new Map<string, string>();
+    const appendedGroups = [...groupColumns];
+    mapped.groups.forEach((group, index) => {
+      const nextId = nextGroupId(appendedGroups);
+      groupIdMap.set(`group-${index + 1}`, nextId);
+      appendedGroups.push({ id: nextId, name: group.name });
+    });
+    setGroupColumns(appendedGroups);
+    setEditableRows((previous) => {
+      const nextRows = cloneRows(previous);
+      mapped.rows.forEach((row, rowIndex) => {
+        const values: Record<string, string> = {};
+        groupColumns.forEach((group) => {
+          values[group.id] = "";
+        });
+        Object.entries(row.groups).forEach(([oldId, value]) => {
+          const nextId = groupIdMap.get(oldId);
+          if (nextId) {
+            values[nextId] = value;
+          }
+        });
+        nextRows.push({
+          id: `matrix-import-append-row-${Date.now()}-${rowIndex}`,
+          item: row.item,
+          section: row.section,
+          method: "",
+          condition: "",
+          requirement: "",
+          groups: values,
+        });
+      });
+      return nextRows;
+    });
+    setSampleValues((previous) => {
+      const next = { ...previous };
+      Object.entries(mapped.samples).forEach(([oldId, value]) => {
+        const nextId = groupIdMap.get(oldId);
+        if (nextId) {
+          next[nextId] = value;
+        }
+      });
+      return next;
+    });
+  };
+
+  const onImportFileChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    setImportFile(file);
+    setLocatorPage("");
+    setLocatorTableOnPage("");
+    setLocatorKeyword("");
+    setImportError(null);
+    setImportingPreview(true);
+    try {
+      const preview = await previewProjectTestPlanMatrixFromUpload(file, projectId);
+      setImportPreview(preview);
+      setShowImportDialog(true);
+      if (preview.blockers.length > 0) {
+        setImportError(preview.blockers[0]);
+      }
+    } catch (error) {
+      setImportPreview(null);
+      setImportError(error instanceof Error ? error.message : "Import preview failed.");
+    } finally {
+      setImportingPreview(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showImportDialog || !importFile) {
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setImportingPreview(true);
+      setImportError(null);
+      try {
+        const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
+          pageNumber: locatorPage.trim() ? Number(locatorPage) : null,
+          pageTableIndex: locatorTableOnPage.trim() ? Number(locatorTableOnPage) : null,
+          tableTextQuery: locatorKeyword.trim() || null,
+        });
+        setImportPreview(preview);
+        if (preview.blockers.length > 0) {
+          setImportError(preview.blockers[0]);
+        }
+      } catch (error) {
+        setImportError(error instanceof Error ? error.message : "Reparse failed.");
+      } finally {
+        setImportingPreview(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [showImportDialog, importFile, locatorPage, locatorTableOnPage, locatorKeyword, projectId]);
+
+  if (!model.project && !model.error) {
+    return <LoadingState label="Loading matrix editor..." />;
+  }
 
   const pushSnapshot = (): void => {
     setUndoStack((previous) => [
@@ -839,21 +1064,80 @@ export function MatrixEditorWorkspace({
 
       <section className="matrix-editor-actionbar">
         <div className="matrix-editor-actionbar-main">
-          <button type="button" onClick={addRow}>Add test item</button>
-          <button
-            type="button"
-            onClick={addGroup}
-          >
-            Add group
-          </button>
+          <button type="button" onClick={openChooseDocx}>{importingPreview ? "Parsing..." : "Import Matrix"}</button>
           <button type="button" onClick={undoLast} disabled={undoStack.length === 0}>Undo</button>
-        </div>
-        <div className="matrix-editor-actionbar-side">
-          <button disabled type="button">Display options</button>
-          <button disabled type="button">Filter</button>
-          <input placeholder="Search conditions/items..." type="text" />
+          <input
+            ref={fileInputRef}
+            accept=".docx"
+            style={{ display: "none" }}
+            type="file"
+            onChange={(event) => void onImportFileChange(event)}
+          />
         </div>
       </section>
+      {showImportDialog ? (
+        <section className="matrix-editor-import-modal-backdrop">
+          <article className="matrix-editor-import-modal" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <h3>Import Matrix</h3>
+              <p>{importPreview?.source_document_name ?? importFile?.name ?? "Selected file"}</p>
+            </header>
+            <div className="matrix-editor-import-modal-body">
+              <div className="matrix-editor-import-pdf-pane">
+                {importPreview?.preview_pdf_token ? (
+                  <iframe title="Word PDF Preview" src={matrixPreviewPdfUrl(importPreview.preview_pdf_token)} />
+                ) : (
+                  <div className="matrix-editor-step-empty">PDF preview unavailable.</div>
+                )}
+              </div>
+              <div className="matrix-editor-import-controls-pane">
+                <label>
+                  <span>Page</span>
+                  <input value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
+                </label>
+                <label>
+                  <span>Table on page</span>
+                  <input value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
+                </label>
+                <label>
+                  <span>Keyword in table</span>
+                  <input value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
+                </label>
+                {importPreview ? (
+                  <p>
+                    Selected: page {importPreview.selected_page_number ?? "-"}, table {importPreview.selected_page_table_index ?? "-"}, index {importPreview.selected_table_index ?? "-"}; groups {importPreview.groups.length}; steps {importPreview.groups.reduce((count, group) => count + group.steps.length, 0)}
+                  </p>
+                ) : null}
+                {importingPreview ? <p>Reparsing...</p> : null}
+                {importError ? <p className="error">{importError}</p> : null}
+              </div>
+            </div>
+            <footer className="matrix-editor-actionbar-main">
+              <button type="button" onClick={() => setShowImportDialog(false)}>Cancel</button>
+              <button
+                type="button"
+                disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
+                onClick={() => {
+                  applyImportPreview("replace");
+                  setShowImportDialog(false);
+                }}
+              >
+                Replace
+              </button>
+              <button
+                type="button"
+                disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
+                onClick={() => {
+                  applyImportPreview("append");
+                  setShowImportDialog(false);
+                }}
+              >
+                Append
+              </button>
+            </footer>
+          </article>
+        </section>
+      ) : null}
 
       <section className="matrix-editor-studio">
         <section className="matrix-editor-grid-surface">
@@ -990,6 +1274,31 @@ export function MatrixEditorWorkspace({
                     );
                   })()
                 ))}
+                <tr>
+                  <td />
+                  <td>Samples Quantity (PCS)</td>
+                  <td />
+                  <td />
+                  <td />
+                  <td />
+                  {groupColumns.map((group) => (
+                    <td key={`sample-${group.id}`}>
+                      <input
+                        className="matrix-editor-inline-input matrix-editor-sample-input"
+                        value={sampleValues[group.id] ?? ""}
+                        onFocus={() => {
+                          setSelectedGroupId(group.id);
+                          setSelectedRowId(null);
+                          setContextMenu(null);
+                        }}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setSampleValues((previous) => ({ ...previous, [group.id]: value }));
+                        }}
+                      />
+                    </td>
+                  ))}
+                </tr>
               </tbody>
             </table>
             {contextMenu ? (
@@ -1083,38 +1392,74 @@ export function MatrixEditorWorkspace({
           ) : selectedGroupStepRows.length === 0 ? (
             <div className="matrix-editor-step-empty">No steps in this group.</div>
           ) : (
-            <table className="matrix-editor-step-output-table">
-              <thead>
-                <tr>
-                  <th>Step</th>
-                  <th>Requirement</th>
-                  <th>Step Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedGroupStepRows.map((row) => (
-                  <tr key={row.key}>
-                    <td>{row.stepNo}</td>
-                    <td>
-                      <MatrixAutoGrowTextarea
-                        ariaLabel={`Step ${row.stepNo} requirement`}
-                        className="matrix-editor-step-output-textarea"
-                        value={row.requirementValue}
-                        onChange={(value) => updateStepOutputOverride(row.key, "requirement", value)}
-                      />
-                    </td>
-                    <td>
-                      <MatrixAutoGrowTextarea
-                        ariaLabel={`Step ${row.stepNo} description`}
-                        className="matrix-editor-step-output-textarea"
-                        value={row.descriptionValue}
-                        onChange={(value) => updateStepOutputOverride(row.key, "description", value)}
-                      />
-                    </td>
+            <>
+              <table className="matrix-editor-step-output-table">
+                <thead>
+                  <tr>
+                    <th>Step</th>
+                    <th>Requirement</th>
+                    <th>Step Description</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {selectedGroupStepRows.map((row) => (
+                    <tr key={row.key}>
+                      <td>{row.stepNo}</td>
+                      <td>
+                        <MatrixAutoGrowTextarea
+                          ariaLabel={`Step ${row.stepNo} requirement`}
+                          className="matrix-editor-step-output-textarea"
+                          value={row.requirementValue}
+                          onChange={(value) => updateStepOutputOverride(row.key, "requirement", value)}
+                        />
+                      </td>
+                      <td>
+                        <MatrixAutoGrowTextarea
+                          ariaLabel={`Step ${row.stepNo} description`}
+                          className="matrix-editor-step-output-textarea"
+                          value={row.descriptionValue}
+                          onChange={(value) => updateStepOutputOverride(row.key, "description", value)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {selectedGroupStepNotes.length > 0 ? (
+                <section className="matrix-editor-notes-card matrix-editor-notes-card-step">
+                  <h4>Step Notes</h4>
+                  {selectedGroupStepNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
+                </section>
+              ) : null}
+              {selectedGroupItemSectionNotes.length > 0 ? (
+                <section className="matrix-editor-notes-card matrix-editor-notes-card-item-section">
+                  <h4>Item/Section Notes</h4>
+                  {selectedGroupItemSectionNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
+                </section>
+              ) : null}
+              <section className="matrix-editor-notes-card matrix-editor-notes-card-samples">
+                <div className="matrix-editor-samples-inline">
+                  <h4>Samples</h4>
+                  <input
+                    className="matrix-editor-inline-input matrix-editor-samples-inline-input"
+                    value={selectedGroupSamplesValue}
+                    onChange={(event) => {
+                      if (!selectedGroup) {
+                        return;
+                      }
+                      const value = event.target.value;
+                      setSampleValues((previous) => ({ ...previous, [selectedGroup.id]: value }));
+                    }}
+                  />
+                </div>
+                {selectedGroupSampleNotes.length > 0 ? (
+                  <>
+                    <h5>Samples Notes</h5>
+                    {selectedGroupSampleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
+                  </>
+                ) : null}
+              </section>
+            </>
           )}
         </aside>
       </section>

@@ -15,6 +15,7 @@ from backend.infrastructure.office.models import (
     WordDocumentSnapshot,
     WordHeaderCellResult,
     WordSection2WriteResult,
+    WordTableLocation,
 )
 from backend.infrastructure.office.outlook_msg_gateway import OutlookMsgGateway
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
@@ -62,6 +63,14 @@ class OfficeFacade:
     def read_word_document(self, source_path: Path) -> WordDocumentSnapshot:
         """Read a Word document through the configured gateway."""
         return self._word_gateway.read_word_document(source_path)
+
+    def read_word_table_locations(self, source_path: Path) -> tuple[WordTableLocation, ...]:
+        """Read Word table location metadata through the configured gateway."""
+        return self._word_gateway.read_table_locations(source_path)
+
+    def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        """Export one Word document as a PDF preview through the configured gateway."""
+        return self._word_gateway.export_preview_pdf(source_path, output_pdf_path)
 
     def read_word_header_table_cell(
         self,

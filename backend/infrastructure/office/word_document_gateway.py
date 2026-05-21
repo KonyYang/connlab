@@ -12,6 +12,7 @@ from backend.infrastructure.office.models import (
     WordHeaderCellResult,
     WordSection2FieldChange,
     WordSection2WriteResult,
+    WordTableLocation,
 )
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 
@@ -57,6 +58,29 @@ class WordDocumentGateway:
             footers=footers,
             raw_text=raw_text,
         )
+
+    def read_table_locations(self, source_path: Path) -> tuple[WordTableLocation, ...]:
+        """Read table page/location metadata through Microsoft Word COM."""
+        path = Path(source_path)
+        if path.suffix.lower() != ".docx":
+            raise ValueError(f"Only .docx files are supported by Word table location: {path}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Word document does not exist: {path}")
+        return _read_table_locations_with_com(path)
+
+    def export_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        """Export one `.docx` source file to a PDF preview via Word COM."""
+        path = Path(source_path)
+        output = Path(output_pdf_path)
+        if path.suffix.lower() != ".docx":
+            raise ValueError(f"Only .docx files are supported by Word PDF export: {path}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Word document does not exist: {path}")
+        if output.suffix.lower() != ".pdf":
+            raise ValueError(f"Preview output must be a .pdf file: {output}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        _export_pdf_with_com(path, output)
+        return output
 
     def read_header_table_cell(
         self,
@@ -179,6 +203,111 @@ def _read_header_cell_with_com(path: Path, row: int, column: int) -> str | None:
         if document is not None:
             document.Close(SaveChanges=False)
         word.Quit()
+
+
+def _read_table_locations_with_com(path: Path) -> tuple[WordTableLocation, ...]:
+    """Return table layout metadata through Microsoft Word COM."""
+    try:
+        import pythoncom  # type: ignore[import-not-found]
+        import win32com.client  # type: ignore[import-not-found]
+    except ImportError as exc:  # pragma: no cover - depends on Windows host
+        raise OfficeAutomationUnavailable("Word COM automation requires pywin32.") from exc
+
+    wd_active_end_page_number = 3
+    pythoncom.CoInitialize()
+    word = None
+    document = None
+    try:
+        word = win32com.client.DispatchEx("Word.Application")
+        word.Visible = False
+        word.DisplayAlerts = 0
+        document = word.Documents.Open(
+            str(path),
+            ReadOnly=True,
+            AddToRecentFiles=False,
+        )
+        page_counts: dict[int, int] = {}
+        locations: list[WordTableLocation] = []
+        for table_index, table in enumerate(_com_iter(document.Tables), start=1):
+            page_number = _safe_int(table.Range.Information(wd_active_end_page_number))
+            page_table_index = None
+            if page_number is not None:
+                page_counts[page_number] = page_counts.get(page_number, 0) + 1
+                page_table_index = page_counts[page_number]
+            locations.append(
+                WordTableLocation(
+                    table_index=table_index,
+                    page_number=page_number,
+                    page_table_index=page_table_index,
+                    preceding_paragraph=_clean(_preceding_paragraph_text(table)),
+                    text_preview=_clean(str(table.Range.Text).replace("\r", " "))[:240],
+                    row_count=_safe_int(getattr(table.Rows, "Count", 0)) or 0,
+                    column_count=_safe_int(getattr(table.Columns, "Count", 0)) or 0,
+                )
+            )
+        return tuple(locations)
+    finally:
+        if document is not None:
+            document.Close(SaveChanges=False)
+        if word is not None:
+            word.Quit()
+        pythoncom.CoUninitialize()
+
+
+def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
+    """Export one Word document to PDF through Microsoft Word COM."""
+    try:
+        import pythoncom  # type: ignore[import-not-found]
+        import win32com.client  # type: ignore[import-not-found]
+    except ImportError as exc:  # pragma: no cover - depends on Windows host
+        raise OfficeAutomationUnavailable("Word COM automation requires pywin32.") from exc
+
+    source = source_path.resolve()
+    output = output_pdf_path.resolve()
+    wd_export_format_pdf = 17
+    pythoncom.CoInitialize()
+    word = None
+    document = None
+    try:
+        word = win32com.client.DispatchEx("Word.Application")
+        word.Visible = False
+        word.DisplayAlerts = 0
+        document = word.Documents.Open(
+            str(source),
+            ReadOnly=True,
+            AddToRecentFiles=False,
+        )
+        document.ExportAsFixedFormat(
+            OutputFileName=str(output),
+            ExportFormat=wd_export_format_pdf,
+            OpenAfterExport=False,
+        )
+    finally:
+        if document is not None:
+            document.Close(SaveChanges=False)
+        if word is not None:
+            word.Quit()
+        pythoncom.CoUninitialize()
+
+
+def _preceding_paragraph_text(table) -> str:
+    """Return the paragraph immediately before a COM table when available."""
+    try:
+        paragraph_range = table.Range.Duplicate
+        paragraph_range.Start = max(0, int(table.Range.Start) - 1)
+        paragraph_range.End = int(table.Range.Start)
+        paragraph_range.MoveStart(Unit=4, Count=-1)
+        return str(paragraph_range.Text)
+    except Exception:
+        return ""
+
+
+def _safe_int(value: object) -> int | None:
+    """Convert COM values to int when possible."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _com_iter(collection) -> list[object]:

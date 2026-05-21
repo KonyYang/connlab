@@ -11,10 +11,15 @@ class MatrixStepPreview:
     """One test step extracted from a Matrix group column."""
 
     sequence: int
+    raw_token: str
+    suffix_note: str | None
     test_item: str
     source_section: str | None
     source_table_index: int
     source_row_index: int
+    source_note: str | None = None
+    source_note_origin: str | None = None
+    source_item_section_note: str | None = None
     condition_summary: str | None = None
     method_summary: str | None = None
     reference_standard: str | None = None
@@ -34,6 +39,9 @@ class MatrixGroupPreview:
     source_table_index: int
     extraction_status: str
     steps: tuple[MatrixStepPreview, ...]
+    sample_size: int | None = None
+    sample_quantity_expression: str | None = None
+    sample_note: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,20 +66,47 @@ class ProductSpecMatrixParser:
     """Extract group sequences from Matrix-like product specification tables."""
 
     _GROUP_RE = re.compile(r"\bgroup\s*(\d+)\b", re.IGNORECASE)
+    _GROUP_NUMERIC_RE = re.compile(r"^\s*\d+[a-z]?\s*$", re.IGNORECASE)
+    _STEP_TOKEN_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
+    _MARKER_IN_PAREN_RE = re.compile(r"\(([a-z])\)", re.IGNORECASE)
+    _SYMBOL_MARKER_RE = re.compile(r"([*#])")
+    _SAMPLE_ROW_RE = re.compile(r"(sample\s*(size|quantity))", re.IGNORECASE)
+    _LETTER_NOTE_RE = re.compile(r"^\s*\(([a-z])\)\s*(.+)\s*$", re.IGNORECASE)
+    _SYMBOL_NOTE_RE = re.compile(r"^\s*([*#])\s*(.+)\s*$")
 
-    def parse_tables(self, tables: list[list[list[str]]]) -> MatrixParseResult:
+    def parse_tables(
+        self,
+        tables: list[list[list[str]]],
+        paragraphs: list[str] | None = None,
+        selected_table_index: int | None = None,
+    ) -> MatrixParseResult:
         """Parse the first supported Matrix-like table from document tables."""
         warnings: list[str] = []
+        marker_notes = _collect_marker_notes(paragraphs or [])
+        best_result: MatrixParseResult | None = None
+        best_score = -1
         for table_index, table in enumerate(tables, start=1):
+            if selected_table_index is not None and table_index != selected_table_index:
+                continue
             header = self._find_header(table)
             if header is None:
                 continue
-            result = self._parse_table(table, table_index, header)
+            result = self._parse_table(table, table_index, header, marker_notes)
+            score = _table_score(result.groups)
+            if score > best_score:
+                best_score = score
+                best_result = MatrixParseResult(
+                    groups=result.groups,
+                    warnings=tuple([*warnings, *result.warnings]),
+                    blockers=result.blockers,
+                    selected_table_index=table_index,
+                )
+        if best_result is not None:
+            return best_result
+        if selected_table_index is not None:
             return MatrixParseResult(
-                groups=result.groups,
-                warnings=tuple([*warnings, *result.warnings]),
-                blockers=result.blockers,
-                selected_table_index=table_index,
+                groups=(),
+                blockers=(f"Selected table {selected_table_index} is not a valid Matrix table.",),
             )
         return MatrixParseResult(
             groups=(),
@@ -85,16 +120,28 @@ class ProductSpecMatrixParser:
             group_columns = tuple(
                 (index, _clean(row[index]))
                 for index, value in enumerate(normalized)
-                if self._GROUP_RE.search(value)
+                if self._GROUP_RE.search(value) or self._GROUP_NUMERIC_RE.match(value)
             )
             if not group_columns:
                 continue
-            item_column = _find_column(normalized, ("test items", "test item"))
-            section_column = _find_column(normalized, ("section",))
+            item_column = _find_column(normalized, ("test items", "test item", "test description", "test"))
+            section_column = _find_column(normalized, ("section", "para"))
+            if (item_column is None or section_column is None) and row_index < len(table):
+                next_row = table[row_index]
+                next_normalized = [_normalize(cell) for cell in next_row]
+                next_item = _find_column(next_normalized, ("test items", "test item", "test description", "test"))
+                next_section = _find_column(next_normalized, ("section", "para"))
+                if next_item is not None and next_section is not None:
+                    return _Header(
+                        row_index=row_index + 1,
+                        item_column=next_item,
+                        section_column=next_section,
+                        group_columns=group_columns,
+                    )
             if item_column is None or section_column is None:
                 previous = table[row_index - 2] if row_index >= 2 else []
                 combined = [_normalize(cell) for cell in [*previous, *row]]
-                if not any("test item" in cell for cell in combined):
+                if not any(("test item" in cell or cell == "test") for cell in combined):
                     continue
                 item_column = item_column if item_column is not None else 0
                 section_column = section_column if section_column is not None else 1
@@ -111,40 +158,64 @@ class ProductSpecMatrixParser:
         table: list[list[str]],
         table_index: int,
         header: _Header,
+        marker_notes: dict[str, str],
     ) -> MatrixParseResult:
         """Extract Matrix groups from one table."""
         group_steps: dict[str, list[MatrixStepPreview]] = {
             label: [] for _, label in header.group_columns
         }
+        group_sample_size: dict[str, int | None] = {label: None for _, label in header.group_columns}
+        group_sample_expression: dict[str, str | None] = {label: None for _, label in header.group_columns}
+        group_sample_note: dict[str, str | None] = {label: None for _, label in header.group_columns}
         warnings: list[str] = []
         for row_index, row in enumerate(table[header.row_index :], start=header.row_index + 1):
             test_item = _cell(row, header.item_column)
             if not test_item or _looks_like_note_or_footer(test_item):
                 continue
             source_section = _cell(row, header.section_column) if header.section_column is not None else None
+            is_sample_row = self._SAMPLE_ROW_RE.search(test_item or "") is not None
+            row_item_section_note = _row_item_section_note(test_item, source_section, marker_notes)
             for column, group_label in header.group_columns:
-                sequence_text = _cell(row, column)
-                if not sequence_text:
+                cell_value = _cell(row, column)
+                if not cell_value:
                     continue
-                parsed_sequences, sequence_warnings = _parse_sequences(sequence_text)
-                for warning in sequence_warnings:
-                    warnings.append(
-                        f"Table {table_index} row {row_index} {group_label}: {warning}"
-                    )
-                for sequence in parsed_sequences:
+                if is_sample_row:
+                    group_sample_expression[group_label] = cell_value
+                    group_sample_size[group_label] = _sample_size_value(cell_value)
+                    marker = _extract_marker(cell_value)
+                    if marker:
+                        group_sample_note[group_label] = marker_notes.get(marker)
+                    continue
+                parsed_tokens, token_warnings = _parse_step_tokens(cell_value)
+                for warning in token_warnings:
+                    warnings.append(f"Table {table_index} row {row_index} {group_label}: {warning}")
+                for token in parsed_tokens:
+                    marker = _extract_marker(token["raw_token"])
                     group_steps[group_label].append(
                         MatrixStepPreview(
-                            sequence=sequence,
+                            sequence=token["sequence"],
+                            raw_token=token["raw_token"],
+                            suffix_note=token["suffix"],
                             test_item=test_item,
                             source_section=source_section,
+                            source_note=marker_notes.get(marker) if marker else None,
+                            source_note_origin="step" if marker and marker_notes.get(marker) else None,
+                            source_item_section_note=row_item_section_note,
                             source_table_index=table_index,
                             source_row_index=row_index,
                             duration_status="deferred",
-                            warnings=tuple(sequence_warnings),
+                            warnings=tuple(token_warnings),
                         )
                     )
         groups = tuple(
-            _build_group(label, table_index, steps)
+            _build_group(
+                label,
+                table_index,
+                steps,
+                group_sample_size.get(label),
+                group_sample_expression.get(label),
+                group_sample_note.get(label),
+            )
             for label, steps in group_steps.items()
             if steps
         )
@@ -166,6 +237,9 @@ def _build_group(
     label: str,
     table_index: int,
     steps: list[MatrixStepPreview],
+    sample_size: int | None,
+    sample_quantity_expression: str | None,
+    sample_note: str | None,
 ) -> MatrixGroupPreview:
     """Build one sorted group preview with duplicate-preserving steps."""
     sorted_steps = tuple(
@@ -177,6 +251,9 @@ def _build_group(
         group_label=label,
         source_table_index=table_index,
         extraction_status=status,
+        sample_size=sample_size,
+        sample_quantity_expression=sample_quantity_expression,
+        sample_note=sample_note,
         steps=sorted_steps,
     )
 
@@ -196,19 +273,98 @@ def _duplicate_sequence_warnings(groups: tuple[MatrixGroupPreview, ...]) -> list
     return warnings
 
 
-def _parse_sequences(value: str) -> tuple[tuple[int, ...], tuple[str, ...]]:
-    """Parse comma-separated Matrix sequence values."""
+def _parse_step_tokens(
+    value: str,
+) -> tuple[tuple[dict[str, int | str | None], ...], tuple[str, ...]]:
+    """Parse matrix step tokens preserving raw token and suffix."""
     warnings: list[str] = []
-    sequences: list[int] = []
+    tokens: list[dict[str, int | str | None]] = []
     normalized = value.replace("，", ",").replace(";", ",").replace("\n", ",")
     for token in (part.strip() for part in normalized.split(",")):
         if not token:
             continue
-        if not token.isdigit():
+        match = ProductSpecMatrixParser._STEP_TOKEN_RE.match(token)
+        if match is None:
             warnings.append(f"Unrecognized sequence token '{token}'.")
             continue
-        sequences.append(int(token))
-    return tuple(sequences), tuple(warnings)
+        number = match.group("number")
+        suffix = match.group("suffix").strip() or None
+        tokens.append({"sequence": int(number), "raw_token": token, "suffix": suffix})
+    return tuple(tokens), tuple(warnings)
+
+
+def _collect_marker_notes(paragraphs: list[str]) -> dict[str, str]:
+    """Collect marker notes from paragraphs below/around matrix tables."""
+    notes: dict[str, str] = {}
+    for raw in paragraphs:
+        text = _clean(raw)
+        if not text:
+            continue
+        letter_match = ProductSpecMatrixParser._LETTER_NOTE_RE.match(text)
+        if letter_match:
+            marker = letter_match.group(1).lower()
+            notes[marker] = f"({marker}) {letter_match.group(2).strip()}"
+            continue
+        symbol_match = ProductSpecMatrixParser._SYMBOL_NOTE_RE.match(text)
+        if symbol_match:
+            marker = symbol_match.group(1)
+            notes[marker] = f"{marker} {symbol_match.group(2).strip()}"
+    return notes
+
+
+def _extract_marker(token: str | None) -> str | None:
+    """Extract a marker key from one token/value."""
+    if not token:
+        return None
+    paren = ProductSpecMatrixParser._MARKER_IN_PAREN_RE.search(token)
+    if paren:
+        return paren.group(1).lower()
+    symbol = ProductSpecMatrixParser._SYMBOL_MARKER_RE.search(token)
+    if symbol:
+        return symbol.group(1)
+    return None
+
+
+def _sample_size_value(text: str | None) -> int | None:
+    """Parse sample quantity as integer when possible."""
+    if not text:
+        return None
+    match = re.match(r"^\s*(\d+)\s*$", text)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _row_item_section_note(
+    test_item: str | None,
+    source_section: str | None,
+    marker_notes: dict[str, str],
+) -> str | None:
+    """Build concise item/section note text from row markers."""
+    item_marker = _extract_marker(test_item)
+    section_marker = _extract_marker(source_section)
+    if section_marker and section_marker in marker_notes and source_section:
+        return f"Section: {source_section} {_note_text_without_marker(marker_notes[section_marker])}".strip()
+    if item_marker and item_marker in marker_notes and test_item:
+        return f"Test Item: {test_item} {_note_text_without_marker(marker_notes[item_marker])}".strip()
+    return None
+
+
+def _table_score(groups: tuple[MatrixGroupPreview, ...]) -> int:
+    """Score one parsed table for best candidate selection."""
+    if not groups:
+        return 0
+    group_count = len(groups)
+    step_count = sum(len(group.steps) for group in groups)
+    return group_count * 1000 + step_count
+
+
+def _note_text_without_marker(note: str) -> str:
+    """Remove marker prefix so combined text does not duplicate symbols."""
+    text = note.strip()
+    text = re.sub(r"^\([a-z]\)\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^[*#]\s*", "", text)
+    return text
 
 
 def _find_column(row: list[str], candidates: tuple[str, ...]) -> int | None:

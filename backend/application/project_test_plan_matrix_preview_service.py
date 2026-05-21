@@ -31,6 +31,10 @@ class ProjectTestPlanMatrixPreview:
     warnings: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
     selected_table_index: int | None = None
+    selected_page_number: int | None = None
+    selected_page_table_index: int | None = None
+    candidate_tables: tuple[dict[str, object], ...] = field(default_factory=tuple)
+    preview_pdf_token: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +43,9 @@ class MatrixPreviewFromPathCommand:
 
     source_path: Path
     project_id: str | None = None
+    page_number: int | None = None
+    page_table_index: int | None = None
+    table_text_query: str | None = None
 
 
 class ProjectTestPlanMatrixPreviewService:
@@ -57,6 +64,9 @@ class ProjectTestPlanMatrixPreviewService:
     def preview_from_path(
         self,
         command: MatrixPreviewFromPathCommand,
+        *,
+        preview_pdf_token: str | None = None,
+        table_locations: tuple | None = None,
     ) -> ProjectTestPlanMatrixPreview:
         """Return a read-only Matrix preview for a local source path."""
         source_path = Path(command.source_path)
@@ -79,8 +89,25 @@ class ProjectTestPlanMatrixPreviewService:
             )
 
         snapshot = self._office.read_word_document(source_path)
-        parsed = self._parser.parse_tables(snapshot.tables)
+        resolved_locations = table_locations or ()
+        selected_table_index = _select_table_index(
+            table_locations=resolved_locations,
+            page_number=command.page_number,
+            page_table_index=command.page_table_index,
+            table_text_query=command.table_text_query,
+        )
+        parsed = self._parser.parse_tables(
+            snapshot.tables,
+            paragraphs=snapshot.paragraphs,
+            selected_table_index=selected_table_index,
+        )
         capability_status = "supported" if not parsed.blockers else "unsupported"
+        selected_location = None
+        if parsed.selected_table_index is not None:
+            selected_location = next(
+                (item for item in resolved_locations if item.table_index == parsed.selected_table_index),
+                None,
+            )
         return ProjectTestPlanMatrixPreview(
             project_id=command.project_id,
             source_document_path=source_path,
@@ -92,6 +119,21 @@ class ProjectTestPlanMatrixPreviewService:
             warnings=parsed.warnings,
             blockers=parsed.blockers,
             selected_table_index=parsed.selected_table_index,
+            selected_page_number=selected_location.page_number if selected_location else None,
+            selected_page_table_index=selected_location.page_table_index if selected_location else None,
+            candidate_tables=tuple(
+                {
+                    "table_index": item.table_index,
+                    "page_number": item.page_number,
+                    "page_table_index": item.page_table_index,
+                    "preceding_paragraph": item.preceding_paragraph,
+                    "text_preview": item.text_preview,
+                    "row_count": item.row_count,
+                    "column_count": item.column_count,
+                }
+                for item in resolved_locations
+            ),
+            preview_pdf_token=preview_pdf_token,
         )
 
 
@@ -111,3 +153,24 @@ def _unsupported_format_blocker(suffix: str) -> tuple[str, str]:
         "unsupported",
         f"Unsupported product specification format: {suffix or 'unknown'}.",
     )
+
+
+def _select_table_index(
+    *,
+    table_locations: tuple,
+    page_number: int | None,
+    page_table_index: int | None,
+    table_text_query: str | None,
+) -> int | None:
+    """Resolve a selected table index from optional locator inputs."""
+    if page_number is not None and page_table_index is not None:
+        for item in table_locations:
+            if item.page_number == page_number and item.page_table_index == page_table_index:
+                return item.table_index
+    query = (table_text_query or "").strip().lower()
+    if query:
+        for item in table_locations:
+            hay = f"{item.preceding_paragraph or ''} {item.text_preview or ''}".lower()
+            if query in hay:
+                return item.table_index
+    return None
