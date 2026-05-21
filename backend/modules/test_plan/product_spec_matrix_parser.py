@@ -330,11 +330,12 @@ def _collect_marker_notes(paragraphs: list[str]) -> dict[str, str]:
         *_collect_marker_note_blocks(paragraphs),
         *_collect_backfilled_letter_note_blocks(paragraphs),
     ]
+    symbol_notes = _collect_symbol_marker_notes_global(paragraphs)
     if not note_blocks:
-        return _collect_marker_notes_global(paragraphs)
+        return {**_collect_marker_notes_global(paragraphs), **symbol_notes}
     # Prefer the last valid contiguous marker block, which most often matches
     # the matrix-adjacent footer note area in product specs.
-    return note_blocks[-1]
+    return {**note_blocks[-1], **symbol_notes}
 
 
 def _collect_marker_note_blocks(paragraphs: list[str]) -> list[dict[str, str]]:
@@ -421,6 +422,21 @@ def _collect_marker_notes_global(paragraphs: list[str]) -> dict[str, str]:
             continue
         marker, normalized_note = parsed
         notes[marker] = normalized_note
+    return notes
+
+
+def _collect_symbol_marker_notes_global(paragraphs: list[str]) -> dict[str, str]:
+    """Collect standalone symbol notes without reopening global letter matching."""
+    notes: dict[str, str] = {}
+    for raw in paragraphs:
+        text = _clean(raw)
+        if not text:
+            continue
+        symbol_match = ProductSpecMatrixParser._SYMBOL_NOTE_RE.match(text)
+        if not symbol_match:
+            continue
+        marker = symbol_match.group(1)
+        notes[marker] = f"{marker} {symbol_match.group(2).strip()}"
     return notes
 
 

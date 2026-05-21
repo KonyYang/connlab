@@ -339,7 +339,7 @@ function buildSelectedGroupStepPreviewRows(
           sourceRequirement: row.requirement,
           sourceTestItem: row.item,
           sourceSection: row.section,
-          sourceItemSectionNote: itemSectionMarker ? `Section: ${row.section}${itemSectionMarker}` : null,
+          sourceItemSectionNote: itemSectionMarker ? `Section: ${row.section}` : null,
           sourceStepNote: stepMarker ? `Step ${stepNo}${stepMarker}` : null,
           requirementValue: override?.requirement ?? row.requirement,
           descriptionValue: override?.description ?? row.item,
@@ -438,11 +438,13 @@ function buildPreviewStepNoteLookup(
 ): {
   byStepAndMarker: Map<string, PreviewStepNotePayload>;
   byStep: Map<number, PreviewStepNotePayload>;
+  itemSectionByMarker: Map<string, string>;
   sampleNote: string | null;
 } {
   const empty = {
     byStepAndMarker: new Map<string, PreviewStepNotePayload>(),
     byStep: new Map<number, PreviewStepNotePayload>(),
+    itemSectionByMarker: new Map<string, string>(),
     sampleNote: null,
   };
   if (!importPreview || !selectedGroup) {
@@ -465,6 +467,16 @@ function buildPreviewStepNoteLookup(
   }
   const byStepAndMarker = new Map<string, PreviewStepNotePayload>();
   const byStep = new Map<number, PreviewStepNotePayload>();
+  const itemSectionByMarker = new Map<string, string>();
+  importPreview.groups.forEach((group) => {
+    group.steps.forEach((step) => {
+      const itemSectionNote = step.source_item_section_note ?? null;
+      const sectionMarker = extractMarkerKey(step.source_section ?? null);
+      if (itemSectionNote && sectionMarker && !itemSectionByMarker.has(sectionMarker)) {
+        itemSectionByMarker.set(sectionMarker, itemSectionNote);
+      }
+    });
+  });
   previewGroup.steps.forEach((step) => {
     const payload = {
       sourceNote: step.source_note ?? null,
@@ -478,7 +490,7 @@ function buildPreviewStepNoteLookup(
       byStep.set(step.sequence, payload);
     }
   });
-  return { byStepAndMarker, byStep, sampleNote: previewGroup.sample_note ?? null };
+  return { byStepAndMarker, byStep, itemSectionByMarker, sampleNote: previewGroup.sample_note ?? null };
 }
 
 function formatConciseItemSectionNote(stepNo: number, noteText: string): string {
@@ -501,6 +513,13 @@ function stripLeadingMarkerPrefix(noteText: string): string {
     .replace(/^\((?:\d*\s*)?[a-z]\)\s*/i, "")
     .replace(/^[*#]\s*/, "")
     .trim();
+}
+
+function replaceItemSectionNoteSection(noteText: string, sourceSection: string): string {
+  const body = noteText
+    .replace(/^Section:\s*[^*#()]+(?:[*#]|\((?:\d*\s*)?[a-z]\))?\s*/i, "")
+    .trim();
+  return body.length > 0 ? `Section: ${sourceSection} ${body}` : `Section: ${sourceSection}`;
 }
 
 function MatrixAutoGrowTextarea({
@@ -716,7 +735,8 @@ export function MatrixEditorWorkspace({
       const mapped = marker
         ? selectedGroupPreviewNotes.byStepAndMarker.get(`${row.stepNo}|${marker}`) ?? null
         : selectedGroupPreviewNotes.byStep.get(row.stepNo) ?? null;
-      const rawNote = mapped?.sourceItemSectionNote ?? row.sourceItemSectionNote;
+      const markerNote = marker ? selectedGroupPreviewNotes.itemSectionByMarker.get(marker) ?? null : null;
+      const rawNote = mapped?.sourceItemSectionNote ?? (markerNote ? replaceItemSectionNoteSection(markerNote, row.sourceSection) : row.sourceItemSectionNote);
       if (!rawNote) {
         return null;
       }

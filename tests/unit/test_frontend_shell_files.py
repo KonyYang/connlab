@@ -3377,7 +3377,8 @@ def test_task252ck_matrix_editor_step_notes_use_preview_payload_and_concise_item
         "return `Step ${stepNo} | Section:${sectionPayload}`;",
         "const selectedGroupPreviewNotes = buildPreviewStepNoteLookup(importPreview, selectedGroup);",
         "const rawNote = mapped?.sourceNote ?? row.sourceStepNote;",
-        "const rawNote = mapped?.sourceItemSectionNote ?? row.sourceItemSectionNote;",
+        "const markerNote = marker ? selectedGroupPreviewNotes.itemSectionByMarker.get(marker) ?? null : null;",
+        "const rawNote = mapped?.sourceItemSectionNote ?? (markerNote ? replaceItemSectionNoteSection(markerNote, row.sourceSection) : row.sourceItemSectionNote);",
         "const concise = formatConciseItemSectionNote(row.stepNo, rawNote);",
         "const selectedGroupSampleNotes = selectedGroupPreviewNotes.sampleNote",
     ]:
@@ -3409,6 +3410,24 @@ def test_task252cl_matrix_editor_step_notes_prefix_and_note_cards_are_wired() ->
         "background: #f1effb;",
     ]:
         assert required_style in styles_source
+
+
+def test_task252cn_matrix_editor_reuses_symbol_item_section_note_for_local_rows() -> None:
+    """TASK_252CN lets local section-marker rows reuse imported symbol note bodies."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_source in [
+        "itemSectionByMarker: Map<string, string>;",
+        "const itemSectionByMarker = new Map<string, string>();",
+        "const sectionMarker = extractMarkerKey(step.source_section ?? null);",
+        "itemSectionByMarker.set(sectionMarker, itemSectionNote);",
+        "function replaceItemSectionNoteSection(noteText: string, sourceSection: string): string",
+        "replaceItemSectionNoteSection(markerNote, row.sourceSection)",
+        'sourceItemSectionNote: itemSectionMarker ? `Section: ${row.section}` : null',
+    ]:
+        assert required_source in matrix_editor_source
 
 
 def test_task245_matrix_editor_table_columns_have_fixed_min_widths() -> None:

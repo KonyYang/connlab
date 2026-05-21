@@ -192,3 +192,27 @@ def test_product_spec_matrix_parser_backfills_dropped_word_list_note_labels() ->
     assert notes_by_token["10(c)"] == "(c) Energize at current for 18℃ temperature rise;"
     assert group_1.sample_note == "(d) 5pcs for LLCR test another 5pcs loose connector for DWV test."
     assert result.groups[1].sample_note == "(e) Test with different 5 samples for solder ability and Resistance to solder heat, respectively"
+
+
+def test_product_spec_matrix_parser_restores_standalone_symbol_section_notes() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 9"],
+                ["CURRENT RATING - Still Air (Power& Signal)", "6.5*", "2"],
+                ["CURRENT RATING - Airflow (Power& Signal)", "6.6*", "5"],
+            ]
+        ],
+        paragraphs=[
+            "a. Precondition Category E Test",
+            "b. Steam or dry aging 每 4 hours",
+            "c. Minimum solder coverage: 95 %",
+            "*Simultaneously measure power contact resistance.",
+        ],
+    )
+
+    notes_by_token = {
+        step.raw_token: step.source_item_section_note for step in result.groups[0].steps
+    }
+    assert notes_by_token["2"] == "Section: 6.5* Simultaneously measure power contact resistance."
+    assert notes_by_token["5"] == "Section: 6.6* Simultaneously measure power contact resistance."
