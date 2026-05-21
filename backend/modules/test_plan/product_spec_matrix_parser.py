@@ -45,6 +45,17 @@ class MatrixGroupPreview:
 
 
 @dataclass(frozen=True, slots=True)
+class MatrixRowPreview:
+    """One source matrix row preserved in source order."""
+
+    source_row_index: int
+    test_item: str
+    source_section: str | None
+    group_tokens: dict[str, str]
+    is_sample_row: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class MatrixParseResult:
     """Read-only Matrix extraction result."""
 
@@ -52,6 +63,7 @@ class MatrixParseResult:
     warnings: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
     selected_table_index: int | None = None
+    rows: tuple[MatrixRowPreview, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +112,7 @@ class ProductSpecMatrixParser:
                     warnings=tuple([*warnings, *result.warnings]),
                     blockers=result.blockers,
                     selected_table_index=table_index,
+                    rows=result.rows,
                 )
         if best_result is not None:
             return best_result
@@ -167,6 +180,7 @@ class ProductSpecMatrixParser:
         group_sample_size: dict[str, int | None] = {label: None for _, label in header.group_columns}
         group_sample_expression: dict[str, str | None] = {label: None for _, label in header.group_columns}
         group_sample_note: dict[str, str | None] = {label: None for _, label in header.group_columns}
+        source_rows: list[MatrixRowPreview] = []
         warnings: list[str] = []
         for row_index, row in enumerate(table[header.row_index :], start=header.row_index + 1):
             test_item = _cell(row, header.item_column)
@@ -175,8 +189,10 @@ class ProductSpecMatrixParser:
             source_section = _cell(row, header.section_column) if header.section_column is not None else None
             is_sample_row = self._SAMPLE_ROW_RE.search(test_item or "") is not None
             row_item_section_note = _row_item_section_note(test_item, source_section, marker_notes)
+            row_tokens: dict[str, str] = {}
             for column, group_label in header.group_columns:
                 cell_value = _cell(row, column)
+                row_tokens[group_label] = cell_value or ""
                 if not cell_value:
                     continue
                 if is_sample_row:
@@ -207,6 +223,15 @@ class ProductSpecMatrixParser:
                             warnings=tuple(token_warnings),
                         )
                     )
+            source_rows.append(
+                MatrixRowPreview(
+                    source_row_index=row_index,
+                    test_item=test_item,
+                    source_section=source_section,
+                    group_tokens=row_tokens,
+                    is_sample_row=is_sample_row,
+                )
+            )
         groups = tuple(
             _build_group(
                 label,
@@ -224,12 +249,14 @@ class ProductSpecMatrixParser:
                 groups=(),
                 warnings=tuple(warnings),
                 blockers=(f"Matrix table {table_index} contains no group sequences.",),
+                rows=tuple(source_rows),
             )
         duplicate_warnings = _duplicate_sequence_warnings(groups)
         return MatrixParseResult(
             groups=groups,
             warnings=tuple([*warnings, *duplicate_warnings]),
             selected_table_index=table_index,
+            rows=tuple(source_rows),
         )
 
 

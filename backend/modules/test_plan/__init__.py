@@ -4,6 +4,7 @@ from backend.modules.test_plan.duration_hint_parser import DurationHint, Duratio
 from backend.modules.test_plan.product_spec_matrix_parser import (
     MatrixGroupPreview,
     MatrixParseResult,
+    MatrixRowPreview,
     MatrixStepPreview,
     ProductSpecMatrixParser,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "DurationHintParser",
     "MatrixGroupPreview",
     "MatrixParseResult",
+    "MatrixRowPreview",
     "MatrixStepPreview",
     "ParsedStepToken",
     "ProductSpecMatrixParser",

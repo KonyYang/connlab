@@ -3682,11 +3682,11 @@
 }
 
 .matrix-editor-import-modal {
-  width: min(1400px, 96vw);
-  height: min(820px, 92vh);
+  width: 96vw;
+  height: 92vh;
   background: #f6f8fc;
-  border: 1px solid #cfd8e7;
-  border-radius: 16px;
+  border: none;
+  border-radius: 0;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -3728,4 +3728,79 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.matrix-editor-import-controls-footer {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid #e3e9f4;
+}
+
+.matrix-editor-import-file-name {
+  max-width: min(58vw, 920px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: #1f2f4a;
+  line-height: 1.1;
+}
+
+.matrix-editor-actionbar-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.matrix-editor-import-primary-button {
+  background: #1f5fbf;
+  color: #fff;
+  border: 1px solid #1f5fbf;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+.matrix-editor-import-primary-button:hover {
+  background: #1a54aa;
+}
+
+.matrix-editor-import-reparse-button {
+  background: #eef4ff;
+  color: #1f4ea3;
+  border: 1px solid #c3d5f4;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+.matrix-editor-import-controls-footer button {
+  min-width: 112px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.matrix-editor-import-secondary-button {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #b7c4db;
+}
+
+.matrix-editor-import-commit-button {
+  background: #1f5fbf;
+  color: #fff;
+  border: 1px solid #1f5fbf;
+}
+
+.matrix-editor-import-commit-button:disabled {
+  background: #eef2f8;
+  color: #9aa8bf;
+  border-color: #d4dcea;
 }

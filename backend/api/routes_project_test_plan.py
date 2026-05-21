@@ -82,6 +82,7 @@ class MatrixPreviewResponse(BaseModel):
     selected_page_table_index: int | None = None
     candidate_tables: list[dict[str, object]] = Field(default_factory=list)
     preview_pdf_token: str | None = None
+    rows: list[dict[str, object]] = Field(default_factory=list)
     groups: list[TestGroupPreviewResponse]
     warnings: list[str]
     blockers: list[str]
@@ -175,6 +176,7 @@ async def preview_matrix_from_upload(
                 selected_page_table_index=preview.selected_page_table_index,
                 candidate_tables=preview.candidate_tables,
                 preview_pdf_token=preview.preview_pdf_token,
+                rows=preview.rows,
             )
         return _preview_response(preview)
     except ProjectTestPlanMatrixPreviewError as exc:
@@ -219,6 +221,16 @@ def _preview_response(preview: ProjectTestPlanMatrixPreview) -> MatrixPreviewRes
         selected_page_table_index=preview.selected_page_table_index,
         candidate_tables=list(preview.candidate_tables),
         preview_pdf_token=preview.preview_pdf_token,
+        rows=[
+            {
+                "source_row_index": row.source_row_index,
+                "test_item": row.test_item,
+                "source_section": row.source_section,
+                "group_tokens": row.group_tokens,
+                "is_sample_row": row.is_sample_row,
+            }
+            for row in preview.rows
+        ],
         groups=[_group_response(group) for group in preview.groups],
         warnings=list(preview.warnings),
         blockers=list(preview.blockers),

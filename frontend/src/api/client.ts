@@ -664,6 +664,13 @@ export type MatrixPreviewResponse = {
   selected_page_table_index?: number | null;
   candidate_tables: Array<Record<string, unknown>>;
   preview_pdf_token?: string | null;
+  rows: Array<{
+    source_row_index: number;
+    test_item: string;
+    source_section?: string | null;
+    group_tokens: Record<string, string>;
+    is_sample_row: boolean;
+  }>;
   groups: MatrixPreviewGroup[];
   warnings: string[];
   blockers: string[];

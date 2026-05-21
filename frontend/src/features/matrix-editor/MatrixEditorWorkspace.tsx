@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
+import { useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
 import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
 import {
@@ -135,35 +135,19 @@ function buildMatrixFromPreview(
     id: `group-${index + 1}`,
     name: group.group_label,
   }));
-  const rowMap = new Map<
-    string,
-    { item: string; section: string; groups: Record<string, string[]> }
-  >();
-  preview.groups.forEach((group, groupIndex) => {
-    const groupId = `group-${groupIndex + 1}`;
-    group.steps.forEach((step) => {
-      const key = `${step.test_item}::${step.source_section ?? ""}`;
-      const existing = rowMap.get(key);
-      if (existing) {
-        existing.groups[groupId] = [...(existing.groups[groupId] ?? []), step.raw_token];
-      } else {
-        rowMap.set(key, {
-          item: step.test_item,
-          section: step.source_section ?? "",
-          groups: { [groupId]: [step.raw_token] },
-        });
-      }
-    });
-  });
-  const rows: EditableMatrixRow[] = Array.from(rowMap.values()).map((row, index) => {
+  const sourceRows = [...preview.rows].sort((a, b) => a.source_row_index - b.source_row_index);
+  const dataRows = sourceRows.filter((row) => !row.is_sample_row);
+  const sampleRows = sourceRows.filter((row) => row.is_sample_row);
+  const rows: EditableMatrixRow[] = dataRows.map((row, index) => {
     const groupValues: Record<string, string> = {};
-    groups.forEach((group) => {
-      groupValues[group.id] = (row.groups[group.id] ?? []).join(",");
+    preview.groups.forEach((previewGroup, groupIndex) => {
+      const groupId = `group-${groupIndex + 1}`;
+      groupValues[groupId] = row.group_tokens[previewGroup.group_label] ?? "";
     });
     return {
       id: `matrix-import-row-${index + 1}`,
-      item: row.item,
-      section: row.section,
+      item: row.test_item,
+      section: row.source_section ?? "",
       method: "",
       condition: "",
       requirement: "",
@@ -172,7 +156,10 @@ function buildMatrixFromPreview(
   });
   const samples: Record<string, string> = {};
   preview.groups.forEach((group, groupIndex) => {
-    samples[`group-${groupIndex + 1}`] = group.sample_quantity_expression ?? "";
+    const groupId = `group-${groupIndex + 1}`;
+    const label = group.group_label;
+    const sampleFromRow = sampleRows.length > 0 ? (sampleRows[0].group_tokens[label] ?? "") : "";
+    samples[groupId] = sampleFromRow || (group.sample_quantity_expression ?? "");
   });
   return { groups, rows, samples };
 }
@@ -703,6 +690,9 @@ export function MatrixEditorWorkspace({
     try {
       const preview = await previewProjectTestPlanMatrixFromUpload(file, projectId);
       setImportPreview(preview);
+      setLocatorPage(preview.selected_page_number != null ? String(preview.selected_page_number) : "");
+      setLocatorTableOnPage(preview.selected_page_table_index != null ? String(preview.selected_page_table_index) : "");
+      setLocatorKeyword("");
       setShowImportDialog(true);
       if (preview.blockers.length > 0) {
         setImportError(preview.blockers[0]);
@@ -715,31 +705,28 @@ export function MatrixEditorWorkspace({
     }
   };
 
-  useEffect(() => {
-    if (!showImportDialog || !importFile) {
+  const reparseImportPreview = async (): Promise<void> => {
+    if (!importFile) {
       return;
     }
-    const timer = setTimeout(async () => {
-      setImportingPreview(true);
-      setImportError(null);
-      try {
-        const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
-          pageNumber: locatorPage.trim() ? Number(locatorPage) : null,
-          pageTableIndex: locatorTableOnPage.trim() ? Number(locatorTableOnPage) : null,
-          tableTextQuery: locatorKeyword.trim() || null,
-        });
-        setImportPreview(preview);
-        if (preview.blockers.length > 0) {
-          setImportError(preview.blockers[0]);
-        }
-      } catch (error) {
-        setImportError(error instanceof Error ? error.message : "Reparse failed.");
-      } finally {
-        setImportingPreview(false);
+    setImportingPreview(true);
+    setImportError(null);
+    try {
+      const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
+        pageNumber: locatorPage.trim() ? Number(locatorPage) : null,
+        pageTableIndex: locatorTableOnPage.trim() ? Number(locatorTableOnPage) : null,
+        tableTextQuery: locatorKeyword.trim() || null,
+      });
+      setImportPreview(preview);
+      if (preview.blockers.length > 0) {
+        setImportError(preview.blockers[0]);
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [showImportDialog, importFile, locatorPage, locatorTableOnPage, locatorKeyword, projectId]);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Reparse failed.");
+    } finally {
+      setImportingPreview(false);
+    }
+  };
 
   if (!model.project && !model.error) {
     return <LoadingState label="Loading matrix editor..." />;
@@ -1064,7 +1051,8 @@ export function MatrixEditorWorkspace({
 
       <section className="matrix-editor-actionbar">
         <div className="matrix-editor-actionbar-main">
-          <button type="button" onClick={openChooseDocx}>{importingPreview ? "Parsing..." : "Import Matrix"}</button>
+          <button className="matrix-editor-import-primary-button" type="button" onClick={openChooseDocx}>{importingPreview ? "Parsing..." : "Import Matrix"}</button>
+          {importFile ? <span className="matrix-editor-import-file-name" title={importFile.name}>{importFile.name}</span> : null}
           <button type="button" onClick={undoLast} disabled={undoStack.length === 0}>Undo</button>
           <input
             ref={fileInputRef}
@@ -1103,38 +1091,38 @@ export function MatrixEditorWorkspace({
                   <span>Keyword in table</span>
                   <input value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
                 </label>
-                {importPreview ? (
-                  <p>
-                    Selected: page {importPreview.selected_page_number ?? "-"}, table {importPreview.selected_page_table_index ?? "-"}, index {importPreview.selected_table_index ?? "-"}; groups {importPreview.groups.length}; steps {importPreview.groups.reduce((count, group) => count + group.steps.length, 0)}
-                  </p>
-                ) : null}
+                <button className="matrix-editor-import-reparse-button" type="button" onClick={() => void reparseImportPreview()} disabled={importingPreview || !importFile}>
+                  {importingPreview ? "Reparsing..." : "Reparse"}
+                </button>
                 {importingPreview ? <p>Reparsing...</p> : null}
                 {importError ? <p className="error">{importError}</p> : null}
+                <footer className="matrix-editor-import-controls-footer">
+                  <button className="matrix-editor-import-secondary-button" type="button" onClick={() => setShowImportDialog(false)}>Cancel</button>
+                  <button
+                    className="matrix-editor-import-commit-button"
+                    type="button"
+                    disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
+                    onClick={() => {
+                      applyImportPreview("replace");
+                      setShowImportDialog(false);
+                    }}
+                  >
+                    Replace
+                  </button>
+                  <button
+                    className="matrix-editor-import-commit-button"
+                    type="button"
+                    disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
+                    onClick={() => {
+                      applyImportPreview("append");
+                      setShowImportDialog(false);
+                    }}
+                  >
+                    Append
+                  </button>
+                </footer>
               </div>
             </div>
-            <footer className="matrix-editor-actionbar-main">
-              <button type="button" onClick={() => setShowImportDialog(false)}>Cancel</button>
-              <button
-                type="button"
-                disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
-                onClick={() => {
-                  applyImportPreview("replace");
-                  setShowImportDialog(false);
-                }}
-              >
-                Replace
-              </button>
-              <button
-                type="button"
-                disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
-                onClick={() => {
-                  applyImportPreview("append");
-                  setShowImportDialog(false);
-                }}
-              >
-                Append
-              </button>
-            </footer>
           </article>
         </section>
       ) : null}

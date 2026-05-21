@@ -9,6 +9,7 @@ from pathlib import Path
 from backend.infrastructure.office import OfficeFacade
 from backend.modules.test_plan import (
     MatrixGroupPreview,
+    MatrixRowPreview,
     ProductSpecMatrixParser,
 )
 
@@ -35,6 +36,7 @@ class ProjectTestPlanMatrixPreview:
     selected_page_table_index: int | None = None
     candidate_tables: tuple[dict[str, object], ...] = field(default_factory=tuple)
     preview_pdf_token: str | None = None
+    rows: tuple[MatrixRowPreview, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +136,7 @@ class ProjectTestPlanMatrixPreviewService:
                 for item in resolved_locations
             ),
             preview_pdf_token=preview_pdf_token,
+            rows=parsed.rows,
         )
 
 
