@@ -82,7 +82,8 @@ class ProductSpecMatrixParser:
     _STEP_TOKEN_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
     _MARKER_IN_PAREN_RE = re.compile(r"\(([a-z])\)", re.IGNORECASE)
     _SYMBOL_MARKER_RE = re.compile(r"([*#])")
-    _SAMPLE_ROW_RE = re.compile(r"(sample\s*(size|quantity))", re.IGNORECASE)
+    _SAMPLE_ROW_RE = re.compile(r"\bsamples?\b", re.IGNORECASE)
+    _SECTION_STEP_LIKE_RE = re.compile(r"^\s*\d+(\.\d+)*\s*$")
     _LETTER_NOTE_RE = re.compile(r"^\s*\(([a-z])\)\s*(.+)\s*$", re.IGNORECASE)
     _SYMBOL_NOTE_RE = re.compile(r"^\s*([*#])\s*(.+)\s*$")
 
@@ -187,7 +188,7 @@ class ProductSpecMatrixParser:
             if not test_item or _looks_like_note_or_footer(test_item):
                 continue
             source_section = _cell(row, header.section_column) if header.section_column is not None else None
-            is_sample_row = self._SAMPLE_ROW_RE.search(test_item or "") is not None
+            is_sample_row = _looks_like_sample_row(test_item, source_section, self._SAMPLE_ROW_RE)
             row_item_section_note = _row_item_section_note(test_item, source_section, marker_notes)
             row_tokens: dict[str, str] = {}
             for column, group_label in header.group_columns:
@@ -430,3 +431,20 @@ def _looks_like_note_or_footer(value: str) -> bool:
     """Return true for note/footer rows that are not test items."""
     normalized = _normalize(value)
     return normalized.startswith(("note", "rev", "©", "copyright"))
+
+
+def _looks_like_sample_row(
+    test_item: str | None,
+    source_section: str | None,
+    sample_row_re: re.Pattern[str],
+) -> bool:
+    """Identify sample quantity/size rows that should not be treated as step rows."""
+    item = (test_item or "").strip()
+    if not item:
+        return False
+    if sample_row_re.search(item) is None:
+        return False
+    section = (source_section or "").strip()
+    if not section:
+        return True
+    return ProductSpecMatrixParser._SECTION_STEP_LIKE_RE.match(section) is None
