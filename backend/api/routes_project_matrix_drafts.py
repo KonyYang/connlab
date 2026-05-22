@@ -5,7 +5,17 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.api.dependencies import get_project_matrix_draft_persistence_service
+from backend.api.dependencies import (
+    get_confirmed_matrix_authority_service,
+    get_project_matrix_draft_persistence_service,
+)
+from backend.application.confirmed_matrix_authority_service import (
+    ConfirmProjectMatrixDraftCommand,
+    ConfirmedMatrixAuthorityConflictError,
+    ConfirmedMatrixAuthorityError,
+    ConfirmedMatrixAuthorityNotFoundError,
+    ConfirmedMatrixAuthorityService,
+)
 from backend.application.project_matrix_draft_persistence_service import (
     CreateProjectMatrixDraftFromSourceImportCommand,
     ProjectMatrixDraftCellInput,
@@ -17,7 +27,7 @@ from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftRowInput,
     UpdateProjectMatrixDraftCommand,
 )
-from backend.domain import ProjectMatrixDraftSnapshot
+from backend.domain import ConfirmedMatrixSnapshot, ProjectMatrixDraftSnapshot
 
 
 router = APIRouter(prefix="/api/projects/{project_id}/matrix-drafts", tags=["project-matrix-drafts"])
@@ -140,6 +150,74 @@ class ProjectMatrixDraftSaveRequest(BaseModel):
     groups: list[ProjectMatrixDraftGroupSaveRequest]
     rows: list[ProjectMatrixDraftRowSaveRequest]
     cells: list[ProjectMatrixDraftCellSaveRequest]
+
+
+class ConfirmProjectMatrixDraftRequest(BaseModel):
+    """Request body for confirming one saved Project Matrix draft."""
+
+    confirmed_by: str
+
+
+class ConfirmedMatrixVersionResponse(BaseModel):
+    """Confirmed Matrix authority root response."""
+
+    confirmed_matrix_id: str
+    project_id: str
+    project_matrix_draft_id: str
+    source_import_id: str
+    source_snapshot_id: str
+    confirmed_revision: int
+    is_active_authority: bool
+    status: str
+    confirmed_by: str
+    confirmed_at: str
+
+
+class ConfirmedMatrixGroupResponse(BaseModel):
+    """Confirmed selected group response."""
+
+    confirmed_group_id: str
+    draft_group_id: str
+    source_group_snapshot_id: str | None
+    group_order: int
+    group_key: str
+    group_label: str
+    sample_quantity_expression: str
+    sample_note: str | None
+
+
+class ConfirmedMatrixRowResponse(BaseModel):
+    """Confirmed non-sample row response."""
+
+    confirmed_row_id: str
+    draft_row_id: str
+    source_row_snapshot_id: str | None
+    row_order: int
+    test_item: str
+    source_section: str | None
+    method: str | None
+    condition: str | None
+    requirement: str | None
+
+
+class ConfirmedMatrixCellResponse(BaseModel):
+    """Confirmed sparse cell response."""
+
+    confirmed_cell_id: str
+    confirmed_row_id: str
+    confirmed_group_id: str
+    draft_row_id: str
+    draft_group_id: str
+    cell_value: str
+
+
+class ConfirmedMatrixSnapshotResponse(BaseModel):
+    """Confirmed Matrix authority aggregate response."""
+
+    version: ConfirmedMatrixVersionResponse
+    groups: list[ConfirmedMatrixGroupResponse]
+    rows: list[ConfirmedMatrixRowResponse]
+    cells: list[ConfirmedMatrixCellResponse]
 
 
 @router.post("", response_model=ProjectMatrixDraftResponse, status_code=201)
@@ -277,6 +355,35 @@ def save_project_matrix_draft(
     return _to_response(updated)
 
 
+@router.post(
+    "/{project_matrix_draft_id}/confirm",
+    response_model=ConfirmedMatrixSnapshotResponse,
+    status_code=201,
+)
+def confirm_project_matrix_draft(
+    project_id: str,
+    project_matrix_draft_id: str,
+    request: ConfirmProjectMatrixDraftRequest,
+    service: ConfirmedMatrixAuthorityService = Depends(get_confirmed_matrix_authority_service),
+) -> ConfirmedMatrixSnapshotResponse:
+    """Confirm one saved draft into immutable active Matrix authority."""
+    try:
+        confirmed = service.confirm_draft(
+            ConfirmProjectMatrixDraftCommand(
+                project_id=project_id,
+                project_matrix_draft_id=project_matrix_draft_id,
+                confirmed_by=request.confirmed_by,
+            )
+        )
+    except ConfirmedMatrixAuthorityNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConfirmedMatrixAuthorityConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ConfirmedMatrixAuthorityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _to_confirmed_response(confirmed)
+
+
 def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftResponse:
     return ProjectMatrixDraftResponse(
         record=ProjectMatrixDraftRecordResponse(
@@ -323,5 +430,62 @@ def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftRespons
                 cell_value=cell.cell_value,
             )
             for cell in draft.cells
+        ],
+    )
+
+
+def _to_confirmed_response(
+    snapshot: ConfirmedMatrixSnapshot,
+) -> ConfirmedMatrixSnapshotResponse:
+    return ConfirmedMatrixSnapshotResponse(
+        version=ConfirmedMatrixVersionResponse(
+            confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
+            project_id=snapshot.version.project_id,
+            project_matrix_draft_id=snapshot.version.project_matrix_draft_id,
+            source_import_id=snapshot.version.source_import_id,
+            source_snapshot_id=snapshot.version.source_snapshot_id,
+            confirmed_revision=snapshot.version.confirmed_revision,
+            is_active_authority=snapshot.version.is_active_authority,
+            status=snapshot.version.status.value,
+            confirmed_by=snapshot.version.confirmed_by,
+            confirmed_at=snapshot.version.confirmed_at,
+        ),
+        groups=[
+            ConfirmedMatrixGroupResponse(
+                confirmed_group_id=group.confirmed_group_id,
+                draft_group_id=group.draft_group_id,
+                source_group_snapshot_id=group.source_group_snapshot_id,
+                group_order=group.group_order,
+                group_key=group.group_key,
+                group_label=group.group_label,
+                sample_quantity_expression=group.sample_quantity_expression,
+                sample_note=group.sample_note,
+            )
+            for group in snapshot.groups
+        ],
+        rows=[
+            ConfirmedMatrixRowResponse(
+                confirmed_row_id=row.confirmed_row_id,
+                draft_row_id=row.draft_row_id,
+                source_row_snapshot_id=row.source_row_snapshot_id,
+                row_order=row.row_order,
+                test_item=row.test_item,
+                source_section=row.source_section,
+                method=row.method,
+                condition=row.condition,
+                requirement=row.requirement,
+            )
+            for row in snapshot.rows
+        ],
+        cells=[
+            ConfirmedMatrixCellResponse(
+                confirmed_cell_id=cell.confirmed_cell_id,
+                confirmed_row_id=cell.confirmed_row_id,
+                confirmed_group_id=cell.confirmed_group_id,
+                draft_row_id=cell.draft_row_id,
+                draft_group_id=cell.draft_group_id,
+                cell_value=cell.cell_value,
+            )
+            for cell in snapshot.cells
         ],
     )

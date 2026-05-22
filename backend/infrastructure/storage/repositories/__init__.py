@@ -28,6 +28,9 @@ from backend.infrastructure.storage.repositories.project_test_plan import (
 from backend.infrastructure.storage.repositories.project_matrix_draft import (
     ProjectMatrixDraftRepository,
 )
+from backend.infrastructure.storage.repositories.confirmed_matrix_authority import (
+    ConfirmedMatrixAuthorityRepository,
+)
 from backend.infrastructure.storage.repositories.source_matrix_import import (
     SourceMatrixImportRepository,
 )
@@ -42,6 +45,7 @@ from backend.infrastructure.storage.repositories.records import (
 
 __all__ = [
     "ApplicationFormRepository",
+    "ConfirmedMatrixAuthorityRepository",
     "ExternalResourceRepository",
     "FileAssetRepository",
     "FrozenFieldRevisionRequestRepository",

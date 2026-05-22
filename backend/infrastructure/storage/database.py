@@ -43,6 +43,7 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
 def init_db(engine: Engine) -> None:
     """Create all registered SQLAlchemy tables for the supplied engine."""
     from backend.infrastructure.storage import models  # noqa: F401
+    from backend.infrastructure.storage import models_confirmed_matrix_authority  # noqa: F401
     from backend.infrastructure.storage import models_project_matrix_draft  # noqa: F401
     from backend.infrastructure.storage import models_matrix_source  # noqa: F401
 

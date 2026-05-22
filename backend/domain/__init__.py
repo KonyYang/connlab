@@ -1,6 +1,7 @@
 """Pure domain types exported by the ConnLab backend."""
 
 from backend.domain.enums import (
+    ConfirmedMatrixStatus,
     FrozenFieldRevisionRequestStatus,
     ExternalResourceType,
     ExternalResourceValidationStatus,
@@ -20,6 +21,13 @@ from backend.domain.enums import (
     ProjectMatrixDraftStatus,
     ProjectTestPlanDraftStatus,
     SourceMatrixImportStatus,
+)
+from backend.domain.confirmed_matrix_authority_models import (
+    ConfirmedMatrixCell,
+    ConfirmedMatrixGroup,
+    ConfirmedMatrixRow,
+    ConfirmedMatrixSnapshot,
+    ConfirmedMatrixVersion,
 )
 from backend.domain.models import (
     ApplicationForm,
@@ -56,6 +64,12 @@ from backend.domain.project_matrix_draft_models import (
 
 __all__ = [
     "ApplicationForm",
+    "ConfirmedMatrixCell",
+    "ConfirmedMatrixGroup",
+    "ConfirmedMatrixRow",
+    "ConfirmedMatrixSnapshot",
+    "ConfirmedMatrixStatus",
+    "ConfirmedMatrixVersion",
     "ExternalResource",
     "ExternalResourceType",
     "ExternalResourceValidationStatus",

@@ -88,6 +88,9 @@ from backend.application.project_test_plan_matrix_preview_service import (
 from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftPersistenceService,
 )
+from backend.application.confirmed_matrix_authority_service import (
+    ConfirmedMatrixAuthorityService,
+)
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
@@ -130,6 +133,7 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
+    ConfirmedMatrixAuthorityRepository,
     ExternalResourceRepository,
     FileAssetRepository,
     FrozenFieldRevisionRequestRepository,
@@ -212,6 +216,17 @@ def get_project_matrix_draft_persistence_service(
         project_store=ProjectRepository(session),
         source_store=SourceMatrixImportRepository(session),
         draft_store=ProjectMatrixDraftRepository(session),
+    )
+
+
+def get_confirmed_matrix_authority_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedMatrixAuthorityService:
+    """Build the Confirmed Matrix authority confirmation service."""
+    return ConfirmedMatrixAuthorityService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectMatrixDraftRepository(session),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
     )
 
 
