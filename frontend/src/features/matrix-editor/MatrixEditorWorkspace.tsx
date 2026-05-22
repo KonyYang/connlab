@@ -2,11 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Mo
 import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
 import {
+  confirmProjectMatrixRevisionDraft,
+  createMatrixRevisionDraft,
   getProjectMatrixDraft,
   listProjectMatrixDrafts,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromUpload,
   saveProjectMatrixDraft,
+  type ConfirmedMatrixSnapshot,
   type MatrixPreviewResponse,
   type ProjectMatrixDraft,
   type ProjectMatrixDraftSaveRequest,
@@ -53,6 +56,7 @@ type MatrixSnapshot = {
 };
 
 type MatrixSaveState = "idle" | "saving" | "saved" | "error";
+type MatrixRevisionActionState = "idle" | "loading" | "success" | "error";
 
 type StepOutputOverride = {
   requirement?: string;
@@ -331,6 +335,58 @@ function buildDraftSavePayload(
   };
 }
 
+const MVP_REVISION_CONFIRMED_BY = "connlab-operator";
+
+function parseRequestError(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  return fallback;
+}
+
+function buildConfirmRevisionGuard(input: {
+  hasProjectId: boolean;
+  projectMatrixDraftId: string | null;
+  draftBaseConfirmedMatrixId: string | null;
+  hasUnsavedChanges: boolean;
+  hasMatrixValidationError: boolean;
+  hasPersistedDraft: boolean;
+  busy: boolean;
+  alreadyConfirmed: boolean;
+  validationMessage: string;
+}): ConfirmRevisionGuard {
+  if (!input.hasProjectId) {
+    return { canConfirm: false, reason: "No project id." };
+  }
+  if (input.alreadyConfirmed) {
+    return { canConfirm: false, reason: "Revision already confirmed." };
+  }
+  if (input.busy) {
+    return { canConfirm: false, reason: "Action in progress." };
+  }
+  if (!input.projectMatrixDraftId || !input.hasPersistedDraft) {
+    return { canConfirm: false, reason: "No persisted matrix draft target." };
+  }
+  if (!input.draftBaseConfirmedMatrixId) {
+    return { canConfirm: false, reason: "Current draft is not a revision draft." };
+  }
+  if (input.hasUnsavedChanges) {
+    return { canConfirm: false, reason: "Save changes before confirming revision." };
+  }
+  if (input.hasMatrixValidationError) {
+    return {
+      canConfirm: false,
+      reason: input.validationMessage || "Resolve matrix validation errors before confirming revision.",
+    };
+  }
+  return { canConfirm: true, reason: "" };
+}
+
+function buildRevisionConfirmedMessage(snapshot: ConfirmedMatrixSnapshot): string {
+  const revision = snapshot.version.confirmed_revision;
+  return `Revision confirmed (v${revision}).`;
+}
+
 function nextGroupId(groups: GroupColumn[]): string {
   let max = 0;
   groups.forEach((group) => {
@@ -354,6 +410,11 @@ type ParsedStepToken = {
   sequence: number;
   rawToken: string;
   suffixNote: string | null;
+};
+
+type ConfirmRevisionGuard = {
+  canConfirm: boolean;
+  reason: string;
 };
 
 function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[]; tokens: ParsedStepToken[]; errorMessage: string } {
@@ -749,13 +810,37 @@ export function MatrixEditorWorkspace({
   const [locatorPage, setLocatorPage] = useState("");
   const [locatorTableOnPage, setLocatorTableOnPage] = useState("");
   const [locatorKeyword, setLocatorKeyword] = useState("");
+  const [hasPersistedDraft, setHasPersistedDraft] = useState(false);
   const [projectMatrixDraftId, setProjectMatrixDraftId] = useState<string | null>(null);
   const [, setProjectMatrixDraftUpdatedAt] = useState<string | null>(null);
+  const [projectMatrixDraftBaseConfirmedMatrixId, setProjectMatrixDraftBaseConfirmedMatrixId] = useState<string | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [saveState, setSaveState] = useState<MatrixSaveState>("idle");
   const [saveMessage, setSaveMessage] = useState<string>("");
   const [saveBaselineSignature, setSaveBaselineSignature] = useState<string | null>(null);
+  const [createRevisionState, setCreateRevisionState] = useState<MatrixRevisionActionState>("idle");
+  const [createRevisionMessage, setCreateRevisionMessage] = useState("");
+  const [confirmRevisionState, setConfirmRevisionState] = useState<MatrixRevisionActionState>("idle");
+  const [confirmRevisionMessage, setConfirmRevisionMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const applyDraftSnapshotToEditor = (draft: ProjectMatrixDraft): void => {
+    const mapped = buildMatrixFromProjectMatrixDraft(draft);
+    const nextGroups = mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns();
+    const nextRows = mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows();
+    const nextSamples = mapped.samples;
+    setGroupColumns(nextGroups);
+    setEditableRows(nextRows);
+    setSampleValues(nextSamples);
+    setSampleMergeNotes({});
+    setSelectedGroupId(nextGroups[0]?.id ?? null);
+    setSelectedRowId(null);
+    setProjectMatrixDraftId(draft.record.project_matrix_draft_id);
+    setProjectMatrixDraftUpdatedAt(draft.record.updated_at);
+    setProjectMatrixDraftBaseConfirmedMatrixId(draft.record.base_confirmed_matrix_id ?? null);
+    const baselinePayload = buildDraftSavePayload(nextRows, nextGroups, nextSamples);
+    setSaveBaselineSignature(JSON.stringify(baselinePayload));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -767,39 +852,35 @@ export function MatrixEditorWorkspace({
           return;
         }
         if (summaries.length === 0) {
+          setHasPersistedDraft(false);
           setProjectMatrixDraftId(null);
           setProjectMatrixDraftUpdatedAt(null);
+          setProjectMatrixDraftBaseConfirmedMatrixId(null);
           setSaveBaselineSignature(null);
           setSaveMessage("No persisted matrix draft target.");
           setSaveState("idle");
           return;
         }
+        setHasPersistedDraft(true);
         const targetId = summaries[0].project_matrix_draft_id;
         const draft = await getProjectMatrixDraft(projectId, targetId);
         if (cancelled) {
           return;
         }
-        const mapped = buildMatrixFromProjectMatrixDraft(draft);
-        setGroupColumns(mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns());
-        setEditableRows(mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows());
-        setSampleValues(mapped.samples);
-        setSampleMergeNotes({});
-        setSelectedGroupId(mapped.groups[0]?.id ?? null);
-        setSelectedRowId(null);
-        setProjectMatrixDraftId(targetId);
-        setProjectMatrixDraftUpdatedAt(draft.record.updated_at);
-        const baselinePayload = buildDraftSavePayload(
-          mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows(),
-          mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns(),
-          mapped.samples
-        );
-        setSaveBaselineSignature(JSON.stringify(baselinePayload));
+        applyDraftSnapshotToEditor(draft);
         setSaveState("idle");
         setSaveMessage("");
+        setCreateRevisionState("idle");
+        setCreateRevisionMessage("");
+        setConfirmRevisionState("idle");
+        setConfirmRevisionMessage("");
       } catch (error) {
         if (cancelled) {
           return;
         }
+        setHasPersistedDraft(false);
+        setProjectMatrixDraftId(null);
+        setProjectMatrixDraftBaseConfirmedMatrixId(null);
         setSaveState("error");
         setSaveMessage(error instanceof Error ? error.message : "Failed to load matrix draft.");
       } finally {
@@ -989,11 +1070,37 @@ export function MatrixEditorWorkspace({
   const currentSaveSignature = JSON.stringify(currentSavePayload);
   const hasUnsavedChanges =
     saveBaselineSignature !== null && currentSaveSignature !== saveBaselineSignature;
+  const hasProjectId = projectId.trim().length > 0;
+  const isCreateRevisionBusy = createRevisionState === "loading";
+  const isConfirmRevisionBusy = confirmRevisionState === "loading";
+  const isAnyRevisionActionBusy = isCreateRevisionBusy || isConfirmRevisionBusy;
   const canSave =
+    hasPersistedDraft &&
     projectMatrixDraftId !== null &&
     hasUnsavedChanges &&
     !hasMatrixValidationError &&
-    saveState !== "saving";
+    saveState !== "saving" &&
+    !isAnyRevisionActionBusy;
+  const canCreateRevisionDraft = hasProjectId && !isAnyRevisionActionBusy && saveState !== "saving";
+  const createRevisionDisabledReason = !hasProjectId
+    ? "No project id."
+    : saveState === "saving" || isAnyRevisionActionBusy
+      ? "Action in progress."
+      : hasUnsavedChanges
+        ? "Save changes before creating revision draft."
+        : "";
+  const canCreateRevisionDraftWithGuards = canCreateRevisionDraft && !hasUnsavedChanges;
+  const confirmRevisionGuard = buildConfirmRevisionGuard({
+    hasProjectId,
+    projectMatrixDraftId,
+    draftBaseConfirmedMatrixId: projectMatrixDraftBaseConfirmedMatrixId,
+    hasUnsavedChanges,
+    hasMatrixValidationError,
+    hasPersistedDraft,
+    busy: saveState === "saving" || isAnyRevisionActionBusy,
+    alreadyConfirmed: confirmRevisionState === "success",
+    validationMessage: groupNameErrorMessage || stepTokenErrorMessage,
+  });
 
   const openChooseDocx = (): void => {
     fileInputRef.current?.click();
@@ -1482,28 +1589,65 @@ export function MatrixEditorWorkspace({
     setSaveMessage("Saving...");
     try {
       const saved = await saveProjectMatrixDraft(projectId, projectMatrixDraftId, currentSavePayload);
-      const mapped = buildMatrixFromProjectMatrixDraft(saved);
-      setGroupColumns(mapped.groups.length > 0 ? mapped.groups : groupColumns);
-      setEditableRows(mapped.rows.length > 0 ? mapped.rows : editableRows);
-      setSampleValues((previous) => ({
-        ...previous,
-        ...mapped.samples,
-      }));
-      setProjectMatrixDraftUpdatedAt(saved.record.updated_at);
-      const baselinePayload = buildDraftSavePayload(
-        mapped.rows.length > 0 ? mapped.rows : editableRows,
-        mapped.groups.length > 0 ? mapped.groups : groupColumns,
-        {
-          ...sampleValues,
-          ...mapped.samples,
-        }
-      );
-      setSaveBaselineSignature(JSON.stringify(baselinePayload));
+      setHasPersistedDraft(true);
+      applyDraftSnapshotToEditor(saved);
       setSaveState("saved");
       setSaveMessage("Saved");
     } catch (error) {
       setSaveState("error");
       setSaveMessage(error instanceof Error ? error.message : "Save failed.");
+    }
+  };
+
+  const onCreateRevisionDraft = async (): Promise<void> => {
+    if (!hasProjectId) {
+      setCreateRevisionState("error");
+      setCreateRevisionMessage("No project id.");
+      return;
+    }
+    if (hasUnsavedChanges) {
+      setCreateRevisionState("error");
+      setCreateRevisionMessage("Save changes before creating revision draft.");
+      return;
+    }
+    if (saveState === "saving" || isAnyRevisionActionBusy) {
+      return;
+    }
+    setCreateRevisionState("loading");
+    setCreateRevisionMessage("Creating revision draft...");
+    setConfirmRevisionState("idle");
+    setConfirmRevisionMessage("");
+    try {
+      const draft = await createMatrixRevisionDraft(projectId);
+      setHasPersistedDraft(true);
+      applyDraftSnapshotToEditor(draft);
+      setSaveState("idle");
+      setSaveMessage("");
+      setCreateRevisionState("success");
+      setCreateRevisionMessage("Revision draft loaded.");
+    } catch (error) {
+      setCreateRevisionState("error");
+      setCreateRevisionMessage(parseRequestError(error, "Create revision draft failed."));
+    }
+  };
+
+  const onConfirmRevision = async (): Promise<void> => {
+    if (!confirmRevisionGuard.canConfirm || !projectMatrixDraftId) {
+      setConfirmRevisionState("error");
+      setConfirmRevisionMessage(confirmRevisionGuard.reason || "Revision confirm is unavailable.");
+      return;
+    }
+    setConfirmRevisionState("loading");
+    setConfirmRevisionMessage("Confirming revision...");
+    try {
+      const confirmed = await confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, {
+        confirmed_by: MVP_REVISION_CONFIRMED_BY,
+      });
+      setConfirmRevisionState("success");
+      setConfirmRevisionMessage(buildRevisionConfirmedMessage(confirmed));
+    } catch (error) {
+      setConfirmRevisionState("error");
+      setConfirmRevisionMessage(parseRequestError(error, "Confirm revision failed."));
     }
   };
 
@@ -1537,8 +1681,10 @@ export function MatrixEditorWorkspace({
             type="button"
             disabled={!canSave}
             title={
-              projectMatrixDraftId === null
+              !hasPersistedDraft || projectMatrixDraftId === null
                 ? "No persisted draft target."
+                : isAnyRevisionActionBusy
+                  ? "Action in progress."
                 : hasMatrixValidationError
                   ? groupNameErrorMessage || stepTokenErrorMessage
                   : hasUnsavedChanges
@@ -1550,20 +1696,33 @@ export function MatrixEditorWorkspace({
             {saveState === "saving" ? "Saving..." : "Save"}
           </button>
           <button
-            className="matrix-editor-primary-action"
-            disabled
-            title={hasMatrixValidationError ? groupNameErrorMessage || stepTokenErrorMessage : ""}
+            disabled={!canCreateRevisionDraftWithGuards}
+            title={canCreateRevisionDraftWithGuards ? "" : createRevisionDisabledReason || "Create revision is currently unavailable."}
             type="button"
+            onClick={() => void onCreateRevisionDraft()}
           >
-            Publish for approval
+            {createRevisionState === "loading" ? "Creating..." : "Create revision draft"}
           </button>
-          <button disabled type="button">More</button>
+          <button
+            className="matrix-editor-primary-action"
+            disabled={!confirmRevisionGuard.canConfirm}
+            title={confirmRevisionGuard.reason}
+            type="button"
+            onClick={() => void onConfirmRevision()}
+          >
+            {confirmRevisionState === "loading" ? "Confirming..." : "Confirm revision"}
+          </button>
         </div>
       </section>
 
       {(saveMessage || hasUnsavedChanges) && (
         <section className="matrix-editor-save-status">
           {saveMessage || "Unsaved changes"}
+        </section>
+      )}
+      {(createRevisionMessage || confirmRevisionMessage) && (
+        <section className="matrix-editor-save-status">
+          {confirmRevisionMessage || createRevisionMessage}
         </section>
       )}
 

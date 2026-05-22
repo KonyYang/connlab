@@ -599,8 +599,9 @@ export type ProjectTestPlanDraft = {
 export type ProjectMatrixDraftRecord = {
   project_matrix_draft_id: string;
   project_id: string;
-  source_import_id: string;
+  source_import_id: string | null;
   source_snapshot_id: string;
+  base_confirmed_matrix_id: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -678,6 +679,66 @@ export type ProjectMatrixDraftSaveRequest = {
   groups: ProjectMatrixDraftSaveGroupInput[];
   rows: ProjectMatrixDraftSaveRowInput[];
   cells: ProjectMatrixDraftSaveCellInput[];
+};
+
+export type ConfirmProjectMatrixRevisionDraftInput = {
+  confirmed_by: string;
+  superseded_reason?: string | null;
+};
+
+export type ConfirmedMatrixVersion = {
+  confirmed_matrix_id: string;
+  project_id: string;
+  project_matrix_draft_id: string;
+  source_import_id: string;
+  source_snapshot_id: string;
+  confirmed_revision: number;
+  is_active_authority: boolean;
+  status: string;
+  confirmed_by: string;
+  confirmed_at: string;
+  superseded_by_confirmed_matrix_id?: string | null;
+  superseded_at?: string | null;
+  superseded_reason?: string | null;
+};
+
+export type ConfirmedMatrixGroup = {
+  confirmed_group_id: string;
+  draft_group_id: string;
+  source_group_snapshot_id?: string | null;
+  group_order: number;
+  group_key: string;
+  group_label: string;
+  sample_quantity_expression: string;
+  sample_note?: string | null;
+};
+
+export type ConfirmedMatrixRow = {
+  confirmed_row_id: string;
+  draft_row_id: string;
+  source_row_snapshot_id?: string | null;
+  row_order: number;
+  test_item: string;
+  source_section?: string | null;
+  method?: string | null;
+  condition?: string | null;
+  requirement?: string | null;
+};
+
+export type ConfirmedMatrixCell = {
+  confirmed_cell_id: string;
+  confirmed_row_id: string;
+  confirmed_group_id: string;
+  draft_row_id: string;
+  draft_group_id: string;
+  cell_value: string;
+};
+
+export type ConfirmedMatrixSnapshot = {
+  version: ConfirmedMatrixVersion;
+  groups: ConfirmedMatrixGroup[];
+  rows: ConfirmedMatrixRow[];
+  cells: ConfirmedMatrixCell[];
 };
 
 export type MatrixValidationSummary = {
@@ -1543,6 +1604,29 @@ export function saveProjectMatrixDraft(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}`,
     {
       method: "PUT",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function createMatrixRevisionDraft(projectId: string): Promise<ProjectMatrixDraft> {
+  return requestJson<ProjectMatrixDraft>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-revisions`,
+    {
+      method: "POST"
+    }
+  );
+}
+
+export function confirmProjectMatrixRevisionDraft(
+  projectId: string,
+  projectMatrixDraftId: string,
+  input: ConfirmProjectMatrixRevisionDraftInput
+): Promise<ConfirmedMatrixSnapshot> {
+  return requestJson<ConfirmedMatrixSnapshot>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/confirm-revision`,
+    {
+      method: "POST",
       body: JSON.stringify(input)
     }
   );

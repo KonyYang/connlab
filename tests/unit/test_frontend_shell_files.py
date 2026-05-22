@@ -2790,10 +2790,14 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         "Back to Workbench",
         "Templates",
         "Reference Library",
-        "Publish for approval",
         "Projection Ref:",
     ]:
         assert required_label in matrix_editor_source
+
+    assert (
+        "Publish for approval" in matrix_editor_source
+        or "Confirm revision" in matrix_editor_source
+    )
 
     assert (
         "No group selected" in matrix_editor_source
@@ -3731,6 +3735,45 @@ def test_task256_matrix_editor_save_to_project_matrix_draft_wiring_is_present() 
 
     assert ".matrix-editor-save-status" in styles_source
 
+
+def test_task259_matrix_editor_revision_actions_wiring_is_present() -> None:
+    """TASK_259 wires revision create/confirm actions with draft-kind guards and fixed MVP confirmed_by."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_client_symbol in [
+        "source_import_id: string | null;",
+        "base_confirmed_matrix_id: string | null;",
+        "export type ConfirmProjectMatrixRevisionDraftInput = {",
+        "confirmed_by: string;",
+        "createMatrixRevisionDraft",
+        "confirmProjectMatrixRevisionDraft",
+        "/matrix-revisions",
+        "/confirm-revision",
+    ]:
+        assert required_client_symbol in client_source
+
+    for required_editor_symbol in [
+        'const MVP_REVISION_CONFIRMED_BY = "connlab-operator";',
+        "buildConfirmRevisionGuard(",
+        "projectMatrixDraftBaseConfirmedMatrixId",
+        "Revision already confirmed.",
+        "Current draft is not a revision draft.",
+        "Save changes before creating revision draft.",
+        "Save changes before confirming revision.",
+        "Revision draft loaded.",
+        "const onCreateRevisionDraft = async (): Promise<void> => {",
+        "const onConfirmRevision = async (): Promise<void> => {",
+        "confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, {",
+        "confirmed_by: MVP_REVISION_CONFIRMED_BY,",
+        "Confirm revision",
+        "Create revision draft",
+    ]:
+        assert required_editor_symbol in matrix_editor_source
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
     """TASK_192 prioritizes project source candidates before external/manual fallback."""
