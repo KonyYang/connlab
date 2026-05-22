@@ -168,3 +168,10 @@ class ProjectOutputSource(StrEnum):
     SYSTEM_GENERATED = "system_generated"
     SYSTEM_EXECUTED = "system_executed"
     MANUAL = "manual"
+
+
+class SourceMatrixImportStatus(StrEnum):
+    """Lifecycle status for one persisted Source Matrix import snapshot."""
+
+    IMPORTED = "imported"
+    BLOCKED = "blocked"

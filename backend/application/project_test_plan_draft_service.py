@@ -8,6 +8,10 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
+from backend.application.source_matrix_import_persistence_service import (
+    PersistSourceMatrixImportCommand,
+    SourceMatrixImportPersistenceService,
+)
 from backend.domain import Project, ProjectTestPlanDraft, ProjectTestPlanDraftStatus
 
 
@@ -88,10 +92,12 @@ class ProjectTestPlanDraftService:
         *,
         project_store: ProjectStore,
         draft_store: ProjectTestPlanDraftStore,
+        source_matrix_import_persistence_service: SourceMatrixImportPersistenceService | None = None,
     ) -> None:
         """Create the service with repository ports."""
         self._projects = project_store
         self._drafts = draft_store
+        self._source_matrix_imports = source_matrix_import_persistence_service
 
     def create_draft(
         self,
@@ -142,7 +148,23 @@ class ProjectTestPlanDraftService:
             updated_at=now,
             reviewed_at=now if command.status is ProjectTestPlanDraftStatus.REVIEWED else None,
         )
-        return self._drafts.create(draft)
+        created = self._drafts.create(draft)
+        if _should_persist_source_matrix_import(command) and self._source_matrix_imports is not None:
+            self._source_matrix_imports.persist_from_draft(
+                PersistSourceMatrixImportCommand(
+                    project_id=command.project_id,
+                    draft_id=created.draft_id,
+                    source_document_path=source_document_path,
+                    source_document_name=source_document_name,
+                    source_format=source_format,
+                    source_asset_id=_optional_text(command.source_asset_id),
+                    source_case_id=_optional_text(command.source_case_id),
+                    source_draft_id=_optional_text(command.source_draft_id),
+                    payload=command.payload,
+                    created_at=now,
+                )
+            )
+        return created
 
     def list_by_project(self, project_id: str) -> list[ProjectTestPlanDraft]:
         """List drafts for one Project after verifying Project ownership."""
@@ -284,3 +306,15 @@ def _payload_json(payload: dict[str, Any]) -> str:
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _should_persist_source_matrix_import(
+    command: CreateProjectTestPlanDraftCommand,
+) -> bool:
+    source_format = command.source_format.strip().lower()
+    if source_format == "manual":
+        return False
+    path = command.source_document_path.strip().lower()
+    if path.startswith("manual://"):
+        return False
+    return source_format in {".docx", ".doc", ".pdf", "docx", "doc", "pdf"}

@@ -88,6 +88,9 @@ from backend.application.project_test_plan_matrix_preview_service import (
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
+from backend.application.source_matrix_import_persistence_service import (
+    SourceMatrixImportPersistenceService,
+)
 from backend.application.project_test_plan_matrix_edit_service import (
     ProjectTestPlanMatrixEditService,
 )
@@ -134,6 +137,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectRepository,
     ProjectOutputRecordRepository,
     ProjectTestPlanDraftRepository,
+    SourceMatrixImportRepository,
     SampleInfoRepository,
 )
 from backend.infrastructure.storage.repositories.lookup_options import (
@@ -190,6 +194,9 @@ def get_project_test_plan_draft_service(
     return ProjectTestPlanDraftService(
         project_store=ProjectRepository(session),
         draft_store=ProjectTestPlanDraftRepository(session),
+        source_matrix_import_persistence_service=SourceMatrixImportPersistenceService(
+            store=SourceMatrixImportRepository(session)
+        ),
     )
 
 
