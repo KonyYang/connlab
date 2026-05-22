@@ -17,6 +17,7 @@ from backend.domain.enums import (
     ProjectOutputSource,
     ProjectOutputStatus,
     ProjectStatus,
+    ProjectMatrixDraftStatus,
     ProjectTestPlanDraftStatus,
     SourceMatrixImportStatus,
 )
@@ -44,6 +45,13 @@ from backend.domain.source_matrix_models import (
     SourceMatrixImportRecord,
     SourceMatrixRowSnapshot,
     SourceMatrixSnapshot,
+)
+from backend.domain.project_matrix_draft_models import (
+    ProjectMatrixDraftCell,
+    ProjectMatrixDraftGroup,
+    ProjectMatrixDraftRecord,
+    ProjectMatrixDraftRow,
+    ProjectMatrixDraftSnapshot,
 )
 
 __all__ = [
@@ -76,6 +84,12 @@ __all__ = [
     "ProjectOutputSource",
     "ProjectOutputStatus",
     "ProjectOutputRecord",
+    "ProjectMatrixDraftCell",
+    "ProjectMatrixDraftGroup",
+    "ProjectMatrixDraftRecord",
+    "ProjectMatrixDraftRow",
+    "ProjectMatrixDraftSnapshot",
+    "ProjectMatrixDraftStatus",
     "ProjectStatus",
     "ProjectTestPlanDraft",
     "ProjectTestPlanDraftStatus",

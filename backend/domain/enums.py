@@ -175,3 +175,10 @@ class SourceMatrixImportStatus(StrEnum):
 
     IMPORTED = "imported"
     BLOCKED = "blocked"
+
+
+class ProjectMatrixDraftStatus(StrEnum):
+    """Lifecycle status for one structured Project Matrix draft working copy."""
+
+    DRAFT = "draft"
+    SUPERSEDED = "superseded"

@@ -85,6 +85,9 @@ from backend.application.project_service import ProjectService
 from backend.application.project_test_plan_matrix_preview_service import (
     ProjectTestPlanMatrixPreviewService,
 )
+from backend.application.project_matrix_draft_persistence_service import (
+    ProjectMatrixDraftPersistenceService,
+)
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
@@ -134,6 +137,7 @@ from backend.infrastructure.storage.repositories import (
     PrecheckResultRepository,
     ProjectCleanupAuditRecordRepository,
     ProjectFolderRecordRepository,
+    ProjectMatrixDraftRepository,
     ProjectRepository,
     ProjectOutputRecordRepository,
     ProjectTestPlanDraftRepository,
@@ -197,6 +201,17 @@ def get_project_test_plan_draft_service(
         source_matrix_import_persistence_service=SourceMatrixImportPersistenceService(
             store=SourceMatrixImportRepository(session)
         ),
+    )
+
+
+def get_project_matrix_draft_persistence_service(
+    session: Session = Depends(get_session),
+) -> ProjectMatrixDraftPersistenceService:
+    """Build the Project Matrix draft persistence service."""
+    return ProjectMatrixDraftPersistenceService(
+        project_store=ProjectRepository(session),
+        source_store=SourceMatrixImportRepository(session),
+        draft_store=ProjectMatrixDraftRepository(session),
     )
 
 

@@ -25,6 +25,9 @@ from backend.infrastructure.storage.repositories.project import ProjectRepositor
 from backend.infrastructure.storage.repositories.project_test_plan import (
     ProjectTestPlanDraftRepository,
 )
+from backend.infrastructure.storage.repositories.project_matrix_draft import (
+    ProjectMatrixDraftRepository,
+)
 from backend.infrastructure.storage.repositories.source_matrix_import import (
     SourceMatrixImportRepository,
 )
@@ -51,6 +54,7 @@ __all__ = [
     "PrecheckResultRepository",
     "ProjectCleanupAuditRecordRepository",
     "ProjectFolderRecordRepository",
+    "ProjectMatrixDraftRepository",
     "ProjectRepository",
     "ProjectOutputRecordRepository",
     "ProjectTestPlanDraftRepository",

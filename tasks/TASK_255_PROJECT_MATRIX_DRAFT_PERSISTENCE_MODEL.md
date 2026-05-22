@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned (awaiting user approval).
+Complete.
 
 ## Current Phase
 
@@ -87,3 +87,9 @@ py -m pytest tests\unit\test_project_matrix_draft_persistence_service.py tests\u
 ```powershell
 py -m pytest tests\integration\test_project_matrix_draft_from_source_matrix_api.py tests\unit\test_source_matrix_persistence_service.py -q
 ```
+
+## Residual Risk Record
+
+- Concurrent duplicate-create attempts may still hit DB unique constraints and raise `IntegrityError` after service-level precheck in race windows.
+- Current single-machine offline scope accepts this.
+- When multi-user/LAN scope is enabled, add DB-level conflict translation to application conflict responses as a controlled follow-up task.
