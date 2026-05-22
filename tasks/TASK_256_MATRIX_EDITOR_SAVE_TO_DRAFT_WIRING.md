@@ -43,6 +43,12 @@ Allowed:
 - Add a minimal API route for saving/loading Project Matrix Draft aggregate state if existing routes are insufficient.
 - Add typed frontend API client methods for Project Matrix Draft save/load.
 - Wire Matrix Editor `Save` action to persist current group/row/cell/sample state into Project Matrix Draft.
+- Persist only the approved Matrix working-copy field whitelist:
+  - rows
+  - groups
+  - cells
+  - selected groups
+  - group-level sample quantity
 - Display save state feedback:
   - saving
   - saved
@@ -62,19 +68,31 @@ Forbidden:
 - Direct frontend access to SQLite, filesystem, Office, or repositories.
 - Route-level business logic that bypasses application services.
 - Reinterpreting selected groups as confirmed authority.
+- Persisting UI-only state such as right-side preview expansion, transient validation highlight, hover state, focus state, dialog visibility, scroll position, temporary error decoration, or other non-domain presentation state.
+- Implicitly creating a Project Matrix Draft when no `project_matrix_draft_id` is available.
+- Implementing optimistic concurrency/version checks unless explicitly approved in a later task.
 
 ## Acceptance Criteria
 
 - Matrix Editor can load or reference an existing Project Matrix Draft identity before saving.
+- If no `project_matrix_draft_id` exists, `Save` is disabled and shows an operator-readable reason. This task must not create a draft implicitly from Save.
 - Clicking `Save` persists current editable rows, groups, selected groups, sparse non-empty cells, and group-level sample quantity to Project Matrix Draft persistence.
+- Save persists only the approved field whitelist and excludes UI-only state.
 - Empty cell values are saved as absence of draft cell rows, not as persisted empty strings.
+- This task uses last-write-wins save semantics. `updated_at` may be returned/displayed, but optimistic concurrency/version conflict protection is explicitly out of scope.
 - Save does not create Confirmed Matrix authority, active Matrix version, runtime projection, or execution records.
 - Save does not mutate Source Matrix import/snapshot rows.
 - API routes call application services only.
+- Error mapping is stable:
+  - `404` for draft not found
+  - `409` for conflict if the application service detects one
+  - `422` for request payload validation
+  - `500` for unexpected failures
 - Frontend API calls stay in `frontend/src/api/client.ts`.
 - Matrix Editor shows clear save feedback and does not expose future confirmation/report/runtime actions as active.
 - Existing import preview and local edit behaviors remain functional.
-- Tests cover successful save, sparse empty-cell behavior, source immutability, route boundary, frontend wiring, and existing Matrix Editor smoke/static checks.
+- Tests cover successful save, sparse empty-cell behavior, source immutability, route boundary, frontend wiring, missing draft target disabled state, repository update rollback on failure, and existing Matrix Editor smoke/static checks.
+- Completion must update `docs/task_board.md` with status, validation commands/results, next stop point, and any residual risk.
 
 ## Validation
 

@@ -23,7 +23,7 @@ The save operation stores draft-local working state only. It does not create con
 Input:
 
 - Existing Project Matrix Draft identity.
-- Matrix Editor current group columns, rows, sparse group-cell values, selected group, sample quantity expressions, and note-related display state where currently editable.
+- Matrix Editor current group columns, rows, sparse group-cell values, selected group state, and sample quantity expressions.
 
 Output:
 
@@ -34,6 +34,10 @@ Output:
   - sparse non-empty draft cells
   - draft-local selected groups
   - group-level sample quantity expression
+
+Non-output:
+
+- UI-only state must not be persisted. This includes right-side preview expansion, temporary validation highlight, hover/focus state, dialog visibility, scroll position, transient error decoration, and other presentation-only state.
 
 ## 3) Architecture Boundary
 
@@ -77,12 +81,15 @@ Infrastructure:
 
 4. Matrix Editor wiring
    - Load or receive existing `project_matrix_draft_id` context.
+   - If no `project_matrix_draft_id` exists, keep `Save` disabled and show an operator-readable reason.
+   - Do not implicitly create a Project Matrix Draft from the Save action.
    - Map Matrix Editor state into save payload:
      - groups
      - row order and row fields
      - sparse group-cell values
      - selected group state
      - group sample quantity expression
+   - Exclude UI-only state from save payload.
    - Enable `Save` only when a persisted draft target exists and there are changes.
    - Show saving/saved/unsaved/save failed feedback.
    - Leave `Publish for approval` disabled/out of scope.
@@ -101,6 +108,16 @@ Draft update:
 - Does not create or update Source Matrix rows/groups/cells.
 - Does not create Confirmed Matrix authority.
 - Does not supersede draft versions unless explicitly required by existing draft persistence behavior.
+- Does not implicitly create a draft when Save has no existing `project_matrix_draft_id`.
+- Uses last-write-wins semantics in this task. Optimistic concurrency/version checks based on `updated_at` or a version column are explicitly out of scope and should be recorded as residual risk if relevant.
+
+Persisted field whitelist:
+
+- rows
+- groups
+- cells
+- selected groups
+- group-level sample quantity
 
 Sparse cells:
 
@@ -123,6 +140,7 @@ ConnLab is a restrained product UI for lab operators at Windows workstations.
 
 - Use operational labels: `Save`, `Saving...`, `Saved`, `Unsaved changes`, `Save failed`.
 - Pair disabled state with a visible reason if the operator can act.
+- When no draft target exists, show a concise disabled reason such as `No persisted draft to save`.
 - Avoid introducing new future actions such as confirm authority, execution start, report generation, fee generation, or runtime publication.
 - Preserve current Matrix Editor density and layout; this task is save wiring, not a redesign.
 
@@ -147,6 +165,22 @@ Risk: Frontend grows ad hoc API logic.
 Risk: Partial draft replacement persists on failure.
 
 - Control: update root/groups/rows/cells atomically under one transaction and test rollback behavior if repository replacement fails.
+
+Risk: concurrent edits overwrite each other.
+
+- Control: accept last-write-wins for this task and document concurrency as out of scope. Do not add partial optimistic concurrency unless explicitly approved.
+
+Risk: UI-only state pollutes persisted draft data.
+
+- Control: save payload uses an explicit field whitelist and tests/static checks verify UI-only state is not sent.
+
+Risk: Save creates an unintended draft when no target exists.
+
+- Control: disable Save without `project_matrix_draft_id`; draft creation remains a separate flow from `TASK_255`.
+
+Risk: frontend error handling drifts across HTTP statuses.
+
+- Control: stabilize error mapping: `404` draft not found, `409` conflict when defined, `422` payload validation, `500` unexpected failure.
 
 ## 8) Validation Plan
 
@@ -184,10 +218,18 @@ Manual smoke after implementation:
 5. Verify Source Matrix import data is unchanged.
 6. Verify no confirmed authority or runtime projection is created.
 
+Documentation closeout:
+
+- Update `docs/task_board.md` with completion status.
+- Record validation commands and results.
+- Set active task back to none.
+- Record residual risks, including last-write-wins concurrency if still applicable.
+
 ## 9) Out Of Scope
 
 - Confirmed Matrix authority
 - Matrix revision flow
+- Optimistic concurrency/version conflict protection
 - Runtime execution projection
 - StepInstance persistence
 - Report generation
