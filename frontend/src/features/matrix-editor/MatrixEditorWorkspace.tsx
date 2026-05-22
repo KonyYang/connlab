@@ -1555,14 +1555,14 @@ export function MatrixEditorWorkspace({
         </section>
 
         <aside className="matrix-editor-step-workspace" aria-label="Group Step Workspace">
-          <header>
-            <p>{selectedGroup ? selectedGroup.name || "Unnamed group" : "No group selected"}</p>
-            <h3>Step preview</h3>
+          <header className="matrix-editor-step-header">
+            <h3>
+              <span className="matrix-editor-step-header-group">
+                {`Group ${selectedGroup ? selectedGroup.name || "Unnamed" : "-"}`}
+              </span>
+              <span className="matrix-editor-step-header-count">{`${selectedGroupStepRows.length} steps`}</span>
+            </h3>
           </header>
-          <div className="matrix-editor-step-meta">
-            <span>{selectedGroupStepRows.length} steps</span>
-            <em>{selectedGroup ? "Selected group" : "Select group"}</em>
-          </div>
           {!selectedGroup ? (
             <div className="matrix-editor-step-empty">Select a group header to preview steps.</div>
           ) : selectedGroupStepRows.length === 0 ? (

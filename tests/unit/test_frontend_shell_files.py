@@ -2788,14 +2788,18 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         "Matrix Editor",
         "Definition Studio",
         "Back to Workbench",
-        "No group selected",
-        "Step preview",
         "Templates",
         "Reference Library",
         "Publish for approval",
         "Projection Ref:",
     ]:
         assert required_label in matrix_editor_source
+
+    assert (
+        "No group selected" in matrix_editor_source
+        or "Group ${selectedGroup ? selectedGroup.name || \"Unnamed\" : \"-\"}" in matrix_editor_source
+    )
+    assert ("Step preview" in matrix_editor_source or "matrix-editor-step-header" in matrix_editor_source)
 
     for required_style in [
         ".matrix-editor-target-header",
@@ -3530,6 +3534,42 @@ def test_task252cr_matrix_import_preview_layout_and_reparse_style_are_wired() ->
         "height: 42px;",
         "font-size: 18px;",
         ".matrix-editor-import-reparse-button:disabled {",
+    ]:
+        assert required_style in styles_source
+
+
+def test_task252cs_matrix_editor_step_preview_header_and_samples_card_color_are_wired() -> None:
+    """TASK_252CS uses Group-prefixed step header, removes redundant labels, and applies distinct samples card color."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required_source in [
+        "className=\"matrix-editor-step-header\"",
+        "className=\"matrix-editor-step-header-group\"",
+        "className=\"matrix-editor-step-header-count\"",
+        "{`Group ${selectedGroup ? selectedGroup.name || \"Unnamed\" : \"-\"}`}",
+        "{`${selectedGroupStepRows.length} steps`}",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for removed_source in [
+        "<h3>Step preview</h3>",
+        "Selected group",
+        "Select group",
+    ]:
+        assert removed_source not in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-step-header h3 {",
+        ".matrix-editor-step-header-group {",
+        "font-size: 34px;",
+        ".matrix-editor-step-header-count {",
+        "font-size: 20px;",
+        ".matrix-editor-notes-card-samples {",
+        "background: #eef9f4;",
+        "border-color: #bfe1d1;",
     ]:
         assert required_style in styles_source
 

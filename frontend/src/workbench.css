@@ -998,8 +998,8 @@
 }
 
 .matrix-editor-notes-card-samples {
-  border-color: #d7deea;
-  background: #f8fbff;
+  border-color: #bfe1d1;
+  background: #eef9f4;
 }
 
 .matrix-editor-samples-inline {
@@ -1029,38 +1029,24 @@
   overflow-wrap: anywhere;
 }
 
-.matrix-editor-step-workspace header {
-  display: grid;
-  gap: 3px;
-}
-
-.matrix-editor-step-workspace header p {
-  color: var(--color-primary-strong);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.matrix-editor-step-meta {
+.matrix-editor-step-header h3 {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin: 0;
 }
 
-.matrix-editor-step-meta span {
+.matrix-editor-step-header-group {
+  color: var(--color-primary-strong);
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 800;
+}
+
+.matrix-editor-step-header-count {
   color: var(--color-ink);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.matrix-editor-step-meta em {
-  display: inline-flex;
-  border: 1px solid #bfe1d1;
-  border-radius: 999px;
-  padding: 2px 8px;
-  background: #eef9f4;
-  color: var(--color-success);
-  font-size: 11px;
-  font-style: normal;
+  font-size: 20px;
+  line-height: 1.1;
   font-weight: 700;
 }
 
