@@ -602,7 +602,13 @@ This task does not implement:
 5. `TASK_258_MATRIX_REVISION_FLOW`
    Implement create-new-revision flow from active confirmed Matrix or new source import.
 
-6. `TASK_259_SELECTED_GROUPS_PROJECTION_CONSUMER`
-   Expose selected groups projection for execution views while hiding unselected groups by default.
+6. `TASK_260_CONFIRMED_MATRIX_RUNTIME_PROJECTION_CONSUMER`
+   Consume the active ConfirmedMatrix authority as the source for existing runtime projection/read-only execution views.
+
+   Scope note: this is not a separate selected-groups authority model. ConfirmedMatrix already contains only selected authority groups, so execution views should consume the active confirmed groups/rows/cells and naturally omit unselected source groups by default. SourceMatrix lineage remains the traceability path for unselected source groups.
+
+   Boundary note: this follow-up should adapt confirmed Matrix data into existing runtime projection inputs and avoid introducing StepInstance, execution records, report, fee, duration, equipment, AI review, or new projection DTOs unless the task plan proves the existing runtime projection DTOs are insufficient.
+
+   Numbering note: `TASK_259` was later assigned to `TASK_259_MATRIX_EDITOR_REVISION_ACTIONS_WIRING` in the active board sequence.
 
 Downstream fee/duration/equipment/report tasks should wait until confirmed authority exists.
