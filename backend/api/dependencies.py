@@ -91,6 +91,9 @@ from backend.application.project_matrix_draft_persistence_service import (
 from backend.application.confirmed_matrix_authority_service import (
     ConfirmedMatrixAuthorityService,
 )
+from backend.application.confirmed_matrix_runtime_projection_service import (
+    ConfirmedMatrixRuntimeProjectionService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -120,6 +123,9 @@ from backend.application.test_record_fee_dataset_preview_service import (
 )
 from backend.application.test_record_fee_document_generation_service import (
     TestRecordFeeDocumentGenerationService,
+)
+from backend.application.runtime_projection_read_only_service import (
+    RuntimeProjectionReadOnlyService,
 )
 from backend.infrastructure.files import IntakeStorage
 from backend.infrastructure.office import (
@@ -230,6 +236,16 @@ def get_confirmed_matrix_authority_service(
         project_store=ProjectRepository(session),
         draft_store=ProjectMatrixDraftRepository(session),
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_confirmed_matrix_runtime_projection_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedMatrixRuntimeProjectionService:
+    """Build confirmed-authority runtime projection read-only service."""
+    return ConfirmedMatrixRuntimeProjectionService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        runtime_projection_service=RuntimeProjectionReadOnlyService(),
     )
 
 

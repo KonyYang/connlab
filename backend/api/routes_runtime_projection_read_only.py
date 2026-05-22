@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
-
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from backend.api.runtime_projection_response_mapper import (
+    MatrixOverviewConsumerResponse,
+    RuntimeProjectionReadOnlySnapshotResponse,
+    RuntimeProjectionSummaryResponse,
+    StepWorkspaceConsumerResponse,
+    to_runtime_projection_read_only_snapshot_response,
+)
 from backend.application.runtime_projection_read_only_service import (
     RuntimeProjectionReadOnlyService,
 )
@@ -60,98 +65,6 @@ class RuntimeProjectionReadOnlySnapshotRequest(BaseModel):
     selected_token_reference: str | None = None
 
 
-class RuntimeProjectionReadOnlySnapshotResponse(BaseModel):
-    """Read-only runtime projection snapshot response."""
-
-    project_reference: str
-    matrix_reference: str
-    parser_warnings: list[str]
-    runtime_projection_summary: "RuntimeProjectionSummaryResponse"
-    matrix_overview: "MatrixOverviewConsumerResponse"
-    step_workspace: "StepWorkspaceConsumerResponse | None"
-
-
-class ValueCountItemResponse(BaseModel):
-    value: str | None
-    count: int
-
-
-class ProjectionAggregationSummaryResponse(BaseModel):
-    lifecycle_counts: list[ValueCountItemResponse]
-    evidence_counts: list[ValueCountItemResponse]
-    report_sync_counts: list[ValueCountItemResponse]
-    stale_counts: list[ValueCountItemResponse]
-    attention_counts: list[ValueCountItemResponse]
-
-
-class GroupRuntimeProjectionResponse(BaseModel):
-    group_identity: str
-    group_label: str
-    total_tokens: int
-    unique_sequences: int
-    aggregation_summary: ProjectionAggregationSummaryResponse
-
-
-class RuntimeProjectionSummaryResponse(BaseModel):
-    total_tokens: int
-    group_count: int
-    groups: list[GroupRuntimeProjectionResponse]
-
-
-class MatrixOverviewTokenResponse(BaseModel):
-    token_reference: str
-    raw_token: str
-    sequence_number: int
-    suffix_note: str | None
-    lifecycle_projection: str | None
-    evidence_projection: str | None
-    report_sync_projection: str | None
-    stale_projection: str | None
-    attention_projection: str | None
-
-
-class MatrixOverviewGroupResponse(BaseModel):
-    group_identity: str
-    group_label: str
-    total_tokens: int
-    unique_sequences: int
-    tokens: list[MatrixOverviewTokenResponse]
-
-
-class MatrixOverviewConsumerResponse(BaseModel):
-    total_tokens: int
-    group_count: int
-    groups: list[MatrixOverviewGroupResponse]
-
-
-class SelectedStepTokenResponse(BaseModel):
-    token_reference: str
-    raw_token: str
-    sequence_number: int
-    suffix_note: str | None
-    lifecycle_projection: str | None
-    evidence_projection: str | None
-    report_sync_projection: str | None
-    stale_projection: str | None
-    attention_projection: str | None
-    test_item_label: str
-    section: str
-    method: str
-    condition: str
-    requirement: str
-
-
-class StepWorkspaceConsumerResponse(BaseModel):
-    selected_token_reference: str
-    found: bool
-    group_identity: str | None
-    group_label: str | None
-    group_token_references: list[str]
-    previous_token_reference: str | None
-    next_token_reference: str | None
-    selected_token: SelectedStepTokenResponse | None
-
-
 @router.post(
     "/api/runtime-projection/read-only-snapshot",
     response_model=RuntimeProjectionReadOnlySnapshotResponse,
@@ -162,7 +75,7 @@ def runtime_projection_read_only_snapshot(
     """Return one deterministic read-only runtime projection snapshot."""
     build_input = _to_build_input(request)
     snapshot = _runtime_projection_read_only_service.build_snapshot(build_input)
-    return _snapshot_response(snapshot)
+    return to_runtime_projection_read_only_snapshot_response(snapshot)
 
 
 def _to_build_input(
@@ -199,117 +112,4 @@ def _to_build_input(
         matrix_reference=request.matrix_reference,
         rows=rows,
         selected_token_reference=request.selected_token_reference,
-    )
-
-
-def _snapshot_response(snapshot) -> RuntimeProjectionReadOnlySnapshotResponse:
-    snapshot_data = asdict(snapshot)
-    return RuntimeProjectionReadOnlySnapshotResponse(
-        project_reference=snapshot_data["project_reference"],
-        matrix_reference=snapshot_data["matrix_reference"],
-        parser_warnings=list(snapshot_data["parser_warnings"]),
-        runtime_projection_summary=_runtime_summary_response(
-            snapshot_data["runtime_projection_summary"]
-        ),
-        matrix_overview=_matrix_overview_response(snapshot_data["matrix_overview"]),
-        step_workspace=_step_workspace_response(snapshot_data["step_workspace"]),
-    )
-
-
-def _value_count_items(values: list[list[str | None | int]] | tuple[tuple[str | None, int], ...]) -> list[ValueCountItemResponse]:
-    return [ValueCountItemResponse(value=item[0], count=item[1]) for item in values]
-
-
-def _runtime_summary_response(summary_data: dict) -> RuntimeProjectionSummaryResponse:
-    groups: list[GroupRuntimeProjectionResponse] = []
-    for group in summary_data["groups"]:
-        aggregation = group["aggregation_summary"]
-        groups.append(
-            GroupRuntimeProjectionResponse(
-                group_identity=group["group_identity"],
-                group_label=group["group_label"],
-                total_tokens=group["total_tokens"],
-                unique_sequences=group["unique_sequences"],
-                aggregation_summary=ProjectionAggregationSummaryResponse(
-                    lifecycle_counts=_value_count_items(aggregation["lifecycle_counts"]),
-                    evidence_counts=_value_count_items(aggregation["evidence_counts"]),
-                    report_sync_counts=_value_count_items(aggregation["report_sync_counts"]),
-                    stale_counts=_value_count_items(aggregation["stale_counts"]),
-                    attention_counts=_value_count_items(aggregation["attention_counts"]),
-                ),
-            )
-        )
-    return RuntimeProjectionSummaryResponse(
-        total_tokens=summary_data["total_tokens"],
-        group_count=summary_data["group_count"],
-        groups=groups,
-    )
-
-
-def _matrix_overview_response(overview_data: dict) -> MatrixOverviewConsumerResponse:
-    groups: list[MatrixOverviewGroupResponse] = []
-    for group in overview_data["groups"]:
-        tokens = [
-            MatrixOverviewTokenResponse(
-                token_reference=token["token_reference"],
-                raw_token=token["raw_token"],
-                sequence_number=token["sequence_number"],
-                suffix_note=token["suffix_note"],
-                lifecycle_projection=token["lifecycle_projection"],
-                evidence_projection=token["evidence_projection"],
-                report_sync_projection=token["report_sync_projection"],
-                stale_projection=token["stale_projection"],
-                attention_projection=token["attention_projection"],
-            )
-            for token in group["tokens"]
-        ]
-        groups.append(
-            MatrixOverviewGroupResponse(
-                group_identity=group["group_identity"],
-                group_label=group["group_label"],
-                total_tokens=group["total_tokens"],
-                unique_sequences=group["unique_sequences"],
-                tokens=tokens,
-            )
-        )
-    return MatrixOverviewConsumerResponse(
-        total_tokens=overview_data["total_tokens"],
-        group_count=overview_data["group_count"],
-        groups=groups,
-    )
-
-
-def _step_workspace_response(workspace_data: dict | None) -> StepWorkspaceConsumerResponse | None:
-    if workspace_data is None:
-        return None
-
-    selected = workspace_data["selected_token"]
-    selected_token = None
-    if selected is not None:
-        selected_token = SelectedStepTokenResponse(
-            token_reference=selected["token_reference"],
-            raw_token=selected["raw_token"],
-            sequence_number=selected["sequence_number"],
-            suffix_note=selected["suffix_note"],
-            lifecycle_projection=selected["lifecycle_projection"],
-            evidence_projection=selected["evidence_projection"],
-            report_sync_projection=selected["report_sync_projection"],
-            stale_projection=selected["stale_projection"],
-            attention_projection=selected["attention_projection"],
-            test_item_label=selected["test_item_label"],
-            section=selected["section"],
-            method=selected["method"],
-            condition=selected["condition"],
-            requirement=selected["requirement"],
-        )
-
-    return StepWorkspaceConsumerResponse(
-        selected_token_reference=workspace_data["selected_token_reference"],
-        found=workspace_data["found"],
-        group_identity=workspace_data["group_identity"],
-        group_label=workspace_data["group_label"],
-        group_token_references=list(workspace_data["group_token_references"]),
-        previous_token_reference=workspace_data["previous_token_reference"],
-        next_token_reference=workspace_data["next_token_reference"],
-        selected_token=selected_token,
     )

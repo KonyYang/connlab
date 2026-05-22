@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Awaiting user approval before implementation.
+Complete.
 
 ## Current Phase
 
@@ -10,7 +10,16 @@ Planned. Awaiting user approval before implementation.
 
 ## Current Active Task
 
-`TASK_260_CONFIRMED_MATRIX_RUNTIME_PROJECTION_CONSUMER` is planned only.
+`TASK_260_CONFIRMED_MATRIX_RUNTIME_PROJECTION_CONSUMER` is complete.
+
+## Model Fit Assessment
+
+`GPT-5.3-codex` with `medium` reasoning is suitable.
+
+Reason:
+
+- The task is a bounded backend adapter/API wiring slice that reuses existing runtime projection composition and existing Confirmed Matrix repository capabilities.
+- It requires deterministic mapping and focused API/service tests, but does not require frontend/UI changes, runtime execution persistence, Office parsing, or domain-model expansion.
 
 ## Why This Task Is Allowed Now
 
@@ -38,6 +47,8 @@ Allowed:
   - `GET /api/projects/{project_id}/runtime-projection/confirmed-matrix-snapshot`
   - optional query: `selected_token_reference`
 - Reuse existing response DTOs from `routes_runtime_projection_read_only.py` where practical.
+  - Do not create route-to-route coupling by importing private helper functions from another route module.
+  - If response mapping reuse is needed, extract shared mapper/helpers into a neutral module (for example under `backend/api/`) and let both routes use that module.
 - Add dependency wiring through `backend/api/dependencies.py` and `backend/api/main.py`.
 - Add focused unit and integration tests for:
   - active confirmed Matrix conversion into projection rows
@@ -85,6 +96,12 @@ Unselected source groups must stay traceable through Source Matrix lineage only;
 - Existing `/api/runtime-projection/read-only-snapshot` behavior remains unchanged.
 - API route remains thin and calls application service only.
 - No database schema migration is introduced.
+- Error contract boundary:
+  - 404 uses existing FastAPI HTTPException error shape (`{"detail": ...}`), no new error DTO is introduced in this task.
+  - 422 uses existing FastAPI HTTPException error shape (`{"detail": ...}`), no new error DTO is introduced in this task.
+- Sparse mapping boundary:
+  - Confirmed-matrix consumer maps only existing confirmed sparse non-empty cells into `SnapshotBuildInput`.
+  - Missing row/group cells are intentionally omitted (no synthetic empty-cell row inputs are generated in this task).
 
 ## Validation
 

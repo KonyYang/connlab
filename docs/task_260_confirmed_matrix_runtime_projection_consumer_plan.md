@@ -33,10 +33,15 @@ The task does not create runtime execution state. It only adapts confirmed autho
    - Add `GET /api/projects/{project_id}/runtime-projection/confirmed-matrix-snapshot`.
    - Accept optional `selected_token_reference` query parameter.
    - Reuse existing runtime projection response mapping if practical; otherwise extract shared response helpers without changing response schema.
+   - Do not import private mapping helpers directly from another route module; route-to-route coupling is not allowed.
+   - If mapping reuse is needed, extract mapper/helpers into a neutral module and use it from both routes.
    - Map:
      - no active confirmed Matrix -> 404
      - invalid confirmed Matrix projection input -> 422
      - unexpected -> 500
+   - Error shape policy:
+     - Keep FastAPI default `HTTPException(detail=...)` error body for 404/422 in this task.
+     - Do not introduce new error DTO models.
 
 3. Dependency wiring
    - Add a provider in `backend/api/dependencies.py`.
@@ -67,7 +72,7 @@ The task does not create runtime execution state. It only adapts confirmed autho
   - `requirement`: confirmed row `requirement` or empty string
 - `raw_step_token_value`: confirmed sparse cell value for the row/group pair.
 
-Rows without a cell in a confirmed group should be omitted from runtime projection input unless implementation review proves the existing projection builder needs explicit empty rows for warnings. This keeps projection output token-driven and prevents artificial empty execution tokens.
+Rows without a cell in a confirmed group should be omitted from runtime projection input. This task must not generate synthetic empty row/group inputs only to produce missing-token warnings. This keeps projection output token-driven and aligned to confirmed sparse authority cells.
 
 ## 4) Scope Guards
 
