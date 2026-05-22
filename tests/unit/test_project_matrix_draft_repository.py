@@ -187,6 +187,213 @@ def test_project_matrix_draft_repository_rolls_back_on_child_unique_failure(
         engine.dispose()
 
 
+def test_project_matrix_draft_repository_replace_snapshot_roundtrip(tmp_path: Path) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            initial = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-r1",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T10:00:00+00:00",
+                    updated_at="2026-05-22T10:00:00+00:00",
+                ),
+                groups=(
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-r1",
+                        project_matrix_draft_id="pmd-r1",
+                        source_group_snapshot_id=source_snapshot.groups[0].group_snapshot_id,
+                        group_order=1,
+                        group_key="g1",
+                        group_label="G1",
+                        is_selected=True,
+                    ),
+                ),
+                rows=(
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-r1",
+                        project_matrix_draft_id="pmd-r1",
+                        source_row_snapshot_id=source_snapshot.rows[0].row_snapshot_id,
+                        row_order=1,
+                        test_item="Visual",
+                    ),
+                ),
+                cells=(
+                    ProjectMatrixDraftCell(
+                        draft_cell_id="pmdc-r1",
+                        project_matrix_draft_id="pmd-r1",
+                        draft_row_id="pmdr-r1",
+                        draft_group_id="pmdg-r1",
+                        cell_value="1",
+                    ),
+                ),
+            )
+            repo = ProjectMatrixDraftRepository(session)
+            repo.create_snapshot(initial)
+            replacement = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-r1",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T10:00:00+00:00",
+                    updated_at="2026-05-22T10:30:00+00:00",
+                ),
+                groups=(
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-r2",
+                        project_matrix_draft_id="pmd-r1",
+                        source_group_snapshot_id=source_snapshot.groups[0].group_snapshot_id,
+                        group_order=1,
+                        group_key="g1",
+                        group_label="Group A",
+                        is_selected=True,
+                    ),
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-r3",
+                        project_matrix_draft_id="pmd-r1",
+                        source_group_snapshot_id=source_snapshot.groups[1].group_snapshot_id,
+                        group_order=2,
+                        group_key="g2",
+                        group_label="Group B",
+                        is_selected=False,
+                    ),
+                ),
+                rows=(
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-r2",
+                        project_matrix_draft_id="pmd-r1",
+                        source_row_snapshot_id=source_snapshot.rows[0].row_snapshot_id,
+                        row_order=1,
+                        test_item="Visual Updated",
+                    ),
+                ),
+                cells=(
+                    ProjectMatrixDraftCell(
+                        draft_cell_id="pmdc-r2",
+                        project_matrix_draft_id="pmd-r1",
+                        draft_row_id="pmdr-r2",
+                        draft_group_id="pmdg-r3",
+                        cell_value="9",
+                    ),
+                ),
+            )
+            repo.replace_snapshot(replacement)
+            session.commit()
+            loaded = repo.get("pmd-r1")
+            assert loaded is not None
+            assert loaded.record.updated_at == "2026-05-22T10:30:00+00:00"
+            assert len(loaded.groups) == 2
+            assert len(loaded.rows) == 1
+            assert len(loaded.cells) == 1
+            assert loaded.cells[0].cell_value == "9"
+    finally:
+        engine.dispose()
+
+
+def test_project_matrix_draft_repository_replace_snapshot_rolls_back_on_unique_failure(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            repo = ProjectMatrixDraftRepository(session)
+            baseline = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-rb",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T10:00:00+00:00",
+                    updated_at="2026-05-22T10:00:00+00:00",
+                ),
+                groups=(
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-rb1",
+                        project_matrix_draft_id="pmd-rb",
+                        source_group_snapshot_id=source_snapshot.groups[0].group_snapshot_id,
+                        group_order=1,
+                        group_key="g1",
+                        group_label="G1",
+                        is_selected=True,
+                    ),
+                ),
+                rows=(
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-rb1",
+                        project_matrix_draft_id="pmd-rb",
+                        source_row_snapshot_id=source_snapshot.rows[0].row_snapshot_id,
+                        row_order=1,
+                        test_item="Visual",
+                    ),
+                ),
+                cells=(),
+            )
+            repo.create_snapshot(baseline)
+            session.commit()
+            invalid = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-rb",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T10:00:00+00:00",
+                    updated_at="2026-05-22T10:05:00+00:00",
+                ),
+                groups=(
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-rb2",
+                        project_matrix_draft_id="pmd-rb",
+                        source_group_snapshot_id=source_snapshot.groups[0].group_snapshot_id,
+                        group_order=1,
+                        group_key="g1",
+                        group_label="G1",
+                        is_selected=True,
+                    ),
+                ),
+                rows=(
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-rb2",
+                        project_matrix_draft_id="pmd-rb",
+                        source_row_snapshot_id=source_snapshot.rows[0].row_snapshot_id,
+                        row_order=1,
+                        test_item="Visual",
+                    ),
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-rb3",
+                        project_matrix_draft_id="pmd-rb",
+                        source_row_snapshot_id=source_snapshot.rows[1].row_snapshot_id,
+                        row_order=1,
+                        test_item="LLCR",
+                    ),
+                ),
+                cells=(),
+            )
+            with pytest.raises(IntegrityError):
+                repo.replace_snapshot(invalid)
+            session.rollback()
+            reloaded = repo.get("pmd-rb")
+            assert reloaded is not None
+            assert len(reloaded.rows) == 1
+            assert reloaded.rows[0].draft_row_id == "pmdr-rb1"
+    finally:
+        engine.dispose()
+
+
 def _seed_project(session) -> None:
     ProjectRepository(session).create(
         Project(

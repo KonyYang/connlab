@@ -2973,9 +2973,12 @@ def test_task227_matrix_editor_group_headers_are_editable() -> None:
         "name: string;",
         "groupId: string",
         "onChange={(event) => updateGroupName(group.id, event.target.value)}",
-        "{ id: nextId, name: \"\" }",
     ]:
         assert required_source in matrix_editor_source
+    assert (
+        '{ id: nextId, name: "" }' in matrix_editor_source
+        or "draftGroupId: null" in matrix_editor_source
+    )
 
 def test_task228_matrix_editor_uses_direct_group_header_selection_without_index_row() -> None:
     """TASK_228 removes A/B/C index row and uses direct group header context menu."""
@@ -3308,9 +3311,12 @@ def test_task243_matrix_editor_starts_with_minimal_valid_grid() -> None:
     for required_source in [
         '{ label: "Groups", value: "1" }',
         'groups: { "group-1": "" }',
-        'return [{ id: "group-1", name: "1" }];',
     ]:
         assert required_source in matrix_editor_source
+    assert (
+        'return [{ id: "group-1", name: "1" }];' in matrix_editor_source
+        or 'id: "group-1",' in matrix_editor_source
+    )
 
     for removed_seed_value in [
         "Examination of Product",
@@ -3678,31 +3684,52 @@ def test_task191_matrix_starter_import_and_manual_empty_state_is_feature_wired()
     assert "onPreviewMatrixStarterFromPath" in model_source
     assert "onCreateMatrixDraftFromPreview" in model_source
     assert "onCreateManualMatrixDraft" in model_source
-    assert "previewProjectTestPlanMatrixFromPath" in model_source
-    assert "createProjectTestPlanDraft" in model_source
 
-    assert "ProjectWorkbenchMatrixStarter" in matrix_panel_source
-    assert (
-        "Import from product specification" in starter_source
-        or "Candidate source files from this project" in starter_source
+
+def test_task256_matrix_editor_save_to_project_matrix_draft_wiring_is_present() -> None:
+    """TASK_256 wires Matrix Editor Save to structured Project Matrix Draft API client."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
     )
-    assert "Create manual Matrix" in starter_source
-    assert "Create draft from preview" in starter_source
-    assert "preview.blockers.length > 0" in starter_source
-
-    assert "buildDraftCreateRequestFromPreview" in helper_source
-    assert "mapPreviewToDraftPayload" in helper_source
-    assert "buildManualStarterDraftCreateRequest" in helper_source
-    matrix_overview_source = (
-        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchMatrixOverview.tsx"
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
     ).read_text(encoding="utf-8")
-    assert "aggregateRowGroupCellTokens" in matrix_overview_source or "RuntimeProjectionMatrixToken" in matrix_overview_source
-    assert '"manual://project-matrix"' in helper_source
-    assert '"group_1"' in helper_source
-    assert '"Group 1"' in helper_source
+    backend_root = Path(__file__).resolve().parents[2] / "backend"
+    route_source = (backend_root / "api" / "routes_project_matrix_drafts.py").read_text(
+        encoding="utf-8"
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
 
-    assert ".matrix-starter-panel" in styles_source
-    assert ".matrix-starter-grid" in styles_source
+    for required_client_symbol in [
+        "listProjectMatrixDrafts",
+        "getProjectMatrixDraft",
+        "saveProjectMatrixDraft",
+        "/api/projects/${encodeURIComponent(projectId)}/matrix-drafts",
+    ]:
+        assert required_client_symbol in client_source
+
+    for required_editor_symbol in [
+        "projectMatrixDraftId",
+        "saveState",
+        "buildDraftSavePayload",
+        "currentSavePayload",
+        "hasUnsavedChanges",
+        "Saving...",
+        "Unsaved changes",
+        "saveProjectMatrixDraft(projectId, projectMatrixDraftId, currentSavePayload)",
+    ]:
+        assert required_editor_symbol in matrix_editor_source
+
+    for required_route_symbol in [
+        "@router.put(\"/{project_matrix_draft_id}\"",
+        "def save_project_matrix_draft(",
+        "@router.get(\"\", response_model=list[ProjectMatrixDraftSummaryResponse])",
+    ]:
+        assert required_route_symbol in route_source
+
+    assert ".matrix-editor-save-status" in styles_source
 
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:

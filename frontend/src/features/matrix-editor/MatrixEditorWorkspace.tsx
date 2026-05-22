@@ -1,10 +1,15 @@
-import { useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
 import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
 import {
+  getProjectMatrixDraft,
+  listProjectMatrixDrafts,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromUpload,
+  saveProjectMatrixDraft,
   type MatrixPreviewResponse,
+  type ProjectMatrixDraft,
+  type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
 import "../../workbench.css";
 
@@ -22,10 +27,18 @@ const HEADER_METRICS = [
 type GroupColumn = {
   id: string;
   name: string;
+  draftGroupId: string | null;
+  sourceGroupSnapshotId: string | null;
+  groupKey: string;
+  isSelected: boolean;
+  sampleNote: string | null;
 };
 
 type EditableMatrixRow = {
   id: string;
+  draftRowId: string | null;
+  sourceRowSnapshotId: string | null;
+  isSampleRow: boolean;
   item: string;
   section: string;
   method: string;
@@ -38,6 +51,8 @@ type MatrixSnapshot = {
   rows: EditableMatrixRow[];
   groups: GroupColumn[];
 };
+
+type MatrixSaveState = "idle" | "saving" | "saved" | "error";
 
 type StepOutputOverride = {
   requirement?: string;
@@ -83,6 +98,9 @@ function buildInitialMatrixRows(): EditableMatrixRow[] {
   return [
     {
       id: "matrix-row-0",
+      draftRowId: null,
+      sourceRowSnapshotId: null,
+      isSampleRow: false,
       item: "Visual Examination",
       section: "",
       method: "EIA-364-18B",
@@ -92,6 +110,9 @@ function buildInitialMatrixRows(): EditableMatrixRow[] {
     },
     {
       id: "matrix-row-1",
+      draftRowId: null,
+      sourceRowSnapshotId: null,
+      isSampleRow: false,
       item: "",
       section: "",
       method: "",
@@ -116,6 +137,9 @@ function buildEmptyRow(groups: string[], rowIndex: number): EditableMatrixRow {
   });
   return {
     id: `matrix-row-new-${Date.now()}-${rowIndex}`,
+    draftRowId: null,
+    sourceRowSnapshotId: null,
+    isSampleRow: false,
     item: "",
     section: "",
     method: "",
@@ -126,7 +150,17 @@ function buildEmptyRow(groups: string[], rowIndex: number): EditableMatrixRow {
 }
 
 function buildInitialGroupColumns(): GroupColumn[] {
-  return [{ id: "group-1", name: "1" }];
+  return [
+    {
+      id: "group-1",
+      name: "1",
+      draftGroupId: null,
+      sourceGroupSnapshotId: null,
+      groupKey: "g1",
+      isSelected: true,
+      sampleNote: null,
+    },
+  ];
 }
 
 function buildMatrixFromPreview(
@@ -140,6 +174,11 @@ function buildMatrixFromPreview(
   const groups: GroupColumn[] = preview.groups.map((group, index) => ({
     id: `group-${index + 1}`,
     name: group.group_label,
+    draftGroupId: null,
+    sourceGroupSnapshotId: null,
+    groupKey: group.group_key || `g${index + 1}`,
+    isSelected: true,
+    sampleNote: group.sample_note ?? null,
   }));
   const sourceRows = [...preview.rows].sort((a, b) => a.source_row_index - b.source_row_index);
   const dataRows = sourceRows.filter((row) => !row.is_sample_row);
@@ -152,6 +191,9 @@ function buildMatrixFromPreview(
     });
     return {
       id: `matrix-import-row-${index + 1}`,
+      draftRowId: null,
+      sourceRowSnapshotId: null,
+      isSampleRow: false,
       item: row.test_item,
       section: row.source_section ?? "",
       method: "",
@@ -184,6 +226,109 @@ function buildMatrixFromPreview(
 
 function cloneGroups(groups: GroupColumn[]): GroupColumn[] {
   return groups.map((group) => ({ ...group }));
+}
+
+function buildMatrixFromProjectMatrixDraft(
+  draft: ProjectMatrixDraft
+): {
+  groups: GroupColumn[];
+  rows: EditableMatrixRow[];
+  samples: Record<string, string>;
+} {
+  const groups: GroupColumn[] = draft.groups
+    .slice()
+    .sort((left, right) => left.group_order - right.group_order)
+    .map((group) => ({
+      id: group.draft_group_id,
+      name: group.group_label,
+      draftGroupId: group.draft_group_id,
+      sourceGroupSnapshotId: group.source_group_snapshot_id ?? null,
+      groupKey: group.group_key,
+      isSelected: group.is_selected,
+      sampleNote: group.sample_note ?? null,
+    }));
+  const rows: EditableMatrixRow[] = draft.rows
+    .slice()
+    .sort((left, right) => left.row_order - right.row_order)
+    .filter((row) => !row.is_sample_row)
+    .map((row) => {
+      const groupValues: Record<string, string> = {};
+      groups.forEach((group) => {
+        groupValues[group.id] = "";
+      });
+      return {
+        id: row.draft_row_id,
+        draftRowId: row.draft_row_id,
+        sourceRowSnapshotId: row.source_row_snapshot_id ?? null,
+        isSampleRow: row.is_sample_row,
+        item: row.test_item,
+        section: row.source_section ?? "",
+        method: row.method ?? "",
+        condition: row.condition ?? "",
+        requirement: row.requirement ?? "",
+        groups: groupValues,
+      };
+    });
+  const rowByDraftId = new Map(rows.map((row) => [row.draftRowId ?? "", row]));
+  draft.cells.forEach((cell) => {
+    const targetRow = rowByDraftId.get(cell.draft_row_id);
+    if (!targetRow) {
+      return;
+    }
+    targetRow.groups[cell.draft_group_id] = cell.cell_value;
+  });
+  const samples: Record<string, string> = {};
+  groups.forEach((group) => {
+    samples[group.id] = draft.groups.find((item) => item.draft_group_id === group.id)?.sample_quantity_expression ?? "";
+  });
+  return { groups, rows, samples };
+}
+
+function buildDraftSavePayload(
+  rows: EditableMatrixRow[],
+  groups: GroupColumn[],
+  samples: Record<string, string>
+): ProjectMatrixDraftSaveRequest {
+  const payloadGroups = groups.map((group, index) => ({
+    draft_group_id: group.draftGroupId ?? group.id,
+    source_group_snapshot_id: group.sourceGroupSnapshotId,
+    group_order: index + 1,
+    group_key: group.groupKey.trim() || `g${index + 1}`,
+    group_label: group.name.trim() || `${index + 1}`,
+    is_selected: group.isSelected,
+    sample_quantity_expression: samples[group.id]?.trim() ? samples[group.id].trim() : null,
+    sample_note: group.sampleNote,
+  }));
+  const payloadRows = rows.map((row, index) => ({
+    draft_row_id: row.draftRowId ?? row.id,
+    source_row_snapshot_id: row.sourceRowSnapshotId,
+    row_order: index + 1,
+    test_item: row.item,
+    source_section: row.section.trim() ? row.section : null,
+    method: row.method.trim() ? row.method : null,
+    condition: row.condition.trim() ? row.condition : null,
+    requirement: row.requirement.trim() ? row.requirement : null,
+    is_sample_row: row.isSampleRow,
+  }));
+  const payloadCells: ProjectMatrixDraftSaveRequest["cells"] = [];
+  rows.forEach((row) => {
+    groups.forEach((group) => {
+      const cellValue = (row.groups[group.id] ?? "").trim();
+      if (!cellValue) {
+        return;
+      }
+      payloadCells.push({
+        draft_row_id: row.draftRowId ?? row.id,
+        draft_group_id: group.draftGroupId ?? group.id,
+        cell_value: cellValue,
+      });
+    });
+  });
+  return {
+    groups: payloadGroups,
+    rows: payloadRows,
+    cells: payloadCells,
+  };
 }
 
 function nextGroupId(groups: GroupColumn[]): string {
@@ -604,7 +749,70 @@ export function MatrixEditorWorkspace({
   const [locatorPage, setLocatorPage] = useState("");
   const [locatorTableOnPage, setLocatorTableOnPage] = useState("");
   const [locatorKeyword, setLocatorKeyword] = useState("");
+  const [projectMatrixDraftId, setProjectMatrixDraftId] = useState<string | null>(null);
+  const [, setProjectMatrixDraftUpdatedAt] = useState<string | null>(null);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [saveState, setSaveState] = useState<MatrixSaveState>("idle");
+  const [saveMessage, setSaveMessage] = useState<string>("");
+  const [saveBaselineSignature, setSaveBaselineSignature] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDraft = async (): Promise<void> => {
+      setDraftLoading(true);
+      try {
+        const summaries = await listProjectMatrixDrafts(projectId);
+        if (cancelled) {
+          return;
+        }
+        if (summaries.length === 0) {
+          setProjectMatrixDraftId(null);
+          setProjectMatrixDraftUpdatedAt(null);
+          setSaveBaselineSignature(null);
+          setSaveMessage("No persisted matrix draft target.");
+          setSaveState("idle");
+          return;
+        }
+        const targetId = summaries[0].project_matrix_draft_id;
+        const draft = await getProjectMatrixDraft(projectId, targetId);
+        if (cancelled) {
+          return;
+        }
+        const mapped = buildMatrixFromProjectMatrixDraft(draft);
+        setGroupColumns(mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns());
+        setEditableRows(mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows());
+        setSampleValues(mapped.samples);
+        setSampleMergeNotes({});
+        setSelectedGroupId(mapped.groups[0]?.id ?? null);
+        setSelectedRowId(null);
+        setProjectMatrixDraftId(targetId);
+        setProjectMatrixDraftUpdatedAt(draft.record.updated_at);
+        const baselinePayload = buildDraftSavePayload(
+          mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows(),
+          mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns(),
+          mapped.samples
+        );
+        setSaveBaselineSignature(JSON.stringify(baselinePayload));
+        setSaveState("idle");
+        setSaveMessage("");
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setSaveState("error");
+        setSaveMessage(error instanceof Error ? error.message : "Failed to load matrix draft.");
+      } finally {
+        if (!cancelled) {
+          setDraftLoading(false);
+        }
+      }
+    };
+    void loadDraft();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   useLayoutEffect(() => {
     setSampleValues((previous) => {
@@ -773,9 +981,30 @@ export function MatrixEditorWorkspace({
     selectedGroupPreviewNotes.sampleNote ?? (sampleMarker ? `${sampleMarker[0]}` : null),
     selectedGroupSampleMergeNote,
   ].filter((note): note is string => Boolean(note));
+  const currentSavePayload = buildDraftSavePayload(
+    editableRows,
+    groupColumns,
+    sampleValues
+  );
+  const currentSaveSignature = JSON.stringify(currentSavePayload);
+  const hasUnsavedChanges =
+    saveBaselineSignature !== null && currentSaveSignature !== saveBaselineSignature;
+  const canSave =
+    projectMatrixDraftId !== null &&
+    hasUnsavedChanges &&
+    !hasMatrixValidationError &&
+    saveState !== "saving";
 
   const openChooseDocx = (): void => {
     fileInputRef.current?.click();
+  };
+
+  const markUnsaved = (): void => {
+    if (saveBaselineSignature === null) {
+      return;
+    }
+    setSaveState("idle");
+    setSaveMessage("Unsaved changes");
   };
 
   const applyImportPreview = (mode: "replace" | "append"): void => {
@@ -784,6 +1013,7 @@ export function MatrixEditorWorkspace({
     }
     const mapped = buildMatrixFromPreview(importPreview);
     if (mode === "replace") {
+      markUnsaved();
       setGroupColumns(mapped.groups);
       setEditableRows(mapped.rows);
       setSampleValues(mapped.samples);
@@ -792,12 +1022,21 @@ export function MatrixEditorWorkspace({
       setSelectedRowId(null);
       return;
     }
+    markUnsaved();
     const groupIdMap = new Map<string, string>();
     const appendedGroups = [...groupColumns];
     mapped.groups.forEach((group, index) => {
       const nextId = nextGroupId(appendedGroups);
       groupIdMap.set(`group-${index + 1}`, nextId);
-      appendedGroups.push({ id: nextId, name: group.name });
+      appendedGroups.push({
+        id: nextId,
+        name: group.name,
+        draftGroupId: null,
+        sourceGroupSnapshotId: null,
+        groupKey: group.groupKey,
+        isSelected: group.isSelected,
+        sampleNote: group.sampleNote,
+      });
     });
     setGroupColumns(appendedGroups);
     setEditableRows((previous) => {
@@ -815,6 +1054,9 @@ export function MatrixEditorWorkspace({
         });
         nextRows.push({
           id: `matrix-import-append-row-${Date.now()}-${rowIndex}`,
+          draftRowId: null,
+          sourceRowSnapshotId: null,
+          isSampleRow: false,
           item: row.item,
           section: row.section,
           method: "",
@@ -906,7 +1148,7 @@ export function MatrixEditorWorkspace({
     ? `${matrixPreviewPdfUrl(importPreview.preview_pdf_token)}#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs`
     : null;
 
-  if (!model.project && !model.error) {
+  if ((!model.project && !model.error) || draftLoading) {
     return <LoadingState label="Loading matrix editor..." />;
   }
 
@@ -927,12 +1169,14 @@ export function MatrixEditorWorkspace({
     field: keyof Omit<EditableMatrixRow, "groups" | "id">,
     value: string
   ): void => {
+    markUnsaved();
     setEditableRows((previous) =>
       previous.map((row, index) => (index === rowIndex ? { ...row, [field]: value } : row))
     );
   };
 
   const updateGroupField = (rowIndex: number, groupId: string, value: string): void => {
+    markUnsaved();
     setEditableRows((previous) =>
       previous.map((row, index) =>
         index === rowIndex
@@ -949,6 +1193,7 @@ export function MatrixEditorWorkspace({
   };
 
   const updateGroupName = (groupId: string, name: string): void => {
+    markUnsaved();
     setGroupColumns((previous) =>
       previous.map((group) => (group.id === groupId ? { ...group, name } : group))
     );
@@ -969,12 +1214,14 @@ export function MatrixEditorWorkspace({
   };
 
   const addRow = (): void => {
+    markUnsaved();
     pushSnapshot();
     setEditableRows((previous) => [...previous, buildEmptyRow(groupColumns.map((group) => group.id), previous.length)]);
     setLastMessage("Test item row added");
   };
 
   const insertRow = (rowIndex: number, direction: "above" | "below"): void => {
+    markUnsaved();
     pushSnapshot();
     const insertAt = direction === "above" ? rowIndex : rowIndex + 1;
     setEditableRows((previous) => {
@@ -986,6 +1233,7 @@ export function MatrixEditorWorkspace({
   };
 
   const duplicateRow = (rowIndex: number): void => {
+    markUnsaved();
     pushSnapshot();
     setEditableRows((previous) => {
       const next = [...previous];
@@ -993,6 +1241,8 @@ export function MatrixEditorWorkspace({
       const duplicated: EditableMatrixRow = {
         ...source,
         id: `matrix-row-copy-${Date.now()}-${rowIndex}`,
+        draftRowId: null,
+        sourceRowSnapshotId: null,
         groups: { ...source.groups }
       };
       next.splice(rowIndex + 1, 0, duplicated);
@@ -1006,6 +1256,7 @@ export function MatrixEditorWorkspace({
       setLastMessage("At least one test item row is required");
       return;
     }
+    markUnsaved();
     pushSnapshot();
     const deletingId = editableRows[rowIndex].id;
     setEditableRows((previous) => previous.filter((row) => row.id !== deletingId));
@@ -1022,6 +1273,7 @@ export function MatrixEditorWorkspace({
       setLastMessage("Last row cannot move down");
       return;
     }
+    markUnsaved();
     pushSnapshot();
     setEditableRows((previous) => {
       const next = [...previous];
@@ -1034,9 +1286,21 @@ export function MatrixEditorWorkspace({
   };
 
   const addGroup = (): void => {
+    markUnsaved();
     pushSnapshot();
     const nextId = nextGroupId(groupColumns);
-    setGroupColumns((previous) => [...previous, { id: nextId, name: "" }]);
+    setGroupColumns((previous) => [
+      ...previous,
+      {
+        id: nextId,
+        name: "",
+        draftGroupId: null,
+        sourceGroupSnapshotId: null,
+        groupKey: `g${previous.length + 1}`,
+        isSelected: true,
+        sampleNote: null,
+      },
+    ]);
     setEditableRows((previous) =>
       previous.map((row) => ({
         ...row,
@@ -1054,12 +1318,21 @@ export function MatrixEditorWorkspace({
     if (currentIndex < 0) {
       return;
     }
+    markUnsaved();
     pushSnapshot();
     const nextId = nextGroupId(groupColumns);
     const insertAt = direction === "left" ? currentIndex : currentIndex + 1;
     setGroupColumns((previous) => {
       const next = [...previous];
-      next.splice(insertAt, 0, { id: nextId, name: "" });
+      next.splice(insertAt, 0, {
+        id: nextId,
+        name: "",
+        draftGroupId: null,
+        sourceGroupSnapshotId: null,
+        groupKey: `g${insertAt + 1}`,
+        isSelected: true,
+        sampleNote: null,
+      });
       return next;
     });
     setEditableRows((previous) =>
@@ -1079,14 +1352,23 @@ export function MatrixEditorWorkspace({
     if (currentIndex < 0) {
       return;
     }
+    markUnsaved();
     pushSnapshot();
-    const sourceGroup = groupColumns[currentIndex];
-    const nextId = nextGroupId(groupColumns);
-    setGroupColumns((previous) => {
-      const next = [...previous];
-      next.splice(currentIndex + 1, 0, { id: nextId, name: sourceGroup.name });
-      return next;
-    });
+      const sourceGroup = groupColumns[currentIndex];
+      const nextId = nextGroupId(groupColumns);
+      setGroupColumns((previous) => {
+        const next = [...previous];
+      next.splice(currentIndex + 1, 0, {
+        id: nextId,
+        name: sourceGroup.name,
+        draftGroupId: null,
+        sourceGroupSnapshotId: null,
+        groupKey: sourceGroup.groupKey,
+        isSelected: sourceGroup.isSelected,
+        sampleNote: sourceGroup.sampleNote,
+      });
+        return next;
+      });
     setEditableRows((previous) =>
       previous.map((row) => ({
         ...row,
@@ -1104,6 +1386,7 @@ export function MatrixEditorWorkspace({
       setLastMessage("At least one group column is required");
       return;
     }
+    markUnsaved();
     pushSnapshot();
     setGroupColumns((previous) => previous.filter((group) => group.id !== groupId));
     setEditableRows((previous) =>
@@ -1130,6 +1413,7 @@ export function MatrixEditorWorkspace({
       setLastMessage("Last group cannot move right");
       return;
     }
+    markUnsaved();
     pushSnapshot();
     setGroupColumns((previous) => {
       const next = [...previous];
@@ -1188,6 +1472,41 @@ export function MatrixEditorWorkspace({
     setContextMenu(null);
   };
 
+  const onSaveDraft = async (): Promise<void> => {
+    if (!projectMatrixDraftId) {
+      setSaveState("error");
+      setSaveMessage("No persisted matrix draft target.");
+      return;
+    }
+    setSaveState("saving");
+    setSaveMessage("Saving...");
+    try {
+      const saved = await saveProjectMatrixDraft(projectId, projectMatrixDraftId, currentSavePayload);
+      const mapped = buildMatrixFromProjectMatrixDraft(saved);
+      setGroupColumns(mapped.groups.length > 0 ? mapped.groups : groupColumns);
+      setEditableRows(mapped.rows.length > 0 ? mapped.rows : editableRows);
+      setSampleValues((previous) => ({
+        ...previous,
+        ...mapped.samples,
+      }));
+      setProjectMatrixDraftUpdatedAt(saved.record.updated_at);
+      const baselinePayload = buildDraftSavePayload(
+        mapped.rows.length > 0 ? mapped.rows : editableRows,
+        mapped.groups.length > 0 ? mapped.groups : groupColumns,
+        {
+          ...sampleValues,
+          ...mapped.samples,
+        }
+      );
+      setSaveBaselineSignature(JSON.stringify(baselinePayload));
+      setSaveState("saved");
+      setSaveMessage("Saved");
+    } catch (error) {
+      setSaveState("error");
+      setSaveMessage(error instanceof Error ? error.message : "Save failed.");
+    }
+  };
+
   return (
     <section className="workbench-page matrix-editor-shell matrix-editor-target-shell" onClick={() => setContextMenu(null)}>
       <section className="matrix-editor-target-header">
@@ -1214,7 +1533,22 @@ export function MatrixEditorWorkspace({
           ))}
         </div>
         <div className="matrix-editor-target-actions">
-          <button disabled type="button">Save</button>
+          <button
+            type="button"
+            disabled={!canSave}
+            title={
+              projectMatrixDraftId === null
+                ? "No persisted draft target."
+                : hasMatrixValidationError
+                  ? groupNameErrorMessage || stepTokenErrorMessage
+                  : hasUnsavedChanges
+                    ? ""
+                    : "No unsaved changes."
+            }
+            onClick={() => void onSaveDraft()}
+          >
+            {saveState === "saving" ? "Saving..." : "Save"}
+          </button>
           <button
             className="matrix-editor-primary-action"
             disabled
@@ -1226,6 +1560,12 @@ export function MatrixEditorWorkspace({
           <button disabled type="button">More</button>
         </div>
       </section>
+
+      {(saveMessage || hasUnsavedChanges) && (
+        <section className="matrix-editor-save-status">
+          {saveMessage || "Unsaved changes"}
+        </section>
+      )}
 
       <section className="matrix-editor-actionbar">
         <div className="matrix-editor-actionbar-main">
@@ -1435,6 +1775,7 @@ export function MatrixEditorWorkspace({
                                   setContextMenu(null);
                                 }}
                                 onChange={(value) => {
+                                  markUnsaved();
                                   setSelectedGroupId(group.id);
                                   updateGroupField(rowIndex, group.id, value);
                                 }}
@@ -1465,6 +1806,7 @@ export function MatrixEditorWorkspace({
                           setContextMenu(null);
                         }}
                         onChange={(value) => {
+                          markUnsaved();
                           setSampleValues((previous) => ({ ...previous, [group.id]: value }));
                           setSampleMergeNotes((previous) => {
                             const { [group.id]: _removed, ...next } = previous;
@@ -1620,6 +1962,7 @@ export function MatrixEditorWorkspace({
                       if (!selectedGroup) {
                         return;
                       }
+                      markUnsaved();
                       const value = event.target.value;
                       setSampleValues((previous) => ({ ...previous, [selectedGroup.id]: value }));
                       setSampleMergeNotes((previous) => {

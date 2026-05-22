@@ -63,9 +63,9 @@ class ProjectMatrixDraftGroupModel(Base):
         nullable=False,
         index=True,
     )
-    source_group_snapshot_id: Mapped[str] = mapped_column(
+    source_group_snapshot_id: Mapped[str | None] = mapped_column(
         ForeignKey("source_matrix_group_snapshots.group_snapshot_id"),
-        nullable=False,
+        nullable=True,
     )
     group_order: Mapped[int] = mapped_column(Integer, nullable=False)
     group_key: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -98,13 +98,16 @@ class ProjectMatrixDraftRowModel(Base):
         nullable=False,
         index=True,
     )
-    source_row_snapshot_id: Mapped[str] = mapped_column(
+    source_row_snapshot_id: Mapped[str | None] = mapped_column(
         ForeignKey("source_matrix_row_snapshots.row_snapshot_id"),
-        nullable=False,
+        nullable=True,
     )
     row_order: Mapped[int] = mapped_column(Integer, nullable=False)
     test_item: Mapped[str] = mapped_column(Text, nullable=False)
     source_section: Mapped[str | None] = mapped_column(Text)
+    method: Mapped[str | None] = mapped_column(Text)
+    condition: Mapped[str | None] = mapped_column(Text)
+    requirement: Mapped[str | None] = mapped_column(Text)
     is_sample_row: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 

@@ -26,7 +26,7 @@ class ProjectMatrixDraftGroup:
 
     draft_group_id: str
     project_matrix_draft_id: str
-    source_group_snapshot_id: str
+    source_group_snapshot_id: str | None
     group_order: int
     group_key: str
     group_label: str
@@ -41,10 +41,13 @@ class ProjectMatrixDraftRow:
 
     draft_row_id: str
     project_matrix_draft_id: str
-    source_row_snapshot_id: str
+    source_row_snapshot_id: str | None
     row_order: int
     test_item: str
     source_section: str | None = None
+    method: str | None = None
+    condition: str | None = None
+    requirement: str | None = None
     is_sample_row: bool = False
 
 

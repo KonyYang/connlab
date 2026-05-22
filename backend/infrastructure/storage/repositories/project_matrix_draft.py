@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from backend.domain import (
@@ -30,6 +30,40 @@ class ProjectMatrixDraftRepository:
     def create_snapshot(self, snapshot: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftSnapshot:
         """Persist one draft root and child rows atomically in one session."""
         self._session.add(_to_record_model(snapshot.record))
+        self._session.add_all(_to_group_models(snapshot.groups))
+        self._session.add_all(_to_row_models(snapshot.rows))
+        self._session.add_all(_to_cell_models(snapshot.cells))
+        self._session.flush()
+        return snapshot
+
+    def replace_snapshot(self, snapshot: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftSnapshot:
+        """Replace one existing draft aggregate atomically in one session."""
+        record_row = self._session.get(
+            ProjectMatrixDraftRecordModel,
+            snapshot.record.project_matrix_draft_id,
+        )
+        if record_row is None:
+            raise LookupError("Project matrix draft record not found.")
+        record_row.status = snapshot.record.status.value
+        record_row.updated_at = snapshot.record.updated_at
+        self._session.execute(
+            delete(ProjectMatrixDraftCellModel).where(
+                ProjectMatrixDraftCellModel.project_matrix_draft_id
+                == snapshot.record.project_matrix_draft_id
+            )
+        )
+        self._session.execute(
+            delete(ProjectMatrixDraftGroupModel).where(
+                ProjectMatrixDraftGroupModel.project_matrix_draft_id
+                == snapshot.record.project_matrix_draft_id
+            )
+        )
+        self._session.execute(
+            delete(ProjectMatrixDraftRowModel).where(
+                ProjectMatrixDraftRowModel.project_matrix_draft_id
+                == snapshot.record.project_matrix_draft_id
+            )
+        )
         self._session.add_all(_to_group_models(snapshot.groups))
         self._session.add_all(_to_row_models(snapshot.rows))
         self._session.add_all(_to_cell_models(snapshot.cells))
@@ -125,6 +159,9 @@ def _to_row_models(rows: tuple[ProjectMatrixDraftRow, ...]) -> list[ProjectMatri
             row_order=row.row_order,
             test_item=row.test_item,
             source_section=row.source_section,
+            method=row.method,
+            condition=row.condition,
+            requirement=row.requirement,
             is_sample_row=row.is_sample_row,
         )
         for row in rows
@@ -180,6 +217,9 @@ def _to_row_domain(row: ProjectMatrixDraftRowModel) -> ProjectMatrixDraftRow:
         row_order=row.row_order,
         test_item=row.test_item,
         source_section=row.source_section,
+        method=row.method,
+        condition=row.condition,
+        requirement=row.requirement,
         is_sample_row=row.is_sample_row,
     )
 

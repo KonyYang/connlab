@@ -596,6 +596,90 @@ export type ProjectTestPlanDraft = {
   reviewed_at?: string | null;
 };
 
+export type ProjectMatrixDraftRecord = {
+  project_matrix_draft_id: string;
+  project_id: string;
+  source_import_id: string;
+  source_snapshot_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProjectMatrixDraftGroup = {
+  draft_group_id: string;
+  source_group_snapshot_id?: string | null;
+  group_order: number;
+  group_key: string;
+  group_label: string;
+  is_selected: boolean;
+  sample_quantity_expression?: string | null;
+  sample_note?: string | null;
+};
+
+export type ProjectMatrixDraftRow = {
+  draft_row_id: string;
+  source_row_snapshot_id?: string | null;
+  row_order: number;
+  test_item: string;
+  source_section?: string | null;
+  method?: string | null;
+  condition?: string | null;
+  requirement?: string | null;
+  is_sample_row: boolean;
+};
+
+export type ProjectMatrixDraftCell = {
+  draft_cell_id: string;
+  draft_row_id: string;
+  draft_group_id: string;
+  cell_value: string;
+};
+
+export type ProjectMatrixDraft = {
+  record: ProjectMatrixDraftRecord;
+  groups: ProjectMatrixDraftGroup[];
+  rows: ProjectMatrixDraftRow[];
+  cells: ProjectMatrixDraftCell[];
+};
+
+export type ProjectMatrixDraftSummary = ProjectMatrixDraftRecord;
+
+export type ProjectMatrixDraftSaveGroupInput = {
+  draft_group_id?: string | null;
+  source_group_snapshot_id?: string | null;
+  group_order: number;
+  group_key: string;
+  group_label: string;
+  is_selected: boolean;
+  sample_quantity_expression?: string | null;
+  sample_note?: string | null;
+};
+
+export type ProjectMatrixDraftSaveRowInput = {
+  draft_row_id?: string | null;
+  source_row_snapshot_id?: string | null;
+  row_order: number;
+  test_item: string;
+  source_section?: string | null;
+  method?: string | null;
+  condition?: string | null;
+  requirement?: string | null;
+  is_sample_row?: boolean;
+};
+
+export type ProjectMatrixDraftSaveCellInput = {
+  draft_row_id: string;
+  draft_group_id: string;
+  cell_value: string;
+};
+
+export type ProjectMatrixDraftSaveRequest = {
+  groups: ProjectMatrixDraftSaveGroupInput[];
+  rows: ProjectMatrixDraftSaveRowInput[];
+  cells: ProjectMatrixDraftSaveCellInput[];
+};
+
 export type MatrixValidationSummary = {
   blockers: string[];
   warnings: string[];
@@ -1430,6 +1514,37 @@ export function executeApprovalPackage(
 export function listProjectTestPlanDrafts(projectId: string): Promise<ProjectTestPlanDraft[]> {
   return requestJson<ProjectTestPlanDraft[]>(
     `/api/projects/${encodeURIComponent(projectId)}/test-plan/drafts`
+  );
+}
+
+export function listProjectMatrixDrafts(
+  projectId: string
+): Promise<ProjectMatrixDraftSummary[]> {
+  return requestJson<ProjectMatrixDraftSummary[]>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts`
+  );
+}
+
+export function getProjectMatrixDraft(
+  projectId: string,
+  projectMatrixDraftId: string
+): Promise<ProjectMatrixDraft> {
+  return requestJson<ProjectMatrixDraft>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}`
+  );
+}
+
+export function saveProjectMatrixDraft(
+  projectId: string,
+  projectMatrixDraftId: string,
+  input: ProjectMatrixDraftSaveRequest
+): Promise<ProjectMatrixDraft> {
+  return requestJson<ProjectMatrixDraft>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input)
+    }
   );
 }
 

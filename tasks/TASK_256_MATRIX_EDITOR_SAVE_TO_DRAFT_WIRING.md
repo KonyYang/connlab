@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned (awaiting user approval).
+Complete.
 
 ## Current Phase
 
@@ -112,3 +112,25 @@ py -m pytest tests\unit\test_frontend_shell_files.py -q -k "matrix_editor or tas
 cd frontend
 npm run build
 ```
+
+## Completion Notes
+
+- Added draft update/list application + API path for Project Matrix Draft working-copy persistence:
+  - `GET /api/projects/{project_id}/matrix-drafts`
+  - `PUT /api/projects/{project_id}/matrix-drafts/{project_matrix_draft_id}`
+- Save update uses atomic aggregate replacement (record/groups/rows/cells) and keeps Source Matrix snapshot immutable.
+- Save request enforces sparse cell semantics: empty/whitespace values are removed from persisted cell rows.
+- Save now persists editable row fields (`test_item`, `source_section`, `method`, `condition`, `requirement`) instead of dropping method/condition/requirement.
+- Local-added rows/groups no longer use pseudo lineage ids; lineage columns are nullable and saved as `null` for local additions.
+- Save semantics are last-write-wins for TASK_256 scope (no optimistic timestamp conflict gate).
+- Matrix Editor `Save` is now wired to Project Matrix Draft persistence through typed API client methods in `frontend/src/api/client.ts`.
+- Matrix Editor now loads latest project matrix draft summary/detail on entry when available, tracks save state (`saving`, `saved`, `unsaved`, `failed`), and disables save when no persisted draft target exists.
+- Existing import preview / local edit / step preview behaviors remain available.
+
+Validation executed:
+
+- `py -m pytest tests\unit\test_project_matrix_draft_persistence_service.py tests\unit\test_project_matrix_draft_repository.py -q` (`13 passed`)
+- `py -m pytest tests\integration\test_project_matrix_draft_save_api.py tests\integration\test_project_matrix_draft_from_source_matrix_api.py -q` (`2 passed`)
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "matrix_editor or task256"` (`33 passed`, `70 deselected`)
+- `py -m pytest tests\integration\test_api_default_dependencies.py -q` (`1 passed`)
+- `cd frontend && npm run build` (passed)
