@@ -900,6 +900,12 @@ export function MatrixEditorWorkspace({
     }
   };
 
+  const importPreviewPageNumber = Number.parseInt(locatorPage.trim(), 10);
+  const previewOpenPage = Number.isFinite(importPreviewPageNumber) && importPreviewPageNumber > 0 ? importPreviewPageNumber : 1;
+  const previewPdfSrc = importPreview?.preview_pdf_token
+    ? `${matrixPreviewPdfUrl(importPreview.preview_pdf_token)}#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs`
+    : null;
+
   if (!model.project && !model.error) {
     return <LoadingState label="Loading matrix editor..." />;
   }
@@ -1239,28 +1245,34 @@ export function MatrixEditorWorkspace({
         <section className="matrix-editor-import-modal-backdrop">
           <article className="matrix-editor-import-modal" onClick={(event) => event.stopPropagation()}>
             <header>
-              <h3>Import Matrix</h3>
-              <p>{importPreview?.source_document_name ?? importFile?.name ?? "Selected file"}</p>
+              <div className="matrix-editor-import-header-inline">
+                <h3>Import Matrix</h3>
+                <p title={importPreview?.source_document_name ?? importFile?.name ?? "Selected file"}>
+                  {importPreview?.source_document_name ?? importFile?.name ?? "Selected file"}
+                </p>
+              </div>
             </header>
             <div className="matrix-editor-import-modal-body">
               <div className="matrix-editor-import-pdf-pane">
-                {importPreview?.preview_pdf_token ? (
-                  <iframe title="Word PDF Preview" src={matrixPreviewPdfUrl(importPreview.preview_pdf_token)} />
+                {previewPdfSrc ? (
+                  <iframe title="Word PDF Preview" src={previewPdfSrc} />
                 ) : (
                   <div className="matrix-editor-step-empty">PDF preview unavailable.</div>
                 )}
               </div>
               <div className="matrix-editor-import-controls-pane">
+                <div className="matrix-editor-import-controls-row">
+                  <label>
+                    <span>Page</span>
+                    <input value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Table on page</span>
+                    <input value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
+                  </label>
+                </div>
                 <label>
-                  <span>Page</span>
-                  <input value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
-                </label>
-                <label>
-                  <span>Table on page</span>
-                  <input value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
-                </label>
-                <label>
-                  <span>Keyword in table</span>
+                  <span>Table Title / Content Keyword</span>
                   <input value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
                 </label>
                 <button className="matrix-editor-import-reparse-button" type="button" onClick={() => void reparseImportPreview()} disabled={importingPreview || !importFile}>

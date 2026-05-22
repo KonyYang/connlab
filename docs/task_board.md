@@ -49,6 +49,10 @@
 - Deliverables: `tasks/TASK_252CQ_MATRIX_EDITOR_IDENTICAL_SAMPLE_ROWS_MERGE_NOTE.md`, `docs/task_252cq_matrix_editor_identical_sample_rows_merge_note_plan.md`, `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, and `tests/unit/test_frontend_shell_files.py`.
 - Validation: `py -m pytest tests\\unit\\test_frontend_shell_files.py -q -k "task252cq or matrix_editor"` passed (`31 passed`, `69 deselected`); `cd frontend; npm run build` passed.
 
+- `TASK_252CR_MATRIX_IMPORT_PREVIEW_LAYOUT_AND_CONTROL_STYLE_REFINEMENT` is complete. Import dialog header now keeps `Import Matrix` and source filename on one line, locator controls place `Page` and `Table on page` in a two-column row, and `Reparse` button style is unified with commit action button dimensions/typography and primary palette. PDF preview URL now opens with `#page=<n>&zoom=page-width&pagemode=thumbs` so preview defaults to matrix page and fit-width mode (viewer support dependent).
+- Deliverables: `tasks/TASK_252CR_MATRIX_IMPORT_PREVIEW_LAYOUT_AND_CONTROL_STYLE_REFINEMENT.md`, `docs/task_252cr_matrix_import_preview_layout_and_control_style_refinement_plan.md`, `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, `frontend/src/workbench.css`, and `tests/unit/test_frontend_shell_files.py`.
+- Validation: `py -m pytest tests\\unit\\test_frontend_shell_files.py -q -k "matrix_editor or task252"` passed (`32 passed`, `69 deselected`); `cd frontend; npm run build` passed.
+
 - `TASK_252C_MATRIX_IMPORT_DOCUMENT_PAGE_PREVIEW_AND_CONFIRMATION` flow is restored in current Matrix Editor: file-picker import now opens a large confirmation modal with left PDF preview (`.docx` converted via Word COM) and right-side locator fields (`Page`, `Table on page`, `Keyword in table`) that trigger debounce reparse. Footer actions support `Cancel`, `Replace`, and `Append`.
 - Added endpoints: `POST /api/test-plan/matrix-preview-from-upload` now accepts optional locator form fields; `GET /api/test-plan/matrix-preview-pdf/{token}` serves generated preview PDF under controlled temp directory.
 

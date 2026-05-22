@@ -3504,6 +3504,36 @@ def test_task252cq_matrix_editor_identical_sample_rows_merge_note_is_wired() -> 
         assert required_source in matrix_editor_source
 
 
+def test_task252cr_matrix_import_preview_layout_and_reparse_style_are_wired() -> None:
+    """TASK_252CR keeps import title+filename inline, uses viewer fit-width fragment, and aligns reparse styling."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required_source in [
+        "className=\"matrix-editor-import-header-inline\"",
+        "title={importPreview?.source_document_name ?? importFile?.name ?? \"Selected file\"}",
+        "const previewPdfSrc = importPreview?.preview_pdf_token",
+        "#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs",
+        "className=\"matrix-editor-import-controls-row\"",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-import-header-inline {",
+        "align-items: baseline;",
+        "text-overflow: ellipsis;",
+        ".matrix-editor-import-controls-row {",
+        "grid-template-columns: 1fr 1fr;",
+        ".matrix-editor-import-reparse-button {",
+        "height: 42px;",
+        "font-size: 18px;",
+        ".matrix-editor-import-reparse-button:disabled {",
+    ]:
+        assert required_style in styles_source
+
+
 def test_task245_matrix_editor_table_columns_have_fixed_min_widths() -> None:
     """TASK_245 fixes Matrix Editor column widths so extra groups scroll instead of shrinking."""
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(

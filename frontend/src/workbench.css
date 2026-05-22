@@ -3754,6 +3754,32 @@
   gap: 12px;
 }
 
+.matrix-editor-import-modal header {
+  min-width: 0;
+}
+
+.matrix-editor-import-header-inline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.matrix-editor-import-header-inline h3,
+.matrix-editor-import-header-inline p {
+  margin: 0;
+}
+
+.matrix-editor-import-header-inline p {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-ink-muted);
+}
+
 .matrix-editor-import-modal-body {
   flex: 1;
   min-height: 0;
@@ -3789,6 +3815,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.matrix-editor-import-controls-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .matrix-editor-import-controls-footer {
@@ -3832,20 +3864,44 @@
 }
 
 .matrix-editor-import-reparse-button {
-  background: #eef4ff;
-  color: #1f4ea3;
-  border: 1px solid #c3d5f4;
+  min-width: 112px;
+  height: 42px;
   border-radius: 10px;
+  font-size: 18px;
   font-weight: 700;
-  padding: 10px 14px;
+  background: #1f5fbf;
+  color: #fff;
+  border: 1px solid #1f5fbf;
+  align-self: flex-end;
+}
+
+.matrix-editor-import-reparse-button:disabled {
+  background: #eef2f8;
+  color: #9aa8bf;
+  border-color: #d4dcea;
+}
+
+.matrix-editor-import-reparse-button:not(:disabled):hover {
+  background: #1a54aa;
+  border-color: #1a54aa;
+}
+
+.matrix-editor-import-controls-pane .error {
+  margin: 0;
+}
+
+@media (max-width: 960px) {
+  .matrix-editor-import-controls-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .matrix-editor-import-controls-footer button {
   min-width: 112px;
   height: 42px;
   border-radius: 10px;
-  font-size: 18px;
   font-weight: 700;
+  font-size: 18px;
 }
 
 .matrix-editor-import-secondary-button {
