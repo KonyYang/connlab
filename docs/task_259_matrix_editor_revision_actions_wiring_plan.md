@@ -34,6 +34,8 @@ Expose the TASK_258 backend revision flow in Matrix Editor with minimal frontend
 3. Continue editing through existing Save.
 4. Confirm the revision draft when it is persisted, clean, and valid.
 
+MVP operator identity rule: Confirm Revision must send `confirmed_by: "connlab-operator"`. This is a fixed frontend fallback until a later approved auth/session task provides a real operator identity.
+
 ## 3) File-Level Change Plan
 
 1. API client
@@ -43,6 +45,8 @@ Expose the TASK_258 backend revision flow in Matrix Editor with minimal frontend
    - Add:
      - `createMatrixRevisionDraft(projectId)`
      - `confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, input)`
+   - Define confirm-revision input as at least `{ confirmed_by: string; superseded_reason?: string | null }`.
+   - The Matrix Editor implementation must call confirm-revision with `confirmed_by: "connlab-operator"`.
 
 2. Matrix Editor state
    - Track current draft lineage:
@@ -52,6 +56,7 @@ Expose the TASK_258 backend revision flow in Matrix Editor with minimal frontend
      - current draft kind inferred from `base_confirmed_matrix_id`
    - Keep existing Save payload and unsaved detection.
    - On create revision success, reuse existing `buildMatrixFromProjectMatrixDraft` and reset baseline signature.
+   - Add local helper/selector functions for revision action state instead of scattering compound conditions through JSX. Keep them in the same file unless a small feature selector file is clearly lower risk.
 
 3. Matrix Editor controls
    - Add restrained action control for `Create revision draft`.
@@ -78,6 +83,7 @@ Expose the TASK_258 backend revision flow in Matrix Editor with minimal frontend
    - Check Matrix Editor imports and action handlers.
    - Check disabled reason strings and no raw `fetch()` outside client.
    - Preserve TASK_256 save assertions.
+   - Add at least one behavior-level frontend test with mocked API covering revision draft dirty-state gating: unsaved changes disable Confirm Revision; successful Save clears dirty state and enables Confirm Revision for a revision draft.
 
 6. Documentation
    - Mark task complete in `tasks/TASK_259_MATRIX_EDITOR_REVISION_ACTIONS_WIRING.md`.
@@ -103,7 +109,9 @@ Confirm Revision:
 - Requires no unsaved changes.
 - Requires no Matrix validation errors.
 - On success, show confirmed revision status.
+- On success, keep the current revision draft view loaded. Do not switch the page into a read-only active confirmed authority view in this task.
 - Do not silently create a revision draft during confirm.
+- Always send `confirmed_by: "connlab-operator"` in this MVP slice. Do not prompt for an operator name and do not infer a real user identity that the app does not yet own.
 
 ## 5) API Error Mapping
 
@@ -127,6 +135,7 @@ This task should not alter backend error contracts.
 - Confirmed Step Output.
 - Parser/import preview changes.
 - Frontend architecture rewrite or component split beyond the minimum needed.
+- Login/session/operator identity work.
 
 ## 7) Validation Plan
 
@@ -134,6 +143,12 @@ Frontend static wiring:
 
 ```powershell
 py -m pytest tests\unit\test_frontend_shell_files.py -q -k "matrix_editor or task259 or task256"
+```
+
+Behavior-level frontend test with mocked API:
+
+```powershell
+cd frontend; npm test -- --run MatrixEditorWorkspace
 ```
 
 Frontend build:
@@ -157,6 +172,7 @@ Manual smoke after approval and implementation:
 - Matrix Editor does not directly call backend routes with raw `fetch()`.
 - Confirm Revision cannot run on source-import drafts.
 - Confirm Revision cannot run with unsaved changes.
+- Confirm Revision sends the required `confirmed_by` request field using the fixed MVP value.
 - No backend/runtime/report scope is introduced.
 - UI copy is operational and non-technical.
 - Existing Save behavior remains intact.

@@ -48,10 +48,14 @@ Allowed:
   - nullable `source_import_id`
   - `base_confirmed_matrix_id`
   - confirmed Matrix response metadata needed for status feedback
+  - confirm-revision request body with required `confirmed_by`
 - Wire Matrix Editor actions for:
   - creating a revision draft
   - loading the created revision draft into the current editor state
   - confirming the current revision draft
+- Use MVP operator identity rule for confirm-revision:
+  - send `confirmed_by: "connlab-operator"` from the frontend until a later approved auth/session task provides a real operator identity
+  - do not leave `confirmed_by` empty or optional in the confirm-revision client call
 - Reuse existing Save behavior for draft edits.
 - Add clear disabled reasons:
   - no project id
@@ -74,6 +78,7 @@ Forbidden:
 - Editing confirmed Matrix authority directly in the frontend.
 - Reworking Matrix Editor layout beyond the minimal action/status controls required by this task.
 - Splitting `api/client.ts` or performing broad Matrix Editor refactors unless strictly required to keep the task reviewable.
+- Adding login/session/operator identity features.
 
 ## UX Boundary
 
@@ -95,12 +100,14 @@ Use restrained product UI:
   - `base_confirmed_matrix_id` is retained in frontend state
   - save baseline is refreshed so the freshly loaded revision draft is not marked dirty
 - Confirm Revision is enabled only for a persisted revision draft with no unsaved changes and no Matrix validation errors.
-- Confirm Revision calls the TASK_258 confirm-revision API and shows clear success/error feedback.
+- Confirm Revision calls the TASK_258 confirm-revision API with `confirmed_by: "connlab-operator"` and shows clear success/error feedback.
+- After successful Confirm Revision, Matrix Editor stays on the current revision draft view and shows success feedback; this task does not switch into an active confirmed read-only authority view.
 - If the current draft is source-import based and not a revision draft, Confirm Revision is disabled with a clear reason.
 - Existing Save behavior remains unchanged.
 - Existing import preview and append/replace behavior remains unchanged.
 - No raw `fetch()` is added outside `frontend/src/api/client.ts`.
-- Static tests cover API client symbols, Matrix Editor action wiring, disabled reasons, and preservation of existing Save wiring.
+- Static tests cover API client symbols, Matrix Editor action wiring, `confirmed_by` request body, disabled reasons, and preservation of existing Save wiring.
+- At least one frontend behavior-level test with mocked API verifies that Confirm Revision is disabled while there are unsaved changes and becomes enabled after a successful Save on a revision draft.
 - `cd frontend; npm run build` passes.
 
 ## Validation
@@ -110,11 +117,17 @@ py -m pytest tests\unit\test_frontend_shell_files.py -q -k "matrix_editor or tas
 ```
 
 ```powershell
+cd frontend; npm test -- --run MatrixEditorWorkspace
+```
+
+```powershell
 cd frontend; npm run build
 ```
 
 ## Residual Risk Record
 
 - This task does not add backend read APIs for active confirmed authority status. The frontend relies on existing draft list/load behavior and TASK_258 create/confirm responses.
+- `confirmed_by` is a temporary MVP fixed frontend value (`connlab-operator`) until a later approved operator identity/session task replaces it.
 - Runtime Console and downstream outputs will not reflect confirmed revision changes until a later runtime/projection consumer task.
 - Operator-facing revision history is not implemented in this task.
+- Active confirmed read-only view switching after confirm is not implemented in this task.
