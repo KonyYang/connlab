@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from backend.api.dependencies import (
     get_confirmed_matrix_authority_service,
+    get_matrix_revision_flow_service,
     get_project_matrix_draft_persistence_service,
 )
 from backend.application.confirmed_matrix_authority_service import (
@@ -27,6 +28,13 @@ from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftRowInput,
     UpdateProjectMatrixDraftCommand,
 )
+from backend.application.matrix_revision_flow_service import (
+    ConfirmMatrixRevisionDraftCommand,
+    MatrixRevisionFlowConflictError,
+    MatrixRevisionFlowError,
+    MatrixRevisionFlowNotFoundError,
+    MatrixRevisionFlowService,
+)
 from backend.domain import ConfirmedMatrixSnapshot, ProjectMatrixDraftSnapshot
 
 
@@ -45,8 +53,9 @@ class ProjectMatrixDraftRecordResponse(BaseModel):
 
     project_matrix_draft_id: str
     project_id: str
-    source_import_id: str
+    source_import_id: str | None
     source_snapshot_id: str
+    base_confirmed_matrix_id: str | None
     status: str
     created_at: str
     updated_at: str
@@ -102,8 +111,9 @@ class ProjectMatrixDraftSummaryResponse(BaseModel):
 
     project_matrix_draft_id: str
     project_id: str
-    source_import_id: str
+    source_import_id: str | None
     source_snapshot_id: str
+    base_confirmed_matrix_id: str | None
     status: str
     created_at: str
     updated_at: str
@@ -158,6 +168,13 @@ class ConfirmProjectMatrixDraftRequest(BaseModel):
     confirmed_by: str
 
 
+class ConfirmMatrixRevisionDraftRequest(BaseModel):
+    """Request body for confirming one matrix revision draft."""
+
+    confirmed_by: str
+    superseded_reason: str | None = None
+
+
 class ConfirmedMatrixVersionResponse(BaseModel):
     """Confirmed Matrix authority root response."""
 
@@ -171,6 +188,9 @@ class ConfirmedMatrixVersionResponse(BaseModel):
     status: str
     confirmed_by: str
     confirmed_at: str
+    superseded_by_confirmed_matrix_id: str | None
+    superseded_at: str | None
+    superseded_reason: str | None
 
 
 class ConfirmedMatrixGroupResponse(BaseModel):
@@ -286,6 +306,7 @@ def list_project_matrix_drafts(
             project_id=record.project_id,
             source_import_id=record.source_import_id,
             source_snapshot_id=record.source_snapshot_id,
+            base_confirmed_matrix_id=record.base_confirmed_matrix_id,
             status=record.status.value,
             created_at=record.created_at,
             updated_at=record.updated_at,
@@ -384,6 +405,36 @@ def confirm_project_matrix_draft(
     return _to_confirmed_response(confirmed)
 
 
+@router.post(
+    "/{project_matrix_draft_id}/confirm-revision",
+    response_model=ConfirmedMatrixSnapshotResponse,
+    status_code=201,
+)
+def confirm_matrix_revision_draft(
+    project_id: str,
+    project_matrix_draft_id: str,
+    request: ConfirmMatrixRevisionDraftRequest,
+    service: MatrixRevisionFlowService = Depends(get_matrix_revision_flow_service),
+) -> ConfirmedMatrixSnapshotResponse:
+    """Confirm one revision draft and supersede previous active authority."""
+    try:
+        confirmed = service.confirm_revision_draft(
+            ConfirmMatrixRevisionDraftCommand(
+                project_id=project_id,
+                project_matrix_draft_id=project_matrix_draft_id,
+                confirmed_by=request.confirmed_by,
+                superseded_reason=request.superseded_reason,
+            )
+        )
+    except MatrixRevisionFlowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except MatrixRevisionFlowConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except MatrixRevisionFlowError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _to_confirmed_response(confirmed)
+
+
 def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftResponse:
     return ProjectMatrixDraftResponse(
         record=ProjectMatrixDraftRecordResponse(
@@ -391,6 +442,7 @@ def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftRespons
             project_id=draft.record.project_id,
             source_import_id=draft.record.source_import_id,
             source_snapshot_id=draft.record.source_snapshot_id,
+            base_confirmed_matrix_id=draft.record.base_confirmed_matrix_id,
             status=draft.record.status.value,
             created_at=draft.record.created_at,
             updated_at=draft.record.updated_at,
@@ -449,6 +501,9 @@ def _to_confirmed_response(
             status=snapshot.version.status.value,
             confirmed_by=snapshot.version.confirmed_by,
             confirmed_at=snapshot.version.confirmed_at,
+            superseded_by_confirmed_matrix_id=snapshot.version.superseded_by_confirmed_matrix_id,
+            superseded_at=snapshot.version.superseded_at,
+            superseded_reason=snapshot.version.superseded_reason,
         ),
         groups=[
             ConfirmedMatrixGroupResponse(

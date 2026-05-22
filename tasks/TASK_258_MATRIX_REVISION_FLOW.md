@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Awaiting user approval before implementation.
+Complete.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Planned. Awaiting user approval before implementation.
 
 ## Current Active Task
 
-`TASK_258_MATRIX_REVISION_FLOW` is planned only.
+`TASK_258_MATRIX_REVISION_FLOW` is complete.
 
 ## Why This Task Is Allowed Now
 

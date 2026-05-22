@@ -49,6 +49,8 @@ def init_db(engine: Engine) -> None:
 
     Base.metadata.create_all(bind=engine)
     _migrate_project_no_optional(engine)
+    _migrate_confirmed_matrix_supersession_columns(engine)
+    _migrate_project_matrix_draft_record_revision_columns(engine)
     _migrate_project_matrix_draft_lineage_columns_optional(engine)
     _migrate_project_matrix_draft_row_detail_columns(engine)
 
@@ -313,3 +315,168 @@ def _migrate_project_matrix_draft_row_detail_columns(engine: Engine) -> None:
             connection.exec_driver_sql(
                 f"ALTER TABLE project_matrix_draft_rows ADD COLUMN {missing_column} TEXT"
             )
+
+
+def _migrate_confirmed_matrix_supersession_columns(engine: Engine) -> None:
+    """Add supersession metadata columns to confirmed matrix versions when missing."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "confirmed_matrix_versions" not in table_names:
+            return
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(confirmed_matrix_versions)"
+            ).all()
+        }
+        if "superseded_by_confirmed_matrix_id" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE confirmed_matrix_versions "
+                "ADD COLUMN superseded_by_confirmed_matrix_id VARCHAR(64)"
+            )
+        if "superseded_at" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE confirmed_matrix_versions ADD COLUMN superseded_at VARCHAR(64)"
+            )
+        if "superseded_reason" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE confirmed_matrix_versions ADD COLUMN superseded_reason TEXT"
+            )
+
+
+def _migrate_project_matrix_draft_record_revision_columns(engine: Engine) -> None:
+    """Enable revision-draft lineage columns and nullable source import linkage."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "project_matrix_draft_records" not in table_names:
+            return
+        columns = connection.exec_driver_sql(
+            "PRAGMA table_info(project_matrix_draft_records)"
+        ).all()
+        source_import_column = next(
+            (row for row in columns if row[1] == "source_import_id"),
+            None,
+        )
+        has_base_confirmed_column = any(
+            row[1] == "base_confirmed_matrix_id" for row in columns
+        )
+        if source_import_column is None:
+            return
+        source_import_is_not_null = bool(source_import_column[3])
+        if not source_import_is_not_null and has_base_confirmed_column:
+            return
+
+        connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        try:
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE project_matrix_draft_records_new (
+                    project_matrix_draft_id VARCHAR(64) NOT NULL,
+                    project_id VARCHAR(64) NOT NULL,
+                    source_import_id VARCHAR(64),
+                    source_snapshot_id VARCHAR(64) NOT NULL,
+                    base_confirmed_matrix_id VARCHAR(64),
+                    status VARCHAR(64) NOT NULL,
+                    created_at VARCHAR(64) NOT NULL,
+                    updated_at VARCHAR(64) NOT NULL,
+                    PRIMARY KEY (project_matrix_draft_id),
+                    CONSTRAINT uq_project_matrix_draft_project_source_import
+                        UNIQUE (project_id, source_import_id),
+                    CONSTRAINT uq_project_matrix_draft_project_base_confirmed
+                        UNIQUE (project_id, base_confirmed_matrix_id),
+                    FOREIGN KEY(project_id) REFERENCES projects(project_id),
+                    FOREIGN KEY(source_import_id)
+                        REFERENCES source_matrix_import_records(import_id),
+                    FOREIGN KEY(source_snapshot_id)
+                        REFERENCES source_matrix_snapshots(snapshot_id),
+                    FOREIGN KEY(base_confirmed_matrix_id)
+                        REFERENCES confirmed_matrix_versions(confirmed_matrix_id)
+                )
+                """
+            )
+            if has_base_confirmed_column:
+                connection.exec_driver_sql(
+                    """
+                    INSERT INTO project_matrix_draft_records_new (
+                        project_matrix_draft_id,
+                        project_id,
+                        source_import_id,
+                        source_snapshot_id,
+                        base_confirmed_matrix_id,
+                        status,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        project_matrix_draft_id,
+                        project_id,
+                        source_import_id,
+                        source_snapshot_id,
+                        base_confirmed_matrix_id,
+                        status,
+                        created_at,
+                        updated_at
+                    FROM project_matrix_draft_records
+                    """
+                )
+            else:
+                connection.exec_driver_sql(
+                    """
+                    INSERT INTO project_matrix_draft_records_new (
+                        project_matrix_draft_id,
+                        project_id,
+                        source_import_id,
+                        source_snapshot_id,
+                        base_confirmed_matrix_id,
+                        status,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        project_matrix_draft_id,
+                        project_id,
+                        source_import_id,
+                        source_snapshot_id,
+                        NULL,
+                        status,
+                        created_at,
+                        updated_at
+                    FROM project_matrix_draft_records
+                    """
+                )
+            connection.exec_driver_sql("DROP TABLE project_matrix_draft_records")
+            connection.exec_driver_sql(
+                "ALTER TABLE project_matrix_draft_records_new RENAME TO project_matrix_draft_records"
+            )
+            connection.exec_driver_sql(
+                "CREATE INDEX ix_project_matrix_draft_records_project_id "
+                "ON project_matrix_draft_records(project_id)"
+            )
+            connection.exec_driver_sql(
+                "CREATE INDEX ix_project_matrix_draft_records_source_import_id "
+                "ON project_matrix_draft_records(source_import_id)"
+            )
+            connection.exec_driver_sql(
+                "CREATE INDEX ix_project_matrix_draft_records_base_confirmed_matrix_id "
+                "ON project_matrix_draft_records(base_confirmed_matrix_id)"
+            )
+            connection.exec_driver_sql(
+                "CREATE INDEX ix_project_matrix_draft_records_status "
+                "ON project_matrix_draft_records(status)"
+            )
+        finally:
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")

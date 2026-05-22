@@ -91,6 +91,9 @@ from backend.application.project_matrix_draft_persistence_service import (
 from backend.application.confirmed_matrix_authority_service import (
     ConfirmedMatrixAuthorityService,
 )
+from backend.application.matrix_revision_flow_service import (
+    MatrixRevisionFlowService,
+)
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
@@ -224,6 +227,17 @@ def get_confirmed_matrix_authority_service(
 ) -> ConfirmedMatrixAuthorityService:
     """Build the Confirmed Matrix authority confirmation service."""
     return ConfirmedMatrixAuthorityService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectMatrixDraftRepository(session),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_matrix_revision_flow_service(
+    session: Session = Depends(get_session),
+) -> MatrixRevisionFlowService:
+    """Build backend Matrix revision flow service."""
+    return MatrixRevisionFlowService(
         project_store=ProjectRepository(session),
         draft_store=ProjectMatrixDraftRepository(session),
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),

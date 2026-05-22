@@ -36,6 +36,27 @@ class ConfirmedMatrixAuthorityRepository:
         self._session.flush()
         return snapshot
 
+    def supersede_active_and_create_snapshot(
+        self,
+        *,
+        previous_active_confirmed_matrix_id: str,
+        snapshot: ConfirmedMatrixSnapshot,
+        superseded_reason: str | None = None,
+    ) -> ConfirmedMatrixSnapshot:
+        """Supersede previous active version and create new active snapshot atomically."""
+        previous_active = self._session.get(
+            ConfirmedMatrixVersionModel,
+            previous_active_confirmed_matrix_id,
+        )
+        if previous_active is None or not previous_active.is_active_authority:
+            raise LookupError("Previous active confirmed matrix not found.")
+        previous_active.status = ConfirmedMatrixStatus.SUPERSEDED.value
+        previous_active.is_active_authority = False
+        previous_active.superseded_by_confirmed_matrix_id = snapshot.version.confirmed_matrix_id
+        previous_active.superseded_at = snapshot.version.confirmed_at
+        previous_active.superseded_reason = _normalize_optional_text(superseded_reason)
+        return self.create_snapshot(snapshot)
+
     def get(self, confirmed_matrix_id: str) -> ConfirmedMatrixSnapshot | None:
         """Return one confirmed authority aggregate by id."""
         version_row = self._session.get(ConfirmedMatrixVersionModel, confirmed_matrix_id)
@@ -91,6 +112,9 @@ def _to_version_model(version: ConfirmedMatrixVersion) -> ConfirmedMatrixVersion
         status=version.status.value,
         confirmed_by=version.confirmed_by,
         confirmed_at=version.confirmed_at,
+        superseded_by_confirmed_matrix_id=version.superseded_by_confirmed_matrix_id,
+        superseded_at=version.superseded_at,
+        superseded_reason=version.superseded_reason,
     )
 
 
@@ -160,6 +184,9 @@ def _to_version_domain(row: ConfirmedMatrixVersionModel) -> ConfirmedMatrixVersi
         status=ConfirmedMatrixStatus(row.status),
         confirmed_by=row.confirmed_by,
         confirmed_at=row.confirmed_at,
+        superseded_by_confirmed_matrix_id=row.superseded_by_confirmed_matrix_id,
+        superseded_at=row.superseded_at,
+        superseded_reason=row.superseded_reason,
     )
 
 
@@ -202,3 +229,10 @@ def _to_cell_domain(row: ConfirmedMatrixCellModel) -> ConfirmedMatrixCell:
         draft_group_id=row.draft_group_id,
         cell_value=row.cell_value,
     )
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = value.strip()
+    return text or None

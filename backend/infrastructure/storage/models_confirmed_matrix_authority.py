@@ -50,6 +50,12 @@ class ConfirmedMatrixVersionModel(Base):
     status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     confirmed_by: Mapped[str] = mapped_column(String(255), nullable=False)
     confirmed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    superseded_by_confirmed_matrix_id: Mapped[str | None] = mapped_column(
+        ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"),
+        nullable=True,
+    )
+    superseded_at: Mapped[str | None] = mapped_column(String(64))
+    superseded_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class ConfirmedMatrixGroupModel(Base):

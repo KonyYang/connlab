@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from backend.application.source_matrix_import_persistence_service import (
@@ -51,6 +52,7 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
                 status=ProjectMatrixDraftStatus.DRAFT,
                 created_at="2026-05-22T10:00:00+00:00",
                 updated_at="2026-05-22T10:00:00+00:00",
+                base_confirmed_matrix_id=None,
             )
             groups = (
                 ProjectMatrixDraftGroup(
@@ -123,6 +125,7 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
             assert len(loaded.cells) == 1
             assert loaded.cells[0].cell_value == "1"
             assert repo.get_by_project_and_source_import("P1", source_import_id) is not None
+            assert loaded.record.base_confirmed_matrix_id is None
     finally:
         engine.dispose()
 
@@ -148,6 +151,7 @@ def test_project_matrix_draft_repository_rolls_back_on_child_unique_failure(
                     status=ProjectMatrixDraftStatus.DRAFT,
                     created_at="2026-05-22T10:10:00+00:00",
                     updated_at="2026-05-22T10:10:00+00:00",
+                    base_confirmed_matrix_id=None,
                 ),
                 groups=(
                     ProjectMatrixDraftGroup(
@@ -204,6 +208,7 @@ def test_project_matrix_draft_repository_replace_snapshot_roundtrip(tmp_path: Pa
                     status=ProjectMatrixDraftStatus.DRAFT,
                     created_at="2026-05-22T10:00:00+00:00",
                     updated_at="2026-05-22T10:00:00+00:00",
+                    base_confirmed_matrix_id=None,
                 ),
                 groups=(
                     ProjectMatrixDraftGroup(
@@ -246,6 +251,7 @@ def test_project_matrix_draft_repository_replace_snapshot_roundtrip(tmp_path: Pa
                     status=ProjectMatrixDraftStatus.DRAFT,
                     created_at="2026-05-22T10:00:00+00:00",
                     updated_at="2026-05-22T10:30:00+00:00",
+                    base_confirmed_matrix_id=None,
                 ),
                 groups=(
                     ProjectMatrixDraftGroup(
@@ -319,6 +325,7 @@ def test_project_matrix_draft_repository_replace_snapshot_rolls_back_on_unique_f
                     status=ProjectMatrixDraftStatus.DRAFT,
                     created_at="2026-05-22T10:00:00+00:00",
                     updated_at="2026-05-22T10:00:00+00:00",
+                    base_confirmed_matrix_id=None,
                 ),
                 groups=(
                     ProjectMatrixDraftGroup(
@@ -353,6 +360,7 @@ def test_project_matrix_draft_repository_replace_snapshot_rolls_back_on_unique_f
                     status=ProjectMatrixDraftStatus.DRAFT,
                     created_at="2026-05-22T10:00:00+00:00",
                     updated_at="2026-05-22T10:05:00+00:00",
+                    base_confirmed_matrix_id=None,
                 ),
                 groups=(
                     ProjectMatrixDraftGroup(
@@ -390,6 +398,124 @@ def test_project_matrix_draft_repository_replace_snapshot_rolls_back_on_unique_f
             assert reloaded is not None
             assert len(reloaded.rows) == 1
             assert reloaded.rows[0].draft_row_id == "pmdr-rb1"
+    finally:
+        engine.dispose()
+
+
+def test_project_matrix_draft_repository_supports_revision_draft_nullable_source_import(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            base_confirmed_id = "cmv-base"
+            session.execute(
+                text(
+                    """
+                INSERT INTO confirmed_matrix_versions (
+                    confirmed_matrix_id, project_id, project_matrix_draft_id, source_import_id,
+                    source_snapshot_id, confirmed_revision, is_active_authority, status,
+                    confirmed_by, confirmed_at
+                ) VALUES (:id, 'P1', 'pmd-base', :smi, :sms, 1, 1, 'confirmed', 'operator', '2026-05-23T09:00:00+00:00')
+                """
+                ),
+                {"id": base_confirmed_id, "smi": source_import_id, "sms": source_snapshot.snapshot_id},
+            )
+            revision = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-rev",
+                    project_id="P1",
+                    source_import_id=None,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-23T10:00:00+00:00",
+                    updated_at="2026-05-23T10:00:00+00:00",
+                    base_confirmed_matrix_id=base_confirmed_id,
+                ),
+                groups=(),
+                rows=(),
+                cells=(),
+            )
+            repo = ProjectMatrixDraftRepository(session)
+            repo.create_snapshot(revision)
+            session.commit()
+
+            loaded = repo.get("pmd-rev")
+            assert loaded is not None
+            assert loaded.record.source_import_id is None
+            assert loaded.record.base_confirmed_matrix_id == base_confirmed_id
+            assert (
+                repo.get_by_project_and_base_confirmed_matrix("P1", base_confirmed_id)
+                is not None
+            )
+    finally:
+        engine.dispose()
+
+
+def test_project_matrix_draft_repository_enforces_revision_base_uniqueness(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            base_confirmed_id = "cmv-base-uq"
+            session.execute(
+                text(
+                    """
+                INSERT INTO confirmed_matrix_versions (
+                    confirmed_matrix_id, project_id, project_matrix_draft_id, source_import_id,
+                    source_snapshot_id, confirmed_revision, is_active_authority, status,
+                    confirmed_by, confirmed_at
+                ) VALUES (:id, 'P1', 'pmd-base', :smi, :sms, 1, 1, 'confirmed', 'operator', '2026-05-23T09:00:00+00:00')
+                """
+                ),
+                {"id": base_confirmed_id, "smi": source_import_id, "sms": source_snapshot.snapshot_id},
+            )
+            repo = ProjectMatrixDraftRepository(session)
+            first = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-rev-1",
+                    project_id="P1",
+                    source_import_id=None,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-23T10:00:00+00:00",
+                    updated_at="2026-05-23T10:00:00+00:00",
+                    base_confirmed_matrix_id=base_confirmed_id,
+                ),
+                groups=(),
+                rows=(),
+                cells=(),
+            )
+            repo.create_snapshot(first)
+            session.commit()
+
+            second = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-rev-2",
+                    project_id="P1",
+                    source_import_id=None,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-23T10:01:00+00:00",
+                    updated_at="2026-05-23T10:01:00+00:00",
+                    base_confirmed_matrix_id=base_confirmed_id,
+                ),
+                groups=(),
+                rows=(),
+                cells=(),
+            )
+            with pytest.raises(IntegrityError):
+                repo.create_snapshot(second)
+            session.rollback()
     finally:
         engine.dispose()
 

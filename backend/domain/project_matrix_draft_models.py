@@ -13,11 +13,12 @@ class ProjectMatrixDraftRecord:
 
     project_matrix_draft_id: str
     project_id: str
-    source_import_id: str
+    source_import_id: str | None
     source_snapshot_id: str
     status: ProjectMatrixDraftStatus
     created_at: str
     updated_at: str
+    base_confirmed_matrix_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

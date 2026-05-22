@@ -256,6 +256,7 @@ def _build_draft_snapshot(
         status=ProjectMatrixDraftStatus.DRAFT,
         created_at=now,
         updated_at=now,
+        base_confirmed_matrix_id=None,
     )
     groups = tuple(
         ProjectMatrixDraftGroup(
@@ -397,6 +398,7 @@ def _build_updated_snapshot(
         status=existing.record.status,
         created_at=existing.record.created_at,
         updated_at=now,
+        base_confirmed_matrix_id=existing.record.base_confirmed_matrix_id,
     )
     return ProjectMatrixDraftSnapshot(
         record=updated_record,

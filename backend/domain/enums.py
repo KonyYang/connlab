@@ -188,3 +188,4 @@ class ConfirmedMatrixStatus(StrEnum):
     """Lifecycle status for one immutable confirmed Matrix authority version."""
 
     CONFIRMED = "confirmed"
+    SUPERSEDED = "superseded"

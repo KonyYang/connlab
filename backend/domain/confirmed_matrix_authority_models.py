@@ -21,6 +21,9 @@ class ConfirmedMatrixVersion:
     status: ConfirmedMatrixStatus
     confirmed_by: str
     confirmed_at: str
+    superseded_by_confirmed_matrix_id: str | None = None
+    superseded_at: str | None = None
+    superseded_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

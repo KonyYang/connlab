@@ -120,6 +120,20 @@ class ProjectMatrixDraftRepository:
         )
         return _to_record_domain(row) if row else None
 
+    def get_by_project_and_base_confirmed_matrix(
+        self,
+        project_id: str,
+        base_confirmed_matrix_id: str,
+    ) -> ProjectMatrixDraftRecord | None:
+        """Return one draft record by project and base confirmed authority lineage."""
+        row = self._session.scalar(
+            select(ProjectMatrixDraftRecordModel).where(
+                ProjectMatrixDraftRecordModel.project_id == project_id,
+                ProjectMatrixDraftRecordModel.base_confirmed_matrix_id == base_confirmed_matrix_id,
+            )
+        )
+        return _to_record_domain(row) if row else None
+
 
 def _to_record_model(record: ProjectMatrixDraftRecord) -> ProjectMatrixDraftRecordModel:
     return ProjectMatrixDraftRecordModel(
@@ -127,6 +141,7 @@ def _to_record_model(record: ProjectMatrixDraftRecord) -> ProjectMatrixDraftReco
         project_id=record.project_id,
         source_import_id=record.source_import_id,
         source_snapshot_id=record.source_snapshot_id,
+        base_confirmed_matrix_id=record.base_confirmed_matrix_id,
         status=record.status.value,
         created_at=record.created_at,
         updated_at=record.updated_at,
@@ -189,6 +204,7 @@ def _to_record_domain(row: ProjectMatrixDraftRecordModel) -> ProjectMatrixDraftR
         project_id=row.project_id,
         source_import_id=row.source_import_id,
         source_snapshot_id=row.source_snapshot_id,
+        base_confirmed_matrix_id=row.base_confirmed_matrix_id,
         status=ProjectMatrixDraftStatus(row.status),
         created_at=row.created_at,
         updated_at=row.updated_at,

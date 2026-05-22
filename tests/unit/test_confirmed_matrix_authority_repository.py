@@ -176,6 +176,137 @@ def test_confirmed_matrix_authority_repository_rolls_back_on_child_unique_failur
         engine.dispose()
 
 
+def test_confirmed_matrix_authority_repository_supersede_active_and_create_snapshot(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            draft_snapshot = _seed_project_matrix_draft(session, source_import_id, source_snapshot)
+            repo = ConfirmedMatrixAuthorityRepository(session)
+            first = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-s1",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            repo.create_snapshot(first)
+            session.commit()
+
+            second = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-s2",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            second = ConfirmedMatrixSnapshot(
+                version=ConfirmedMatrixVersion(
+                    confirmed_matrix_id=second.version.confirmed_matrix_id,
+                    project_id=second.version.project_id,
+                    project_matrix_draft_id=second.version.project_matrix_draft_id,
+                    source_import_id=second.version.source_import_id,
+                    source_snapshot_id=second.version.source_snapshot_id,
+                    confirmed_revision=2,
+                    is_active_authority=True,
+                    status=ConfirmedMatrixStatus.CONFIRMED,
+                    confirmed_by=second.version.confirmed_by,
+                    confirmed_at="2026-05-23T11:00:00+00:00",
+                ),
+                groups=second.groups,
+                rows=second.rows,
+                cells=second.cells,
+            )
+            repo.supersede_active_and_create_snapshot(
+                previous_active_confirmed_matrix_id="cmv-s1",
+                snapshot=second,
+                superseded_reason="Revision confirmed",
+            )
+            session.commit()
+
+            previous = repo.get("cmv-s1")
+            assert previous is not None
+            assert previous.version.is_active_authority is False
+            assert previous.version.status == ConfirmedMatrixStatus.SUPERSEDED
+            assert previous.version.superseded_by_confirmed_matrix_id == "cmv-s2"
+            assert previous.version.superseded_reason == "Revision confirmed"
+            active = repo.get_active_by_project("P1")
+            assert active is not None
+            assert active.version.confirmed_matrix_id == "cmv-s2"
+            assert active.version.confirmed_revision == 2
+    finally:
+        engine.dispose()
+
+
+def test_supersede_active_and_create_snapshot_rolls_back_when_new_insert_fails(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            draft_snapshot = _seed_project_matrix_draft(session, source_import_id, source_snapshot)
+            repo = ConfirmedMatrixAuthorityRepository(session)
+            first = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-rs1",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            repo.create_snapshot(first)
+            session.commit()
+
+            invalid_second = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-rs2",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            invalid_second = ConfirmedMatrixSnapshot(
+                version=ConfirmedMatrixVersion(
+                    confirmed_matrix_id=invalid_second.version.confirmed_matrix_id,
+                    project_id=invalid_second.version.project_id,
+                    project_matrix_draft_id=invalid_second.version.project_matrix_draft_id,
+                    source_import_id=invalid_second.version.source_import_id,
+                    source_snapshot_id=invalid_second.version.source_snapshot_id,
+                    confirmed_revision=2,
+                    is_active_authority=True,
+                    status=ConfirmedMatrixStatus.CONFIRMED,
+                    confirmed_by=invalid_second.version.confirmed_by,
+                    confirmed_at="2026-05-23T11:00:00+00:00",
+                ),
+                groups=invalid_second.groups,
+                rows=(
+                    invalid_second.rows[0],
+                    ConfirmedMatrixRow(
+                        confirmed_row_id="cmr-rs-dup",
+                        confirmed_matrix_id="cmv-rs2",
+                        draft_row_id=invalid_second.rows[1].draft_row_id,
+                        source_row_snapshot_id=invalid_second.rows[1].source_row_snapshot_id,
+                        row_order=invalid_second.rows[0].row_order,
+                        test_item=invalid_second.rows[1].test_item,
+                    ),
+                ),
+                cells=invalid_second.cells,
+            )
+            with pytest.raises(IntegrityError):
+                repo.supersede_active_and_create_snapshot(
+                    previous_active_confirmed_matrix_id="cmv-rs1",
+                    snapshot=invalid_second,
+                    superseded_reason="bad",
+                )
+            session.rollback()
+            previous = repo.get("cmv-rs1")
+            assert previous is not None
+            assert previous.version.is_active_authority is True
+            assert previous.version.status == ConfirmedMatrixStatus.CONFIRMED
+            assert previous.version.superseded_by_confirmed_matrix_id is None
+    finally:
+        engine.dispose()
+
+
 def _seed_project(session) -> None:
     ProjectRepository(session).create(
         Project(

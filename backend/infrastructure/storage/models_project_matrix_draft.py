@@ -18,6 +18,11 @@ class ProjectMatrixDraftRecordModel(Base):
             "source_import_id",
             name="uq_project_matrix_draft_project_source_import",
         ),
+        UniqueConstraint(
+            "project_id",
+            "base_confirmed_matrix_id",
+            name="uq_project_matrix_draft_project_base_confirmed",
+        ),
     )
 
     project_matrix_draft_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -26,14 +31,19 @@ class ProjectMatrixDraftRecordModel(Base):
         nullable=False,
         index=True,
     )
-    source_import_id: Mapped[str] = mapped_column(
+    source_import_id: Mapped[str | None] = mapped_column(
         ForeignKey("source_matrix_import_records.import_id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     source_snapshot_id: Mapped[str] = mapped_column(
         ForeignKey("source_matrix_snapshots.snapshot_id"),
         nullable=False,
+    )
+    base_confirmed_matrix_id: Mapped[str | None] = mapped_column(
+        ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"),
+        nullable=True,
+        index=True,
     )
     status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
