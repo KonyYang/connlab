@@ -51,8 +51,10 @@ Allowed:
 - Add a minimal backend API route if required for integration tests.
 - Enforce project-level single active confirmed authority for this first authority slice.
 - Reject confirmation if the project already has an active confirmed Matrix. Superseding/revision flow is reserved for `TASK_258_MATRIX_REVISION_FLOW`.
+- Add a DB-level active-authority uniqueness guard in addition to service-level checks. SQLite implementation may use a partial unique index or equivalent controlled strategy.
 - Copy only selected draft groups into confirmed authority groups.
-- Copy rows and sparse non-empty cells for selected confirmed groups.
+- Copy all non-sample draft rows into confirmed authority rows, including rows that have no token/cell value in selected groups. Sample quantity remains group-level authority data and sample rows are not copied as confirmed rows.
+- Copy sparse non-empty cells only for selected confirmed groups.
 - Preserve lineage back to draft, source import/snapshot, source groups, and source rows where available.
 - Persist group-level sample quantity expression as confirmed group authority data.
 - Add focused unit/integration tests.
@@ -68,7 +70,7 @@ Forbidden:
 - Confirmed Step Output generation from step preview logic.
 - Parser, preview API, Word/Office gateway, or Matrix import UI changes.
 - Mutating Source Matrix import/snapshot rows.
-- Mutating Project Matrix Draft content while confirming, except optional status metadata if explicitly documented in the implementation plan.
+- Mutating Project Matrix Draft content or status while confirming. TASK_257 reads draft data and creates confirmed authority only.
 - Direct repository calls from API routes.
 - Multi-user/LAN optimistic concurrency or lock management.
 
@@ -86,18 +88,21 @@ Forbidden:
   - `confirmed_by`
   - `confirmed_at`
 - The first confirmed revision for a project is created as active authority.
+- `confirmed_revision` is fixed to `1` in TASK_257. If an active confirmed Matrix already exists, the request returns conflict instead of incrementing a revision number.
 - If an active confirmed Matrix already exists for the project, confirmation returns a conflict-style application error and does not create partial confirmed rows.
+- Active authority uniqueness is protected by both application-service validation and a database-level uniqueness guard. Database uniqueness failures must be translated to `409` conflict semantics.
 - Confirmed groups include only draft groups where `is_selected = true`.
 - Confirmation fails if no selected draft groups exist.
+- Confirmation fails if any selected group has blank `group_key` or blank `group_label`.
 - Confirmed selected groups preserve group order, group key/label, draft/source group lineage, and group-level sample quantity expression.
 - Confirmation fails if any selected group lacks a nonblank sample quantity expression unless the implementation plan explicitly documents a different validation rule and the user approves it.
-- Confirmed rows preserve row order, draft/source row lineage, `test_item`, `source_section`, `method`, `condition`, and `requirement`.
+- Confirmed rows copy all non-sample draft rows and preserve row order, draft/source row lineage, `test_item`, `source_section`, `method`, `condition`, and `requirement`.
 - Confirmed cells use sparse non-empty storage and include only cells that belong to selected confirmed groups.
 - Confirmed authority creation is atomic across root, groups, rows, and cells. Any failure rolls back the entire confirmation.
 - Confirmed Matrix records are immutable after creation in this task; repository/service must not expose update methods for confirmed rows/groups/cells.
 - API routes, if added, call the application service only.
 - Source Matrix and Project Matrix Draft row/group/cell content remain unchanged by confirmation.
-- Tests cover happy path, no selected groups, missing sample quantity, existing active authority conflict, sparse selected-cell copy, lineage preservation, source/draft immutability, API route boundary, and atomic rollback on failure.
+- Tests cover happy path, all non-sample row copy, no selected groups, blank selected group key/label, missing sample quantity, existing active authority conflict including DB uniqueness fallback, sparse selected-cell copy, lineage preservation, source/draft immutability, API route boundary, and atomic rollback on failure.
 
 ## Validation
 

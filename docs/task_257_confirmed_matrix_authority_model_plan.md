@@ -31,7 +31,7 @@ Output:
 
 - Persisted active `ConfirmedMatrixVersion`
 - Persisted confirmed selected groups
-- Persisted confirmed rows
+- Persisted confirmed non-sample rows
 - Persisted sparse confirmed cells for selected groups
 - Stable lineage back to draft/source import/source snapshot/source rows/source groups
 
@@ -44,7 +44,7 @@ Confirmed Matrix owns immutable authority state:
 - active authority flag and status
 - confirmed selected groups
 - group-level sample quantity expression
-- confirmed rows
+- all non-sample confirmed rows, including rows with no selected-group token/cell value
 - sparse selected group cells
 
 Project Matrix Draft remains editable working-copy state:
@@ -61,6 +61,13 @@ Source Matrix remains immutable import traceability:
 
 Revision flow is not part of this task.
 
+Confirmed row copy rule:
+
+- Copy all non-sample draft rows.
+- Do not copy draft sample rows as confirmed rows.
+- Sample quantity remains group-level authority data on confirmed groups.
+- Rows with no cell/token value in selected groups are still copied so row order and traceability remain stable for later revision/diff consumers.
+
 ## 4) File-Level Change Plan
 
 1. Domain
@@ -72,6 +79,8 @@ Revision flow is not part of this task.
    - Add `backend/infrastructure/storage/models_confirmed_matrix_authority.py`.
    - Register the module in `backend/infrastructure/storage/database.py::init_db`.
    - Keep confirmed authority tables separate from `storage/models.py`.
+   - Add DB-level uniqueness guard for one active authority per project.
+   - For SQLite, prefer a partial unique index on active authority rows if supported by the existing SQLAlchemy/SQLite path; otherwise document and test the equivalent guard strategy.
 
 3. Repository
    - Add `backend/infrastructure/storage/repositories/confirmed_matrix_authority.py`.
@@ -90,8 +99,13 @@ Revision flow is not part of this task.
      - draft exists and belongs to project
      - no active confirmed Matrix exists for project
      - at least one selected draft group
+     - selected draft groups have nonblank `group_key` and `group_label`
      - selected groups have nonblank sample quantity expressions
    - Map draft rows/groups/cells to confirmed rows/groups/cells.
+   - Copy all non-sample draft rows and exclude sample rows.
+   - Set `confirmed_revision = 1` for this first-slice task.
+   - Reject if an active confirmed Matrix already exists; do not auto-increment revision.
+   - Do not mutate draft content or draft status.
    - Copy only cells whose group is selected.
    - Preserve lineage IDs and draft IDs.
    - Commit root/groups/rows/cells atomically in one transaction.
@@ -124,6 +138,12 @@ Confirmed Matrix root:
 - `confirmed_by`
 - `confirmed_at`
 - `validation_summary_json`
+
+Revision rule:
+
+- `confirmed_revision` is always `1` in TASK_257.
+- Existing active authority returns conflict.
+- Revision increment/supersession is deferred to `TASK_258_MATRIX_REVISION_FLOW`.
 
 Confirmed group:
 
@@ -178,6 +198,11 @@ Expected error mapping:
 - `422`: draft is not confirmable, including no selected groups or missing selected-group sample quantity
 - `500`: unexpected failure
 
+DB uniqueness fallback:
+
+- Active authority uniqueness must be protected below the service layer.
+- If the DB uniqueness guard catches a duplicate active authority, the application/API boundary maps it to `409`.
+
 ## 7) Risks And Controls
 
 Risk: Confirmed authority becomes editable draft state.
@@ -192,9 +217,21 @@ Risk: Unselected groups leak into execution authority.
 
 - Control: confirmed groups and confirmed cells include selected draft groups only. Full traceability remains via draft/source lineage.
 
+Risk: Confirmed rows become ambiguous because row copy scope is unclear.
+
+- Control: copy all non-sample draft rows. Exclude sample rows because sample quantity is group-level authority data.
+
 Risk: Sample quantity becomes ambiguous.
 
 - Control: selected confirmed group must have nonblank group-level `sample_quantity_expression`; source sample rows remain trace-only.
+
+Risk: Blank selected group identifiers enter authority.
+
+- Control: reject confirmation when selected group `group_key` or `group_label` is blank.
+
+Risk: Service-level active authority check races with another confirmation.
+
+- Control: add DB-level active authority uniqueness guard and map resulting conflict to `409`.
 
 Risk: Partial authority persists on failure.
 
@@ -248,7 +285,11 @@ npm run build
 - Scope is backend authority only.
 - Confirmed Matrix is immutable after creation.
 - Existing active authority blocks this first slice instead of superseding.
+- `confirmed_revision` is fixed to `1` in this first slice.
+- DB-level active authority uniqueness is required in addition to service validation.
+- All non-sample draft rows are copied; draft sample rows are excluded.
 - Selected groups become authority; unselected groups remain traceable through draft/source.
+- Blank selected group key/label is rejected.
 - Source Matrix and Project Matrix Draft content are not mutated.
 - API routes, if added, remain application-service only.
 - Tests cover both happy path and rollback/error cases.
