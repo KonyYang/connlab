@@ -1029,21 +1029,8 @@
   overflow-wrap: anywhere;
 }
 
-.matrix-editor-step-header h3 {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.matrix-editor-step-header-text {
   margin: 0;
-}
-
-.matrix-editor-step-header-group {
-  color: var(--color-primary-strong);
-  font-size: 34px;
-  line-height: 1.05;
-  font-weight: 800;
-}
-
-.matrix-editor-step-header-count {
   color: var(--color-ink);
   font-size: 20px;
   line-height: 1.1;

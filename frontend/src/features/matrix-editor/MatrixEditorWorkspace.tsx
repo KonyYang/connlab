@@ -1556,11 +1556,8 @@ export function MatrixEditorWorkspace({
 
         <aside className="matrix-editor-step-workspace" aria-label="Group Step Workspace">
           <header className="matrix-editor-step-header">
-            <h3>
-              <span className="matrix-editor-step-header-group">
-                {`Group ${selectedGroup ? selectedGroup.name || "Unnamed" : "-"}`}
-              </span>
-              <span className="matrix-editor-step-header-count">{`${selectedGroupStepRows.length} steps`}</span>
+            <h3 className="matrix-editor-step-header-text">
+              {`Group ${selectedGroup ? selectedGroup.name || "Unnamed" : "-"}: ${selectedGroupStepRows.length} steps`}
             </h3>
           </header>
           {!selectedGroup ? (

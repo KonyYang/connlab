@@ -3547,10 +3547,8 @@ def test_task252cs_matrix_editor_step_preview_header_and_samples_card_color_are_
 
     for required_source in [
         "className=\"matrix-editor-step-header\"",
-        "className=\"matrix-editor-step-header-group\"",
-        "className=\"matrix-editor-step-header-count\"",
-        "{`Group ${selectedGroup ? selectedGroup.name || \"Unnamed\" : \"-\"}`}",
-        "{`${selectedGroupStepRows.length} steps`}",
+        "className=\"matrix-editor-step-header-text\"",
+        "{`Group ${selectedGroup ? selectedGroup.name || \"Unnamed\" : \"-\"}: ${selectedGroupStepRows.length} steps`}",
     ]:
         assert required_source in matrix_editor_source
 
@@ -3562,10 +3560,7 @@ def test_task252cs_matrix_editor_step_preview_header_and_samples_card_color_are_
         assert removed_source not in matrix_editor_source
 
     for required_style in [
-        ".matrix-editor-step-header h3 {",
-        ".matrix-editor-step-header-group {",
-        "font-size: 34px;",
-        ".matrix-editor-step-header-count {",
+        ".matrix-editor-step-header-text {",
         "font-size: 20px;",
         ".matrix-editor-notes-card-samples {",
         "background: #eef9f4;",
