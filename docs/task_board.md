@@ -37,6 +37,18 @@
 - Deliverables: `tasks/TASK_252CN_MATRIX_EDITOR_SECTION_SYMBOL_NOTE_EXTRACTION_RESTORE.md`, `docs/task_252cn_matrix_editor_section_symbol_note_extraction_restore_plan.md`, `backend/modules/test_plan/product_spec_matrix_parser.py`, `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, `tests/unit/test_product_spec_matrix_parser.py`, and `tests/unit/test_frontend_shell_files.py`.
 - Validation: `py -m pytest tests\\unit\\test_product_spec_matrix_parser.py tests\\integration\\test_project_test_plan_preview_api.py -q` passed (`15 passed`); `py -m pytest tests\\unit\\test_frontend_shell_files.py -q -k "task252cn or matrix_editor"` passed (`28 passed`, `69 deselected`); `cd frontend; npm run build` passed.
 
+- `TASK_252CO_MATRIX_EDITOR_SAMPLES_INLINE_AND_NOTES_LABEL_MINIFY` is complete. In Matrix Editor Step preview, `Samples` label and samples input now remain on one inline row, and sample note heading text is simplified from `Samples Notes` to `Notes` while keeping note content unchanged.
+- Deliverables: `tasks/TASK_252CO_MATRIX_EDITOR_SAMPLES_INLINE_AND_NOTES_LABEL_MINIFY.md`, `docs/task_252co_matrix_editor_samples_inline_and_notes_label_minify_plan.md`, `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, `frontend/src/workbench.css`, and `tests/unit/test_frontend_shell_files.py`.
+- Validation: `py -m pytest tests\\unit\\test_frontend_shell_files.py -q -k "task252co or matrix_editor"` passed (`29 passed`, `69 deselected`); `cd frontend; npm run build` passed.
+
+- `TASK_252CP_MATRIX_EDITOR_SAMPLES_ROW_VERTICAL_ALIGN_AND_TOKEN_WRAP` is complete. Matrix Editor main-grid sample row now vertically centers the `Samples Quantity (PCS)` label cell and uses an auto-grow textarea for per-group sample expressions so narrow cells can wrap tokens like `5+(5e)` instead of clipping.
+- Deliverables: `tasks/TASK_252CP_MATRIX_EDITOR_SAMPLES_ROW_VERTICAL_ALIGN_AND_TOKEN_WRAP.md`, `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, `frontend/src/workbench.css`, and `tests/unit/test_frontend_shell_files.py`.
+- Validation: `py -m pytest tests\\unit\\test_frontend_shell_files.py -q -k "task252cp or matrix_editor"` passed (`30 passed`, `69 deselected`); `cd frontend; npm run build` passed.
+
+- `TASK_252CQ_MATRIX_EDITOR_IDENTICAL_SAMPLE_ROWS_MERGE_NOTE` is complete. Matrix Editor import mapping now detects identical multi-row sample quantities (for example `Header / Rec. / Rec+ Cable`) and displays one merged sample value per group while adding a right-side Samples `Notes` line that names the merged source rows. Existing marker sample notes remain visible, and manual sample edits clear stale merge-source notes.
+- Deliverables: `tasks/TASK_252CQ_MATRIX_EDITOR_IDENTICAL_SAMPLE_ROWS_MERGE_NOTE.md`, `docs/task_252cq_matrix_editor_identical_sample_rows_merge_note_plan.md`, `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, and `tests/unit/test_frontend_shell_files.py`.
+- Validation: `py -m pytest tests\\unit\\test_frontend_shell_files.py -q -k "task252cq or matrix_editor"` passed (`31 passed`, `69 deselected`); `cd frontend; npm run build` passed.
+
 - `TASK_252C_MATRIX_IMPORT_DOCUMENT_PAGE_PREVIEW_AND_CONFIRMATION` flow is restored in current Matrix Editor: file-picker import now opens a large confirmation modal with left PDF preview (`.docx` converted via Word COM) and right-side locator fields (`Page`, `Table on page`, `Keyword in table`) that trigger debounce reparse. Footer actions support `Cancel`, `Replace`, and `Append`.
 - Added endpoints: `POST /api/test-plan/matrix-preview-from-upload` now accepts optional locator form fields; `GET /api/test-plan/matrix-preview-pdf/{token}` serves generated preview PDF under controlled temp directory.
 

@@ -135,6 +135,7 @@ function buildMatrixFromPreview(
   groups: GroupColumn[];
   rows: EditableMatrixRow[];
   samples: Record<string, string>;
+  sampleMergeNotes: Record<string, string>;
 } {
   const groups: GroupColumn[] = preview.groups.map((group, index) => ({
     id: `group-${index + 1}`,
@@ -160,13 +161,25 @@ function buildMatrixFromPreview(
     };
   });
   const samples: Record<string, string> = {};
+  const sampleMergeNotes: Record<string, string> = {};
   preview.groups.forEach((group, groupIndex) => {
     const groupId = `group-${groupIndex + 1}`;
     const label = group.group_label;
-    const sampleFromRow = sampleRows.length > 0 ? (sampleRows[0].group_tokens[label] ?? "") : "";
-    samples[groupId] = sampleFromRow || (group.sample_quantity_expression ?? "");
+    const sampleEntries = sampleRows
+      .map((row) => ({
+        label: (row.source_section ?? row.test_item).trim(),
+        value: (row.group_tokens[label] ?? "").trim(),
+      }))
+      .filter((entry) => entry.value.length > 0);
+    const uniqueSampleValues = [...new Set(sampleEntries.map((entry) => entry.value))];
+    const sampleFromRow = sampleEntries[0]?.value ?? "";
+    samples[groupId] = uniqueSampleValues.length === 1 ? uniqueSampleValues[0] : sampleFromRow || (group.sample_quantity_expression ?? "");
+    const uniqueLabels = [...new Set(sampleEntries.map((entry) => entry.label).filter((entryLabel) => entryLabel.length > 0))];
+    if (uniqueSampleValues.length === 1 && uniqueLabels.length > 1) {
+      sampleMergeNotes[groupId] = `${uniqueLabels.join(" / ")} share the same sample quantity.`;
+    }
   });
-  return { groups, rows, samples };
+  return { groups, rows, samples, sampleMergeNotes };
 }
 
 function cloneGroups(groups: GroupColumn[]): GroupColumn[] {
@@ -582,6 +595,7 @@ export function MatrixEditorWorkspace({
   const [contextMenu, setContextMenu] = useState<MatrixContextMenu | null>(null);
   const [stepOutputOverrides, setStepOutputOverrides] = useState<Record<string, StepOutputOverride>>({});
   const [sampleValues, setSampleValues] = useState<Record<string, string>>({ "group-1": "" });
+  const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});
   const [importPreview, setImportPreview] = useState<MatrixPreviewResponse | null>(null);
   const [importingPreview, setImportingPreview] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -597,6 +611,15 @@ export function MatrixEditorWorkspace({
       const next: Record<string, string> = {};
       groupColumns.forEach((group) => {
         next[group.id] = previous[group.id] ?? "";
+      });
+      return next;
+    });
+    setSampleMergeNotes((previous) => {
+      const next: Record<string, string> = {};
+      groupColumns.forEach((group) => {
+        if (previous[group.id]) {
+          next[group.id] = previous[group.id];
+        }
       });
       return next;
     });
@@ -745,9 +768,11 @@ export function MatrixEditorWorkspace({
     })
     .filter((note): note is string => Boolean(note));
   const sampleMarker = selectedGroupSamplesValue.match(/\(([a-zA-Z])\)|([*#])/);
-  const selectedGroupSampleNotes = selectedGroupPreviewNotes.sampleNote
-    ? [selectedGroupPreviewNotes.sampleNote]
-    : sampleMarker ? [`${sampleMarker[0]}`] : [];
+  const selectedGroupSampleMergeNote = selectedGroup ? sampleMergeNotes[selectedGroup.id] ?? null : null;
+  const selectedGroupSampleNotes = [
+    selectedGroupPreviewNotes.sampleNote ?? (sampleMarker ? `${sampleMarker[0]}` : null),
+    selectedGroupSampleMergeNote,
+  ].filter((note): note is string => Boolean(note));
 
   const openChooseDocx = (): void => {
     fileInputRef.current?.click();
@@ -762,6 +787,7 @@ export function MatrixEditorWorkspace({
       setGroupColumns(mapped.groups);
       setEditableRows(mapped.rows);
       setSampleValues(mapped.samples);
+      setSampleMergeNotes(mapped.sampleMergeNotes);
       setSelectedGroupId(mapped.groups[0]?.id ?? null);
       setSelectedRowId(null);
       return;
@@ -805,6 +831,16 @@ export function MatrixEditorWorkspace({
         const nextId = groupIdMap.get(oldId);
         if (nextId) {
           next[nextId] = value;
+        }
+      });
+      return next;
+    });
+    setSampleMergeNotes((previous) => {
+      const next = { ...previous };
+      Object.entries(mapped.sampleMergeNotes).forEach(([oldId, note]) => {
+        const nextId = groupIdMap.get(oldId);
+        if (nextId) {
+          next[nextId] = note;
         }
       });
       return next;
@@ -1400,24 +1436,28 @@ export function MatrixEditorWorkspace({
                 ))}
                 <tr>
                   <td />
-                  <td>Samples Quantity (PCS)</td>
+                  <td className="matrix-editor-sample-label-cell">Samples Quantity (PCS)</td>
                   <td />
                   <td />
                   <td />
                   <td />
                   {groupColumns.map((group) => (
                     <td key={`sample-${group.id}`}>
-                      <input
-                        className="matrix-editor-inline-input matrix-editor-sample-input"
+                      <MatrixAutoGrowTextarea
+                        ariaLabel={`Samples ${group.name || "group"}`}
+                        className="matrix-editor-sample-textarea"
                         value={sampleValues[group.id] ?? ""}
                         onFocus={() => {
                           setSelectedGroupId(group.id);
                           setSelectedRowId(null);
                           setContextMenu(null);
                         }}
-                        onChange={(event) => {
-                          const value = event.target.value;
+                        onChange={(value) => {
                           setSampleValues((previous) => ({ ...previous, [group.id]: value }));
+                          setSampleMergeNotes((previous) => {
+                            const { [group.id]: _removed, ...next } = previous;
+                            return next;
+                          });
                         }}
                       />
                     </td>
@@ -1573,12 +1613,16 @@ export function MatrixEditorWorkspace({
                       }
                       const value = event.target.value;
                       setSampleValues((previous) => ({ ...previous, [selectedGroup.id]: value }));
+                      setSampleMergeNotes((previous) => {
+                        const { [selectedGroup.id]: _removed, ...next } = previous;
+                        return next;
+                      });
                     }}
                   />
                 </div>
                 {selectedGroupSampleNotes.length > 0 ? (
                   <>
-                    <h5>Samples Notes</h5>
+                    <h5>Notes</h5>
                     {selectedGroupSampleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
                   </>
                 ) : null}

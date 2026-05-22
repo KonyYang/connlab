@@ -3380,7 +3380,8 @@ def test_task252ck_matrix_editor_step_notes_use_preview_payload_and_concise_item
         "const markerNote = marker ? selectedGroupPreviewNotes.itemSectionByMarker.get(marker) ?? null : null;",
         "const rawNote = mapped?.sourceItemSectionNote ?? (markerNote ? replaceItemSectionNoteSection(markerNote, row.sourceSection) : row.sourceItemSectionNote);",
         "const concise = formatConciseItemSectionNote(row.stepNo, rawNote);",
-        "const selectedGroupSampleNotes = selectedGroupPreviewNotes.sampleNote",
+        "const selectedGroupSampleNotes = [",
+        "selectedGroupPreviewNotes.sampleNote ?? (sampleMarker ? `${sampleMarker[0]}` : null),",
     ]:
         assert required_source in matrix_editor_source
 
@@ -3426,6 +3427,79 @@ def test_task252cn_matrix_editor_reuses_symbol_item_section_note_for_local_rows(
         "function replaceItemSectionNoteSection(noteText: string, sourceSection: string): string",
         "replaceItemSectionNoteSection(markerNote, row.sourceSection)",
         'sourceItemSectionNote: itemSectionMarker ? `Section: ${row.section}` : null',
+    ]:
+        assert required_source in matrix_editor_source
+
+
+def test_task252co_matrix_editor_samples_inline_and_notes_label_minified() -> None:
+    """TASK_252CO keeps Samples label/input on one row and shortens notes heading."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required_source in [
+        "className=\"matrix-editor-samples-inline\"",
+        "className=\"matrix-editor-inline-input matrix-editor-samples-inline-input\"",
+        "<h5>Notes</h5>",
+    ]:
+        assert required_source in matrix_editor_source
+
+    assert "<h5>Samples Notes</h5>" not in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-samples-inline {",
+        "display: flex;",
+        "flex-wrap: nowrap;",
+        ".matrix-editor-samples-inline-input {",
+        "min-width: 0;",
+    ]:
+        assert required_style in styles_source
+
+
+def test_task252cp_matrix_editor_samples_row_label_center_and_wrapped_editor() -> None:
+    """TASK_252CP centers sample-row label and uses autogrow textarea in group sample cells."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required_source in [
+        '<td className="matrix-editor-sample-label-cell">Samples Quantity (PCS)</td>',
+        "className=\"matrix-editor-sample-textarea\"",
+        "ariaLabel={`Samples ${group.name || \"group\"}`}",
+    ]:
+        assert required_source in matrix_editor_source
+
+    assert "matrix-editor-inline-input matrix-editor-sample-input" not in matrix_editor_source
+
+    for required_style in [
+        ".matrix-editor-sample-label-cell {",
+        "vertical-align: middle !important;",
+        ".matrix-editor-sample-textarea {",
+        "overflow-wrap: anywhere;",
+    ]:
+        assert required_style in styles_source
+
+
+def test_task252cq_matrix_editor_identical_sample_rows_merge_note_is_wired() -> None:
+    """TASK_252CQ shows a right-side note when identical imported sample rows are merged."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_source in [
+        "sampleMergeNotes: Record<string, string>;",
+        "const sampleMergeNotes: Record<string, string> = {};",
+        "const sampleEntries = sampleRows",
+        "const uniqueSampleValues = [...new Set(sampleEntries.map((entry) => entry.value))];",
+        "sampleMergeNotes[groupId] = `${uniqueLabels.join(\" / \")} share the same sample quantity.`;",
+        "const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});",
+        "const selectedGroupSampleMergeNote = selectedGroup ? sampleMergeNotes[selectedGroup.id] ?? null : null;",
+        "setSampleMergeNotes(mapped.sampleMergeNotes);",
+        "Object.entries(mapped.sampleMergeNotes).forEach(([oldId, note]) => {",
+        "const { [group.id]: _removed, ...next } = previous;",
+        "const { [selectedGroup.id]: _removed, ...next } = previous;",
     ]:
         assert required_source in matrix_editor_source
 

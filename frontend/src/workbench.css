@@ -1002,6 +1002,33 @@
   background: #f8fbff;
 }
 
+.matrix-editor-samples-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.matrix-editor-samples-inline h4 {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.matrix-editor-samples-inline-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.matrix-editor-sample-label-cell {
+  vertical-align: middle !important;
+}
+
+.matrix-editor-sample-textarea {
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .matrix-editor-step-workspace header {
   display: grid;
   gap: 3px;
