@@ -51,12 +51,13 @@ Allowed:
 - Extend confirmed Matrix storage/domain minimally for supersession metadata if not already present:
   - `status`
   - `is_active_authority`
-  - `superseded_by`
+  - `superseded_by_confirmed_matrix_id`
   - `superseded_at`
   - `superseded_reason`
-- Extend Project Matrix Draft metadata minimally only if required for revision lineage:
-  - `base_confirmed_matrix_id`
-  - revision/source type metadata if needed for traceability
+- Add required Project Matrix Draft revision lineage metadata:
+  - `base_confirmed_matrix_id` is mandatory for revision drafts and must reference the active confirmed authority used to create the draft.
+  - Revision drafts must be distinguishable from source-import drafts so they do not reuse the existing `project_id + source_import_id` uniqueness path.
+  - If a uniqueness constraint is added for revision drafts, it must be based on revision lineage such as `project_id + base_confirmed_matrix_id` for active/open revision drafts, not `source_import_id`.
 - Add minimal backend APIs if required by integration tests:
   - create revision draft from active confirmed Matrix
   - confirm revision draft
@@ -88,7 +89,7 @@ Forbidden:
 ## Acceptance Criteria
 
 - A project with one active confirmed Matrix can create a new editable Project Matrix Draft revision from that active authority.
-- The revision draft preserves lineage to the base active confirmed Matrix.
+- The revision draft preserves mandatory lineage to the base active confirmed Matrix through `base_confirmed_matrix_id`.
 - The revision draft is editable through existing draft save behavior; this task must not change Matrix Editor save semantics.
 - A revision draft can be confirmed into a new active confirmed Matrix.
 - Confirming a revision:
@@ -100,6 +101,7 @@ Forbidden:
   - performs all of the above atomically in one transaction
 - If any part of revision confirmation fails, no partial new authority is persisted and the previous active authority remains active.
 - DB-level active authority uniqueness remains enforced.
+- Revision draft creation does not collide with the existing source-import draft uniqueness rule; revision drafts use nullable/no `source_import_id` plus explicit revision lineage, or an equivalent schema-safe uniqueness strategy documented in implementation.
 - Revision confirmation keeps TASK_257 authority validation rules:
   - at least one selected group
   - selected group `group_key` and `group_label` nonblank
@@ -109,7 +111,7 @@ Forbidden:
 - Source Matrix import/snapshot rows remain immutable.
 - Existing confirmed rows/groups/cells remain immutable history.
 - API routes, if added, call application services only.
-- Tests cover happy path revision draft creation, revision confirmation/supersession, revision number increment, rollback on failure, active uniqueness, draft/source immutability, historical confirmed immutability, and API error mapping.
+- Tests cover happy path revision draft creation, revision draft uniqueness behavior, required `base_confirmed_matrix_id`, no generated sample row placeholder, revision confirmation/supersession, revision number increment, rollback on failure, active uniqueness, draft/source immutability, historical confirmed immutability, and API error mapping.
 
 ## Validation
 

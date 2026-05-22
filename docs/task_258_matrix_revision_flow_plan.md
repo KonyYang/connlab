@@ -33,7 +33,7 @@ Input for revision draft creation:
 Output:
 
 - new `ProjectMatrixDraft` derived from active confirmed authority
-- draft lineage back to `base_confirmed_matrix_id`
+- mandatory draft lineage back to `base_confirmed_matrix_id`
 
 Input for revision confirmation:
 
@@ -74,17 +74,19 @@ Runtime/report/fee consumers remain out of scope.
 
 1. Domain
    - Extend confirmed authority domain root with supersession metadata if missing:
-     - `superseded_by`
+     - `superseded_by_confirmed_matrix_id` for structural lineage to the replacing confirmed Matrix
      - `superseded_at`
      - `superseded_reason`
+   - Do not use `superseded_by` as an ambiguous field name. If operator audit is needed later, use a separate `superseded_by_user` field in a future approved task.
    - Add `SUPERSEDED` to `ConfirmedMatrixStatus`.
-   - Extend Project Matrix Draft root/domain metadata if required for `base_confirmed_matrix_id`.
+   - Extend Project Matrix Draft root/domain metadata with required `base_confirmed_matrix_id` for revision drafts.
 
 2. Storage
    - Update `backend/infrastructure/storage/models_confirmed_matrix_authority.py` for supersession metadata.
-   - Update `backend/infrastructure/storage/models_project_matrix_draft.py` only if revision lineage metadata is added.
-   - Add SQLite migration helpers only if existing tables need new nullable columns.
+   - Update `backend/infrastructure/storage/models_project_matrix_draft.py` to persist required revision lineage metadata.
+   - Add SQLite migration helpers for new nullable columns on existing tables.
    - Preserve DB-level active authority uniqueness.
+   - Resolve the existing source-import draft uniqueness conflict explicitly: revision drafts must not reuse the `project_id + source_import_id` uniqueness path. Use nullable/no `source_import_id` for revision drafts plus a separate revision-draft uniqueness strategy, or adjust constraints with equivalent behavior and tests.
 
 3. Repository
    - Extend `ConfirmedMatrixAuthorityRepository` with a transaction-scoped operation to:
@@ -93,7 +95,7 @@ Runtime/report/fee consumers remain out of scope.
      - flush as one atomic unit
    - Add read helpers for latest revision number by project if needed.
    - Avoid update methods for confirmed row/group/cell content.
-   - Extend `ProjectMatrixDraftRepository` only as needed to create/load revision drafts with base authority lineage.
+   - Extend `ProjectMatrixDraftRepository` to create/load revision drafts with mandatory base authority lineage and schema-safe uniqueness behavior distinct from source-import drafts.
 
 4. Application Service
    - Add `backend/application/matrix_revision_flow_service.py`.
@@ -129,7 +131,7 @@ When creating a revision draft from active confirmed authority:
 - Preserve row order, test item, source section, method, condition, requirement, draft/source lineage where available.
 - Copy confirmed sparse cells into draft cells.
 - Keep sample quantity only as group-level draft data.
-- Do not recreate sample rows as editable sample authority rows unless an existing repository invariant requires a sample row placeholder; if required, document it explicitly in implementation.
+- Do not generate an editable sample row placeholder for revision drafts. The single source of truth for sample quantity remains group-level draft data.
 
 ## 6) Revision Confirmation Rules
 
@@ -137,7 +139,7 @@ When confirming a revision draft:
 
 - Require an active confirmed authority for the project.
 - Require the revision draft to belong to the same project.
-- Require the revision draft lineage to reference the active confirmed authority.
+- Require the revision draft `base_confirmed_matrix_id` to reference the active confirmed authority. This field is mandatory for revision drafts.
 - Reject stale revision drafts based on a superseded/non-active confirmed authority.
 - Validate selected groups:
   - at least one selected group
@@ -149,7 +151,7 @@ When confirming a revision draft:
 - Set new `confirmed_revision = active.confirmed_revision + 1`.
 - Set new status active/confirmed and `is_active_authority = true`.
 - Set previous status superseded and `is_active_authority = false`.
-- Store supersession metadata on previous active root.
+- Store supersession metadata on previous active root, including `superseded_by_confirmed_matrix_id` referencing the newly created confirmed authority.
 
 ## 7) API And Error Semantics
 
@@ -166,13 +168,17 @@ Risk: Supersession happens before new authority is safely created.
 
 - Control: previous supersede + new authority creation must be one transaction. Rollback test must prove previous remains active on failure.
 
+Risk: Revision draft creation collides with source-import draft uniqueness.
+
+- Control: revision drafts use required `base_confirmed_matrix_id` and do not share the existing `project_id + source_import_id` uniqueness path. Tests must prove a revision draft can be created for a project that already has a source-import draft.
+
 Risk: Revision flow edits confirmed content.
 
 - Control: confirmed row/group/cell content remains immutable. Only root/version metadata changes for supersession.
 
 Risk: Stale revision draft supersedes the wrong active authority.
 
-- Control: revision confirmation validates draft `base_confirmed_matrix_id` against current active authority.
+- Control: revision confirmation validates mandatory draft `base_confirmed_matrix_id` against current active authority.
 
 Risk: Revision number races.
 
@@ -217,9 +223,10 @@ py -m pytest tests\integration\test_api_default_dependencies.py -q
 ## 11) Review Checklist For This Plan
 
 - Starts only from current active confirmed authority.
-- New revision draft is editable through existing draft save behavior.
+- New revision draft is editable through existing draft save behavior and does not collide with existing source-import draft uniqueness.
 - Revision confirm atomically creates new active authority and supersedes previous active.
 - Previous confirmed rows/groups/cells remain immutable.
 - New confirmed revision number is deterministic.
-- Stale revision drafts cannot supersede current active authority.
+- Stale revision drafts cannot supersede current active authority because `base_confirmed_matrix_id` is mandatory and validated.
+- No editable sample row placeholder is generated; sample quantity remains group-level authority.
 - No frontend/runtime/report scope is introduced.
