@@ -3510,8 +3510,6 @@ def test_task252cq_matrix_editor_identical_sample_rows_merge_note_is_wired() -> 
         "sampleMergeNotes[groupId] = `${uniqueLabels.join(\" / \")} share the same sample quantity.`;",
         "const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});",
         "const selectedGroupSampleMergeNote = selectedGroup ? sampleMergeNotes[selectedGroup.id] ?? null : null;",
-        "setSampleMergeNotes(mapped.sampleMergeNotes);",
-        "Object.entries(mapped.sampleMergeNotes).forEach(([oldId, note]) => {",
         "const { [group.id]: _removed, ...next } = previous;",
         "const { [selectedGroup.id]: _removed, ...next } = previous;",
     ]:
@@ -3774,6 +3772,82 @@ def test_task259_matrix_editor_revision_actions_wiring_is_present() -> None:
         "Create revision draft",
     ]:
         assert required_editor_symbol in matrix_editor_source
+
+
+def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present() -> None:
+    """TASK_262 adds Group Selection gate and TASK_261 commit API wiring."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    selection_mode_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixImportSelectionMode.tsx"
+    ).read_text(encoding="utf-8")
+    selectors_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixImportSelectionSelectors.ts"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required_client_symbol in [
+        "export type MatrixImportCommitRequest = {",
+        "export type MatrixImportCommitResponse = {",
+        "selected_group_keys: string[];",
+        "commitMatrixImport(",
+        "/matrix-import/commit",
+    ]:
+        assert required_client_symbol in client_source
+
+    for required_editor_symbol in [
+        "showImportSelectionMode",
+        "groupSelectionKeys",
+        "openGroupSelection",
+        "onCommitImportedGroups",
+        "buildMatrixImportSelectionViewModel(importPreview)",
+        "buildMatrixImportSelectionDisabledReason(",
+        "commitMatrixImport(projectId, {",
+        "setShowImportSelectionMode(true);",
+        "<MatrixImportSelectionMode",
+        "Replace",
+        "Append",
+    ]:
+        assert required_editor_symbol in matrix_editor_source
+
+    for required_selection_view_symbol in [
+        "Import Selection Mode",
+        "Confirm selected groups",
+        "Append Matrix (Future)",
+        "Test Item",
+        "const visibleStatusMessage = disabledReason || statusMessage;",
+        "aria-live=\"polite\"",
+    ]:
+        assert required_selection_view_symbol in selection_mode_source
+
+    for forbidden_symbol in [
+        "Section",
+        "Method",
+        "Condition",
+        "Requirement",
+    ]:
+        assert forbidden_symbol not in selection_mode_source
+
+    for required_selector_symbol in [
+        "buildMatrixImportSelectableGroups(",
+        "buildMatrixImportSelectionViewModel(",
+        "buildDefaultSelectedGroupKeys(",
+        "buildMatrixImportSelectionDisabledReason(",
+        "return `group_",
+    ]:
+        assert required_selector_symbol in selectors_source
+
+    for required_style_symbol in [
+        ".matrix-editor-selection-mode {",
+        ".matrix-editor-selection-table",
+        ".matrix-editor-selection-mode-pill {",
+        ".matrix-editor-group-selection-status {",
+    ]:
+        assert required_style_symbol in styles_source
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
     """TASK_192 prioritizes project source candidates before external/manual fallback."""

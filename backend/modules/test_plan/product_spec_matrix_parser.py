@@ -89,12 +89,23 @@ class ProductSpecMatrixParser:
     _LETTER_NOTE_SUFFIX_DELIM_RE = re.compile(r"^\s*([a-z])[)\.]\s*(.+)\s*$", re.IGNORECASE)
     _NOTE_WRAPPED_LETTER_RE = re.compile(r"^\s*note\s*\(([a-z])\)\s*[:：]?\s*(.+)\s*$", re.IGNORECASE)
     _SYMBOL_NOTE_RE = re.compile(r"^\s*([*#])\s*(.+)\s*$")
+    _TEXTUAL_ITEM_RE = re.compile(r"[A-Za-z]{2,}")
+    _PURE_NUMERIC_OR_SYMBOL_RE = re.compile(r"^[\d\W_]+$")
+    _GROUP_TOKEN_HEADER_RE = re.compile(r"^\s*(?:[A-Za-z]\d+|\d+[A-Za-z]?|[A-Za-z])\s*$")
+    _NEGATIVE_RECORD_HEADER_RE = re.compile(
+        r"\b(result|judg|record|measured|rev|revision|pages|description|date)\b",
+        re.IGNORECASE,
+    )
+    _REVISION_RECORD_HEADER_TERMS = frozenset({"rev", "revision", "pages", "description", "date"})
+    _QUALIFICATION_TITLE_RE = re.compile(r"\bqualification\s+test\b", re.IGNORECASE)
+    _MIN_MATRIX_SCORE = 45
 
     def parse_tables(
         self,
         tables: list[list[list[str]]],
         paragraphs: list[str] | None = None,
         selected_table_index: int | None = None,
+        table_contexts: dict[int, str] | None = None,
     ) -> MatrixParseResult:
         """Parse the first supported Matrix-like table from document tables."""
         warnings: list[str] = []
@@ -104,11 +115,20 @@ class ProductSpecMatrixParser:
         for table_index, table in enumerate(tables, start=1):
             if selected_table_index is not None and table_index != selected_table_index:
                 continue
+            if _looks_like_revision_record_table(table):
+                continue
             header = self._find_header(table)
             if header is None:
                 continue
             result = self._parse_table(table, table_index, header, marker_notes)
-            score = _table_score(result.groups)
+            score = _table_score(
+                result=result,
+                header=header,
+                table=table,
+                table_context=(table_contexts or {}).get(table_index),
+            )
+            if score < self._MIN_MATRIX_SCORE:
+                continue
             if score > best_score:
                 best_score = score
                 best_result = MatrixParseResult(
@@ -503,13 +523,97 @@ def _row_item_section_note(
     return None
 
 
-def _table_score(groups: tuple[MatrixGroupPreview, ...]) -> int:
-    """Score one parsed table for best candidate selection."""
-    if not groups:
+def _table_score(
+    *,
+    result: MatrixParseResult,
+    header: _Header,
+    table: list[list[str]],
+    table_context: str | None,
+) -> int:
+    """Score one parsed table for matrix likelihood."""
+    if not result.groups:
         return 0
-    group_count = len(groups)
-    step_count = sum(len(group.steps) for group in groups)
-    return group_count * 1000 + step_count
+    score = 0
+    header_row = table[header.row_index - 1] if 0 <= header.row_index - 1 < len(table) else []
+    header_text = " ".join(_clean(cell) for cell in header_row).lower()
+    if "test" in header_text:
+        score += 12
+    if "group" in header_text:
+        score += 15
+    if ProductSpecMatrixParser._NEGATIVE_RECORD_HEADER_RE.search(header_text):
+        score -= 15
+    if _looks_like_revision_record_table(table):
+        return 0
+
+    group_labels = [label for _, label in header.group_columns]
+    if group_labels and all(ProductSpecMatrixParser._GROUP_TOKEN_HEADER_RE.match(label or "") for label in group_labels):
+        score += 12
+
+    non_sample_rows = [row for row in result.rows if not row.is_sample_row]
+    if non_sample_rows:
+        textual_rows = [
+            row
+            for row in non_sample_rows
+            if ProductSpecMatrixParser._TEXTUAL_ITEM_RE.search(row.test_item)
+            and not ProductSpecMatrixParser._PURE_NUMERIC_OR_SYMBOL_RE.match(row.test_item.strip())
+        ]
+        ratio = len(textual_rows) / max(1, len(non_sample_rows))
+        if ratio >= 0.65:
+            score += 16
+        elif ratio >= 0.4:
+            score += 8
+        else:
+            score -= 20
+        numeric_item_rows = [
+            row
+            for row in non_sample_rows
+            if ProductSpecMatrixParser._PURE_NUMERIC_OR_SYMBOL_RE.match(row.test_item.strip())
+        ]
+        if len(numeric_item_rows) / max(1, len(non_sample_rows)) >= 0.5:
+            score -= 35
+
+    if _has_sample_tail_row(result.rows):
+        score += 10
+
+    if table_context and ProductSpecMatrixParser._QUALIFICATION_TITLE_RE.search(table_context):
+        score += 20
+
+    group_count = len(result.groups)
+    step_count = sum(len(group.steps) for group in result.groups)
+    if step_count >= max(2, group_count * 2):
+        score += 15
+    elif step_count > 0:
+        score += 8
+    else:
+        score -= 20
+    return score
+
+
+def _has_sample_tail_row(rows: tuple[MatrixRowPreview, ...]) -> bool:
+    if not rows:
+        return False
+    tail = rows[-3:]
+    return any((row.test_item or "").strip().lower().startswith("sample") for row in tail)
+
+
+def _looks_like_revision_record_table(table: list[list[str]]) -> bool:
+    """Return true for document revision/history tables, even if cells mention tests."""
+    if not table:
+        return False
+    candidate_rows = table[: min(3, len(table))]
+    for row in candidate_rows:
+        normalized = {_normalize(cell) for cell in row if _clean(cell)}
+        if "rev" in normalized and {"pages", "description"}.issubset(normalized):
+            return True
+        if "revision" in normalized and ("description" in normalized or "date" in normalized):
+            return True
+    leading_text = " ".join(_clean(cell) for row in candidate_rows for cell in row).lower()
+    term_hits = sum(
+        1
+        for term in ProductSpecMatrixParser._REVISION_RECORD_HEADER_TERMS
+        if re.search(rf"\b{re.escape(term)}\b", leading_text)
+    )
+    return term_hits >= 4
 
 
 def _note_text_without_marker(note: str) -> str:

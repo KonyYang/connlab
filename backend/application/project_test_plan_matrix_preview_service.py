@@ -102,6 +102,10 @@ class ProjectTestPlanMatrixPreviewService:
             snapshot.tables,
             paragraphs=snapshot.paragraphs,
             selected_table_index=selected_table_index,
+            table_contexts={
+                item.table_index: (item.preceding_paragraph or "")
+                for item in resolved_locations
+            },
         )
         capability_status = "supported" if not parsed.blockers else "unsupported"
         selected_location = None

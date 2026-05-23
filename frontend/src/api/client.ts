@@ -821,6 +821,22 @@ export type MatrixPreviewResponse = {
   blockers: string[];
 };
 
+export type MatrixImportCommitRequest = {
+  source_document_path: string;
+  source_document_name: string;
+  source_format: string;
+  preview_payload: MatrixPreviewResponse;
+  selected_group_keys: string[];
+};
+
+export type MatrixImportCommitResponse = {
+  source_import_id: string;
+  source_snapshot_id: string;
+  selected_group_keys_committed: string[];
+  commit_status: "created" | "reused";
+  project_matrix_draft: ProjectMatrixDraft;
+};
+
 export type MatrixSourceCandidate = {
   source_asset_id: string;
   original_name: string;
@@ -1625,6 +1641,19 @@ export function confirmProjectMatrixRevisionDraft(
 ): Promise<ConfirmedMatrixSnapshot> {
   return requestJson<ConfirmedMatrixSnapshot>(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/confirm-revision`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function commitMatrixImport(
+  projectId: string,
+  input: MatrixImportCommitRequest
+): Promise<MatrixImportCommitResponse> {
+  return requestJson<MatrixImportCommitResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-import/commit`,
     {
       method: "POST",
       body: JSON.stringify(input)

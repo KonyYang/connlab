@@ -110,6 +110,24 @@ def test_matrix_preview_api_uses_last_contiguous_note_block_for_marker_mapping(t
     assert group_1["sample_note"] == "(e) Test with different 5 samples for solder ability and Resistance to solder heat, respectively"
 
 
+def test_matrix_preview_api_rejects_test_record_like_docx(tmp_path: Path) -> None:
+    docx_path = tmp_path / "test-record-like.docx"
+    _write_test_record_like_docx(docx_path)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/test-plan/matrix-preview-from-path",
+        json={"source_path": str(docx_path), "project_id": "P4"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["groups"] == []
+    assert payload["selected_table_index"] is None
+    assert payload["capability_status"] == "unsupported"
+    assert "No Matrix table" in payload["blockers"][0]
+
+
 def _write_product_spec_docx(path: Path) -> None:
     document = Document()
     table = document.add_table(rows=4, cols=4)
@@ -161,4 +179,19 @@ def _write_product_spec_docx_with_conflicting_note_blocks(path: Path) -> None:
     document.add_paragraph("Energize at current for 18℃ temperature rise;")
     document.add_paragraph("5pcs for LLCR test another 5pcs loose connector for DWV test.")
     document.add_paragraph("(e) Test with different 5 samples for solder ability and Resistance to solder heat, respectively")
+    document.save(path)
+
+
+def _write_test_record_like_docx(path: Path) -> None:
+    document = Document()
+    table = document.add_table(rows=4, cols=5)
+    rows = [
+        ["Test Item", "Requirement", "Result", "Judgement", "Record"],
+        ["1", "As spec", "Pass", "OK", "notes"],
+        ["2", "As spec", "Pass", "OK", "notes"],
+        ["3", "As spec", "Pass", "OK", "notes"],
+    ]
+    for row_index, row in enumerate(rows):
+        for column_index, value in enumerate(row):
+            table.cell(row_index, column_index).text = value
     document.save(path)

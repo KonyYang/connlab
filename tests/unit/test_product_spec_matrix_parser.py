@@ -216,3 +216,61 @@ def test_product_spec_matrix_parser_restores_standalone_symbol_section_notes() -
     }
     assert notes_by_token["2"] == "Section: 6.5* Simultaneously measure power contact resistance."
     assert notes_by_token["5"] == "Section: 6.6* Simultaneously measure power contact resistance."
+
+
+def test_product_spec_matrix_parser_rejects_test_record_like_table() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["Test Item", "Requirement", "Result", "Judgement", "Record"],
+                ["1", "As spec", "Pass", "OK", "notes"],
+                ["2", "As spec", "Pass", "OK", "notes"],
+                ["3", "As spec", "Pass", "OK", "notes"],
+            ]
+        ]
+    )
+
+    assert result.groups == ()
+    assert result.selected_table_index is None
+    assert "No Matrix table" in result.blockers[0]
+
+
+def test_product_spec_matrix_parser_rejects_revision_record_table_with_test_words() -> None:
+    revision_record = [
+        ["REV", "PAGES", "DESCRIPTION", "EC #", "DATE"],
+        ["1", "9", "INITIAL RELEASE", "", "09/26/2019"],
+        ["2", "ALL", "UPDATED SECTIONS: 8.10 AND 8.11", "", "10/30/2019"],
+        ["3", "9", "CORRECTED TABLE 1 TEST GROUP 8 SAMPLE QTY", "", "11/01/2019"],
+        ["4", "9", "ADDED PRODUCT PHOTOGRAPH", "", "12/12/2019"],
+    ]
+
+    auto_result = ProductSpecMatrixParser().parse_tables([revision_record])
+    selected_result = ProductSpecMatrixParser().parse_tables(
+        [revision_record],
+        selected_table_index=1,
+    )
+
+    assert auto_result.groups == ()
+    assert auto_result.selected_table_index is None
+    assert "No Matrix table" in auto_result.blockers[0]
+    assert selected_result.groups == ()
+    assert selected_result.selected_table_index is None
+    assert selected_result.blockers == ("Selected table 1 is not a valid Matrix table.",)
+
+
+def test_product_spec_matrix_parser_accepts_numeric_group_headers_with_sample_tail() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["Test Item", "Section", "1", "2A", "B"],
+                ["Visual Examination", "5.4", "1,2", "1", "1"],
+                ["Contact Resistance", "6.1", "3,4", "3", ""],
+                ["Samples Quantity (PCS)", "", "5", "3", "2"],
+            ]
+        ],
+        paragraphs=["Table 5: Qualification Test"],
+    )
+
+    assert result.blockers == ()
+    assert result.selected_table_index == 1
+    assert [group.group_label for group in result.groups] == ["1", "2A"]

@@ -9,7 +9,8 @@ const apiMocks = vi.hoisted(() => ({
   createMatrixRevisionDraft: vi.fn(),
   confirmProjectMatrixRevisionDraft: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
-  matrixPreviewPdfUrl: vi.fn(() => ""),
+  commitMatrixImport: vi.fn(),
+  matrixPreviewPdfUrl: vi.fn((token: string) => token),
 }));
 
 vi.mock("../../api/client", () => apiMocks);
@@ -86,6 +87,7 @@ function buildRevisionDraft(overrides: DraftOverrides = {}) {
 describe("MatrixEditorWorkspace revision confirm guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.matrixPreviewPdfUrl.mockImplementation((token: string) => `/api/pdf/${token}`);
     apiMocks.listProjectMatrixDrafts.mockResolvedValue([
       {
         project_matrix_draft_id: "draft-1",
@@ -124,6 +126,57 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
       groups: [],
       rows: [],
       cells: [],
+    });
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValue({
+      project_id: "P1",
+      source_document_path: "C:/specs/spec.docx",
+      source_document_name: "spec.docx",
+      source_format: ".docx",
+      capability_status: "ok",
+      generated_at: "2026-05-23T00:00:00Z",
+      selected_table_index: 0,
+      selected_page_number: 2,
+      selected_page_table_index: 1,
+      candidate_tables: [],
+      preview_pdf_token: null,
+      rows: [
+        {
+          source_row_index: 1,
+          test_item: "Visual Examination",
+          source_section: "6.1",
+          group_tokens: { "Group A": "1", "Group B": "2" },
+          is_sample_row: false,
+        },
+      ],
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group A",
+          source_table_index: 0,
+          extraction_status: "ok",
+          sample_quantity_expression: "5",
+          sample_note: null,
+          steps: [],
+        },
+        {
+          group_key: "g2",
+          group_label: "Group B",
+          source_table_index: 0,
+          extraction_status: "ok",
+          sample_quantity_expression: "3",
+          sample_note: null,
+          steps: [],
+        },
+      ],
+      warnings: [],
+      blockers: [],
+    });
+    apiMocks.commitMatrixImport.mockResolvedValue({
+      source_import_id: "smi-1",
+      source_snapshot_id: "sms-1",
+      selected_group_keys_committed: ["g1"],
+      commit_status: "created",
+      project_matrix_draft: buildRevisionDraft(),
     });
   });
 
@@ -183,6 +236,213 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     await waitFor(() => {
       expect(confirmButton.hasAttribute("disabled")).toBe(true);
       expect(confirmButton.getAttribute("title")).toBe("Revision already confirmed.");
+    });
+  });
+
+  it("enters inline import selection mode and requires at least one group before commit", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Append" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+    });
+    expect(screen.getByText("Test Item")).toBeTruthy();
+    expect(screen.queryByText("Section")).toBeNull();
+    expect(screen.queryByText("Method")).toBeNull();
+    expect(screen.queryByText("Condition")).toBeNull();
+    expect(screen.queryByText("Requirement")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create revision draft" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm revision" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Append Matrix (Future)" }).every((button) => button.hasAttribute("disabled"))).toBe(true);
+    const groupARow = screen.getByText("Group A").closest("tr");
+    const groupBRow = screen.getByText("Group B").closest("tr");
+    expect(groupARow?.textContent?.includes("Qty:")).toBe(false);
+    expect(groupBRow?.textContent?.includes("Qty:")).toBe(false);
+    expect(screen.getByText("Visual Examination")).toBeTruthy();
+
+    const createButton = screen.getByRole("button", { name: "Confirm selected groups" });
+    fireEvent.click(screen.getByLabelText("Select Group A"));
+    fireEvent.click(screen.getByLabelText("Select Group B"));
+    await waitFor(() => {
+      expect(createButton.hasAttribute("disabled")).toBe(true);
+      expect(createButton.getAttribute("title")).toBe("Select at least one group.");
+    });
+    expect(screen.getByText("Select at least one group.")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Select Group A"));
+    await waitFor(() => {
+      expect(createButton.hasAttribute("disabled")).toBe(false);
+    });
+
+    fireEvent.click(createButton);
+    await waitFor(() => {
+      expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1);
+    });
+    const [calledProjectId, payload] = apiMocks.commitMatrixImport.mock.calls[0];
+    expect(calledProjectId).toBe("P1");
+    expect(payload.selected_group_keys).toEqual(["g1"]);
+    expect(payload.selected_group_keys.includes("g2")).toBe(false);
+    expect(screen.queryByRole("heading", { name: "Import Selection Mode" })).toBeNull();
+  });
+
+  it("clears stale preview after reparse failure and guides manual setup", async () => {
+    apiMocks.previewProjectTestPlanMatrixFromUpload
+      .mockResolvedValueOnce({
+        project_id: "P1",
+        source_document_path: "C:/specs/spec.docx",
+        source_document_name: "spec.docx",
+        source_format: ".docx",
+        capability_status: "ok",
+        generated_at: "2026-05-23T00:00:00Z",
+        selected_table_index: 0,
+        selected_page_number: 2,
+        selected_page_table_index: 1,
+        candidate_tables: [],
+        preview_pdf_token: null,
+        rows: [
+          {
+            source_row_index: 1,
+            test_item: "Visual Examination",
+            source_section: "6.1",
+            group_tokens: { "Group A": "1" },
+            is_sample_row: false,
+          },
+        ],
+        groups: [
+          {
+            group_key: "g1",
+            group_label: "Group A",
+            source_table_index: 0,
+            extraction_status: "ok",
+            sample_quantity_expression: "5",
+            sample_note: null,
+            steps: [],
+          },
+        ],
+        warnings: [],
+        blockers: [],
+      })
+      .mockRejectedValueOnce(new Error("Reparse failed."));
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Reparse" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reparse" }));
+    await waitFor(() => {
+      expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("No matching matrix found. Adjust page/table and reparse.")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+      expect(screen.getByText("No matrix detected. Continue from default editor and add groups manually.")).toBeTruthy();
+    });
+    expect(screen.queryByText("Group A")).toBeNull();
+  });
+
+  it("keeps the PDF preview on the requested page when reparse finds no matching matrix", async () => {
+    apiMocks.previewProjectTestPlanMatrixFromUpload
+      .mockResolvedValueOnce({
+        project_id: "P1",
+        source_document_path: "C:/specs/spec.docx",
+        source_document_name: "spec.docx",
+        source_format: ".docx",
+        capability_status: "ok",
+        generated_at: "2026-05-23T00:00:00Z",
+        selected_table_index: 0,
+        selected_page_number: 2,
+        selected_page_table_index: 1,
+        candidate_tables: [],
+        preview_pdf_token: "pdf-token-1",
+        rows: [
+          {
+            source_row_index: 1,
+            test_item: "Visual Examination",
+            source_section: "6.1",
+            group_tokens: { "Group A": "1" },
+            is_sample_row: false,
+          },
+        ],
+        groups: [
+          {
+            group_key: "g1",
+            group_label: "Group A",
+            source_table_index: 0,
+            extraction_status: "ok",
+            sample_quantity_expression: "5",
+            sample_note: null,
+            steps: [],
+          },
+        ],
+        warnings: [],
+        blockers: [],
+      })
+      .mockResolvedValueOnce({
+        project_id: "P1",
+        source_document_path: "C:/specs/spec.docx",
+        source_document_name: "spec.docx",
+        source_format: ".docx",
+        capability_status: "ok",
+        generated_at: "2026-05-23T00:01:00Z",
+        selected_table_index: null,
+        selected_page_number: 2,
+        selected_page_table_index: null,
+        candidate_tables: [],
+        preview_pdf_token: "pdf-token-1",
+        rows: [],
+        groups: [],
+        warnings: [],
+        blockers: ["Selected table is not a valid Matrix table."],
+      });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Word PDF Preview").getAttribute("src")).toBe(
+        "/api/pdf/pdf-token-1#page=2&zoom=page-width&pagemode=thumbs"
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText("Page"), { target: { value: "9" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reparse" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("No matching matrix found at requested page/table. Reparse or edit manually.")).toBeTruthy();
+      expect(screen.getByTitle("Word PDF Preview").getAttribute("src")).toBe(
+        "/api/pdf/pdf-token-1#page=9&zoom=page-width&pagemode=thumbs"
+      );
     });
   });
 });

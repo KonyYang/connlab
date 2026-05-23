@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Mo
 import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
 import {
+  commitMatrixImport,
   confirmProjectMatrixRevisionDraft,
   createMatrixRevisionDraft,
   getProjectMatrixDraft,
@@ -11,9 +12,16 @@ import {
   saveProjectMatrixDraft,
   type ConfirmedMatrixSnapshot,
   type MatrixPreviewResponse,
+  type MatrixImportCommitResponse,
   type ProjectMatrixDraft,
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
+import { MatrixImportSelectionMode } from "./MatrixImportSelectionMode";
+import {
+  buildDefaultSelectedGroupKeys,
+  buildMatrixImportSelectionViewModel,
+  buildMatrixImportSelectionDisabledReason,
+} from "./matrixImportSelectionSelectors";
 import "../../workbench.css";
 
 type MatrixEditorWorkspaceProps = {
@@ -342,6 +350,18 @@ function parseRequestError(error: unknown, fallback: string): string {
     return error.message;
   }
   return fallback;
+}
+
+function parsePositiveInteger(input: string): number | null {
+  const normalized = input.trim();
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
 }
 
 function buildConfirmRevisionGuard(input: {
@@ -803,9 +823,16 @@ export function MatrixEditorWorkspace({
   const [sampleValues, setSampleValues] = useState<Record<string, string>>({ "group-1": "" });
   const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});
   const [importPreview, setImportPreview] = useState<MatrixPreviewResponse | null>(null);
+  const [importPreviewPdfToken, setImportPreviewPdfToken] = useState<string | null>(null);
   const [importingPreview, setImportingPreview] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importLookupMessage, setImportLookupMessage] = useState<string>("");
+  const [importLookupTone, setImportLookupTone] = useState<"success" | "error" | "idle">("idle");
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showImportSelectionMode, setShowImportSelectionMode] = useState(false);
+  const [groupSelectionKeys, setGroupSelectionKeys] = useState<string[]>([]);
+  const [groupSelectionStatus, setGroupSelectionStatus] = useState("");
+  const [committingImport, setCommittingImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [locatorPage, setLocatorPage] = useState("");
   const [locatorTableOnPage, setLocatorTableOnPage] = useState("");
@@ -1114,86 +1141,63 @@ export function MatrixEditorWorkspace({
     setSaveMessage("Unsaved changes");
   };
 
-  const applyImportPreview = (mode: "replace" | "append"): void => {
+  const openGroupSelection = (): void => {
+    const selectionViewModel = buildMatrixImportSelectionViewModel(importPreview);
+    setGroupSelectionKeys(buildDefaultSelectedGroupKeys(selectionViewModel?.groups ?? []));
+    if (!selectionViewModel || selectionViewModel.groups.length === 0) {
+      setGroupSelectionStatus("No valid Matrix was found from reparse. Continue with manual group setup from default editor.");
+    } else {
+      setGroupSelectionStatus("");
+    }
+    setShowImportDialog(false);
+    setShowImportSelectionMode(true);
+  };
+
+  const onToggleGroupSelection = (groupKey: string): void => {
+    setGroupSelectionKeys((previous) => (
+      previous.includes(groupKey)
+        ? previous.filter((item) => item !== groupKey)
+        : [...previous, groupKey]
+    ));
+  };
+
+  const onCancelGroupSelection = (): void => {
+    setShowImportSelectionMode(false);
+    setGroupSelectionStatus("");
+    setCommittingImport(false);
+  };
+
+  const onCommitImportedGroups = async (): Promise<void> => {
     if (!importPreview) {
+      setGroupSelectionStatus("Import preview is missing.");
       return;
     }
-    const mapped = buildMatrixFromPreview(importPreview);
-    if (mode === "replace") {
-      markUnsaved();
-      setGroupColumns(mapped.groups);
-      setEditableRows(mapped.rows);
-      setSampleValues(mapped.samples);
-      setSampleMergeNotes(mapped.sampleMergeNotes);
-      setSelectedGroupId(mapped.groups[0]?.id ?? null);
-      setSelectedRowId(null);
+    if (groupSelectionKeys.length === 0) {
+      setGroupSelectionStatus("Select at least one group.");
       return;
     }
-    markUnsaved();
-    const groupIdMap = new Map<string, string>();
-    const appendedGroups = [...groupColumns];
-    mapped.groups.forEach((group, index) => {
-      const nextId = nextGroupId(appendedGroups);
-      groupIdMap.set(`group-${index + 1}`, nextId);
-      appendedGroups.push({
-        id: nextId,
-        name: group.name,
-        draftGroupId: null,
-        sourceGroupSnapshotId: null,
-        groupKey: group.groupKey,
-        isSelected: group.isSelected,
-        sampleNote: group.sampleNote,
+    setCommittingImport(true);
+    setGroupSelectionStatus("");
+    try {
+      const response: MatrixImportCommitResponse = await commitMatrixImport(projectId, {
+        source_document_path: importPreview.source_document_path,
+        source_document_name: importPreview.source_document_name,
+        source_format: importPreview.source_format,
+        preview_payload: importPreview,
+        selected_group_keys: groupSelectionKeys,
       });
-    });
-    setGroupColumns(appendedGroups);
-    setEditableRows((previous) => {
-      const nextRows = cloneRows(previous);
-      mapped.rows.forEach((row, rowIndex) => {
-        const values: Record<string, string> = {};
-        groupColumns.forEach((group) => {
-          values[group.id] = "";
-        });
-        Object.entries(row.groups).forEach(([oldId, value]) => {
-          const nextId = groupIdMap.get(oldId);
-          if (nextId) {
-            values[nextId] = value;
-          }
-        });
-        nextRows.push({
-          id: `matrix-import-append-row-${Date.now()}-${rowIndex}`,
-          draftRowId: null,
-          sourceRowSnapshotId: null,
-          isSampleRow: false,
-          item: row.item,
-          section: row.section,
-          method: "",
-          condition: "",
-          requirement: "",
-          groups: values,
-        });
-      });
-      return nextRows;
-    });
-    setSampleValues((previous) => {
-      const next = { ...previous };
-      Object.entries(mapped.samples).forEach(([oldId, value]) => {
-        const nextId = groupIdMap.get(oldId);
-        if (nextId) {
-          next[nextId] = value;
-        }
-      });
-      return next;
-    });
-    setSampleMergeNotes((previous) => {
-      const next = { ...previous };
-      Object.entries(mapped.sampleMergeNotes).forEach(([oldId, note]) => {
-        const nextId = groupIdMap.get(oldId);
-        if (nextId) {
-          next[nextId] = note;
-        }
-      });
-      return next;
-    });
+      applyDraftSnapshotToEditor(response.project_matrix_draft);
+      setHasPersistedDraft(true);
+      setSaveState("idle");
+      setSaveMessage(response.commit_status === "reused" ? "Loaded existing draft from same group selection." : "Project draft created from selected groups.");
+      setShowImportSelectionMode(false);
+      setGroupSelectionStatus("");
+      setImportError(null);
+    } catch (error) {
+      setGroupSelectionStatus(parseRequestError(error, "Failed to create project draft from selected groups."));
+    } finally {
+      setCommittingImport(false);
+    }
   };
 
   const onImportFileChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -1207,20 +1211,38 @@ export function MatrixEditorWorkspace({
     setLocatorTableOnPage("");
     setLocatorKeyword("");
     setImportError(null);
+    setImportLookupMessage("");
+    setImportLookupTone("idle");
+    setImportPreview(null);
+    setImportPreviewPdfToken(null);
     setImportingPreview(true);
     try {
       const preview = await previewProjectTestPlanMatrixFromUpload(file, projectId);
       setImportPreview(preview);
+      setImportPreviewPdfToken(preview.preview_pdf_token ?? null);
       setLocatorPage(preview.selected_page_number != null ? String(preview.selected_page_number) : "");
       setLocatorTableOnPage(preview.selected_page_table_index != null ? String(preview.selected_page_table_index) : "");
       setLocatorKeyword("");
       setShowImportDialog(true);
       if (preview.blockers.length > 0) {
         setImportError(preview.blockers[0]);
+        setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+        setImportLookupTone("error");
+      } else if (preview.groups.length === 0) {
+        setImportError("No matching matrix found.");
+        setImportLookupMessage("No matching matrix found. You can reparse or continue to manual group setup.");
+        setImportLookupTone("error");
+      } else {
+        setImportError(null);
+        setImportLookupMessage(`Matrix found: ${preview.groups.length} groups detected.`);
+        setImportLookupTone("success");
       }
     } catch (error) {
       setImportPreview(null);
+      setImportPreviewPdfToken(null);
       setImportError(error instanceof Error ? error.message : "Import preview failed.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
     } finally {
       setImportingPreview(false);
     }
@@ -1230,20 +1252,63 @@ export function MatrixEditorWorkspace({
     if (!importFile) {
       return;
     }
+    const requestedPageNumber = parsePositiveInteger(locatorPage);
+    const requestedTableIndex = parsePositiveInteger(locatorTableOnPage);
+    if (locatorPage.trim() && requestedPageNumber === null) {
+      setImportError("Page must be a positive integer.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
+      setImportPreview(null);
+      return;
+    }
+    if (locatorTableOnPage.trim() && requestedTableIndex === null) {
+      setImportError("Table on page must be a positive integer.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
+      setImportPreview(null);
+      return;
+    }
     setImportingPreview(true);
     setImportError(null);
+    setImportLookupMessage("");
+    setImportLookupTone("idle");
+    setImportPreview(null);
     try {
       const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
-        pageNumber: locatorPage.trim() ? Number(locatorPage) : null,
-        pageTableIndex: locatorTableOnPage.trim() ? Number(locatorTableOnPage) : null,
+        pageNumber: requestedPageNumber,
+        pageTableIndex: requestedTableIndex,
         tableTextQuery: locatorKeyword.trim() || null,
       });
+      if (preview.preview_pdf_token) {
+        setImportPreviewPdfToken(preview.preview_pdf_token);
+      }
+      const pageMismatch = requestedPageNumber != null && preview.selected_page_number !== requestedPageNumber;
+      const tableMismatch = requestedTableIndex != null && preview.selected_page_table_index !== requestedTableIndex;
+      if (pageMismatch || tableMismatch) {
+        setImportPreview(null);
+        setImportError("Requested page/table did not match a matrix.");
+        setImportLookupMessage("No matching matrix found at requested page/table. Reparse or edit manually.");
+        setImportLookupTone("error");
+        return;
+      }
       setImportPreview(preview);
       if (preview.blockers.length > 0) {
         setImportError(preview.blockers[0]);
+        setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+        setImportLookupTone("error");
+      } else if (preview.groups.length === 0) {
+        setImportError("No matching matrix found.");
+        setImportLookupMessage("No matching matrix found. You can reparse or continue to manual group setup.");
+        setImportLookupTone("error");
+      } else {
+        setImportLookupMessage(`Matrix found: ${preview.groups.length} groups detected.`);
+        setImportLookupTone("success");
       }
     } catch (error) {
+      setImportPreview(null);
       setImportError(error instanceof Error ? error.message : "Reparse failed.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
     } finally {
       setImportingPreview(false);
     }
@@ -1251,9 +1316,16 @@ export function MatrixEditorWorkspace({
 
   const importPreviewPageNumber = Number.parseInt(locatorPage.trim(), 10);
   const previewOpenPage = Number.isFinite(importPreviewPageNumber) && importPreviewPageNumber > 0 ? importPreviewPageNumber : 1;
-  const previewPdfSrc = importPreview?.preview_pdf_token
-    ? `${matrixPreviewPdfUrl(importPreview.preview_pdf_token)}#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs`
+  const previewPdfSrc = importPreviewPdfToken
+    ? `${matrixPreviewPdfUrl(importPreviewPdfToken)}#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs`
     : null;
+  const importSelectionViewModel = buildMatrixImportSelectionViewModel(importPreview);
+  const groupSelectionDisabledReason = buildMatrixImportSelectionDisabledReason({
+    groups: importSelectionViewModel?.groups ?? [],
+    selectedGroupKeys: groupSelectionKeys,
+    committing: committingImport,
+    importError,
+  });
 
   if ((!model.project && !model.error) || draftLoading) {
     return <LoadingState label="Loading matrix editor..." />;
@@ -1676,43 +1748,49 @@ export function MatrixEditorWorkspace({
             </article>
           ))}
         </div>
-        <div className="matrix-editor-target-actions">
-          <button
-            type="button"
-            disabled={!canSave}
-            title={
-              !hasPersistedDraft || projectMatrixDraftId === null
-                ? "No persisted draft target."
-                : isAnyRevisionActionBusy
-                  ? "Action in progress."
-                : hasMatrixValidationError
-                  ? groupNameErrorMessage || stepTokenErrorMessage
-                  : hasUnsavedChanges
-                    ? ""
-                    : "No unsaved changes."
-            }
-            onClick={() => void onSaveDraft()}
-          >
-            {saveState === "saving" ? "Saving..." : "Save"}
-          </button>
-          <button
-            disabled={!canCreateRevisionDraftWithGuards}
-            title={canCreateRevisionDraftWithGuards ? "" : createRevisionDisabledReason || "Create revision is currently unavailable."}
-            type="button"
-            onClick={() => void onCreateRevisionDraft()}
-          >
-            {createRevisionState === "loading" ? "Creating..." : "Create revision draft"}
-          </button>
-          <button
-            className="matrix-editor-primary-action"
-            disabled={!confirmRevisionGuard.canConfirm}
-            title={confirmRevisionGuard.reason}
-            type="button"
-            onClick={() => void onConfirmRevision()}
-          >
-            {confirmRevisionState === "loading" ? "Confirming..." : "Confirm revision"}
-          </button>
-        </div>
+        {showImportSelectionMode ? (
+          <div className="matrix-editor-target-actions">
+            <span className="matrix-editor-selection-mode-pill">Import selection in progress</span>
+          </div>
+        ) : (
+          <div className="matrix-editor-target-actions">
+            <button
+              type="button"
+              disabled={!canSave}
+              title={
+                !hasPersistedDraft || projectMatrixDraftId === null
+                  ? "No persisted draft target."
+                  : isAnyRevisionActionBusy
+                    ? "Action in progress."
+                  : hasMatrixValidationError
+                    ? groupNameErrorMessage || stepTokenErrorMessage
+                    : hasUnsavedChanges
+                      ? ""
+                      : "No unsaved changes."
+              }
+              onClick={() => void onSaveDraft()}
+            >
+              {saveState === "saving" ? "Saving..." : "Save"}
+            </button>
+            <button
+              disabled={!canCreateRevisionDraftWithGuards}
+              title={canCreateRevisionDraftWithGuards ? "" : createRevisionDisabledReason || "Create revision is currently unavailable."}
+              type="button"
+              onClick={() => void onCreateRevisionDraft()}
+            >
+              {createRevisionState === "loading" ? "Creating..." : "Create revision draft"}
+            </button>
+            <button
+              className="matrix-editor-primary-action"
+              disabled={!confirmRevisionGuard.canConfirm}
+              title={confirmRevisionGuard.reason}
+              type="button"
+              onClick={() => void onConfirmRevision()}
+            >
+              {confirmRevisionState === "loading" ? "Confirming..." : "Confirm revision"}
+            </button>
+          </div>
+        )}
       </section>
 
       {(saveMessage || hasUnsavedChanges) && (
@@ -1730,7 +1808,15 @@ export function MatrixEditorWorkspace({
         <div className="matrix-editor-actionbar-main">
           <button className="matrix-editor-import-primary-button" type="button" onClick={openChooseDocx}>{importingPreview ? "Parsing..." : "Import Matrix"}</button>
           {importFile ? <span className="matrix-editor-import-file-name" title={importFile.name}>{importFile.name}</span> : null}
-          <button type="button" onClick={undoLast} disabled={undoStack.length === 0}>Undo</button>
+          <button type="button" onClick={undoLast} disabled={undoStack.length === 0 || showImportSelectionMode}>Undo</button>
+          <button
+            type="button"
+            className="matrix-editor-import-secondary-button"
+            disabled
+            title="Append Matrix requires multi-source lineage and is not active in this task."
+          >
+            Append Matrix (Future)
+          </button>
           <input
             ref={fileInputRef}
             accept=".docx"
@@ -1778,16 +1864,20 @@ export function MatrixEditorWorkspace({
                   {importingPreview ? "Reparsing..." : "Reparse"}
                 </button>
                 {importingPreview ? <p>Reparsing...</p> : null}
+                {importLookupMessage ? (
+                  <p className={importLookupTone === "success" ? "matrix-editor-import-status-success" : importLookupTone === "error" ? "matrix-editor-import-status-error" : ""}>
+                    {importLookupMessage}
+                  </p>
+                ) : null}
                 {importError ? <p className="error">{importError}</p> : null}
                 <footer className="matrix-editor-import-controls-footer">
                   <button className="matrix-editor-import-secondary-button" type="button" onClick={() => setShowImportDialog(false)}>Cancel</button>
                   <button
                     className="matrix-editor-import-commit-button"
                     type="button"
-                    disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
+                    disabled={importingPreview}
                     onClick={() => {
-                      applyImportPreview("replace");
-                      setShowImportDialog(false);
+                      openGroupSelection();
                     }}
                   >
                     Replace
@@ -1795,10 +1885,9 @@ export function MatrixEditorWorkspace({
                   <button
                     className="matrix-editor-import-commit-button"
                     type="button"
-                    disabled={!importPreview || importingPreview || importPreview.blockers.length > 0}
+                    disabled={importingPreview}
                     onClick={() => {
-                      applyImportPreview("append");
-                      setShowImportDialog(false);
+                      openGroupSelection();
                     }}
                   >
                     Append
@@ -1809,8 +1898,39 @@ export function MatrixEditorWorkspace({
           </article>
         </section>
       ) : null}
+      {showImportSelectionMode ? (
+        importSelectionViewModel && importSelectionViewModel.groups.length > 0 ? (
+          <MatrixImportSelectionMode
+            viewModel={importSelectionViewModel}
+            selectedGroupKeys={groupSelectionKeys}
+            disabledReason={groupSelectionDisabledReason}
+            statusMessage={groupSelectionStatus}
+            onToggleGroup={onToggleGroupSelection}
+            onCancel={onCancelGroupSelection}
+            onConfirm={() => void onCommitImportedGroups()}
+          />
+        ) : (
+          <section className="matrix-editor-selection-mode" aria-label="Matrix import selection mode">
+            <header className="matrix-editor-selection-mode-header">
+              <div className="matrix-editor-selection-mode-meta">
+                <h3>Import Selection Mode</h3>
+                <p>No valid matrix found from reparse.</p>
+              </div>
+              <div className="matrix-editor-selection-mode-actions">
+                <button type="button" className="matrix-editor-import-secondary-button" onClick={onCancelGroupSelection}>
+                  Back to editor
+                </button>
+              </div>
+            </header>
+            <p className="matrix-editor-group-selection-status" aria-live="polite">
+              No matrix detected. Continue from default editor and add groups manually.
+            </p>
+          </section>
+        )
+      ) : null}
 
-      <section className="matrix-editor-studio">
+      {!showImportSelectionMode ? (
+        <section className="matrix-editor-studio">
         <section className="matrix-editor-grid-surface">
           <div className="matrix-editor-main-table-wrap">
             <table className="matrix-editor-main-table">
@@ -2142,7 +2262,9 @@ export function MatrixEditorWorkspace({
           )}
         </aside>
       </section>
+      ) : null}
 
+      {!showImportSelectionMode ? (
       <section className="matrix-editor-supporting">
         <section className="matrix-editor-templates" aria-label="Templates">
           <header>
@@ -2213,6 +2335,7 @@ export function MatrixEditorWorkspace({
           </p>
         </section>
       </section>
+      ) : null}
     </section>
   );
 }

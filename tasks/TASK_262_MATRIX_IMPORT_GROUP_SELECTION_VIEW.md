@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Awaiting user approval before implementation.
+Complete. Implemented and validated on 2026-05-23.
 
 ## Current Phase
 
@@ -10,12 +10,12 @@ Planned. Awaiting user approval before implementation.
 
 ## Current Active Task
 
-`TASK_262_MATRIX_IMPORT_GROUP_SELECTION_VIEW` is planned only.
+`TASK_262_MATRIX_IMPORT_GROUP_SELECTION_VIEW` has been completed.
 
 ## Why This Task Is Allowed Now
 
 - `TASK_261_MATRIX_IMPORT_GROUP_SELECTION_COMMIT` is complete.
-- `docs/task_board.md` has no active implementation task.
+- `docs/task_board.md` marks `TASK_262_MATRIX_IMPORT_GROUP_SELECTION_VIEW` as the current planned task awaiting explicit approval.
 - `docs/matrix_authority_to_test_record_smoke_flow_plan.md` recommends `TASK_262_MATRIX_IMPORT_GROUP_SELECTION_VIEW` after the backend import commit boundary.
 - The next workflow need is an operator-facing Group Selection View that calls the TASK_261 commit API before Matrix editing begins.
 
