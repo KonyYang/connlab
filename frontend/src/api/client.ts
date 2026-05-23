@@ -1071,6 +1071,33 @@ export type RuntimeProjectionSnapshotRequest = {
   selected_token_reference?: string | null;
 };
 
+export type ConfirmedMatrixTestRecordPreviewStatus = "ready" | "empty";
+
+export type ConfirmedMatrixTestRecordPreviewStep = {
+  sequence: number;
+  raw_token: string;
+  test_item: string;
+  section: string;
+  method: string;
+  condition: string;
+  requirement: string;
+};
+
+export type ConfirmedMatrixTestRecordPreviewGroup = {
+  group_key: string;
+  group_label: string;
+  sample_quantity_expression: string;
+  step_count: number;
+  steps: ConfirmedMatrixTestRecordPreviewStep[];
+};
+
+export type ConfirmedMatrixTestRecordPreview = {
+  project_id: string;
+  confirmed_matrix_id: string;
+  preview_status: ConfirmedMatrixTestRecordPreviewStatus;
+  groups: ConfirmedMatrixTestRecordPreviewGroup[];
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiRequestError extends Error {
@@ -1804,5 +1831,13 @@ export function getRuntimeProjectionReadOnlySnapshot(
       method: "POST",
       body: JSON.stringify(input)
     }
+  );
+}
+
+export function fetchConfirmedMatrixTestRecordPreview(
+  projectId: string
+): Promise<ConfirmedMatrixTestRecordPreview> {
+  return requestJson<ConfirmedMatrixTestRecordPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-preview`
   );
 }

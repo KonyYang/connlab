@@ -1,6 +1,6 @@
 # TASK_263 Confirmed Matrix Test Record Preview Backend Plan
 
-> For agentic workers: REQUIRED SUB-SKILL for implementation: use `superpowers:executing-plans` or equivalent task-by-task execution. This document is the executable plan only. Do not implement until the user explicitly approves this plan.
+> This document is the executable plan only. Do not implement until the user explicitly approves this plan.
 
 ## Protocol Status
 
@@ -397,7 +397,7 @@ Fixture strategy:
 - Reuse the integration setup style from `tests/integration/test_confirmed_matrix_runtime_projection_api.py`.
 - Seed a project.
 - Seed SourceMatrix through `SourceMatrixImportPersistenceService`.
-- Create selected-only draft through `POST /api/projects/P1/matrix-drafts`.
+- Create selected-only draft through `POST /api/projects/P1/matrix-drafts` with explicit non-empty `selected_group_keys` in request body (for example `["g1"]`) so the confirmed snapshot authority is deterministically selected-only.
 - Confirm draft through `POST /api/projects/P1/matrix-drafts/{draft_id}/confirm`.
 - Call the new preview endpoint.
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Task file created on 2026-05-23. Implementation is not approved until an executable plan is written and explicitly accepted.
+Complete on 2026-05-23. Backend-only read-only Test Record preview from active ConfirmedMatrix authority is implemented and validated.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Planned. Task file created on 2026-05-23. Implementation is not approved until a
 
 ## Current Active Task
 
-`TASK_263_CONFIRMED_MATRIX_TEST_RECORD_PREVIEW_BACKEND` is the next planned task.
+none. `TASK_263_CONFIRMED_MATRIX_TEST_RECORD_PREVIEW_BACKEND` is complete; awaiting next approved task.
 
 ## Why This Task Is Allowed Now
 
@@ -18,8 +18,8 @@ Planned. Task file created on 2026-05-23. Implementation is not approved until a
 - `TASK_262_MATRIX_IMPORT_GROUP_SELECTION_VIEW` is complete.
 - `TASK_262A_MATRIX_IMPORT_SELECTION_MODE_AND_ACTION_CLARITY` is complete.
 - `TASK_262B_MATRIX_IMPORT_PREVIEW_DETECTION_FEEDBACK_HARDENING` is complete.
-- `docs/task_board.md` now marks `TASK_263_CONFIRMED_MATRIX_TEST_RECORD_PREVIEW_BACKEND` as the planned active task.
-- Planned active means the task file is selected for planning, but implementation is still blocked until the executable plan is written and explicitly approved.
+- `docs/task_board.md` records `TASK_263_CONFIRMED_MATRIX_TEST_RECORD_PREVIEW_BACKEND` as complete.
+- Current execution is now blocked until the next task is explicitly approved.
 - `docs/matrix_authority_to_test_record_smoke_flow_plan.md` identifies this task as the next controlled backend slice after Matrix import and group selection stabilization.
 
 ## Model Fit Assessment

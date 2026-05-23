@@ -97,6 +97,9 @@ from backend.application.confirmed_matrix_authority_service import (
 from backend.application.confirmed_matrix_runtime_projection_service import (
     ConfirmedMatrixRuntimeProjectionService,
 )
+from backend.application.confirmed_matrix_test_record_preview_service import (
+    ConfirmedMatrixTestRecordPreviewService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -264,6 +267,15 @@ def get_confirmed_matrix_runtime_projection_service(
     return ConfirmedMatrixRuntimeProjectionService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
         runtime_projection_service=RuntimeProjectionReadOnlyService(),
+    )
+
+
+def get_confirmed_matrix_test_record_preview_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedMatrixTestRecordPreviewService:
+    """Build confirmed-authority Test Record preview read-only service."""
+    return ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
     )
 
 

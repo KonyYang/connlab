@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { ProjectStatusBadge } from "../../components/project/ProjectStatusBadge";
 import type { Project, RuntimeProjectionSnapshotResponse } from "../../api/client";
 import { ProjectWorkbenchMatrixOverview } from "./ProjectWorkbenchMatrixOverview";
+import { TestRecordPreviewSmokePanel } from "./TestRecordPreviewSmokePanel";
 import type { WorkbenchBaselineItem } from "./useProjectWorkbenchModel";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
@@ -319,6 +320,7 @@ export function ProjectWorkbenchLayout({
         </section>
 
         <section className="runtime-console-bottom">
+          <TestRecordPreviewSmokePanel projectId={project.project_id} />
           <RuntimeAttentionSurface snapshot={runtimeProjectionSnapshot} />
           <RecentActivitySurface />
           <FeeEstimateSurface />

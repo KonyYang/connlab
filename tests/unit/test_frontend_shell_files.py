@@ -3849,6 +3849,67 @@ def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present
     ]:
         assert required_style_symbol in styles_source
 
+
+def test_task264_matrix_to_test_record_smoke_ui_is_wired() -> None:
+    """TASK_264 adds a read-only Test Record preview smoke panel in Project Workbench."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "TestRecordPreviewSmokePanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_client_symbol in [
+        "export type ConfirmedMatrixTestRecordPreviewStatus = \"ready\" | \"empty\";",
+        "export type ConfirmedMatrixTestRecordPreviewStep = {",
+        "export type ConfirmedMatrixTestRecordPreviewGroup = {",
+        "export type ConfirmedMatrixTestRecordPreview = {",
+        "fetchConfirmedMatrixTestRecordPreview(",
+        "/confirmed-matrix/test-record-preview",
+    ]:
+        assert required_client_symbol in client_source
+
+    for required_layout_symbol in [
+        "TestRecordPreviewSmokePanel",
+        "<TestRecordPreviewSmokePanel projectId={project.project_id} />",
+    ]:
+        assert required_layout_symbol in layout_source
+
+    for required_panel_symbol in [
+        "Test Record Preview",
+        "Confirmed authority, read-only",
+        "preview_status === \"empty\" ? \"empty\" : \"ready\"",
+        "No active confirmed matrix yet. Confirm Matrix authority first.",
+        "Active confirmed matrix found, but no previewable steps are available.",
+        "Samples:",
+        "Steps:",
+    ]:
+        assert required_panel_symbol in panel_source
+
+    for forbidden_panel_symbol in [
+        "Edit step",
+        "Generate report",
+        "View fee details",
+        "Upload",
+        "Confirm revision",
+    ]:
+        assert forbidden_panel_symbol not in panel_source
+
+    for required_style_symbol in [
+        ".runtime-console-test-record-preview {",
+        ".runtime-console-test-record-preview-header {",
+        ".runtime-console-test-record-preview-summary {",
+        ".runtime-console-test-record-preview-group table {",
+    ]:
+        assert required_style_symbol in styles_source
+
+
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
     """TASK_192 prioritizes project source candidates before external/manual fallback."""
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
