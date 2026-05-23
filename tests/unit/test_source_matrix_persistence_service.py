@@ -84,6 +84,7 @@ def test_source_matrix_persistence_service_persists_sparse_cells_and_metadata(
                         "selected_group_keys_at_import": ["g2"],
                     },
                     created_at="2026-05-22T08:00:01+00:00",
+                    task261_commit_fingerprint="fp-task261-001",
                 )
             )
             session.commit()
@@ -99,6 +100,13 @@ def test_source_matrix_persistence_service_persists_sparse_cells_and_metadata(
             assert import_record.source_spec_number == "GS-12-1507"
             assert import_record.source_spec_revision == "Rev7"
             assert list(import_record.selected_group_keys_at_import) == ["g2"]
+            assert import_record.task261_commit_fingerprint == "fp-task261-001"
+            lookup = repo.get_import_by_project_and_fingerprint(
+                project_id="P1",
+                task261_commit_fingerprint="fp-task261-001",
+            )
+            assert lookup is not None
+            assert lookup.import_id == import_id
             assert len(snapshot.groups) == 2
             assert len(snapshot.rows) == 2
             assert len(snapshot.cells) == 3

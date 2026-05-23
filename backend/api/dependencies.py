@@ -85,6 +85,9 @@ from backend.application.project_service import ProjectService
 from backend.application.project_test_plan_matrix_preview_service import (
     ProjectTestPlanMatrixPreviewService,
 )
+from backend.application.matrix_import_commit_service import (
+    MatrixImportCommitService,
+)
 from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftPersistenceService,
 )
@@ -202,6 +205,21 @@ def get_project_service(session: Session = Depends(get_session)) -> ProjectServi
 def get_project_test_plan_matrix_preview_service() -> ProjectTestPlanMatrixPreviewService:
     """Build the read-only project test-plan Matrix preview service."""
     return ProjectTestPlanMatrixPreviewService()
+
+
+def get_matrix_import_commit_service(
+    session: Session = Depends(get_session),
+) -> MatrixImportCommitService:
+    """Build TASK_261 matrix import group-selection commit service."""
+    source_store = SourceMatrixImportRepository(session)
+    return MatrixImportCommitService(
+        project_store=ProjectRepository(session),
+        source_store=source_store,
+        draft_store=ProjectMatrixDraftRepository(session),
+        source_persistence_service=SourceMatrixImportPersistenceService(
+            store=source_store
+        ),
+    )
 
 
 def get_project_test_plan_draft_service(

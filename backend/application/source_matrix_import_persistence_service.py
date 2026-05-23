@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+import hashlib
+import json
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -49,6 +51,29 @@ class PersistSourceMatrixImportCommand:
     source_draft_id: str | None
     payload: dict[str, Any]
     created_at: str
+    task261_commit_fingerprint: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PersistSourceMatrixFromPreviewCommand:
+    """Command payload for persisting Source Matrix import from preview payload."""
+
+    project_id: str
+    source_document_path: str
+    source_document_name: str
+    source_format: str
+    payload: dict[str, Any]
+    selected_group_keys: tuple[str, ...]
+    created_at: str
+    task261_commit_fingerprint: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceMatrixPersistResult:
+    """Persisted Source Matrix lineage identifiers."""
+
+    import_id: str
+    snapshot_id: str
 
 
 @dataclass(slots=True)
@@ -71,13 +96,7 @@ class SourceMatrixImportPersistenceService:
         """Persist source matrix import metadata and sparse snapshot body."""
         if not isinstance(command.payload, dict):
             raise SourceMatrixImportPersistenceError("Source matrix payload must be an object.")
-        import_id = f"smi-{uuid4().hex}"
-        snapshot_id = f"sms-{uuid4().hex}"
-        groups = _build_groups(command.payload)
-        rows, cells = _build_rows_and_cells(command.payload, groups)
-        metadata = _extract_import_metadata(command.payload, groups, command.created_at)
-        import_record = SourceMatrixImportRecord(
-            import_id=import_id,
+        result = self._persist_import_snapshot(
             project_id=command.project_id,
             draft_id=command.draft_id,
             source_document_path=command.source_document_path,
@@ -86,6 +105,87 @@ class SourceMatrixImportPersistenceService:
             source_asset_id=command.source_asset_id,
             source_case_id=command.source_case_id,
             source_draft_id=command.source_draft_id,
+            payload=command.payload,
+            created_at=command.created_at,
+            selected_group_keys_override=None,
+            task261_commit_fingerprint=command.task261_commit_fingerprint,
+        )
+        return result.import_id
+
+    def persist_from_preview(
+        self,
+        command: PersistSourceMatrixFromPreviewCommand,
+    ) -> SourceMatrixPersistResult:
+        """Persist source matrix import lineage from preview payload for TASK_261."""
+        if len(command.selected_group_keys) == 0:
+            raise SourceMatrixImportPersistenceError(
+                "selected_group_keys is required for preview persistence."
+            )
+        return self._persist_import_snapshot(
+            project_id=command.project_id,
+            draft_id=None,
+            source_document_path=command.source_document_path,
+            source_document_name=command.source_document_name,
+            source_format=command.source_format,
+            source_asset_id=None,
+            source_case_id=None,
+            source_draft_id=None,
+            payload=command.payload,
+            created_at=command.created_at,
+            selected_group_keys_override=command.selected_group_keys,
+            task261_commit_fingerprint=command.task261_commit_fingerprint,
+        )
+
+    def compute_task261_fingerprint(
+        self,
+        *,
+        payload: dict[str, Any],
+        selected_group_keys: tuple[str, ...],
+    ) -> str:
+        """Return stable TASK_261 fingerprint from canonical payload and selected keys."""
+        canonical_payload = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        canonical_selected = json.dumps(list(selected_group_keys), ensure_ascii=False, separators=(",", ":"))
+        digest = hashlib.sha256(
+            f"{canonical_payload}|{canonical_selected}".encode("utf-8")
+        ).hexdigest()
+        return digest
+
+    def _persist_import_snapshot(
+        self,
+        *,
+        project_id: str,
+        draft_id: str | None,
+        source_document_path: str,
+        source_document_name: str,
+        source_format: str,
+        source_asset_id: str | None,
+        source_case_id: str | None,
+        source_draft_id: str | None,
+        payload: dict[str, Any],
+        created_at: str,
+        selected_group_keys_override: tuple[str, ...] | None,
+        task261_commit_fingerprint: str | None,
+    ) -> SourceMatrixPersistResult:
+        import_id = f"smi-{uuid4().hex}"
+        snapshot_id = f"sms-{uuid4().hex}"
+        groups = _build_groups(payload)
+        rows, cells = _build_rows_and_cells(payload, groups)
+        metadata = _extract_import_metadata(
+            payload,
+            groups,
+            created_at,
+            selected_group_keys_override=selected_group_keys_override,
+        )
+        import_record = SourceMatrixImportRecord(
+            import_id=import_id,
+            project_id=project_id,
+            draft_id=draft_id,
+            source_document_path=source_document_path,
+            source_document_name=source_document_name,
+            source_format=source_format,
+            source_asset_id=source_asset_id,
+            source_case_id=source_case_id,
+            source_draft_id=source_draft_id,
             import_status=metadata["import_status"],
             source_spec_number=metadata["source_spec_number"],
             source_spec_revision=metadata["source_spec_revision"],
@@ -95,25 +195,26 @@ class SourceMatrixImportPersistenceService:
             warnings=metadata["warnings"],
             blockers=metadata["blockers"],
             selected_group_keys_at_import=metadata["selected_group_keys_at_import"],
-            created_at=command.created_at,
+            task261_commit_fingerprint=task261_commit_fingerprint,
+            created_at=created_at,
         )
         snapshot = SourceMatrixSnapshot(
             snapshot_id=snapshot_id,
             import_id=import_id,
-            project_id=command.project_id,
+            project_id=project_id,
             source_table_index=_first_int(
                 (
-                    command.payload.get("selected_table_index"),
-                    _group_source_table_index(command.payload),
+                    payload.get("selected_table_index"),
+                    _group_source_table_index(payload),
                 )
             ),
             rows=rows,
             groups=groups,
             cells=cells,
-            created_at=command.created_at,
+            created_at=created_at,
         )
         self._store.create_import_snapshot(import_record, snapshot)
-        return import_id
+        return SourceMatrixPersistResult(import_id=import_id, snapshot_id=snapshot_id)
 
 
 def _build_groups(payload: dict[str, Any]) -> tuple[SourceMatrixGroupSnapshot, ...]:
@@ -266,12 +367,16 @@ def _extract_import_metadata(
     payload: dict[str, Any],
     groups: tuple[SourceMatrixGroupSnapshot, ...],
     created_at: str,
+    *,
+    selected_group_keys_override: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     metadata = payload.get("source_metadata")
     metadata_dict = metadata if isinstance(metadata, dict) else {}
     warnings = _string_list(payload.get("warnings"))
     blockers = _string_list(payload.get("blockers"))
-    selected_group_keys = _string_list(payload.get("selected_group_keys_at_import"))
+    selected_group_keys = [item for item in (selected_group_keys_override or ()) if item.strip()]
+    if not selected_group_keys:
+        selected_group_keys = _string_list(payload.get("selected_group_keys_at_import"))
     if not selected_group_keys:
         selected_group_keys = [group.group_key for group in groups]
     parse_time = (

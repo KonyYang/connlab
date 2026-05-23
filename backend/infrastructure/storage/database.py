@@ -53,6 +53,7 @@ def init_db(engine: Engine) -> None:
     _migrate_project_matrix_draft_record_revision_columns(engine)
     _migrate_project_matrix_draft_lineage_columns_optional(engine)
     _migrate_project_matrix_draft_row_detail_columns(engine)
+    _migrate_source_matrix_import_commit_fingerprint(engine)
 
 
 def _migrate_project_no_optional(engine: Engine) -> None:
@@ -480,3 +481,40 @@ def _migrate_project_matrix_draft_record_revision_columns(engine: Engine) -> Non
             )
         finally:
             connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+
+
+def _migrate_source_matrix_import_commit_fingerprint(engine: Engine) -> None:
+    """Add TASK_261 import fingerprint column/index when missing."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "source_matrix_import_records" not in table_names:
+            return
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(source_matrix_import_records)"
+            ).all()
+        }
+        if "task261_commit_fingerprint" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE source_matrix_import_records "
+                "ADD COLUMN task261_commit_fingerprint VARCHAR(128)"
+            )
+        indexes = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA index_list(source_matrix_import_records)"
+            ).all()
+        }
+        if "ix_source_matrix_import_records_task261_commit_fingerprint" not in indexes:
+            connection.exec_driver_sql(
+                "CREATE INDEX ix_source_matrix_import_records_task261_commit_fingerprint "
+                "ON source_matrix_import_records(task261_commit_fingerprint)"
+            )

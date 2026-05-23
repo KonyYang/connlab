@@ -92,6 +92,22 @@ class SourceMatrixImportRepository:
         ).all()
         return [_to_import_domain(row) for row in rows]
 
+    def get_import_by_project_and_fingerprint(
+        self,
+        *,
+        project_id: str,
+        task261_commit_fingerprint: str,
+    ) -> SourceMatrixImportRecord | None:
+        """Return one Source Matrix import by project and TASK_261 fingerprint."""
+        row = self._session.scalar(
+            select(SourceMatrixImportRecordModel).where(
+                SourceMatrixImportRecordModel.project_id == project_id,
+                SourceMatrixImportRecordModel.task261_commit_fingerprint
+                == task261_commit_fingerprint,
+            )
+        )
+        return _to_import_domain(row) if row else None
+
 
 def _to_import_model(import_record: SourceMatrixImportRecord) -> SourceMatrixImportRecordModel:
     return SourceMatrixImportRecordModel(
@@ -116,6 +132,7 @@ def _to_import_model(import_record: SourceMatrixImportRecord) -> SourceMatrixImp
             list(import_record.selected_group_keys_at_import),
             ensure_ascii=False,
         ),
+        task261_commit_fingerprint=import_record.task261_commit_fingerprint,
         created_at=import_record.created_at,
     )
 
@@ -199,6 +216,7 @@ def _to_import_domain(row: SourceMatrixImportRecordModel) -> SourceMatrixImportR
         selected_group_keys_at_import=tuple(
             _loads_string_list(row.selected_group_keys_at_import_json)
         ),
+        task261_commit_fingerprint=row.task261_commit_fingerprint,
         created_at=row.created_at,
     )
 

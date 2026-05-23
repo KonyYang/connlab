@@ -78,4 +78,5 @@ class SourceMatrixImportRecord:
     warnings: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
     selected_group_keys_at_import: tuple[str, ...] = field(default_factory=tuple)
+    task261_commit_fingerprint: str | None = None
     created_at: str = ""

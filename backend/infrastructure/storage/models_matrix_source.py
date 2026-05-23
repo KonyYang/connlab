@@ -39,6 +39,10 @@ class SourceMatrixImportRecordModel(Base):
         nullable=False,
         default="[]",
     )
+    task261_commit_fingerprint: Mapped[str | None] = mapped_column(
+        String(128),
+        index=True,
+    )
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
