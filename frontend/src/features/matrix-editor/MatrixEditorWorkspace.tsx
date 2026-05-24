@@ -18,6 +18,10 @@ import {
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
 import { MatrixImportSelectionMode } from "./MatrixImportSelectionMode";
+import {
+  buildMatrixImportSessionActionState,
+  preserveSelectedGroupKeys,
+} from "./matrixImportSessionModel";
 import { MatrixWorkspaceActionGroups } from "./MatrixWorkspaceActionGroups";
 import { MatrixWorkspaceStateBanner } from "./MatrixWorkspaceStateBanner";
 import {
@@ -1236,6 +1240,48 @@ export function MatrixEditorWorkspace({
     setCommittingImport(false);
   };
 
+  const clearImportSession = (): void => {
+    setImportFile(null);
+    setImportPreview(null);
+    setImportPreviewPdfToken(null);
+    setLocatorPage("");
+    setLocatorTableOnPage("");
+    setLocatorKeyword("");
+    setImportError(null);
+    setImportLookupMessage("");
+    setImportLookupTone("idle");
+    setGroupSelectionKeys([]);
+    setGroupSelectionStatus("");
+    setCommittingImport(false);
+    setShowImportDialog(false);
+    setShowImportSelectionMode(false);
+  };
+
+  const onBackToMatrixCandidateSelection = (): void => {
+    setShowImportSelectionMode(false);
+    setShowImportDialog(true);
+    setGroupSelectionStatus("");
+    setCommittingImport(false);
+  };
+
+  const onChangeSelectedGroups = (): void => {
+    const selectionViewModel = buildMatrixImportSelectionViewModel(importPreview);
+    if (!selectionViewModel || selectionViewModel.groups.length === 0) {
+      setGroupSelectionStatus("Source preview session unavailable. Use Change Source Matrix to start a new source session.");
+      return;
+    }
+    const availableGroupKeys = selectionViewModel.groups.map((group) => group.groupKey);
+    setGroupSelectionKeys((previous) =>
+      preserveSelectedGroupKeys({
+        availableGroupKeys,
+        previousSelectedGroupKeys: previous,
+      })
+    );
+    setGroupSelectionStatus("");
+    setShowImportDialog(false);
+    setShowImportSelectionMode(true);
+  };
+
   const onCommitImportedGroups = async (): Promise<void> => {
     if (!importPreview) {
       setGroupSelectionStatus("Import preview is missing.");
@@ -1260,6 +1306,7 @@ export function MatrixEditorWorkspace({
       setSaveState("idle");
       setSaveMessage(response.commit_status === "reused" ? "Loaded existing draft from same group selection." : "Project draft created from selected groups.");
       setShowImportSelectionMode(false);
+      setGroupSelectionKeys(response.selected_group_keys_committed);
       setGroupSelectionStatus("");
       setImportError(null);
     } catch (error) {
@@ -1389,6 +1436,7 @@ export function MatrixEditorWorkspace({
     ? `${matrixPreviewPdfUrl(importPreviewPdfToken)}#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs`
     : null;
   const importSelectionViewModel = buildMatrixImportSelectionViewModel(importPreview);
+  const importSessionActionState = buildMatrixImportSessionActionState(importPreview);
   const groupSelectionDisabledReason = buildMatrixImportSelectionDisabledReason({
     groups: importSelectionViewModel?.groups ?? [],
     selectedGroupKeys: groupSelectionKeys,
@@ -1874,8 +1922,8 @@ export function MatrixEditorWorkspace({
           saveDraftBusy={saveState === "saving"}
           discardDraftDisabled={discardDraftDisabledReason.length > 0}
           discardDraftDisabledReason={discardDraftDisabledReason}
-          changeSelectedGroupsDisabled={true}
-          changeSelectedGroupsDisabledReason="Group reselection for a persisted matrix requires a follow-up source lineage task."
+          changeSelectedGroupsDisabled={importSessionActionState.changeSelectedGroupsDisabled}
+          changeSelectedGroupsDisabledReason={importSessionActionState.changeSelectedGroupsDisabledReason}
           confirmAsActiveDisabled={!canConfirmAsActiveMatrix}
           confirmAsActiveDisabledReason={confirmAsActiveDisabledReason}
           confirmAsActiveBusy={confirmActiveState === "loading"}
@@ -1889,7 +1937,7 @@ export function MatrixEditorWorkspace({
           showConfirmRevision={isRevisionDraft}
           onSaveDraft={() => void onSaveDraft()}
           onDiscardDraftChanges={() => void onDiscardDraftChanges()}
-          onChangeSelectedGroups={() => undefined}
+          onChangeSelectedGroups={onChangeSelectedGroups}
           onChangeSourceMatrix={() => void onChangeSourceMatrix()}
           onConfirmAsActiveMatrix={() => void onConfirmAsActiveMatrix()}
           onCreateRevisionDraft={() => void onCreateRevisionDraft()}
@@ -2009,7 +2057,9 @@ export function MatrixEditorWorkspace({
             disabledReason={groupSelectionDisabledReason}
             statusMessage={groupSelectionStatus}
             onToggleGroup={onToggleGroupSelection}
+            onBackToCandidateSelection={onBackToMatrixCandidateSelection}
             onCancel={onCancelGroupSelection}
+            onCancelSession={clearImportSession}
             onConfirm={() => void onCommitImportedGroups()}
           />
         ) : (
@@ -2020,8 +2070,14 @@ export function MatrixEditorWorkspace({
                 <p>No valid matrix found from reparse.</p>
               </div>
               <div className="matrix-editor-selection-mode-actions">
+                <button type="button" className="matrix-editor-import-secondary-button" onClick={onBackToMatrixCandidateSelection}>
+                  Back to matrix candidate selection
+                </button>
                 <button type="button" className="matrix-editor-import-secondary-button" onClick={onCancelGroupSelection}>
                   Back to editor
+                </button>
+                <button type="button" className="matrix-editor-import-secondary-button" onClick={clearImportSession}>
+                  Cancel import session
                 </button>
               </div>
             </header>

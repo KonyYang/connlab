@@ -419,6 +419,148 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     expect(screen.queryByRole("heading", { name: "Import Selection Mode" })).toBeNull();
   });
 
+  it("returns from group selection to matrix candidate preview without losing source context", async () => {
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce({
+      project_id: "P1",
+      source_document_path: "C:/specs/spec.docx",
+      source_document_name: "spec.docx",
+      source_format: ".docx",
+      capability_status: "ok",
+      generated_at: "2026-05-23T00:00:00Z",
+      selected_table_index: 0,
+      selected_page_number: 2,
+      selected_page_table_index: 1,
+      candidate_tables: [],
+      preview_pdf_token: "pdf-token-test-267",
+      rows: [
+        {
+          source_row_index: 1,
+          test_item: "Visual Examination",
+          source_section: "6.1",
+          group_tokens: { "Group A": "1", "Group B": "2" },
+          is_sample_row: false,
+        },
+      ],
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group A",
+          source_table_index: 0,
+          extraction_status: "ok",
+          sample_quantity_expression: "5",
+          sample_note: null,
+          steps: [],
+        },
+        {
+          group_key: "g2",
+          group_label: "Group B",
+          source_table_index: 0,
+          extraction_status: "ok",
+          sample_quantity_expression: "3",
+          sample_note: null,
+          steps: [],
+        },
+      ],
+      warnings: [],
+      blockers: [],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to matrix candidate selection" }));
+    await waitFor(() => {
+      expect(screen.getByTitle("Word PDF Preview")).toBeTruthy();
+      expect(screen.getByLabelText("Page")).toBeTruthy();
+      expect(screen.getByLabelText("Table on page")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Reparse" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Select Group A")).toBeTruthy();
+    });
+  });
+
+  it("reopens selection mode from draft actions without re-uploading source", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm selected groups" }));
+    await waitFor(() => {
+      expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("heading", { name: "Import Selection Mode" })).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Change Selected Groups" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+    });
+    expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels import session and disables change-selected-groups", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel import session" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("heading", { name: "Import Selection Mode" })).toBeNull();
+    });
+
+    const changeSelectedGroupsButton = screen.getByRole("button", { name: "Change Selected Groups" });
+    expect(changeSelectedGroupsButton.hasAttribute("disabled")).toBe(true);
+    expect(changeSelectedGroupsButton.getAttribute("title")).toBe(
+      "Source preview session unavailable. Use Change Source Matrix to start a new source session."
+    );
+  });
+
   it("clears stale preview after reparse failure and guides manual setup", async () => {
     apiMocks.previewProjectTestPlanMatrixFromUpload
       .mockResolvedValueOnce({

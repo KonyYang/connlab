@@ -4143,6 +4143,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.matrix-editor-selection-mode-actions button {
+  white-space: normal;
+  min-height: 34px;
 }
 
 .matrix-editor-selection-table th:first-child,

@@ -3967,6 +3967,35 @@ def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired(
     assert ".matrix-starter-card-secondary" in styles_source
 
 
+def test_task267_persistent_matrix_import_session_ux_is_wired() -> None:
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    selection_mode_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixImportSelectionMode.tsx"
+    ).read_text(encoding="utf-8")
+    action_groups_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceActionGroups.tsx"
+    ).read_text(encoding="utf-8")
+    session_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixImportSessionModel.ts"
+    ).read_text(encoding="utf-8")
+
+    for required in [
+        "Back to matrix candidate selection",
+        "Cancel import session",
+        "onBackToMatrixCandidateSelection",
+        "clearImportSession",
+        "buildMatrixImportSessionActionState",
+        "preserveSelectedGroupKeys",
+    ]:
+        assert required in matrix_editor_source or required in selection_mode_source or required in session_model_source
+
+    assert "Source preview session unavailable. Use Change Source Matrix to start a new source session." in session_model_source
+    assert "Change Selected Groups" in action_groups_source
+    assert "commitMatrixImport" in matrix_editor_source
+
+
 def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> None:
     matrix_editor_source = (
         FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"

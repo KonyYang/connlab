@@ -7,7 +7,9 @@ type MatrixImportSelectionModeProps = {
   disabledReason: string;
   statusMessage: string;
   onToggleGroup: (groupKey: string) => void;
+  onBackToCandidateSelection: () => void;
   onCancel: () => void;
+  onCancelSession: () => void;
   onConfirm: () => void;
 };
 
@@ -17,7 +19,9 @@ export function MatrixImportSelectionMode({
   disabledReason,
   statusMessage,
   onToggleGroup,
+  onBackToCandidateSelection,
   onCancel,
+  onCancelSession,
   onConfirm,
 }: MatrixImportSelectionModeProps): ReactElement {
   const visibleStatusMessage = disabledReason || statusMessage;
@@ -37,7 +41,15 @@ export function MatrixImportSelectionMode({
           >
             Append Matrix (Future)
           </button>
-          <button type="button" className="matrix-editor-import-secondary-button" onClick={onCancel}>Cancel</button>
+          <button type="button" className="matrix-editor-import-secondary-button" onClick={onBackToCandidateSelection}>
+            Back to matrix candidate selection
+          </button>
+          <button type="button" className="matrix-editor-import-secondary-button" onClick={onCancel}>
+            Back to editor
+          </button>
+          <button type="button" className="matrix-editor-import-secondary-button" onClick={onCancelSession}>
+            Cancel import session
+          </button>
           <button
             type="button"
             className="matrix-editor-import-commit-button"
