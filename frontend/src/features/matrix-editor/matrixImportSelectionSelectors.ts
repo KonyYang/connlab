@@ -5,7 +5,7 @@ export type MatrixImportSelectableGroup = {
   groupLabel: string;
   sampleQuantityExpression: string | null;
   sampleNote: string | null;
-  stepCount: number;
+  stepCount: number | null;
 };
 
 export type MatrixImportSelectionRow = {
@@ -18,6 +18,19 @@ export type MatrixImportSelectionViewModel = {
   sourceDocumentName: string;
   groups: MatrixImportSelectableGroup[];
   rows: MatrixImportSelectionRow[];
+};
+
+export type MatrixImportSelectionSummary = {
+  selectedGroupCount: number;
+  totalGroupCount: number;
+  selectedStepCount: number | null;
+  hasStepCounts: boolean;
+  selectedGroupLabels: string[];
+  selectedSampleQuantities: Array<{
+    groupKey: string;
+    groupLabel: string;
+    sampleQuantityExpression: string;
+  }>;
 };
 
 function normalizeGroupKey(rawKey: string | null | undefined, index: number): string {
@@ -47,8 +60,38 @@ export function buildMatrixImportSelectableGroups(
     groupLabel: normalizeGroupLabel(group.group_label, index),
     sampleQuantityExpression: group.sample_quantity_expression ?? null,
     sampleNote: group.sample_note ?? null,
-    stepCount: Array.isArray(group.steps) ? group.steps.length : 0,
+    stepCount: Array.isArray(group.steps) ? group.steps.length : null,
   }));
+}
+
+export function formatMatrixImportSampleQuantity(value: string | null): string {
+  const normalized = (value ?? "").trim();
+  return normalized.length > 0 ? normalized : "Not specified";
+}
+
+export function buildMatrixImportSelectionSummary(input: {
+  groups: MatrixImportSelectableGroup[];
+  selectedGroupKeys: string[];
+}): MatrixImportSelectionSummary {
+  const selectedKeys = new Set(input.selectedGroupKeys);
+  const selectedGroups = input.groups.filter((group) => selectedKeys.has(group.groupKey));
+  const hasStepCounts = selectedGroups.every((group) => group.stepCount !== null);
+  const selectedStepCount = hasStepCounts
+    ? selectedGroups.reduce((total, group) => total + (group.stepCount ?? 0), 0)
+    : null;
+
+  return {
+    selectedGroupCount: selectedGroups.length,
+    totalGroupCount: input.groups.length,
+    selectedStepCount,
+    hasStepCounts,
+    selectedGroupLabels: selectedGroups.map((group) => group.groupLabel),
+    selectedSampleQuantities: selectedGroups.map((group) => ({
+      groupKey: group.groupKey,
+      groupLabel: group.groupLabel,
+      sampleQuantityExpression: formatMatrixImportSampleQuantity(group.sampleQuantityExpression),
+    })),
+  };
 }
 
 export function buildMatrixImportSelectionViewModel(

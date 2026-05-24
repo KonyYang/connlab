@@ -506,7 +506,7 @@ Document the approved ConnLab workbench UX direction before changing frontend co
 Create:
 
 ```text
-docs/phase5_workbench_ux_decision.md
+docs/archive/historical_plans/phase5_workbench_ux_decision.md
 ```
 
 ## Must Include
@@ -847,7 +847,7 @@ Add minimal frontend validation so future UI changes do not silently break MVP f
 ## Recommended File
 
 ```text
-docs/frontend_smoke_checklist.md
+docs/archive/validation_summaries/frontend_smoke_checklist.md
 ```
 
 ## Smoke Checklist Must Cover
@@ -869,7 +869,7 @@ docs/frontend_smoke_checklist.md
 ## Acceptance Criteria
 
 - `npm run build` passes.
-- `docs/frontend_smoke_checklist.md` exists.
+- `docs/archive/validation_summaries/frontend_smoke_checklist.md` exists.
 - README points to frontend validation.
 
 ---
@@ -886,7 +886,7 @@ Update:
 
 ```text
 docs/task_board.md
-docs/phase5_workbench_ux_decision.md
+docs/archive/historical_plans/phase5_workbench_ux_decision.md
 README.md if needed
 ```
 

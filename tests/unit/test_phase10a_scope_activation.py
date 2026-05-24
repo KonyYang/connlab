@@ -121,6 +121,7 @@ def test_phase10a_board_closes_after_task065_completion() -> None:
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+        or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert "### Phase 10A - Intake Entry Completion" in board
     assert "| T10A-1 | `TASK_060_PHASE10A_SCOPE_AND_BOARD_ACTIVATION` | done |" in board
@@ -138,7 +139,7 @@ def test_phase10a_board_closes_after_task065_completion() -> None:
 
 def test_phase10a_plan_documents_email_first_and_manual_exception() -> None:
     """The Phase 10A plan preserves the corrected intake-entry priority."""
-    plan = (ROOT / "docs" / "phase10a_intake_entry_completion_plan.md").read_text(
+    plan = (ROOT / "docs" / "archive" / "historical_plans" / "phase10a_intake_entry_completion_plan.md").read_text(
         encoding="utf-8"
     )
 
@@ -166,7 +167,7 @@ def test_phase10a_task_files_exist_and_preserve_scope() -> None:
     ]
 
     for filename in expected_tasks:
-        task = ROOT / "tasks" / filename
+        task = ROOT / "tasks" / "completed" / "2026" / filename
         assert task.is_file()
         source = task.read_text(encoding="utf-8")
         for forbidden in [
@@ -180,19 +181,19 @@ def test_phase10a_task_files_exist_and_preserve_scope() -> None:
             assert forbidden in source
 
     done_task = (
-        ROOT / "tasks" / "TASK_061_MSG_PACKAGE_IMPORT_API_AND_FRONTEND_ENTRY.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_061_MSG_PACKAGE_IMPORT_API_AND_FRONTEND_ENTRY.md"
     ).read_text(encoding="utf-8")
     completed_task = (
-        ROOT / "tasks" / "TASK_062_INTAKE_PACKAGE_DETAIL_REAL_DATA_WIRING.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_062_INTAKE_PACKAGE_DETAIL_REAL_DATA_WIRING.md"
     ).read_text(encoding="utf-8")
     manual_task = (
-        ROOT / "tasks" / "TASK_063_DIRECT_MANUAL_INTAKE_ENTRY.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_063_DIRECT_MANUAL_INTAKE_ENTRY.md"
     ).read_text(encoding="utf-8")
     review_task = (
-        ROOT / "tasks" / "TASK_064_UNIFIED_INTAKE_CASE_REVIEW_AND_CONFIRMATION_UI.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_064_UNIFIED_INTAKE_CASE_REVIEW_AND_CONFIRMATION_UI.md"
     ).read_text(encoding="utf-8")
     closeout_task = (
-        ROOT / "tasks" / "TASK_065_INTAKE_ENTRY_BROWSER_SMOKE_AND_DOCS_SYNC.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_065_INTAKE_ENTRY_BROWSER_SMOKE_AND_DOCS_SYNC.md"
     ).read_text(encoding="utf-8")
     assert "## Status\n\ndone" in done_task
     assert "manual `.msg` email package import entry point" in done_task
@@ -206,10 +207,10 @@ def test_phase10a_task_files_exist_and_preserve_scope() -> None:
 
 def test_phase10a_validation_summary_closes_scope_without_future_work() -> None:
     """TASK_065 records validation and manual smoke guidance for Phase 10A."""
-    summary = (ROOT / "docs" / "phase10a_validation_summary.md").read_text(
+    summary = (ROOT / "docs" / "archive" / "validation_summaries" / "phase10a_validation_summary.md").read_text(
         encoding="utf-8"
     )
-    checklist = (ROOT / "docs" / "frontend_smoke_checklist.md").read_text(
+    checklist = (ROOT / "docs" / "archive" / "validation_summaries" / "frontend_smoke_checklist.md").read_text(
         encoding="utf-8"
     )
 

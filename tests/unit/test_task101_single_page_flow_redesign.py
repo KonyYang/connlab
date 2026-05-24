@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_task101_design_records_single_page_flow_decisions() -> None:
     """TASK_101 documents the single-page New Project creation model."""
-    design = (ROOT / "docs" / "new_project_single_page_flow_redesign.md").read_text(
+    design = (ROOT / "docs" / "archive" / "historical_plans" / "new_project_single_page_flow_redesign.md").read_text(
         encoding="utf-8"
     )
 
@@ -32,16 +32,16 @@ def test_task101_design_records_single_page_flow_decisions() -> None:
 def test_task101_followup_tasks_are_split_without_runtime_scope() -> None:
     """TASK_102 through TASK_104 stay ordered and do not reopen paused tasks."""
     task102 = (
-        ROOT / "tasks" / "TASK_102_NEW_PROJECT_SINGLE_PAGE_INTAKE_APPLICATION_EDITOR.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_102_NEW_PROJECT_SINGLE_PAGE_INTAKE_APPLICATION_EDITOR.md"
     ).read_text(encoding="utf-8")
     task103 = (
-        ROOT / "tasks" / "TASK_103_APPLICATION_FORM_IMPORT_TO_EDITOR_NO_SILENT_REPLACE.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_103_APPLICATION_FORM_IMPORT_TO_EDITOR_NO_SILENT_REPLACE.md"
     ).read_text(encoding="utf-8")
     task104 = (
-        ROOT / "tasks" / "TASK_104_NEW_PROJECT_LTR_AND_FOLDER_ONE_ACTION_ORCHESTRATION.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_104_NEW_PROJECT_LTR_AND_FOLDER_ONE_ACTION_ORCHESTRATION.md"
     ).read_text(encoding="utf-8")
     task101 = (
-        ROOT / "tasks" / "TASK_101_NEW_PROJECT_SINGLE_PAGE_FLOW_REDESIGN.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_101_NEW_PROJECT_SINGLE_PAGE_FLOW_REDESIGN.md"
     ).read_text(encoding="utf-8")
 
     assert "## Status\n\ndone" in task101

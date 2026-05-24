@@ -266,11 +266,11 @@ If the requested task is ahead of the active task on the board, stop and report 
 每个任务必须执行：
 
 1. 阅读 TASK 文件
-2. 使用 TASK_EXECUTION_SKILL.md
+2. 使用 `docs/project_management/TASK_EXECUTION_SKILL.md`
 3. 先产出“可执行方案文件”（必须可审阅，包含范围、改动点、风险、验证）
 4. 将方案文件提交给用户审阅，未获得“同意/批准”前禁止写实现代码
 5. 用户批准后再进入第二步：实施编码与测试
-6. 执行 TASK_REVIEW_CHECKLIST.md
+6. 执行 `docs/project_management/TASK_REVIEW_CHECKLIST.md`
 7. 提供运行验证方法
 8. 停止，不进入下一个任务
 

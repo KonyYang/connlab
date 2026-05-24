@@ -7,7 +7,7 @@ This document separates approved next direction from still-deferred future scope
 
 Current authority order:
 
-1. `AGENTS.md`
+1. `../AGENTS.md`
 2. `docs/task_board.md`
 3. active task file
 4. current focused design documents

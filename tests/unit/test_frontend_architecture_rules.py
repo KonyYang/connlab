@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -33,7 +33,7 @@ def test_frontend_architecture_rules_are_linked_from_project_rules() -> None:
     )
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
     task = (
-        ROOT / "tasks" / "TASK_076_FRONTEND_ARCHITECTURE_RULES_AND_UI_BOUNDARY.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_076_FRONTEND_ARCHITECTURE_RULES_AND_UI_BOUNDARY.md"
     ).read_text(encoding="utf-8")
 
     assert "docs/02_ARCHITECTURE_RULES.md" in agents

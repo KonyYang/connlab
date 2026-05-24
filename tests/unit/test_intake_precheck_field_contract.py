@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -34,7 +34,7 @@ def test_intake_precheck_field_contract_records_samples_lookups_and_msg_policy()
     )
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
     task = (
-        ROOT / "tasks" / "TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES.md"
     ).read_text(encoding="utf-8")
 
     for term in [

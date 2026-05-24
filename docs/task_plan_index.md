@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-05-16
-Status: Slice C decision record
+Last Updated: 2026-05-24
+Status: Slice C decision record with DOCS_001 archive-rule update
 
 ## Decision
 
@@ -16,6 +16,16 @@ Reason:
 - Path stability is more important than directory compactness at this stage.
 - Current runtime direction emphasizes execution velocity and low-risk changes.
 
+## DOCS_001 Update
+
+`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` introduced and applied a controlled archive path for completed plan files:
+
+- Completed plan files may move to `docs/completed_plans/YYYY/`.
+- Moves must use `scripts/archive_completed_markdown.py`.
+- Dry-run review is required before apply mode.
+- `docs/plan_archive_index.md` records archived plan paths.
+- `docs/markdown_management_rules.md` defines protected files and archive eligibility.
+
 ## How To Use Task Plan Files
 
 - Treat each `docs/task_XXX_*_plan.md` as planning/review history for that task.
@@ -25,25 +35,29 @@ Reason:
 
 ## Current Plan File Pattern
 
-Pattern:
+Root-level active/proposed/review pattern:
 
 ```text
 docs/task_XXX_*_plan.md
 ```
 
-Examples:
+Current active planned task plan:
 
-- `docs/task_194_matrix_execution_phase_product_realignment_plan.md`
-- `docs/task_195_project_workbench_runtime_console_information_architecture_plan.md`
-- `docs/task_200_first_runtime_implementation_slice_planning_plan.md`
-- `docs/task_201_projection_dto_and_token_reference_builder_minimal_slice_plan.md`
-- `docs/task_202_runtime_projection_composition_helper_minimal_slice_plan.md`
-- `docs/task_203_documentation_information_architecture_cleanup_plan.md`
+```text
+docs/task_268_group_selection_completeness_guard_plan.md
+```
 
-## Future Revisit Trigger
+Archived completed-plan pattern:
+
+```text
+docs/completed_plans/YYYY/task_XXX_*_plan.md
+```
+
+## Future Bulk Migration Trigger
 
 Revisit bulk migration of task plan files only when both conditions are true:
 
 1. `docs/task_board.md` reference format is intentionally refactored.
 2. A dedicated path-rewrite validation task is approved.
 
+Individual completed-task cleanup may happen earlier through the DOCS_001 archive helper when the task board already marks that task complete and the user explicitly requests cleanup.

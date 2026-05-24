@@ -46,6 +46,8 @@ def test_task025_activates_only_office_boundary_next() -> None:
     task = (
         ROOT
         / "tasks"
+        / "completed"
+        / "2026"
         / "TASK_025_PHASE6_SCOPE_REVISION_AND_BOARD_ACTIVATION.md"
     ).read_text(encoding="utf-8")
 
@@ -61,7 +63,7 @@ def test_task025_activates_only_office_boundary_next() -> None:
 
 def test_task026_exists_as_the_next_controlled_task() -> None:
     """TASK_026 defines the next implementation boundary without jumping ahead."""
-    task = (ROOT / "tasks" / "TASK_026_OFFICE_INTEGRATION_BOUNDARY.md").read_text(
+    task = (ROOT / "tasks" / "completed" / "2026" / "TASK_026_OFFICE_INTEGRATION_BOUNDARY.md").read_text(
         encoding="utf-8"
     )
 
@@ -181,6 +183,7 @@ def test_task_board_preserves_phase6a_completion_and_forbids_future_scope() -> N
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+        or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert (
         "Current Phase: `Phase 10A follow-up redirection - New Project single-page redesign`"
@@ -215,22 +218,22 @@ def test_task_board_preserves_phase6a_completion_and_forbids_future_scope() -> N
     assert "TASK_031A_INTAKE_INBOX_FRONTEND_UX" in board
 
     assert (
-        ROOT / "tasks" / "TASK_027A_OUTLOOK_MSG_SOURCE_IMPORT_AND_MINIMAL_METADATA.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_027A_OUTLOOK_MSG_SOURCE_IMPORT_AND_MINIMAL_METADATA.md"
     ).is_file()
-    assert (ROOT / "tasks" / "TASK_027B_OUTLOOK_MSG_ATTACHMENT_EXTRACTION.md").is_file()
-    assert (ROOT / "tasks" / "TASK_027C_REAL_MSG_SAMPLE_COMPATIBILITY.md").is_file()
-    assert (ROOT / "tasks" / "TASK_028A_INTAKE_STORAGE_BOUNDARY.md").is_file()
-    assert (ROOT / "tasks" / "TASK_028B_INTAKE_PACKAGE_ASSET_CASE_STORAGE.md").is_file()
-    assert (ROOT / "tasks" / "TASK_029_APPLICATION_FORM_CANDIDATE_DETECTION.md").is_file()
-    assert (ROOT / "tasks" / "TASK_030_FORM_SELECTION_AND_DRAFT_CREATION.md").is_file()
-    assert (ROOT / "tasks" / "TASK_031A_INTAKE_INBOX_FRONTEND_UX.md").is_file()
-    assert (ROOT / "tasks" / "TASK_031B_INTAKE_PACKAGE_DETAIL_FRONTEND_UX.md").is_file()
-    assert (ROOT / "tasks" / "TASK_031C_INTAKE_CASE_REVIEW_FRONTEND_UX.md").is_file()
-    assert (ROOT / "tasks" / "TASK_032_CONFIRM_INTAKE_CASE_TO_PROJECT.md").is_file()
-    assert (ROOT / "tasks" / "TASK_033_DIRECT_WORD_APPLICATION_FORM_IMPORT.md").is_file()
-    assert (ROOT / "tasks" / "TASK_034_ATTACHMENT_AWARE_PRECHECK_BRIDGE.md").is_file()
-    assert (ROOT / "tasks" / "TASK_035_PHASE6_VALIDATION_AND_DOCS_SYNC.md").is_file()
-    assert (ROOT / "docs" / "phase6a_validation.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_027B_OUTLOOK_MSG_ATTACHMENT_EXTRACTION.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_027C_REAL_MSG_SAMPLE_COMPATIBILITY.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_028A_INTAKE_STORAGE_BOUNDARY.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_028B_INTAKE_PACKAGE_ASSET_CASE_STORAGE.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_029_APPLICATION_FORM_CANDIDATE_DETECTION.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_030_FORM_SELECTION_AND_DRAFT_CREATION.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_031A_INTAKE_INBOX_FRONTEND_UX.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_031B_INTAKE_PACKAGE_DETAIL_FRONTEND_UX.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_031C_INTAKE_CASE_REVIEW_FRONTEND_UX.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_032_CONFIRM_INTAKE_CASE_TO_PROJECT.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_033_DIRECT_WORD_APPLICATION_FORM_IMPORT.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_034_ATTACHMENT_AWARE_PRECHECK_BRIDGE.md").is_file()
+    assert (ROOT / "tasks" / "completed" / "2026" / "TASK_035_PHASE6_VALIDATION_AND_DOCS_SYNC.md").is_file()
+    assert (ROOT / "docs" / "archive" / "validation_summaries" / "phase6a_validation.md").is_file()
 
     for forbidden in [
         "Outlook inbox auto-scan",

@@ -120,6 +120,7 @@ def test_phase9_board_closes_after_task059_completion() -> None:
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+        or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert "Phase 10A" in board
     assert "| T9-1 | `TASK_053_PHASE9_SCOPE_AND_BOARD_ACTIVATION` | done |" in board
@@ -148,7 +149,7 @@ def test_phase9_task_files_exist_and_preserve_scope() -> None:
     ]
 
     for filename in expected_tasks:
-        task = ROOT / "tasks" / filename
+        task = ROOT / "tasks" / "completed" / "2026" / filename
         assert task.is_file()
         source = task.read_text(encoding="utf-8")
         assert "Matrix" in source
@@ -161,6 +162,8 @@ def test_task054_defines_ltr_ui_wiring_without_workbook_write() -> None:
     task = (
         ROOT
         / "tasks"
+        / "completed"
+        / "2026"
         / "TASK_054_LTR_READINESS_PREVIEW_COMMIT_FRONTEND_WIRING.md"
     ).read_text(encoding="utf-8")
 
@@ -176,10 +179,10 @@ def test_task054_defines_ltr_ui_wiring_without_workbook_write() -> None:
 
 def test_phase9_validation_summary_closes_phase_without_future_scope() -> None:
     """TASK_059 records Phase 9 closeout without future scope."""
-    summary = (ROOT / "docs" / "phase9_validation_summary.md").read_text(
+    summary = (ROOT / "docs" / "archive" / "validation_summaries" / "phase9_validation_summary.md").read_text(
         encoding="utf-8"
     )
-    checklist = (ROOT / "docs" / "frontend_smoke_checklist.md").read_text(
+    checklist = (ROOT / "docs" / "archive" / "validation_summaries" / "frontend_smoke_checklist.md").read_text(
         encoding="utf-8"
     )
 

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_phase7_validation_summary_closes_phase_without_future_scope() -> None:
     """TASK_051 records Phase 7 closeout without activating future work."""
-    summary = (ROOT / "docs" / "phase7_validation_summary.md").read_text(
+    summary = (ROOT / "docs" / "archive" / "validation_summaries" / "phase7_validation_summary.md").read_text(
         encoding="utf-8"
     )
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
@@ -124,6 +124,7 @@ def test_phase7_validation_summary_closes_phase_without_future_scope() -> None:
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+        or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert "| T7-16 | `TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC` | done |" in board
     assert "Current recommendation:" in board
@@ -133,7 +134,7 @@ def test_phase7_validation_summary_closes_phase_without_future_scope() -> None:
 def test_phase7_task_file_is_done() -> None:
     """The TASK_051 file must match the closed board state."""
     task = (
-        ROOT / "tasks" / "TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_051_PHASE7_VALIDATION_AND_DOCS_SYNC.md"
     ).read_text(encoding="utf-8")
 
     assert "## Status\n\ndone" in task

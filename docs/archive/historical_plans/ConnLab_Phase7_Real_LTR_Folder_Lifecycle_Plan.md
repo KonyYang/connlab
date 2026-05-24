@@ -964,7 +964,7 @@ Inputs:
 
 - this plan document;
 - `docs/task_board.md`;
-- `docs/phase6a_validation.md`.
+- `docs/archive/validation_summaries/phase6a_validation.md`.
 
 Outputs:
 
@@ -988,11 +988,11 @@ Inputs:
 
 - real files in `C:\Users\White\Desktop\AI information`;
 - existing Phase 6A intake services;
-- `docs/phase6a_validation.md`.
+- `docs/archive/validation_summaries/phase6a_validation.md`.
 
 Outputs:
 
-- `docs/phase7_real_sample_baseline.md`;
+- `docs/archive/historical_plans/phase7_real_sample_baseline.md`;
 - table of expected behavior for each sample;
 - fixture strategy for sanitized/generated tests.
 
@@ -1054,7 +1054,7 @@ Inputs:
 Outputs:
 
 - `backend/modules/ltr/ltr_field_catalog.py`;
-- `docs/phase7_ltr_field_mapping.md`;
+- `docs/archive/historical_plans/phase7_ltr_field_mapping.md`;
 - field source, fallback, severity, placeholder policy, and operator action mapping.
 
 Acceptance:
@@ -1490,7 +1490,7 @@ Manual smoke:
 Create:
 
 ```text
-docs/phase7_real_sample_baseline.md
+docs/archive/historical_plans/phase7_real_sample_baseline.md
 ```
 
 Minimum table columns:
@@ -1513,7 +1513,7 @@ known limitation
 Create:
 
 ```text
-docs/phase7_ltr_workbook_layout.md
+docs/archive/historical_plans/phase7_ltr_workbook_layout.md
 ```
 
 Minimum table columns:

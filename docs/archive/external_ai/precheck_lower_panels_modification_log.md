@@ -8,7 +8,7 @@
 
 ## 一、修改背景
 
-根据计划文档 `docs/precheck_lower_panels_editable_requested_testing_plan.md` 的最新更新要求，对 Precheck 页面下部面板进行布局和交互优化，使其更符合应用表单的原始结构和用户操作习惯。
+根据计划文档 `docs/archive/historical_plans/precheck_lower_panels_editable_requested_testing_plan.md` 的最新更新要求，对 Precheck 页面下部面板进行布局和交互优化，使其更符合应用表单的原始结构和用户操作习惯。
 
 ---
 
@@ -515,7 +515,7 @@ npm run build
 - `tests/integration/test_manual_intake_api.py`
 
 **计划文档**:
-- `docs/precheck_lower_panels_editable_requested_testing_plan.md`
+- `docs/archive/historical_plans/precheck_lower_panels_editable_requested_testing_plan.md`
 
 ---
 

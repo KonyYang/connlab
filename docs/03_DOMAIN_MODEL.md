@@ -7,7 +7,7 @@ This document is a high-level domain map. It is not a database schema and does n
 
 Current authority order:
 
-1. `AGENTS.md`
+1. `../AGENTS.md`
 2. `docs/task_board.md`
 3. active `tasks/TASK_XXX_*.md`
 4. focused architecture/domain documents referenced by the active task

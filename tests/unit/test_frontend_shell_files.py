@@ -3996,6 +3996,25 @@ def test_task267_persistent_matrix_import_session_ux_is_wired() -> None:
     assert "commitMatrixImport" in matrix_editor_source
 
 
+def test_task268_group_selection_completeness_guard_is_wired() -> None:
+    selection_mode_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixImportSelectionMode.tsx"
+    ).read_text(encoding="utf-8")
+    selector_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixImportSelectionSelectors.ts"
+    ).read_text(encoding="utf-8")
+    css_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    assert "buildMatrixImportSelectionSummary" in selector_source
+    assert "formatMatrixImportSampleQuantity" in selector_source
+    assert "Selected groups:" in selection_mode_source
+    assert "Selected step count" in selection_mode_source
+    assert "Sample quantities" in selection_mode_source
+    assert "Select at least one group before creating the draft." in selection_mode_source
+    assert "matrix-editor-selection-summary" in css_source
+    assert "matrix-editor-selection-blocker" in css_source
+
+
 def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> None:
     matrix_editor_source = (
         FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"

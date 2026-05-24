@@ -1,6 +1,6 @@
 # Documentation Archive
 
-Last Updated: 2026-05-16
+Last Updated: 2026-05-24
 
 This directory is reserved for historical documents that should not be treated as current source of truth.
 
@@ -14,7 +14,7 @@ Archive documents may still be useful for:
 
 Archive documents must not override:
 
-- `AGENTS.md`
+- `../AGENTS.md`
 - `docs/task_board.md`
 - current task files in `tasks/`
 - current product and architecture documents referenced by the active task
@@ -26,3 +26,5 @@ Moving a document into this archive is a classification change, not a claim that
 - `historical_plans/` - old phase-wide plans retained for implementation history
 - `external_ai/` - external AI review/modification records and related notes
 - `legacy_blueprints/` - packed historical blueprints retained as context only
+- `validation_summaries/` - old phase validation summaries and manual smoke records
+- `task_artifacts/` - nonstandard task-related documents that are historical but are not normal task files or task plan files

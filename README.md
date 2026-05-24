@@ -126,13 +126,13 @@ Frontend build:
 Manual frontend smoke checklist:
 
 ```text
-docs\frontend_smoke_checklist.md
+docs\archive\validation_summaries\frontend_smoke_checklist.md
 ```
 
 Phase 5 UX status:
 
 ```text
-docs\phase5_workbench_ux_decision.md
+docs\archive\historical_plans\phase5_workbench_ux_decision.md
 ```
 
 Packaging status:

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_phase5_ux_decision_record_exists_and_sets_workbench_direction() -> None:
     """TASK_016 decision record defines the approved workbench direction."""
-    source = (ROOT / "docs" / "phase5_workbench_ux_decision.md").read_text(
+    source = (ROOT / "docs" / "archive" / "historical_plans" / "phase5_workbench_ux_decision.md").read_text(
         encoding="utf-8"
     )
 
@@ -25,7 +25,7 @@ def test_phase5_ux_decision_record_exists_and_sets_workbench_direction() -> None
 
 def test_phase5_ux_decision_record_keeps_future_scope_blocked() -> None:
     """TASK_016 explicitly blocks future non-MVP modules."""
-    source = (ROOT / "docs" / "phase5_workbench_ux_decision.md").read_text(
+    source = (ROOT / "docs" / "archive" / "historical_plans" / "phase5_workbench_ux_decision.md").read_text(
         encoding="utf-8"
     )
 
@@ -41,7 +41,7 @@ def test_phase5_ux_decision_record_keeps_future_scope_blocked() -> None:
 
 def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None:
     """TASK_024 records Phase 5 completion state and next phase options."""
-    source = (ROOT / "docs" / "phase5_workbench_ux_decision.md").read_text(
+    source = (ROOT / "docs" / "archive" / "historical_plans" / "phase5_workbench_ux_decision.md").read_text(
         encoding="utf-8"
     )
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
@@ -155,6 +155,7 @@ def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+        or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert "TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done" in board
     assert "Phase 6A - Outlook Email Package Intake" in board

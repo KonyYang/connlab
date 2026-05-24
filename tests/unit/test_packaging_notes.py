@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -34,14 +34,14 @@ def test_readme_documents_setup_run_and_validation() -> None:
         ".\\scripts\\run_frontend.ps1",
         ".\\scripts\\run_tests.ps1",
         ".\\scripts\\run_frontend_build.ps1",
-        "docs\\frontend_smoke_checklist.md",
+        "docs\\archive\\validation_summaries\\frontend_smoke_checklist.md",
     ]:
         assert term in readme
 
 
 def test_frontend_smoke_checklist_covers_phase5_mvp_flow() -> None:
     """TASK_023 documents the manual frontend validation guard."""
-    checklist = (ROOT / "docs" / "frontend_smoke_checklist.md").read_text(
+    checklist = (ROOT / "docs" / "archive" / "validation_summaries" / "frontend_smoke_checklist.md").read_text(
         encoding="utf-8"
     )
 

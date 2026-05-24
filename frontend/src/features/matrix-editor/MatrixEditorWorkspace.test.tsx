@@ -393,8 +393,18 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     expect(groupARow?.textContent?.includes("Qty:")).toBe(false);
     expect(groupBRow?.textContent?.includes("Qty:")).toBe(false);
     expect(screen.getByText("Visual Examination")).toBeTruthy();
+    expect(screen.getByText("Selected groups: 2 / 2 | Selected steps: 0")).toBeTruthy();
+    expect(screen.getByLabelText("Selected group summary")).toBeTruthy();
+    expect(screen.getByText("Group A: 5; Group B: 3")).toBeTruthy();
+    expect(screen.getAllByText("Samples: 5").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Samples: 3").length).toBeGreaterThan(0);
 
     const createButton = screen.getByRole("button", { name: "Confirm selected groups" });
+    fireEvent.click(screen.getByLabelText("Select Group B"));
+    expect(screen.getByText("Selected groups: 1 / 2 | Selected steps: 0")).toBeTruthy();
+    expect(screen.getByText("Group A: 5")).toBeTruthy();
+    expect(screen.queryByText("Group A: 5; Group B: 3")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Select Group B"));
     fireEvent.click(screen.getByLabelText("Select Group A"));
     fireEvent.click(screen.getByLabelText("Select Group B"));
     await waitFor(() => {
@@ -402,6 +412,7 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
       expect(createButton.getAttribute("title")).toBe("Select at least one group.");
     });
     expect(screen.getByText("Select at least one group.")).toBeTruthy();
+    expect(screen.getByText("Select at least one group before creating the draft.")).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("Select Group A"));
     await waitFor(() => {
@@ -417,6 +428,77 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     expect(payload.selected_group_keys).toEqual(["g1"]);
     expect(payload.selected_group_keys.includes("g2")).toBe(false);
     expect(screen.queryByRole("heading", { name: "Import Selection Mode" })).toBeNull();
+  });
+
+  it("shows selected step totals when preview groups include step arrays", async () => {
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce({
+      project_id: "P1",
+      source_document_path: "C:/specs/spec.docx",
+      source_document_name: "spec.docx",
+      source_format: ".docx",
+      capability_status: "ok",
+      generated_at: "2026-05-23T00:00:00Z",
+      selected_table_index: 0,
+      selected_page_number: 2,
+      selected_page_table_index: 1,
+      candidate_tables: [],
+      preview_pdf_token: "pdf-token-test-268",
+      rows: [
+        {
+          source_row_index: 1,
+          test_item: "Visual Examination",
+          source_section: "6.1",
+          group_tokens: { "Group A": "1", "Group B": "2" },
+          is_sample_row: false,
+        },
+      ],
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group A",
+          source_table_index: 0,
+          extraction_status: "ok",
+          sample_quantity_expression: "5",
+          sample_note: null,
+          steps: [
+            { sequence: 1, raw_token: "1", test_item: "Step 1" },
+            { sequence: 2, raw_token: "2", test_item: "Step 2" },
+          ],
+        },
+        {
+          group_key: "g2",
+          group_label: "Group B",
+          source_table_index: 0,
+          extraction_status: "ok",
+          sample_quantity_expression: "3",
+          sample_note: null,
+          steps: [
+            { sequence: 3, raw_token: "3", test_item: "Step 3" },
+          ],
+        },
+      ],
+      warnings: [],
+      blockers: [],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["dummy"], "spec.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() => {
+      expect(screen.getByText("Selected groups: 2 / 2 | Selected steps: 3")).toBeTruthy();
+      expect(screen.getByText("Group A: 5; Group B: 3")).toBeTruthy();
+    });
   });
 
   it("returns from group selection to matrix candidate preview without losing source context", async () => {

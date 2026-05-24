@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -29,7 +29,7 @@ def test_task077_board_and_task_file_keep_scope_documentation_only() -> None:
     """TASK_077 stays audit-only and blocks future scope."""
     board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
     task = (
-        ROOT / "tasks" / "TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT.md"
+        ROOT / "tasks" / "completed" / "2026" / "TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT.md"
     ).read_text(encoding="utf-8")
 
     assert "`TASK_077_INTAKE_PRECHECK_BUSINESS_GAP_AUDIT` is complete" in board
