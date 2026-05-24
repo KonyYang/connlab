@@ -730,6 +730,94 @@
   gap: 6px;
 }
 
+.matrix-workspace-state-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid #cfd9e8;
+  border-radius: 8px;
+  background: #f5f8fc;
+  color: #1d2f48;
+}
+
+.matrix-workspace-state-banner div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.matrix-workspace-state-banner span {
+  color: #65758b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.matrix-workspace-state-banner strong {
+  font-size: 0.95rem;
+}
+
+.matrix-workspace-state-banner p {
+  margin: 0;
+  color: #43546c;
+  font-size: 0.85rem;
+}
+
+.matrix-workspace-state-banner-authority {
+  border-color: #bdd9cf;
+  background: #eef9f4;
+}
+
+.matrix-workspace-state-banner-revision {
+  border-color: #d8d0ee;
+  background: #f5f2fb;
+}
+
+.matrix-workspace-action-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.matrix-workspace-action-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d6dfeb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.matrix-workspace-action-group h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #32435a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.matrix-workspace-action-item {
+  min-width: 0;
+}
+
+.matrix-workspace-action-item button {
+  width: 100%;
+}
+
+.matrix-workspace-action-item p {
+  margin: 5px 0 0;
+  color: #68788d;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .matrix-editor-save-status {
   margin-top: 6px;
   font-size: 12px;
@@ -737,6 +825,7 @@
 }
 
 .matrix-editor-target-actions button,
+.matrix-workspace-action-item button,
 .matrix-editor-actionbar button,
 .matrix-editor-grid-surface button,
 .matrix-editor-step-workspace button,

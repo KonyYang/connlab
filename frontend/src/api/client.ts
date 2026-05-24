@@ -1675,6 +1675,20 @@ export function confirmProjectMatrixRevisionDraft(
   );
 }
 
+export function confirmProjectMatrixDraft(
+  projectId: string,
+  projectMatrixDraftId: string,
+  input: ConfirmProjectMatrixRevisionDraftInput
+): Promise<ConfirmedMatrixSnapshot> {
+  return requestJson<ConfirmedMatrixSnapshot>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/confirm`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export function commitMatrixImport(
   projectId: string,
   input: MatrixImportCommitRequest

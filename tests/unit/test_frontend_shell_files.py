@@ -3965,3 +3965,57 @@ def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired(
     assert ".matrix-source-candidate-list" in styles_source
     assert ".matrix-source-candidate-row" in styles_source
     assert ".matrix-starter-card-secondary" in styles_source
+
+
+def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> None:
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    action_groups_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceActionGroups.tsx"
+    ).read_text(encoding="utf-8")
+    banner_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceStateBanner.tsx"
+    ).read_text(encoding="utf-8")
+    clarity_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixWorkspaceClarityModel.ts"
+    ).read_text(encoding="utf-8")
+    api_client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(encoding="utf-8")
+    workbench_css = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    for required in [
+        "MatrixWorkspaceStateBanner",
+        "MatrixWorkspaceActionGroups",
+        "buildMatrixWorkspaceBannerModel",
+        "confirmProjectMatrixDraft",
+    ]:
+        assert required in matrix_editor_source or required in api_client_source
+
+    for required_copy in [
+        "Editing Draft",
+        "Not active for downstream outputs",
+        "Current Active Matrix Authority",
+        "Used by Project Workbench and Test Record generation",
+        "Editing Revision Draft",
+        "Changes are not active until confirmed",
+        "Save Draft",
+        "Discard Draft Changes",
+        "Change Selected Groups",
+        "Change Source Matrix",
+        "Confirm As Active Matrix",
+        "Create Revision Draft",
+        "Confirm Revision",
+    ]:
+        assert (
+            required_copy in matrix_editor_source
+            or required_copy in action_groups_source
+            or required_copy in banner_source
+            or required_copy in clarity_model_source
+        )
+
+    assert "This is not a new source import" in clarity_model_source
+    assert "Draft Actions" in action_groups_source
+    assert "Authority Actions" in action_groups_source
+    assert "matrix-workspace-state-banner" in workbench_css
+    assert "matrix-workspace-action-groups" in workbench_css
+    assert "Changing the source matrix may invalidate current draft edits" in matrix_editor_source
