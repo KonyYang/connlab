@@ -6,6 +6,7 @@ import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixP
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixTestRecordPreview: vi.fn(),
   generateConfirmedMatrixTestRecordDraft: vi.fn(),
+  fetchConfirmedMatrixAuthorityHistory: vi.fn(),
 }));
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -14,6 +15,7 @@ vi.mock("../../api/client", async (importOriginal) => {
     ...actual,
     fetchConfirmedMatrixTestRecordPreview: apiMocks.fetchConfirmedMatrixTestRecordPreview,
     generateConfirmedMatrixTestRecordDraft: apiMocks.generateConfirmedMatrixTestRecordDraft,
+    fetchConfirmedMatrixAuthorityHistory: apiMocks.fetchConfirmedMatrixAuthorityHistory,
   };
 });
 
@@ -23,7 +25,15 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     vi.clearAllMocks();
   });
 
+  function mockHistory(): void {
+    apiMocks.fetchConfirmedMatrixAuthorityHistory.mockResolvedValue({
+      project_id: "P1",
+      entries: [],
+    });
+  }
+
   it("renders confirmed groups as matrix columns and step tokens as clickable cells", async () => {
+    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -72,6 +82,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
       expect(apiMocks.fetchConfirmedMatrixTestRecordPreview).toHaveBeenCalledWith("P1");
     });
     expect(await screen.findByText("Matrix execution projection")).toBeTruthy();
+    expect(screen.getByText("Authority Change History")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Generate Test Record Draft" })).toBeTruthy();
     expect(screen.getByText("Confirmed: cm-1")).toBeTruthy();
     expect(screen.getByText("Group 1")).toBeTruthy();
@@ -91,6 +102,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("renders not-ready state for missing active confirmed matrix", async () => {
+    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockRejectedValue(
       new ApiRequestError("Not Found", 404, null)
     );
@@ -106,6 +118,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("merges same row context across groups even when token sequence differs", async () => {
+    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -160,6 +173,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("renders empty state for active matrix with no previewable tokens", async () => {
+    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -175,6 +189,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("renders error state for unexpected API failure", async () => {
+    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockRejectedValue(
       new Error("boom")
     );
