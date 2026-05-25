@@ -78,10 +78,13 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
 
     const tokens = screen.getAllByRole("button", { name: "1" });
     fireEvent.click(tokens[0]);
-    const detail = screen.getByLabelText("Matrix token detail");
+    const detail = screen.getByLabelText("Record Step Workspace");
     expect(detail).toBeTruthy();
     expect(within(detail).getByText("Visual")).toBeTruthy();
     expect(within(detail).getByText("No damage")).toBeTruthy();
+    expect(within(detail).getByText("Record draft")).toBeTruthy();
+    expect(within(detail).getByText("Evidence / data")).toBeTruthy();
+    expect(within(detail).getByText("Review")).toBeTruthy();
   });
 
   it("renders not-ready state for missing active confirmed matrix", async () => {

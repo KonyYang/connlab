@@ -1977,6 +1977,99 @@
   overflow-wrap: anywhere;
 }
 
+.runtime-console-record-step-workspace {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-canvas);
+  padding: 12px;
+  min-width: 0;
+}
+
+.runtime-console-record-step-workspace-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.runtime-console-record-step-workspace-header h4,
+.runtime-console-record-step-workspace-header p,
+.runtime-console-record-step-empty {
+  margin: 0;
+}
+
+.runtime-console-record-step-workspace-header > span,
+.runtime-console-record-step-placeholders span,
+.runtime-console-record-step-empty {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.runtime-console-record-step-workspace-header > span,
+.runtime-console-record-step-placeholders span {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  padding: 3px 6px;
+  font-weight: 700;
+}
+
+.runtime-console-record-step-fields {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.runtime-console-record-step-fields div {
+  display: grid;
+  gap: 2px;
+}
+
+.runtime-console-record-step-fields dt {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.runtime-console-record-step-fields dd {
+  margin: 0;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.runtime-console-record-step-placeholders {
+  display: grid;
+  gap: 8px;
+}
+
+.runtime-console-record-step-placeholders section {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 9px;
+}
+
+.runtime-console-record-step-placeholders h5,
+.runtime-console-record-step-placeholders p {
+  margin: 0;
+}
+
+.runtime-console-record-step-placeholders h5 {
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.runtime-console-record-step-placeholders p {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .runtime-console-attention {
   display: grid;
   gap: 10px;

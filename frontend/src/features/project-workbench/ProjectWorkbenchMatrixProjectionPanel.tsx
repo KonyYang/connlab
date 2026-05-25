@@ -9,6 +9,7 @@ import {
   findMatrixProjectionToken,
   type MatrixProjectionStatusTone,
 } from "./projectWorkbenchMatrixProjectionSelectors";
+import { RecordStepWorkspacePanel } from "./RecordStepWorkspacePanel";
 
 type PreviewState = "loading" | "ready" | "empty" | "not_ready" | "error";
 
@@ -177,24 +178,12 @@ export function ProjectWorkbenchMatrixProjectionPanel({
               </table>
             </div>
           </div>
-          <aside className="runtime-console-matrix-token-detail" aria-label="Matrix token detail">
-            <h4>Selected matrix token</h4>
-            {selectedToken ? (
-              <dl>
-                <div><dt>Group</dt><dd>{selectedToken.groupLabel}</dd></div>
-                <div><dt>Token</dt><dd>{selectedToken.rawToken}</dd></div>
-                <div><dt>Status</dt><dd>{STATUS_LABELS[selectedToken.statusTone]}</dd></div>
-                <div><dt>Samples</dt><dd>{selectedToken.sampleQuantityExpression}</dd></div>
-                <div><dt>Test item</dt><dd>{selectedToken.testItem}</dd></div>
-                <div><dt>Section</dt><dd>{selectedToken.section}</dd></div>
-                <div><dt>Method</dt><dd>{selectedToken.method || "-"}</dd></div>
-                <div><dt>Condition</dt><dd>{selectedToken.condition || "-"}</dd></div>
-                <div><dt>Requirement</dt><dd>{selectedToken.requirement || "-"}</dd></div>
-              </dl>
-            ) : (
-              <p>Select a matrix token to inspect its read-only record context.</p>
-            )}
-          </aside>
+          <RecordStepWorkspacePanel
+            selectedToken={selectedToken}
+            statusLabel={
+              selectedToken ? STATUS_LABELS[selectedToken.statusTone] : "Not selected"
+            }
+          />
         </div>
       ) : null}
     </section>

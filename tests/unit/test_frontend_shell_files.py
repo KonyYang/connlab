@@ -3937,12 +3937,61 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
     assert "fetchConfirmedMatrixTestRecordPreview" in projection_source
     assert "Matrix execution projection" in projection_source
     assert "Read-only authority view" in projection_source
-    assert "Matrix token detail" in projection_source
+    assert (
+        "Matrix token detail" in projection_source
+        or "RecordStepWorkspacePanel" in projection_source
+    )
     assert "buildMatrixProjectionViewModel" in selector_source
     assert "deriveMatrixProjectionStatusTone" in selector_source
     assert "runtime-console-matrix-projection-table" in styles_source
     assert "runtime-console-matrix-token-status-not_started" in styles_source
     assert "runtime-console-matrix-token-status-retest" in styles_source
+
+
+def test_task270_record_step_workspace_panel_is_wired() -> None:
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    workspace_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "RecordStepWorkspacePanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+    workspace_source_lower = workspace_source.lower()
+
+    assert "RecordStepWorkspacePanel" in projection_source
+    assert "Record Step Workspace" in workspace_source
+    for required_copy in [
+        "Read-only step context",
+        "Authority locked",
+        "Sample quantity",
+        "Record draft",
+        "Evidence / data",
+        "Review",
+        "Placeholder",
+        "Select a matrix token to review record context.",
+    ]:
+        assert required_copy in workspace_source
+    for forbidden_copy in [
+        "save",
+        "generate",
+        "upload",
+        "approve",
+    ]:
+        assert forbidden_copy not in workspace_source_lower
+    assert "<button" not in workspace_source
+    assert "fetch(" not in workspace_source
+    assert "fetchConfirmedMatrixTestRecordPreview" not in workspace_source
+    assert "runtime-console-record-step-workspace" in styles_source
 
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:

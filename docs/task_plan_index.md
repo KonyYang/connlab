@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-05-24
-Status: Slice C decision record with DOCS_001 archive-rule update
+Last Updated: 2026-05-25
+Status: no active planned task plan
 
 ## Decision
 
@@ -44,7 +44,13 @@ docs/task_XXX_*_plan.md
 Current active planned task plan:
 
 ```text
-docs/task_269_project_workbench_matrix_projection_prototype_plan.md
+none
+```
+
+Latest completed task plan history:
+
+```text
+docs/task_270_record_step_workspace_panel_plan.md
 ```
 
 Archived completed-plan pattern:
