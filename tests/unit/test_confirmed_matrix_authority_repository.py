@@ -239,6 +239,69 @@ def test_confirmed_matrix_authority_repository_supersede_active_and_create_snaps
         engine.dispose()
 
 
+def test_confirmed_matrix_authority_repository_list_by_project_orders_by_revision(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            draft_snapshot = _seed_project_matrix_draft(session, source_import_id, source_snapshot)
+            repo = ConfirmedMatrixAuthorityRepository(session)
+
+            first = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-l1",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            repo.create_snapshot(first)
+            session.commit()
+
+            second = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-l2",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            second = ConfirmedMatrixSnapshot(
+                version=ConfirmedMatrixVersion(
+                    confirmed_matrix_id=second.version.confirmed_matrix_id,
+                    project_id=second.version.project_id,
+                    project_matrix_draft_id=second.version.project_matrix_draft_id,
+                    source_import_id=second.version.source_import_id,
+                    source_snapshot_id=second.version.source_snapshot_id,
+                    confirmed_revision=2,
+                    is_active_authority=True,
+                    status=ConfirmedMatrixStatus.CONFIRMED,
+                    confirmed_by=second.version.confirmed_by,
+                    confirmed_at="2026-05-23T11:00:00+00:00",
+                ),
+                groups=second.groups,
+                rows=second.rows,
+                cells=second.cells,
+            )
+            repo.supersede_active_and_create_snapshot(
+                previous_active_confirmed_matrix_id="cmv-l1",
+                snapshot=second,
+                superseded_reason="Revision confirmed",
+            )
+            session.commit()
+
+            snapshots = repo.list_by_project("P1")
+            assert [snapshot.version.confirmed_revision for snapshot in snapshots] == [1, 2]
+            assert snapshots[0].version.confirmed_matrix_id == "cmv-l1"
+            assert snapshots[1].version.confirmed_matrix_id == "cmv-l2"
+            assert snapshots[0].version.is_active_authority is False
+            assert snapshots[1].version.is_active_authority is True
+            assert len(snapshots[0].groups) > 0
+            assert len(snapshots[0].rows) > 0
+            assert len(snapshots[0].cells) > 0
+    finally:
+        engine.dispose()
+
+
 def test_supersede_active_and_create_snapshot_rolls_back_when_new_insert_fails(
     tmp_path: Path,
 ) -> None:

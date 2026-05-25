@@ -1098,6 +1098,28 @@ export type ConfirmedMatrixTestRecordPreview = {
   groups: ConfirmedMatrixTestRecordPreviewGroup[];
 };
 
+export type ConfirmedMatrixAuthorityHistoryEntry = {
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  is_active_authority: boolean;
+  status: string;
+  confirmed_by: string;
+  confirmed_at: string;
+  superseded_at?: string | null;
+  superseded_reason?: string | null;
+  source_snapshot_changed: boolean;
+  group_change_count: number;
+  step_change_count: number;
+  token_change_count: number;
+  record_regeneration_recommended: boolean;
+  change_summary: string;
+};
+
+export type ConfirmedMatrixAuthorityHistory = {
+  project_id: string;
+  entries: ConfirmedMatrixAuthorityHistoryEntry[];
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiRequestError extends Error {
@@ -1862,5 +1884,13 @@ export function generateConfirmedMatrixTestRecordDraft(
   return requestBlob(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-draft/generate`,
     { method: "POST" }
+  );
+}
+
+export function fetchConfirmedMatrixAuthorityHistory(
+  projectId: string
+): Promise<ConfirmedMatrixAuthorityHistory> {
+  return requestJson<ConfirmedMatrixAuthorityHistory>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/authority-history`
   );
 }

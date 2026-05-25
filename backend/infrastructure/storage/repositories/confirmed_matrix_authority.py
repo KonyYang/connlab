@@ -76,6 +76,15 @@ class ConfirmedMatrixAuthorityRepository:
             return None
         return self._build_snapshot(version_row)
 
+    def list_by_project(self, project_id: str) -> tuple[ConfirmedMatrixSnapshot, ...]:
+        """Return all confirmed authority snapshots in one project by revision ascending."""
+        version_rows = self._session.scalars(
+            select(ConfirmedMatrixVersionModel)
+            .where(ConfirmedMatrixVersionModel.project_id == project_id)
+            .order_by(ConfirmedMatrixVersionModel.confirmed_revision.asc())
+        ).all()
+        return tuple(self._build_snapshot(version_row) for version_row in version_rows)
+
     def _build_snapshot(self, version_row: ConfirmedMatrixVersionModel) -> ConfirmedMatrixSnapshot:
         group_rows = self._session.scalars(
             select(ConfirmedMatrixGroupModel)

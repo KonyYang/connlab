@@ -50,6 +50,9 @@ from backend.api.routes_confirmed_matrix_test_record_preview import (
 from backend.api.routes_confirmed_matrix_test_record_generation import (
     router as confirmed_matrix_test_record_generation_router,
 )
+from backend.api.routes_confirmed_matrix_authority_history import (
+    router as confirmed_matrix_authority_history_router,
+)
 from backend.api.routes_project_output_records import (
     router as project_output_records_router,
 )
@@ -94,6 +97,7 @@ app.include_router(runtime_projection_read_only_router)
 app.include_router(confirmed_matrix_runtime_projection_router)
 app.include_router(confirmed_matrix_test_record_preview_router)
 app.include_router(confirmed_matrix_test_record_generation_router)
+app.include_router(confirmed_matrix_authority_history_router)
 app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)

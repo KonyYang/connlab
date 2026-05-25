@@ -11,6 +11,7 @@ import {
 } from "./projectWorkbenchMatrixProjectionSelectors";
 import { RecordStepWorkspacePanel } from "./RecordStepWorkspacePanel";
 import { TestRecordDraftGenerationButton } from "./TestRecordDraftGenerationButton";
+import { AuthorityChangeHistoryPanel } from "./AuthorityChangeHistoryPanel";
 
 type PreviewState = "loading" | "ready" | "empty" | "not_ready" | "error";
 
@@ -112,6 +113,8 @@ export function ProjectWorkbenchMatrixProjectionPanel({
       {state === "error" ? (
         <p className="error">Unable to load Matrix projection. Try again after confirming Matrix authority.</p>
       ) : null}
+
+      <AuthorityChangeHistoryPanel projectId={projectId} />
 
       {state === "ready" && viewModel ? (
         <div className="runtime-console-matrix-projection-layout">

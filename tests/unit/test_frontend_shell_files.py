@@ -4030,6 +4030,43 @@ def test_task271_test_record_word_generation_v1_is_wired() -> None:
     assert "ConfirmedMatrixTestRecordDocumentGenerationService" in route_source
 
 
+def test_task272_lightweight_authority_change_history_is_wired() -> None:
+    api_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(encoding="utf-8")
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    history_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "AuthorityChangeHistoryPanel.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+    lower_history = history_source.lower()
+
+    assert "fetchConfirmedMatrixAuthorityHistory" in api_source
+    assert "/confirmed-matrix/authority-history" in api_source
+    assert "AuthorityChangeHistoryPanel" in projection_source
+    assert "Authority Change History" in history_source
+    assert "Record draft may need regeneration." in history_source
+    assert "<button" not in history_source
+    assert "runtime-console-authority-history" in styles_source
+    for forbidden_copy in [
+        "approve",
+        "permission",
+        "equipment",
+        "ai review",
+        "report generation",
+        "fee",
+    ]:
+        assert forbidden_copy not in lower_history
+
+
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
     """TASK_192 prioritizes project source candidates before external/manual fallback."""
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(

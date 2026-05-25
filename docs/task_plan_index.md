@@ -50,7 +50,7 @@ none
 Latest completed task plan history:
 
 ```text
-docs/task_271_test_record_word_generation_v1_plan.md
+docs/task_272_lightweight_authority_change_history_plan.md
 ```
 
 Archived completed-plan pattern:
