@@ -1801,6 +1801,182 @@
   font-size: 13px;
 }
 
+.runtime-console-matrix-projection {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  padding: 14px;
+}
+
+.runtime-console-matrix-projection-header,
+.runtime-console-matrix-projection-summary,
+.runtime-console-matrix-projection-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.runtime-console-matrix-projection-header h3,
+.runtime-console-matrix-projection-header p {
+  margin: 0;
+}
+
+.runtime-console-matrix-projection-header > span,
+.runtime-console-matrix-projection-summary span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.runtime-console-matrix-projection-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 12px;
+  min-width: 0;
+}
+
+.runtime-console-matrix-projection-main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.runtime-console-matrix-projection-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.runtime-console-matrix-projection-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.runtime-console-matrix-projection-table th,
+.runtime-console-matrix-projection-table td {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 7px 8px;
+  vertical-align: top;
+}
+
+.runtime-console-matrix-projection-table th {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.runtime-console-matrix-projection-table th small {
+  display: block;
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  white-space: normal;
+}
+
+.runtime-console-matrix-token-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.runtime-console-matrix-token,
+.runtime-console-matrix-projection-legend span {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.runtime-console-matrix-token {
+  cursor: pointer;
+}
+
+.runtime-console-matrix-token.is-selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.runtime-console-matrix-token-status-not_started {
+  background: #eef2f7;
+  color: #647084;
+}
+
+.runtime-console-matrix-token-status-in_progress {
+  background: #e7f0fb;
+  color: #1f66d1;
+}
+
+.runtime-console-matrix-token-status-passed {
+  background: #eef9f4;
+  color: #2f8f68;
+}
+
+.runtime-console-matrix-token-status-failed {
+  background: #fff0ef;
+  color: #c2413a;
+}
+
+.runtime-console-matrix-token-status-review {
+  background: #fff7e8;
+  color: #9a641c;
+}
+
+.runtime-console-matrix-token-status-retest {
+  background: #f1edff;
+  color: #6f54b8;
+}
+
+.runtime-console-matrix-empty-cell,
+.runtime-console-matrix-projection-empty {
+  color: var(--color-ink-muted);
+}
+
+.runtime-console-matrix-token-detail {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-canvas);
+  padding: 12px;
+}
+
+.runtime-console-matrix-token-detail h4,
+.runtime-console-matrix-token-detail p {
+  margin: 0;
+}
+
+.runtime-console-matrix-token-detail dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.runtime-console-matrix-token-detail div {
+  display: grid;
+  gap: 2px;
+}
+
+.runtime-console-matrix-token-detail dt {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.runtime-console-matrix-token-detail dd {
+  margin: 0;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
 .runtime-console-attention {
   display: grid;
   gap: 10px;
@@ -4267,6 +4443,12 @@
 
 @media (max-width: 900px) {
   .matrix-editor-selection-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .runtime-console-matrix-projection-layout {
     grid-template-columns: 1fr;
   }
 }

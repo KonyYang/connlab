@@ -44,7 +44,7 @@ docs/task_XXX_*_plan.md
 Current active planned task plan:
 
 ```text
-docs/task_268_group_selection_completeness_guard_plan.md
+docs/task_269_project_workbench_matrix_projection_prototype_plan.md
 ```
 
 Archived completed-plan pattern:

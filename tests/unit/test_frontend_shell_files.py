@@ -3875,11 +3875,12 @@ def test_task264_matrix_to_test_record_smoke_ui_is_wired() -> None:
     ]:
         assert required_client_symbol in client_source
 
-    for required_layout_symbol in [
-        "TestRecordPreviewSmokePanel",
-        "<TestRecordPreviewSmokePanel projectId={project.project_id} />",
-    ]:
-        assert required_layout_symbol in layout_source
+    if "ProjectWorkbenchMatrixProjectionPanel" not in layout_source:
+        for required_layout_symbol in [
+            "TestRecordPreviewSmokePanel",
+            "<TestRecordPreviewSmokePanel projectId={project.project_id} />",
+        ]:
+            assert required_layout_symbol in layout_source
 
     for required_panel_symbol in [
         "Test Record Preview",
@@ -3908,6 +3909,40 @@ def test_task264_matrix_to_test_record_smoke_ui_is_wired() -> None:
         ".runtime-console-test-record-preview-group table {",
     ]:
         assert required_style_symbol in styles_source
+
+
+def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> None:
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    selector_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "projectWorkbenchMatrixProjectionSelectors.ts"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    assert "ProjectWorkbenchMatrixProjectionPanel" in layout_source
+    assert "<ProjectWorkbenchMatrixProjectionPanel projectId={project.project_id} />" in layout_source
+    assert "<TestRecordPreviewSmokePanel projectId={project.project_id} />" not in layout_source
+    assert "fetchConfirmedMatrixTestRecordPreview" in projection_source
+    assert "Matrix execution projection" in projection_source
+    assert "Read-only authority view" in projection_source
+    assert "Matrix token detail" in projection_source
+    assert "buildMatrixProjectionViewModel" in selector_source
+    assert "deriveMatrixProjectionStatusTone" in selector_source
+    assert "runtime-console-matrix-projection-table" in styles_source
+    assert "runtime-console-matrix-token-status-not_started" in styles_source
+    assert "runtime-console-matrix-token-status-retest" in styles_source
 
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
