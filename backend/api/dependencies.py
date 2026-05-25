@@ -100,6 +100,9 @@ from backend.application.confirmed_matrix_runtime_projection_service import (
 from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewService,
 )
+from backend.application.confirmed_matrix_test_record_document_generation_service import (
+    ConfirmedMatrixTestRecordDocumentGenerationService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -276,6 +279,19 @@ def get_confirmed_matrix_test_record_preview_service(
     """Build confirmed-authority Test Record preview read-only service."""
     return ConfirmedMatrixTestRecordPreviewService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_confirmed_matrix_test_record_document_generation_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedMatrixTestRecordDocumentGenerationService:
+    """Build confirmed-authority Test Record Word generation service."""
+    return ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=ConfirmedMatrixTestRecordPreviewService(
+            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        ),
+        project_store=ProjectRepository(session),
+        writer=TestRecordDocumentGateway(),
     )
 
 

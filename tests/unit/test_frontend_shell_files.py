@@ -3994,6 +3994,42 @@ def test_task270_record_step_workspace_panel_is_wired() -> None:
     assert "runtime-console-record-step-workspace" in styles_source
 
 
+def test_task271_test_record_word_generation_v1_is_wired() -> None:
+    api_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(encoding="utf-8")
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    button_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "TestRecordDraftGenerationButton.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+    lower_button = button_source.lower()
+
+    assert "generateConfirmedMatrixTestRecordDraft" in api_source
+    assert "/confirmed-matrix/test-record-draft/generate" in api_source
+    assert "TestRecordDraftGenerationButton" in projection_source
+    assert "Generate Test Record Draft" in button_source
+    assert "Confirm Matrix authority before generating a Test Record draft." in button_source
+    assert "runtime-console-test-record-generation" in styles_source
+    for forbidden_copy in ["report", "fee", "ai review", "ai recommendation", "equipment", "permission"]:
+        assert forbidden_copy not in lower_button
+
+    backend_root = FRONTEND_ROOT.parent / "backend"
+    route_source = (backend_root / "api" / "routes_confirmed_matrix_test_record_generation.py").read_text(
+        encoding="utf-8"
+    )
+    assert "FileResponse" in route_source
+    assert "ConfirmedMatrixTestRecordDocumentGenerationService" in route_source
+
+
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
     """TASK_192 prioritizes project source candidates before external/manual fallback."""
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(

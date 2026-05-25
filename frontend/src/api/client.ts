@@ -1855,3 +1855,12 @@ export function fetchConfirmedMatrixTestRecordPreview(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-preview`
   );
 }
+
+export function generateConfirmedMatrixTestRecordDraft(
+  projectId: string
+): Promise<Blob> {
+  return requestBlob(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-draft/generate`,
+    { method: "POST" }
+  );
+}

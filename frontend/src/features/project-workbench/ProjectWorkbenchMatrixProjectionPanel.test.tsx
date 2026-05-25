@@ -5,6 +5,7 @@ import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixP
 
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixTestRecordPreview: vi.fn(),
+  generateConfirmedMatrixTestRecordDraft: vi.fn(),
 }));
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -12,6 +13,7 @@ vi.mock("../../api/client", async (importOriginal) => {
   return {
     ...actual,
     fetchConfirmedMatrixTestRecordPreview: apiMocks.fetchConfirmedMatrixTestRecordPreview,
+    generateConfirmedMatrixTestRecordDraft: apiMocks.generateConfirmedMatrixTestRecordDraft,
   };
 });
 
@@ -70,6 +72,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
       expect(apiMocks.fetchConfirmedMatrixTestRecordPreview).toHaveBeenCalledWith("P1");
     });
     expect(await screen.findByText("Matrix execution projection")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate Test Record Draft" })).toBeTruthy();
     expect(screen.getByText("Confirmed: cm-1")).toBeTruthy();
     expect(screen.getByText("Group 1")).toBeTruthy();
     expect(screen.getByText("Group 2")).toBeTruthy();
@@ -97,6 +100,9 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(
       await screen.findByText("No active confirmed matrix yet. Confirm Matrix authority first.")
     ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Generate Test Record Draft" }).hasAttribute("disabled")
+    ).toBe(true);
   });
 
   it("merges same row context across groups even when token sequence differs", async () => {

@@ -10,6 +10,7 @@ import {
   type MatrixProjectionStatusTone,
 } from "./projectWorkbenchMatrixProjectionSelectors";
 import { RecordStepWorkspacePanel } from "./RecordStepWorkspacePanel";
+import { TestRecordDraftGenerationButton } from "./TestRecordDraftGenerationButton";
 
 type PreviewState = "loading" | "ready" | "empty" | "not_ready" | "error";
 
@@ -88,7 +89,13 @@ export function ProjectWorkbenchMatrixProjectionPanel({
           <p className="eyebrow">Confirmed Matrix Projection</p>
           <h3>Matrix execution projection</h3>
         </div>
-        <span>Read-only authority view</span>
+        <div className="runtime-console-matrix-projection-header-actions">
+          <span>Read-only authority view</span>
+          <TestRecordDraftGenerationButton
+            projectId={projectId}
+            ready={state === "ready" && !!viewModel}
+          />
+        </div>
       </header>
 
       {state === "loading" ? <p className="fine-print">Loading Matrix projection...</p> : null}

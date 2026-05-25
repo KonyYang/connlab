@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-05-25
-Status: TASK_271 active planned task plan
+Last Updated: 2026-05-26
+Status: no active planned task plan
 
 ## Decision
 
@@ -44,13 +44,13 @@ docs/task_XXX_*_plan.md
 Current active planned task plan:
 
 ```text
-docs/task_271_test_record_word_generation_v1_plan.md
+none
 ```
 
 Latest completed task plan history:
 
 ```text
-docs/task_270_record_step_workspace_panel_plan.md
+docs/task_271_test_record_word_generation_v1_plan.md
 ```
 
 Archived completed-plan pattern:
