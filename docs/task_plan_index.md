@@ -50,7 +50,7 @@ none
 Latest completed task plan history:
 
 ```text
-docs/task_274_workbench_step_workspace_refocus_plan.md
+docs/task_275_workbench_execution_information_hierarchy_refocus_plan.md
 ```
 
 Archived completed-plan pattern:

@@ -1,9 +1,7 @@
 import { useState, type ReactElement } from "react";
-import { ProjectStatusBadge } from "../../components/project/ProjectStatusBadge";
 import type { Project, RuntimeProjectionSnapshotResponse } from "../../api/client";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
-import type { WorkbenchBaselineItem } from "./useProjectWorkbenchModel";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 type ProjectWorkbenchLayoutProps = {
@@ -27,6 +25,12 @@ type MockStepDetail = {
   status: "FAILED" | "IN PROGRESS" | "PASS" | "NOT STARTED";
 };
 
+type SetupMaterialItem = {
+  title: string;
+  value: string;
+  placeholder?: boolean;
+};
+
 const DEFAULT_STEP_DETAIL: MockStepDetail = {
   reference: "mock:G3:2",
   group: "Group 3",
@@ -44,14 +48,14 @@ const MOCK_STEP_DETAILS: MockStepDetail[] = [
 
 const STEP_STATUS_BY_TONE: Record<
   MatrixProjectionTokenCell["statusTone"],
-  MockStepDetail["status"] | "REVIEW" | "RETEST"
+  MockStepDetail["status"]
 > = {
   not_started: "NOT STARTED",
   in_progress: "IN PROGRESS",
   passed: "PASS",
   failed: "FAILED",
-  review: "REVIEW",
-  retest: "RETEST",
+  review: "IN PROGRESS",
+  retest: "IN PROGRESS",
 };
 
 const MOCK_STATUS_BY_TONE: Record<
@@ -75,15 +79,29 @@ export function ProjectWorkbenchLayout({
   const [selectedProjectionToken, setSelectedProjectionToken] =
     useState<MatrixProjectionTokenCell | null>(null);
   const {
-    baselineItems,
+    folderReady,
     latestLtr,
     matrixAuthorityDraft,
     runtimeProjectionLoading,
     runtimeProjectionSnapshot,
-    runtimeAuthoritySync,
     runtimeSelectedTokenReference,
-    setRuntimeSelectedTokenReference
   } = runtimeModel;
+  const projectIdentity = latestLtr ?? `Temporary project ${project.project_id.slice(0, 8)}`;
+  const setupMaterials: SetupMaterialItem[] = [
+    { title: "Project folder", value: folderReady ? "Created" : "Not recorded" },
+    {
+      title: "Source materials",
+      value: folderReady ? "Available from project folder" : "Available after folder creation",
+    },
+    {
+      title: "Test Record",
+      value: matrixAuthorityDraft ? "Ready for draft generation" : "Ready after Matrix confirmation",
+      placeholder: !matrixAuthorityDraft,
+    },
+    { title: "Fee estimate", value: "Pending estimate", placeholder: true },
+    { title: "Sample images", value: "Future evidence input", placeholder: true },
+    { title: "Approval package", value: "Future output package", placeholder: true },
+  ];
 
   const runtimeMetrics = buildRuntimeMetrics(runtimeProjectionSnapshot);
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
@@ -120,23 +138,11 @@ export function ProjectWorkbenchLayout({
             <strong>Project Workbench</strong>
           </div>
           <div className="runtime-console-project-title">
-            <h2>
-              {project.product_name}
-              <ProjectStatusBadge status={project.status} />
-            </h2>
+            <h2>{project.product_name}</h2>
             <div className="runtime-console-project-meta">
-              <span>LTR: {latestLtr ?? "Not registered"}</span>
-              <span>BU: {project.business_unit || "Not set"}</span>
-              <span>Requestor: {project.requestor}</span>
-            </div>
-          </div>
-          <div className="runtime-console-authority">
-            <span>Project progress</span>
-            <strong>
-              {runtimeProjectionSnapshot ? "62%" : "62%"}
-            </strong>
-            <div className="runtime-console-progress-track" aria-hidden="true">
-              <span style={{ width: "62%" }} />
+              <span>{projectIdentity}</span>
+              <span>{project.business_unit || "Business unit not set"}</span>
+              <span>{project.requestor}</span>
             </div>
           </div>
           <div className="runtime-console-top-metrics" aria-label="Runtime metrics">
@@ -150,49 +156,20 @@ export function ProjectWorkbenchLayout({
           <div className="runtime-console-last-update">
             <span>Last updated</span>
             <strong>2025-06-09 14:35</strong>
-            <div className="runtime-console-top-actions">
-              <button aria-label="Refresh" type="button">Refresh</button>
-              <button type="button" onClick={onOpenMatrixEditor}>Edit Matrix Definition</button>
-            </div>
           </div>
         </header>
 
-        <section className="runtime-console-authority-sync" aria-label="Matrix authority sync">
-          <span>
-            Authority v{runtimeAuthoritySync.authorityVersion ?? "-"}
-            {runtimeAuthoritySync.hasUnconfirmedCandidate
-              ? ` | Candidate v${runtimeAuthoritySync.candidateVersion ?? "-"} pending`
-              : " | No unconfirmed candidate"}
-          </span>
-          <span>Projection: {runtimeAuthoritySync.projectionMatrixReference ?? "not loaded"}</span>
-          <span
-            className={
-              runtimeAuthoritySync.projectionMatchesAuthority === false
-                ? "runtime-console-sync-warning"
-                : "runtime-console-sync-ok"
-            }
-          >
-            {runtimeAuthoritySync.projectionMatchesAuthority === false
-              ? "Projection not aligned with current authority"
-              : "Projection aligned with authority"}
-          </span>
-          {runtimeAuthoritySync.selectedTokenCleared ? (
-            <span className="runtime-console-sync-warning">
-              Selected token was cleared after projection refresh.
-            </span>
-          ) : null}
-        </section>
-
-        <section className="runtime-console-readiness" aria-label="Runtime readiness">
+        <section className="runtime-console-readiness" aria-label="Project setup and output materials">
           <div className="runtime-console-readiness-title">
-            <p className="eyebrow">Project readiness status</p>
-            <strong>Actionable</strong>
+            <p className="eyebrow">Project setup / output materials</p>
+            <strong>Preparation</strong>
           </div>
-          {baselineItems.map((item) => (
-            <RuntimeReadinessItem key={item.title} item={item} />
+          {setupMaterials.map((item) => (
+            <RuntimeSetupItem key={item.title} item={item} />
           ))}
-          <RuntimeReadinessItem item={{ title: "Matrix Authority", value: matrixAuthorityDraft ? "Ready" : "Pending confirmation" }} />
-          <button className="runtime-console-setup-button" type="button">Open Setup Manager</button>
+          <button className="runtime-console-setup-button" type="button" disabled title="Planned future entry point.">
+            View activity history
+          </button>
         </section>
 
         <section className="runtime-console-filterbar" aria-label="Runtime filters">
@@ -217,7 +194,7 @@ export function ProjectWorkbenchLayout({
           </label>
           <div className="runtime-console-radio-group">
             <span>Status filter:</span>
-            {["All", "Not started", "In progress", "Pass", "Failed", "Missing data"].map((item) => (
+            {["All", "Not started", "In progress", "Pass", "Failed"].map((item) => (
               <label key={item}>
                 <input defaultChecked={item === "All"} name="runtime-status-filter" type="radio" />
                 {item}
@@ -237,9 +214,12 @@ export function ProjectWorkbenchLayout({
                 <p className="eyebrow">Matrix Projection</p>
                 <h3>Matrix execution projection</h3>
               </div>
-              <span className="runtime-console-muted">
-                {runtimeProjectionLoading ? "Loading projection..." : "Read-only projection"}
-              </span>
+              <div className="runtime-console-toolbar-actions">
+                <span className="runtime-console-muted">
+                  {runtimeProjectionLoading ? "Loading projection..." : "Read-only projection"}
+                </span>
+                <button type="button" onClick={onOpenMatrixEditor}>Matrix</button>
+              </div>
             </div>
             <ProjectWorkbenchMatrixProjectionPanel
               projectId={project.project_id}
@@ -255,12 +235,8 @@ export function ProjectWorkbenchLayout({
                 <h3>{activeStepTitle}</h3>
               </div>
               <div className="runtime-console-step-tools">
-                <button type="button" onClick={onOpenMatrixEditor}>Matrix</button>
                 <button type="button" disabled title="Planned future action in Step Workspace.">
                   Image
-                </button>
-                <button type="button" disabled title="Planned future action in Step Workspace.">
-                  Record
                 </button>
               </div>
             </header>
@@ -392,7 +368,6 @@ export function ProjectWorkbenchLayout({
 
         <section className="runtime-console-bottom">
           <RuntimeAttentionSurface snapshot={runtimeProjectionSnapshot} />
-          <RecentActivitySurface />
           <FeeEstimateSurface />
         </section>
       </section>
@@ -502,42 +477,22 @@ function StepLifecycleFlow(): ReactElement {
   );
 }
 
-function RecentActivitySurface(): ReactElement {
-  return (
-    <section className="runtime-console-activity" aria-label="Recent activity">
-      <header>
-        <p className="eyebrow">Recent activity</p>
-        <h3>Recent activity</h3>
-      </header>
-      <ul>
-        <li><span>Step 2 (Group 3 - LLCR) data updated</span><time>14:20</time></li>
-        <li><span>Step 4(b) (Group 1 - High temp life) passed</span><time>13:55</time></li>
-        <li><span>Uploaded 3 images for Step 8 (Group 2)</span><time>13:40</time></li>
-      </ul>
-      <button disabled type="button">View all activity</button>
-    </section>
-  );
-}
-
 function FeeEstimateSurface(): ReactElement {
   return (
     <section className="runtime-console-fee" aria-label="Fee estimate">
       <header>
         <p className="eyebrow">Fee estimate</p>
-        <h3>Fee estimate</h3>
+        <h3>Total estimated fee</h3>
       </header>
       <div className="runtime-console-fee-grid">
-        <div><span>Estimated</span><strong>RMB 12,450.00</strong></div>
-        <div><span>Spent</span><strong>RMB 8,760.00</strong></div>
-        <div><span>Remaining</span><strong>RMB 3,690.00</strong></div>
+        <div><span>Total</span><strong>Pending estimate</strong></div>
       </div>
-      <button disabled type="button">View fee details</button>
     </section>
   );
 }
 
-function RuntimeReadinessItem({ item }: { item: WorkbenchBaselineItem }): ReactElement {
-  const ready = /yes|created|available|evidence placement/i.test(item.value);
+function RuntimeSetupItem({ item }: { item: SetupMaterialItem }): ReactElement {
+  const ready = !item.placeholder;
   return (
     <article className="runtime-console-readiness-item">
       <span className={ready ? "runtime-console-state-dot runtime-console-state-ready" : "runtime-console-state-dot"} />
@@ -569,7 +524,6 @@ function RuntimeAttentionSurface({
         <AttentionTile label="Failed items" value={p0} tone="danger" />
         <AttentionTile label="Missing evidence" value={p1} tone="warning" />
         <AttentionTile label="Unsynced report" value={p2 + stale} tone="current" />
-        <AttentionTile label="In progress" value={countProjectionValue(snapshot, "attention_counts", "none")} tone="muted" />
       </div>
     </section>
   );
@@ -595,41 +549,73 @@ function AttentionTile({
 function buildRuntimeMetrics(snapshot: RuntimeProjectionSnapshotResponse | null): RuntimeMetric[] {
   if (!snapshot) {
     return [
-      { label: "PASS", value: 18, tone: "success" },
-      { label: "FAILED", value: 2, tone: "danger" },
-      { label: "IN PROGRESS", value: 5, tone: "current" },
-      { label: "NOT STARTED", value: 12, tone: "muted" },
-      { label: "MISSING EVIDENCE", value: 3, tone: "warning" }
+      { label: "GROUPS NOT STARTED", value: 3, tone: "muted" },
+      { label: "GROUPS IN PROGRESS", value: 4, tone: "current" },
+      { label: "GROUPS PASSED", value: 2, tone: "success" },
+      { label: "GROUPS FAILED", value: 1, tone: "danger" },
+      { label: "FAILED ITEMS", value: 2, tone: "warning" }
     ];
   }
 
+  const groupBuckets = snapshot.runtime_projection_summary.groups.reduce(
+    (accumulator, group) => {
+      const failed = countByLifecycle(group, "failed");
+      const inProgress =
+        countByLifecycle(group, "in_progress")
+        + countByLifecycle(group, "review")
+        + countByLifecycle(group, "retest");
+      const notStarted = countByLifecycle(group, "not_started");
+      const passed = countByLifecycle(group, "passed");
+
+      if (failed > 0) {
+        accumulator.failedGroups += 1;
+      } else if (inProgress > 0) {
+        accumulator.inProgressGroups += 1;
+      } else if (passed > 0 && notStarted === 0) {
+        accumulator.passedGroups += 1;
+      } else {
+        accumulator.notStartedGroups += 1;
+      }
+      return accumulator;
+    },
+    { notStartedGroups: 0, inProgressGroups: 0, passedGroups: 0, failedGroups: 0 }
+  );
+
   return [
     {
-      label: "PASS",
-      value: countProjectionValue(snapshot, "lifecycle_counts", "passed"),
-      tone: "success"
-    },
-    {
-      label: "FAILED",
-      value: countProjectionValue(snapshot, "lifecycle_counts", "failed"),
-      tone: "danger"
-    },
-    {
-      label: "IN PROGRESS",
-      value: countProjectionValue(snapshot, "lifecycle_counts", "in_progress"),
-      tone: "current"
-    },
-    {
-      label: "NOT STARTED",
-      value: countProjectionValue(snapshot, "lifecycle_counts", "not_started"),
+      label: "GROUPS NOT STARTED",
+      value: groupBuckets.notStartedGroups,
       tone: "muted"
     },
     {
-      label: "MISSING EVIDENCE",
-      value: countProjectionValue(snapshot, "evidence_counts", "missing"),
+      label: "GROUPS IN PROGRESS",
+      value: groupBuckets.inProgressGroups,
+      tone: "current"
+    },
+    {
+      label: "GROUPS PASSED",
+      value: groupBuckets.passedGroups,
+      tone: "success"
+    },
+    {
+      label: "GROUPS FAILED",
+      value: groupBuckets.failedGroups,
+      tone: "danger"
+    },
+    {
+      label: "FAILED ITEMS",
+      value: countProjectionValue(snapshot, "attention_counts", "p0"),
       tone: "warning"
     }
   ];
+}
+
+function countByLifecycle(
+  group: RuntimeProjectionSnapshotResponse["runtime_projection_summary"]["groups"][number],
+  lifecycle: string
+): number {
+  const match = group.aggregation_summary.lifecycle_counts.find((item) => item.value === lifecycle);
+  return match?.count ?? 0;
 }
 
 function countProjectionValue(

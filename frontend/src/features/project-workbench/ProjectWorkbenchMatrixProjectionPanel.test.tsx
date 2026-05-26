@@ -73,11 +73,30 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(await screen.findByText("Read-only authority view")).toBeTruthy();
     expect(screen.queryByText("Authority Change History")).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
-    expect(screen.getByText("Confirmed: cm-1")).toBeTruthy();
-    expect(screen.getByText("Group 1")).toBeTruthy();
-    expect(screen.getByText("Group 2")).toBeTruthy();
-    expect(screen.getByText("Samples: 3")).toBeTruthy();
-    expect(screen.getByText("Samples: 5")).toBeTruthy();
+    expect(screen.queryByText("Confirmed: cm-1")).toBeNull();
+    expect(screen.queryByText("Rows: 1")).toBeNull();
+    expect(screen.queryByText("Tokens: 2")).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Group 1" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Group 2" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Seq" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Section" })).toBeNull();
+    expect(screen.queryByText("Samples: 3")).toBeNull();
+    expect(screen.queryByText("Samples: 5")).toBeNull();
+    expect(screen.getByText("Sample sizes")).toBeTruthy();
+    expect(screen.getByText("Estimated completion date")).toBeTruthy();
+    expect(screen.getByText("Status")).toBeTruthy();
+    const sampleSizesRow = screen.getByText("Sample sizes").closest("tr");
+    expect(sampleSizesRow).toBeTruthy();
+    expect(within(sampleSizesRow as HTMLElement).getByText("3")).toBeTruthy();
+    expect(within(sampleSizesRow as HTMLElement).getByText("5")).toBeTruthy();
+    expect(screen.getAllByText("Not scheduled")).toHaveLength(2);
+    expect(screen.getAllByText("Pending execution data")).toHaveLength(2);
+    expect(screen.getByText("Not started")).toBeTruthy();
+    expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByText("Pass")).toBeTruthy();
+    expect(screen.getByText("Failed")).toBeTruthy();
+    expect(screen.queryByText("Review required")).toBeNull();
+    expect(screen.queryByText("Reopened / retest")).toBeNull();
 
     const tokens = screen.getAllByRole("button", { name: "1" });
     fireEvent.click(tokens[0]);
@@ -149,8 +168,8 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
 
     expect(await screen.findByText("Read-only authority view")).toBeTruthy();
     const table = screen.getByRole("table");
-    const bodyRows = within(table).getAllByRole("row").slice(1);
-    expect(bodyRows).toHaveLength(1);
+    const visualRows = within(table).getAllByRole("row").filter((row) => within(row).queryByText("Visual"));
+    expect(visualRows).toHaveLength(1);
     expect(screen.getAllByText("Visual")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "1" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "3" })).toBeTruthy();

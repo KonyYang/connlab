@@ -12,6 +12,12 @@ export type MatrixProjectionStatusTone =
   | "review"
   | "retest";
 
+export type MatrixProjectionVisibleStatusTone =
+  | "not_started"
+  | "in_progress"
+  | "passed"
+  | "failed";
+
 export type MatrixProjectionGroupColumn = {
   groupKey: string;
   groupLabel: string;
@@ -84,6 +90,21 @@ export function deriveMatrixProjectionStatusTone(
     return "in_progress";
   }
   return "not_started";
+}
+
+export function toVisibleMatrixProjectionStatusTone(
+  tone: MatrixProjectionStatusTone
+): MatrixProjectionVisibleStatusTone {
+  if (tone === "failed") {
+    return "failed";
+  }
+  if (tone === "passed") {
+    return "passed";
+  }
+  if (tone === "not_started") {
+    return "not_started";
+  }
+  return "in_progress";
 }
 
 function buildTokenCell(

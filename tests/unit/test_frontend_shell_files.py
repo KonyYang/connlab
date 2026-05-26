@@ -4135,6 +4135,61 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
     assert "ProjectWorkbenchMatrixOverview" not in workbench_layout_source
 
 
+def test_task275_workbench_execution_information_hierarchy_refocus_is_wired() -> None:
+    layout_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    css_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+
+    layout_source_lower = layout_source.lower()
+    projection_source_lower = projection_source.lower()
+
+    assert "ltr number registered" not in layout_source_lower
+    assert "refresh" not in layout_source_lower
+    assert "edit matrix definition" not in layout_source_lower
+    assert "created project" not in layout_source_lower
+    assert "matrix authority" not in layout_source_lower
+    assert "open setup manager" not in layout_source_lower
+    assert "recent activity" not in layout_source_lower
+    assert "missing data" not in layout_source_lower
+    assert "spent" not in layout_source_lower
+    assert "remaining" not in layout_source_lower
+
+    assert ">Matrix<" in layout_source
+    assert "runtime-console-toolbar-actions" in layout_source
+    assert "Project setup / output materials" in layout_source
+    assert "View activity history" in layout_source
+    assert "Pending estimate" in layout_source
+
+    assert "<th>Seq</th>" not in projection_source
+    assert "<th>Section</th>" not in projection_source
+    assert "Samples:" not in projection_source
+    assert "Sample sizes" in projection_source
+    assert "Estimated completion date" in projection_source
+    assert "Pending execution data" in projection_source
+    assert "Confirmed:" not in projection_source
+    assert "Rows:" not in projection_source
+    assert "Tokens:" not in projection_source
+
+    assert "Review required" not in projection_source
+    assert "Reopened / retest" not in projection_source
+    assert "runtime-console-matrix-meta-row" in css_source
+    assert "runtime-console-toolbar-actions" in css_source
+    assert "review required" not in projection_source_lower
+    assert "reopened / retest" not in projection_source_lower
+
+
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
     """TASK_192 prioritizes project source candidates before external/manual fallback."""
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(

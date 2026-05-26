@@ -8,7 +8,8 @@ import {
   buildMatrixProjectionViewModel,
   findMatrixProjectionToken,
   type MatrixProjectionTokenCell,
-  type MatrixProjectionStatusTone,
+  toVisibleMatrixProjectionStatusTone,
+  type MatrixProjectionVisibleStatusTone,
 } from "./projectWorkbenchMatrixProjectionSelectors";
 
 type PreviewState = "loading" | "ready" | "empty" | "not_ready" | "error";
@@ -18,13 +19,11 @@ type ProjectWorkbenchMatrixProjectionPanelProps = {
   onTokenSelect?: (token: MatrixProjectionTokenCell | null) => void;
 };
 
-const STATUS_LABELS: Record<MatrixProjectionStatusTone, string> = {
+const STATUS_LABELS: Record<MatrixProjectionVisibleStatusTone, string> = {
   not_started: "Not started",
   in_progress: "In progress",
-  passed: "Completed / pass",
+  passed: "Pass",
   failed: "Failed",
-  review: "Review required",
-  retest: "Reopened / retest",
 };
 
 export function ProjectWorkbenchMatrixProjectionPanel({
@@ -105,12 +104,6 @@ export function ProjectWorkbenchMatrixProjectionPanel({
 
       {state === "ready" && viewModel ? (
         <>
-          <div className="runtime-console-matrix-projection-summary">
-            <span>Confirmed: {viewModel.confirmedMatrixId}</span>
-            <span>Groups: {viewModel.groupColumns.length}</span>
-            <span>Rows: {viewModel.rows.length}</span>
-            <span>Tokens: {viewModel.totalTokenCount}</span>
-          </div>
           <div className="runtime-console-matrix-projection-legend" aria-label="Status color legend">
             {Object.entries(STATUS_LABELS).map(([tone, label]) => (
               <span className={`runtime-console-matrix-token-status-${tone}`} key={tone}>
@@ -122,46 +115,44 @@ export function ProjectWorkbenchMatrixProjectionPanel({
             <table className="runtime-console-matrix-projection-table">
               <thead>
                 <tr>
-                  <th>Seq</th>
                   <th>Test item</th>
-                  <th>Section</th>
                   {viewModel.groupColumns.map((group) => (
-                    <th key={group.groupKey}>
-                      <span>{group.groupLabel}</span>
-                      <small>{`Samples: ${group.sampleQuantityExpression}`}</small>
-                    </th>
+                    <th key={group.groupKey}>{group.groupLabel}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {viewModel.rows.map((row) => (
                   <tr key={row.rowKey}>
-                    <td>{row.sequence}</td>
-                    <td>{row.testItem}</td>
-                    <td>{row.section}</td>
+                    <th scope="row">{row.testItem}</th>
                     {viewModel.groupColumns.map((group) => {
                       const cells = row.cellsByGroupKey[group.groupKey] ?? [];
                       return (
                         <td key={`${row.rowKey}:${group.groupKey}`}>
                           {cells.length > 0 ? (
                             <div className="runtime-console-matrix-token-stack">
-                              {cells.map((cell) => (
-                                <button
-                                  className={`runtime-console-matrix-token runtime-console-matrix-token-status-${cell.statusTone}${
+                              {cells.map((cell) => {
+                                const visibleStatusTone = toVisibleMatrixProjectionStatusTone(
+                                  cell.statusTone
+                                );
+                                return (
+                                  <button
+                                    className={`runtime-console-matrix-token runtime-console-matrix-token-status-${visibleStatusTone}${
                                     selectedTokenReference === cell.tokenReference
                                       ? " is-selected"
                                       : ""
-                                  }`}
-                                  key={cell.tokenReference}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedTokenReference(cell.tokenReference);
-                                    onTokenSelect?.(cell);
-                                  }}
-                                >
-                                  {cell.rawToken}
-                                </button>
-                              ))}
+                                    }`}
+                                    key={cell.tokenReference}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedTokenReference(cell.tokenReference);
+                                      onTokenSelect?.(cell);
+                                    }}
+                                  >
+                                    {cell.rawToken}
+                                  </button>
+                                );
+                              })}
                             </div>
                           ) : (
                             <span className="runtime-console-matrix-empty-cell">-</span>
@@ -171,6 +162,26 @@ export function ProjectWorkbenchMatrixProjectionPanel({
                     })}
                   </tr>
                 ))}
+                <tr className="runtime-console-matrix-meta-row">
+                  <th scope="row">Sample sizes</th>
+                  {viewModel.groupColumns.map((group) => (
+                    <td key={`sample:${group.groupKey}`}>
+                      {group.sampleQuantityExpression || "-"}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="runtime-console-matrix-meta-row">
+                  <th scope="row">Estimated completion date</th>
+                  {viewModel.groupColumns.map((group) => (
+                    <td key={`eta:${group.groupKey}`}>Not scheduled</td>
+                  ))}
+                </tr>
+                <tr className="runtime-console-matrix-meta-row">
+                  <th scope="row">Status</th>
+                  {viewModel.groupColumns.map((group) => (
+                    <td key={`status:${group.groupKey}`}>Pending execution data</td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
