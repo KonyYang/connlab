@@ -39,11 +39,9 @@ function MatrixActionButton({
 }
 
 type MatrixWorkspaceActionGroupsProps = {
-  saveDraftDisabled: boolean;
-  saveDraftDisabledReason: string;
-  saveDraftBusy: boolean;
-  discardDraftDisabled: boolean;
-  discardDraftDisabledReason: string;
+  revertDraftVisible: boolean;
+  revertDraftDisabled: boolean;
+  revertDraftDisabledReason: string;
   changeSelectedGroupsDisabled: boolean;
   changeSelectedGroupsDisabledReason: string;
   confirmAsActiveDisabled: boolean;
@@ -57,8 +55,7 @@ type MatrixWorkspaceActionGroupsProps = {
   confirmRevisionBusy: boolean;
   showConfirmAsActive: boolean;
   showConfirmRevision: boolean;
-  onSaveDraft: () => void;
-  onDiscardDraftChanges: () => void;
+  onRevertDraftChanges: () => void;
   onChangeSelectedGroups: () => void;
   onChangeSourceMatrix: () => void;
   onConfirmAsActiveMatrix: () => void;
@@ -67,11 +64,9 @@ type MatrixWorkspaceActionGroupsProps = {
 };
 
 export function MatrixWorkspaceActionGroups({
-  saveDraftDisabled,
-  saveDraftDisabledReason,
-  saveDraftBusy,
-  discardDraftDisabled,
-  discardDraftDisabledReason,
+  revertDraftVisible,
+  revertDraftDisabled,
+  revertDraftDisabledReason,
   changeSelectedGroupsDisabled,
   changeSelectedGroupsDisabledReason,
   confirmAsActiveDisabled,
@@ -85,8 +80,7 @@ export function MatrixWorkspaceActionGroups({
   confirmRevisionBusy,
   showConfirmAsActive,
   showConfirmRevision,
-  onSaveDraft,
-  onDiscardDraftChanges,
+  onRevertDraftChanges,
   onChangeSelectedGroups,
   onChangeSourceMatrix,
   onConfirmAsActiveMatrix,
@@ -97,22 +91,6 @@ export function MatrixWorkspaceActionGroups({
     <section className="matrix-workspace-action-groups" aria-label="Matrix workspace actions">
       <div className="matrix-workspace-action-group" aria-label="Draft Actions">
         <h3>Draft Actions</h3>
-        <MatrixActionButton
-          label="Save Draft"
-          busyLabel="Saving..."
-          consequence={MATRIX_WORKSPACE_ACTION_COPY.saveDraft}
-          disabled={saveDraftDisabled}
-          disabledReason={saveDraftDisabledReason}
-          isBusy={saveDraftBusy}
-          onClick={onSaveDraft}
-        />
-        <MatrixActionButton
-          label="Discard Draft Changes"
-          consequence={MATRIX_WORKSPACE_ACTION_COPY.discardDraftChanges}
-          disabled={discardDraftDisabled}
-          disabledReason={discardDraftDisabledReason}
-          onClick={onDiscardDraftChanges}
-        />
         <MatrixActionButton
           label="Change Selected Groups"
           consequence={MATRIX_WORKSPACE_ACTION_COPY.changeSelectedGroups}
@@ -127,6 +105,15 @@ export function MatrixWorkspaceActionGroups({
           disabledReason=""
           onClick={onChangeSourceMatrix}
         />
+        {revertDraftVisible ? (
+          <MatrixActionButton
+            label="Revert to last saved draft"
+            consequence={MATRIX_WORKSPACE_ACTION_COPY.revertDraftChanges}
+            disabled={revertDraftDisabled}
+            disabledReason={revertDraftDisabledReason}
+            onClick={onRevertDraftChanges}
+          />
+        ) : null}
       </div>
 
       <div className="matrix-workspace-action-group" aria-label="Authority Actions">

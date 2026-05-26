@@ -3,10 +3,12 @@ import { type MatrixWorkspaceBannerModel } from "./matrixWorkspaceClarityModel";
 
 type MatrixWorkspaceStateBannerProps = {
   model: MatrixWorkspaceBannerModel;
+  saveStatusLabel: string;
 };
 
 export function MatrixWorkspaceStateBanner({
   model,
+  saveStatusLabel,
 }: MatrixWorkspaceStateBannerProps): ReactElement {
   return (
     <section
@@ -16,6 +18,10 @@ export function MatrixWorkspaceStateBanner({
       <div>
         <span>Current State</span>
         <strong>{model.title}</strong>
+      </div>
+      <div>
+        <span>Draft Save Status</span>
+        <strong>{saveStatusLabel}</strong>
       </div>
       <p>{model.consequence}</p>
     </section>

@@ -207,7 +207,7 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     cleanup();
   });
 
-  it("disables confirm when unsaved and re-enables after save", async () => {
+  it("auto-saves unsaved edits and re-enables confirm after save", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     await waitFor(() => {
@@ -220,21 +220,41 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     expect(createRevisionButton.hasAttribute("disabled")).toBe(false);
 
     const rowItem = screen.getByLabelText("Row 1 test item");
+    let resolveSave: ((value: ReturnType<typeof buildRevisionDraft>) => void) | undefined;
+    apiMocks.saveProjectMatrixDraft.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve as (value: ReturnType<typeof buildRevisionDraft>) => void;
+        })
+    );
     fireEvent.change(rowItem, { target: { value: "Visual Examination Updated" } });
 
     await waitFor(() => {
       expect(confirmButton.hasAttribute("disabled")).toBe(true);
-      expect(confirmButton.getAttribute("title")).toBe("Save changes before confirming revision.");
+      expect(confirmButton.getAttribute("title")).toBeTruthy();
       expect(createRevisionButton.hasAttribute("disabled")).toBe(true);
-      expect(createRevisionButton.getAttribute("title")).toBe("Save changes before creating revision draft.");
+      expect(createRevisionButton.getAttribute("title")).toBeTruthy();
     });
-
-    const saveButton = screen.getByRole("button", { name: "Save Draft" });
-    fireEvent.click(saveButton);
+    expect(screen.getByRole("button", { name: "Revert to last saved draft" })).toBeTruthy();
 
     await waitFor(() => {
       expect(apiMocks.saveProjectMatrixDraft).toHaveBeenCalledTimes(1);
     });
+    expect(screen.queryByRole("button", { name: "Save Draft" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Discard Draft Changes" })).toBeNull();
+
+    await waitFor(() => {
+      expect(typeof resolveSave).toBe("function");
+    });
+    if (typeof resolveSave !== "function") {
+      throw new Error("Missing deferred save resolver in auto-save test.");
+    }
+    resolveSave(
+      buildRevisionDraft({
+        testItem: "Visual Examination Updated",
+        updatedAt: "2026-05-23T00:01:00Z",
+      })
+    );
 
     await waitFor(() => {
       expect(confirmButton.hasAttribute("disabled")).toBe(false);
@@ -242,8 +262,33 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     });
   });
 
-  it("disables confirm after successful confirmation", async () => {
+  it("shows save failure status and blocks confirm when auto-save rejects", async () => {
+    apiMocks.saveProjectMatrixDraft.mockRejectedValueOnce(new Error("save failed"));
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Revision" });
+    fireEvent.change(screen.getByLabelText("Row 1 test item"), {
+      target: { value: "Visual Examination Reject Case" },
+    });
+
+    await waitFor(() => {
+      expect(apiMocks.saveProjectMatrixDraft).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Save failed. Retry before confirming.").length).toBeGreaterThan(0);
+      expect(confirmButton.hasAttribute("disabled")).toBe(true);
+      expect(screen.getByRole("button", { name: "Revert to last saved draft" })).toBeTruthy();
+    });
+  });
+
+  it("confirms revision and hides initial confirm action", async () => {
+    const onBackToWorkbench = vi.fn();
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
 
     await waitFor(() => {
       expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
@@ -256,10 +301,10 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     });
 
     await waitFor(() => {
+      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
       expect(screen.getByText("Current Active Matrix Authority")).toBeTruthy();
-      const confirmAsActiveButton = screen.getByRole("button", { name: "Confirm As Active Matrix" });
-      expect(confirmAsActiveButton.hasAttribute("disabled")).toBe(true);
-      expect(confirmAsActiveButton.getAttribute("title")).toBe("This matrix is already active.");
+      expect(screen.queryByRole("button", { name: "Confirm As Active Matrix" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Create Revision Draft" })).toBeTruthy();
     });
   });
 
@@ -297,8 +342,9 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     expect(screen.getByText("Changes are not active until confirmed")).toBeTruthy();
     expect(screen.getByLabelText("Draft Actions")).toBeTruthy();
     expect(screen.getByLabelText("Authority Actions")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Discard Draft Changes" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save Draft" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Discard Draft Changes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Revert to last saved draft" })).toBeNull();
     expect(screen.getByRole("button", { name: "Change Selected Groups" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Change Source Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create Revision Draft" })).toBeTruthy();
@@ -612,7 +658,7 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(1);
   });
 
-  it("cancels import session and disables change-selected-groups", async () => {
+  it("cancels import session and still allows group selection from current draft", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => {
       expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
@@ -637,10 +683,12 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     });
 
     const changeSelectedGroupsButton = screen.getByRole("button", { name: "Change Selected Groups" });
-    expect(changeSelectedGroupsButton.hasAttribute("disabled")).toBe(true);
-    expect(changeSelectedGroupsButton.getAttribute("title")).toBe(
-      "Source preview session unavailable. Use Change Source Matrix to start a new source session."
-    );
+    expect(changeSelectedGroupsButton.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(changeSelectedGroupsButton);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
+      expect(screen.getByText("Source: Current persisted draft")).toBeTruthy();
+    });
   });
 
   it("clears stale preview after reparse failure and guides manual setup", async () => {
@@ -705,9 +753,9 @@ describe("MatrixEditorWorkspace revision confirm guard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Replace" }));
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Import Selection Mode" })).toBeTruthy();
-      expect(screen.getByText("No matrix detected. Continue from default editor and add groups manually.")).toBeTruthy();
+      expect(screen.getByText("Source: Current persisted draft")).toBeTruthy();
     });
-    expect(screen.queryByText("Group A")).toBeNull();
+    expect(screen.getByText("A")).toBeTruthy();
   });
 
   it("keeps the PDF preview on the requested page when reparse finds no matching matrix", async () => {

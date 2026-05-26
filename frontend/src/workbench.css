@@ -1811,7 +1811,6 @@
   padding: 14px;
 }
 
-.runtime-console-matrix-projection-header,
 .runtime-console-matrix-projection-summary,
 .runtime-console-matrix-projection-legend {
   display: flex;
@@ -1821,21 +1820,14 @@
   flex-wrap: wrap;
 }
 
-.runtime-console-matrix-projection-header h3,
-.runtime-console-matrix-projection-header p {
-  margin: 0;
-}
-
-.runtime-console-matrix-projection-header > span,
+.runtime-console-matrix-projection-note,
 .runtime-console-matrix-projection-summary span {
   color: var(--color-ink-muted);
   font-size: 12px;
 }
 
-.runtime-console-matrix-projection-header-actions {
-  display: grid;
-  justify-items: end;
-  gap: 6px;
+.runtime-console-matrix-projection-note {
+  margin: 0;
 }
 
 .runtime-console-test-record-generation {
@@ -1863,19 +1855,6 @@
   margin: 0;
   color: var(--color-ink-muted);
   font-size: 12px;
-}
-
-.runtime-console-matrix-projection-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 12px;
-  min-width: 0;
-}
-
-.runtime-console-matrix-projection-main {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
 }
 
 .runtime-console-matrix-projection-table-wrap {
@@ -1970,6 +1949,12 @@
 .runtime-console-matrix-empty-cell,
 .runtime-console-matrix-projection-empty {
   color: var(--color-ink-muted);
+}
+
+.runtime-console-matrix-projection-selection {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
 }
 
 .runtime-console-matrix-token-detail {
@@ -2273,6 +2258,15 @@
   font-weight: 800;
 }
 
+.runtime-console-step-tools button:disabled,
+.runtime-console-step-actions button:disabled,
+.runtime-console-save-button:disabled {
+  color: var(--color-ink-muted);
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  cursor: not-allowed;
+}
+
 .runtime-console-step-status-card {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2331,6 +2325,12 @@
 .runtime-console-step-tabs button.is-active {
   border-bottom-color: var(--color-primary);
   color: var(--color-primary-strong);
+}
+
+.runtime-console-step-tabs button:disabled {
+  color: var(--color-ink-muted);
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .runtime-console-data-summary,
@@ -4619,12 +4619,6 @@
 
 @media (max-width: 900px) {
   .matrix-editor-selection-summary {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 1100px) {
-  .runtime-console-matrix-projection-layout {
     grid-template-columns: 1fr;
   }
 }

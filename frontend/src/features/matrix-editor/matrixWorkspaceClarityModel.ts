@@ -8,8 +8,7 @@ export type MatrixWorkspaceBannerModel = {
 };
 
 export type MatrixActionCopy = {
-  saveDraft: string;
-  discardDraftChanges: string;
+  revertDraftChanges: string;
   changeSelectedGroups: string;
   changeSourceMatrix: string;
   confirmAsActiveMatrix: string;
@@ -18,10 +17,9 @@ export type MatrixActionCopy = {
 };
 
 export const MATRIX_WORKSPACE_ACTION_COPY: MatrixActionCopy = {
-  saveDraft: "Save current edits only. Downstream outputs keep using the active authority until confirmation.",
-  discardDraftChanges: "Discard unsaved edits and reload the last saved draft.",
+  revertDraftChanges: "Discard local unsaved edits and reload the last saved draft.",
   changeSelectedGroups: "Adjust execution groups for this matrix configuration. This is not a new source import.",
-  changeSourceMatrix: "Choose a different source matrix candidate. Existing draft edits may need review.",
+  changeSourceMatrix: "Replace the current source matrix session. Unsaved draft edits may be discarded.",
   confirmAsActiveMatrix: "Publish this saved draft as the current authority used by Project Workbench and Test Record generation.",
   createRevisionDraft: "Start an editable copy from the active authority. The current active matrix remains in use.",
   confirmRevision: "Replace the active authority with this saved revision draft.",

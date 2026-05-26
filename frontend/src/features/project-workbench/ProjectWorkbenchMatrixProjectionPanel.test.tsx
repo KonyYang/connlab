@@ -5,8 +5,6 @@ import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixP
 
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixTestRecordPreview: vi.fn(),
-  generateConfirmedMatrixTestRecordDraft: vi.fn(),
-  fetchConfirmedMatrixAuthorityHistory: vi.fn(),
 }));
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -14,8 +12,6 @@ vi.mock("../../api/client", async (importOriginal) => {
   return {
     ...actual,
     fetchConfirmedMatrixTestRecordPreview: apiMocks.fetchConfirmedMatrixTestRecordPreview,
-    generateConfirmedMatrixTestRecordDraft: apiMocks.generateConfirmedMatrixTestRecordDraft,
-    fetchConfirmedMatrixAuthorityHistory: apiMocks.fetchConfirmedMatrixAuthorityHistory,
   };
 });
 
@@ -25,15 +21,8 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     vi.clearAllMocks();
   });
 
-  function mockHistory(): void {
-    apiMocks.fetchConfirmedMatrixAuthorityHistory.mockResolvedValue({
-      project_id: "P1",
-      entries: [],
-    });
-  }
-
   it("renders confirmed groups as matrix columns and step tokens as clickable cells", async () => {
-    mockHistory();
+    const onTokenSelect = vi.fn();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -76,14 +65,14 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
       ],
     });
 
-    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" onTokenSelect={onTokenSelect} />);
 
     await waitFor(() => {
       expect(apiMocks.fetchConfirmedMatrixTestRecordPreview).toHaveBeenCalledWith("P1");
     });
-    expect(await screen.findByText("Matrix execution projection")).toBeTruthy();
-    expect(screen.getByText("Authority Change History")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Generate Test Record Draft" })).toBeTruthy();
+    expect(await screen.findByText("Read-only authority view")).toBeTruthy();
+    expect(screen.queryByText("Authority Change History")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
     expect(screen.getByText("Confirmed: cm-1")).toBeTruthy();
     expect(screen.getByText("Group 1")).toBeTruthy();
     expect(screen.getByText("Group 2")).toBeTruthy();
@@ -92,17 +81,15 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
 
     const tokens = screen.getAllByRole("button", { name: "1" });
     fireEvent.click(tokens[0]);
-    const detail = screen.getByLabelText("Record Step Workspace");
-    expect(detail).toBeTruthy();
-    expect(within(detail).getByText("Visual")).toBeTruthy();
-    expect(within(detail).getByText("No damage")).toBeTruthy();
-    expect(within(detail).getByText("Record draft")).toBeTruthy();
-    expect(within(detail).getByText("Evidence / data")).toBeTruthy();
-    expect(within(detail).getByText("Review")).toBeTruthy();
+    expect(screen.queryByLabelText("Record Step Workspace")).toBeNull();
+    expect(screen.getByText("Selected token: Group 1 / 1")).toBeTruthy();
+    expect(onTokenSelect.mock.calls.length).toBeGreaterThanOrEqual(2);
+    const lastCall = onTokenSelect.mock.calls[onTokenSelect.mock.calls.length - 1];
+    expect(lastCall?.[0]?.groupLabel).toBe("Group 1");
+    expect(lastCall?.[0]?.rawToken).toBe("1");
   });
 
   it("renders not-ready state for missing active confirmed matrix", async () => {
-    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockRejectedValue(
       new ApiRequestError("Not Found", 404, null)
     );
@@ -112,13 +99,10 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(
       await screen.findByText("No active confirmed matrix yet. Confirm Matrix authority first.")
     ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Generate Test Record Draft" }).hasAttribute("disabled")
-    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
   });
 
   it("merges same row context across groups even when token sequence differs", async () => {
-    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -163,7 +147,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
 
     render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
 
-    expect(await screen.findByText("Matrix execution projection")).toBeTruthy();
+    expect(await screen.findByText("Read-only authority view")).toBeTruthy();
     const table = screen.getByRole("table");
     const bodyRows = within(table).getAllByRole("row").slice(1);
     expect(bodyRows).toHaveLength(1);
@@ -173,7 +157,6 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("renders empty state for active matrix with no previewable tokens", async () => {
-    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -189,7 +172,6 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("renders error state for unexpected API failure", async () => {
-    mockHistory();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockRejectedValue(
       new Error("boom")
     );

@@ -1,8 +1,8 @@
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { ProjectStatusBadge } from "../../components/project/ProjectStatusBadge";
 import type { Project, RuntimeProjectionSnapshotResponse } from "../../api/client";
-import { ProjectWorkbenchMatrixOverview } from "./ProjectWorkbenchMatrixOverview";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
+import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { WorkbenchBaselineItem } from "./useProjectWorkbenchModel";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
@@ -42,20 +42,42 @@ const MOCK_STEP_DETAILS: MockStepDetail[] = [
   { reference: "mock:G9:6", group: "Group 9", token: "6", title: "Step 6 - Dielectric Withstanding Voltage", status: "PASS" }
 ];
 
+const STEP_STATUS_BY_TONE: Record<
+  MatrixProjectionTokenCell["statusTone"],
+  MockStepDetail["status"] | "REVIEW" | "RETEST"
+> = {
+  not_started: "NOT STARTED",
+  in_progress: "IN PROGRESS",
+  passed: "PASS",
+  failed: "FAILED",
+  review: "REVIEW",
+  retest: "RETEST",
+};
+
+const MOCK_STATUS_BY_TONE: Record<
+  MatrixProjectionTokenCell["statusTone"],
+  MockStepDetail["status"]
+> = {
+  not_started: "NOT STARTED",
+  in_progress: "IN PROGRESS",
+  passed: "PASS",
+  failed: "FAILED",
+  review: "IN PROGRESS",
+  retest: "IN PROGRESS",
+};
+
 export function ProjectWorkbenchLayout({
   runtimeModel,
   project,
   onBack,
   onOpenMatrixEditor
 }: ProjectWorkbenchLayoutProps): ReactElement {
+  const [selectedProjectionToken, setSelectedProjectionToken] =
+    useState<MatrixProjectionTokenCell | null>(null);
   const {
     baselineItems,
     latestLtr,
     matrixAuthorityDraft,
-    matrixDraft,
-    matrixDraftError,
-    matrixDraftLoading,
-    runtimeProjectionError,
     runtimeProjectionLoading,
     runtimeProjectionSnapshot,
     runtimeAuthoritySync,
@@ -63,14 +85,27 @@ export function ProjectWorkbenchLayout({
     setRuntimeSelectedTokenReference
   } = runtimeModel;
 
-  const projectionDraft = matrixAuthorityDraft ?? matrixDraft;
   const runtimeMetrics = buildRuntimeMetrics(runtimeProjectionSnapshot);
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
-  const mockStepDetail =
+  const selectedProjectionStatus = selectedProjectionToken
+    ? STEP_STATUS_BY_TONE[selectedProjectionToken.statusTone]
+    : null;
+  const fallbackMockStepDetail =
     MOCK_STEP_DETAILS.find((item) => item.reference === runtimeSelectedTokenReference) ?? DEFAULT_STEP_DETAIL;
-  const activeStepTitle = selectedWorkspace?.selected_token?.test_item_label
-    ? `Step ${selectedWorkspace.selected_token.raw_token} - ${selectedWorkspace.selected_token.test_item_label}`
-    : mockStepDetail.title;
+  const mockStepDetail = selectedProjectionToken
+    ? {
+      ...fallbackMockStepDetail,
+      group: selectedProjectionToken.groupLabel,
+      token: selectedProjectionToken.rawToken,
+      title: `Step ${selectedProjectionToken.rawToken} - ${selectedProjectionToken.testItem}`,
+      status: MOCK_STATUS_BY_TONE[selectedProjectionToken.statusTone],
+    }
+    : fallbackMockStepDetail;
+  const activeStepTitle = selectedProjectionToken
+    ? `Step ${selectedProjectionToken.rawToken} - ${selectedProjectionToken.testItem}`
+    : selectedWorkspace?.selected_token?.test_item_label
+      ? `Step ${selectedWorkspace.selected_token.raw_token} - ${selectedWorkspace.selected_token.test_item_label}`
+      : mockStepDetail.title;
 
   return (
     <>
@@ -199,30 +234,17 @@ export function ProjectWorkbenchLayout({
           <div className="runtime-console-main">
             <div className="runtime-console-toolbar">
               <div>
-                <p className="eyebrow">Matrix Overview</p>
-                <h3>Runtime execution map</h3>
+                <p className="eyebrow">Matrix Projection</p>
+                <h3>Matrix execution projection</h3>
               </div>
               <span className="runtime-console-muted">
                 {runtimeProjectionLoading ? "Loading projection..." : "Read-only projection"}
               </span>
             </div>
-            {matrixDraftLoading ? <p className="fine-print">Loading Matrix authority...</p> : null}
-            {matrixDraftError ? <p className="error">Unable to load Matrix authority: {matrixDraftError}</p> : null}
-            {runtimeProjectionError ? <p className="error">Runtime projection unavailable: {runtimeProjectionError}</p> : null}
-            {projectionDraft && runtimeProjectionSnapshot ? (
-              <ProjectWorkbenchMatrixOverview
-                draft={projectionDraft}
-                selectedTokenReference={runtimeSelectedTokenReference}
-                snapshot={runtimeProjectionSnapshot}
-                onTokenSelect={setRuntimeSelectedTokenReference}
-              />
-            ) : (
-              <ProjectWorkbenchMatrixOverview
-                draft={projectionDraft ?? buildPlaceholderDraft(project.project_id)}
-                selectedTokenReference={runtimeSelectedTokenReference ?? DEFAULT_STEP_DETAIL.reference}
-                onTokenSelect={setRuntimeSelectedTokenReference}
-              />
-            )}
+            <ProjectWorkbenchMatrixProjectionPanel
+              projectId={project.project_id}
+              onTokenSelect={setSelectedProjectionToken}
+            />
           </div>
 
           <aside className="runtime-console-step-workspace" aria-label="Step workspace">
@@ -234,15 +256,21 @@ export function ProjectWorkbenchLayout({
               </div>
               <div className="runtime-console-step-tools">
                 <button type="button" onClick={onOpenMatrixEditor}>Matrix</button>
-                <button type="button">Image</button>
-                <button type="button">Record</button>
+                <button type="button" disabled title="Planned future action in Step Workspace.">
+                  Image
+                </button>
+                <button type="button" disabled title="Planned future action in Step Workspace.">
+                  Record
+                </button>
               </div>
             </header>
             <section className="runtime-console-step-status-card">
               <div>
                 <span>Status</span>
                 <strong className={`runtime-console-step-status-${mockStepDetail.status.toLowerCase().replace(/\s+/g, "-")}`}>
-                  {selectedWorkspace?.selected_token?.lifecycle_projection?.toUpperCase() ?? mockStepDetail.status}
+                  {selectedProjectionStatus
+                    ?? selectedWorkspace?.selected_token?.lifecycle_projection?.toUpperCase()
+                    ?? mockStepDetail.status}
                 </strong>
               </div>
               <div>
@@ -256,12 +284,55 @@ export function ProjectWorkbenchLayout({
             </section>
             <nav className="runtime-console-step-tabs" aria-label="Step workspace tabs">
               {["Overview", "Test data", "Images/Evidence (4)", "Charts (1)", "Attachments (2)", "Report sync", "History"].map((item, index) => (
-                <button className={index === 0 ? "is-active" : ""} key={item} type="button">
+                <button
+                  className={index === 0 ? "is-active" : ""}
+                  key={item}
+                  type="button"
+                  disabled={index !== 0}
+                  title={index === 0 ? undefined : "Planned future tab in Step Workspace."}
+                >
                   {item}
                 </button>
               ))}
             </nav>
-            {selectedWorkspace?.selected_token ? (
+            {selectedProjectionToken ? (
+              <>
+                <dl className="runtime-console-step-facts">
+                  <div>
+                    <dt>Token</dt>
+                    <dd>{selectedProjectionToken.rawToken}</dd>
+                  </div>
+                  <div>
+                    <dt>Group</dt>
+                    <dd>{selectedProjectionToken.groupLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Section</dt>
+                    <dd>{selectedProjectionToken.section}</dd>
+                  </div>
+                  <div>
+                    <dt>Lifecycle</dt>
+                    <dd>{STEP_STATUS_BY_TONE[selectedProjectionToken.statusTone]}</dd>
+                  </div>
+                  <div>
+                    <dt>Evidence</dt>
+                    <dd>Not linked in this projection workspace</dd>
+                  </div>
+                  <div>
+                    <dt>Report sync</dt>
+                    <dd>Not linked in this projection workspace</dd>
+                  </div>
+                </dl>
+                <div className="runtime-console-step-detail">
+                  <span>Method</span>
+                  <p>{selectedProjectionToken.method}</p>
+                  <span>Condition</span>
+                  <p>{selectedProjectionToken.condition}</p>
+                  <span>Requirement</span>
+                  <p>{selectedProjectionToken.requirement}</p>
+                </div>
+              </>
+            ) : selectedWorkspace?.selected_token ? (
               <>
                 <dl className="runtime-console-step-facts">
                   <div>
@@ -320,7 +391,6 @@ export function ProjectWorkbenchLayout({
         </section>
 
         <section className="runtime-console-bottom">
-          <ProjectWorkbenchMatrixProjectionPanel projectId={project.project_id} />
           <RuntimeAttentionSurface snapshot={runtimeProjectionSnapshot} />
           <RecentActivitySurface />
           <FeeEstimateSurface />
@@ -560,25 +630,6 @@ function buildRuntimeMetrics(snapshot: RuntimeProjectionSnapshotResponse | null)
       tone: "warning"
     }
   ];
-}
-
-function buildPlaceholderDraft(projectId: string) {
-  return {
-    draft_id: "placeholder-runtime-console",
-    project_id: projectId,
-    source_document_path: "placeholder://runtime-console",
-    source_document_name: "Runtime Console placeholder Matrix",
-    source_format: "placeholder",
-    status: "draft" as const,
-    version: 1,
-    payload: {
-      groups: [],
-      warnings: [],
-      blockers: []
-    },
-    created_at: "2026-05-16T00:00:00",
-    updated_at: "2026-05-16T00:00:00"
-  };
 }
 
 function countProjectionValue(

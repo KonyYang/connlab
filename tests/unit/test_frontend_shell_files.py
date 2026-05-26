@@ -389,7 +389,7 @@ def test_project_workbench_uses_sequential_stepper() -> None:
     if "runtime-console-shell" in layout_source:
         assert "WorkflowStepper" not in workbench_source
         assert "NextActionPanel" not in workbench_source
-        assert "Runtime Console" in layout_source
+        assert 'aria-label="Project runtime console"' in layout_source
         assert ".runtime-console-shell" in styles_source
         return
 
@@ -3932,15 +3932,13 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
 
     assert "ProjectWorkbenchMatrixProjectionPanel" in layout_source
-    assert "<ProjectWorkbenchMatrixProjectionPanel projectId={project.project_id} />" in layout_source
+    assert "projectId={project.project_id}" in layout_source
+    assert "onTokenSelect={setSelectedProjectionToken}" in layout_source
     assert "<TestRecordPreviewSmokePanel projectId={project.project_id} />" not in layout_source
     assert "fetchConfirmedMatrixTestRecordPreview" in projection_source
-    assert "Matrix execution projection" in projection_source
+    assert "Matrix execution projection" in layout_source or "Matrix execution projection" in projection_source
     assert "Read-only authority view" in projection_source
-    assert (
-        "Matrix token detail" in projection_source
-        or "RecordStepWorkspacePanel" in projection_source
-    )
+    assert "runtime-console-matrix-token-stack" in projection_source
     assert "buildMatrixProjectionViewModel" in selector_source
     assert "deriveMatrixProjectionStatusTone" in selector_source
     assert "runtime-console-matrix-projection-table" in styles_source
@@ -3968,7 +3966,7 @@ def test_task270_record_step_workspace_panel_is_wired() -> None:
     )
     workspace_source_lower = workspace_source.lower()
 
-    assert "RecordStepWorkspacePanel" in projection_source
+    assert "RecordStepWorkspacePanel" not in projection_source
     assert "Record Step Workspace" in workspace_source
     for required_copy in [
         "Read-only step context",
@@ -4015,7 +4013,7 @@ def test_task271_test_record_word_generation_v1_is_wired() -> None:
 
     assert "generateConfirmedMatrixTestRecordDraft" in api_source
     assert "/confirmed-matrix/test-record-draft/generate" in api_source
-    assert "TestRecordDraftGenerationButton" in projection_source
+    assert "TestRecordDraftGenerationButton" not in projection_source
     assert "Generate Test Record Draft" in button_source
     assert "Confirm Matrix authority before generating a Test Record draft." in button_source
     assert "runtime-console-test-record-generation" in styles_source
@@ -4051,7 +4049,7 @@ def test_task272_lightweight_authority_change_history_is_wired() -> None:
 
     assert "fetchConfirmedMatrixAuthorityHistory" in api_source
     assert "/confirmed-matrix/authority-history" in api_source
-    assert "AuthorityChangeHistoryPanel" in projection_source
+    assert "AuthorityChangeHistoryPanel" not in projection_source
     assert "Authority Change History" in history_source
     assert "Record draft may need regeneration." in history_source
     assert "<button" not in history_source
@@ -4065,6 +4063,76 @@ def test_task272_lightweight_authority_change_history_is_wired() -> None:
         "fee",
     ]:
         assert forbidden_copy not in lower_history
+
+
+def test_task274_workbench_step_workspace_refocus_is_wired() -> None:
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    task_source = (
+        FRONTEND_ROOT.parent / "tasks" / "TASK_274_WORKBENCH_STEP_WORKSPACE_REFOCUS.md"
+    ).read_text(encoding="utf-8")
+    plan_source = (
+        FRONTEND_ROOT.parent / "docs" / "task_274_workbench_step_workspace_refocus_plan.md"
+    ).read_text(encoding="utf-8")
+
+    assert "RecordStepWorkspacePanel" not in projection_source
+    assert "AuthorityChangeHistoryPanel" not in projection_source
+    assert "TestRecordDraftGenerationButton" not in projection_source
+    assert "onTokenSelect={setSelectedProjectionToken}" in layout_source
+    assert "runtime-console-step-workspace" in layout_source
+    assert "Planned future action in Step Workspace." in layout_source
+    assert "Planned future tab in Step Workspace." in layout_source
+    assert "No backend files should be modified." in task_source
+    assert "git diff --name-only -- backend" in plan_source
+
+
+def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    action_groups_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceActionGroups.tsx"
+    ).read_text(encoding="utf-8")
+    banner_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceStateBanner.tsx"
+    ).read_text(encoding="utf-8")
+    clarity_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixWorkspaceClarityModel.ts"
+    ).read_text(encoding="utf-8")
+    session_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixImportSessionModel.ts"
+    ).read_text(encoding="utf-8")
+    workbench_layout_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "Unsaved changes" in matrix_editor_source
+    assert "Saving..." in matrix_editor_source
+    assert "Save failed. Retry before confirming." in matrix_editor_source
+    assert "Revert to last saved draft" in action_groups_source
+    assert "Save Draft" not in action_groups_source
+    assert "Discard Draft Changes" not in action_groups_source
+    assert "Draft Save Status" in banner_source
+    assert "Replace the current source matrix session. Unsaved draft edits may be discarded." in clarity_model_source
+    assert "No group selection source is available. Import source matrix or build draft groups first." in session_model_source
+    assert "ProjectWorkbenchMatrixProjectionPanel" in workbench_layout_source
+    assert "ProjectWorkbenchMatrixOverview" not in workbench_layout_source
 
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:

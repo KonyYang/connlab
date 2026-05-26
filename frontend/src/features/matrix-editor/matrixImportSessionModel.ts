@@ -7,15 +7,17 @@ export type MatrixImportSessionActionState = {
 };
 
 export function buildMatrixImportSessionActionState(
-  preview: MatrixPreviewResponse | null
+  preview: MatrixPreviewResponse | null,
+  hasDraftSelectionSource: boolean
 ): MatrixImportSessionActionState {
   const hasLivePreview = preview !== null;
+  const canChangeSelectedGroups = hasLivePreview || hasDraftSelectionSource;
   return {
     hasLivePreview,
-    changeSelectedGroupsDisabled: !hasLivePreview,
-    changeSelectedGroupsDisabledReason: hasLivePreview
+    changeSelectedGroupsDisabled: !canChangeSelectedGroups,
+    changeSelectedGroupsDisabledReason: canChangeSelectedGroups
       ? ""
-      : "Source preview session unavailable. Use Change Source Matrix to start a new source session.",
+      : "No group selection source is available. Import source matrix or build draft groups first.",
   };
 }
 

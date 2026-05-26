@@ -7,16 +7,15 @@ import {
 import {
   buildMatrixProjectionViewModel,
   findMatrixProjectionToken,
+  type MatrixProjectionTokenCell,
   type MatrixProjectionStatusTone,
 } from "./projectWorkbenchMatrixProjectionSelectors";
-import { RecordStepWorkspacePanel } from "./RecordStepWorkspacePanel";
-import { TestRecordDraftGenerationButton } from "./TestRecordDraftGenerationButton";
-import { AuthorityChangeHistoryPanel } from "./AuthorityChangeHistoryPanel";
 
 type PreviewState = "loading" | "ready" | "empty" | "not_ready" | "error";
 
 type ProjectWorkbenchMatrixProjectionPanelProps = {
   projectId: string;
+  onTokenSelect?: (token: MatrixProjectionTokenCell | null) => void;
 };
 
 const STATUS_LABELS: Record<MatrixProjectionStatusTone, string> = {
@@ -30,6 +29,7 @@ const STATUS_LABELS: Record<MatrixProjectionStatusTone, string> = {
 
 export function ProjectWorkbenchMatrixProjectionPanel({
   projectId,
+  onTokenSelect,
 }: ProjectWorkbenchMatrixProjectionPanelProps): ReactElement {
   const [state, setState] = useState<PreviewState>("loading");
   const [preview, setPreview] = useState<ConfirmedMatrixTestRecordPreview | null>(
@@ -44,6 +44,7 @@ export function ProjectWorkbenchMatrixProjectionPanel({
     setState("loading");
     setPreview(null);
     setSelectedTokenReference(null);
+    onTokenSelect?.(null);
     void fetchConfirmedMatrixTestRecordPreview(projectId)
       .then((response) => {
         if (!active) {
@@ -66,7 +67,7 @@ export function ProjectWorkbenchMatrixProjectionPanel({
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [onTokenSelect, projectId]);
 
   const viewModel = useMemo(
     () =>
@@ -85,19 +86,7 @@ export function ProjectWorkbenchMatrixProjectionPanel({
 
   return (
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
-      <header className="runtime-console-matrix-projection-header">
-        <div>
-          <p className="eyebrow">Confirmed Matrix Projection</p>
-          <h3>Matrix execution projection</h3>
-        </div>
-        <div className="runtime-console-matrix-projection-header-actions">
-          <span>Read-only authority view</span>
-          <TestRecordDraftGenerationButton
-            projectId={projectId}
-            ready={state === "ready" && !!viewModel}
-          />
-        </div>
-      </header>
+      <p className="runtime-console-matrix-projection-note">Read-only authority view</p>
 
       {state === "loading" ? <p className="fine-print">Loading Matrix projection...</p> : null}
       {state === "not_ready" ? (
@@ -114,87 +103,83 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         <p className="error">Unable to load Matrix projection. Try again after confirming Matrix authority.</p>
       ) : null}
 
-      <AuthorityChangeHistoryPanel projectId={projectId} />
-
       {state === "ready" && viewModel ? (
-        <div className="runtime-console-matrix-projection-layout">
-          <div className="runtime-console-matrix-projection-main">
-            <div className="runtime-console-matrix-projection-summary">
-              <span>Confirmed: {viewModel.confirmedMatrixId}</span>
-              <span>Groups: {viewModel.groupColumns.length}</span>
-              <span>Rows: {viewModel.rows.length}</span>
-              <span>Tokens: {viewModel.totalTokenCount}</span>
-            </div>
-            <div className="runtime-console-matrix-projection-legend" aria-label="Status color legend">
-              {Object.entries(STATUS_LABELS).map(([tone, label]) => (
-                <span className={`runtime-console-matrix-token-status-${tone}`} key={tone}>
-                  {label}
-                </span>
-              ))}
-            </div>
-            <div className="runtime-console-matrix-projection-table-wrap">
-              <table className="runtime-console-matrix-projection-table">
-                <thead>
-                  <tr>
-                    <th>Seq</th>
-                    <th>Test item</th>
-                    <th>Section</th>
-                    {viewModel.groupColumns.map((group) => (
-                      <th key={group.groupKey}>
-                        <span>{group.groupLabel}</span>
-                        <small>{`Samples: ${group.sampleQuantityExpression}`}</small>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewModel.rows.map((row) => (
-                    <tr key={row.rowKey}>
-                      <td>{row.sequence}</td>
-                      <td>{row.testItem}</td>
-                      <td>{row.section}</td>
-                      {viewModel.groupColumns.map((group) => {
-                        const cells = row.cellsByGroupKey[group.groupKey] ?? [];
-                        return (
-                          <td key={`${row.rowKey}:${group.groupKey}`}>
-                            {cells.length > 0 ? (
-                              <div className="runtime-console-matrix-token-stack">
-                                {cells.map((cell) => (
-                                  <button
-                                    className={`runtime-console-matrix-token runtime-console-matrix-token-status-${cell.statusTone}${
-                                      selectedTokenReference === cell.tokenReference
-                                        ? " is-selected"
-                                        : ""
-                                    }`}
-                                    key={cell.tokenReference}
-                                    type="button"
-                                    onClick={() =>
-                                      setSelectedTokenReference(cell.tokenReference)
-                                    }
-                                  >
-                                    {cell.rawToken}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="runtime-console-matrix-empty-cell">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <>
+          <div className="runtime-console-matrix-projection-summary">
+            <span>Confirmed: {viewModel.confirmedMatrixId}</span>
+            <span>Groups: {viewModel.groupColumns.length}</span>
+            <span>Rows: {viewModel.rows.length}</span>
+            <span>Tokens: {viewModel.totalTokenCount}</span>
           </div>
-          <RecordStepWorkspacePanel
-            selectedToken={selectedToken}
-            statusLabel={
-              selectedToken ? STATUS_LABELS[selectedToken.statusTone] : "Not selected"
-            }
-          />
-        </div>
+          <div className="runtime-console-matrix-projection-legend" aria-label="Status color legend">
+            {Object.entries(STATUS_LABELS).map(([tone, label]) => (
+              <span className={`runtime-console-matrix-token-status-${tone}`} key={tone}>
+                {label}
+              </span>
+            ))}
+          </div>
+          <div className="runtime-console-matrix-projection-table-wrap">
+            <table className="runtime-console-matrix-projection-table">
+              <thead>
+                <tr>
+                  <th>Seq</th>
+                  <th>Test item</th>
+                  <th>Section</th>
+                  {viewModel.groupColumns.map((group) => (
+                    <th key={group.groupKey}>
+                      <span>{group.groupLabel}</span>
+                      <small>{`Samples: ${group.sampleQuantityExpression}`}</small>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {viewModel.rows.map((row) => (
+                  <tr key={row.rowKey}>
+                    <td>{row.sequence}</td>
+                    <td>{row.testItem}</td>
+                    <td>{row.section}</td>
+                    {viewModel.groupColumns.map((group) => {
+                      const cells = row.cellsByGroupKey[group.groupKey] ?? [];
+                      return (
+                        <td key={`${row.rowKey}:${group.groupKey}`}>
+                          {cells.length > 0 ? (
+                            <div className="runtime-console-matrix-token-stack">
+                              {cells.map((cell) => (
+                                <button
+                                  className={`runtime-console-matrix-token runtime-console-matrix-token-status-${cell.statusTone}${
+                                    selectedTokenReference === cell.tokenReference
+                                      ? " is-selected"
+                                      : ""
+                                  }`}
+                                  key={cell.tokenReference}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTokenReference(cell.tokenReference);
+                                    onTokenSelect?.(cell);
+                                  }}
+                                >
+                                  {cell.rawToken}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="runtime-console-matrix-empty-cell">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {selectedToken ? (
+            <p className="runtime-console-matrix-projection-selection">
+              Selected token: {selectedToken.groupLabel} / {selectedToken.rawToken}
+            </p>
+          ) : null}
+        </>
       ) : null}
     </section>
   );
