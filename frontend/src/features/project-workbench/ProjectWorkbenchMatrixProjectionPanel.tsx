@@ -9,25 +9,19 @@ import {
   findMatrixProjectionToken,
   type MatrixProjectionTokenCell,
   toVisibleMatrixProjectionStatusTone,
-  type MatrixProjectionVisibleStatusTone,
 } from "./projectWorkbenchMatrixProjectionSelectors";
 
 type PreviewState = "loading" | "ready" | "empty" | "not_ready" | "error";
 
 type ProjectWorkbenchMatrixProjectionPanelProps = {
   projectId: string;
+  onOpenMatrixEditor?: () => void;
   onTokenSelect?: (token: MatrixProjectionTokenCell | null) => void;
-};
-
-const STATUS_LABELS: Record<MatrixProjectionVisibleStatusTone, string> = {
-  not_started: "Not started",
-  in_progress: "In progress",
-  passed: "Pass",
-  failed: "Failed",
 };
 
 export function ProjectWorkbenchMatrixProjectionPanel({
   projectId,
+  onOpenMatrixEditor,
   onTokenSelect,
 }: ProjectWorkbenchMatrixProjectionPanelProps): ReactElement {
   const [state, setState] = useState<PreviewState>("loading");
@@ -85,7 +79,18 @@ export function ProjectWorkbenchMatrixProjectionPanel({
 
   return (
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
-      <p className="runtime-console-matrix-projection-note">Read-only authority view</p>
+      <div className="runtime-console-matrix-toolbar">
+        <button type="button" onClick={onOpenMatrixEditor}>
+          Matrix
+        </button>
+        <button
+          type="button"
+          disabled
+          title="Test record workflow placement is planned for a later approved task."
+        >
+          Test record
+        </button>
+      </div>
 
       {state === "loading" ? <p className="fine-print">Loading Matrix projection...</p> : null}
       {state === "not_ready" ? (
@@ -104,13 +109,6 @@ export function ProjectWorkbenchMatrixProjectionPanel({
 
       {state === "ready" && viewModel ? (
         <>
-          <div className="runtime-console-matrix-projection-legend" aria-label="Status color legend">
-            {Object.entries(STATUS_LABELS).map(([tone, label]) => (
-              <span className={`runtime-console-matrix-token-status-${tone}`} key={tone}>
-                {label}
-              </span>
-            ))}
-          </div>
           <div className="runtime-console-matrix-projection-table-wrap">
             <table className="runtime-console-matrix-projection-table">
               <thead>

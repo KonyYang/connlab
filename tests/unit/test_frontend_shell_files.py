@@ -3936,8 +3936,15 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
     assert "onTokenSelect={setSelectedProjectionToken}" in layout_source
     assert "<TestRecordPreviewSmokePanel projectId={project.project_id} />" not in layout_source
     assert "fetchConfirmedMatrixTestRecordPreview" in projection_source
-    assert "Matrix execution projection" in layout_source or "Matrix execution projection" in projection_source
-    assert "Read-only authority view" in projection_source
+    assert (
+        "Matrix execution projection" in layout_source
+        or "Matrix execution projection" in projection_source
+        or "Matrix Projection" in projection_source
+    )
+    assert (
+        "Read-only authority view" in projection_source
+        or "runtime-console-matrix-toolbar" in projection_source
+    )
     assert "runtime-console-matrix-token-stack" in projection_source
     assert "buildMatrixProjectionViewModel" in selector_source
     assert "deriveMatrixProjectionStatusTone" in selector_source
@@ -4166,8 +4173,7 @@ def test_task275_workbench_execution_information_hierarchy_refocus_is_wired() ->
     assert "spent" not in layout_source_lower
     assert "remaining" not in layout_source_lower
 
-    assert ">Matrix<" in layout_source
-    assert "runtime-console-toolbar-actions" in layout_source
+    assert "Matrix" in layout_source or "Matrix" in projection_source
     assert "Project setup / output materials" in layout_source
     assert "View activity history" in layout_source
     assert "Pending estimate" in layout_source
@@ -4185,7 +4191,69 @@ def test_task275_workbench_execution_information_hierarchy_refocus_is_wired() ->
     assert "Review required" not in projection_source
     assert "Reopened / retest" not in projection_source
     assert "runtime-console-matrix-meta-row" in css_source
-    assert "runtime-console-toolbar-actions" in css_source
+    assert "runtime-console-matrix-toolbar" in css_source
+    assert "review required" not in projection_source_lower
+    assert "reopened / retest" not in projection_source_lower
+
+
+def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
+    layout_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+    css_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
+    layout_source_lower = layout_source.lower()
+    projection_source_lower = projection_source.lower()
+
+    assert "last updated" not in layout_source_lower
+    assert "view activity history" in layout_source_lower
+    assert "runtime-console-filterbar" not in layout_source
+    assert "test item category" not in layout_source_lower
+    assert "status filter:" not in layout_source_lower
+    assert "show active items only" not in layout_source_lower
+    assert "show status icons" not in layout_source_lower
+    assert "show markers" not in layout_source_lower
+    assert "project issues / reminders" not in layout_source_lower
+
+    assert "runtime-console-project-identity" in layout_source
+    assert "Test description unavailable" in layout_source
+    assert "business unit not set" not in layout_source_lower
+    assert "requestor" not in layout_source_lower
+
+    assert "Matrix Projection" not in layout_source
+    assert "Matrix execution projection" not in layout_source
+    assert "Read-only projection" not in layout_source
+    assert "Read-only authority view" not in projection_source
+    assert "Status color legend" not in projection_source
+
+    assert "onOpenMatrixEditor" in layout_source
+    assert "Matrix" in projection_source
+    assert "Test record" in projection_source
+    assert "disabled" in projection_source
+
+    for removed_field in ["<dt>Token</dt>", "<dt>Group</dt>", "<dt>Section</dt>", "<dt>Test item</dt>", "<dt>Step token</dt>"]:
+        assert removed_field not in layout_source
+    for removed_action in ["Edit step", "Copy to other steps", "Generate record"]:
+        assert removed_action not in layout_source
+    assert "Import data" in layout_source
+    assert "Image" in layout_source
+    assert "Result judgement" in layout_source
+    assert "Estimated completion" in layout_source
+    assert "Actual completion" in layout_source
+
+    assert "runtime-console-side-column" in css_source
+    assert "runtime-console-matrix-toolbar" in css_source
+    assert "runtime-console-step-status-compact" in css_source
     assert "review required" not in projection_source_lower
     assert "reopened / retest" not in projection_source_lower
 

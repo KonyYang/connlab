@@ -50,7 +50,7 @@ none
 Latest completed task plan history:
 
 ```text
-docs/task_275_workbench_execution_information_hierarchy_refocus_plan.md
+docs/task_276_workbench_execution_surface_density_polish_plan.md
 ```
 
 Archived completed-plan pattern:

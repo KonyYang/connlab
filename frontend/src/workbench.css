@@ -11,7 +11,7 @@
 
 .runtime-console-topbar {
   display: grid;
-  grid-template-columns: 220px minmax(360px, 1fr) minmax(430px, auto) 166px;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   min-height: 72px;
@@ -1367,25 +1367,21 @@
 
 .runtime-console-project-title {
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
 .runtime-console-project-title h2 {
-  display: flex;
-  gap: 8px;
-  align-items: center;
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1.2;
+  font-weight: 700;
 }
 
-.runtime-console-project-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  color: var(--color-ink-muted);
-  font-size: 12px;
+.runtime-console-project-identity {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink);
 }
 
 .runtime-console-authority {
@@ -1435,29 +1431,21 @@
 }
 
 .runtime-console-last-update {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 3px 8px;
-  align-items: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
   padding-left: 14px;
   border-left: 1px solid var(--color-border);
 }
 
-.runtime-console-last-update span {
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.runtime-console-last-update strong {
-  color: var(--color-ink);
-  font-size: 12px;
-  font-weight: 500;
-}
-
 .runtime-console-last-update button {
-  width: auto;
-  height: 26px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
 }
 
 .runtime-console-summary {
@@ -1545,7 +1533,7 @@
 
 .runtime-console-readiness {
   display: grid;
-  grid-template-columns: 220px repeat(6, minmax(138px, 1fr)) minmax(170px, auto);
+  grid-template-columns: 220px repeat(5, minmax(138px, 1fr));
   gap: 0;
   overflow-x: auto;
   border: 1px solid var(--color-border);
@@ -1626,9 +1614,14 @@
 
 .runtime-console-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 430px;
   gap: 8px;
   align-items: start;
+}
+
+.runtime-console-side-column {
+  display: grid;
+  gap: 8px;
 }
 
 .runtime-console-main,
@@ -1844,6 +1837,29 @@
 
 .runtime-console-matrix-projection-note {
   margin: 0;
+}
+
+.runtime-console-matrix-toolbar {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.runtime-console-matrix-toolbar button {
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.runtime-console-matrix-toolbar button:disabled {
+  color: var(--color-ink-muted);
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  cursor: not-allowed;
 }
 
 .runtime-console-test-record-generation {
@@ -2348,6 +2364,10 @@
   color: var(--color-primary-strong);
 }
 
+.runtime-console-step-status-compact {
+  grid-template-columns: 1fr;
+}
+
 .runtime-console-step-tabs button:disabled {
   color: var(--color-ink-muted);
   opacity: 0.65;
@@ -2422,7 +2442,7 @@
 
 .runtime-console-step-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -2437,6 +2457,13 @@
 .runtime-console-note-box textarea {
   min-height: 50px;
   resize: vertical;
+}
+
+.runtime-console-step-supporting {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .runtime-console-save-button {
