@@ -4240,6 +4240,7 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
     assert "Matrix" in projection_source
     assert "Test record" in projection_source
     assert "disabled" in projection_source
+    assert "Selected token:" not in projection_source
 
     for removed_field in ["<dt>Token</dt>", "<dt>Group</dt>", "<dt>Section</dt>", "<dt>Test item</dt>", "<dt>Step token</dt>"]:
         assert removed_field not in layout_source
@@ -4248,6 +4249,10 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
     assert "Import data" in layout_source
     assert "Image" in layout_source
     assert "Result judgement" in layout_source
+    assert "readOnly" in layout_source
+    assert "Select a Matrix step from the Matrix table" in layout_source
+    assert "Step 2 - LLCR" not in layout_source
+    assert "EIA-364-23E" not in layout_source
     assert "Estimated completion" in layout_source
     assert "Actual completion" in layout_source
 

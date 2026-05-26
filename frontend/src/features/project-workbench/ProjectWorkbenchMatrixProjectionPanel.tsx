@@ -6,7 +6,6 @@ import {
 } from "../../api/client";
 import {
   buildMatrixProjectionViewModel,
-  findMatrixProjectionToken,
   type MatrixProjectionTokenCell,
   toVisibleMatrixProjectionStatusTone,
 } from "./projectWorkbenchMatrixProjectionSelectors";
@@ -69,14 +68,6 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         : null,
     [preview]
   );
-  const selectedToken = useMemo(
-    () =>
-      viewModel
-        ? findMatrixProjectionToken(viewModel, selectedTokenReference)
-        : null,
-    [selectedTokenReference, viewModel]
-  );
-
   return (
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
       <div className="runtime-console-matrix-toolbar">
@@ -183,11 +174,6 @@ export function ProjectWorkbenchMatrixProjectionPanel({
               </tbody>
             </table>
           </div>
-          {selectedToken ? (
-            <p className="runtime-console-matrix-projection-selection">
-              Selected token: {selectedToken.groupLabel} / {selectedToken.rawToken}
-            </p>
-          ) : null}
         </>
       ) : null}
     </section>

@@ -113,7 +113,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(onOpenMatrixEditor).toHaveBeenCalledTimes(1);
     fireEvent.click(tokens[0]);
     expect(screen.queryByLabelText("Record Step Workspace")).toBeNull();
-    expect(screen.getByText("Selected token: Group 1 / 1")).toBeTruthy();
+    expect(screen.queryByText("Selected token: Group 1 / 1")).toBeNull();
     expect(onTokenSelect.mock.calls.length).toBeGreaterThanOrEqual(2);
     const lastCall = onTokenSelect.mock.calls[onTokenSelect.mock.calls.length - 1];
     expect(lastCall?.[0]?.groupLabel).toBe("Group 1");

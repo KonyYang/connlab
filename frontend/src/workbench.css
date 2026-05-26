@@ -2341,6 +2341,14 @@
   color: var(--color-success);
 }
 
+.runtime-console-step-status-not-started {
+  color: var(--color-ink-muted);
+}
+
+.runtime-console-step-status-empty {
+  color: var(--color-ink-muted);
+}
+
 .runtime-console-step-tabs {
   display: flex;
   gap: 8px;
@@ -2457,6 +2465,15 @@
 .runtime-console-note-box textarea {
   min-height: 50px;
   resize: vertical;
+}
+
+.runtime-console-note-box textarea:disabled,
+.runtime-console-note-box textarea[readonly] {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
 }
 
 .runtime-console-step-supporting {

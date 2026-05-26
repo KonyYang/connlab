@@ -11,61 +11,17 @@ type ProjectWorkbenchLayoutProps = {
   onOpenMatrixEditor: () => void;
 };
 
-type MockStepDetail = {
-  reference: string;
-  group: string;
-  token: string;
-  title: string;
-  status: "FAILED" | "IN PROGRESS" | "PASS" | "NOT STARTED";
-};
-
 type SetupMaterialItem = {
   title: string;
   value: string;
   placeholder?: boolean;
 };
 
-const DEFAULT_STEP_DETAIL: MockStepDetail = {
-  reference: "mock:G3:2",
-  group: "Group 3",
-  token: "2",
-  title: "Step 2 - LLCR",
-  status: "FAILED",
-};
-
-const MOCK_STEP_DETAILS: MockStepDetail[] = [
-  DEFAULT_STEP_DETAIL,
-  {
-    reference: "mock:G2:2",
-    group: "Group 2",
-    token: "2",
-    title: "Step 2 - LLCR",
-    status: "IN PROGRESS",
-  },
-  {
-    reference: "mock:G5:1",
-    group: "Group 5",
-    token: "1",
-    title: "Step 1 - Examination",
-    status: "PASS",
-  },
-];
+type StepLifecycleStatus = "FAILED" | "IN PROGRESS" | "PASS" | "NOT STARTED";
 
 const STEP_STATUS_BY_TONE: Record<
   MatrixProjectionTokenCell["statusTone"],
-  MockStepDetail["status"]
-> = {
-  not_started: "NOT STARTED",
-  in_progress: "IN PROGRESS",
-  passed: "PASS",
-  failed: "FAILED",
-  review: "IN PROGRESS",
-  retest: "IN PROGRESS",
-};
-
-const MOCK_STATUS_BY_TONE: Record<
-  MatrixProjectionTokenCell["statusTone"],
-  MockStepDetail["status"]
+  StepLifecycleStatus
 > = {
   not_started: "NOT STARTED",
   in_progress: "IN PROGRESS",
@@ -83,19 +39,14 @@ export function ProjectWorkbenchLayout({
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const [selectedProjectionToken, setSelectedProjectionToken] =
     useState<MatrixProjectionTokenCell | null>(null);
-  const {
-    folderReady,
-    latestLtr,
-    matrixAuthorityDraft,
-    runtimeProjectionSnapshot,
-    runtimeSelectedTokenReference,
-  } = runtimeModel;
+  const { folderReady, latestLtr, matrixAuthorityDraft, runtimeProjectionSnapshot } =
+    runtimeModel;
   const projectIdentity =
     latestLtr ?? `Temporary project ${project.project_id.slice(0, 8)}`;
   const testDescription = deriveWorkbenchTestDescription(
     matrixAuthorityDraft?.source_document_name ?? null
   );
-  const headerIdentityLine = `${projectIdentity} · ${project.product_name} · ${testDescription}`;
+  const headerIdentityLine = `${projectIdentity} | ${project.product_name} | ${testDescription}`;
   const setupMaterials: SetupMaterialItem[] = [
     { title: "Project folder", value: folderReady ? "Created" : "Not recorded" },
     {
@@ -116,27 +67,28 @@ export function ProjectWorkbenchLayout({
   ];
 
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
-  const selectedProjectionStatus = selectedProjectionToken
+  const selectedWorkspaceToken = selectedWorkspace?.selected_token ?? null;
+  const hasSelectedStep =
+    selectedProjectionToken !== null || selectedWorkspaceToken !== null;
+  const selectedGroupLabel =
+    selectedProjectionToken?.groupLabel ?? selectedWorkspace?.group_label ?? null;
+  const selectedStepToken =
+    selectedProjectionToken?.rawToken ?? selectedWorkspaceToken?.raw_token ?? null;
+  const selectedStepItemLabel =
+    selectedProjectionToken?.testItem ?? selectedWorkspaceToken?.test_item_label ?? null;
+  const stepContextLine =
+    hasSelectedStep &&
+    selectedGroupLabel &&
+    selectedStepToken &&
+    selectedStepItemLabel
+      ? `${normalizeStepWorkspaceGroupLabel(selectedGroupLabel)} Step ${selectedStepToken}: ${selectedStepItemLabel}`
+      : "Select a Matrix step from the Matrix table";
+  const displayLifecycleStatus = selectedProjectionToken
     ? STEP_STATUS_BY_TONE[selectedProjectionToken.statusTone]
-    : null;
-  const fallbackMockStepDetail =
-    MOCK_STEP_DETAILS.find(
-      (item) => item.reference === runtimeSelectedTokenReference
-    ) ?? DEFAULT_STEP_DETAIL;
-  const mockStepDetail = selectedProjectionToken
-    ? {
-        ...fallbackMockStepDetail,
-        group: selectedProjectionToken.groupLabel,
-        token: selectedProjectionToken.rawToken,
-        title: `Step ${selectedProjectionToken.rawToken} - ${selectedProjectionToken.testItem}`,
-        status: MOCK_STATUS_BY_TONE[selectedProjectionToken.statusTone],
-      }
-    : fallbackMockStepDetail;
-  const activeStepTitle = selectedProjectionToken
-    ? `Step ${selectedProjectionToken.rawToken} - ${selectedProjectionToken.testItem}`
-    : selectedWorkspace?.selected_token?.test_item_label
-      ? `Step ${selectedWorkspace.selected_token.raw_token} - ${selectedWorkspace.selected_token.test_item_label}`
-      : mockStepDetail.title;
+    : normalizeLifecycleStatus(selectedWorkspaceToken?.lifecycle_projection);
+  const lifecycleStatusClassSuffix = displayLifecycleStatus
+    .toLowerCase()
+    .replace(/\s+/g, "-");
 
   return (
     <section className="runtime-console-shell" aria-label="Project runtime console">
@@ -195,25 +147,24 @@ export function ProjectWorkbenchLayout({
             <header>
               <div>
                 <p className="eyebrow">Step Workspace</p>
-                <p className="runtime-console-step-breadcrumb">
-                  {mockStepDetail.group} · Step {mockStepDetail.token}
-                </p>
-                <h3>{activeStepTitle}</h3>
+                <p className="runtime-console-step-breadcrumb">{stepContextLine}</p>
               </div>
             </header>
 
             <section className="runtime-console-step-status-card runtime-console-step-status-compact">
               <div>
                 <span>Lifecycle status</span>
-                <strong
-                  className={`runtime-console-step-status-${mockStepDetail.status
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {selectedProjectionStatus ??
-                    selectedWorkspace?.selected_token?.lifecycle_projection?.toUpperCase() ??
-                    mockStepDetail.status}
-                </strong>
+                {hasSelectedStep ? (
+                  <strong
+                    className={`runtime-console-step-status-${lifecycleStatusClassSuffix}`}
+                  >
+                    {displayLifecycleStatus}
+                  </strong>
+                ) : (
+                  <strong className="runtime-console-step-status-empty">
+                    Select a Matrix step
+                  </strong>
+                )}
               </div>
             </section>
 
@@ -223,18 +174,14 @@ export function ProjectWorkbenchLayout({
                 condition={selectedProjectionToken.condition}
                 requirement={selectedProjectionToken.requirement}
               />
-            ) : selectedWorkspace?.selected_token ? (
+            ) : selectedWorkspaceToken ? (
               <StepExecutionContent
-                method={selectedWorkspace.selected_token.method}
-                condition={selectedWorkspace.selected_token.condition}
-                requirement={selectedWorkspace.selected_token.requirement}
+                method={selectedWorkspaceToken.method}
+                condition={selectedWorkspaceToken.condition}
+                requirement={selectedWorkspaceToken.requirement}
               />
             ) : (
-              <StepExecutionContent
-                method="EIA-364-23E"
-                condition="20mV max, 100mA max"
-                requirement="Initial: <= 0.40mO; After test: <= 0.40mO"
-              />
+              <StepExecutionPlaceholder />
             )}
 
             <div className="runtime-console-step-actions">
@@ -248,7 +195,11 @@ export function ProjectWorkbenchLayout({
 
             <label className="runtime-console-note-box">
               Result judgement
-              <textarea placeholder="Pending judgement input" />
+              <textarea
+                readOnly
+                disabled
+                value="Pending result judgement placeholder (read-only in this task)."
+              />
             </label>
           </aside>
           <FeeEstimateSurface />
@@ -299,6 +250,15 @@ function StepExecutionContent({
   );
 }
 
+function StepExecutionPlaceholder(): ReactElement {
+  return (
+    <p className="runtime-console-step-supporting">
+      Select a Matrix step to view method, condition, requirement, and execution
+      placeholders.
+    </p>
+  );
+}
+
 function FeeEstimateSurface(): ReactElement {
   return (
     <section className="runtime-console-fee" aria-label="Fee estimate">
@@ -341,4 +301,33 @@ function deriveWorkbenchTestDescription(sourceDocumentName: string | null): stri
     return normalized;
   }
   return "Test description unavailable";
+}
+
+function normalizeLifecycleStatus(
+  lifecycle: string | null | undefined
+): StepLifecycleStatus {
+  const normalized = (lifecycle ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "failed" || normalized === "fail") {
+    return "FAILED";
+  }
+  if (normalized === "pass" || normalized === "passed") {
+    return "PASS";
+  }
+  if (
+    normalized === "in_progress" ||
+    normalized === "progress" ||
+    normalized === "review" ||
+    normalized === "retest"
+  ) {
+    return "IN PROGRESS";
+  }
+  return "NOT STARTED";
+}
+
+function normalizeStepWorkspaceGroupLabel(groupLabel: string): string {
+  const normalized = groupLabel.trim();
+  if (/^group\b/i.test(normalized)) {
+    return `Group ${normalized.replace(/^group\b[:\s-]*/i, "").trim()}`.trim();
+  }
+  return `Group ${normalized}`;
 }
