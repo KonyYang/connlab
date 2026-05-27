@@ -178,21 +178,27 @@ Reason:
 
 ## Completion Notes
 
-Implemented as a frontend-only workflow refactor:
+Implemented as a Matrix Editor workflow refactor with a small read-only authority baseline API:
 
 - Unified one-button publish flow (`Confirm As Active Matrix`) while keeping existing first-confirm/revision-confirm API routing internally.
 - Removed user-facing `Create Revision Draft`, `Confirm Revision`, `Draft Actions`, `Authority Actions`, and large `Current State` banner.
 - Compacted header and moved Matrix actions into a compact toolbar near `Undo`.
+- Added active ConfirmedMatrix snapshot read API for full-authority no-change comparison.
+- Hardened publish routing so a loaded non-revision draft under an existing active authority is internally copied into a revision draft, saved, and published through revision confirm instead of hitting first-confirm conflict.
+- Follow-up smoke hotfix: Matrix Editor now prefers the active-authority revision draft over newer unrelated non-revision drafts during initial load, preventing stale drafts from overwriting the publish target.
+- Follow-up backend hotfix: draft save normalization now remaps unknown foreign row/group IDs into current-draft IDs before replacing a draft snapshot, preventing cross-draft primary-key collisions while preserving cell mappings.
 - Added/updated interaction tests and static guards for TASK_277 behavior.
 - Updated legacy static guards (`TASK_221/243/244/259`) to remain compatible with the new TASK_277 flow while preserving prior scope assertions.
 
 Validation summary:
 
-- `cd frontend && npm test -- --run MatrixEditorWorkspace` passed (`4 passed`)
+- `cd frontend && npm test -- --run MatrixEditorWorkspace` passed (`9 passed`)
 - `cd frontend && npm run build` passed
+- `py -m pytest tests\unit\test_project_matrix_draft_persistence_service.py -q` passed (`11 passed`)
 - `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "task277 or task276 or matrix_editor"` passed (`37 passed`)
+- `py -m pytest tests\integration\test_confirmed_matrix_authority_api.py -q` passed (`4 passed`)
 - `py -m pytest tests\integration\test_matrix_to_test_record_smoke_flow_api.py -q` passed (`1 passed`)
-- `git diff --name-only -- backend` returned no output
+- Real browser smoke: after filling the only invalid blank sample quantity in the existing local draft, `Confirm As Active Matrix` returned to Workbench and refreshed the Matrix projection from the newly active authority.
 - `git diff --check` passed with CRLF working-copy warnings only
 
-Scope boundary held: no backend/API/domain/storage changes.
+Scope boundary held: no schema, permission, StepInstance, report, fee, image, evidence, or execution persistence changes.

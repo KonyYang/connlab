@@ -69,6 +69,11 @@ type MatrixSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 type MatrixPublishState = "idle" | "loading" | "success" | "error";
 type MatrixPublishMode = "first_authority" | "revision_authority";
 
+type ActiveAuthorityBaseline = {
+  confirmedMatrixId: string;
+  signature: string;
+};
+
 const AUTO_SAVE_DEBOUNCE_MS = 600;
 
 const AUTO_SAVE_STATUS_COPY: Record<MatrixSaveState, string> = {
@@ -1116,6 +1121,8 @@ export function MatrixEditorWorkspace({
   const [confirmActiveMessage, setConfirmActiveMessage] = useState<string>("");
   const [activeAuthorityConfirmed, setActiveAuthorityConfirmed] = useState(false);
   const [activeAuthorityBaselineSignature, setActiveAuthorityBaselineSignature] = useState<string | null>(null);
+  const [activeConfirmedMatrixId, setActiveConfirmedMatrixId] = useState<string | null>(null);
+  const [existingRevisionDraftId, setExistingRevisionDraftId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
   const hasRuntimeAuthorityAvailable = Boolean(model.runtimeAuthoritySync.authorityVersion);
@@ -1142,18 +1149,27 @@ export function MatrixEditorWorkspace({
     setConfirmActiveMessage("");
   };
 
-  const resolveActiveAuthorityBaselineSignature = async (
+  const resolveActiveAuthorityBaseline = async (
     input: {
       fallbackDraft?: ProjectMatrixDraft | null;
       allowDraftFallback: boolean;
     }
-  ): Promise<string | null> => {
+  ): Promise<ActiveAuthorityBaseline | null> => {
     try {
       const snapshot = await fetchActiveConfirmedMatrixSnapshot(projectId);
-      return buildAuthorityComparableSignatureFromConfirmedSnapshot(snapshot);
+      return {
+        confirmedMatrixId: snapshot.version.confirmed_matrix_id,
+        signature: buildAuthorityComparableSignatureFromConfirmedSnapshot(snapshot),
+      };
     } catch (error) {
       if (input.allowDraftFallback && input.fallbackDraft) {
-        return buildAuthorityComparableSignatureFromDraft(input.fallbackDraft);
+        const confirmedMatrixId = input.fallbackDraft.record.base_confirmed_matrix_id;
+        if (confirmedMatrixId) {
+          return {
+            confirmedMatrixId,
+            signature: buildAuthorityComparableSignatureFromDraft(input.fallbackDraft),
+          };
+        }
       }
       return null;
     }
@@ -1175,30 +1191,39 @@ export function MatrixEditorWorkspace({
           setProjectMatrixDraftBaseConfirmedMatrixId(null);
           setSaveBaselineSignature(null);
           setActiveAuthorityBaselineSignature(null);
+          setActiveConfirmedMatrixId(null);
+          setExistingRevisionDraftId(null);
           setSaveState("idle");
+          const activeBaseline = await resolveActiveAuthorityBaseline({
+            allowDraftFallback: false,
+          });
+          if (!cancelled && activeBaseline) {
+            setActiveAuthorityBaselineSignature(activeBaseline.signature);
+            setActiveConfirmedMatrixId(activeBaseline.confirmedMatrixId);
+          }
           return;
         }
+        const activeBaseline = await resolveActiveAuthorityBaseline({
+          allowDraftFallback: false,
+        });
+        const existingRevisionSummary = activeBaseline
+          ? summaries.find(
+              (summary) =>
+                summary.base_confirmed_matrix_id === activeBaseline.confirmedMatrixId
+            ) ?? null
+          : null;
+        const targetId =
+          existingRevisionSummary?.project_matrix_draft_id ??
+          summaries[0].project_matrix_draft_id;
         setHasPersistedDraft(true);
-        const targetId = summaries[0].project_matrix_draft_id;
         const draft = await getProjectMatrixDraft(projectId, targetId);
         if (cancelled) {
           return;
         }
         applyDraftSnapshotToEditor(draft);
-        const shouldResolveAuthorityBaseline =
-          Boolean(draft.record.base_confirmed_matrix_id) ||
-          hasRuntimeAuthorityAvailable;
-        if (!shouldResolveAuthorityBaseline) {
-          setActiveAuthorityBaselineSignature(null);
-          return;
-        }
-        const baselineSignature = await resolveActiveAuthorityBaselineSignature({
-          allowDraftFallback: false,
-        });
-        if (cancelled) {
-          return;
-        }
-        setActiveAuthorityBaselineSignature(baselineSignature);
+        setActiveAuthorityBaselineSignature(activeBaseline?.signature ?? null);
+        setActiveConfirmedMatrixId(activeBaseline?.confirmedMatrixId ?? null);
+        setExistingRevisionDraftId(existingRevisionSummary?.project_matrix_draft_id ?? null);
       } catch (error) {
         if (cancelled) {
           return;
@@ -1207,6 +1232,8 @@ export function MatrixEditorWorkspace({
         setProjectMatrixDraftId(null);
         setProjectMatrixDraftBaseConfirmedMatrixId(null);
         setActiveAuthorityBaselineSignature(null);
+        setActiveConfirmedMatrixId(null);
+        setExistingRevisionDraftId(null);
         setSaveState("error");
       } finally {
         if (!cancelled) {
@@ -1401,7 +1428,8 @@ export function MatrixEditorWorkspace({
     (cell) => (cell.cell_value ?? "").trim().length > 0
   );
   const hasProjectId = projectId.trim().length > 0;
-  const hasActiveAuthorityFromWorkbench = hasRuntimeAuthorityAvailable;
+  const hasActiveAuthorityFromWorkbench =
+    hasRuntimeAuthorityAvailable || activeAuthorityBaselineSignature !== null;
   const isPublishBusy = confirmActiveState === "loading";
   const hasNoAuthorityChanges =
     activeAuthorityBaselineSignature !== null &&
@@ -2118,21 +2146,28 @@ export function MatrixEditorWorkspace({
   };
 
   const ensureEditableDraft = async (): Promise<ProjectMatrixDraft | null> => {
-    if (projectMatrixDraftId) {
+    if (
+      projectMatrixDraftId &&
+      (!hasActiveAuthorityFromWorkbench || projectMatrixDraftBaseConfirmedMatrixId)
+    ) {
       return null;
     }
     if (!hasProjectId) {
       return null;
     }
     if (hasActiveAuthorityFromWorkbench) {
-      const draft = await createMatrixRevisionDraft(projectId);
+      const draft = existingRevisionDraftId && existingRevisionDraftId !== projectMatrixDraftId
+        ? await getProjectMatrixDraft(projectId, existingRevisionDraftId)
+        : await createMatrixRevisionDraft(projectId);
       setHasPersistedDraft(true);
       applyDraftSnapshotToEditor(draft);
-      const baselineSignature = await resolveActiveAuthorityBaselineSignature({
+      const activeBaseline = await resolveActiveAuthorityBaseline({
         fallbackDraft: draft,
         allowDraftFallback: true,
       });
-      setActiveAuthorityBaselineSignature(baselineSignature);
+      setActiveAuthorityBaselineSignature(activeBaseline?.signature ?? null);
+      setActiveConfirmedMatrixId(activeBaseline?.confirmedMatrixId ?? activeConfirmedMatrixId);
+      setExistingRevisionDraftId(draft.record.project_matrix_draft_id);
       setSaveState("saved");
       return draft;
     }
@@ -2213,8 +2248,10 @@ export function MatrixEditorWorkspace({
       try {
         const requiresInitialDraftSync = Boolean(
           ensuredDraft &&
-          !hasActiveAuthorityFromWorkbench &&
-          projectMatrixDraftId === null
+          (
+            !hasActiveAuthorityFromWorkbench ||
+            (projectMatrixDraftId !== null && !projectMatrixDraftBaseConfirmedMatrixId)
+          )
         );
         savedDraft = await saveCurrentDraftNow(targetDraftId, {
           force: requiresInitialDraftSync,

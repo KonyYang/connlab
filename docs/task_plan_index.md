@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-05-27
-Status: no active planned task plan
+Status: active planned task plan pending user review
 
 ## Decision
 
@@ -44,7 +44,7 @@ docs/task_XXX_*_plan.md
 Current active planned task plan:
 
 ```text
-none
+docs/task_278_matrix_editor_temporary_session_flow_plan.md
 ```
 
 Latest completed task plan history:

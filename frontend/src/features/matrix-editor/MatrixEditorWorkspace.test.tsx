@@ -42,6 +42,7 @@ vi.mock("../project-workbench/useProjectRuntimeConsoleModel", () => ({
 
 type DraftOverrides = {
   baseConfirmedMatrixId?: string | null;
+  draftId?: string;
   testItem?: string;
   section?: string | null;
 };
@@ -55,7 +56,7 @@ function buildDraft(overrides: DraftOverrides = {}) {
       : overrides.baseConfirmedMatrixId;
   return {
     record: {
-      project_matrix_draft_id: "draft-1",
+      project_matrix_draft_id: overrides.draftId ?? "draft-1",
       project_id: "P1",
       source_import_id: null,
       source_snapshot_id: "snapshot-1",
@@ -293,6 +294,7 @@ describe("MatrixEditorWorkspace single draft publish flow", () => {
   });
 
   it("uses first-authority confirm API when draft has no base confirmed id", async () => {
+    runtimeModelState.authorityVersion = null;
     apiMocks.fetchActiveConfirmedMatrixSnapshot.mockRejectedValueOnce(
       new Error("Active confirmed matrix not found.")
     );
@@ -323,6 +325,70 @@ describe("MatrixEditorWorkspace single draft publish flow", () => {
     await waitFor(() => {
       expect(apiMocks.confirmProjectMatrixDraft).toHaveBeenCalledTimes(1);
       expect(apiMocks.confirmProjectMatrixRevisionDraft).toHaveBeenCalledTimes(0);
+      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("prefers the active-authority revision draft over a newer non-revision draft", async () => {
+    runtimeModelState.authorityVersion = null;
+    apiMocks.listProjectMatrixDrafts.mockResolvedValueOnce([
+      {
+        project_matrix_draft_id: "draft-legacy",
+        project_id: "P1",
+        source_import_id: null,
+        source_snapshot_id: "snapshot-legacy",
+        base_confirmed_matrix_id: null,
+        status: "draft",
+        created_at: "2026-05-23T00:00:00Z",
+        updated_at: "2026-05-23T00:00:00Z",
+      },
+      {
+        project_matrix_draft_id: "revision-draft-1",
+        project_id: "P1",
+        source_import_id: null,
+        source_snapshot_id: "snapshot-revision",
+        base_confirmed_matrix_id: "confirmed-1",
+        status: "draft",
+        created_at: "2026-05-23T00:00:00Z",
+        updated_at: "2026-05-23T00:00:00Z",
+      },
+    ]);
+    apiMocks.getProjectMatrixDraft.mockResolvedValueOnce(
+      buildDraft({
+        draftId: "revision-draft-1",
+        testItem: "Visual Examination Updated",
+      })
+    );
+    apiMocks.saveProjectMatrixDraft.mockResolvedValueOnce(
+      buildDraft({
+        draftId: "revision-draft-1",
+        testItem: "Visual Examination Updated",
+      })
+    );
+    const onBackToWorkbench = vi.fn();
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+
+    await waitFor(() => {
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledWith(
+        "P1",
+        "revision-draft-1"
+      );
+      expect(apiMocks.fetchActiveConfirmedMatrixSnapshot).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm As Active Matrix" }));
+
+    await waitFor(() => {
+      expect(apiMocks.createMatrixRevisionDraft).toHaveBeenCalledTimes(0);
+      expect(apiMocks.getProjectMatrixDraft).toHaveBeenCalledTimes(1);
+      expect(apiMocks.saveProjectMatrixDraft).toHaveBeenCalledTimes(0);
+      expect(apiMocks.confirmProjectMatrixRevisionDraft).toHaveBeenCalledWith(
+        "P1",
+        "revision-draft-1",
+        { confirmed_by: "connlab-operator" }
+      );
+      expect(apiMocks.confirmProjectMatrixDraft).toHaveBeenCalledTimes(0);
       expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
     });
   });

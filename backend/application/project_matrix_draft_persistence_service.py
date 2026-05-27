@@ -422,7 +422,7 @@ def _normalized_group(
     candidate = existing_group_by_id.get(raw_group_id) if raw_group_id else None
     if candidate is None and raw_source_id:
         candidate = existing_group_by_source.get(raw_source_id)
-    draft_group_id = candidate.draft_group_id if candidate else (raw_group_id or f"pmdg-{uuid4().hex}")
+    draft_group_id = candidate.draft_group_id if candidate else f"pmdg-{uuid4().hex}"
     source_group_snapshot_id = candidate.source_group_snapshot_id if candidate else (raw_source_id or None)
     if raw_group_id:
         group_id_map[raw_group_id] = draft_group_id
@@ -457,7 +457,7 @@ def _normalized_row(
     candidate = existing_row_by_id.get(raw_row_id) if raw_row_id else None
     if candidate is None and raw_source_id:
         candidate = existing_row_by_source.get(raw_source_id)
-    draft_row_id = candidate.draft_row_id if candidate else (raw_row_id or f"pmdr-{uuid4().hex}")
+    draft_row_id = candidate.draft_row_id if candidate else f"pmdr-{uuid4().hex}"
     source_row_snapshot_id = candidate.source_row_snapshot_id if candidate else (raw_source_id or None)
     if raw_row_id:
         row_id_map[raw_row_id] = draft_row_id

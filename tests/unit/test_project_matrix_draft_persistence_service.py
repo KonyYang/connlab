@@ -282,6 +282,58 @@ def test_project_matrix_draft_service_update_new_local_row_group_use_nullable_li
     assert local_row.source_row_snapshot_id is None
 
 
+def test_project_matrix_draft_service_update_remaps_foreign_raw_row_group_ids() -> None:
+    service, _ = _service()
+    created = service.create_from_source_import(
+        CreateProjectMatrixDraftFromSourceImportCommand(
+            project_id="P1",
+            source_import_id="smi-1",
+        )
+    )
+    updated = service.update_draft(
+        UpdateProjectMatrixDraftCommand(
+            project_id="P1",
+            project_matrix_draft_id=created.record.project_matrix_draft_id,
+            groups=(
+                ProjectMatrixDraftGroupInput(
+                    draft_group_id="foreign-group-id",
+                    source_group_snapshot_id=None,
+                    group_order=1,
+                    group_key="foreign",
+                    group_label="Foreign",
+                    is_selected=True,
+                    sample_quantity_expression="3",
+                    sample_note=None,
+                ),
+            ),
+            rows=(
+                ProjectMatrixDraftRowInput(
+                    draft_row_id="foreign-row-id",
+                    source_row_snapshot_id=None,
+                    row_order=1,
+                    test_item="Transferred row",
+                    source_section="9.1",
+                    method="M",
+                    condition="C",
+                    requirement="R",
+                    is_sample_row=False,
+                ),
+            ),
+            cells=(
+                ProjectMatrixDraftCellInput(
+                    draft_row_id="foreign-row-id",
+                    draft_group_id="foreign-group-id",
+                    cell_value="4",
+                ),
+            ),
+        )
+    )
+    assert updated.groups[0].draft_group_id != "foreign-group-id"
+    assert updated.rows[0].draft_row_id != "foreign-row-id"
+    assert updated.cells[0].draft_group_id == updated.groups[0].draft_group_id
+    assert updated.cells[0].draft_row_id == updated.rows[0].draft_row_id
+
+
 class _ProjectStore:
     def __init__(self, *, exists: bool) -> None:
         self._project = (
