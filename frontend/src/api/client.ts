@@ -1711,6 +1711,14 @@ export function confirmProjectMatrixDraft(
   );
 }
 
+export function fetchActiveConfirmedMatrixSnapshot(
+  projectId: string
+): Promise<ConfirmedMatrixSnapshot> {
+  return requestJson<ConfirmedMatrixSnapshot>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/active-snapshot`
+  );
+}
+
 export function commitMatrixImport(
   projectId: string,
   input: MatrixImportCommitRequest

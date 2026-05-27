@@ -2780,23 +2780,31 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         + "\n"
         + (FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx").read_text(encoding="utf-8")
     )
+    matrix_editor_action_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceActionGroups.tsx"
+    ).read_text(encoding="utf-8")
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
         encoding="utf-8"
     )
+    combined_source = matrix_editor_source + "\n" + matrix_editor_action_source
 
     for required_label in [
         "Matrix Editor",
-        "Definition Studio",
         "Back to Workbench",
         "Templates",
         "Reference Library",
         "Projection Ref:",
     ]:
         assert required_label in matrix_editor_source
+    assert (
+        "Definition Studio" in matrix_editor_source
+        or "matrix-editor-target-title-compact" in matrix_editor_source
+    )
 
     assert (
-        "Publish for approval" in matrix_editor_source
-        or "Confirm revision" in matrix_editor_source
+        "Publish for approval" in combined_source
+        or "Confirm revision" in combined_source
+        or "Confirm As Active Matrix" in combined_source
     )
 
     assert (
@@ -3312,10 +3320,7 @@ def test_task243_matrix_editor_starts_with_minimal_valid_grid() -> None:
         FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
     ).read_text(encoding="utf-8")
 
-    for required_source in [
-        '{ label: "Groups", value: "1" }',
-        'groups: { "group-1": "" }',
-    ]:
+    for required_source in ['groups: { "group-1": "" }']:
         assert required_source in matrix_editor_source
     assert (
         'return [{ id: "group-1", name: "1" }];' in matrix_editor_source
@@ -3337,8 +3342,6 @@ def test_task244_matrix_editor_starts_with_two_row_seed_and_optional_section() -
     ).read_text(encoding="utf-8")
 
     for required_source in [
-        '{ label: "Steps", value: "1" }',
-        '{ label: "Items", value: "2" }',
         'id: "matrix-row-0"',
         'item: "Visual Examination"',
         'method: "EIA-364-18B"',
@@ -3742,6 +3745,10 @@ def test_task259_matrix_editor_revision_actions_wiring_is_present() -> None:
     matrix_editor_source = (
         FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
     ).read_text(encoding="utf-8")
+    action_groups_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixWorkspaceActionGroups.tsx"
+    ).read_text(encoding="utf-8")
+    combined_source = matrix_editor_source + "\n" + action_groups_source
 
     for required_client_symbol in [
         "source_import_id: string | null;",
@@ -3761,17 +3768,31 @@ def test_task259_matrix_editor_revision_actions_wiring_is_present() -> None:
         "projectMatrixDraftBaseConfirmedMatrixId",
         "Revision already confirmed.",
         "Current draft is not a revision draft.",
-        "Save changes before creating revision draft.",
-        "Save changes before confirming revision.",
-        "Revision draft loaded.",
-        "const onCreateRevisionDraft = async (): Promise<void> => {",
-        "const onConfirmRevision = async (): Promise<void> => {",
-        "confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, {",
         "confirmed_by: MVP_REVISION_CONFIRMED_BY,",
-        "Confirm revision",
-        "Create revision draft",
     ]:
         assert required_editor_symbol in matrix_editor_source
+
+    if "const onCreateRevisionDraft = async (): Promise<void> => {" in matrix_editor_source:
+        for legacy_revision_symbol in [
+            "Save changes before creating revision draft.",
+            "Save changes before confirming revision.",
+            "Revision draft loaded.",
+            "const onConfirmRevision = async (): Promise<void> => {",
+            "confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, {",
+            "Confirm revision",
+            "Create revision draft",
+        ]:
+            assert legacy_revision_symbol in matrix_editor_source
+    else:
+        for single_publish_symbol in [
+            "const ensureEditableDraft = async (): Promise<ProjectMatrixDraft | null> => {",
+            "const onConfirmAsActiveMatrix = async (): Promise<void> => {",
+                "const publishMode: MatrixPublishMode =",
+                "publishMode === \"revision_authority\"",
+                "confirmProjectMatrixRevisionDraft(projectId, targetDraftId, {",
+            ]:
+                assert single_publish_symbol in matrix_editor_source
+        assert "Confirm As Active Matrix" in combined_source
 
 
 def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present() -> None:
@@ -4132,7 +4153,8 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
     assert "Unsaved changes" in matrix_editor_source
     assert "Saving..." in matrix_editor_source
     assert "Save failed. Retry before confirming." in matrix_editor_source
-    assert "Revert to last saved draft" in action_groups_source
+    if "Revert to last saved draft" not in action_groups_source:
+        assert ">Undo<" in matrix_editor_source or "Undo" in matrix_editor_source
     assert "Save Draft" not in action_groups_source
     assert "Discard Draft Changes" not in action_groups_source
     assert "Draft Save Status" in banner_source
@@ -4393,19 +4415,9 @@ def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> Non
         assert required in matrix_editor_source or required in api_client_source
 
     for required_copy in [
-        "Editing Draft",
-        "Not active for downstream outputs",
-        "Current Active Matrix Authority",
-        "Used by Project Workbench and Test Record generation",
-        "Editing Revision Draft",
-        "Changes are not active until confirmed",
-        "Save Draft",
-        "Discard Draft Changes",
         "Change Selected Groups",
         "Change Source Matrix",
         "Confirm As Active Matrix",
-        "Create Revision Draft",
-        "Confirm Revision",
     ]:
         assert (
             required_copy in matrix_editor_source
@@ -4414,9 +4426,46 @@ def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> Non
             or required_copy in clarity_model_source
         )
 
-    assert "This is not a new source import" in clarity_model_source
-    assert "Draft Actions" in action_groups_source
-    assert "Authority Actions" in action_groups_source
-    assert "matrix-workspace-state-banner" in workbench_css
-    assert "matrix-workspace-action-groups" in workbench_css
-    assert "Changing the source matrix may invalidate current draft edits" in matrix_editor_source
+    if "matrix-workspace-toolbar" in action_groups_source:
+        assert "Draft Actions" not in action_groups_source
+        assert "Authority Actions" not in action_groups_source
+        assert "Create Revision Draft" not in action_groups_source
+        assert "Confirm Revision" not in action_groups_source
+    else:
+        assert "Draft Actions" in action_groups_source
+        assert "Authority Actions" in action_groups_source
+    assert "matrix-workspace-state-banner" in workbench_css or "matrix-workspace-toolbar" in workbench_css
+    assert "matrix-workspace-action-groups" in workbench_css or "matrix-workspace-toolbar" in workbench_css
+    assert (
+        "Changing the source matrix may invalidate current draft edits" in matrix_editor_source
+        or "Change Source Matrix will replace the current source session." in matrix_editor_source
+    )
+
+
+def test_task277_matrix_editor_single_draft_publish_flow_is_wired() -> None:
+    workspace_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    action_groups_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "matrix-editor"
+        / "MatrixWorkspaceActionGroups.tsx"
+    ).read_text(encoding="utf-8")
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    topbar_source = (
+        FRONTEND_ROOT / "src" / "components" / "layout" / "TopBar.tsx"
+    ).read_text(encoding="utf-8")
+
+    combined_source = workspace_source + "\n" + action_groups_source
+    assert "Create Revision Draft" not in combined_source
+    assert "Confirm Revision" not in combined_source
+    assert "Draft Actions" not in combined_source
+    assert "Authority Actions" not in combined_source
+    assert "Current State" not in workspace_source
+    assert "Revert to last saved draft" not in combined_source
+    assert "Confirm As Active Matrix" in combined_source
+    assert "Back to Workbench" in workspace_source
+    assert "topBarTitle = route.name === \"projectMatrixEditor\" ? \"Matrix Editor\" : undefined;" in app_source
+    assert "titleOverride" in topbar_source

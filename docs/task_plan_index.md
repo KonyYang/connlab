@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-05-27
-Status: active planned task plan exists
+Status: no active planned task plan
 
 ## Decision
 
@@ -44,13 +44,13 @@ docs/task_XXX_*_plan.md
 Current active planned task plan:
 
 ```text
-docs/task_277_matrix_editor_single_draft_publish_flow_plan.md
+none
 ```
 
 Latest completed task plan history:
 
 ```text
-docs/task_276_workbench_execution_surface_density_polish_plan.md
+docs/task_277_matrix_editor_single_draft_publish_flow_plan.md
 ```
 
 Archived completed-plan pattern:

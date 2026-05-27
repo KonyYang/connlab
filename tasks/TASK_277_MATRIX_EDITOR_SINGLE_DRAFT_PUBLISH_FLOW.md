@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Awaiting user approval before implementation.
+Complete.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 ## Allowed Reason
 
-TASK_276 is complete and the task board has no active implementation task. This task is a controlled Matrix Editor follow-up created from user review of the live Matrix Editor page.
+TASK_276 was complete and TASK_277 was approved as the current active task for execution. Implementation is now finished within approved frontend scope.
 
 ## Objective
 
@@ -52,9 +52,10 @@ Frontend-first Matrix Editor workflow and UI refactor:
    - first authority: `confirmProjectMatrixDraft`
    - revision authority: `confirmProjectMatrixRevisionDraft`
 5. Before confirming, flush the latest editor payload through `saveProjectMatrixDraft` when there are unsaved edits.
-6. If a project already has an active Matrix and no editable draft is loaded, create/load the editable revision draft internally using existing APIs instead of asking the user to click `Create Revision Draft`.
+6. If a project already has an active Matrix and no editable draft is loaded, ensure an editable revision draft internally using existing APIs only when needed for editing/publish (lazy creation), instead of asking the user to click `Create Revision Draft`.
 7. Prevent no-change publish when the editor content is unchanged from the active authority baseline.
    - Use a frontend baseline signature if existing APIs do not provide a dedicated no-change response.
+   - Evaluate no-change against the latest saved/normalized draft snapshot used for publish, not only pre-save in-memory payload.
 8. After successful confirm, call `onBackToWorkbench()` so Workbench remounts/reloads the active Matrix projection.
 9. Keep auto-save and one `Undo` action.
 10. Keep document import and selected-group adjustment as editor tools.
@@ -175,14 +176,23 @@ Reason:
 - It requires careful state-flow control around auto-save and confirm, but the relevant code is localized in Matrix Editor feature files.
 - The main risk is accidentally changing persistence semantics; this can be controlled with targeted tests and an explicit no-backend-change guard.
 
-## Implementation Protocol
+## Completion Notes
 
-Implementation must not start until the user explicitly approves this task and plan.
+Implemented as a frontend-only workflow refactor:
 
-Recommended execution mode:
+- Unified one-button publish flow (`Confirm As Active Matrix`) while keeping existing first-confirm/revision-confirm API routing internally.
+- Removed user-facing `Create Revision Draft`, `Confirm Revision`, `Draft Actions`, `Authority Actions`, and large `Current State` banner.
+- Compacted header and moved Matrix actions into a compact toolbar near `Undo`.
+- Added/updated interaction tests and static guards for TASK_277 behavior.
+- Updated legacy static guards (`TASK_221/243/244/259`) to remain compatible with the new TASK_277 flow while preserving prior scope assertions.
 
-```text
-superpowers:executing-plans
-```
+Validation summary:
 
-Execute serially. Do not use parallel broad rewrites because Matrix Editor state, auto-save, import selection, and confirm actions share state.
+- `cd frontend && npm test -- --run MatrixEditorWorkspace` passed (`4 passed`)
+- `cd frontend && npm run build` passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "task277 or task276 or matrix_editor"` passed (`37 passed`)
+- `py -m pytest tests\integration\test_matrix_to_test_record_smoke_flow_api.py -q` passed (`1 passed`)
+- `git diff --name-only -- backend` returned no output
+- `git diff --check` passed with CRLF working-copy warnings only
+
+Scope boundary held: no backend/API/domain/storage changes.

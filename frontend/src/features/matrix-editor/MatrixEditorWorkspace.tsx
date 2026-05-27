@@ -6,6 +6,7 @@ import {
   confirmProjectMatrixDraft,
   confirmProjectMatrixRevisionDraft,
   createMatrixRevisionDraft,
+  fetchActiveConfirmedMatrixSnapshot,
   getProjectMatrixDraft,
   listProjectMatrixDrafts,
   matrixPreviewPdfUrl,
@@ -23,26 +24,18 @@ import {
   preserveSelectedGroupKeys,
 } from "./matrixImportSessionModel";
 import { MatrixWorkspaceActionGroups } from "./MatrixWorkspaceActionGroups";
-import { MatrixWorkspaceStateBanner } from "./MatrixWorkspaceStateBanner";
 import {
   buildDefaultSelectedGroupKeys,
   buildMatrixImportSelectionViewModel,
   buildMatrixImportSelectionDisabledReason,
   type MatrixImportSelectionViewModel,
 } from "./matrixImportSelectionSelectors";
-import { buildMatrixWorkspaceBannerModel } from "./matrixWorkspaceClarityModel";
 import "../../workbench.css";
 
 type MatrixEditorWorkspaceProps = {
   projectId: string;
   onBackToWorkbench: () => void;
 };
-
-const HEADER_METRICS = [
-  { label: "Groups", value: "1" },
-  { label: "Steps", value: "1" },
-  { label: "Items", value: "2" }
-];
 
 type GroupColumn = {
   id: string;
@@ -73,7 +66,8 @@ type MatrixSnapshot = {
 };
 
 type MatrixSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-type MatrixRevisionActionState = "idle" | "loading" | "success" | "error";
+type MatrixPublishState = "idle" | "loading" | "success" | "error";
+type MatrixPublishMode = "first_authority" | "revision_authority";
 
 const AUTO_SAVE_DEBOUNCE_MS = 600;
 
@@ -362,6 +356,187 @@ function buildDraftSavePayload(
   };
 }
 
+type AuthorityComparableGroup = {
+  groupOrder: number;
+  groupKey: string;
+  groupLabel: string;
+  sampleQuantityExpression: string;
+  sampleNote: string;
+  isSelected: boolean;
+};
+
+type AuthorityComparableRow = {
+  rowOrder: number;
+  testItem: string;
+  sourceSection: string;
+  method: string;
+  condition: string;
+  requirement: string;
+};
+
+type AuthorityComparableDraftGroup = AuthorityComparableGroup & {
+  draftGroupId: string;
+};
+
+type AuthorityComparableDraftRow = AuthorityComparableRow & {
+  draftRowId: string;
+};
+
+function buildAuthorityComparableSignatureFromDraftPayload(
+  payload: ProjectMatrixDraftSaveRequest
+): string {
+  const groups: AuthorityComparableDraftGroup[] = payload.groups
+    .map((group) => ({
+      groupOrder: group.group_order,
+      groupKey: group.group_key ?? "",
+      groupLabel: group.group_label ?? "",
+      sampleQuantityExpression: group.sample_quantity_expression ?? "",
+      sampleNote: group.sample_note ?? "",
+      isSelected: Boolean(group.is_selected),
+      draftGroupId: group.draft_group_id ?? "",
+    }))
+    .sort((left, right) => left.groupOrder - right.groupOrder);
+
+  const rows: AuthorityComparableDraftRow[] = payload.rows
+    .filter((row) => !row.is_sample_row)
+    .map((row) => ({
+      rowOrder: row.row_order,
+      testItem: row.test_item ?? "",
+      sourceSection: row.source_section ?? "",
+      method: row.method ?? "",
+      condition: row.condition ?? "",
+      requirement: row.requirement ?? "",
+      draftRowId: row.draft_row_id ?? "",
+    }))
+    .sort((left, right) => left.rowOrder - right.rowOrder);
+
+  const groupIndexByDraftGroupId = new Map<string, number>();
+  groups.forEach((group, index) => {
+    groupIndexByDraftGroupId.set(group.draftGroupId, index);
+  });
+  const rowIndexByDraftRowId = new Map<string, number>();
+  rows.forEach((row, index) => {
+    rowIndexByDraftRowId.set(row.draftRowId, index);
+  });
+
+  const cellMap = new Map<string, string>();
+  payload.cells.forEach((cell) => {
+    const rowIndex = rowIndexByDraftRowId.get(cell.draft_row_id ?? "");
+    const groupIndex = groupIndexByDraftGroupId.get(cell.draft_group_id ?? "");
+    if (rowIndex === undefined || groupIndex === undefined) {
+      return;
+    }
+    const value = (cell.cell_value ?? "").trim();
+    if (!value) {
+      return;
+    }
+    cellMap.set(`${rowIndex}:${groupIndex}`, value);
+  });
+
+  return JSON.stringify({
+    groups: groups.map((group) => ({
+      groupOrder: group.groupOrder,
+      groupKey: group.groupKey.trim(),
+      groupLabel: group.groupLabel.trim(),
+      sampleQuantityExpression: group.sampleQuantityExpression.trim(),
+      sampleNote: group.sampleNote.trim(),
+      isSelected: group.isSelected,
+    })),
+    rows: rows.map((row, rowIndex) => ({
+      rowOrder: row.rowOrder,
+      testItem: row.testItem.trim(),
+      sourceSection: row.sourceSection.trim(),
+      method: row.method.trim(),
+      condition: row.condition.trim(),
+      requirement: row.requirement.trim(),
+      cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
+    })),
+  });
+}
+
+function buildAuthorityComparableSignatureFromDraft(
+  draft: ProjectMatrixDraft
+): string {
+  const mapped = buildMatrixFromProjectMatrixDraft(draft);
+  const payload = buildDraftSavePayload(mapped.rows, mapped.groups, mapped.samples);
+  return buildAuthorityComparableSignatureFromDraftPayload(payload);
+}
+
+function buildAuthorityComparableSignatureFromConfirmedSnapshot(
+  snapshot: ConfirmedMatrixSnapshot
+): string {
+  const groups: Array<
+    AuthorityComparableGroup & { confirmedGroupId: string }
+  > = [...snapshot.groups]
+    .map((group) => ({
+      confirmedGroupId: group.confirmed_group_id,
+      groupOrder: group.group_order,
+      groupKey: group.group_key ?? "",
+      groupLabel: group.group_label ?? "",
+      sampleQuantityExpression: group.sample_quantity_expression ?? "",
+      sampleNote: group.sample_note ?? "",
+      isSelected: true,
+    }))
+    .sort((left, right) => left.groupOrder - right.groupOrder);
+
+  const rows: Array<AuthorityComparableRow & { confirmedRowId: string }> = [
+    ...snapshot.rows,
+  ]
+    .map((row) => ({
+      confirmedRowId: row.confirmed_row_id,
+      rowOrder: row.row_order,
+      testItem: row.test_item ?? "",
+      sourceSection: row.source_section ?? "",
+      method: row.method ?? "",
+      condition: row.condition ?? "",
+      requirement: row.requirement ?? "",
+    }))
+    .sort((left, right) => left.rowOrder - right.rowOrder);
+
+  const groupIndexById = new Map<string, number>();
+  groups.forEach((group, index) => {
+    groupIndexById.set(group.confirmedGroupId, index);
+  });
+  const rowIndexById = new Map<string, number>();
+  rows.forEach((row, index) => {
+    rowIndexById.set(row.confirmedRowId, index);
+  });
+
+  const cellMap = new Map<string, string>();
+  snapshot.cells.forEach((cell) => {
+    const rowIndex = rowIndexById.get(cell.confirmed_row_id ?? "");
+    const groupIndex = groupIndexById.get(cell.confirmed_group_id ?? "");
+    if (rowIndex === undefined || groupIndex === undefined) {
+      return;
+    }
+    const value = (cell.cell_value ?? "").trim();
+    if (!value) {
+      return;
+    }
+    cellMap.set(`${rowIndex}:${groupIndex}`, value);
+  });
+
+  return JSON.stringify({
+    groups: groups.map((group) => ({
+      groupOrder: group.groupOrder,
+      groupKey: group.groupKey.trim(),
+      groupLabel: group.groupLabel.trim(),
+      sampleQuantityExpression: group.sampleQuantityExpression.trim(),
+      sampleNote: group.sampleNote.trim(),
+      isSelected: true,
+    })),
+    rows: rows.map((row, rowIndex) => ({
+      rowOrder: row.rowOrder,
+      testItem: row.testItem.trim(),
+      sourceSection: row.sourceSection.trim(),
+      method: row.method.trim(),
+      condition: row.condition.trim(),
+      requirement: row.requirement.trim(),
+      cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
+    })),
+  });
+}
+
 const MVP_REVISION_CONFIRMED_BY = "connlab-operator";
 
 function parseRequestError(error: unknown, fallback: string): string {
@@ -381,6 +556,74 @@ function parsePositiveInteger(input: string): number | null {
     return null;
   }
   return parsed;
+}
+
+function buildManualPreviewPayloadFromDraftPayload(
+  payload: ProjectMatrixDraftSaveRequest
+): MatrixPreviewResponse {
+  const tokenByRowGroup = new Map<string, string>();
+  payload.cells.forEach((cell) => {
+    const value = (cell.cell_value ?? "").trim();
+    if (!value) {
+      return;
+    }
+    tokenByRowGroup.set(`${cell.draft_row_id}:${cell.draft_group_id}`, value);
+  });
+
+  const groups = [...payload.groups]
+    .sort((left, right) => left.group_order - right.group_order)
+    .map((group) => ({
+      group_key: group.group_key ?? "",
+      group_label: group.group_label ?? "",
+      source_table_index: 0,
+      extraction_status: "manual",
+      sample_size: null,
+      sample_quantity_expression: group.sample_quantity_expression ?? null,
+      sample_note: group.sample_note ?? null,
+      steps: [],
+    }));
+
+  const rows = [...payload.rows]
+    .sort((left, right) => left.row_order - right.row_order)
+    .map((row) => {
+      const group_tokens: Record<string, string> = {};
+      payload.groups.forEach((group) => {
+        const value = tokenByRowGroup.get(`${row.draft_row_id}:${group.draft_group_id}`) ?? "";
+        const groupLabel = (group.group_label ?? "").trim();
+        const groupKey = (group.group_key ?? "").trim();
+        if (groupLabel) {
+          group_tokens[groupLabel] = value;
+        }
+        if (groupKey) {
+          group_tokens[groupKey] = value;
+        }
+      });
+      return {
+        source_row_index: row.row_order,
+        test_item: row.test_item ?? "",
+        source_section: row.source_section ?? null,
+        group_tokens,
+        is_sample_row: Boolean(row.is_sample_row),
+      };
+    });
+
+  return {
+    project_id: null,
+    source_document_path: "manual://matrix-editor",
+    source_document_name: "Matrix Editor Manual Draft",
+    source_format: "manual",
+    capability_status: "supported",
+    generated_at: new Date().toISOString(),
+    selected_table_index: 0,
+    selected_page_number: 1,
+    selected_page_table_index: 1,
+    candidate_tables: [],
+    preview_pdf_token: null,
+    rows,
+    groups,
+    warnings: [],
+    blockers: [],
+  };
 }
 
 function buildConfirmRevisionGuard(input: {
@@ -869,15 +1112,13 @@ export function MatrixEditorWorkspace({
   const [draftLoading, setDraftLoading] = useState(false);
   const [saveState, setSaveState] = useState<MatrixSaveState>("idle");
   const [saveBaselineSignature, setSaveBaselineSignature] = useState<string | null>(null);
-  const [createRevisionState, setCreateRevisionState] = useState<MatrixRevisionActionState>("idle");
-  const [createRevisionMessage, setCreateRevisionMessage] = useState("");
-  const [confirmRevisionState, setConfirmRevisionState] = useState<MatrixRevisionActionState>("idle");
-  const [confirmRevisionMessage, setConfirmRevisionMessage] = useState("");
-  const [confirmActiveState, setConfirmActiveState] = useState<MatrixRevisionActionState>("idle");
+  const [confirmActiveState, setConfirmActiveState] = useState<MatrixPublishState>("idle");
   const [confirmActiveMessage, setConfirmActiveMessage] = useState<string>("");
   const [activeAuthorityConfirmed, setActiveAuthorityConfirmed] = useState(false);
+  const [activeAuthorityBaselineSignature, setActiveAuthorityBaselineSignature] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
+  const hasRuntimeAuthorityAvailable = Boolean(model.runtimeAuthoritySync.authorityVersion);
 
   const applyDraftSnapshotToEditor = (draft: ProjectMatrixDraft): void => {
     const mapped = buildMatrixFromProjectMatrixDraft(draft);
@@ -901,6 +1142,23 @@ export function MatrixEditorWorkspace({
     setConfirmActiveMessage("");
   };
 
+  const resolveActiveAuthorityBaselineSignature = async (
+    input: {
+      fallbackDraft?: ProjectMatrixDraft | null;
+      allowDraftFallback: boolean;
+    }
+  ): Promise<string | null> => {
+    try {
+      const snapshot = await fetchActiveConfirmedMatrixSnapshot(projectId);
+      return buildAuthorityComparableSignatureFromConfirmedSnapshot(snapshot);
+    } catch (error) {
+      if (input.allowDraftFallback && input.fallbackDraft) {
+        return buildAuthorityComparableSignatureFromDraft(input.fallbackDraft);
+      }
+      return null;
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     const loadDraft = async (): Promise<void> => {
@@ -916,6 +1174,7 @@ export function MatrixEditorWorkspace({
           setProjectMatrixDraftUpdatedAt(null);
           setProjectMatrixDraftBaseConfirmedMatrixId(null);
           setSaveBaselineSignature(null);
+          setActiveAuthorityBaselineSignature(null);
           setSaveState("idle");
           return;
         }
@@ -926,10 +1185,20 @@ export function MatrixEditorWorkspace({
           return;
         }
         applyDraftSnapshotToEditor(draft);
-        setCreateRevisionState("idle");
-        setCreateRevisionMessage("");
-        setConfirmRevisionState("idle");
-        setConfirmRevisionMessage("");
+        const shouldResolveAuthorityBaseline =
+          Boolean(draft.record.base_confirmed_matrix_id) ||
+          hasRuntimeAuthorityAvailable;
+        if (!shouldResolveAuthorityBaseline) {
+          setActiveAuthorityBaselineSignature(null);
+          return;
+        }
+        const baselineSignature = await resolveActiveAuthorityBaselineSignature({
+          allowDraftFallback: false,
+        });
+        if (cancelled) {
+          return;
+        }
+        setActiveAuthorityBaselineSignature(baselineSignature);
       } catch (error) {
         if (cancelled) {
           return;
@@ -937,6 +1206,7 @@ export function MatrixEditorWorkspace({
         setHasPersistedDraft(false);
         setProjectMatrixDraftId(null);
         setProjectMatrixDraftBaseConfirmedMatrixId(null);
+        setActiveAuthorityBaselineSignature(null);
         setSaveState("error");
       } finally {
         if (!cancelled) {
@@ -948,7 +1218,7 @@ export function MatrixEditorWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, hasRuntimeAuthorityAvailable]);
 
   useLayoutEffect(() => {
     setSampleValues((previous) => {
@@ -970,9 +1240,11 @@ export function MatrixEditorWorkspace({
   }, [groupColumns]);
 
   const projectLabel = model.project?.product_name ?? "Connector Project";
-  const ltr = model.latestLtr ?? "Not registered";
-  const bu = model.project?.business_unit || "Not set";
-  const requester = model.project?.requestor || "Not set";
+  const ltr = model.latestLtr ?? `Temporary project ${projectId.slice(0, 8)}`;
+  const testDescription = model.matrixAuthorityDraft?.source_document_name?.trim()
+    ? model.matrixAuthorityDraft.source_document_name.trim()
+    : "Test description unavailable";
+  const matrixEditorIdentityLine = `${ltr} | ${projectLabel} | ${testDescription}`;
   const projectionRef = model.runtimeAuthoritySync.projectionMatrixReference ?? "not loaded";
   const normalizedNameMap = new Map<string, string[]>();
   const emptyGroupIds = new Set<string>();
@@ -1125,74 +1397,31 @@ export function MatrixEditorWorkspace({
   const currentSaveSignature = JSON.stringify(currentSavePayload);
   const hasUnsavedChanges =
     saveBaselineSignature !== null && currentSaveSignature !== saveBaselineSignature;
+  const hasAnyStepTokenValue = currentSavePayload.cells.some(
+    (cell) => (cell.cell_value ?? "").trim().length > 0
+  );
   const hasProjectId = projectId.trim().length > 0;
-  const isCreateRevisionBusy = createRevisionState === "loading";
-  const isConfirmRevisionBusy = confirmRevisionState === "loading";
-  const isConfirmActiveBusy = confirmActiveState === "loading";
-  const isAnyRevisionActionBusy = isCreateRevisionBusy || isConfirmRevisionBusy || isConfirmActiveBusy;
-  const canCreateRevisionDraft = hasProjectId && !isAnyRevisionActionBusy && saveState !== "saving";
-  const createRevisionDisabledReason = !hasProjectId
-    ? "No project id."
-    : saveState === "saving" || isAnyRevisionActionBusy
-      ? "Action in progress."
-      : saveState === "dirty" || saveState === "error" || hasUnsavedChanges
-        ? "Save changes before creating revision draft."
-      : "";
-  const canCreateRevisionDraftWithGuards = canCreateRevisionDraft && !hasUnsavedChanges;
-  const hasActiveAuthority = activeAuthorityConfirmed || Boolean(model.runtimeAuthoritySync.authorityVersion);
-  const workspaceBannerModel = buildMatrixWorkspaceBannerModel({
-    hasPersistedDraft,
-    baseConfirmedMatrixId: projectMatrixDraftBaseConfirmedMatrixId,
-    activeAuthorityConfirmed: hasActiveAuthority,
-  });
-  const isRevisionDraft = projectMatrixDraftBaseConfirmedMatrixId !== null && !activeAuthorityConfirmed;
-  const canRevertDraft =
-    hasPersistedDraft &&
-    projectMatrixDraftId !== null &&
-    (hasUnsavedChanges || saveState === "error") &&
-    !isAnyRevisionActionBusy &&
-    saveState !== "saving";
-  const revertDraftDisabledReason =
-    !hasPersistedDraft || projectMatrixDraftId === null
-      ? "No persisted draft target."
-      : isAnyRevisionActionBusy
-        ? "Action in progress."
-        : saveState === "saving"
-          ? "Saving in progress."
-          : !hasUnsavedChanges && saveState !== "error"
-            ? "No unsaved changes."
-            : "";
-  const hasActiveAuthorityFromWorkbench = Boolean(model.runtimeAuthoritySync.authorityVersion);
-  const confirmAsActiveDisabledReason =
-    !hasPersistedDraft || projectMatrixDraftId === null
-      ? "No persisted matrix draft target."
-      : isRevisionDraft
-        ? "Use Confirm Revision for a revision draft."
-        : hasActiveAuthorityFromWorkbench || activeAuthorityConfirmed
-          ? "Active authority already exists. Use Create Revision Draft."
-        : hasUnsavedChanges
-          ? "Save changes before confirming as active."
-          : saveState === "dirty" || saveState === "saving" || saveState === "error"
-            ? "Draft must be saved before confirming."
-            : hasMatrixValidationError
-              ? groupNameErrorMessage || stepTokenErrorMessage
-              : isAnyRevisionActionBusy
-                ? "Action in progress."
-                : "";
-  const canConfirmAsActiveMatrix = confirmAsActiveDisabledReason.length === 0;
-  const canShowConfirmAsActive =
-    !isRevisionDraft && !hasActiveAuthorityFromWorkbench && !activeAuthorityConfirmed;
-  const confirmRevisionGuard = buildConfirmRevisionGuard({
-    hasProjectId,
-    projectMatrixDraftId,
-    draftBaseConfirmedMatrixId: projectMatrixDraftBaseConfirmedMatrixId,
-    hasUnsavedChanges,
-    hasMatrixValidationError,
-    hasPersistedDraft,
-    busy: saveState === "dirty" || saveState === "saving" || saveState === "error" || isAnyRevisionActionBusy,
-    alreadyConfirmed: confirmRevisionState === "success",
-    validationMessage: groupNameErrorMessage || stepTokenErrorMessage,
-  });
+  const hasActiveAuthorityFromWorkbench = hasRuntimeAuthorityAvailable;
+  const isPublishBusy = confirmActiveState === "loading";
+  const hasNoAuthorityChanges =
+    activeAuthorityBaselineSignature !== null &&
+    buildAuthorityComparableSignatureFromDraftPayload(currentSavePayload) ===
+      activeAuthorityBaselineSignature;
+  const publishDisabledReason =
+    !hasProjectId
+      ? "No project id."
+      : hasMatrixValidationError
+        ? groupNameErrorMessage || stepTokenErrorMessage
+        : saveState === "saving" || isPublishBusy
+          ? "Action in progress."
+          : !projectMatrixDraftId &&
+            !hasActiveAuthorityFromWorkbench &&
+            !hasAnyStepTokenValue
+            ? "Add at least one step token before first confirm."
+            : hasNoAuthorityChanges
+              ? "No Matrix changes to publish."
+              : "";
+  const canPublishActiveMatrix = publishDisabledReason.length === 0;
   const saveStatusLabel =
     !hasPersistedDraft || projectMatrixDraftId === null
       ? "No persisted draft target."
@@ -1207,7 +1436,7 @@ export function MatrixEditorWorkspace({
     hasUnsavedChanges &&
     !hasMatrixValidationError &&
     saveState === "dirty" &&
-    !isAnyRevisionActionBusy;
+    !isPublishBusy;
 
   useEffect(() => {
     if (autoSaveTimerRef.current !== null) {
@@ -1256,9 +1485,6 @@ export function MatrixEditorWorkspace({
   };
 
   const markUnsaved = (): void => {
-    if (saveBaselineSignature === null) {
-      return;
-    }
     setActiveAuthorityConfirmed(false);
     if (saveState !== "saving") {
       setSaveState("dirty");
@@ -1891,122 +2117,178 @@ export function MatrixEditorWorkspace({
     setContextMenu(null);
   };
 
-  const onRevertDraftChanges = async (): Promise<void> => {
-    if (!projectMatrixDraftId) {
-      setSaveState("error");
-      return;
+  const ensureEditableDraft = async (): Promise<ProjectMatrixDraft | null> => {
+    if (projectMatrixDraftId) {
+      return null;
     }
-    setSaveState("saving");
-    try {
-      const draft = await getProjectMatrixDraft(projectId, projectMatrixDraftId);
-      applyDraftSnapshotToEditor(draft);
-      setSaveState("saved");
-    } catch (error) {
-      console.error("Failed to revert matrix draft to saved baseline.", error);
-      setSaveState("error");
-    }
-  };
-
-  const onCreateRevisionDraft = async (): Promise<void> => {
     if (!hasProjectId) {
-      setCreateRevisionState("error");
-      setCreateRevisionMessage("No project id.");
-      return;
+      return null;
     }
-    if (hasUnsavedChanges) {
-      setCreateRevisionState("error");
-      setCreateRevisionMessage("Save changes before creating revision draft.");
-      return;
-    }
-    if (saveState === "saving" || isAnyRevisionActionBusy) {
-      return;
-    }
-    setCreateRevisionState("loading");
-    setCreateRevisionMessage("Creating revision draft...");
-    setConfirmRevisionState("idle");
-    setConfirmRevisionMessage("");
-    try {
+    if (hasActiveAuthorityFromWorkbench) {
       const draft = await createMatrixRevisionDraft(projectId);
       setHasPersistedDraft(true);
       applyDraftSnapshotToEditor(draft);
-      setSaveState("idle");
-      setCreateRevisionState("success");
-      setCreateRevisionMessage("Revision draft loaded.");
-    } catch (error) {
-      setCreateRevisionState("error");
-      setCreateRevisionMessage(parseRequestError(error, "Create revision draft failed."));
+      const baselineSignature = await resolveActiveAuthorityBaselineSignature({
+        fallbackDraft: draft,
+        allowDraftFallback: true,
+      });
+      setActiveAuthorityBaselineSignature(baselineSignature);
+      setSaveState("saved");
+      return draft;
     }
+    const selectedGroupKeys = currentSavePayload.groups
+      .filter((group) => group.is_selected)
+      .map((group) => group.group_key.trim())
+      .filter((groupKey) => groupKey.length > 0);
+    const groupKeysForCommit =
+      selectedGroupKeys.length > 0
+        ? selectedGroupKeys
+        : currentSavePayload.groups
+            .map((group) => group.group_key.trim())
+            .filter((groupKey) => groupKey.length > 0);
+    if (groupKeysForCommit.length === 0) {
+      throw new Error("At least one selected group is required before first confirm.");
+    }
+    const previewPayload = buildManualPreviewPayloadFromDraftPayload(currentSavePayload);
+    const commitResponse: MatrixImportCommitResponse = await commitMatrixImport(projectId, {
+      source_document_path: previewPayload.source_document_path,
+      source_document_name: previewPayload.source_document_name,
+      source_format: previewPayload.source_format,
+      preview_payload: previewPayload,
+      selected_group_keys: groupKeysForCommit,
+    });
+    const draft = commitResponse.project_matrix_draft;
+    setHasPersistedDraft(true);
+    applyDraftSnapshotToEditor(draft);
+    setActiveAuthorityBaselineSignature(null);
+    setSaveState("saved");
+    return draft;
   };
 
-  const onConfirmRevision = async (): Promise<void> => {
-    if (!confirmRevisionGuard.canConfirm || !projectMatrixDraftId) {
-      setConfirmRevisionState("error");
-      setConfirmRevisionMessage(confirmRevisionGuard.reason || "Revision confirm is unavailable.");
-      return;
+  const saveCurrentDraftNow = async (
+    draftIdOverride?: string | null,
+    options?: { force?: boolean }
+  ): Promise<ProjectMatrixDraft | null> => {
+    const targetDraftId = draftIdOverride ?? projectMatrixDraftId;
+    const force = options?.force ?? false;
+    if (!projectId.trim() || !targetDraftId) {
+      return null;
     }
-    setConfirmRevisionState("loading");
-    setConfirmRevisionMessage("Confirming revision...");
-    try {
-      const confirmed = await confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, {
-        confirmed_by: MVP_REVISION_CONFIRMED_BY,
-      });
-      setConfirmRevisionState("success");
-      setActiveAuthorityConfirmed(true);
-      setConfirmRevisionMessage(buildRevisionConfirmedMessage(confirmed));
-      onBackToWorkbench();
-    } catch (error) {
-      setConfirmRevisionState("error");
-      setConfirmRevisionMessage(parseRequestError(error, "Confirm revision failed."));
+    if (autoSaveTimerRef.current !== null) {
+      window.clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
     }
+    if (!force && saveState !== "dirty" && !hasUnsavedChanges && saveState !== "error") {
+      return null;
+    }
+    setSaveState("saving");
+    const saved = await saveProjectMatrixDraft(projectId, targetDraftId, currentSavePayload);
+    setHasPersistedDraft(true);
+    applyDraftSnapshotToEditor(saved);
+    setSaveState("saved");
+    return saved;
   };
 
   const onConfirmAsActiveMatrix = async (): Promise<void> => {
-    if (!canConfirmAsActiveMatrix || !projectMatrixDraftId) {
-      if (confirmAsActiveDisabledReason) {
-        setConfirmActiveMessage(confirmAsActiveDisabledReason);
+    if (!canPublishActiveMatrix) {
+      if (publishDisabledReason) {
+        setConfirmActiveMessage(publishDisabledReason);
       }
       return;
     }
     setConfirmActiveState("loading");
     setConfirmActiveMessage("Confirming active matrix...");
     try {
-      const confirmed = await confirmProjectMatrixDraft(projectId, projectMatrixDraftId, {
-        confirmed_by: MVP_REVISION_CONFIRMED_BY,
-      });
+      const ensuredDraft = await ensureEditableDraft();
+      const targetDraftId = ensuredDraft?.record.project_matrix_draft_id ?? projectMatrixDraftId;
+      if (!targetDraftId) {
+        setConfirmActiveState("error");
+        setConfirmActiveMessage("No persisted matrix draft target.");
+        return;
+      }
+
+      let authorityComparableSignatureAfterSave =
+        buildAuthorityComparableSignatureFromDraftPayload(currentSavePayload);
+      let savedDraft: ProjectMatrixDraft | null = null;
+      try {
+        const requiresInitialDraftSync = Boolean(
+          ensuredDraft &&
+          !hasActiveAuthorityFromWorkbench &&
+          projectMatrixDraftId === null
+        );
+        savedDraft = await saveCurrentDraftNow(targetDraftId, {
+          force: requiresInitialDraftSync,
+        });
+      } catch (error) {
+        setSaveState("error");
+        setConfirmActiveState("error");
+        setConfirmActiveMessage(
+          parseRequestError(error, "Save failed. Confirm was not published.")
+        );
+        return;
+      }
+      if (savedDraft) {
+        authorityComparableSignatureAfterSave =
+          buildAuthorityComparableSignatureFromDraft(savedDraft);
+      } else if (ensuredDraft) {
+        authorityComparableSignatureAfterSave =
+          buildAuthorityComparableSignatureFromDraft(ensuredDraft);
+      }
+      const authorityBaselineSignature =
+        activeAuthorityBaselineSignature ??
+        (ensuredDraft?.record.base_confirmed_matrix_id
+          ? buildAuthorityComparableSignatureFromDraft(ensuredDraft)
+          : null);
+      if (
+        authorityBaselineSignature !== null &&
+        authorityComparableSignatureAfterSave === authorityBaselineSignature
+      ) {
+        setConfirmActiveState("error");
+        setConfirmActiveMessage("No Matrix changes to publish.");
+        return;
+      }
+
+      const publishMode: MatrixPublishMode =
+        (savedDraft?.record.base_confirmed_matrix_id ??
+          ensuredDraft?.record.base_confirmed_matrix_id ??
+          projectMatrixDraftBaseConfirmedMatrixId)
+          ? "revision_authority"
+          : "first_authority";
+      const confirmed =
+        publishMode === "revision_authority"
+          ? await confirmProjectMatrixRevisionDraft(projectId, targetDraftId, {
+              confirmed_by: MVP_REVISION_CONFIRMED_BY,
+            })
+          : await confirmProjectMatrixDraft(projectId, targetDraftId, {
+              confirmed_by: MVP_REVISION_CONFIRMED_BY,
+            });
       setConfirmActiveState("success");
       setActiveAuthorityConfirmed(true);
-      setConfirmActiveMessage(buildActiveMatrixConfirmedMessage(confirmed));
+      setConfirmActiveMessage(
+        publishMode === "revision_authority"
+          ? buildRevisionConfirmedMessage(confirmed)
+          : buildActiveMatrixConfirmedMessage(confirmed)
+      );
+      onBackToWorkbench();
     } catch (error) {
       setConfirmActiveState("error");
-      setConfirmActiveMessage(parseRequestError(error, "Confirm active matrix failed."));
+      setConfirmActiveMessage(parseRequestError(error, "Confirm failed."));
     }
   };
 
   return (
     <section className="workbench-page matrix-editor-shell matrix-editor-target-shell" onClick={() => setContextMenu(null)}>
       <section className="matrix-editor-target-header">
-        <div className="matrix-editor-target-title">
+        <div className="matrix-editor-target-title matrix-editor-target-title-compact">
           <button className="matrix-editor-link-button" type="button" onClick={onBackToWorkbench}>
             Back to Workbench
           </button>
           <h2>Matrix Editor</h2>
-          <p>Definition Studio</p>
+          <p className="matrix-editor-project-identity" title={matrixEditorIdentityLine}>
+            {matrixEditorIdentityLine}
+          </p>
         </div>
-        <div className="matrix-editor-target-project">
-          <strong>{projectLabel}</strong>
-          <span>LTR Registered</span>
-          <p>LTR: {ltr}</p>
-          <p>BU: {bu}</p>
-          <p>Requester: {requester}</p>
-        </div>
-        <div className="matrix-editor-target-metrics">
-          {HEADER_METRICS.map((metric) => (
-            <article key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </article>
-          ))}
-        </div>
+        <section className="matrix-editor-save-status">{saveStatusLabel}</section>
         {showImportSelectionMode ? (
           <div className="matrix-editor-target-actions">
             <span className="matrix-editor-selection-mode-pill">Import selection in progress</span>
@@ -2014,42 +2296,9 @@ export function MatrixEditorWorkspace({
         ) : null}
       </section>
 
-      <MatrixWorkspaceStateBanner model={workspaceBannerModel} saveStatusLabel={saveStatusLabel} />
-      {!showImportSelectionMode ? (
-        <MatrixWorkspaceActionGroups
-          revertDraftVisible={
-            hasPersistedDraft &&
-            projectMatrixDraftId !== null &&
-            (hasUnsavedChanges || saveState === "error")
-          }
-          revertDraftDisabled={!canRevertDraft}
-          revertDraftDisabledReason={revertDraftDisabledReason}
-          changeSelectedGroupsDisabled={importSessionActionState.changeSelectedGroupsDisabled}
-          changeSelectedGroupsDisabledReason={importSessionActionState.changeSelectedGroupsDisabledReason}
-          confirmAsActiveDisabled={!canConfirmAsActiveMatrix}
-          confirmAsActiveDisabledReason={confirmAsActiveDisabledReason}
-          confirmAsActiveBusy={confirmActiveState === "loading"}
-          createRevisionDisabled={!canCreateRevisionDraftWithGuards}
-          createRevisionDisabledReason={createRevisionDisabledReason || "Create revision is currently unavailable."}
-          createRevisionBusy={createRevisionState === "loading"}
-          confirmRevisionDisabled={!confirmRevisionGuard.canConfirm}
-          confirmRevisionDisabledReason={confirmRevisionGuard.reason}
-          confirmRevisionBusy={confirmRevisionState === "loading"}
-          showConfirmAsActive={canShowConfirmAsActive}
-          showConfirmRevision={isRevisionDraft}
-          onRevertDraftChanges={() => void onRevertDraftChanges()}
-          onChangeSelectedGroups={onChangeSelectedGroups}
-          onChangeSourceMatrix={() => void onChangeSourceMatrix()}
-          onConfirmAsActiveMatrix={() => void onConfirmAsActiveMatrix()}
-          onCreateRevisionDraft={() => void onCreateRevisionDraft()}
-          onConfirmRevision={() => void onConfirmRevision()}
-        />
-      ) : null}
-
-      <section className="matrix-editor-save-status">{saveStatusLabel}</section>
-      {(createRevisionMessage || confirmRevisionMessage || confirmActiveMessage) && (
+      {confirmActiveMessage && (
         <section className="matrix-editor-save-status">
-          {confirmRevisionMessage || confirmActiveMessage || createRevisionMessage}
+          {confirmActiveMessage}
         </section>
       )}
 
@@ -2057,6 +2306,18 @@ export function MatrixEditorWorkspace({
         <div className="matrix-editor-actionbar-main">
           {importFile ? <span className="matrix-editor-import-file-name" title={importFile.name}>{importFile.name}</span> : null}
           <button type="button" onClick={undoLast} disabled={undoStack.length === 0 || showImportSelectionMode}>Undo</button>
+          {!showImportSelectionMode ? (
+            <MatrixWorkspaceActionGroups
+              changeSelectedGroupsDisabled={importSessionActionState.changeSelectedGroupsDisabled}
+              changeSelectedGroupsDisabledReason={importSessionActionState.changeSelectedGroupsDisabledReason}
+              publishDisabled={!canPublishActiveMatrix}
+              publishDisabledReason={publishDisabledReason}
+              publishBusy={confirmActiveState === "loading"}
+              onChangeSelectedGroups={onChangeSelectedGroups}
+              onChangeSourceMatrix={() => void onChangeSourceMatrix()}
+              onPublishActiveMatrix={() => void onConfirmAsActiveMatrix()}
+            />
+          ) : null}
           <button
             type="button"
             className="matrix-editor-import-secondary-button"

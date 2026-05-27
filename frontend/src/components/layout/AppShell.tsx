@@ -4,6 +4,7 @@ import { TopBar } from "./TopBar";
 
 type AppShellProps = {
   activeRoute: string;
+  topBarTitle?: string;
   children: ReactNode;
 };
 
@@ -12,7 +13,7 @@ function navigate(path: string): void {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-export function AppShell({ activeRoute, children }: AppShellProps): ReactElement {
+export function AppShell({ activeRoute, topBarTitle, children }: AppShellProps): ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     const raw = window.localStorage.getItem("connlab.sidebar.collapsed");
     return raw !== "0";
@@ -31,7 +32,7 @@ export function AppShell({ activeRoute, children }: AppShellProps): ReactElement
         onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
       />
       <div className="app-workspace">
-        <TopBar activeRoute={activeRoute} />
+        <TopBar activeRoute={activeRoute} titleOverride={topBarTitle} />
         <main className="main-work-area">{children}</main>
       </div>
     </div>

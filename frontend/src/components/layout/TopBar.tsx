@@ -3,6 +3,7 @@ import { UiIcon } from "../common/UiIcon";
 
 type TopBarProps = {
   activeRoute: string;
+  titleOverride?: string;
 };
 
 const ROUTE_TITLES: Record<string, { title: string }> = {
@@ -26,13 +27,14 @@ const ROUTE_TITLES: Record<string, { title: string }> = {
   }
 };
 
-export function TopBar({ activeRoute }: TopBarProps): ReactElement {
+export function TopBar({ activeRoute, titleOverride }: TopBarProps): ReactElement {
   const context = ROUTE_TITLES[activeRoute] ?? ROUTE_TITLES.unknown;
+  const title = titleOverride ?? context.title;
 
   return (
     <header className="top-bar">
       <div>
-        <h1>{context.title}</h1>
+        <h1>{title}</h1>
       </div>
       <div className="top-search" role="search">
         <UiIcon name="search" />

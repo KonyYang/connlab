@@ -98,9 +98,10 @@ export default function App(): ReactElement {
         : route.name === "runtimeProjection"
           ? "runtime-projection"
         : route.name;
+  const topBarTitle = route.name === "projectMatrixEditor" ? "Matrix Editor" : undefined;
 
   return (
-    <AppShell activeRoute={activeRoute}>
+    <AppShell activeRoute={activeRoute} topBarTitle={topBarTitle}>
       {route.name === "projects" && (
         <ProjectListPage
           onNewProject={() => navigate("/intake")}

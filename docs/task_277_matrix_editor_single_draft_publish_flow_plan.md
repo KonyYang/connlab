@@ -16,11 +16,11 @@ Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 ## Current Active Task
 
-`TASK_277_MATRIX_EDITOR_SINGLE_DRAFT_PUBLISH_FLOW` planned.
+`TASK_277_MATRIX_EDITOR_SINGLE_DRAFT_PUBLISH_FLOW` complete.
 
 ## Allowed Reason
 
-TASK_276 is complete and `docs/task_board.md` has no active implementation task. This plan creates the next controlled Matrix Editor task only; implementation waits for user approval.
+TASK_276 was complete and `docs/task_board.md` marked `TASK_277_MATRIX_EDITOR_SINGLE_DRAFT_PUBLISH_FLOW` as the current active task after user approval. Implementation and validation are completed.
 
 ## Design Summary
 
@@ -32,7 +32,7 @@ Edit Matrix draft -> auto-save -> Confirm As Active Matrix -> Workbench refreshe
 
 Internal versioning remains available through existing APIs, but users should not see `Create Revision Draft`, `Confirm Revision`, `Draft Actions`, or `Authority Actions`.
 
-When active authority exists, the editor may create/load an editable revision draft internally. This is not a user-facing action. If content is unchanged from the active authority baseline, confirm should not publish a redundant confirmed version.
+When active authority exists, the editor may create/load an editable revision draft internally only when needed by editing/publish flow. This is not a user-facing action. If content is unchanged from the active authority baseline, confirm should not publish a redundant confirmed version.
 
 ## File Responsibilities
 
@@ -183,8 +183,10 @@ const publishMode: MatrixPublishMode =
   projectMatrixDraftBaseConfirmedMatrixId ? "revision_authority" : "first_authority";
 const hasNoAuthorityChanges =
   activeAuthorityBaselineSignature !== null &&
-  currentSaveSignature === activeAuthorityBaselineSignature;
+  postSaveSignature === activeAuthorityBaselineSignature;
 ```
+
+`postSaveSignature` must be recomputed from the latest saved/normalized draft snapshot after `saveCurrentDraftNow()` resolves, so no-change checks do not rely on stale pre-save payload.
 
 - [ ] **Step 4: Replace separate confirm state naming**
 
@@ -240,6 +242,10 @@ await saveCurrentDraftNow();
 
 before deciding the confirm endpoint.
 
+- [ ] **Step 2.1: Recompute signature after forced save**
+
+Immediately after `saveCurrentDraftNow()` succeeds, derive `postSaveSignature` from the returned saved snapshot (or from editor snapshot after `applyDraftSnapshotToEditor(saved)`) and use that value for no-change publish guard.
+
 - [ ] **Step 3: Preserve save failure behavior**
 
 If immediate save fails:
@@ -279,7 +285,12 @@ const onConfirmAsActiveMatrix = async (): Promise<void> => {
     return;
   }
 
-  if (hasNoAuthorityChanges) {
+  const savedDraft = await saveCurrentDraftNow();
+  const signatureAfterSave = buildSignatureFromSavedDraft(savedDraft ?? currentDraftSnapshot);
+  if (
+    activeAuthorityBaselineSignature !== null &&
+    signatureAfterSave === activeAuthorityBaselineSignature
+  ) {
     setPublishState("error");
     setPublishMessage("No Matrix changes to publish.");
     return;
@@ -349,7 +360,7 @@ const summaries = await listProjectMatrixDrafts(projectId);
 
 If an editable draft exists, load it as today.
 
-- [ ] **Step 2: If no editable draft exists but Workbench has active authority, create a revision draft internally**
+- [ ] **Step 2: If no editable draft exists but Workbench has active authority, defer revision draft creation until needed**
 
 Use existing active authority signal:
 
@@ -358,13 +369,19 @@ const hasActiveAuthorityFromWorkbench =
   model.runtimeAuthoritySync?.projectionMatrixReference != null;
 ```
 
-When `summaries.length === 0 && hasActiveAuthorityFromWorkbench`, call:
+When `summaries.length === 0 && hasActiveAuthorityFromWorkbench`, do not eagerly create a revision draft on first page load. Instead, create it lazily on first edit intent or first confirm intent via a shared `ensureEditableDraft()` helper:
 
 ```ts
-const draft = await createMatrixRevisionDraft(projectId);
-applyDraftSnapshotToEditor(draft);
-setHasPersistedDraft(true);
-setSaveState("saved");
+const ensureEditableDraft = async (): Promise<ProjectMatrixDraft> => {
+  if (projectMatrixDraftId) {
+    return currentDraftSnapshot;
+  }
+  const draft = await createMatrixRevisionDraft(projectId);
+  applyDraftSnapshotToEditor(draft);
+  setHasPersistedDraft(true);
+  setSaveState("saved");
+  return draft;
+};
 ```
 
 Do not display `Create Revision Draft` to the user.
@@ -471,8 +488,10 @@ def test_task277_matrix_editor_single_draft_publish_flow_is_wired() -> None:
     assert "Authority Actions" not in combined
     assert "Current State" not in workspace
     assert "Confirm As Active Matrix" in combined
-    assert "onBackToWorkbench()" in workspace
+    assert "Back to Workbench" in workspace
 ```
+
+Do not assert callback invocation by source-string matching in static guard. Verify actual return behavior in `MatrixEditorWorkspace.test.tsx` interaction tests.
 
 - [ ] **Step 2: Run the guard**
 

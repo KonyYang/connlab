@@ -126,6 +126,16 @@ class ConfirmedMatrixAuthorityService:
                 "Project already has an active confirmed matrix authority."
             ) from exc
 
+    def get_active_snapshot(self, project_id: str) -> ConfirmedMatrixSnapshot:
+        """Return one active confirmed Matrix snapshot in project scope."""
+        project = self._projects.get(project_id)
+        if project is None:
+            raise ConfirmedMatrixAuthorityNotFoundError(f"Project not found: {project_id}")
+        snapshot = self._confirmed.get_active_by_project(project_id)
+        if snapshot is None:
+            raise ConfirmedMatrixAuthorityNotFoundError("Active confirmed matrix not found.")
+        return snapshot
+
 
 def _build_confirmed_snapshot(
     *,

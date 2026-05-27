@@ -159,6 +159,45 @@ def test_confirm_project_matrix_draft_api_happy_path_and_immutability(tmp_path: 
         engine.dispose()
 
 
+def test_get_active_confirmed_matrix_snapshot_api_returns_latest_active(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id},
+        )
+        assert created.status_code == 201
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+
+        confirmed = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirmed.status_code == 201
+        confirmed_payload = confirmed.json()
+
+        active = client.get("/api/projects/P1/confirmed-matrix/active-snapshot")
+        assert active.status_code == 200
+        payload = active.json()
+        assert (
+            payload["version"]["confirmed_matrix_id"]
+            == confirmed_payload["version"]["confirmed_matrix_id"]
+        )
+        assert payload["version"]["is_active_authority"] is True
+        assert len(payload["groups"]) >= 1
+        assert len(payload["rows"]) >= 1
+
+        missing = client.get("/api/projects/P2/confirmed-matrix/active-snapshot")
+        assert missing.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_confirm_project_matrix_draft_api_conflict_when_active_exists(tmp_path: Path) -> None:
     client, engine, _ = _client(tmp_path)
     try:
