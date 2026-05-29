@@ -2678,7 +2678,7 @@ def test_task219e_runtime_console_regression_guards_keep_workbench_boundary() ->
 
     assert "pathname.match(/^\\/projects\\/([^/]+)\\/matrix-editor$/)" in app_source
     assert "ProjectMatrixEditorPage" in app_source
-    assert "<h2>Matrix Editor</h2>" in matrix_editor_page_source
+    assert "matrix-editor-project-identity" in matrix_editor_page_source
 
     assert "fetch(" not in workbench_page_source
     assert "fetch(" not in layout_source
@@ -2790,7 +2790,7 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
 
     for required_label in [
         "Matrix Editor",
-        "Back to Workbench",
+        "Cancel",
         "Templates",
         "Reference Library",
         "Projection Ref:",
@@ -2805,6 +2805,7 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         "Publish for approval" in combined_source
         or "Confirm revision" in combined_source
         or "Confirm As Active Matrix" in combined_source
+        or "Confirm Matrix" in combined_source
     )
 
     assert (
@@ -2919,7 +2920,6 @@ def test_task225_matrix_editor_uses_context_menu_without_inline_action_columns()
         "matrix-editor-control-header",
         "matrix-editor-row-controls",
         "matrix-editor-row-menu",
-        "matrix-editor-group-head",
         "matrix-editor-group-menu",
     ]:
         assert removed_inline_control not in matrix_editor_source
@@ -2965,7 +2965,6 @@ def test_task226_matrix_editor_row_selector_and_selection_highlight_are_wired() 
         "matrix-editor-control-header",
         "matrix-editor-row-controls",
         "matrix-editor-row-menu",
-        "matrix-editor-group-head",
         "matrix-editor-group-menu",
     ]:
         assert removed_inline_control not in matrix_editor_source
@@ -3297,7 +3296,7 @@ def test_task240_matrix_editor_new_row_empty_field_guards_are_wired() -> None:
     )
 
     for required_source in [
-        "const rowHasNoGroupSteps = groupColumns.every((group) => (row.groups[group.id] ?? \"\").trim() === \"\")",
+        "const rowHasNoGroupSteps = visibleGroupColumns.every((group) => (row.groups[group.id] ?? \"\").trim() === \"\")",
         "className={row.item.trim() === \"\" ? \"is-empty-required\" : undefined}",
         "className={row.method.trim() === \"\" ? \"is-empty-required\" : undefined}",
         "className={row.condition.trim() === \"\" ? \"is-empty-required\" : undefined}",
@@ -3483,7 +3482,7 @@ def test_task252cp_matrix_editor_samples_row_label_center_and_wrapped_editor() -
 
     for required_source in [
         '<td className="matrix-editor-sample-label-cell">Samples Quantity (PCS)</td>',
-        "className=\"matrix-editor-sample-textarea\"",
+        "matrix-editor-sample-textarea${invalidSelectedSampleGroupIds.has(group.id) ? \" is-invalid\" : \"\"}",
         "ariaLabel={`Samples ${group.name || \"group\"}`}",
     ]:
         assert required_source in matrix_editor_source
@@ -3565,7 +3564,6 @@ def test_task252cs_matrix_editor_step_preview_header_and_samples_card_color_are_
 
     for removed_source in [
         "<h3>Step preview</h3>",
-        "Selected group",
         "Select group",
     ]:
         assert removed_source not in matrix_editor_source
@@ -3716,14 +3714,14 @@ def test_task256_matrix_editor_save_to_project_matrix_draft_wiring_is_present() 
         assert required_client_symbol in client_source
 
     for required_editor_symbol in [
-        "projectMatrixDraftId",
         "saveState",
         "buildDraftSavePayload",
         "currentSavePayload",
         "hasUnsavedChanges",
-        "Saving...",
-        "Unsaved changes",
-        "saveProjectMatrixDraft(projectId, projectMatrixDraftId, currentSavePayload)",
+        "Preparing confirm...",
+        "Changes not confirmed",
+        "buildConfirmInput",
+        "confirmMatrixEditorSession(",
     ]:
         assert required_editor_symbol in matrix_editor_source
 
@@ -3762,37 +3760,34 @@ def test_task259_matrix_editor_revision_actions_wiring_is_present() -> None:
     ]:
         assert required_client_symbol in client_source
 
-    for required_editor_symbol in [
-        'const MVP_REVISION_CONFIRMED_BY = "connlab-operator";',
-        "buildConfirmRevisionGuard(",
-        "projectMatrixDraftBaseConfirmedMatrixId",
-        "Revision already confirmed.",
-        "Current draft is not a revision draft.",
-        "confirmed_by: MVP_REVISION_CONFIRMED_BY,",
-    ]:
-        assert required_editor_symbol in matrix_editor_source
-
-    if "const onCreateRevisionDraft = async (): Promise<void> => {" in matrix_editor_source:
-        for legacy_revision_symbol in [
-            "Save changes before creating revision draft.",
-            "Save changes before confirming revision.",
-            "Revision draft loaded.",
-            "const onConfirmRevision = async (): Promise<void> => {",
-            "confirmProjectMatrixRevisionDraft(projectId, projectMatrixDraftId, {",
-            "Confirm revision",
-            "Create revision draft",
+    if "confirmMatrixEditorSession(" in matrix_editor_source:
+        for required_session_symbol in [
+            'const MVP_REVISION_CONFIRMED_BY = "connlab-operator";',
+            "fetchMatrixEditorSession(projectId)",
+            "confirmMatrixEditorSession(",
+            "buildConfirmInput",
+            "expected_active_confirmed_matrix_id",
+            "expected_active_confirmed_revision",
+            "Confirm Matrix",
         ]:
-            assert legacy_revision_symbol in matrix_editor_source
+            assert required_session_symbol in combined_source
+        for hidden_symbol in [
+            "Create Revision Draft",
+            "Confirm Revision",
+            "Draft Actions",
+            "Authority Actions",
+        ]:
+            assert hidden_symbol not in combined_source
     else:
-        for single_publish_symbol in [
-            "const ensureEditableDraft = async (): Promise<ProjectMatrixDraft | null> => {",
-            "const onConfirmAsActiveMatrix = async (): Promise<void> => {",
-                "const publishMode: MatrixPublishMode =",
-                "publishMode === \"revision_authority\"",
-                "confirmProjectMatrixRevisionDraft(projectId, targetDraftId, {",
-            ]:
-                assert single_publish_symbol in matrix_editor_source
-        assert "Confirm As Active Matrix" in combined_source
+        for required_editor_symbol in [
+            'const MVP_REVISION_CONFIRMED_BY = "connlab-operator";',
+            "buildConfirmRevisionGuard(",
+            "projectMatrixDraftBaseConfirmedMatrixId",
+            "Revision already confirmed.",
+            "Current draft is not a revision draft.",
+            "confirmed_by: MVP_REVISION_CONFIRMED_BY,",
+        ]:
+            assert required_editor_symbol in matrix_editor_source
 
 
 def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present() -> None:
@@ -3836,14 +3831,25 @@ def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present
         assert required_editor_symbol in matrix_editor_source
 
     for required_selection_view_symbol in [
-        "Import Selection Mode",
-        "Confirm selected groups",
-        "Append Matrix (Future)",
+        "Source:",
+        "Confirm",
+        "Cancel",
         "Test Item",
+        "Sample sizes",
         "const visibleStatusMessage = disabledReason || statusMessage;",
         "aria-live=\"polite\"",
     ]:
         assert required_selection_view_symbol in selection_mode_source
+
+    for removed_selection_view_symbol in [
+        "Import Selection Mode",
+        "Confirm selected groups",
+        "Cancel import session",
+        "Back to matrix candidate selection",
+        "Back to editor",
+        "Samples:",
+    ]:
+        assert removed_selection_view_symbol not in selection_mode_source
 
     for forbidden_symbol in [
         "Section",
@@ -3865,7 +3871,7 @@ def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present
     for required_style_symbol in [
         ".matrix-editor-selection-mode {",
         ".matrix-editor-selection-table",
-        ".matrix-editor-selection-mode-pill {",
+        ".matrix-editor-selection-sample-row",
         ".matrix-editor-group-selection-status {",
     ]:
         assert required_style_symbol in styles_source
@@ -4150,8 +4156,8 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
         / "ProjectWorkbenchLayout.tsx"
     ).read_text(encoding="utf-8")
 
-    assert "Unsaved changes" in matrix_editor_source
-    assert "Saving..." in matrix_editor_source
+    assert "Changes not confirmed" in matrix_editor_source
+    assert "Preparing confirm..." in matrix_editor_source
     assert "Save failed. Retry before confirming." in matrix_editor_source
     if "Revert to last saved draft" not in action_groups_source:
         assert ">Undo<" in matrix_editor_source or "Undo" in matrix_editor_source
@@ -4159,7 +4165,7 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
     assert "Discard Draft Changes" not in action_groups_source
     assert "Draft Save Status" in banner_source
     assert "Replace the current source matrix session. Unsaved draft edits may be discarded." in clarity_model_source
-    assert "No group selection source is available. Import source matrix or build draft groups first." in session_model_source
+    assert "No group selection source is available. Import source matrix to start group selection." in session_model_source
     assert "ProjectWorkbenchMatrixProjectionPanel" in workbench_layout_source
     assert "ProjectWorkbenchMatrixOverview" not in workbench_layout_source
 
@@ -4357,17 +4363,22 @@ def test_task267_persistent_matrix_import_session_ux_is_wired() -> None:
     ).read_text(encoding="utf-8")
 
     for required in [
-        "Back to matrix candidate selection",
-        "Cancel import session",
-        "onBackToMatrixCandidateSelection",
-        "clearImportSession",
         "buildMatrixImportSessionActionState",
         "preserveSelectedGroupKeys",
     ]:
         assert required in matrix_editor_source or required in selection_mode_source or required in session_model_source
 
-    assert "Source preview session unavailable. Use Change Source Matrix to start a new source session." in session_model_source
-    assert "Change Selected Groups" in action_groups_source
+    for removed in [
+        "Back to matrix candidate selection",
+        "Cancel import session",
+        "onBackToMatrixCandidateSelection",
+        "clearImportSession",
+    ]:
+        assert removed not in matrix_editor_source
+        assert removed not in selection_mode_source
+
+    assert "No group selection source is available. Import source matrix to start group selection." in session_model_source
+    assert "Selected Groups" in action_groups_source
     assert "commitMatrixImport" in matrix_editor_source
 
 
@@ -4382,12 +4393,14 @@ def test_task268_group_selection_completeness_guard_is_wired() -> None:
 
     assert "buildMatrixImportSelectionSummary" in selector_source
     assert "formatMatrixImportSampleQuantity" in selector_source
-    assert "Selected groups:" in selection_mode_source
-    assert "Selected step count" in selection_mode_source
-    assert "Sample quantities" in selection_mode_source
-    assert "Select at least one group before creating the draft." in selection_mode_source
-    assert "matrix-editor-selection-summary" in css_source
-    assert "matrix-editor-selection-blocker" in css_source
+    assert "Sample sizes" in selection_mode_source
+    assert "Selected groups:" not in selection_mode_source
+    assert "Selected step count" not in selection_mode_source
+    assert "Sample quantities" not in selection_mode_source
+    assert "Select at least one group before creating the draft." not in selection_mode_source
+    assert "matrix-editor-selection-summary" not in css_source
+    assert "matrix-editor-selection-blocker" not in css_source
+    assert "matrix-editor-selection-sample-row" in css_source
 
 
 def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> None:
@@ -4415,8 +4428,8 @@ def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> Non
         assert required in matrix_editor_source or required in api_client_source
 
     for required_copy in [
-        "Change Selected Groups",
-        "Change Source Matrix",
+        "Selected Groups",
+        "Import Matrix",
         "Confirm As Active Matrix",
     ]:
         assert (
@@ -4438,7 +4451,7 @@ def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> Non
     assert "matrix-workspace-action-groups" in workbench_css or "matrix-workspace-toolbar" in workbench_css
     assert (
         "Changing the source matrix may invalidate current draft edits" in matrix_editor_source
-        or "Change Source Matrix will replace the current source session." in matrix_editor_source
+        or "Import Matrix will replace the current source session." in matrix_editor_source
     )
 
 
@@ -4465,7 +4478,34 @@ def test_task277_matrix_editor_single_draft_publish_flow_is_wired() -> None:
     assert "Authority Actions" not in combined_source
     assert "Current State" not in workspace_source
     assert "Revert to last saved draft" not in combined_source
-    assert "Confirm As Active Matrix" in combined_source
-    assert "Back to Workbench" in workspace_source
+    assert "Confirm Matrix" in combined_source
+    assert "Cancel" in combined_source
+    assert "Confirm As Active Matrix" not in combined_source
+    assert "Back to Workbench" not in workspace_source
     assert "topBarTitle = route.name === \"projectMatrixEditor\" ? \"Matrix Editor\" : undefined;" in app_source
     assert "titleOverride" in topbar_source
+
+
+def test_task279_matrix_editor_preserves_source_group_universe_inline() -> None:
+    """TASK_279 keeps full source groups visible while publishing selected groups only."""
+    workspace_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "function buildMatrixFromSessionSeedDraft(",
+        "sourcePreview: MatrixPreviewResponse | null",
+        "isSelected: false",
+        "readPreviewGroupToken(previewRow, previewGroup)",
+        "readPreviewSampleValue(sourcePreview, previewGroup)",
+        "applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null)",
+        "{!showSelectedGroupsOnly ? (",
+        "aria-label={`Include group ${group.name || group.groupKey}`}",
+        "Selected only",
+    ]:
+        assert required_source in workspace_source
+
+    assert "min-height: 14px;" in styles_source

@@ -178,7 +178,10 @@ def test_confirm_revision_draft_validates_selected_groups_and_sample_quantity() 
         cells=revision_draft.cells,
     )
     stores.draft_store.snapshot_by_id[revision_draft.record.project_matrix_draft_id] = revision_draft
-    with pytest.raises(MatrixRevisionFlowError, match="sample quantity expression"):
+    with pytest.raises(
+        MatrixRevisionFlowError,
+        match="Sample quantity is required for selected groups: G2.",
+    ):
         service.confirm_revision_draft(
             ConfirmMatrixRevisionDraftCommand(
                 project_id="P1",

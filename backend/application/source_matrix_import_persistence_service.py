@@ -192,6 +192,7 @@ class SourceMatrixImportPersistenceService:
             parse_time=metadata["parse_time"],
             parser_version=metadata["parser_version"],
             payload_schema_version=metadata["payload_schema_version"],
+            source_preview_payload=_serialize_payload(payload),
             warnings=metadata["warnings"],
             blockers=metadata["blockers"],
             selected_group_keys_at_import=metadata["selected_group_keys_at_import"],
@@ -461,6 +462,18 @@ def _group_source_table_index(payload: dict[str, Any]) -> int | None:
         if parsed is not None:
             return parsed
     return None
+
+
+def _serialize_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        encoded = json.dumps(payload, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return None
+    try:
+        decoded = json.loads(encoded)
+    except json.JSONDecodeError:
+        return None
+    return decoded if isinstance(decoded, dict) else None
 
 
 def utc_now_iso() -> str:

@@ -8,16 +8,24 @@ export type MatrixImportSessionActionState = {
 
 export function buildMatrixImportSessionActionState(
   preview: MatrixPreviewResponse | null,
-  hasDraftSelectionSource: boolean
+  hasDraftSelectionSource: boolean,
+  sourceUnavailableMessage?: string | null
 ): MatrixImportSessionActionState {
   const hasLivePreview = preview !== null;
+  if (sourceUnavailableMessage && sourceUnavailableMessage.trim().length > 0) {
+    return {
+      hasLivePreview,
+      changeSelectedGroupsDisabled: true,
+      changeSelectedGroupsDisabledReason: sourceUnavailableMessage.trim(),
+    };
+  }
   const canChangeSelectedGroups = hasLivePreview || hasDraftSelectionSource;
   return {
     hasLivePreview,
     changeSelectedGroupsDisabled: !canChangeSelectedGroups,
     changeSelectedGroupsDisabledReason: canChangeSelectedGroups
       ? ""
-      : "No group selection source is available. Import source matrix or build draft groups first.",
+      : "No group selection source is available. Import source matrix to start group selection.",
   };
 }
 

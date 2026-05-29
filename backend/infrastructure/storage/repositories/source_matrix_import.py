@@ -83,6 +83,37 @@ class SourceMatrixImportRepository:
             created_at=snapshot_row.created_at,
         )
 
+    def get_snapshot(self, snapshot_id: str) -> SourceMatrixSnapshot | None:
+        """Return one snapshot body by snapshot id."""
+        snapshot_row = self._session.get(SourceMatrixSnapshotModel, snapshot_id)
+        if snapshot_row is None:
+            return None
+        row_rows = self._session.scalars(
+            select(SourceMatrixRowSnapshotModel)
+            .where(SourceMatrixRowSnapshotModel.snapshot_id == snapshot_row.snapshot_id)
+            .order_by(SourceMatrixRowSnapshotModel.row_order.asc())
+        ).all()
+        group_rows = self._session.scalars(
+            select(SourceMatrixGroupSnapshotModel)
+            .where(SourceMatrixGroupSnapshotModel.snapshot_id == snapshot_row.snapshot_id)
+            .order_by(SourceMatrixGroupSnapshotModel.group_order.asc())
+        ).all()
+        cell_rows = self._session.scalars(
+            select(SourceMatrixCellSnapshotModel)
+            .where(SourceMatrixCellSnapshotModel.snapshot_id == snapshot_row.snapshot_id)
+            .order_by(SourceMatrixCellSnapshotModel.cell_snapshot_id.asc())
+        ).all()
+        return SourceMatrixSnapshot(
+            snapshot_id=snapshot_row.snapshot_id,
+            import_id=snapshot_row.import_id,
+            project_id=snapshot_row.project_id,
+            source_table_index=snapshot_row.source_table_index,
+            rows=tuple(_to_row_domain(row) for row in row_rows),
+            groups=tuple(_to_group_domain(group) for group in group_rows),
+            cells=tuple(_to_cell_domain(cell) for cell in cell_rows),
+            created_at=snapshot_row.created_at,
+        )
+
     def list_imports_by_project(self, project_id: str) -> list[SourceMatrixImportRecord]:
         """Return Source Matrix imports by project, newest first."""
         rows = self._session.scalars(
@@ -126,6 +157,11 @@ def _to_import_model(import_record: SourceMatrixImportRecord) -> SourceMatrixImp
         parse_time=import_record.parse_time,
         parser_version=import_record.parser_version,
         payload_schema_version=import_record.payload_schema_version,
+        source_preview_payload_json=(
+            json.dumps(import_record.source_preview_payload, ensure_ascii=False)
+            if import_record.source_preview_payload is not None
+            else None
+        ),
         warnings_json=json.dumps(list(import_record.warnings), ensure_ascii=False),
         blockers_json=json.dumps(list(import_record.blockers), ensure_ascii=False),
         selected_group_keys_at_import_json=json.dumps(
@@ -211,6 +247,7 @@ def _to_import_domain(row: SourceMatrixImportRecordModel) -> SourceMatrixImportR
         parse_time=row.parse_time,
         parser_version=row.parser_version,
         payload_schema_version=row.payload_schema_version,
+        source_preview_payload=_loads_dict(row.source_preview_payload_json),
         warnings=tuple(_loads_string_list(row.warnings_json)),
         blockers=tuple(_loads_string_list(row.blockers_json)),
         selected_group_keys_at_import=tuple(
@@ -269,3 +306,13 @@ def _loads_string_list(value: str | None) -> list[str]:
             if text:
                 result.append(text)
     return result
+
+
+def _loads_dict(value: str | None) -> dict | None:
+    if not value:
+        return None
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None

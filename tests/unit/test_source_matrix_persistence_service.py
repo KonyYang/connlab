@@ -101,6 +101,8 @@ def test_source_matrix_persistence_service_persists_sparse_cells_and_metadata(
             assert import_record.source_spec_revision == "Rev7"
             assert list(import_record.selected_group_keys_at_import) == ["g2"]
             assert import_record.task261_commit_fingerprint == "fp-task261-001"
+            assert import_record.source_preview_payload is not None
+            assert import_record.source_preview_payload["groups"][0]["group_key"] == "g1"
             lookup = repo.get_import_by_project_and_fingerprint(
                 project_id="P1",
                 task261_commit_fingerprint="fp-task261-001",

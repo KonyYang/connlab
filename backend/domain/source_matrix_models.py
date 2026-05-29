@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from backend.domain.enums import SourceMatrixImportStatus
 
@@ -75,6 +76,7 @@ class SourceMatrixImportRecord:
     parse_time: str
     parser_version: str
     payload_schema_version: str
+    source_preview_payload: dict[str, Any] | None = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
     selected_group_keys_at_import: tuple[str, ...] = field(default_factory=tuple)

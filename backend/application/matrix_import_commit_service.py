@@ -179,6 +179,7 @@ class MatrixImportCommitService:
             source_snapshot_id=persist_result.snapshot_id,
             selected_group_keys=selected_keys,
             source_snapshot=source_snapshot,
+            preview_payload=payload,
             created_at=now,
         )
         _validate_selected_only_draft_snapshot(draft_snapshot)
@@ -298,6 +299,7 @@ def _build_selected_only_draft(
     source_snapshot_id: str,
     selected_group_keys: tuple[str, ...],
     source_snapshot: SourceMatrixSnapshot,
+    preview_payload: dict[str, Any],
     created_at: str,
 ) -> ProjectMatrixDraftSnapshot:
     draft_id = f"pmd-{uuid4().hex}"
@@ -334,10 +336,16 @@ def _build_selected_only_draft(
             )
         )
     row_id_by_source: dict[str, str] = {}
+    row_detail_by_source_index = _build_row_detail_by_source_index(preview_payload)
     rows: list[ProjectMatrixDraftRow] = []
     for order, source_row in enumerate(source_snapshot.rows, start=1):
         draft_row_id = f"pmdr-{uuid4().hex}"
         row_id_by_source[source_row.row_snapshot_id] = draft_row_id
+        row_detail = (
+            row_detail_by_source_index.get(source_row.source_row_index)
+            if source_row.source_row_index is not None
+            else None
+        )
         rows.append(
             ProjectMatrixDraftRow(
                 draft_row_id=draft_row_id,
@@ -346,9 +354,9 @@ def _build_selected_only_draft(
                 row_order=order,
                 test_item=source_row.test_item,
                 source_section=source_row.source_section,
-                method=None,
-                condition=None,
-                requirement=None,
+                method=row_detail["method"] if row_detail else None,
+                condition=row_detail["condition"] if row_detail else None,
+                requirement=row_detail["requirement"] if row_detail else None,
                 is_sample_row=source_row.is_sample_row,
             )
         )
@@ -376,6 +384,81 @@ def _build_selected_only_draft(
         rows=tuple(rows),
         cells=tuple(cells),
     )
+
+
+def _build_row_detail_by_source_index(
+    preview_payload: dict[str, Any],
+) -> dict[int, dict[str, str | None]]:
+    detail_by_index: dict[int, dict[str, str | None]] = {}
+
+    raw_rows = preview_payload.get("rows")
+    if isinstance(raw_rows, list):
+        for raw_row in raw_rows:
+            if not isinstance(raw_row, dict):
+                continue
+            source_row_index = _int_or_none(raw_row.get("source_row_index"))
+            if source_row_index is None:
+                continue
+            detail_by_index[source_row_index] = {
+                "method": _text(raw_row.get("method")),
+                "condition": _text(raw_row.get("condition")),
+                "requirement": _text(raw_row.get("requirement")),
+            }
+
+    raw_groups = preview_payload.get("groups")
+    if not isinstance(raw_groups, list):
+        return detail_by_index
+    for raw_group in raw_groups:
+        if not isinstance(raw_group, dict):
+            continue
+        steps = raw_group.get("steps")
+        if not isinstance(steps, list):
+            continue
+        for raw_step in steps:
+            if not isinstance(raw_step, dict):
+                continue
+            source_row_index = _int_or_none(raw_step.get("source_row_index"))
+            if source_row_index is None:
+                continue
+            existing = detail_by_index.setdefault(
+                source_row_index,
+                {"method": None, "condition": None, "requirement": None},
+            )
+            method = (
+                _text(raw_step.get("method_summary"))
+                or _text(raw_step.get("method"))
+                or _text(raw_step.get("reference_standard"))
+            )
+            condition = (
+                _text(raw_step.get("condition_summary"))
+                or _text(raw_step.get("condition"))
+            )
+            requirement = (
+                _text(raw_step.get("judgement_criteria"))
+                or _text(raw_step.get("requirement"))
+            )
+            if method and not existing["method"]:
+                existing["method"] = method
+            if condition and not existing["condition"]:
+                existing["condition"] = condition
+            if requirement and not existing["requirement"]:
+                existing["requirement"] = requirement
+    return detail_by_index
+
+
+def _text(value: Any) -> str | None:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return None
+
+
+def _int_or_none(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    return None
 
 
 def _utc_now() -> str:

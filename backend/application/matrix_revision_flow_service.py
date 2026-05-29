@@ -9,6 +9,10 @@ from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 
+from backend.application.matrix_sample_quantity_guard import (
+    find_selected_sample_quantity_violations,
+    format_sample_quantity_violation_message,
+)
 from backend.domain import (
     ConfirmedMatrixCell,
     ConfirmedMatrixGroup,
@@ -171,10 +175,11 @@ class MatrixRevisionFlowService:
                 raise MatrixRevisionFlowError(
                     "Selected groups must have nonblank group_key and group_label."
                 )
-            if not (group.sample_quantity_expression or "").strip():
-                raise MatrixRevisionFlowError(
-                    "Selected groups must have nonblank sample quantity expression."
-                )
+        sample_violations = find_selected_sample_quantity_violations(selected_groups)
+        if sample_violations:
+            raise MatrixRevisionFlowError(
+                format_sample_quantity_violation_message(sample_violations)
+            )
         snapshot = _build_confirmed_snapshot_from_revision_draft(
             draft=draft,
             selected_groups=selected_groups,

@@ -681,6 +681,73 @@ export type ProjectMatrixDraftSaveRequest = {
   cells: ProjectMatrixDraftSaveCellInput[];
 };
 
+export type MatrixEditorSessionDraftGroup = {
+  draft_group_id: string;
+  source_group_snapshot_id?: string | null;
+  group_order: number;
+  group_key: string;
+  group_label: string;
+  is_selected: boolean;
+  sample_quantity_expression?: string | null;
+  sample_note?: string | null;
+};
+
+export type MatrixEditorSessionDraftRow = {
+  draft_row_id: string;
+  source_row_snapshot_id?: string | null;
+  row_order: number;
+  test_item: string;
+  source_section?: string | null;
+  method?: string | null;
+  condition?: string | null;
+  requirement?: string | null;
+  is_sample_row: boolean;
+};
+
+export type MatrixEditorSessionDraftCell = {
+  draft_row_id: string;
+  draft_group_id: string;
+  cell_value: string;
+};
+
+export type MatrixEditorSessionDraft = {
+  groups: MatrixEditorSessionDraftGroup[];
+  rows: MatrixEditorSessionDraftRow[];
+  cells: MatrixEditorSessionDraftCell[];
+};
+
+export type MatrixEditorSessionSeed = {
+  project_id: string;
+  active_confirmed_matrix_id?: string | null;
+  active_confirmed_revision?: number | null;
+  active_source_import_id?: string | null;
+  active_source_snapshot_id?: string | null;
+  editor_draft?: MatrixEditorSessionDraft | null;
+  source_preview_payload?: MatrixPreviewResponse | null;
+  source_status: "available" | "unavailable" | "not_required";
+  source_unavailable_message?: string | null;
+};
+
+export type MatrixEditorSessionConfirmRequest = {
+  expected_active_confirmed_matrix_id?: string | null;
+  expected_active_confirmed_revision?: number | null;
+  source_document_path?: string | null;
+  source_document_name?: string | null;
+  source_format?: string | null;
+  source_import_id?: string | null;
+  source_snapshot_id?: string | null;
+  confirmed_by: string;
+  groups: MatrixEditorSessionDraftGroup[];
+  rows: MatrixEditorSessionDraftRow[];
+  cells: MatrixEditorSessionDraftCell[];
+};
+
+export type MatrixEditorSessionConfirmResponse = {
+  publish_status: "published" | "no_change";
+  message: string;
+  confirmed_snapshot?: ConfirmedMatrixSnapshot | null;
+};
+
 export type ConfirmProjectMatrixRevisionDraftInput = {
   confirmed_by: string;
   superseded_reason?: string | null;
@@ -1719,6 +1786,27 @@ export function fetchActiveConfirmedMatrixSnapshot(
   );
 }
 
+export function fetchMatrixEditorSession(
+  projectId: string
+): Promise<MatrixEditorSessionSeed> {
+  return requestJson<MatrixEditorSessionSeed>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/session`
+  );
+}
+
+export function confirmMatrixEditorSession(
+  projectId: string,
+  input: MatrixEditorSessionConfirmRequest
+): Promise<MatrixEditorSessionConfirmResponse> {
+  return requestJson<MatrixEditorSessionConfirmResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/session/confirm`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
 export function commitMatrixImport(
   projectId: string,
   input: MatrixImportCommitRequest
@@ -1882,7 +1970,8 @@ export function fetchConfirmedMatrixTestRecordPreview(
   projectId: string
 ): Promise<ConfirmedMatrixTestRecordPreview> {
   return requestJson<ConfirmedMatrixTestRecordPreview>(
-    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-preview`
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-preview`,
+    { cache: "no-store" }
   );
 }
 

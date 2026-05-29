@@ -65,6 +65,9 @@ def test_commit_creates_selected_only_draft_and_persists_full_source() -> None:
     assert result.commit_status == "created"
     assert [group.group_key for group in result.project_matrix_draft.groups] == ["g1"]
     assert all(cell.draft_group_id == result.project_matrix_draft.groups[0].draft_group_id for cell in result.project_matrix_draft.cells)
+    assert result.project_matrix_draft.rows[0].method == "EIA-364-18B"
+    assert result.project_matrix_draft.rows[0].condition == "10x min magnification"
+    assert result.project_matrix_draft.rows[0].requirement == "No detrimental condition"
     source_snapshot = source_store.get_snapshot_by_import(result.source_import_id)
     assert source_snapshot is not None
     assert len(source_snapshot.groups) == 2
@@ -186,8 +189,22 @@ def test_commit_rejects_invalid_selected_group_keys() -> None:
 def _payload() -> dict:
     return {
         "groups": [
-            {"group_key": "g1", "group_label": "Group 1", "sample_quantity_expression": "5"},
-            {"group_key": "g2", "group_label": "Group 2", "sample_quantity_expression": "6"},
+            {
+                "group_key": "g1",
+                "group_label": "Group 1",
+                "sample_quantity_expression": "5",
+                "steps": [
+                    {
+                        "sequence": 1,
+                        "raw_token": "1",
+                        "source_row_index": 1,
+                        "method_summary": "EIA-364-18B",
+                        "condition_summary": "10x min magnification",
+                        "judgement_criteria": "No detrimental condition",
+                    }
+                ],
+            },
+            {"group_key": "g2", "group_label": "Group 2", "sample_quantity_expression": "6", "steps": []},
         ],
         "rows": [
             {

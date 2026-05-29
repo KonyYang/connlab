@@ -54,6 +54,7 @@ def init_db(engine: Engine) -> None:
     _migrate_project_matrix_draft_lineage_columns_optional(engine)
     _migrate_project_matrix_draft_row_detail_columns(engine)
     _migrate_source_matrix_import_commit_fingerprint(engine)
+    _migrate_source_matrix_import_preview_payload(engine)
 
 
 def _migrate_project_no_optional(engine: Engine) -> None:
@@ -507,6 +508,33 @@ def _migrate_source_matrix_import_commit_fingerprint(engine: Engine) -> None:
                 "ALTER TABLE source_matrix_import_records "
                 "ADD COLUMN task261_commit_fingerprint VARCHAR(128)"
             )
+
+
+def _migrate_source_matrix_import_preview_payload(engine: Engine) -> None:
+    """Add source preview payload cache column to source import records when missing."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "source_matrix_import_records" not in table_names:
+            return
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(source_matrix_import_records)"
+            ).all()
+        }
+        if "source_preview_payload_json" in columns:
+            return
+        connection.exec_driver_sql(
+            "ALTER TABLE source_matrix_import_records "
+            "ADD COLUMN source_preview_payload_json TEXT"
+        )
         indexes = {
             row[1]
             for row in connection.exec_driver_sql(

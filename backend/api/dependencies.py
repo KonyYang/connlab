@@ -109,6 +109,9 @@ from backend.application.confirmed_matrix_test_record_document_generation_servic
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
+from backend.application.matrix_editor_session_service import (
+    MatrixEditorSessionService,
+)
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
@@ -315,6 +318,41 @@ def get_matrix_revision_flow_service(
         project_store=ProjectRepository(session),
         draft_store=ProjectMatrixDraftRepository(session),
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_matrix_editor_session_service(
+    session: Session = Depends(get_session),
+) -> MatrixEditorSessionService:
+    """Build Matrix Editor temporary session service."""
+    return MatrixEditorSessionService(
+        project_store=ProjectRepository(session),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        source_store=SourceMatrixImportRepository(session),
+        draft_store=ProjectMatrixDraftRepository(session),
+        draft_persistence_service=ProjectMatrixDraftPersistenceService(
+            project_store=ProjectRepository(session),
+            source_store=SourceMatrixImportRepository(session),
+            draft_store=ProjectMatrixDraftRepository(session),
+        ),
+        matrix_import_commit_service=MatrixImportCommitService(
+            project_store=ProjectRepository(session),
+            source_store=SourceMatrixImportRepository(session),
+            draft_store=ProjectMatrixDraftRepository(session),
+            source_persistence_service=SourceMatrixImportPersistenceService(
+                store=SourceMatrixImportRepository(session)
+            ),
+        ),
+        matrix_revision_flow_service=MatrixRevisionFlowService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectMatrixDraftRepository(session),
+            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        ),
+        confirmed_matrix_authority_service=ConfirmedMatrixAuthorityService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectMatrixDraftRepository(session),
+            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        ),
     )
 
 

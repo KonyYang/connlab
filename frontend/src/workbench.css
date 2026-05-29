@@ -245,6 +245,30 @@
   max-height: none;
 }
 
+.matrix-editor-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 8px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.matrix-editor-filter-toggle input[type="checkbox"] {
+  appearance: auto;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  margin: 0;
+  padding: 0;
+  border-radius: 2px;
+  accent-color: var(--color-primary-strong);
+}
+
 .matrix-editor-main-table {
   border-collapse: collapse;
   width: max-content;
@@ -280,6 +304,31 @@
   font-weight: 800;
   padding: 6px 4px !important;
   text-transform: uppercase;
+}
+
+.matrix-editor-group-header-content {
+  display: grid;
+  gap: 4px;
+}
+
+.matrix-editor-group-include-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 auto;
+}
+
+.matrix-editor-group-include-control input[type="checkbox"] {
+  appearance: auto;
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  margin: 0;
+  padding: 0;
+  border-radius: 2px;
+  accent-color: var(--color-primary-strong);
 }
 
 .matrix-editor-group-name-input {
@@ -504,6 +553,12 @@
   background: #fff3f2;
 }
 
+.matrix-editor-inline-textarea.is-invalid {
+  border-color: #c2413a;
+  background: #fff3f2;
+  color: #9e2a22;
+}
+
 .matrix-editor-row-selector-button.is-step-missing {
   color: #b5312a;
   background: #fff3f2;
@@ -656,8 +711,9 @@
 
 .matrix-editor-project-identity {
   margin: 0;
-  color: var(--color-ink-muted);
-  font-size: 12px;
+  color: var(--color-primary-strong);
+  font-size: 13px;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -803,6 +859,14 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  justify-content: flex-end;
+}
+
+.matrix-workspace-toolbar-edit-actions,
+.matrix-workspace-toolbar-completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .matrix-workspace-action-group {
@@ -4590,41 +4654,6 @@
   min-height: 34px;
 }
 
-.matrix-editor-selection-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 12px 0;
-  padding: 12px;
-  border: 1px solid #d8e0ea;
-  border-radius: 10px;
-  background: #fbfdff;
-}
-
-.matrix-editor-selection-summary div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.matrix-editor-selection-summary strong {
-  font-size: 12px;
-  color: #172033;
-}
-
-.matrix-editor-selection-summary span {
-  font-size: 13px;
-  color: #647084;
-  overflow-wrap: anywhere;
-}
-
-.matrix-editor-selection-blocker {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #c2413a;
-  font-weight: 700;
-}
-
 .matrix-editor-selection-table th:first-child,
 .matrix-editor-selection-table td:first-child {
   min-width: 220px;
@@ -4659,16 +4688,8 @@
 
 .matrix-editor-selection-group-label {
   display: grid;
-  gap: 2px;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.matrix-editor-selection-group-label small {
-  color: #647084;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
 }
 
 .matrix-editor-selection-group-toggle input[type="checkbox"] {
@@ -4692,20 +4713,9 @@
   background: #fff;
 }
 
-.matrix-editor-selection-mode-pill {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #d9dfea;
-  border-radius: 8px;
-  background: #f8fafe;
-  color: #334155;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-@media (max-width: 900px) {
-  .matrix-editor-selection-summary {
-    grid-template-columns: 1fr;
-  }
+.matrix-editor-selection-sample-row th,
+.matrix-editor-selection-sample-row td {
+  background: #e9f7fb;
+  color: #1f4058;
+  font-weight: 700;
 }

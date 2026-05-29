@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Awaiting user review and explicit approval before implementation.
+Complete.
 
 ## Current Phase
 
@@ -253,3 +253,52 @@ Before implementation, reviewer should confirm:
 - Next entry always starts from current Workbench Active Matrix.
 - Full source snapshot lineage is required for `Change selected Groups`.
 - It is acceptable for backend to use internal draft records during confirm as long as they are not user-visible and not used as default resume state.
+
+## Follow-Up Closure 2026-05-29
+
+Smoke feedback showed the group-selection page still exposed source-selection/candidate controls during in-place group reselection, making `Selected Groups` look like another import workflow.
+
+Closure:
+
+- `Selected Groups` now remains a simple reselection surface over the already-associated full source Matrix.
+- The selection page only shows source identity plus `Cancel` and `Confirm`.
+- Removed user-facing `Import Selection Mode`, `Back to matrix candidate selection`, `Back to editor`, `Cancel import session`, selected-group summary, and per-group `Samples:` header copy.
+- Sample quantities are shown once in a bottom `Sample sizes` table row.
+- Added frontend regression coverage so Selected Groups cannot reintroduce source/candidate navigation controls.
+
+Validation:
+
+- `cd frontend && npm test -- --run MatrixEditorWorkspace --watch=false` -> 12 passed
+- `cd frontend && npm test -- --run ProjectWorkbenchMatrixProjectionPanel --watch=false` -> 5 passed
+- `cd frontend && npm run build` -> passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "task278 or task277 or matrix_editor"` -> 36 passed
+- `py -m pytest tests\integration\test_matrix_editor_session_api.py -q` -> 4 passed
+- `py -m pytest tests\integration\test_matrix_to_test_record_smoke_flow_api.py -q` -> 1 passed
+
+## Follow-Up Closure 2026-05-29 - Same-Source Publish Validation Fix
+
+Smoke feedback found that adding a no-note group through `Selected Groups` could return to Workbench without changing the active Matrix.
+
+Root cause:
+
+- Matrix Editor session confirm still used the legacy revision confirmation path for same-source edits.
+- That legacy path rejected any selected group with a blank sample quantity.
+- A current active group could already have a blank sample quantity, so the publish failed even when the newly selected group was valid.
+- The frontend intentionally hid the raw conflict and returned to Workbench, making the failure look like a Workbench refresh problem.
+
+Closure:
+
+- Same-source Matrix Editor session publish now saves the session payload into an internal draft and builds the new active Confirmed Matrix directly from the session snapshot.
+- It no longer calls the legacy `confirm_revision_draft` validation path.
+- Added a unit regression covering same-source publish when an existing selected group has blank sample quantity.
+- Browser smoke confirmed adding no-note Group 7 now publishes and Workbench displays it.
+
+Validation:
+
+- `py -m pytest tests\unit\test_matrix_editor_session_service.py -q` -> 4 passed
+- `py -m pytest tests\integration\test_matrix_editor_session_api.py -q` -> 4 passed
+- `cd frontend && npm test -- --run MatrixEditorWorkspace --watch=false` -> 12 passed
+- `cd frontend && npm test -- --run ProjectWorkbenchMatrixProjectionPanel --watch=false` -> 5 passed
+- `cd frontend && npm run build` -> passed
+- `py -m pytest tests\unit\test_frontend_shell_files.py -q -k "task278 or task277 or matrix_editor"` -> 36 passed
+- `py -m pytest tests\integration\test_matrix_to_test_record_smoke_flow_api.py -q` -> 1 passed

@@ -32,6 +32,7 @@ class SourceMatrixImportRecordModel(Base):
     parse_time: Mapped[str] = mapped_column(String(64), nullable=False)
     parser_version: Mapped[str] = mapped_column(String(128), nullable=False)
     payload_schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_preview_payload_json: Mapped[str | None] = mapped_column(Text)
     warnings_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     blockers_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     selected_group_keys_at_import_json: Mapped[str] = mapped_column(
