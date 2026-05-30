@@ -28,6 +28,9 @@ class SourceMatrixRowSnapshot:
     test_item: str
     source_section: str | None = None
     is_sample_row: bool = False
+    method: str | None = None
+    condition: str | None = None
+    requirement: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

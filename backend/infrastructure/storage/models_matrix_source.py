@@ -90,6 +90,9 @@ class SourceMatrixRowSnapshotModel(Base):
     test_item: Mapped[str] = mapped_column(Text, nullable=False)
     source_section: Mapped[str | None] = mapped_column(Text)
     is_sample_row: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    method: Mapped[str | None] = mapped_column(Text)
+    condition: Mapped[str | None] = mapped_column(Text)
+    requirement: Mapped[str | None] = mapped_column(Text)
 
 
 class SourceMatrixGroupSnapshotModel(Base):

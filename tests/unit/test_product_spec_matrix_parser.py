@@ -31,6 +31,36 @@ def test_product_spec_matrix_parser_extracts_group_steps() -> None:
     assert group_1.steps[0].duration_status == "deferred"
 
 
+def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["Contact Resistance (Low Level)", "6.1", "2,5,8"],
+                ["Durability", "7.3", "3"],
+            ]
+        ],
+        paragraphs=[
+            "6.1 Contact Resistance, Low Level (LLCR)",
+            "The low level contact resistance shall not exceed 0.25 milliohms initially.",
+            "Measurements shall be in accordance with EIA 364-23D using 20mV max, 100mA max.",
+            "7.3 Durability",
+            "Durability shall be tested in accordance with EIA-364-09D.",
+        ],
+    )
+
+    llcr = result.rows[0]
+    durability = result.rows[1]
+    assert llcr.method == "EIA-364-23D"
+    assert llcr.condition == "20mV max, 100mA max"
+    assert "shall not exceed 0.25 milliohms" in (llcr.requirement or "")
+    assert llcr.detail_extraction_status == "matched"
+    assert durability.method == "EIA-364-09D"
+    assert durability.condition is None
+    assert durability.requirement is None
+    assert durability.detail_extraction_status == "partial"
+
+
 def test_product_spec_matrix_parser_reports_missing_matrix() -> None:
     result = ProductSpecMatrixParser().parse_tables(
         [[["Item", "Section"], ["Contact Resistance", "6.1"]]]

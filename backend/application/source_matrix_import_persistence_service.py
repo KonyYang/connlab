@@ -83,6 +83,9 @@ class _DerivedRow:
     test_item: str
     source_section: str | None
     is_sample_row: bool
+    method: str | None = None
+    condition: str | None = None
+    requirement: str | None = None
     tokens_by_group: dict[int, list[str]] = field(default_factory=dict)
 
 
@@ -227,7 +230,10 @@ def _build_groups(payload: dict[str, Any]) -> tuple[SourceMatrixGroupSnapshot, .
         if not isinstance(raw_group, dict):
             continue
         group_key = _text(raw_group.get("group_key")) or f"group_{index}"
-        group_label = _text(raw_group.get("group_label")) or f"Group {index}"
+        group_label = _normalize_group_label(
+            _text(raw_group.get("group_label")),
+            fallback=str(index),
+        )
         groups.append(
             SourceMatrixGroupSnapshot(
                 group_snapshot_id=f"smg-{uuid4().hex}",
@@ -269,6 +275,9 @@ def _build_rows_and_cells_from_rows(
             test_item=_text(raw_row.get("test_item")) or "",
             source_section=_text(raw_row.get("source_section")),
             is_sample_row=bool(raw_row.get("is_sample_row")),
+            method=_text(raw_row.get("method")),
+            condition=_text(raw_row.get("condition")),
+            requirement=_text(raw_row.get("requirement")),
         )
         rows.append(row)
         group_tokens = raw_row.get("group_tokens")
@@ -322,6 +331,9 @@ def _build_rows_and_cells_from_steps(
                     test_item=_text(raw_step.get("test_item")) or "",
                     source_section=_text(raw_step.get("source_section")),
                     is_sample_row=False,
+                    method=_text(raw_step.get("method")),
+                    condition=_text(raw_step.get("condition")),
+                    requirement=_text(raw_step.get("requirement")),
                 )
             row = derived_rows[row_key]
             raw_token = _text(raw_step.get("raw_token"))
@@ -341,6 +353,9 @@ def _build_rows_and_cells_from_steps(
                 test_item=row.test_item,
                 source_section=row.source_section,
                 is_sample_row=row.is_sample_row,
+                method=row.method,
+                condition=row.condition,
+                requirement=row.requirement,
             )
         )
     cells: list[SourceMatrixCellSnapshot] = []
@@ -433,6 +448,17 @@ def _text(value: Any) -> str | None:
         stripped = value.strip()
         return stripped or None
     return None
+
+
+def _normalize_group_label(value: str | None, *, fallback: str) -> str:
+    text = (value or "").strip()
+    if not text:
+        return fallback
+    normalized = text
+    if len(text) >= 5 and text[:5].lower() == "group":
+        normalized = text[5:].lstrip(" _-")
+    normalized = normalized.strip()
+    return normalized or fallback
 
 
 def _int_or_none(value: Any) -> int | None:

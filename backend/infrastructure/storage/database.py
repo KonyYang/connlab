@@ -55,6 +55,7 @@ def init_db(engine: Engine) -> None:
     _migrate_project_matrix_draft_row_detail_columns(engine)
     _migrate_source_matrix_import_commit_fingerprint(engine)
     _migrate_source_matrix_import_preview_payload(engine)
+    _migrate_source_matrix_row_detail_columns(engine)
 
 
 def _migrate_project_no_optional(engine: Engine) -> None:
@@ -545,4 +546,31 @@ def _migrate_source_matrix_import_preview_payload(engine: Engine) -> None:
             connection.exec_driver_sql(
                 "CREATE INDEX ix_source_matrix_import_records_task261_commit_fingerprint "
                 "ON source_matrix_import_records(task261_commit_fingerprint)"
+            )
+
+
+def _migrate_source_matrix_row_detail_columns(engine: Engine) -> None:
+    """Add optional row detail columns for imported Source Matrix rows."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "source_matrix_row_snapshots" not in table_names:
+            return
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(source_matrix_row_snapshots)"
+            ).all()
+        }
+        for missing_column in ["method", "condition", "requirement"]:
+            if missing_column in columns:
+                continue
+            connection.exec_driver_sql(
+                f"ALTER TABLE source_matrix_row_snapshots ADD COLUMN {missing_column} TEXT"
             )

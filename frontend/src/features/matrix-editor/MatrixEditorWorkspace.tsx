@@ -105,6 +105,15 @@ type MatrixAutoGrowTextareaProps = {
   onChange: (value: string) => void;
 };
 
+function normalizeGroupDisplayName(rawLabel: string | null | undefined, fallback: string): string {
+  const normalized = (rawLabel ?? "").trim();
+  if (normalized.length === 0) {
+    return fallback;
+  }
+  const withoutPrefix = normalized.replace(/^group[\s_-]*/i, "").trim();
+  return withoutPrefix.length > 0 ? withoutPrefix : fallback;
+}
+
 function buildInitialMatrixRows(): EditableMatrixRow[] {
   return [
     {
@@ -185,7 +194,7 @@ function buildMatrixFromPreview(
 } {
   const groups: GroupColumn[] = preview.groups.map((group, index) => ({
     id: `group-${index + 1}`,
-    name: group.group_label,
+    name: normalizeGroupDisplayName(group.group_label, `${index + 1}`),
     draftGroupId: null,
     sourceGroupSnapshotId: null,
     groupKey: group.group_key || `g${index + 1}`,
@@ -209,9 +218,9 @@ function buildMatrixFromPreview(
       isSampleRow: false,
       item: row.test_item,
       section: row.source_section ?? "",
-      method: "",
-      condition: "",
-      requirement: "",
+      method: row.method ?? "",
+      condition: row.condition ?? "",
+      requirement: row.requirement ?? "",
       groups: groupValues,
     };
   });
@@ -296,7 +305,7 @@ function buildSelectedGroupsFromSourcePreview(input: {
     if (existing) {
       nextGroups.push({
         ...existing,
-        name: previewGroup.group_label || existing.name,
+        name: normalizeGroupDisplayName(previewGroup.group_label, existing.name),
         isSelected: true,
         sampleNote: previewGroup.sample_note ?? existing.sampleNote,
       });
@@ -304,7 +313,7 @@ function buildSelectedGroupsFromSourcePreview(input: {
     }
     nextGroups.push({
       id: nextGroupId([...input.currentGroups, ...nextGroups]),
-      name: previewGroup.group_label,
+      name: normalizeGroupDisplayName(previewGroup.group_label, `${nextGroups.length + 1}`),
       draftGroupId: null,
       sourceGroupSnapshotId: null,
       groupKey: previewGroup.group_key,
@@ -377,7 +386,7 @@ function buildMatrixFromProjectMatrixDraft(
     .sort((left, right) => left.group_order - right.group_order)
     .map((group) => ({
       id: group.draft_group_id,
-      name: group.group_label,
+      name: normalizeGroupDisplayName(group.group_label, `${group.group_order}`),
       draftGroupId: group.draft_group_id,
       sourceGroupSnapshotId: group.source_group_snapshot_id ?? null,
       groupKey: group.group_key,
@@ -443,13 +452,13 @@ function buildMatrixFromSessionSeedDraft(
     if (existing) {
       return {
         ...existing,
-        name: previewGroup.group_label || existing.name,
+        name: normalizeGroupDisplayName(previewGroup.group_label, existing.name),
         sampleNote: previewGroup.sample_note ?? existing.sampleNote,
       };
     }
     return {
       id: `source-group-${index + 1}`,
-      name: previewGroup.group_label,
+      name: normalizeGroupDisplayName(previewGroup.group_label, `${index + 1}`),
       draftGroupId: null,
       sourceGroupSnapshotId: null,
       groupKey: previewGroup.group_key,
@@ -497,9 +506,9 @@ function buildMatrixFromSessionSeedDraft(
       isSampleRow: false,
       item: existing?.item ?? previewRow.test_item,
       section: existing?.section ?? previewRow.source_section ?? "",
-      method: existing?.method ?? "",
-      condition: existing?.condition ?? "",
-      requirement: existing?.requirement ?? "",
+      method: existing?.method?.trim() ? existing.method : previewRow.method ?? "",
+      condition: existing?.condition?.trim() ? existing.condition : previewRow.condition ?? "",
+      requirement: existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? "",
       groups: groupValues,
     };
   });
@@ -1235,7 +1244,10 @@ function buildPreviewStepNoteLookup(
   }
   let previewGroup = groupIndex >= 0 ? importPreview.groups[groupIndex] : undefined;
   if (!previewGroup) {
-    previewGroup = importPreview.groups.find((group) => group.group_label === selectedGroup.name);
+    previewGroup = importPreview.groups.find(
+      (group, index) =>
+        normalizeGroupDisplayName(group.group_label, `${index + 1}`) === selectedGroup.name
+    );
   }
   if (!previewGroup) {
     return empty;

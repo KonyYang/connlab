@@ -31,6 +31,10 @@ from backend.domain import (
     ProjectStatus,
     SourceMatrixImportRecord,
     SourceMatrixImportStatus,
+    SourceMatrixCellSnapshot,
+    SourceMatrixGroupSnapshot,
+    SourceMatrixRowSnapshot,
+    SourceMatrixSnapshot,
 )
 
 
@@ -43,6 +47,55 @@ def test_get_seed_when_source_snapshot_missing_returns_unavailable_message() -> 
     assert seed.source_status == "unavailable"
     assert seed.source_unavailable_message == SOURCE_UNAVAILABLE_MESSAGE
     assert seed.source_preview_payload is None
+
+
+def test_get_seed_rebuilt_source_preview_payload_preserves_row_mcr() -> None:
+    active = _build_active_snapshot()
+    source_snapshot = SourceMatrixSnapshot(
+        snapshot_id="sms-1",
+        import_id="smi-1",
+        project_id="P1",
+        source_table_index=1,
+        rows=(
+            SourceMatrixRowSnapshot(
+                row_snapshot_id="sr-1",
+                row_order=1,
+                source_row_index=3,
+                test_item="Contact Resistance (Low Level)",
+                source_section="6.1",
+                method="EIA-364-23D",
+                condition="20mV max, 100mA max",
+                requirement="Initial <= 0.25 milliohms",
+            ),
+        ),
+        groups=(
+            SourceMatrixGroupSnapshot(
+                group_snapshot_id="sg-1",
+                group_order=1,
+                group_key="g1",
+                group_label="1",
+                sample_quantity_expression="5",
+            ),
+        ),
+        cells=(
+            SourceMatrixCellSnapshot(
+                cell_snapshot_id="sc-1",
+                row_snapshot_id="sr-1",
+                group_snapshot_id="sg-1",
+                cell_value="1",
+            ),
+        ),
+        created_at="2026-05-27T00:00:00Z",
+    )
+    service = _service(active=active, source_snapshot=source_snapshot)
+
+    seed = service.get_seed(project_id="P1")
+
+    assert seed.source_preview_payload is not None
+    row = seed.source_preview_payload["rows"][0]
+    assert row["method"] == "EIA-364-23D"
+    assert row["condition"] == "20mV max, 100mA max"
+    assert row["requirement"] == "Initial <= 0.25 milliohms"
 
 
 def test_confirm_session_no_change_returns_http200_semantics() -> None:
@@ -155,6 +208,58 @@ def test_confirm_session_no_change_ignores_unselected_source_groups() -> None:
                 draft_row_id="dr-1",
                 draft_group_id="dg-2",
                 cell_value="2",
+            ),
+        ),
+    )
+    result = service.confirm_session(command)
+    assert result.publish_status == "no_change"
+    assert result.message == "No Matrix changes to confirm."
+    assert result.confirmed_snapshot is None
+
+
+def test_confirm_session_treats_group_prefix_as_same_signature() -> None:
+    active = _build_active_snapshot()
+    service = _service(active=active, source_snapshot=None)
+    command = MatrixEditorSessionConfirmCommand(
+        project_id="P1",
+        expected_active_confirmed_matrix_id="cmv-1",
+        expected_active_confirmed_revision=1,
+        source_document_path=None,
+        source_document_name=None,
+        source_format=None,
+        source_import_id=None,
+        source_snapshot_id=None,
+        confirmed_by="operator",
+        groups=(
+            MatrixEditorSessionGroup(
+                draft_group_id="dg-1",
+                source_group_snapshot_id="sg-1",
+                group_order=1,
+                group_key="g1",
+                group_label="Group 1",
+                is_selected=True,
+                sample_quantity_expression="5",
+                sample_note=None,
+            ),
+        ),
+        rows=(
+            MatrixEditorSessionRow(
+                draft_row_id="dr-1",
+                source_row_snapshot_id="sr-1",
+                row_order=1,
+                test_item="Visual Examination",
+                source_section="1.1",
+                method="EIA-364-18B",
+                condition="10x min magnification",
+                requirement="No detrimental condition",
+                is_sample_row=False,
+            ),
+        ),
+        cells=(
+            MatrixEditorSessionCell(
+                draft_row_id="dr-1",
+                draft_group_id="dg-1",
+                cell_value="1",
             ),
         ),
     )

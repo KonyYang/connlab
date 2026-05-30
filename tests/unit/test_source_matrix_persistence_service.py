@@ -61,6 +61,9 @@ def test_source_matrix_persistence_service_persists_sparse_cells_and_metadata(
                                 "source_row_index": 3,
                                 "test_item": "Visual Examination",
                                 "source_section": "6.1",
+                                "method": "EIA-364-18B",
+                                "condition": "10x min magnification",
+                                "requirement": "No detrimental condition",
                                 "group_tokens": {"G1": "1", "G2": ""},
                                 "is_sample_row": False,
                             },
@@ -112,6 +115,9 @@ def test_source_matrix_persistence_service_persists_sparse_cells_and_metadata(
             assert len(snapshot.groups) == 2
             assert len(snapshot.rows) == 2
             assert len(snapshot.cells) == 3
+            assert snapshot.rows[0].method == "EIA-364-18B"
+            assert snapshot.rows[0].condition == "10x min magnification"
+            assert snapshot.rows[0].requirement == "No detrimental condition"
     finally:
         engine.dispose()
 
@@ -200,6 +206,63 @@ def test_source_matrix_persistence_service_derives_rows_from_steps_when_rows_mis
             assert len(snapshot.cells) == 2
             values = sorted(cell.cell_value for cell in snapshot.cells)
             assert values == ["1, 2", "3"]
+    finally:
+        engine.dispose()
+
+
+def test_source_matrix_persistence_service_normalizes_group_prefix_labels(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            ProjectRepository(session).create(
+                Project(
+                    project_id="P1",
+                    project_no="DL-2026-05-001",
+                    product_name="Connector",
+                    requestor="Alice",
+                    status=ProjectStatus.LTR_REGISTERED,
+                )
+            )
+            service = SourceMatrixImportPersistenceService(
+                store=SourceMatrixImportRepository(session)
+            )
+            import_id = service.persist_from_draft(
+                PersistSourceMatrixImportCommand(
+                    project_id="P1",
+                    draft_id="ptpd-3",
+                    source_document_path="C:/specs/spec.docx",
+                    source_document_name="spec.docx",
+                    source_format=".docx",
+                    source_asset_id=None,
+                    source_case_id=None,
+                    source_draft_id=None,
+                    payload={
+                        "groups": [
+                            {"group_key": "g1", "group_label": "Group 8a", "sample_size": 5},
+                            {"group_key": "g2", "group_label": "group-2", "sample_size": 6},
+                        ],
+                        "rows": [
+                            {
+                                "source_row_index": 1,
+                                "test_item": "Visual",
+                                "source_section": "6.1",
+                                "group_tokens": {"g1": "1", "g2": "2"},
+                                "is_sample_row": False,
+                            }
+                        ],
+                    },
+                    created_at="2026-05-22T10:00:00+00:00",
+                )
+            )
+            session.commit()
+
+            snapshot = SourceMatrixImportRepository(session).get_snapshot_by_import(import_id)
+            assert snapshot is not None
+            assert [group.group_label for group in snapshot.groups] == ["8a", "2"]
     finally:
         engine.dispose()
 

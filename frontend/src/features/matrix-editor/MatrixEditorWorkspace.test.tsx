@@ -258,6 +258,40 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByRole("button", { name: "Selected Groups" })).toBeNull();
   });
 
+  it("prefills Method Condition and Requirement from source preview rows", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      source_preview_payload: {
+        ...seed.source_preview_payload,
+        rows: [
+          {
+            ...seed.source_preview_payload.rows[0],
+            test_item: "Contact Resistance (Low Level)",
+            source_section: "6.1",
+            method: "EIA-364-23D",
+            condition: "20mV max, 100mA max",
+            requirement: "Initial <= 0.25 milliohms",
+          },
+        ],
+      },
+      editor_draft: {
+        ...seed.editor_draft,
+        rows: [],
+        cells: [],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect(await screen.findByDisplayValue("EIA-364-23D")).toBeTruthy();
+    expect(screen.getByDisplayValue("20mV max, 100mA max")).toBeTruthy();
+    const requirement = screen.getByLabelText("Row 1 requirement") as HTMLInputElement;
+    expect(requirement.value).toBe("Initial <= 0.25 milliohms");
+    fireEvent.change(requirement, { target: { value: "Initial <= 0.30 milliohms" } });
+    expect(requirement.value).toBe("Initial <= 0.30 milliohms");
+  });
+
   it("supports inline include toggles and selected-only filter", async () => {
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
       ...buildSessionSeed(),
@@ -330,6 +364,54 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.getByLabelText("Row 1 2")).toBeTruthy();
     const includeGroup2 = screen.getByRole("checkbox", { name: "Include group 2" }) as HTMLInputElement;
     expect(includeGroup2.checked).toBe(false);
+  });
+
+  it("normalizes Group prefix in source-backed group labels", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      source_preview_payload: {
+        ...seed.source_preview_payload,
+        rows: [
+          {
+            ...seed.source_preview_payload.rows[0],
+            group_tokens: { "Group 8a": "8", g8a: "8" },
+          },
+        ],
+        groups: [
+          {
+            group_key: "g8a",
+            group_label: "Group 8a",
+            source_table_index: 0,
+            extraction_status: "loaded",
+            sample_size: null,
+            sample_quantity_expression: "6",
+            sample_note: null,
+            steps: [],
+          },
+        ],
+      },
+      editor_draft: {
+        ...seed.editor_draft,
+        groups: [
+          {
+            draft_group_id: "group-8a",
+            source_group_snapshot_id: "sg-8a",
+            group_order: 1,
+            group_key: "g8a",
+            group_label: "Group 8a",
+            is_selected: true,
+            sample_quantity_expression: "6",
+            sample_note: null,
+          },
+        ],
+        cells: [{ draft_row_id: "row-1", draft_group_id: "group-8a", cell_value: "8" }],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    expect(await screen.findByRole("checkbox", { name: "Include group 8a" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Include group Group 8a" })).toBeNull();
   });
 
   it("hides inline group checkboxes while selected-only filtering is active", async () => {

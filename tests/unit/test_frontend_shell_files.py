@@ -4516,3 +4516,34 @@ def test_task279_matrix_editor_preserves_source_group_universe_inline() -> None:
 
     assert "min-height: 14px;" in styles_source
     assert ".matrix-editor-completion-dock" in styles_source
+
+
+def test_task282_matrix_editor_consumes_source_preview_mcr_fields() -> None:
+    """TASK_282 keeps MCR prefill in Matrix Editor import/session paths."""
+    workspace_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source in [
+        "method?: string | null;",
+        "condition?: string | null;",
+        "requirement?: string | null;",
+        "detail_extraction_status?: string | null;",
+    ]:
+        assert required_source in client_source
+
+    for required_source in [
+        "method: row.method ?? \"\"",
+        "condition: row.condition ?? \"\"",
+        "requirement: row.requirement ?? \"\"",
+        "method: existing?.method?.trim() ? existing.method : previewRow.method ?? \"\"",
+        "condition: existing?.condition?.trim() ? existing.condition : previewRow.condition ?? \"\"",
+        "requirement: existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? \"\"",
+    ]:
+        assert required_source in workspace_source
+
+    assert "fetch(" not in workspace_source
+    assert "StepInstance" not in workspace_source

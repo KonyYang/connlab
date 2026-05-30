@@ -880,6 +880,12 @@ export type MatrixPreviewResponse = {
     source_row_index: number;
     test_item: string;
     source_section?: string | null;
+    method?: string | null;
+    condition?: string | null;
+    requirement?: string | null;
+    detail_extraction_status?: string | null;
+    detail_extraction_source_section?: string | null;
+    detail_extraction_notes?: string[];
     group_tokens: Record<string, string>;
     is_sample_row: boolean;
   }>;

@@ -226,6 +226,12 @@ def _preview_response(preview: ProjectTestPlanMatrixPreview) -> MatrixPreviewRes
                 "source_row_index": row.source_row_index,
                 "test_item": row.test_item,
                 "source_section": row.source_section,
+                "method": row.method,
+                "condition": row.condition,
+                "requirement": row.requirement,
+                "detail_extraction_status": row.detail_extraction_status,
+                "detail_extraction_source_section": row.detail_extraction_source_section,
+                "detail_extraction_notes": list(row.detail_extraction_notes),
                 "group_tokens": row.group_tokens,
                 "is_sample_row": row.is_sample_row,
             }

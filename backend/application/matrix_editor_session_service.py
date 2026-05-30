@@ -490,7 +490,9 @@ class MatrixEditorSessionService:
                             source_group_snapshot_id=group.source_group_snapshot_id,
                             group_order=group.group_order,
                             group_key=group.group_key,
-                            group_label=group.group_label,
+                            group_label=_normalize_group_label(
+                                group.group_label, fallback=str(group.group_order)
+                            ),
                             is_selected=group.is_selected,
                             sample_quantity_expression=group.sample_quantity_expression,
                             sample_note=group.sample_note,
@@ -576,7 +578,9 @@ def _build_editor_draft_from_active(
             source_group_snapshot_id=group.source_group_snapshot_id,
             group_order=group.group_order,
             group_key=group.group_key,
-            group_label=group.group_label,
+            group_label=_normalize_group_label(
+                group.group_label, fallback=str(group.group_order)
+            ),
             is_selected=True,
             sample_quantity_expression=group.sample_quantity_expression,
             sample_note=group.sample_note,
@@ -630,6 +634,9 @@ def _build_source_preview_payload(
                 "source_row_index": row.source_row_index if row.source_row_index is not None else row.row_order,
                 "test_item": row.test_item,
                 "source_section": row.source_section,
+                "method": row.method,
+                "condition": row.condition,
+                "requirement": row.requirement,
                 "group_tokens": row_tokens,
                 "is_sample_row": bool(row.is_sample_row),
             }
@@ -737,7 +744,9 @@ def _build_signature_from_session_payload(
             {
                 "group_order": group_index + 1,
                 "group_key": group.group_key.strip(),
-                "group_label": group.group_label.strip(),
+                "group_label": _normalize_group_label(
+                    group.group_label, fallback=str(group_index + 1)
+                ),
                 "sample_quantity_expression": (group.sample_quantity_expression or "").strip(),
                 "sample_note": (group.sample_note or "").strip(),
                 "is_selected": True,
@@ -783,7 +792,9 @@ def _build_signature_from_confirmed(snapshot: ConfirmedMatrixSnapshot) -> str:
             {
                 "group_order": group.group_order,
                 "group_key": group.group_key.strip(),
-                "group_label": group.group_label.strip(),
+                "group_label": _normalize_group_label(
+                    group.group_label, fallback=str(group.group_order)
+                ),
                 "sample_quantity_expression": (group.sample_quantity_expression or "").strip(),
                 "sample_note": (group.sample_note or "").strip(),
                 "is_selected": True,
@@ -825,7 +836,9 @@ def _build_manual_preview_payload(
         groups.append(
             {
                 "group_key": group.group_key,
-                "group_label": group.group_label,
+                "group_label": _normalize_group_label(
+                    group.group_label, fallback=str(group.group_order)
+                ),
                 "source_table_index": 0,
                 "extraction_status": "manual",
                 "sample_size": None,
@@ -839,7 +852,10 @@ def _build_manual_preview_payload(
         row_tokens: dict[str, str] = {}
         for group in sorted_groups:
             value = cell_map.get((row.draft_row_id, group.draft_group_id), "")
-            row_tokens[group.group_label] = value
+            normalized_label = _normalize_group_label(
+                group.group_label, fallback=str(group.group_order)
+            )
+            row_tokens[normalized_label] = value
             row_tokens[group.group_key] = value
         rows.append(
             {
@@ -939,7 +955,9 @@ def _build_confirmed_snapshot_from_session_draft(
                 source_group_snapshot_id=group.source_group_snapshot_id,
                 group_order=index,
                 group_key=group.group_key.strip(),
-                group_label=group.group_label.strip(),
+                group_label=_normalize_group_label(
+                    group.group_label, fallback=str(index)
+                ),
                 sample_quantity_expression=(group.sample_quantity_expression or "").strip(),
                 sample_note=_normalize_optional_text(group.sample_note),
             )
@@ -1005,6 +1023,17 @@ def _normalize_optional_text(value: str | None) -> str | None:
         return None
     text = value.strip()
     return text or None
+
+
+def _normalize_group_label(value: str | None, *, fallback: str) -> str:
+    text = (value or "").strip()
+    if not text:
+        return fallback
+    normalized = text
+    if len(text) >= 5 and text[:5].lower() == "group":
+        normalized = text[5:].lstrip(" _-")
+    normalized = normalized.strip()
+    return normalized or fallback
 
 
 def _utc_now() -> str:

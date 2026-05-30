@@ -196,6 +196,9 @@ def _to_row_models(snapshot: SourceMatrixSnapshot) -> list[SourceMatrixRowSnapsh
             test_item=row.test_item,
             source_section=row.source_section,
             is_sample_row=row.is_sample_row,
+            method=row.method,
+            condition=row.condition,
+            requirement=row.requirement,
         )
         for row in snapshot.rows
     ]
@@ -266,6 +269,9 @@ def _to_row_domain(row: SourceMatrixRowSnapshotModel) -> SourceMatrixRowSnapshot
         test_item=row.test_item,
         source_section=row.source_section,
         is_sample_row=row.is_sample_row,
+        method=row.method,
+        condition=row.condition,
+        requirement=row.requirement,
     )
 
 

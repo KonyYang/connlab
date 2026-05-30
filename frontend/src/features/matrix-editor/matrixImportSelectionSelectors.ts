@@ -43,10 +43,11 @@ function normalizeGroupKey(rawKey: string | null | undefined, index: number): st
 
 function normalizeGroupLabel(rawLabel: string | null | undefined, index: number): string {
   const normalized = (rawLabel ?? "").trim();
-  if (normalized.length > 0) {
-    return normalized;
+  if (normalized.length === 0) {
+    return `Group ${index + 1}`;
   }
-  return `Group ${index + 1}`;
+  const withoutPrefix = normalized.replace(/^group[\s_-]*/i, "").trim();
+  return withoutPrefix.length > 0 ? withoutPrefix : `Group ${index + 1}`;
 }
 
 export function buildMatrixImportSelectableGroups(
