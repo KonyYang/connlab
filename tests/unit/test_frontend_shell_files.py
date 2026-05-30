@@ -3719,7 +3719,7 @@ def test_task256_matrix_editor_save_to_project_matrix_draft_wiring_is_present() 
         "currentSavePayload",
         "hasUnsavedChanges",
         "Preparing confirm...",
-        "Changes not confirmed",
+        "Sample quantity is required for selected groups.",
         "buildConfirmInput",
         "confirmMatrixEditorSession(",
     ]:
@@ -4156,7 +4156,7 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
         / "ProjectWorkbenchLayout.tsx"
     ).read_text(encoding="utf-8")
 
-    assert "Changes not confirmed" in matrix_editor_source
+    assert "Sample quantity is required for selected groups." in matrix_editor_source
     assert "Preparing confirm..." in matrix_editor_source
     assert "Save failed. Retry before confirming." in matrix_editor_source
     if "Revert to last saved draft" not in action_groups_source:
@@ -4504,8 +4504,15 @@ def test_task279_matrix_editor_preserves_source_group_universe_inline() -> None:
         "applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null)",
         "{!showSelectedGroupsOnly ? (",
         "aria-label={`Include group ${group.name || group.groupKey}`}",
-        "Selected only",
+        "isSourceBacked: true",
+        "isSourceBacked: false",
+        "Exclude group",
+        "Source test item cannot be deleted",
+        "Show selected groups only",
+        "matrix-editor-completion-dock",
+        "Sample quantity is required for selected groups.",
     ]:
         assert required_source in workspace_source
 
     assert "min-height: 14px;" in styles_source
+    assert ".matrix-editor-completion-dock" in styles_source

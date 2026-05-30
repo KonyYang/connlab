@@ -138,9 +138,12 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     cleanup();
   });
 
-  it("shows Cancel and Confirm Matrix actions without old draft/revision copy", async () => {
+  it("shows Import Matrix in the header and completion actions in a sticky footer", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
+    const completionDock = screen.getByRole("contentinfo", { name: "Matrix editor completion actions" });
+    expect((completionDock as HTMLElement).classList.contains("matrix-editor-completion-dock")).toBe(true);
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Confirm Matrix" })).toBeTruthy();
     expect(screen.queryByText("Confirm As Active Matrix")).toBeNull();
@@ -283,6 +286,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     const includeChecks = await screen.findAllByRole("checkbox", { name: /^Include group/ });
     fireEvent.click(includeChecks[1]);
     fireEvent.click(screen.getByRole("checkbox", { name: "Show selected groups only" }));
+    expect(screen.getByText("Show selected groups only")).toBeTruthy();
     expect(screen.queryByLabelText("Row 1 2")).toBeNull();
     expect(screen.getByLabelText("Row 1 1")).toBeTruthy();
   });
@@ -338,13 +342,63 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.getByRole("checkbox", { name: "Show selected groups only" })).toBeTruthy();
   });
 
-  it("does not set top confirm message when sample guard blocks confirm", async () => {
+  it("uses Exclude group for source groups and keeps the source group visible", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const includeGroup1 = await screen.findByRole("checkbox", { name: "Include group 1" });
+    fireEvent.contextMenu(includeGroup1.closest("th") as HTMLElement);
+
+    expect(screen.queryByRole("button", { name: "Delete group" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Exclude group" }));
+
+    const updatedIncludeGroup1 = screen.getByRole("checkbox", { name: "Include group 1" }) as HTMLInputElement;
+    expect(updatedIncludeGroup1.checked).toBe(false);
+    expect(screen.getByLabelText("Row 1 1")).toBeTruthy();
+  });
+
+  it("allows deleting manually inserted groups from the editor table", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const includeGroup1 = await screen.findByRole("checkbox", { name: "Include group 1" });
+    fireEvent.contextMenu(includeGroup1.closest("th") as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Insert right" }));
+    expect(document.querySelectorAll(".matrix-editor-group-band")).toHaveLength(2);
+
+    const manualGroupHeader = document.querySelectorAll(".matrix-editor-group-band")[1] as HTMLElement;
+    fireEvent.contextMenu(manualGroupHeader);
+    expect(screen.queryByRole("button", { name: "Exclude group" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Delete group" }));
+
+    expect(document.querySelectorAll(".matrix-editor-group-band")).toHaveLength(1);
+  });
+
+  it("disables deleting source rows but allows deleting manually inserted rows", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const sourceRowButton = await screen.findByRole("button", { name: "Select row 1" });
+    fireEvent.contextMenu(sourceRowButton);
+    expect((screen.getByRole("button", { name: "Delete row" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Insert below" }));
+
+    const manualRowButton = await screen.findByRole("button", { name: "Select row 2" });
+    fireEvent.contextMenu(manualRowButton);
+    const deleteRowButton = screen.getByRole("button", { name: "Delete row" }) as HTMLButtonElement;
+    expect(deleteRowButton.disabled).toBe(false);
+    fireEvent.click(deleteRowButton);
+
+    expect(screen.queryByRole("button", { name: "Select row 2" })).toBeNull();
+  });
+
+  it("shows a blocking status when sample guard blocks confirm", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     const sample = await screen.findByLabelText("Samples 1");
     fireEvent.change(sample, { target: { value: "sample only" } });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByText("Sample quantity is required for selected groups.").length).toBe(1);
+    expect(document.querySelector(".matrix-editor-save-status")?.textContent ?? "").not.toContain(
+      "Sample quantity is required for selected groups."
+    );
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(0));
-    expect(screen.queryByText("Selected group sample quantity is incomplete.")).toBeNull();
   });
 
   it("returns to Workbench when confirm has no Matrix changes", async () => {

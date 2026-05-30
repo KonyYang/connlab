@@ -17,7 +17,6 @@ import {
   type MatrixImportCommitResponse,
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
-import { MatrixWorkspaceActionGroups } from "./MatrixWorkspaceActionGroups";
 import "../../workbench.css";
 
 type MatrixEditorWorkspaceProps = {
@@ -32,6 +31,7 @@ type GroupColumn = {
   sourceGroupSnapshotId: string | null;
   groupKey: string;
   isSelected: boolean;
+  isSourceBacked: boolean;
   sampleNote: string | null;
 };
 
@@ -59,7 +59,7 @@ type MatrixPublishMode = "first_authority" | "revision_authority";
 
 const AUTO_SAVE_STATUS_COPY: Record<MatrixSaveState, string> = {
   idle: "Editing",
-  dirty: "Changes not confirmed",
+  dirty: "",
   saving: "Preparing confirm...",
   saved: "",
   error: "Save failed. Retry before confirming.",
@@ -169,6 +169,7 @@ function buildInitialGroupColumns(): GroupColumn[] {
       sourceGroupSnapshotId: null,
       groupKey: "g1",
       isSelected: true,
+      isSourceBacked: false,
       sampleNote: null,
     },
   ];
@@ -189,6 +190,7 @@ function buildMatrixFromPreview(
     sourceGroupSnapshotId: null,
     groupKey: group.group_key || `g${index + 1}`,
     isSelected: true,
+    isSourceBacked: true,
     sampleNote: group.sample_note ?? null,
   }));
   const sourceRows = [...preview.rows].sort((a, b) => a.source_row_index - b.source_row_index);
@@ -307,6 +309,7 @@ function buildSelectedGroupsFromSourcePreview(input: {
       sourceGroupSnapshotId: null,
       groupKey: previewGroup.group_key,
       isSelected: true,
+      isSourceBacked: true,
       sampleNote: previewGroup.sample_note ?? null,
     });
   });
@@ -379,6 +382,7 @@ function buildMatrixFromProjectMatrixDraft(
       sourceGroupSnapshotId: group.source_group_snapshot_id ?? null,
       groupKey: group.group_key,
       isSelected: group.is_selected,
+      isSourceBacked: group.source_group_snapshot_id != null,
       sampleNote: group.sample_note ?? null,
     }));
   const rows: EditableMatrixRow[] = draft.rows
@@ -450,6 +454,7 @@ function buildMatrixFromSessionSeedDraft(
       sourceGroupSnapshotId: null,
       groupKey: previewGroup.group_key,
       isSelected: false,
+      isSourceBacked: true,
       sampleNote: previewGroup.sample_note ?? null,
     };
   });
@@ -1664,13 +1669,17 @@ export function MatrixEditorWorkspace({
       : hasMatrixValidationError
         ? groupNameErrorMessage || stepTokenErrorMessage
         : hasSelectedSampleQuantityError
-          ? "Selected group sample quantity is incomplete."
+          ? "Sample quantity is required for selected groups."
         : isPublishBusy
           ? "Action in progress."
           : !hasAnyStepTokenValue
             ? "Add at least one step token before confirm."
             : "";
   const canPublishActiveMatrix = publishDisabledReason.length === 0;
+  const publishBlockingMessage =
+    publishDisabledReason && publishDisabledReason !== "Action in progress."
+      ? publishDisabledReason
+      : "";
   const visibleGroupColumns = showSelectedGroupsOnly
     ? groupColumns.filter((group) => group.isSelected)
     : groupColumns;
@@ -1687,9 +1696,10 @@ export function MatrixEditorWorkspace({
   const saveStatusLabel =
     saveState === "error"
         ? AUTO_SAVE_STATUS_COPY.error
-        : hasUnsavedChanges || saveState === "dirty"
-        ? AUTO_SAVE_STATUS_COPY.dirty
+        : saveState === "saving"
+        ? AUTO_SAVE_STATUS_COPY.saving
         : AUTO_SAVE_STATUS_COPY.saved;
+  const editorStatusMessage = confirmActiveMessage || saveStatusLabel;
 
   const openChooseDocx = (): void => {
     fileInputRef.current?.click();
@@ -1974,6 +1984,10 @@ export function MatrixEditorWorkspace({
   };
 
   const deleteRow = (rowIndex: number): void => {
+    if (editableRows[rowIndex]?.sourceRowSnapshotId) {
+      setLastMessage("Source test item cannot be deleted");
+      return;
+    }
     if (editableRows.length <= 1) {
       setLastMessage("At least one test item row is required");
       return;
@@ -2020,6 +2034,7 @@ export function MatrixEditorWorkspace({
         sourceGroupSnapshotId: null,
         groupKey: `g${previous.length + 1}`,
         isSelected: true,
+        isSourceBacked: false,
         sampleNote: null,
       },
     ]);
@@ -2053,6 +2068,7 @@ export function MatrixEditorWorkspace({
         sourceGroupSnapshotId: null,
         groupKey: `g${insertAt + 1}`,
         isSelected: true,
+        isSourceBacked: false,
         sampleNote: null,
       });
       return next;
@@ -2087,6 +2103,7 @@ export function MatrixEditorWorkspace({
         sourceGroupSnapshotId: null,
         groupKey: sourceGroup.groupKey,
         isSelected: sourceGroup.isSelected,
+        isSourceBacked: false,
         sampleNote: sourceGroup.sampleNote,
       });
         return next;
@@ -2104,6 +2121,12 @@ export function MatrixEditorWorkspace({
   };
 
   const deleteGroup = (groupId: string): void => {
+    const targetGroup = groupColumns.find((group) => group.id === groupId);
+    if (targetGroup?.isSourceBacked) {
+      toggleGroupIncluded(groupId, false);
+      setLastMessage("Source group excluded");
+      return;
+    }
     if (groupColumns.length <= 1) {
       setLastMessage("At least one group column is required");
       return;
@@ -2120,6 +2143,11 @@ export function MatrixEditorWorkspace({
     );
     setSelectedGroupId((previous) => (previous === groupId ? null : previous));
     setLastMessage("Group column deleted");
+  };
+
+  const includeSourceGroup = (groupId: string): void => {
+    toggleGroupIncluded(groupId, true);
+    setLastMessage("Source group included");
   };
 
   const moveGroup = (groupId: string, direction: "left" | "right"): void => {
@@ -2194,7 +2222,7 @@ export function MatrixEditorWorkspace({
     if (!canPublishActiveMatrix) {
       if (
         publishDisabledReason &&
-        publishDisabledReason !== "Selected group sample quantity is incomplete."
+        publishDisabledReason !== "Sample quantity is required for selected groups."
       ) {
         setConfirmActiveMessage(publishDisabledReason);
       }
@@ -2295,6 +2323,12 @@ export function MatrixEditorWorkspace({
       setConfirmActiveMessage(parseRequestError(error, "Confirm failed."));
     }
   };
+  const contextMenuGroup =
+    contextMenu?.kind === "group"
+      ? groupColumns.find((group) => group.id === contextMenu.groupId) ?? null
+      : null;
+  const contextMenuRow =
+    contextMenu?.kind === "row" ? editableRows[contextMenu.rowIndex] ?? null : null;
 
   return (
     <section className="workbench-page matrix-editor-shell matrix-editor-target-shell" onClick={() => setContextMenu(null)}>
@@ -2303,21 +2337,17 @@ export function MatrixEditorWorkspace({
           {matrixEditorIdentityLine}
         </p>
         <div className="matrix-editor-target-actions">
-          <MatrixWorkspaceActionGroups
-            publishDisabled={!canPublishActiveMatrix}
-            publishBusy={confirmActiveState === "loading"}
-            onCancel={onCancelEditing}
-            onChangeSourceMatrix={() => void onChangeSourceMatrix()}
-            onPublishActiveMatrix={() => void onConfirmMatrix()}
-          />
+          <button type="button" onClick={() => void onChangeSourceMatrix()}>
+            Import Matrix
+          </button>
         </div>
       </section>
 
-      {(confirmActiveMessage || saveStatusLabel) && (
+      {editorStatusMessage ? (
         <section className="matrix-editor-save-status">
-          {confirmActiveMessage || saveStatusLabel}
+          {editorStatusMessage}
         </section>
-      )}
+      ) : null}
       <input
         ref={fileInputRef}
         accept=".docx"
@@ -2402,7 +2432,7 @@ export function MatrixEditorWorkspace({
                 checked={showSelectedGroupsOnly}
                 onChange={(event) => setShowSelectedGroupsOnly(event.target.checked)}
               />
-              Selected only
+              Show selected groups only
             </label>
             <table className="matrix-editor-main-table">
               <thead>
@@ -2613,8 +2643,14 @@ export function MatrixEditorWorkspace({
                     </button>
                     <button
                       type="button"
-                      disabled={editableRows.length <= 1}
-                      title={editableRows.length <= 1 ? "At least one test item row is required" : ""}
+                      disabled={Boolean(contextMenuRow?.sourceRowSnapshotId) || editableRows.length <= 1}
+                      title={
+                        contextMenuRow?.sourceRowSnapshotId
+                          ? "Source test item cannot be deleted"
+                          : editableRows.length <= 1
+                            ? "At least one test item row is required"
+                            : ""
+                      }
                       onClick={() => runContextAction(() => deleteRow(contextMenu.rowIndex))}
                     >
                       Delete row
@@ -2646,14 +2682,29 @@ export function MatrixEditorWorkspace({
                     >
                       Move right
                     </button>
-                    <button
-                      type="button"
-                      disabled={groupColumns.length <= 1}
-                      title={groupColumns.length <= 1 ? "At least one group column is required" : ""}
-                      onClick={() => runContextAction(() => deleteGroup(contextMenu.groupId))}
-                    >
-                      Delete group
-                    </button>
+                    {contextMenuGroup?.isSourceBacked ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          runContextAction(() =>
+                            contextMenuGroup.isSelected
+                              ? deleteGroup(contextMenu.groupId)
+                              : includeSourceGroup(contextMenu.groupId)
+                          )
+                        }
+                      >
+                        {contextMenuGroup.isSelected ? "Exclude group" : "Include group"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={groupColumns.length <= 1}
+                        title={groupColumns.length <= 1 ? "At least one group column is required" : ""}
+                        onClick={() => runContextAction(() => deleteGroup(contextMenu.groupId))}
+                      >
+                        Delete group
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -2748,6 +2799,25 @@ export function MatrixEditorWorkspace({
           )}
         </aside>
       </section>
+      <footer
+        aria-label="Matrix editor completion actions"
+        className="matrix-editor-completion-dock"
+      >
+        <span>{publishBlockingMessage || "Confirm returns to Workbench without creating a new version when nothing changed."}</span>
+        <div className="matrix-editor-completion-actions">
+          <button type="button" onClick={onCancelEditing}>
+            Cancel
+          </button>
+          <button
+            className="matrix-editor-primary-action"
+            disabled={!canPublishActiveMatrix}
+            type="button"
+            onClick={() => void onConfirmMatrix()}
+          >
+            {confirmActiveState === "loading" ? "Confirming..." : "Confirm Matrix"}
+          </button>
+        </div>
+      </footer>
       <section className="matrix-editor-supporting">
         <section className="matrix-editor-templates" aria-label="Templates">
           <header>
