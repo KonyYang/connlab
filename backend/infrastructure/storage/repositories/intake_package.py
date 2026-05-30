@@ -134,6 +134,15 @@ class IntakeCaseRepository:
         row = self._session.get(IntakeCaseModel, case_id)
         return _case_to_domain(row) if row else None
 
+    def get_by_confirmed_project(self, project_id: str) -> IntakeCase | None:
+        """Return the latest intake case linked to one confirmed project."""
+        row = self._session.scalars(
+            select(IntakeCaseModel)
+            .where(IntakeCaseModel.confirmed_project_id == project_id)
+            .order_by(IntakeCaseModel.updated_at.desc(), IntakeCaseModel.case_id.desc())
+        ).first()
+        return _case_to_domain(row) if row else None
+
     def list_by_package(self, package_id: str) -> list[IntakeCase]:
         """Return cases for one package."""
         rows = self._session.scalars(

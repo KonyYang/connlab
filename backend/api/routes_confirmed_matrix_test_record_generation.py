@@ -30,11 +30,17 @@ def generate_confirmed_matrix_test_record_draft(
     settings: Settings = Depends(get_settings),
 ) -> FileResponse:
     """Generate and return one Word Test Record draft from active ConfirmedMatrix."""
+    if settings.test_record.template_path is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Test Record template path is not configured.",
+        )
     try:
         result = service.generate(
             GenerateConfirmedMatrixTestRecordDocumentCommand(
                 project_id=project_id,
                 output_dir=settings.data_dir / "generated_test_records",
+                template_path=settings.test_record.template_path,
             )
         )
     except ConfirmedMatrixTestRecordDocumentGenerationNotFoundError as exc:

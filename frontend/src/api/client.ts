@@ -1248,6 +1248,19 @@ async function responseError(response: Response): Promise<ApiRequestError> {
 }
 
 async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const response = await requestBlobResponse(path, init);
+  return response.blob;
+}
+
+export type BlobDownloadResponse = {
+  blob: Blob;
+  fileName: string | null;
+};
+
+async function requestBlobResponse(
+  path: string,
+  init?: RequestInit
+): Promise<BlobDownloadResponse> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
@@ -1261,7 +1274,12 @@ async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
     throw error;
   }
 
-  return response.blob();
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const utf8Name = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const asciiName = disposition.match(/filename=\"?([^\";]+)\"?/i)?.[1];
+  const fileName = decodeURIComponent(utf8Name ?? asciiName ?? "").trim() || null;
+  return { blob, fileName };
 }
 
 export function listProjects(): Promise<Project[]> {
@@ -1979,6 +1997,15 @@ export function generateConfirmedMatrixTestRecordDraft(
   projectId: string
 ): Promise<Blob> {
   return requestBlob(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-draft/generate`,
+    { method: "POST" }
+  );
+}
+
+export function generateConfirmedMatrixTestRecordDraftDownload(
+  projectId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-draft/generate`,
     { method: "POST" }
   );

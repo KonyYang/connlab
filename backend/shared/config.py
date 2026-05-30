@@ -49,6 +49,14 @@ class LtrWorkbookSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class TestRecordSettings:
+    """Runtime settings for Test Record Word generation."""
+
+    __test__ = False
+    template_path: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Settings:
     """Runtime settings loaded from environment variables."""
 
@@ -58,6 +66,7 @@ class Settings:
     database_path: Path
     log_level: str = DEFAULT_LOG_LEVEL
     ltr_workbook: LtrWorkbookSettings = field(default_factory=LtrWorkbookSettings)
+    test_record: TestRecordSettings = field(default_factory=TestRecordSettings)
 
     @classmethod
     def load(cls, base_dir: Path | None = None) -> "Settings":
@@ -65,6 +74,7 @@ class Settings:
         root_dir = base_dir or Path(__file__).resolve().parents[2]
         local_config = _load_local_config(root_dir)
         workbook_config = local_config.get("ltr_workbook", {})
+        test_record_config = local_config.get("test_record", {})
         settings = cls(
             data_dir=_resolve_directory("CONNLAB_DATA_DIR", root_dir / "data", root_dir),
             projects_dir=_resolve_directory(
@@ -85,6 +95,7 @@ class Settings:
             log_level=os.getenv("CONNLAB_LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
             or DEFAULT_LOG_LEVEL,
             ltr_workbook=_load_ltr_workbook_settings(root_dir, workbook_config),
+            test_record=_load_test_record_settings(root_dir, test_record_config),
         )
         settings.ensure_directories()
         return settings
@@ -180,6 +191,17 @@ def _load_ltr_workbook_settings(
             "sheet_bootstrap_clear_start_row",
             str(config.get("sheet_bootstrap_clear_start_row", 2)),
         ),
+    )
+
+
+def _load_test_record_settings(base_dir: Path, config: dict) -> TestRecordSettings:
+    """Load optional Test Record generation settings."""
+    raw_path = os.getenv(
+        "CONNLAB_TEST_RECORD_TEMPLATE_PATH",
+        str(config.get("template_path", "")),
+    )
+    return TestRecordSettings(
+        template_path=_optional_path(raw_path, base_dir),
     )
 
 

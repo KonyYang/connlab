@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   ApiRequestError,
   fetchConfirmedMatrixTestRecordPreview,
+  generateConfirmedMatrixTestRecordDraftDownload,
   type ConfirmedMatrixTestRecordPreview,
 } from "../../api/client";
 import {
@@ -30,6 +31,8 @@ export function ProjectWorkbenchMatrixProjectionPanel({
   const [selectedTokenReference, setSelectedTokenReference] = useState<
     string | null
   >(null);
+  const [recordState, setRecordState] = useState<"idle" | "generating" | "error">("idle");
+  const [recordError, setRecordError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -44,6 +47,8 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         }
         setPreview(response);
         setState(response.preview_status === "empty" ? "empty" : "ready");
+        setRecordState("idle");
+        setRecordError(null);
       })
       .catch((error: unknown) => {
         if (!active) {
@@ -68,6 +73,34 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         : null,
     [preview]
   );
+  const canGenerateRecord = state === "ready" && Boolean(viewModel);
+  const onGenerateTestRecord = async (): Promise<void> => {
+    if (!canGenerateRecord || recordState === "generating") {
+      return;
+    }
+    setRecordState("generating");
+    setRecordError(null);
+    try {
+      const { blob, fileName } = await generateConfirmedMatrixTestRecordDraftDownload(projectId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName ?? `${projectId} Test Record.docx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setRecordState("idle");
+    } catch (error: unknown) {
+      console.error("Failed to generate Test Record document.", error);
+      setRecordState("error");
+      if (error instanceof ApiRequestError) {
+        setRecordError(error.message);
+      } else {
+        setRecordError("Unable to generate Test record. Confirm active Matrix and try again.");
+      }
+    }
+  };
   return (
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
       <div className="runtime-console-matrix-toolbar">
@@ -76,12 +109,14 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         </button>
         <button
           type="button"
-          disabled
-          title="Test record workflow placement is planned for a later approved task."
+          disabled={!canGenerateRecord || recordState === "generating"}
+          title={canGenerateRecord ? undefined : "Confirm Matrix authority before generating Test record."}
+          onClick={() => void onGenerateTestRecord()}
         >
-          Test record
+          {recordState === "generating" ? "Generating..." : "Test record"}
         </button>
       </div>
+      {recordError ? <p className="error">{recordError}</p> : null}
 
       {state === "loading" ? <p className="fine-print">Loading Matrix projection...</p> : null}
       {state === "not_ready" ? (

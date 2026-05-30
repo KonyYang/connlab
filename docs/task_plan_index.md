@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-05-30
-Status: No active planned task. Latest completed task plan is TASK_279.
+Status: no active planned task. Latest completed task plan is TASK_281.
 
 ## Decision
 
@@ -50,7 +50,7 @@ none
 Latest completed task plan history:
 
 ```text
-docs/task_279_matrix_editor_inline_group_selection_and_sample_guard_plan.md
+docs/task_281_test_record_header_metadata_fill_plan.md
 ```
 
 Archived completed-plan pattern:

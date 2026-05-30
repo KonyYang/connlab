@@ -20,6 +20,7 @@ def test_settings_load_defaults_and_create_directories() -> None:
         assert settings.ltr_workbook.write_enabled is False
         assert settings.ltr_workbook.path is None
         assert settings.ltr_workbook.modify_password is None
+        assert settings.test_record.template_path is None
         assert settings.data_dir.is_dir()
         assert settings.projects_dir.is_dir()
         assert settings.templates_dir.is_dir()
@@ -129,6 +130,7 @@ def test_settings_respect_environment_overrides(
     monkeypatch.setenv("CONNLAB_PROJECTS_DIR", str(workspace_tmp / "project-store"))
     monkeypatch.setenv("CONNLAB_TEMPLATES_DIR", "custom-templates")
     monkeypatch.setenv("CONNLAB_LOG_LEVEL", "debug")
+    monkeypatch.setenv("CONNLAB_TEST_RECORD_TEMPLATE_PATH", "templates/record.docx")
 
     try:
         settings = Settings.load(base_dir=workspace_tmp)
@@ -137,6 +139,7 @@ def test_settings_respect_environment_overrides(
         assert settings.projects_dir == (workspace_tmp / "project-store").resolve()
         assert settings.templates_dir == (workspace_tmp / "custom-templates").resolve()
         assert settings.log_level == "DEBUG"
+        assert settings.test_record.template_path == (workspace_tmp / "templates" / "record.docx").resolve()
         assert settings.data_dir.is_dir()
         assert settings.projects_dir.is_dir()
         assert settings.templates_dir.is_dir()

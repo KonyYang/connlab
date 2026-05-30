@@ -166,6 +166,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectCleanupAuditRecordRepository,
     ProjectFolderRecordRepository,
     ProjectMatrixDraftRepository,
+    ProjectFolderRecordRepository,
     ProjectRepository,
     ProjectOutputRecordRepository,
     ProjectTestPlanDraftRepository,
@@ -307,6 +308,11 @@ def get_confirmed_matrix_test_record_document_generation_service(
         ),
         project_store=ProjectRepository(session),
         writer=TestRecordDocumentGateway(),
+        folder_store=ProjectFolderRecordRepository(session),
+        ltr_store=LtrRecordRepository(session),
+        intake_case_store=IntakeCaseRepository(session),
+        intake_draft_store=IntakeDraftRepository(session),
+        application_form_store=ApplicationFormRepository(session),
     )
 
 
