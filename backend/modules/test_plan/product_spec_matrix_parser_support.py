@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 import re
 
 
@@ -129,6 +129,66 @@ def table_score(
     else:
         score -= 20
     return score
+
+
+def section_candidates(source_section: str) -> tuple[str, ...]:
+    """Extract ordered section-number candidates from one source section cell."""
+    matches = re.findall(r"\d+(?:\.\d+)+", source_section)
+    if not matches:
+        return (source_section,)
+    candidates: list[str] = []
+    for match in matches:
+        if match not in candidates:
+            candidates.append(match)
+    return tuple(candidates)
+
+
+def row_detail_for_section(
+    *,
+    source_section: str | None,
+    test_item: str | None,
+    section_text_blocks: dict[str, str],
+    row_detail_cache: dict[tuple[str, str], Any],
+    extract_row_detail: Callable[..., Any],
+) -> Any | None:
+    """Resolve one row detail using section/test-item context and cache."""
+    section = (source_section or "").strip()
+    if not section:
+        return None
+    normalized_item = (test_item or "").strip().lower()
+    is_visual_family = normalized_item in {
+        "visual examination",
+        "examination",
+        "examination of product",
+        "visual inspection",
+        "visual check",
+    }
+    first_detail: Any | None = None
+    for candidate in section_candidates(section):
+        section_text = section_text_blocks.get(candidate)
+        if not section_text:
+            continue
+        cache_key = (candidate, normalized_item)
+        detail = row_detail_cache.get(cache_key)
+        if detail is None:
+            detail = extract_row_detail(
+                section=candidate,
+                section_text=section_text,
+                test_item=test_item,
+            )
+            row_detail_cache[cache_key] = detail
+        first_detail = first_detail or detail
+        if is_visual_family and getattr(detail, "method", None) and detail.method != "EIA-364-18B":
+            return detail
+        if not is_visual_family and (
+            getattr(detail, "method", None)
+            or getattr(detail, "condition", None)
+            or getattr(detail, "requirement", None)
+        ):
+            return detail
+        if getattr(detail, "method", None) or getattr(detail, "condition", None) or getattr(detail, "requirement", None):
+            continue
+    return first_detail
 
 
 def find_test_sequence_header(table: list[list[str]]) -> tuple[int, int, int, tuple[tuple[int, str], ...]] | None:

@@ -36,11 +36,14 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
         [
             [
                 ["test Items", "Section", "Group 1"],
+                ["Examination of Product", "5.4", "1"],
                 ["Contact Resistance (Low Level)", "6.1", "2,5,8"],
                 ["Durability", "7.3", "3"],
             ]
         ],
         paragraphs=[
+            "5.4 Design and Construction",
+            "There shall be no cracks, burrs, or other physical defects that may impair performance.",
             "6.1 Contact Resistance, Low Level (LLCR)",
             "The low level contact resistance shall not exceed 0.25 milliohms initially.",
             "Measurements shall be in accordance with EIA 364-23D using 20mV max, 100mA max.",
@@ -49,8 +52,13 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
         ],
     )
 
-    llcr = result.rows[0]
-    durability = result.rows[1]
+    visual = result.rows[0]
+    llcr = result.rows[1]
+    durability = result.rows[2]
+    assert visual.method == "EIA-364-18B"
+    assert visual.condition == "10x min magnification"
+    assert visual.requirement == "No detrimental condition"
+    assert visual.detail_extraction_status == "matched"
     assert llcr.method == "EIA-364-23D"
     assert llcr.condition == "20mV max, 100mA max"
     assert "shall not exceed 0.25 milliohms" in (llcr.requirement or "")
@@ -59,6 +67,44 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
     assert durability.condition is None
     assert durability.requirement is None
     assert durability.detail_extraction_status == "partial"
+
+
+def test_product_spec_matrix_parser_applies_family_aware_details_on_real_path() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["Temperature rise", "6.3.1", "1"],
+                ["Cycling Temperature& Humidity", "8.2", "2"],
+                ["MFG", "8.6", "3"],
+                ["Dust exposure", "8.7", "4"],
+            ]
+        ],
+        paragraphs=[
+            "6.3.1 Temperature rise",
+            "Method 2 is used at 75A. Temperature rise shall not exceed 30 C.",
+            "8.2 Cyclic Temperature and Humidity –EIA 364-31 and EIA 364-1000.",
+            "temperature 25 ± 3 C at 80 ± 5% RH and 65 ± 3 C at 50 ± 5% RH.",
+            "Duration 24 cycles. Dwell time 1.0 hour; ramp time 30 minutes.",
+            "Maximum Change: 0.17 mΩ.",
+            "8.6 Mixed Flowing Gas corrosion (MFG) –EIA 364-65 and EIA-364-1000.",
+            "Class IIA. Duration - 224 hours unmated, 112 hours mated.",
+            "8.7 Dust exposure –EIA-364-91.",
+            "Benign Dust Composition. Maximum Change: 0.17 mΩ.",
+        ],
+    )
+
+    temperature = result.rows[0]
+    humidity = result.rows[1]
+    mfg = result.rows[2]
+    dust = result.rows[3]
+    assert temperature.method == "EIA-364-70"
+    assert humidity.method == "EIA-364-31"
+    assert "31 a" not in (humidity.condition or "").lower()
+    assert mfg.method == "EIA-364-65"
+    assert "65 a" not in (mfg.condition or "").lower()
+    assert "class iia" in (mfg.condition or "").lower()
+    assert "Maximum Change: 0.17" in (dust.requirement or "")
 
 
 def test_product_spec_matrix_parser_matches_symbol_marked_and_multi_sections() -> None:
@@ -399,3 +445,28 @@ def test_product_spec_matrix_parser_accepts_loose_sequence_matrix_headers() -> N
     assert [group.group_label for group in result.groups] == ["Gamma", "Delta"]
     assert result.groups[0].sample_quantity_expression == "3 pcs"
     assert [step.raw_token for step in result.groups[0].steps] == ["1", "2"]
+
+
+def test_product_spec_matrix_parser_applies_template_fallback_without_overriding_extracted_method() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["MFG", "8.6", "1"],
+                ["Visual Inspection", "5.4", "2"],
+            ]
+        ],
+        paragraphs=[
+            "8.6 Mixed Flowing Gas corrosion",
+            "Class IIA. Duration - 224 hours unmated, 112 hours mated.",
+            "5.4 Design and Construction",
+            "Inspection shall be performed in accordance with IEC 60512-1-1.",
+        ],
+    )
+
+    mfg = result.rows[0]
+    visual = result.rows[1]
+    assert mfg.method == "EIA-364-65"
+    assert "template-fallback-method" in mfg.detail_extraction_notes
+    assert visual.method == "IEC 60512-1-1"
+    assert "template-fallback-method" not in visual.detail_extraction_notes

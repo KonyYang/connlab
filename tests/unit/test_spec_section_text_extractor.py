@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from backend.modules.test_plan.spec_section_text_extractor import (
     collect_section_text_blocks,
+    extract_row_details,
     extract_row_details_by_section,
 )
 
@@ -91,3 +92,166 @@ def test_collect_section_text_blocks_uses_exact_section_boundaries() -> None:
 
     assert blocks["6.1"] == "6.1 Contact Resistance Section 6.1 body."
     assert blocks["6.2"] == "6.2 Specified Current Section 6.2 body."
+
+
+def test_visual_family_default_is_applied_without_explicit_conflict() -> None:
+    detail = extract_row_details(
+        section="5.4",
+        section_text=(
+            "5.4 Design and Construction Connectors shall be of the design and construction "
+            "specified on applicable drawings. There shall be no cracks, burrs, or other physical "
+            "defects that may impair performance."
+        ),
+        test_item="Examination of Product",
+    )
+
+    assert detail.method == "EIA-364-18B"
+    assert detail.condition == "10x min magnification"
+    assert detail.requirement == "No detrimental condition"
+    assert detail.status == "matched"
+
+
+def test_visual_family_default_does_not_override_explicit_method() -> None:
+    detail = extract_row_details(
+        section="5.4",
+        section_text=(
+            "5.4 Visual Examination. Inspection shall be performed in accordance with IEC 60512-1-1. "
+            "There shall be no defects."
+        ),
+        test_item="Visual Inspection",
+    )
+
+    assert detail.method == "IEC 60512-1-1"
+    assert detail.condition == "10x min magnification"
+    assert detail.requirement == "No detrimental condition"
+
+
+def test_temperature_humidity_extraction_does_not_emit_numeric_letter_fragment() -> None:
+    detail = extract_row_details(
+        section="8.2",
+        section_text=(
+            "8.2 Cyclic Temperature and Humidity –EIA 364-31 and EIA 364-1000. "
+            "temperature 25 ± 3 C at 80 ± 5% RH and 65 ± 3 C at 50 ± 5% RH. "
+            "Duration 24 cycles. Dwell time 1.0 hour; ramp time 30 minutes. "
+            "Maximum Change: 0.17 mΩ."
+        ),
+        test_item="Cycling Temperature& Humidity",
+    )
+
+    assert detail.method == "EIA-364-31"
+    assert detail.condition is not None
+    assert "31 a" not in (detail.condition or "").lower()
+    assert detail.requirement is not None
+    assert detail.requirement != "Maximum Change: 0"
+
+
+def test_mfg_extraction_does_not_emit_numeric_letter_fragment() -> None:
+    detail = extract_row_details(
+        section="8.6",
+        section_text=(
+            "8.6 Mixed Flowing Gas corrosion (MFG) –EIA 364-65 and EIA-364-1000. "
+            "Class IIA. Duration - 224 hours unmated, 112 hours mated. "
+            "Maximum Change: 0.17 mΩ."
+        ),
+        test_item="MFG",
+    )
+
+    assert detail.method == "EIA-364-65"
+    assert detail.condition is not None
+    assert "65 a" not in (detail.condition or "").lower()
+    assert "Class IIA" in (detail.condition or "")
+    assert detail.requirement is not None
+    assert detail.requirement != "Maximum Change: 0"
+
+
+def test_family_coverage_safe_outputs() -> None:
+    cases = [
+        (
+            "6.3.1",
+            "Temperature rise",
+            "6.3.1 Temperature rise. Method 2, 75A. Temperature rise shall not exceed 30 C.",
+            "EIA-364-70",
+        ),
+        (
+            "7.1",
+            "Mating/Un-mating Force",
+            "7.1 Mating/Un-mating Force. Measurements shall be in accordance with EIA-364-37C. "
+            "Cross Head Speed 25.4mm/min. Mating force shall not exceed 20N.",
+            "EIA-364-37C",
+        ),
+        (
+            "7.3",
+            "Durability",
+            "7.3 Durability. Number Cycles - 200 cycles. Cycling Rate less than 10 cycles per minute.",
+            None,
+        ),
+        (
+            "8.1",
+            "Thermal Shock",
+            "8.1 Thermal Shock –EIA 364-32. Number of cycles - 10 cycles. Temperature range -55 to +85 C.",
+            "EIA-364-32",
+        ),
+        (
+            "8.4",
+            "High temperature Life",
+            "8.4 High Temperature Life –EIA 364-17. Test Temperature 125 C. Test Duration 114 hours.",
+            "EIA-364-17",
+        ),
+        (
+            "8.5",
+            "Thermal Disturbance",
+            "8.5 Thermal Disturbance –EIA 364-110. Number of cycles 10. Ramps minimum 2 C per minute.",
+            "EIA-364-110",
+        ),
+        (
+            "8.7",
+            "Dust exposure",
+            "8.7 Dust exposure –EIA-364-91. Benign Dust Composition. Maximum Change: 0.17 mΩ.",
+            "EIA-364-91",
+        ),
+        (
+            "8.8",
+            "Random Vibration",
+            "8.8 Vibration (Random) –EIA 364-28. Condition VIID, 15 minutes each axis. "
+            "No discontinuities greater than 1 us.",
+            "EIA-364-28",
+        ),
+        (
+            "8.9",
+            "Mechanical Shock",
+            "8.9 Mechanical Shock – EIA 364-27. Condition A (50G, 11 millisecond). "
+            "3 shocks in both directions along each axis. No discontinuities greater than 1 us.",
+            "EIA-364-27",
+        ),
+    ]
+    for section, test_item, text, expected_method in cases:
+        detail = extract_row_details(section=section, section_text=text, test_item=test_item)
+        if expected_method:
+            assert detail.method == expected_method
+        # Family coverage minimum: no known malformed fragments.
+        condition = (detail.condition or "").lower()
+        requirement = detail.requirement or ""
+        assert "31 a" not in condition
+        assert "65 a" not in condition
+        assert requirement != "Maximum Change: 0"
+
+
+def test_template_fallback_applies_only_to_empty_fields() -> None:
+    fallback = extract_row_details(
+        section="7.3",
+        section_text="7.3 Durability. Number Cycles - 200 cycles.",
+        test_item="Durability",
+    )
+    assert fallback.method == "EIA-364-09"
+    assert "template-fallback-method" in fallback.notes
+
+    non_override = extract_row_details(
+        section="5.4",
+        section_text=(
+            "5.4 Visual Examination. Inspection shall be performed in accordance with IEC 60512-1-1. "
+            "No cracks are allowed."
+        ),
+        test_item="Visual Inspection",
+    )
+    assert non_override.method == "IEC 60512-1-1"
+    assert "template-fallback-method" not in non_override.notes

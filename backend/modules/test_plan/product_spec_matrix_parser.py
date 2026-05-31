@@ -12,12 +12,14 @@ from backend.modules.test_plan.product_spec_matrix_parser_support import (
     find_test_sequence_header as _find_test_sequence_header,
     looks_like_revision_record_table as _looks_like_revision_record_table,
     normalize as _normalize,
+    row_detail_for_section as _row_detail_for_section,
     row_item_section_note as _row_item_section_note,
     table_score as _table_score,
 )
 from backend.modules.test_plan.spec_section_text_extractor import (
     MatrixRowDetailExtraction,
-    extract_row_details_by_section,
+    collect_section_text_blocks,
+    extract_row_details,
 )
 
 
@@ -116,7 +118,8 @@ class ProductSpecMatrixParser:
         warnings: list[str] = []
         source_paragraphs = paragraphs or []
         marker_notes = _collect_marker_notes(source_paragraphs)
-        row_details = extract_row_details_by_section(source_paragraphs)
+        section_text_blocks = collect_section_text_blocks(source_paragraphs)
+        row_detail_cache: dict[tuple[str, str], MatrixRowDetailExtraction] = {}
         best_result: MatrixParseResult | None = None
         best_score = -1
         for table_index, table in enumerate(tables, start=1):
@@ -127,7 +130,14 @@ class ProductSpecMatrixParser:
             header = self._find_header(table)
             if header is None:
                 continue
-            result = self._parse_table(table, table_index, header, marker_notes, row_details)
+            result = self._parse_table(
+                table,
+                table_index,
+                header,
+                marker_notes,
+                section_text_blocks,
+                row_detail_cache,
+            )
             score = _table_score(
                 result=result,
                 header=header,
@@ -217,7 +227,8 @@ class ProductSpecMatrixParser:
         table_index: int,
         header: _Header,
         marker_notes: dict[str, str],
-        row_details: dict[str, MatrixRowDetailExtraction],
+        section_text_blocks: dict[str, str],
+        row_detail_cache: dict[tuple[str, str], MatrixRowDetailExtraction],
     ) -> MatrixParseResult:
         """Extract Matrix groups from one table."""
         group_steps: dict[str, list[MatrixStepPreview]] = {
@@ -233,7 +244,13 @@ class ProductSpecMatrixParser:
             if not test_item or _looks_like_note_or_footer(test_item):
                 continue
             source_section = _cell(row, header.section_column) if header.section_column is not None else None
-            row_detail = _row_detail_for_section(source_section, row_details)
+            row_detail = _row_detail_for_section(
+                source_section=source_section,
+                test_item=test_item,
+                section_text_blocks=section_text_blocks,
+                row_detail_cache=row_detail_cache,
+                extract_row_detail=extract_row_details,
+            )
             is_sample_row = _looks_like_sample_row(test_item, source_section, self._SAMPLE_ROW_RE)
             row_item_section_note = _row_item_section_note(test_item, source_section, marker_notes)
             row_tokens: dict[str, str] = {}
@@ -336,38 +353,6 @@ def _build_group(
         sample_note=sample_note,
         steps=sorted_steps,
     )
-
-
-def _row_detail_for_section(
-    source_section: str | None,
-    row_details: dict[str, MatrixRowDetailExtraction],
-) -> MatrixRowDetailExtraction | None:
-    """Return row-level extracted details for one Matrix section cell."""
-    section = (source_section or "").strip()
-    if not section:
-        return None
-    first_detail: MatrixRowDetailExtraction | None = None
-    for candidate in _section_candidates(section):
-        detail = row_details.get(candidate)
-        if not detail:
-            continue
-        first_detail = first_detail or detail
-        if detail.method or detail.condition or detail.requirement:
-            return detail
-    return first_detail
-
-
-def _section_candidates(source_section: str) -> tuple[str, ...]:
-    matches = re.findall(r"\d+(?:\.\d+)+", source_section)
-    if not matches:
-        return (source_section,)
-    candidates: list[str] = []
-    for match in matches:
-        if match not in candidates:
-            candidates.append(match)
-    return tuple(candidates)
-
-
 def _duplicate_sequence_warnings(groups: tuple[MatrixGroupPreview, ...]) -> list[str]:
     """Return warnings for duplicate step numbers within a group."""
     warnings: list[str] = []
