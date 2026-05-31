@@ -494,6 +494,52 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Only digits and commas are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
   });
 
+  it("lets source instruction rows be marked as non-test rows so their text does not block confirm", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      editor_draft: {
+        ...seed.editor_draft,
+        rows: [
+          seed.editor_draft.rows[0],
+          {
+            draft_row_id: "row-2",
+            source_row_snapshot_id: "sr-2",
+            row_order: 2,
+            test_item: "样品状态和选择说明",
+            source_section: null,
+            method: null,
+            condition: null,
+            requirement: null,
+            is_sample_row: false,
+          },
+        ],
+        cells: [
+          { draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1" },
+          { draft_row_id: "row-2", draft_group_id: "group-1", cell_value: "connector sample note" },
+        ],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const instructionRowButton = await screen.findByRole("button", { name: "Select row 2" });
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.contextMenu(instructionRowButton);
+    fireEvent.click(screen.getByRole("button", { name: "Mark as Information" }));
+
+    expect(screen.queryByRole("button", { name: "Select row 2" })).toBeNull();
+    const sampleRowButton = screen.getByRole("button", { name: "Select sample/instruction row 2" });
+    expect(sampleRowButton).toBeTruthy();
+    expect(screen.getByLabelText("Row 2 method").className).not.toContain("is-empty-required");
+    expect(screen.getByLabelText("Row 2 condition").className).not.toContain("is-empty-required");
+    expect(screen.getByLabelText("Row 2 requirement").className).not.toContain("is-empty-required");
+    fireEvent.contextMenu(sampleRowButton);
+    expect(screen.getByRole("button", { name: "Mark as Test Item" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("Only digits and commas are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
+  });
+
   it("hides inline group checkboxes while selected-only filtering is active", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 

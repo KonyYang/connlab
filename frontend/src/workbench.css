@@ -582,6 +582,17 @@
   border-radius: 4px;
 }
 
+.matrix-editor-row-selector-button.is-sample-row {
+  color: var(--color-ink-muted);
+  background: #edf3f9;
+  border-radius: 4px;
+  font-size: 7.5px;
+}
+
+.matrix-editor-row-sample > td {
+  background: #f6f9fc;
+}
+
 .matrix-editor-static-cell {
   display: block;
   line-height: 1.3;

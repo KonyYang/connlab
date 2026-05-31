@@ -1107,6 +1107,7 @@ function buildSelectedGroupStepPreviewRows(
     return [];
   }
   const baseRows = rows
+    .filter((row) => !row.isSampleRow)
     .flatMap((row, rowIndex) => {
       const parsed = parseStepTokens(row.groups[selectedGroup.id] ?? "");
       if (!parsed.isValid) {
@@ -1562,6 +1563,9 @@ export function MatrixEditorWorkspace({
     const validNonEmptyCellKeys: string[] = [];
     const groupNumbers: number[] = [];
     editableRows.forEach((row, rowIndex) => {
+      if (row.isSampleRow) {
+        return;
+      }
       const value = row.groups[group.id] ?? "";
       const parsed = parseStepTokens(value);
       const cellKey = `${group.id}-${rowIndex}`;
@@ -2170,6 +2174,13 @@ export function MatrixEditorWorkspace({
     setLastMessage("Group column deleted");
   };
 
+  const setRowSampleClassification = (rowIndex: number, isSampleRow: boolean): void => {
+    markUnsaved();
+    setEditableRows((previous) =>
+      previous.map((row, index) => (index === rowIndex ? { ...row, isSampleRow } : row))
+    );
+  };
+
   const includeSourceGroup = (groupId: string): void => {
     toggleGroupIncluded(groupId, true);
     setLastMessage("Source group included");
@@ -2515,27 +2526,28 @@ export function MatrixEditorWorkspace({
                 {visibleRows.map(({ row, rowIndex }) => (
                   (() => {
                     const rowHasNoGroupSteps = visibleGroupColumns.every((group) => (row.groups[group.id] ?? "").trim() === "");
+                    const rowNeedsStepWarning = !row.isSampleRow && rowHasNoGroupSteps;
                     return (
                       <tr
-                        className={selectedRowId === row.id ? "matrix-editor-row-selected" : undefined}
+                        className={`${selectedRowId === row.id ? "matrix-editor-row-selected" : ""}${row.isSampleRow ? " matrix-editor-row-sample" : ""}`.trim() || undefined}
                         key={row.id}
                       >
                         <td className="matrix-editor-row-selector-cell">
                           <button
                             type="button"
-                            className={`matrix-editor-row-selector-button${rowHasNoGroupSteps ? " is-step-missing" : ""}`}
-                            aria-label={`Select row ${rowIndex + 1}`}
+                            className={`matrix-editor-row-selector-button${rowNeedsStepWarning ? " is-step-missing" : ""}${row.isSampleRow ? " is-sample-row" : ""}`}
+                            aria-label={row.isSampleRow ? `Select sample/instruction row ${rowIndex + 1}` : `Select row ${rowIndex + 1}`}
                             title={rowHasNoGroupSteps ? "Missing step number" : undefined}
                             onClick={() => selectRow(row.id)}
                             onContextMenu={(event) => openRowContextMenu(event, rowIndex)}
                           >
-                            {rowIndex + 1}
+                            {row.isSampleRow ? "Info" : rowIndex + 1}
                           </button>
                         </td>
                         <td>
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} test item`}
-                            className={row.item.trim() === "" ? "is-empty-required" : undefined}
+                            className={!row.isSampleRow && row.item.trim() === "" ? "is-empty-required" : undefined}
                             value={row.item}
                             onChange={(value) => updateTextField(rowIndex, "item", value)}
                           />
@@ -2550,7 +2562,7 @@ export function MatrixEditorWorkspace({
                         <td>
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} method`}
-                            className={row.method.trim() === "" ? "is-empty-required" : undefined}
+                            className={!row.isSampleRow && row.method.trim() === "" ? "is-empty-required" : undefined}
                             value={row.method}
                             onChange={(value) => updateTextField(rowIndex, "method", value)}
                           />
@@ -2558,7 +2570,7 @@ export function MatrixEditorWorkspace({
                         <td>
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} condition`}
-                            className={row.condition.trim() === "" ? "is-empty-required" : undefined}
+                            className={!row.isSampleRow && row.condition.trim() === "" ? "is-empty-required" : undefined}
                             value={row.condition}
                             onChange={(value) => updateTextField(rowIndex, "condition", value)}
                           />
@@ -2566,7 +2578,7 @@ export function MatrixEditorWorkspace({
                         <td>
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} requirement`}
-                            className={row.requirement.trim() === "" ? "is-empty-required" : undefined}
+                            className={!row.isSampleRow && row.requirement.trim() === "" ? "is-empty-required" : undefined}
                             value={row.requirement}
                             onChange={(value) => updateTextField(rowIndex, "requirement", value)}
                           />
@@ -2647,6 +2659,11 @@ export function MatrixEditorWorkspace({
               >
                 {contextMenu.kind === "row" ? (
                   <>
+                    {contextMenuRow?.isSampleRow ? (
+                      <button type="button" onClick={() => runContextAction(() => setRowSampleClassification(contextMenu.rowIndex, false))}>Mark as Test Item</button>
+                    ) : (
+                      <button type="button" onClick={() => runContextAction(() => setRowSampleClassification(contextMenu.rowIndex, true))}>Mark as Information</button>
+                    )}
                     <button type="button" onClick={() => runContextAction(() => insertRow(contextMenu.rowIndex, "above"))}>Insert above</button>
                     <button type="button" onClick={() => runContextAction(() => insertRow(contextMenu.rowIndex, "below"))}>Insert below</button>
                     <button type="button" onClick={() => runContextAction(() => duplicateRow(contextMenu.rowIndex))}>Duplicate row</button>

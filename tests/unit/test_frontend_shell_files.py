@@ -3297,10 +3297,10 @@ def test_task240_matrix_editor_new_row_empty_field_guards_are_wired() -> None:
 
     for required_source in [
         "const rowHasNoGroupSteps = visibleGroupColumns.every((group) => (row.groups[group.id] ?? \"\").trim() === \"\")",
-        "className={row.item.trim() === \"\" ? \"is-empty-required\" : undefined}",
-        "className={row.method.trim() === \"\" ? \"is-empty-required\" : undefined}",
-        "className={row.condition.trim() === \"\" ? \"is-empty-required\" : undefined}",
-        "className={row.requirement.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={!row.isSampleRow && row.item.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={!row.isSampleRow && row.method.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={!row.isSampleRow && row.condition.trim() === \"\" ? \"is-empty-required\" : undefined}",
+        "className={!row.isSampleRow && row.requirement.trim() === \"\" ? \"is-empty-required\" : undefined}",
         "is-step-missing",
         "title={rowHasNoGroupSteps ? \"Missing step number\" : undefined}",
     ]:
@@ -3351,10 +3351,10 @@ def test_task244_matrix_editor_starts_with_two_row_seed_and_optional_section() -
         'groups: { "group-1": "" }',
         'ariaLabel={`Row ${rowIndex + 1} section`}',
         'onChange={(value) => updateTextField(rowIndex, "section", value)}',
-        'className={row.item.trim() === "" ? "is-empty-required" : undefined}',
-        'className={row.method.trim() === "" ? "is-empty-required" : undefined}',
-        'className={row.condition.trim() === "" ? "is-empty-required" : undefined}',
-        'className={row.requirement.trim() === "" ? "is-empty-required" : undefined}',
+        'className={!row.isSampleRow && row.item.trim() === "" ? "is-empty-required" : undefined}',
+        'className={!row.isSampleRow && row.method.trim() === "" ? "is-empty-required" : undefined}',
+        'className={!row.isSampleRow && row.condition.trim() === "" ? "is-empty-required" : undefined}',
+        'className={!row.isSampleRow && row.requirement.trim() === "" ? "is-empty-required" : undefined}',
     ]:
         assert required_source in matrix_editor_source
 
