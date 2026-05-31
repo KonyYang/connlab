@@ -983,7 +983,11 @@ type ConfirmRevisionGuard = {
 };
 
 function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[]; tokens: ParsedStepToken[]; errorMessage: string } {
-  const normalized = rawValue.trim();
+  const normalized = rawValue
+    .trim()
+    .replaceAll("（", "(")
+    .replaceAll("）", ")")
+    .replaceAll("，", ",");
   if (normalized === "") {
     return { isValid: true, numbers: [], tokens: [], errorMessage: "" };
   }
@@ -991,13 +995,13 @@ function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[
   const parts = normalizedForSplit.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
   const tokens: ParsedStepToken[] = [];
   for (const part of parts) {
-    const match = part.match(/^(\d+)\s*(\([a-zA-Z]\)|[*#])?$/);
+    const match = part.match(/^(\d+)\s*(\((?:\d+|[a-zA-Z])\)|[*#])?$/);
     if (!match) {
       return {
         isValid: false,
         numbers: [],
         tokens: [],
-        errorMessage: "Only digits and commas are allowed (extended tokens: 3(a), 6#, 10*).",
+        errorMessage: "Only digits and commas are allowed (extended tokens: 3(a), 4(1), 6#, 10*).",
       };
     }
     tokens.push({
@@ -1112,8 +1116,8 @@ function buildSelectedGroupStepPreviewRows(
         const token = parsed.tokens.find((item) => item.sequence === stepNo);
         const key = stepOutputKey(selectedGroup.id, stepNo, row.id);
         const override = stepOutputOverrides[key];
-        const itemSectionMarker = row.section.match(/([*#]|\([a-zA-Z]\))/)?.[1] ?? row.item.match(/([*#]|\([a-zA-Z]\))/)?.[1] ?? null;
-        const stepMarker = token?.suffixNote ?? token?.rawToken.match(/([*#]|\([a-zA-Z]\))/)?.[1] ?? null;
+        const itemSectionMarker = row.section.match(/([*#]|[\uFF08(](?:\d+|[a-zA-Z])[\uFF09)])/)?.[1] ?? row.item.match(/([*#]|[\uFF08(](?:\d+|[a-zA-Z])[\uFF09)])/)?.[1] ?? null;
+        const stepMarker = token?.suffixNote ?? token?.rawToken.match(/([*#]|[\uFF08(](?:\d+|[a-zA-Z])[\uFF09)])/)?.[1] ?? null;
         return {
           key,
           stepNo,
@@ -1206,7 +1210,7 @@ function extractMarkerKey(token: string | null | undefined): string | null {
   if (!token) {
     return null;
   }
-  const markerMatch = token.match(/\(([a-zA-Z])\)|([*#])/);
+  const markerMatch = token.match(/[（(](\d+|[a-zA-Z])[）)]|([*#])/);
   if (!markerMatch) {
     return null;
   }
@@ -1298,6 +1302,7 @@ function stripLeadingMarkerPrefix(noteText: string): string {
   return noteText
     .trim()
     .replace(/^\((?:\d*\s*)?[a-z]\)\s*/i, "")
+    .replace(/^\(\d+\)\s*/, "")
     .replace(/^[*#]\s*/, "")
     .trim();
 }
@@ -1551,6 +1556,9 @@ export function MatrixEditorWorkspace({
   const groupStepSequenceErrorCellKeys = new Set<string>();
   const groupStepSequenceErrorMessageById = new Map<string, string>();
   groupColumns.forEach((group) => {
+    if (!group.isSelected) {
+      return;
+    }
     const validNonEmptyCellKeys: string[] = [];
     const groupNumbers: number[] = [];
     editableRows.forEach((row, rowIndex) => {
@@ -1651,7 +1659,7 @@ export function MatrixEditorWorkspace({
       return concise.length > 0 ? concise : null;
     })
     .filter((note): note is string => Boolean(note));
-  const sampleMarker = selectedGroupSamplesValue.match(/\(([a-zA-Z])\)|([*#])/);
+  const sampleMarker = selectedGroupSamplesValue.match(/\((\d+|[a-zA-Z])\)|([*#])/);
   const selectedGroupSampleMergeNote = selectedGroup ? sampleMergeNotes[selectedGroup.id] ?? null : null;
   const selectedGroupSampleNotes = [
     selectedGroupPreviewNotes.sampleNote ?? (sampleMarker ? `${sampleMarker[0]}` : null),
@@ -1665,8 +1673,13 @@ export function MatrixEditorWorkspace({
   const currentSaveSignature = JSON.stringify(currentSavePayload);
   const hasUnsavedChanges =
     saveBaselineSignature !== null && currentSaveSignature !== saveBaselineSignature;
+  const selectedDraftGroupIds = new Set(
+    currentSavePayload.groups
+      .filter((group) => group.is_selected)
+      .map((group) => group.draft_group_id)
+  );
   const hasAnyStepTokenValue = currentSavePayload.cells.some(
-    (cell) => (cell.cell_value ?? "").trim().length > 0
+    (cell) => selectedDraftGroupIds.has(cell.draft_group_id) && (cell.cell_value ?? "").trim().length > 0
   );
   const invalidSelectedSampleGroupIds = buildInvalidSelectedSampleGroupIds(
     groupColumns,

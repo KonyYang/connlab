@@ -9,6 +9,7 @@ from backend.modules.test_plan.product_spec_matrix_parser_support import (
     clean as _clean,
     collect_marker_notes as _collect_marker_notes,
     extract_marker as _extract_marker,
+    find_test_sequence_header as _find_test_sequence_header,
     looks_like_revision_record_table as _looks_like_revision_record_table,
     normalize as _normalize,
     row_item_section_note as _row_item_section_note,
@@ -100,24 +101,8 @@ class ProductSpecMatrixParser:
     _GROUP_RE = re.compile(r"\bgroup\s*(\d+)\b", re.IGNORECASE)
     _GROUP_NUMERIC_RE = re.compile(r"^\s*\d+[a-z]?\s*$", re.IGNORECASE)
     _STEP_TOKEN_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
-    _MARKER_IN_PAREN_RE = re.compile(r"\((?:\d*\s*)?([a-z])\)", re.IGNORECASE)
-    _SYMBOL_MARKER_RE = re.compile(r"([*#])")
     _SAMPLE_ROW_RE = re.compile(r"\bsamples?\b", re.IGNORECASE)
     _SECTION_STEP_LIKE_RE = re.compile(r"^\s*\d+(\.\d+)*\s*$")
-    _LETTER_NOTE_RE = re.compile(r"^\s*\(([a-z])\)\s*(.+)\s*$", re.IGNORECASE)
-    _LETTER_NOTE_ALT_PAREN_RE = re.compile(r"^\s*（([a-z])）\s*(.+)\s*$", re.IGNORECASE)
-    _LETTER_NOTE_SUFFIX_DELIM_RE = re.compile(r"^\s*([a-z])[)\.]\s*(.+)\s*$", re.IGNORECASE)
-    _NOTE_WRAPPED_LETTER_RE = re.compile(r"^\s*note\s*\(([a-z])\)\s*[:：]?\s*(.+)\s*$", re.IGNORECASE)
-    _SYMBOL_NOTE_RE = re.compile(r"^\s*([*#])\s*(.+)\s*$")
-    _TEXTUAL_ITEM_RE = re.compile(r"[A-Za-z]{2,}")
-    _PURE_NUMERIC_OR_SYMBOL_RE = re.compile(r"^[\d\W_]+$")
-    _GROUP_TOKEN_HEADER_RE = re.compile(r"^\s*(?:[A-Za-z]\d+|\d+[A-Za-z]?|[A-Za-z])\s*$")
-    _NEGATIVE_RECORD_HEADER_RE = re.compile(
-        r"\b(result|judg|record|measured|rev|revision|pages|description|date)\b",
-        re.IGNORECASE,
-    )
-    _REVISION_RECORD_HEADER_TERMS = frozenset({"rev", "revision", "pages", "description", "date"})
-    _QUALIFICATION_TITLE_RE = re.compile(r"\bqualification\s+test\b", re.IGNORECASE)
     _MIN_MATRIX_SCORE = 45
 
     def parse_tables(
@@ -151,7 +136,12 @@ class ProductSpecMatrixParser:
             )
             if score < self._MIN_MATRIX_SCORE:
                 continue
-            if score > best_score:
+            prefer_later_tie = (
+                score == best_score
+                and best_result is not None
+                and (best_result.selected_table_index or 0) < table_index
+            )
+            if score > best_score or prefer_later_tie:
                 best_score = score
                 best_result = MatrixParseResult(
                     groups=result.groups,
@@ -174,6 +164,15 @@ class ProductSpecMatrixParser:
 
     def _find_header(self, table: list[list[str]]) -> _Header | None:
         """Find the header row that defines test item, section, and groups."""
+        special_header = _find_test_sequence_header(table)
+        if special_header is not None:
+            row_index, item_column, section_column, group_columns = special_header
+            return _Header(
+                row_index=row_index,
+                item_column=item_column,
+                section_column=section_column,
+                group_columns=group_columns,
+            )
         for row_index, row in enumerate(table, start=1):
             normalized = [_normalize(cell) for cell in row]
             group_columns = tuple(
@@ -343,11 +342,30 @@ def _row_detail_for_section(
     source_section: str | None,
     row_details: dict[str, MatrixRowDetailExtraction],
 ) -> MatrixRowDetailExtraction | None:
-    """Return row-level extracted details for an exact source section."""
+    """Return row-level extracted details for one Matrix section cell."""
     section = (source_section or "").strip()
     if not section:
         return None
-    return row_details.get(section)
+    first_detail: MatrixRowDetailExtraction | None = None
+    for candidate in _section_candidates(section):
+        detail = row_details.get(candidate)
+        if not detail:
+            continue
+        first_detail = first_detail or detail
+        if detail.method or detail.condition or detail.requirement:
+            return detail
+    return first_detail
+
+
+def _section_candidates(source_section: str) -> tuple[str, ...]:
+    matches = re.findall(r"\d+(?:\.\d+)+", source_section)
+    if not matches:
+        return (source_section,)
+    candidates: list[str] = []
+    for match in matches:
+        if match not in candidates:
+            candidates.append(match)
+    return tuple(candidates)
 
 
 def _duplicate_sequence_warnings(groups: tuple[MatrixGroupPreview, ...]) -> list[str]:
@@ -430,7 +448,7 @@ def _group_key(label: str) -> str:
 def _looks_like_note_or_footer(value: str) -> bool:
     """Return true for note/footer rows that are not test items."""
     normalized = _normalize(value)
-    return normalized.startswith(("note", "rev", "©", "copyright"))
+    return normalized.startswith(("applicable cable", "note", "rev", "©", "copyright"))
 
 
 def _looks_like_sample_row(

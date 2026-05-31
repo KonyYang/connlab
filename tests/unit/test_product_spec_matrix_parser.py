@@ -61,6 +61,39 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
     assert durability.detail_extraction_status == "partial"
 
 
+def test_product_spec_matrix_parser_matches_symbol_marked_and_multi_sections() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["Visual Examination", "5.4, 9.2", "1"],
+                ["Current Rating Still Air", "6.5*", "2"],
+                ["Current Rating Airflow", "#6.6&", "3"],
+            ]
+        ],
+        paragraphs=[
+            "5.4 Design and Construction",
+            "Connectors shall meet the applicable drawing.",
+            "9.2 Inspection Conditions",
+            "Inspections shall be performed in accordance with EIA 364-18.",
+            "6.5 Current Rating Still Air",
+            "The temperature rise shall not exceed 40C with reference to EIA 364-70.",
+            "6.6 Current Rating Airflow",
+            "The temperature rise shall not exceed 40C with reference to EIA 364-70.",
+        ],
+    )
+
+    visual = result.rows[0]
+    still_air = result.rows[1]
+    airflow = result.rows[2]
+    assert visual.method == "EIA-364-18"
+    assert visual.detail_extraction_source_section == "9.2"
+    assert still_air.method == "EIA-364-70"
+    assert still_air.detail_extraction_source_section == "6.5"
+    assert airflow.method == "EIA-364-70"
+    assert airflow.detail_extraction_source_section == "6.6"
+
+
 def test_product_spec_matrix_parser_reports_missing_matrix() -> None:
     result = ProductSpecMatrixParser().parse_tables(
         [[["Item", "Section"], ["Contact Resistance", "6.1"]]]
@@ -304,3 +337,65 @@ def test_product_spec_matrix_parser_accepts_numeric_group_headers_with_sample_ta
     assert result.blockers == ()
     assert result.selected_table_index == 1
     assert [group.group_label for group in result.groups] == ["1", "2A"]
+
+
+def test_product_spec_matrix_parser_accepts_uscar_sequence_matrix_layout() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["", "Test name", "Test name", "Vibration", "Humidity", "Salt Spray"],
+                ["", "Test Sequence ID", "Test Sequence ID", "H", "J", "M"],
+                ["", "Sample Size minimum", "Connector", "3", "3", "3"],
+                ["", "Applicable Cable Size", "Applicable Cable Size", "2*4-0AWG", "2*4-0AWG", "2*4-0AWG"],
+                ["5.5", "Visual Inspection", "Visual Inspection", "1,9", "1,8", "1,6"],
+                ["6.1", "Circuit Continuity Monitoring", "Circuit Continuity Monitoring", "5 (1)", "", ""],
+                ["8.8&8.9", "Vibration/ Mechanical Shock", "Vibration/ Mechanical Shock", "4 (1)", "", ""],
+                ["8.15", "Supplemental salt spray", "Supplemental salt spray", "", "", "4(3)"],
+            ],
+            [["Rev", "Page", "Description", "Date"], ["1", "all", "release", "2025"]],
+        ],
+        paragraphs=[
+            "9.8 Refer to USCAR-2 , Additional Testing",
+            "(1) Circuit continuity monitoring is performed during conditioning.",
+            "(2) T-rise 55C max, after treatment.",
+            "(3) Frontal end of cable needs to be sealed.",
+        ],
+    )
+
+    assert result.selected_table_index == 1
+    assert [group.group_label for group in result.groups] == ["H", "J", "M"]
+    assert result.groups[0].sample_size == 3
+    assert result.groups[0].sample_quantity_expression == "3"
+    assert [step.raw_token for step in result.groups[0].steps] == ["1", "4 (1)", "5 (1)", "9"]
+    assert result.groups[0].steps[0].test_item == "Visual Inspection"
+    assert result.groups[0].steps[0].source_section == "5.5"
+    notes_by_raw = {step.raw_token: step.source_note for step in result.groups[0].steps}
+    assert notes_by_raw["4 (1)"] == "(1) Circuit continuity monitoring is performed during conditioning."
+
+
+def test_product_spec_matrix_parser_accepts_loose_sequence_matrix_headers() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["", "Test Item", "Test Item", "Group A", "Group B"],
+                ["", "Test Group", "Test Group", "Alpha", "Beta"],
+                ["", "Minimum Sample", "Connector", "4 pcs", "5 pcs"],
+                ["5.5", "Visual Inspection", "Visual Inspection", "1", "1"],
+                ["6.2", "Voltage Drop", "Voltage Drop", "2", "2"],
+            ],
+            [
+                ["", "Test Item", "Test Item", "Group C", "Group D"],
+                ["", "Test Group", "Test Group", "Gamma", "Delta"],
+                ["", "Minimum Sample", "Connector", "3 pcs", "3 pcs"],
+                ["5.5", "Visual Inspection", "Visual Inspection", "1", "1"],
+                ["6.2", "Voltage Drop", "Voltage Drop", "2", "2"],
+            ],
+        ],
+        paragraphs=["9.8 Additional Test Matrix"],
+        table_contexts={1: "Reference table", 2: "Additional Test Matrix"},
+    )
+
+    assert result.selected_table_index == 2
+    assert [group.group_label for group in result.groups] == ["Gamma", "Delta"]
+    assert result.groups[0].sample_quantity_expression == "3 pcs"
+    assert [step.raw_token for step in result.groups[0].steps] == ["1", "2"]

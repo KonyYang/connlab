@@ -21,24 +21,39 @@ class MatrixRowDetailExtraction:
 _SECTION_HEADING_RE = re.compile(
     r"^\s*(?P<section>\d+(?:\.\d+)+)\s+(?P<title>[A-Za-z].*)$"
 )
-_STANDARD_RE = re.compile(r"\b(EIA[-\s]?364[-\s]?\d+(?:[-.]\d+)?[A-Z]?)\b", re.IGNORECASE)
+_EIA_STANDARD_RE = re.compile(r"\b(EIA[-\s]?364[-\s]?\d+(?:[-.]\d+)?[A-Z]?)\b", re.IGNORECASE)
+_J_STD_RE = re.compile(r"\b((?:ANSI[-/\s]*)?J[-\s]?STD[-\s]?\d{3}[A-Z]?)\b", re.IGNORECASE)
+_USCAR_RE = re.compile(
+    r"\b(?:SAE\s*/\s*)?USCAR[-\s_]*(?P<number>\d+)"
+    r"(?:\s*(?:section)?\s*[-_ ]?\s*(?P<section>\d+(?:\.\d+)+))?",
+    re.IGNORECASE,
+)
+_IEC_RE = re.compile(
+    r"(?<![A-Z0-9])IEC[-\s_]*(?P<number>\d{4,5})"
+    r"(?:[-\s_]*(?P<section>\d+(?:[-.]\d+)*))?",
+    re.IGNORECASE,
+)
+_IEC_CLAUSE_RE = re.compile(
+    r"\b(?:clause|section)\s+(?P<section>\d+(?:\.\d+)*)\s+of\s+IEC[-\s_]*(?P<number>\d{4,5})\b",
+    re.IGNORECASE,
+)
 _CONDITION_PATTERNS = (
     re.compile(r"(\d+(?:\.\d+)?\s*mV\s*max\s*,\s*\d+(?:\.\d+)?\s*mA\s*max)", re.IGNORECASE),
     re.compile(r"(test\s+condition\s+[A-Z0-9-]+)", re.IGNORECASE),
-    re.compile(r"((?:\d+(?:\.\d+)?\s*(?:mm/min|cycles?|hours?|minutes?|mins?|A|V|ADC|G|ms|RH|C|℃|～C|°C)[,;\s]*){1,4})", re.IGNORECASE),
-)
-_REQUIREMENT_PATTERNS = (
     re.compile(
-        r"((?:shall\s+not\s+exceed|not\s+exceed)\s+\d+(?:\.\d+)?\s+[A-Za-zΩμµ]+)",
+        r"((?:\d+(?:\.\d+)?\s*(?:mm/min|cycles?|hours?|minutes?|mins?|A|V|ADC|G|ms|RH|℃|°C|～C)[,;\s]*){1,4})",
         re.IGNORECASE,
     ),
+)
+_LIMIT_UNITS = r"(?:milliohms?|milli\s+ohms?|mΩ|Ω|ohms?|mV|V|N|℃|°C|C)"
+_REQUIREMENT_PATTERNS = (
     re.compile(
-        r"((?:shall\s+not\s+exceed|not\s+exceed)\s+[^.]+)",
+        rf"((?:shall\s+not\s+exceed|not\s+exceed)\s+\d+(?:\.\d+)?\s*{_LIMIT_UNITS}(?:\s+(?:initially|maximum|minimum))?)",
         re.IGNORECASE,
     ),
     re.compile(r"(No\s+(?:damage|detrimental\s+condition)[^.]*\.?)", re.IGNORECASE),
-    re.compile(r"((?:Initial|After\s+test|maximum\s+change|change)\s*[:：]?\s*[^.。;]+)", re.IGNORECASE),
-    re.compile(r"([<>≤≥]\s*[\d.]+\s*(?:m?ohms?|mΩ|Ω|N|mV|°C|℃))", re.IGNORECASE),
+    re.compile(r"((?:Initial|After\s+test|maximum\s+change|change)\s*[:：]?\s*[^.;。]+)", re.IGNORECASE),
+    re.compile(rf"([<>≤≥]\s*[\d.]+\s*{_LIMIT_UNITS})", re.IGNORECASE),
 )
 
 
@@ -80,9 +95,10 @@ def extract_row_details(*, section: str, section_text: str) -> MatrixRowDetailEx
     text = _clean(section_text)
     if not text:
         return MatrixRowDetailExtraction(status="missing", source_section=section)
+    body = _strip_section_heading(section=section, text=text)
     method = _extract_method(text)
-    condition = _extract_condition(text)
-    requirement = _extract_requirement(text)
+    condition = _extract_condition(body)
+    requirement = _extract_requirement(body)
     extracted_count = sum(1 for value in (method, condition, requirement) if value)
     if extracted_count == 0:
         status = "missing"
@@ -110,10 +126,61 @@ def extract_row_details(*, section: str, section_text: str) -> MatrixRowDetailEx
 
 
 def _extract_method(text: str) -> str | None:
-    match = _STANDARD_RE.search(text)
+    for extractor in (
+        _extract_eia_method,
+        _extract_j_std_method,
+        _extract_uscar_method,
+        _extract_iec_method,
+    ):
+        method = extractor(text)
+        if method:
+            return method
+    return None
+
+
+def _extract_eia_method(text: str) -> str | None:
+    match = _EIA_STANDARD_RE.search(text)
     if not match:
         return None
-    return _normalize_standard(match.group(1))
+    normalized = re.sub(r"\s+", "-", match.group(1).strip().upper())
+    normalized = re.sub(r"EIA-?364", "EIA-364", normalized)
+    return re.sub(r"-+", "-", normalized)
+
+
+def _extract_j_std_method(text: str) -> str | None:
+    match = _J_STD_RE.search(text)
+    if not match:
+        return None
+    normalized = re.sub(r"[-/\s]+", "-", match.group(1).strip().upper())
+    normalized = re.sub(r"J-?STD", "J-STD", normalized)
+    return re.sub(r"-+", "-", normalized)
+
+
+def _extract_uscar_method(text: str) -> str | None:
+    match = _USCAR_RE.search(text)
+    if not match:
+        return None
+    method = f"USCAR-{match.group('number')}"
+    section = match.group("section")
+    if section:
+        method = f"{method} {section}"
+    return method
+
+
+def _extract_iec_method(text: str) -> str | None:
+    clause_match = _IEC_CLAUSE_RE.search(text)
+    if clause_match:
+        return f"IEC {clause_match.group('number')} {clause_match.group('section')}"
+    matches = list(_IEC_RE.finditer(text))
+    if not matches:
+        return None
+    match = next((item for item in matches if item.group("section")), matches[0])
+    number = match.group("number")
+    section = match.group("section")
+    if not section:
+        return f"IEC {number}"
+    separator = " " if "." in section else "-"
+    return f"IEC {number}{separator}{section}"
 
 
 def _extract_condition(text: str) -> str | None:
@@ -132,11 +199,16 @@ def _extract_requirement(text: str) -> str | None:
     return None
 
 
-def _normalize_standard(value: str) -> str:
-    normalized = re.sub(r"\s+", "-", value.strip().upper())
-    normalized = re.sub(r"EIA-?364", "EIA-364", normalized)
-    normalized = re.sub(r"-+", "-", normalized)
-    return normalized
+def _strip_section_heading(*, section: str, text: str) -> str:
+    """Remove the leading section heading so titles are not parsed as values."""
+    marker = re.compile(
+        rf"^\s*{re.escape(section)}\s+[A-Za-z][A-Za-z0-9,/()& -]*?"
+        r"(?=\s(?:The|Measurements|Voltage|Durability|Unless|After|When|This|As|No|Test|[a-z]\.))"
+    )
+    stripped = marker.sub("", text, count=1).strip()
+    if stripped != text:
+        return stripped
+    return text
 
 
 def _clean(value: str) -> str:

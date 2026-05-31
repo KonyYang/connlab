@@ -414,6 +414,86 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByRole("checkbox", { name: "Include group Group 8a" })).toBeNull();
   });
 
+  it("allows numeric parenthetical step note tokens and shows their note", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      source_preview_payload: {
+        ...seed.source_preview_payload,
+        rows: [
+          {
+            ...seed.source_preview_payload.rows[0],
+            group_tokens: { "1": "1,2,3,4(1)", g1: "1,2,3,4(1)" },
+          },
+        ],
+        groups: [
+          {
+            ...seed.source_preview_payload.groups[0],
+            steps: [
+              {
+                sequence: 4,
+                raw_token: "4(1)",
+                suffix_note: "(1)",
+                test_item: "Vibration",
+                source_section: "8.8",
+                source_note: "(1) Circuit continuity monitoring is performed during conditioning.",
+                source_note_origin: "step",
+                source_item_section_note: null,
+                source_table_index: 8,
+                source_row_index: 18,
+                duration_status: "deferred",
+                warnings: [],
+              },
+            ],
+          },
+        ],
+      },
+      editor_draft: {
+        ...seed.editor_draft,
+        cells: [{ draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1,2,3,4(1)" }],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1,2,3,4(1)");
+    expect(screen.getByText("4(1) Circuit continuity monitoring is performed during conditioning.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("accepts full-width numeric note tokens and ignores invalid tokens in unselected groups", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      editor_draft: {
+        ...seed.editor_draft,
+        groups: [
+          seed.editor_draft.groups[0],
+          {
+            draft_group_id: "group-2",
+            source_group_snapshot_id: "sg-2",
+            group_order: 2,
+            group_key: "g2",
+            group_label: "2",
+            is_selected: false,
+            sample_quantity_expression: "6",
+            sample_note: null,
+          },
+        ],
+        cells: [
+          { draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1,2,3,4\uFF081\uFF09" },
+          { draft_row_id: "row-1", draft_group_id: "group-2", cell_value: "A" },
+        ],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1,2,3,4\uFF081\uFF09");
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("Only digits and commas are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
+  });
+
   it("hides inline group checkboxes while selected-only filtering is active", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 

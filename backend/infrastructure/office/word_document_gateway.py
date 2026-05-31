@@ -15,6 +15,7 @@ from backend.infrastructure.office.models import (
     WordTableLocation,
 )
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.infrastructure.office.word_numbering import paragraph_texts_with_numbering
 
 
 SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
@@ -46,7 +47,7 @@ class WordDocumentGateway:
             raise FileNotFoundError(f"Word document does not exist: {path}")
 
         document = Document(path)
-        paragraphs = [_clean(paragraph.text) for paragraph in document.paragraphs]
+        paragraphs = paragraph_texts_with_numbering(document)
         tables = [_table_rows(table) for table in document.tables]
         headers = _section_text(document, part_name="header")
         footers = _section_text(document, part_name="footer")

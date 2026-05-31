@@ -284,8 +284,7 @@ def _build_rows_and_cells_from_rows(
         if not isinstance(group_tokens, dict):
             continue
         for group in groups:
-            raw_value = group_tokens.get(group.group_label, group_tokens.get(group.group_key))
-            text = _text(raw_value)
+            text = _group_token_text(group_tokens, group)
             if not text:
                 continue
             cells.append(
@@ -297,6 +296,36 @@ def _build_rows_and_cells_from_rows(
                 )
             )
     return tuple(rows), tuple(cells)
+
+
+def _group_token_text(
+    group_tokens: dict[Any, Any],
+    group: SourceMatrixGroupSnapshot,
+) -> str | None:
+    candidates = (
+        group.group_label,
+        group.group_key,
+        f"Group {group.group_label}",
+        f"group {group.group_label}",
+    )
+    for candidate in candidates:
+        text = _text(group_tokens.get(candidate))
+        if text:
+            return text
+
+    normalized_group_label = _normalize_group_label(
+        group.group_label,
+        fallback=group.group_label,
+    ).casefold()
+    for key, raw_value in group_tokens.items():
+        if not isinstance(key, str):
+            continue
+        normalized_key = _normalize_group_label(key, fallback=key).casefold()
+        if normalized_key == normalized_group_label:
+            text = _text(raw_value)
+            if text:
+                return text
+    return None
 
 
 def _build_rows_and_cells_from_steps(

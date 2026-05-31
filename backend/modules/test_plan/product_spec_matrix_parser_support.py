@@ -7,11 +7,12 @@ import re
 
 
 LETTER_NOTE_RE = re.compile(r"^\s*\(([a-z])\)\s*(.+)\s*$", re.IGNORECASE)
+NUMBER_NOTE_RE = re.compile(r"^\s*\((\d+)\)\s*(.+)\s*$")
 LETTER_NOTE_ALT_PAREN_RE = re.compile(r"^\s*\uff08([a-z])\uff09\s*(.+)\s*$", re.IGNORECASE)
 LETTER_NOTE_SUFFIX_DELIM_RE = re.compile(r"^\s*([a-z])[)\.]\s*(.+)\s*$", re.IGNORECASE)
 NOTE_WRAPPED_LETTER_RE = re.compile(r"^\s*note\s*\(([a-z])\)\s*:?\s*(.+)\s*$", re.IGNORECASE)
 SYMBOL_NOTE_RE = re.compile(r"^\s*([*#])\s*(.+)\s*$")
-MARKER_IN_PAREN_RE = re.compile(r"\((?:\d*\s*)?([a-z])\)", re.IGNORECASE)
+MARKER_IN_PAREN_RE = re.compile(r"\((?:(?:\d+\s*)?([a-z])|(\d+))\)", re.IGNORECASE)
 SYMBOL_MARKER_RE = re.compile(r"([*#])")
 NEGATIVE_RECORD_HEADER_RE = re.compile(
     r"\b(result|judg|record|measured|rev|revision|pages|description|date)\b",
@@ -21,6 +22,7 @@ GROUP_TOKEN_HEADER_RE = re.compile(r"^\s*(?:[A-Za-z]\d+|\d+[A-Za-z]?|[A-Za-z])\s
 TEXTUAL_ITEM_RE = re.compile(r"[A-Za-z]{2,}")
 PURE_NUMERIC_OR_SYMBOL_RE = re.compile(r"^[\d\W_]+$")
 QUALIFICATION_TITLE_RE = re.compile(r"\bqualification\s+test\b", re.IGNORECASE)
+TEST_TITLE_RE = re.compile(r"\btest\b", re.IGNORECASE)
 REVISION_RECORD_HEADER_TERMS = frozenset({"rev", "revision", "pages", "description", "date"})
 
 
@@ -31,9 +33,10 @@ def collect_marker_notes(paragraphs: list[str]) -> dict[str, str]:
         *_collect_backfilled_letter_note_blocks(paragraphs),
     ]
     symbol_notes = _collect_symbol_marker_notes_global(paragraphs)
+    number_notes = _collect_number_marker_notes_global(paragraphs)
     if not note_blocks:
-        return {**_collect_marker_notes_global(paragraphs), **symbol_notes}
-    return {**note_blocks[-1], **symbol_notes}
+        return {**_collect_marker_notes_global(paragraphs), **symbol_notes, **number_notes}
+    return {**note_blocks[-1], **symbol_notes, **number_notes}
 
 
 def extract_marker(token: str | None) -> str | None:
@@ -42,7 +45,8 @@ def extract_marker(token: str | None) -> str | None:
         return None
     paren = MARKER_IN_PAREN_RE.search(token)
     if paren:
-        return paren.group(1).lower()
+        marker = paren.group(1) or paren.group(2)
+        return marker.lower() if marker and marker.isalpha() else marker
     symbol = SYMBOL_MARKER_RE.search(token)
     if symbol:
         return symbol.group(1)
@@ -114,6 +118,8 @@ def table_score(
         score += 10
     if table_context and QUALIFICATION_TITLE_RE.search(table_context):
         score += 20
+    elif table_context and TEST_TITLE_RE.search(table_context):
+        score += 8
     group_count = len(result.groups)
     step_count = sum(len(group.steps) for group in result.groups)
     if step_count >= max(2, group_count * 2):
@@ -125,12 +131,103 @@ def table_score(
     return score
 
 
+def find_test_sequence_header(table: list[list[str]]) -> tuple[int, int, int, tuple[tuple[int, str], ...]] | None:
+    """Find sequence-matrix headers with swapped Section/Test Item columns."""
+    if len(table) < 5:
+        return None
+    for row_index in range(1, min(len(table), 6)):
+        group_columns = _sequence_group_columns(table[row_index])
+        if len(group_columns) < 2:
+            continue
+        if not _looks_like_sequence_group_row(table[row_index]):
+            continue
+        sample_row_index = _nearby_sample_row_index(table, row_index)
+        if sample_row_index is None:
+            continue
+        item_column, section_column = _sequence_item_section_columns(table, row_index)
+        if item_column is None or section_column is None:
+            continue
+        return (row_index + 1, item_column, section_column, group_columns)
+    return None
+
+
 def has_sample_tail_row(rows: tuple[Any, ...]) -> bool:
     """Return whether a source row tail contains sample quantity information."""
     if not rows:
         return False
     tail = rows[-3:]
     return any((row.test_item or "").strip().lower().startswith("sample") for row in tail)
+
+
+def _sequence_group_columns(row: list[str]) -> tuple[tuple[int, str], ...]:
+    return tuple(
+        (index, clean(value))
+        for index, value in enumerate(row[3:], start=3)
+        if _looks_like_group_label(value)
+    )
+
+
+def _looks_like_group_label(value: str) -> bool:
+    text = clean(value)
+    normalized = normalize(text)
+    if not text:
+        return False
+    if any(term in normalized for term in ("applicable", "sample", "test name", "test sequence")):
+        return False
+    return len(text) <= 32
+
+
+def _looks_like_sequence_group_row(row: list[str]) -> bool:
+    text = " ".join(normalize(cell) for cell in row[:3])
+    return "test sequence" in text or "test group" in text or text.strip() in {"group", "groups"}
+
+
+def _nearby_sample_row_index(table: list[list[str]], group_row_index: int) -> int | None:
+    for index in range(group_row_index + 1, min(len(table), group_row_index + 4)):
+        row = table[index]
+        lead_text = " ".join(normalize(cell) for cell in row[:3])
+        if "sample" not in lead_text:
+            continue
+        numeric_cells = sum(1 for cell in row[3:] if re.search(r"\d", clean(cell)))
+        if numeric_cells >= max(1, len(row[3:]) // 2):
+            return index
+    return None
+
+
+def _sequence_item_section_columns(table: list[list[str]], group_row_index: int) -> tuple[int | None, int | None]:
+    body = table[group_row_index + 1 : min(len(table), group_row_index + 8)]
+    section_column = _section_like_column(body)
+    item_column = _item_like_column(table, group_row_index, section_column)
+    return item_column, section_column
+
+
+def _section_like_column(rows: list[list[str]]) -> int | None:
+    best_column: int | None = None
+    best_hits = 0
+    for column in range(0, 3):
+        hits = sum(
+            1
+            for row in rows
+            if column < len(row) and re.search(r"^\s*\d+(?:\.\d+)+(?:[&#*].*)?$", clean(row[column]))
+        )
+        if hits > best_hits:
+            best_column = column
+            best_hits = hits
+    return best_column if best_hits >= 2 else None
+
+
+def _item_like_column(table: list[list[str]], group_row_index: int, section_column: int | None) -> int | None:
+    previous = table[group_row_index - 1] if group_row_index > 0 else []
+    for column in range(0, 3):
+        if column == section_column:
+            continue
+        header = normalize(previous[column]) if column < len(previous) else ""
+        if "test item" in header or "test name" in header or header == "test":
+            return column
+    for column in range(0, 3):
+        if column != section_column:
+            return column
+    return None
 
 
 def looks_like_revision_record_table(table: list[list[str]]) -> bool:
@@ -251,11 +348,27 @@ def _collect_symbol_marker_notes_global(paragraphs: list[str]) -> dict[str, str]
     return notes
 
 
+def _collect_number_marker_notes_global(paragraphs: list[str]) -> dict[str, str]:
+    notes: dict[str, str] = {}
+    for raw in paragraphs:
+        text = clean(raw)
+        number_match = NUMBER_NOTE_RE.match(text)
+        if not number_match:
+            continue
+        marker = number_match.group(1)
+        notes[marker] = f"({marker}) {number_match.group(2).strip()}"
+    return notes
+
+
 def _parse_marker_note_line(text: str) -> tuple[str, str] | None:
     letter_match = LETTER_NOTE_RE.match(text)
     if letter_match:
         marker = letter_match.group(1).lower()
         return marker, f"({marker}) {letter_match.group(2).strip()}"
+    number_match = NUMBER_NOTE_RE.match(text)
+    if number_match:
+        marker = number_match.group(1)
+        return marker, f"({marker}) {number_match.group(2).strip()}"
     alt_paren_match = LETTER_NOTE_ALT_PAREN_RE.match(text)
     if alt_paren_match:
         marker = alt_paren_match.group(1).lower()

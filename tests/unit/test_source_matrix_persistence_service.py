@@ -267,6 +267,64 @@ def test_source_matrix_persistence_service_normalizes_group_prefix_labels(
         engine.dispose()
 
 
+def test_source_matrix_persistence_service_matches_original_group_label_tokens(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            ProjectRepository(session).create(
+                Project(
+                    project_id="P1",
+                    project_no="DL-2026-05-001",
+                    product_name="Connector",
+                    requestor="Alice",
+                    status=ProjectStatus.LTR_REGISTERED,
+                )
+            )
+            service = SourceMatrixImportPersistenceService(
+                store=SourceMatrixImportRepository(session)
+            )
+            import_id = service.persist_from_draft(
+                PersistSourceMatrixImportCommand(
+                    project_id="P1",
+                    draft_id="ptpd-4",
+                    source_document_path="C:/specs/spec.docx",
+                    source_document_name="spec.docx",
+                    source_format=".docx",
+                    source_asset_id=None,
+                    source_case_id=None,
+                    source_draft_id=None,
+                    payload={
+                        "groups": [
+                            {"group_key": "g1", "group_label": "Group 1", "sample_size": 5},
+                        ],
+                        "rows": [
+                            {
+                                "source_row_index": 1,
+                                "test_item": "Visual",
+                                "source_section": "6.1",
+                                "group_tokens": {"Group 1": "1"},
+                                "is_sample_row": False,
+                            }
+                        ],
+                    },
+                    created_at="2026-05-22T10:00:00+00:00",
+                )
+            )
+            session.commit()
+
+            snapshot = SourceMatrixImportRepository(session).get_snapshot_by_import(import_id)
+            assert snapshot is not None
+            assert [group.group_label for group in snapshot.groups] == ["1"]
+            assert len(snapshot.cells) == 1
+            assert snapshot.cells[0].cell_value == "1"
+    finally:
+        engine.dispose()
+
+
 def _create_temp_engine(tmp_path: Path):
     settings = Settings(
         data_dir=tmp_path / "data",
