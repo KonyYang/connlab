@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-05-31
-Status: no active planned task. Latest completed task plan is TASK_283B.
+Last Updated: 2026-06-01
+Status: active planned task plan under review is TASK_283D. Latest completed task plan is TASK_283E.
 
 ## Decision
 
@@ -44,13 +44,13 @@ docs/task_XXX_*_plan.md
 Current active planned task plan:
 
 ```text
-none
+docs/task_283d_matrix_editor_mcr_review_ux_plan.md
 ```
 
 Latest completed task plan history:
 
 ```text
-docs/task_283b_conn_lab_method_template_library_plan.md
+docs/task_283e_mcr_condition_requirement_normalization_v1_plan.md
 ```
 
 Archived completed-plan pattern:

@@ -21,7 +21,7 @@ def test_extract_row_details_by_section_extracts_llcr_mcr() -> None:
     llcr = details["6.1"]
     assert llcr.method == "EIA-364-23D"
     assert llcr.condition == "20mV max, 100mA max"
-    assert "shall not exceed 0.25 milliohms" in (llcr.requirement or "")
+    assert llcr.requirement == "Initial <= 0.25 mΩ; ΔR <= 0.17 mΩ"
     assert llcr.status == "matched"
     assert details["6.2"].condition is None
     assert details["6.2"].requirement == "shall not exceed 15mV"
@@ -255,3 +255,32 @@ def test_template_fallback_applies_only_to_empty_fields() -> None:
     )
     assert non_override.method == "IEC 60512-1-1"
     assert "template-fallback-method" not in non_override.notes
+
+
+def test_no_section_fallback_applies_only_to_allowed_empty_fields() -> None:
+    visual = extract_row_details(
+        section="",
+        section_text="",
+        test_item="Visual Examination",
+    )
+    assert visual.method == "EIA-364-18B"
+    assert visual.condition == "10x min magnification"
+    assert visual.requirement == "No detrimental condition"
+
+    llcr = extract_row_details(
+        section="",
+        section_text="",
+        test_item="Contact Resistance (Low Level)",
+    )
+    assert llcr.method == "EIA-364-23"
+    assert llcr.condition is None
+    assert llcr.requirement is None
+
+    unsupported = extract_row_details(
+        section="",
+        section_text="",
+        test_item="Custom Unsupported Test",
+    )
+    assert unsupported.method is None
+    assert unsupported.condition is None
+    assert unsupported.requirement is None

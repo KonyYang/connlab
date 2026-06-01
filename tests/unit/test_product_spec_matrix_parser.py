@@ -61,7 +61,7 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
     assert visual.detail_extraction_status == "matched"
     assert llcr.method == "EIA-364-23D"
     assert llcr.condition == "20mV max, 100mA max"
-    assert "shall not exceed 0.25 milliohms" in (llcr.requirement or "")
+    assert llcr.requirement == "shall not exceed 0.25 mΩ initially"
     assert llcr.detail_extraction_status == "matched"
     assert durability.method == "EIA-364-09D"
     assert durability.condition is None
@@ -470,3 +470,27 @@ def test_product_spec_matrix_parser_applies_template_fallback_without_overriding
     assert "template-fallback-method" in mfg.detail_extraction_notes
     assert visual.method == "IEC 60512-1-1"
     assert "template-fallback-method" not in visual.detail_extraction_notes
+
+
+def test_product_spec_matrix_parser_applies_no_section_fallback_for_manual_rows() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["Visual Examination", "", "1"],
+                ["Contact Resistance (Low Level)", "", "2"],
+                ["Mating/Un-mating Force", "", "3"],
+            ]
+        ],
+        paragraphs=["5. TEST METHODS/REQUIREMENTS"],
+    )
+
+    visual = result.rows[0]
+    llcr = result.rows[1]
+    mating = result.rows[2]
+    assert visual.method == "EIA-364-18B"
+    assert visual.condition == "10x min magnification"
+    assert visual.requirement == "No detrimental condition"
+    assert llcr.method == "EIA-364-23"
+    assert llcr.requirement is None
+    assert mating.requirement is None

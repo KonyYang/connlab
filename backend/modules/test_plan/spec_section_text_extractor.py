@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 
 from backend.modules.test_plan.method_template_matcher import apply_fill_empty_fallback
+from backend.modules.test_plan.mcr_text_normalizer import normalize_condition_requirement
 
 @dataclass(frozen=True, slots=True)
 class MatrixRowDetailExtraction:
@@ -91,12 +92,10 @@ def collect_section_text_blocks(paragraphs: list[str]) -> dict[str, str]:
 def extract_row_details(*, section: str, section_text: str, test_item: str | None = None) -> MatrixRowDetailExtraction:
     """Extract Method, Condition, and Requirement values from one section block."""
     text = _clean(section_text)
-    if not text:
-        return MatrixRowDetailExtraction(status="missing", source_section=section)
-    body = _strip_section_heading(section=section, text=text)
-    method = _extract_method(text)
-    condition = _extract_condition(body, test_item=test_item)
-    requirement = _extract_requirement(body)
+    body = _strip_section_heading(section=section, text=text) if text else ""
+    method = _extract_method(text) if text else None
+    condition = _extract_condition(body, test_item=test_item) if text else None
+    requirement = _extract_requirement(body) if text else None
     notes: list[str] = []
 
     if method is None and test_item and "temperature rise" in test_item.lower() and "method 2" in body.lower():
@@ -118,6 +117,20 @@ def extract_row_details(*, section: str, section_text: str, test_item: str | Non
     method = fallback.method
     condition = fallback.condition
     requirement = fallback.requirement
+
+    normalized = normalize_condition_requirement(
+        test_item=test_item,
+        condition=condition,
+        requirement=requirement,
+        source_text=body or text,
+    )
+    if normalized.condition != condition:
+        notes.append("normalized-condition")
+    if normalized.requirement != requirement:
+        notes.append("normalized-requirement")
+    notes.extend(normalized.notes)
+    condition = normalized.condition
+    requirement = normalized.requirement
 
     extracted_count = sum(1 for value in (method, condition, requirement) if value)
     if extracted_count == 0:

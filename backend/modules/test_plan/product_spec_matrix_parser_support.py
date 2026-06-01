@@ -154,7 +154,16 @@ def row_detail_for_section(
     """Resolve one row detail using section/test-item context and cache."""
     section = (source_section or "").strip()
     if not section:
-        return None
+        cache_key = ("", (test_item or "").strip().lower())
+        detail = row_detail_cache.get(cache_key)
+        if detail is None:
+            detail = extract_row_detail(
+                section="",
+                section_text="",
+                test_item=test_item,
+            )
+            row_detail_cache[cache_key] = detail
+        return detail
     normalized_item = (test_item or "").strip().lower()
     is_visual_family = normalized_item in {
         "visual examination",

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned follow-up. Do not implement until TASK_283A and TASK_283B decisions are accepted and a separate execution plan is approved.
+Complete (2026-05-31).
 
 ## Current Phase
 
@@ -75,4 +75,3 @@ Avoid a generic "knowledge ingestion platform". Do not parse every historical pr
 ## Stop Rule
 
 Create a separate implementation plan before coding.
-
