@@ -1,5 +1,4 @@
 export type MatrixSchedulePlan = {
-  preTestBufferDays: string;
   postTestBufferDays: string;
   sampleReceivedDate: string;
   plannedTestStartDate: string;
@@ -26,7 +25,7 @@ export type MatrixScheduleCalculation = {
   criticalGroupDays: number;
   totalCycleDays: number;
   rowErrors: Record<string, string>;
-  bufferErrors: Partial<Record<keyof Pick<MatrixSchedulePlan, "preTestBufferDays" | "postTestBufferDays">, string>>;
+  bufferErrors: Partial<Record<keyof Pick<MatrixSchedulePlan, "postTestBufferDays">, string>>;
   invalidDateFields: Partial<Record<keyof Pick<
     MatrixSchedulePlan,
     "sampleReceivedDate" | "plannedTestStartDate" | "plannedTestCompleteDate" | "estimatedCompletionDate"
@@ -57,7 +56,6 @@ const DECIMAL_PATTERN = /^\d+(?:\.\d+)?$/;
 
 export function emptySchedulePlan(): MatrixSchedulePlan {
   return {
-    preTestBufferDays: "",
     postTestBufferDays: "",
     sampleReceivedDate: "",
     plannedTestStartDate: "",
@@ -113,11 +111,7 @@ export function calculateMatrixSchedule(
   });
 
   const bufferErrors: MatrixScheduleCalculation["bufferErrors"] = {};
-  const preBuffer = parseBufferDays(plan.preTestBufferDays);
   const postBuffer = parseBufferDays(plan.postTestBufferDays);
-  if (preBuffer.error) {
-    bufferErrors.preTestBufferDays = preBuffer.error;
-  }
   if (postBuffer.error) {
     bufferErrors.postTestBufferDays = postBuffer.error;
   }
@@ -127,12 +121,11 @@ export function calculateMatrixSchedule(
       groupDays[group.id] > current.days ? { id: group.id, days: groupDays[group.id] } : current,
     { id: null as string | null, days: 0 }
   );
-  const totalCycleDays =
-    (preBuffer.value ?? 0) + critical.days + (postBuffer.value ?? 0);
+  const totalCycleDays = critical.days + (postBuffer.value ?? 0);
   const dateValidation =
     Object.keys(bufferErrors).length > 0
       ? { message: null, invalidFields: {} }
-      : validateDatePlan(plan, preBuffer.value ?? 0, critical.days, postBuffer.value ?? 0, totalCycleDays);
+      : validateDatePlan(plan, critical.days, postBuffer.value ?? 0);
 
   return {
     groupDays,
@@ -188,10 +181,8 @@ function countStepTokens(value: string): number {
 
 function validateDatePlan(
   plan: MatrixSchedulePlan,
-  preBufferDays: number,
   criticalGroupDays: number,
   postBufferDays: number,
-  totalCycleDays: number
 ): DateValidationResult {
   const noError: DateValidationResult = { message: null, invalidFields: {} };
   const values = [
@@ -221,9 +212,9 @@ function validateDatePlan(
       ]),
     };
   }
-  if (start < addCalendarDays(received, Math.ceil(preBufferDays))) {
+  if (start < received) {
     return {
-      message: "Planned start is earlier than received date plus pre-test buffer.",
+      message: "Planned start is earlier than sample received date.",
       invalidFields: { plannedTestStartDate: true },
     };
   }
@@ -239,30 +230,24 @@ function validateDatePlan(
       invalidFields: { estimatedCompletionDate: true },
     };
   }
-  if (estimated < addCalendarDays(received, Math.ceil(totalCycleDays))) {
-    return {
-      message: "Estimated completion is earlier than received date plus total planned cycle.",
-      invalidFields: { estimatedCompletionDate: true },
-    };
-  }
   return noError;
 }
 
 function parseDateValue(value: string): number | null {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return null;
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch != null) {
+    const [, year, month, day] = isoMatch;
+    const date = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    if (!Number.isFinite(date)) {
+      return null;
+    }
+    const parsed = new Date(date);
+    const parsedYear = String(parsed.getUTCFullYear()).padStart(4, "0");
+    const parsedMonth = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+    const parsedDay = String(parsed.getUTCDate()).padStart(2, "0");
+    return `${parsedYear}-${parsedMonth}-${parsedDay}` === value ? date : null;
   }
-  const [, year, month, day] = match;
-  const date = Date.UTC(Number(year), Number(month) - 1, Number(day));
-  if (!Number.isFinite(date)) {
-    return null;
-  }
-  const parsed = new Date(date);
-  const parsedYear = String(parsed.getUTCFullYear()).padStart(4, "0");
-  const parsedMonth = String(parsed.getUTCMonth() + 1).padStart(2, "0");
-  const parsedDay = String(parsed.getUTCDate()).padStart(2, "0");
-  return `${parsedYear}-${parsedMonth}-${parsedDay}` === value ? date : null;
+  return null;
 }
 
 function addCalendarDays(dateValue: number, days: number): number {

@@ -109,7 +109,6 @@ def test_schedule_validation_uses_calendar_day_ceiling_for_decimal_days() -> Non
     with pytest.raises(MatrixScheduleValidationError):
         validate_planned_schedule(
             fields=MatrixScheduleFields(
-                pre_test_buffer_days="1",
                 post_test_buffer_days="1",
                 sample_received_date="2026-06-01",
                 planned_test_start_date="2026-06-02",
@@ -121,7 +120,6 @@ def test_schedule_validation_uses_calendar_day_ceiling_for_decimal_days() -> Non
 
     result = validate_planned_schedule(
         fields=MatrixScheduleFields(
-            pre_test_buffer_days="1",
             post_test_buffer_days="1",
             sample_received_date="2026-06-01",
             planned_test_start_date="2026-06-02",
@@ -132,7 +130,7 @@ def test_schedule_validation_uses_calendar_day_ceiling_for_decimal_days() -> Non
     )
 
     assert result.critical_group_id == "g1"
-    assert result.total_cycle_days == Decimal("4.5")
+    assert result.total_cycle_days == Decimal("3.5")
 
 
 def test_schedule_validation_requires_all_dates_when_any_date_is_filled() -> None:
@@ -140,4 +138,32 @@ def test_schedule_validation_requires_all_dates_when_any_date_is_filled() -> Non
         validate_planned_schedule(
             fields=MatrixScheduleFields(sample_received_date="2026-06-01"),
             group_test_days={},
+        )
+
+
+def test_schedule_validation_rejects_start_before_sample_received() -> None:
+    with pytest.raises(MatrixScheduleValidationError, match="planned_test_start_date is earlier than sample_received_date"):
+        validate_planned_schedule(
+            fields=MatrixScheduleFields(
+                post_test_buffer_days="1",
+                sample_received_date="2026-06-05",
+                planned_test_start_date="2026-06-04",
+                planned_test_complete_date="2026-06-05",
+                estimated_completion_date="2026-06-06",
+            ),
+            group_test_days={"g1": Decimal("1")},
+        )
+
+
+def test_schedule_validation_requires_post_test_buffer_for_estimated_completion() -> None:
+    with pytest.raises(MatrixScheduleValidationError, match="estimated_completion_date is earlier than planned_test_complete_date"):
+        validate_planned_schedule(
+            fields=MatrixScheduleFields(
+                post_test_buffer_days="2",
+                sample_received_date="2026-06-01",
+                planned_test_start_date="2026-06-01",
+                planned_test_complete_date="2026-06-02",
+                estimated_completion_date="2026-06-02",
+            ),
+            group_test_days={"g1": Decimal("1")},
         )

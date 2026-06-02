@@ -123,10 +123,9 @@ def validate_planned_schedule(
     group_test_days: Mapping[str, Decimal],
 ) -> MatrixScheduleValidationResult:
     """Validate root schedule fields against calculated group days."""
-    pre_days = parse_buffer_days(fields.pre_test_buffer_days, value_name="Pre-test buffer days")
     post_days = parse_buffer_days(fields.post_test_buffer_days, value_name="Post-test buffer days")
     critical_group_id, critical_days = _critical_group(group_test_days)
-    total_cycle_days = pre_days + critical_days + post_days
+    total_cycle_days = critical_days + post_days
     dates = _parse_planned_dates(fields)
     if dates is None:
         return MatrixScheduleValidationResult(
@@ -137,8 +136,8 @@ def validate_planned_schedule(
     received, start, complete, estimated = dates
     _require_date_at_least(
         actual=start,
-        minimum=received + timedelta(days=_ceil_days(pre_days)),
-        message="planned_test_start_date is earlier than sample_received_date plus pre-test buffer days.",
+        minimum=received,
+        message="planned_test_start_date is earlier than sample_received_date.",
     )
     _require_date_at_least(
         actual=complete,
@@ -149,11 +148,6 @@ def validate_planned_schedule(
         actual=estimated,
         minimum=complete + timedelta(days=_ceil_days(post_days)),
         message="estimated_completion_date is earlier than planned_test_complete_date plus post-test buffer days.",
-    )
-    _require_date_at_least(
-        actual=estimated,
-        minimum=received + timedelta(days=_ceil_days(total_cycle_days)),
-        message="estimated_completion_date is earlier than sample_received_date plus total planned project cycle days.",
     )
     return MatrixScheduleValidationResult(
         critical_group_id=critical_group_id,

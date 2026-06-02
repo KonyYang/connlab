@@ -67,7 +67,6 @@ describe("matrixSchedulePlanning", () => {
       ],
       [{ id: "g1", name: "1", isSelected: true }],
       {
-        preTestBufferDays: "1",
         postTestBufferDays: "1",
         sampleReceivedDate: "2026-06-01",
         plannedTestStartDate: "2026-06-02",
@@ -86,7 +85,6 @@ describe("matrixSchedulePlanning", () => {
       [],
       [{ id: "g1", name: "1", isSelected: true }],
       {
-        preTestBufferDays: "",
         postTestBufferDays: "",
         sampleReceivedDate: "2026-02-31",
         plannedTestStartDate: "2026-03-01",
@@ -97,5 +95,57 @@ describe("matrixSchedulePlanning", () => {
 
     expect(result.dateError).toContain("YYYY-MM-DD");
     expect(result.invalidDateFields).toEqual({ sampleReceivedDate: true });
+  });
+
+  it("requires planned start to be on or after sample received", () => {
+    const result = calculateMatrixSchedule(
+      [
+        {
+          id: "r1",
+          isSampleRow: false,
+          dayExpression: "1",
+          groups: { g1: "1" },
+        },
+      ],
+      [{ id: "g1", name: "1", isSelected: true }],
+      {
+        postTestBufferDays: "",
+        sampleReceivedDate: "2026-06-05",
+        plannedTestStartDate: "2026-06-04",
+        plannedTestCompleteDate: "2026-06-06",
+        estimatedCompletionDate: "2026-06-07",
+      }
+    );
+
+    expect(result.dateError).toContain("Planned start is earlier than sample received date.");
+    expect(result.invalidDateFields).toEqual({ plannedTestStartDate: true });
+    expect(result.isValid).toBe(false);
+  });
+
+  it("requires estimated completion to include post-test buffer", () => {
+    const result = calculateMatrixSchedule(
+      [
+        {
+          id: "r1",
+          isSampleRow: false,
+          dayExpression: "1",
+          groups: { g1: "1" },
+        },
+      ],
+      [{ id: "g1", name: "1", isSelected: true }],
+      {
+        postTestBufferDays: "2",
+        sampleReceivedDate: "2026-06-01",
+        plannedTestStartDate: "2026-06-01",
+        plannedTestCompleteDate: "2026-06-02",
+        estimatedCompletionDate: "2026-06-02",
+      }
+    );
+
+    expect(result.dateError).toContain(
+      "Estimated completion is earlier than test complete plus post-test buffer."
+    );
+    expect(result.invalidDateFields).toEqual({ estimatedCompletionDate: true });
+    expect(result.isValid).toBe(false);
   });
 });

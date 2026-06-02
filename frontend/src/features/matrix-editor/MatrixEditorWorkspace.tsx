@@ -665,7 +665,6 @@ function buildDraftSavePayload(
     });
   });
   return {
-    pre_test_buffer_days: schedulePlan.preTestBufferDays.trim() || null,
     post_test_buffer_days: schedulePlan.postTestBufferDays.trim() || null,
     sample_received_date: schedulePlan.sampleReceivedDate.trim() || null,
     planned_test_start_date: schedulePlan.plannedTestStartDate.trim() || null,
@@ -776,7 +775,6 @@ function buildAuthorityComparableSignatureFromDraftPayload(
       cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
     })),
     schedule: {
-      preTestBufferDays: payload.pre_test_buffer_days ?? "",
       postTestBufferDays: payload.post_test_buffer_days ?? "",
       sampleReceivedDate: payload.sample_received_date ?? "",
       plannedTestStartDate: payload.planned_test_start_date ?? "",
@@ -870,7 +868,6 @@ function buildAuthorityComparableSignatureFromConfirmedSnapshot(
       cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
     })),
     schedule: {
-      preTestBufferDays: snapshot.version.pre_test_buffer_days ?? "",
       postTestBufferDays: snapshot.version.post_test_buffer_days ?? "",
       sampleReceivedDate: snapshot.version.sample_received_date ?? "",
       plannedTestStartDate: snapshot.version.planned_test_start_date ?? "",
@@ -884,7 +881,6 @@ const MVP_REVISION_CONFIRMED_BY = "connlab-operator";
 
 function schedulePlanFromSeed(seed: MatrixEditorSessionSeed): MatrixSchedulePlan {
   return {
-    preTestBufferDays: seed.pre_test_buffer_days ?? "",
     postTestBufferDays: seed.post_test_buffer_days ?? "",
     sampleReceivedDate: seed.sample_received_date ?? "",
     plannedTestStartDate: seed.planned_test_start_date ?? "",
@@ -895,7 +891,6 @@ function schedulePlanFromSeed(seed: MatrixEditorSessionSeed): MatrixSchedulePlan
 
 function schedulePlanFromProjectMatrixDraft(draft: ProjectMatrixDraft): MatrixSchedulePlan {
   return {
-    preTestBufferDays: draft.record.pre_test_buffer_days ?? "",
     postTestBufferDays: draft.record.post_test_buffer_days ?? "",
     sampleReceivedDate: draft.record.sample_received_date ?? "",
     plannedTestStartDate: draft.record.planned_test_start_date ?? "",
@@ -2463,7 +2458,7 @@ export function MatrixEditorWorkspace({
       source_import_id: sessionSourceImportId,
       source_snapshot_id: sessionSourceSnapshotId,
       confirmed_by: MVP_REVISION_CONFIRMED_BY,
-      pre_test_buffer_days: currentSavePayload.pre_test_buffer_days ?? null,
+      pre_test_buffer_days: null,
       post_test_buffer_days: currentSavePayload.post_test_buffer_days ?? null,
       sample_received_date: currentSavePayload.sample_received_date ?? null,
       planned_test_start_date: currentSavePayload.planned_test_start_date ?? null,

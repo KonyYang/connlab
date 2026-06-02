@@ -728,7 +728,6 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     fireEvent.change(await screen.findByLabelText("Row 1 day"), { target: { value: "0.5x" } });
-    fireEvent.change(screen.getByLabelText("Pre-test buffer"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Post-test buffer"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Sample received"), { target: { value: "2026-06-01" } });
     fireEvent.change(screen.getByLabelText("Planned start"), { target: { value: "2026-06-02" } });
@@ -738,7 +737,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1));
     const request = apiMocks.confirmMatrixEditorSession.mock.calls[0][1];
-    expect(request.pre_test_buffer_days).toBe("1");
+    expect(request.pre_test_buffer_days).toBeNull();
     expect(request.post_test_buffer_days).toBe("1");
     expect(request.sample_received_date).toBe("2026-06-01");
     expect(request.planned_test_start_date).toBe("2026-06-02");
