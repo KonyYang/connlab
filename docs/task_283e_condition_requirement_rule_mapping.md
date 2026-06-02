@@ -1,4 +1,4 @@
-# TASK_283E Condition/Requirement Rule Mapping (V1)
+﻿# TASK_283E Condition/Requirement Rule Mapping (V1)
 
 Purpose:
 
@@ -9,8 +9,8 @@ Purpose:
 
 | Family | Source Phrase Pattern (examples) | Normalized Output |
 |---|---|---|
-| LLCR | `shall not exceed 0.25 milliohms initially` + `maximum change is 0.17 milliohms` | `Initial <= 0.25 mΩ; ΔR <= 0.17 mΩ` |
-| Temperature rise | `shall not exceed 30 C` / `Max 30 C` / `<= 30 C` | `<= 30 ℃` |
+| LLCR | `shall not exceed 0.25 milliohms initially` + `maximum change is 0.17 milliohms` | `Initial <= 0.25 m惟; 螖R <= 0.17 m惟` |
+| Temperature rise | `shall not exceed 30 C` / `Max 30 C` / `<= 30 C` | `<= 30 鈩僠 |
 | Mating/Un-mating Force | `... shall not exceed 20N ... shall not less than 6N` | `Mating Force <= 20 N; Un-mating Force >= 6 N` |
 
 ## No-Section Fallback (V1)
@@ -28,3 +28,4 @@ Purpose:
 1. Unsupported or ambiguous text remains unchanged.
 2. Non-empty operator-entered fields are never overwritten.
 3. Numeric values are never invented.
+

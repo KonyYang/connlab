@@ -1,4 +1,4 @@
-# TASK_283E Implementation Plan - MCR Condition/Requirement Normalization V1
+﻿# TASK_283E Implementation Plan - MCR Condition/Requirement Normalization V1
 
 ## 1. Task Identity
 
@@ -35,10 +35,10 @@ Examples in scope:
 
 1. LLCR:
    - input: `shall not exceed 0.25 milliohms initially and maximum change is 0.17 milliohms after ...`
-   - output: `Initial <= 0.25 mΩ; ΔR <= 0.17 mΩ`
+   - output: `Initial <= 0.25 m惟; 螖R <= 0.17 m惟`
 2. Temperature rise:
-   - input: `shall not exceed 30 ℃`
-   - output: `<= 30 ℃`
+   - input: `shall not exceed 30 鈩僠
+   - output: `<= 30 鈩僠
 3. Mating/Un-mating force:
    - input: `... shall not exceed 20N ... shall not less than 6N`
    - output: `Mating Force <= 20 N; Un-mating Force >= 6 N`
@@ -75,7 +75,7 @@ Add a dedicated helper module under `backend/modules/test_plan/`, e.g.:
 
 Responsibilities:
 
-1. Unit normalization (`milliohms` -> `mΩ`, spacing unification).
+1. Unit normalization (`milliohms` -> `m惟`, spacing unification).
 2. Comparator normalization (`shall not exceed`/`max` -> `<=`, `not less than`/`min` -> `>=`).
 3. Family-aware canonicalization for:
    - LLCR
@@ -98,12 +98,12 @@ Apply normalization after row-level extraction/fallback assembly in extractor pa
    - `shall not exceed`, `must not exceed`, `max` -> `<=`
    - `shall not less than`, `not less than`, `min` -> `>=`
 2. Unit canonicalization:
-   - `milliohms`/`mohm` -> `mΩ`
-   - `C`/`℃` -> `℃`
+   - `milliohms`/`mohm` -> `m惟`
+   - `C`/`鈩僠 -> `鈩僠
    - `N` and `A` keep uppercase with standardized spacing.
 3. Family templates:
-   - LLCR: `Initial <= X mΩ; ΔR <= Y mΩ`
-   - Temperature rise: `<= X ℃`
+   - LLCR: `Initial <= X m惟; 螖R <= Y m惟`
+   - Temperature rise: `<= X 鈩僠
    - Mating/Un-mating Force: `Mating Force <= X N; Un-mating Force >= Y N`
 4. Non-conversion rule:
    - if required pair/units are missing or ambiguous, return original extracted text.
@@ -178,7 +178,7 @@ Allowed V1 fallback scope:
 
 1. Risk: Over-normalization changes meaning.
    - Mitigation: family-aware strict regex + non-conversion fallback.
-2. Risk: Unit/encoding variants (`C`, `℃`, `mohm`, `milliohms`).
+2. Risk: Unit/encoding variants (`C`, `鈩僠, `mohm`, `milliohms`).
    - Mitigation: canonical unit map with tests.
 3. Risk: parser file growth.
    - Mitigation: keep normalization logic in dedicated module.
@@ -198,3 +198,4 @@ Allowed V1 fallback scope:
 3. Parser/import/preview chains remain stable.
 4. No scope expansion beyond deterministic backend normalization.
 5. Mapping artifact (`docs/task_283e_condition_requirement_rule_mapping.md`) is delivered and test-covered.
+

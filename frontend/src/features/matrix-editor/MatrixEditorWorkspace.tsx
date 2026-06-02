@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
+﻿import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
 import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
 import {
@@ -45,6 +45,11 @@ type EditableMatrixRow = {
   method: string;
   condition: string;
   requirement: string;
+  initialMethod: string;
+  initialCondition: string;
+  initialRequirement: string;
+  detailExtractionStatus: string | null;
+  detailExtractionNotes: string[];
   groups: Record<string, string>;
 };
 
@@ -90,7 +95,7 @@ type PreviewStepNotePayload = {
   sourceItemSectionNote: string | null;
 };
 
-type StepDescriptionFamily = "LLCR" | "IR" | "DWV" | "MATING";
+type StepDescriptionFamily = "LLCR" | "CR" | "IR" | "DWV" | "MATING";
 
 type MatrixContextMenu =
   | { kind: "row"; rowIndex: number; x: number; y: number }
@@ -126,6 +131,11 @@ function buildInitialMatrixRows(): EditableMatrixRow[] {
       method: "EIA-364-18B",
       condition: "10x min magnification",
       requirement: "No detrimental condition",
+      initialMethod: "EIA-364-18B",
+      initialCondition: "10x min magnification",
+      initialRequirement: "No detrimental condition",
+      detailExtractionStatus: "missing",
+      detailExtractionNotes: ["template-fallback-visual"],
       groups: { "group-1": "1" }
     },
     {
@@ -138,6 +148,11 @@ function buildInitialMatrixRows(): EditableMatrixRow[] {
       method: "",
       condition: "",
       requirement: "",
+      initialMethod: "",
+      initialCondition: "",
+      initialRequirement: "",
+      detailExtractionStatus: "missing",
+      detailExtractionNotes: [],
       groups: { "group-1": "" }
     }
   ];
@@ -165,6 +180,11 @@ function buildEmptyRow(groups: string[], rowIndex: number): EditableMatrixRow {
     method: "",
     condition: "",
     requirement: "",
+    initialMethod: "",
+    initialCondition: "",
+    initialRequirement: "",
+    detailExtractionStatus: "missing",
+    detailExtractionNotes: [],
     groups: groupValues
   };
 }
@@ -221,6 +241,11 @@ function buildMatrixFromPreview(
       method: row.method ?? "",
       condition: row.condition ?? "",
       requirement: row.requirement ?? "",
+      initialMethod: row.method ?? "",
+      initialCondition: row.condition ?? "",
+      initialRequirement: row.requirement ?? "",
+      detailExtractionStatus: row.detail_extraction_status ?? null,
+      detailExtractionNotes: row.detail_extraction_notes ?? [],
       groups: groupValues,
     };
   });
@@ -413,6 +438,11 @@ function buildMatrixFromProjectMatrixDraft(
         method: row.method ?? "",
         condition: row.condition ?? "",
         requirement: row.requirement ?? "",
+        initialMethod: row.method ?? "",
+        initialCondition: row.condition ?? "",
+        initialRequirement: row.requirement ?? "",
+        detailExtractionStatus: null,
+        detailExtractionNotes: [],
         groups: groupValues,
       };
     });
@@ -509,6 +539,11 @@ function buildMatrixFromSessionSeedDraft(
       method: existing?.method?.trim() ? existing.method : previewRow.method ?? "",
       condition: existing?.condition?.trim() ? existing.condition : previewRow.condition ?? "",
       requirement: existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? "",
+      initialMethod: existing?.initialMethod ?? (existing?.method?.trim() ? existing.method : previewRow.method ?? ""),
+      initialCondition: existing?.initialCondition ?? (existing?.condition?.trim() ? existing.condition : previewRow.condition ?? ""),
+      initialRequirement: existing?.initialRequirement ?? (existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? ""),
+      detailExtractionStatus: previewRow.detail_extraction_status ?? existing?.detailExtractionStatus ?? null,
+      detailExtractionNotes: previewRow.detail_extraction_notes ?? existing?.detailExtractionNotes ?? [],
       groups: groupValues,
     };
   });
@@ -1023,7 +1058,14 @@ function stepOutputKey(groupId: string, stepNo: number, rowId: string): string {
 }
 
 const STEP_DESCRIPTION_FAMILY_ALIASES: Record<StepDescriptionFamily, string[]> = {
-  LLCR: ["llcr", "cr", "low level contact resistance"],
+  LLCR: [
+    "llcr",
+    "low level contact resistance",
+    "contact resistance low level",
+    "contact resistance (low level)",
+    "contact resistance at low level signal",
+  ],
+  CR: ["cr", "contact resistance", "contact resistance (power)"],
   IR: ["ir", "insulation resistance"],
   DWV: ["dwv", "dielectric withstanding voltage"],
   MATING: ["mating", "un-mating", "mating/un-mating"],
@@ -1031,6 +1073,7 @@ const STEP_DESCRIPTION_FAMILY_ALIASES: Record<StepDescriptionFamily, string[]> =
 
 const STEP_DESCRIPTION_FAMILY_LABELS: Record<StepDescriptionFamily, string> = {
   LLCR: "LLCR",
+  CR: "CR",
   IR: "IR",
   DWV: "DWV",
   MATING: "Mating/Un-mating",
@@ -1053,8 +1096,16 @@ function detectStepDescriptionFamily(testItem: string): StepDescriptionFamily | 
   if (normalized.length === 0) {
     return null;
   }
+  const hasContactResistance = containsAliasToken(normalized, "contact resistance");
+  const hasLowLevel = containsAliasToken(normalized, "low level");
   if (STEP_DESCRIPTION_FAMILY_ALIASES.LLCR.some((alias) => containsAliasToken(normalized, alias))) {
     return "LLCR";
+  }
+  if (hasContactResistance && hasLowLevel) {
+    return "LLCR";
+  }
+  if (STEP_DESCRIPTION_FAMILY_ALIASES.CR.some((alias) => containsAliasToken(normalized, alias))) {
+    return "CR";
   }
   if (STEP_DESCRIPTION_FAMILY_ALIASES.IR.some((alias) => containsAliasToken(normalized, alias))) {
     return "IR";
@@ -1073,6 +1124,34 @@ function trySplitInitialAfterRequirement(rawRequirement: string): { initialPart:
   if (normalized.length === 0) {
     return null;
   }
+  const normalizeInitialPart = (value: string): string => {
+    const trimmed = value.trim().replace(/[;:\s]+$/g, "");
+    const withoutInitial = trimmed.replace(/^initial\b[\s:,-]*/i, "").trim();
+    return withoutInitial.length > 0 ? withoutInitial : trimmed;
+  };
+  const normalizeFollowPart = (value: string): string => {
+    const trimmed = value.trim().replace(/^[;:\s]+/g, "").replace(/[;:\s]+$/g, "");
+    const withoutAfter = trimmed.replace(/^after(?:\s+test)?\b[\s:,-]*/i, "").trim();
+    const normalizedFollow = withoutAfter.replace(/\s+/g, " ");
+    if (/^(?:Δ\s*)?R\s*(?:<=|≤)/i.test(normalizedFollow)) {
+      const right = normalizedFollow.replace(/^(?:Δ\s*)?R\s*/i, "").trim();
+      return `ΔR ${right}`;
+    }
+    if (/^(?:<=|≤)/.test(normalizedFollow)) {
+      return `ΔR ${normalizedFollow}`;
+    }
+    return normalizedFollow;
+  };
+  const semicolonSplit = normalized.match(
+    /^(?<initial>initial\b.*?)[;,]\s*(?<follow>(?:(?:Δ\s*)?R|R)?\s*(?:<=|≤).*)$/i,
+  );
+  if (semicolonSplit?.groups?.initial && semicolonSplit?.groups?.follow) {
+    const initialPart = normalizeInitialPart(semicolonSplit.groups.initial);
+    const followPart = normalizeFollowPart(semicolonSplit.groups.follow);
+    if (initialPart.length > 0 && followPart.length > 0) {
+      return { initialPart, followPart };
+    }
+  }
   const initialMatch = normalized.match(/initial\b/i);
   if (!initialMatch) {
     return null;
@@ -1087,10 +1166,12 @@ function trySplitInitialAfterRequirement(rawRequirement: string): { initialPart:
   if (afterStart <= initialStart) {
     return null;
   }
-  const initialPart = normalized.slice(initialStart, afterStart).trim().replace(/[;:\s]+$/g, "");
-  const followPart = normalized.slice(afterStart + afterMatch[0].length).trim().replace(/^[;:\s]+/g, "");
+  const initialPart = normalizeInitialPart(normalized.slice(initialStart, afterStart));
+  const followPart = normalizeFollowPart(normalized.slice(afterStart + afterMatch[0].length));
   if (!/^initial\b/i.test(initialPart)) {
-    return null;
+    if (!/^(?:<=|≤)/.test(initialPart)) {
+      return null;
+    }
   }
   if (followPart.length === 0) {
     return null;
@@ -1211,7 +1292,7 @@ function extractMarkerKey(token: string | null | undefined): string | null {
   if (!token) {
     return null;
   }
-  const markerMatch = token.match(/[（(](\d+|[a-zA-Z])[）)]|([*#])/);
+  const markerMatch = token.match(/[锛?](\d+|[a-zA-Z])[锛?]|([*#])/);
   if (!markerMatch) {
     return null;
   }
@@ -2933,5 +3014,6 @@ export function MatrixEditorWorkspace({
     </section>
   );
 }
+
 
 

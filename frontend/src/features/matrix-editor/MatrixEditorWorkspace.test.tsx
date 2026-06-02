@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 import { ApiRequestError } from "../../api/client";
@@ -292,6 +292,69 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(requirement.value).toBe("Initial <= 0.30 milliohms");
   });
 
+  it("keeps MCR source review metadata out of the main editing table", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      source_preview_payload: {
+        ...seed.source_preview_payload,
+        rows: [
+          {
+            ...seed.source_preview_payload.rows[0],
+            test_item: "Visual Examination",
+            method: "EIA-364-18B",
+            condition: "10x min magnification",
+            requirement: "No detrimental condition",
+            detail_extraction_status: "matched",
+            detail_extraction_notes: ["template-fallback-method"],
+          },
+          {
+            source_row_index: 2,
+            test_item: "Temperature rise",
+            source_section: "6.2",
+            method: "EIA-364-70",
+            condition: "Method 2, 13.5A",
+            requirement: "≤ 30 ℃",
+            detail_extraction_status: "matched",
+            detail_extraction_notes: [],
+            group_tokens: { "1": "2", g1: "2" },
+            is_sample_row: false,
+          },
+          {
+            source_row_index: 3,
+            test_item: "Custom test",
+            source_section: "6.3",
+            method: "",
+            condition: "",
+            requirement: "",
+            detail_extraction_status: "missing",
+            detail_extraction_notes: ["unresolved"],
+            group_tokens: { "1": "3", g1: "3" },
+            is_sample_row: false,
+          },
+        ],
+      },
+      editor_draft: {
+        ...seed.editor_draft,
+        rows: [],
+        cells: [],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    await screen.findByDisplayValue("EIA-364-18B");
+    expect(screen.queryByText("Template")).toBeNull();
+    expect(screen.queryByText("Spec")).toBeNull();
+    expect(screen.queryByText("Needs review")).toBeNull();
+    expect(screen.queryByLabelText("Row 1 method review status")).toBeNull();
+
+    const methodInput = screen.getByLabelText("Row 1 method");
+    fireEvent.change(methodInput, { target: { value: "EIA-364-18C" } });
+    expect((methodInput as HTMLTextAreaElement).value).toBe("EIA-364-18C");
+    expect(screen.queryByText("Edited")).toBeNull();
+  });
+
   it("supports inline include toggles and selected-only filter", async () => {
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
       ...buildSessionSeed(),
@@ -323,6 +386,50 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.getByText("Show selected groups only")).toBeTruthy();
     expect(screen.queryByLabelText("Row 1 2")).toBeNull();
     expect(screen.getByLabelText("Row 1 1")).toBeTruthy();
+  });
+
+  it("splits LLCR multi-step requirement into initial and delta-r forms", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft: {
+        ...buildSessionSeed().editor_draft,
+        rows: [
+          {
+            draft_row_id: "row-1",
+            source_row_snapshot_id: "sr-1",
+            row_order: 1,
+            test_item: "Contact Resistance (Low Level)",
+            source_section: "6.1",
+            method: "EIA-364-23D",
+            condition: "20mV max, 100mA max",
+            requirement: "Initial <= 0.25 m惟; R<= 0.17 m惟",
+            is_sample_row: false,
+          },
+          {
+            draft_row_id: "row-2",
+            source_row_snapshot_id: "sr-2",
+            row_order: 2,
+            test_item: "Contact Resistance (Low Level)",
+            source_section: "6.1",
+            method: "EIA-364-23D",
+            condition: "20mV max, 100mA max",
+            requirement: "Initial <= 0.25 m惟; R<= 0.17 m惟",
+            is_sample_row: false,
+          },
+        ],
+        cells: [
+          { draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1" },
+          { draft_row_id: "row-2", draft_group_id: "group-1", cell_value: "2" },
+        ],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const firstStepRequirement = await screen.findByLabelText("Step 1 requirement");
+    const secondStepRequirement = await screen.findByLabelText("Step 2 requirement");
+    expect((firstStepRequirement as HTMLTextAreaElement).value).toBe("<= 0.25 m惟");
+    expect((secondStepRequirement as HTMLTextAreaElement).value).toBe("ΔR <= 0.17 m惟");
   });
 
   it("restores unchecked source groups after re-entering from Workbench", async () => {
@@ -506,7 +613,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
             draft_row_id: "row-2",
             source_row_snapshot_id: "sr-2",
             row_order: 2,
-            test_item: "样品状态和选择说明",
+            test_item: "鏍峰搧鐘舵€佸拰閫夋嫨璇存槑",
             source_section: null,
             method: null,
             condition: null,
@@ -644,3 +751,4 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     });
   });
 });
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 from datetime import date
@@ -158,6 +158,60 @@ def test_generation_service_keeps_header_metadata_blank_when_sources_missing(tmp
     assert header_metadata.lab_test_request_number == ""
     assert header_metadata.applicable_specification == ""
     assert header_metadata.product_description == "Connector"
+
+
+def test_generation_service_passes_step_mapped_requirements_to_writer(tmp_path: Path) -> None:
+    writer = _Writer()
+    preview = ConfirmedMatrixTestRecordPreview(
+        project_id="P1",
+        confirmed_matrix_id="cmv-1",
+        preview_status="ready",
+        groups=(
+            ConfirmedMatrixTestRecordPreviewGroup(
+                group_key="g1",
+                group_label="Group 1",
+                sample_quantity_expression="5",
+                step_count=2,
+                steps=(
+                    ConfirmedMatrixTestRecordPreviewStep(
+                        sequence=2,
+                        raw_token="2",
+                        test_item="LLCR",
+                        section="6.2",
+                        method="EIA-364-23",
+                        condition="20mV max, 100mA max",
+                        requirement="≤ 0.25 mΩ",
+                    ),
+                    ConfirmedMatrixTestRecordPreviewStep(
+                        sequence=5,
+                        raw_token="5",
+                        test_item="LLCR",
+                        section="6.2",
+                        method="EIA-364-23",
+                        condition="20mV max, 100mA max",
+                        requirement="ΔR ≤ 0.17 mΩ",
+                    ),
+                ),
+            ),
+        ),
+    )
+    service = ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=_PreviewService(preview),
+        project_store=_ProjectStore(),
+        writer=writer,
+    )
+
+    service.generate(
+        GenerateConfirmedMatrixTestRecordDocumentCommand(
+            project_id="P1",
+            output_dir=tmp_path,
+            template_path=_template(tmp_path),
+        )
+    )
+
+    written_steps = writer.calls[0]["groups"][0].steps
+    assert written_steps[0].requirement == "≤ 0.25 mΩ"
+    assert written_steps[1].requirement == "ΔR ≤ 0.17 mΩ"
 
 
 class _PreviewService:

@@ -9,7 +9,7 @@
 
 ## 2. Why This Task Is Allowed Now
 
-`TASK_283A/B` already produce row-level MCR values and fallback notes. `TASK_283D` is a bounded frontend UX slice to make provenance/review state visible without changing authority flow.
+`TASK_283A/B/C/E` are complete and now provide stable backend signals (detail extraction status, fallback notes, normalization notes). `TASK_283D` is a bounded frontend UX slice to make provenance/review state visible without changing authority flow.
 
 Execution dependency order (fixed):
 
@@ -31,7 +31,7 @@ Improve Matrix Editor readability for MCR review with low-noise status signals s
 ### In Scope
 
 1. Add compact per-cell or per-row provenance hints for MCR columns.
-2. Show `Needs review` when value missing or low-confidence status from backend notes.
+2. Show `Needs review` only from explicit signals (empty value / backend `missing` status / explicit unresolved note).
 3. Keep MCR cells directly editable.
 4. Preserve existing `Confirm Matrix` flow and guards.
 
@@ -52,21 +52,37 @@ Improve Matrix Editor readability for MCR review with low-noise status signals s
 2. Use restrained styling, no large cards/popups.
 3. Keep table density and existing keyboard editing behavior.
 
+Status dictionary (fixed labels in UI):
+
+1. `Spec`: value is section-derived and not template-filled.
+2. `Template`: value includes `template-fallback-*` notes.
+3. `Needs review`: value missing or unresolved.
+4. `Edited`: local current value differs from initial imported session value.
+
 ## 6. Technical Design
 
 1. Extend frontend row model selectors to map backend `detail_extraction_status` and `detail_extraction_notes`.
 2. Add deterministic UI mapping function:
-   - notes contain `template-fallback-*` -> `Template`
-   - status `missing` -> `Needs review`
-   - edited local value differs from imported snapshot -> `Edited`
-   - otherwise -> `Spec`
+   - priority 1 (highest): local current value differs from imported snapshot -> `Edited`
+   - priority 2: current field value empty, or backend row status `missing`, or explicit unresolved note -> `Needs review`
+   - priority 3: notes contain `template-fallback-*` -> `Template`
+   - priority 4: notes contain normalization notes from TASK_283E and no template note -> keep `Spec`
+   - default: `Spec`
 3. Keep API calls in `frontend/src/api/client.ts` only.
+
+Needs review signal contract (fixed):
+
+1. Do not infer low-confidence from free text.
+2. Only use explicit structured signals already available in backend payload:
+   - empty M/C/R value
+   - `detail_extraction_status == "missing"`
+   - explicit unresolved marker note if present
 
 ## 7. File-Level Change Plan
 
 1. `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`
 2. `frontend/src/features/matrix-editor/*selectors*.ts`
-3. `frontend/src/features/matrix-editor/workbench.css` (or feature-local styles)
+3. `frontend/src/workbench.css` (prefer existing global workbench stylesheet; use feature-local styles only if implementation already has a stable local boundary)
 4. `frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx`
 
 ## 8. Test Plan (Required)
@@ -76,6 +92,11 @@ Improve Matrix Editor readability for MCR review with low-noise status signals s
 3. `Needs review` rendering when field missing.
 4. `Edited` rendering after local change.
 5. Existing confirm/sample/group validation behavior unchanged.
+6. No-section fallback row from TASK_283E appears as `Template` or `Needs review` per note/value state, not misclassified as section-derived `Spec`.
+7. Normalized requirement text from TASK_283E (for example `<= 30 ℃`) does not get mislabeled as `Edited` on first render.
+8. Edited status priority:
+   - editing a template fallback value must show `Edited` (not `Template`)
+   - filling an initially missing value must show `Edited` (not `Needs review`)
 
 ## 9. Risks and Mitigations
 
@@ -98,3 +119,11 @@ Improve Matrix Editor readability for MCR review with low-noise status signals s
 1. Operators can identify MCR provenance/review state in-place.
 2. Matrix edit/confirm flow remains unchanged.
 3. UI is concise and workbench-like.
+
+## 12. Implementation Preflight
+
+Before writing frontend code for TASK_283D, implementation must explicitly read:
+
+1. `docs/02_ARCHITECTURE_RULES.md`
+2. `docs/frontend_architecture_rules.md`
+3. `$impeccable` guidance documents already referenced by project rules

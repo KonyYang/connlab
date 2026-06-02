@@ -199,7 +199,36 @@ class TestRecordDocumentGateway:
             _set_cell_text_preserve_format(row[5], "")
             _set_cell_text_preserve_format(row[6], "")
             _set_cell_text_preserve_format(row[7], "")
-            _set_cell_text_preserve_format(row[8], _as_text(getattr(step, "requirement", "")))
+            requirement_text = _as_text(getattr(step, "requirement", ""))
+            _set_cell_text_preserve_format(row[8], _remark_requirement_only_if_numeric(requirement_text))
+
+
+def _remark_requirement_only_if_numeric(requirement_text: str) -> str:
+    text = requirement_text.strip()
+    if not text:
+        return ""
+    return text if _is_requirement_threshold_expression(text) else ""
+
+
+def _is_requirement_threshold_expression(text: str) -> bool:
+    normalized = text.strip()
+    if not normalized:
+        return False
+    if not re.search(r"\d", normalized):
+        return False
+    threshold_patterns = (
+        # Symbolic comparator with numeric value, optional unit.
+        r"(?:<=|>=|<|>|≤|≥)\s*\d+(?:\.\d+)?\s*(?:mΩ|mohm|ohm|v|mv|a|ma|n|kgf|℃|c|%)?",
+        # Verbal comparator with numeric value.
+        r"(?:shall\s+not\s+exceed|must\s+not\s+exceed|not\s+to\s+exceed|max(?:imum)?|"
+        r"not\s+less\s+than|min(?:imum)?)\s*[:=]?\s*\d+(?:\.\d+)?",
+        # Resistance-style change phrasing.
+        r"(?:delta\s*r|ΔR|change(?:\s+in\s+resistance)?)\s*(?:<=|>=|<|>|≤|≥|[:=])?\s*\d+(?:\.\d+)?",
+        # Initial/final style with threshold nearby.
+        r"(?:initial|final)\b[^.;,\n]{0,40}(?:<=|>=|<|>|≤|≥)\s*\d+(?:\.\d+)?",
+    )
+    combined = re.compile("|".join(threshold_patterns), re.IGNORECASE)
+    return combined.search(normalized) is not None
 
 
 def _paragraph_before_table(document: Document, table: Table) -> Paragraph:

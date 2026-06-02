@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import pytest
 
@@ -126,6 +126,85 @@ def test_confirmed_matrix_test_record_preview_rejects_invalid_cell_lineage() -> 
 
     with pytest.raises(ConfirmedMatrixTestRecordPreviewError, match="lineage is invalid"):
         service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+
+
+def test_preview_maps_llcr_multistep_requirement_with_sorted_step_order() -> None:
+    service = ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                rows=(
+                    ConfirmedMatrixRow(
+                        confirmed_row_id="cmr-llcr",
+                        confirmed_matrix_id="cmv-1",
+                        draft_row_id="pmdr-llcr",
+                        source_row_snapshot_id="smr-llcr",
+                        row_order=1,
+                        test_item="Contact Resistance (Low Level)",
+                        source_section="6.2",
+                        method="M2",
+                        condition="C2",
+                        requirement="Initial ≤ 0.25 mΩ; R≤ 0.17 mΩ",
+                    ),
+                ),
+                cells=(
+                    ConfirmedMatrixCell(
+                        confirmed_cell_id="cmc-llcr",
+                        confirmed_matrix_id="cmv-1",
+                        confirmed_row_id="cmr-llcr",
+                        confirmed_group_id="cmg-1",
+                        draft_row_id="pmdr-llcr",
+                        draft_group_id="pmdg-1",
+                        cell_value="5,2",
+                    ),
+                ),
+            )
+        )
+    )
+
+    preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+    steps = preview.groups[0].steps
+    assert [step.raw_token for step in steps] == ["2", "5"]
+    assert steps[0].requirement == "≤ 0.25 mΩ"
+    assert steps[1].requirement == "ΔR ≤ 0.17 mΩ"
+
+
+def test_preview_maps_llcr_initial_only_without_delta_for_followup_steps() -> None:
+    service = ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                rows=(
+                    ConfirmedMatrixRow(
+                        confirmed_row_id="cmr-llcr",
+                        confirmed_matrix_id="cmv-1",
+                        draft_row_id="pmdr-llcr",
+                        source_row_snapshot_id="smr-llcr",
+                        row_order=1,
+                        test_item="LLCR",
+                        source_section="6.2",
+                        method="M2",
+                        condition="C2",
+                        requirement="Initial ≤ 25 mΩ",
+                    ),
+                ),
+                cells=(
+                    ConfirmedMatrixCell(
+                        confirmed_cell_id="cmc-llcr",
+                        confirmed_matrix_id="cmv-1",
+                        confirmed_row_id="cmr-llcr",
+                        confirmed_group_id="cmg-1",
+                        draft_row_id="pmdr-llcr",
+                        draft_group_id="pmdg-1",
+                        cell_value="1,2",
+                    ),
+                ),
+            )
+        )
+    )
+
+    preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+    steps = preview.groups[0].steps
+    assert steps[0].requirement == "≤ 25 mΩ"
+    assert steps[1].requirement == "Initial ≤ 25 mΩ"
 
 
 class _ConfirmedStore:

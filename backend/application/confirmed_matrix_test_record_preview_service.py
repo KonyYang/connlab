@@ -1,8 +1,9 @@
-"""Build read-only Test Record preview from active Confirmed Matrix authority."""
+﻿"""Build read-only Test Record preview from active Confirmed Matrix authority."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Protocol
 
 from backend.domain import ConfirmedMatrixSnapshot
@@ -149,7 +150,76 @@ def _build_group_steps(
                     requirement=_normalize_text(row.requirement),
                 )
             )
+    steps.sort(key=lambda step: (step.sequence, step.raw_token))
+    _apply_llcr_step_requirement_mapping(steps)
     return steps
+
+
+def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPreviewStep]) -> None:
+    llcr_indexes = [index for index, step in enumerate(steps) if _is_llcr_test_item(step.test_item)]
+    if not llcr_indexes:
+        return
+    split = _split_llcr_requirement(steps[llcr_indexes[0]].requirement)
+    if split is None:
+        return
+    initial_value, delta_value = split
+    if initial_value:
+        first_index = llcr_indexes[0]
+        first_step = steps[first_index]
+        steps[first_index] = ConfirmedMatrixTestRecordPreviewStep(
+            sequence=first_step.sequence,
+            raw_token=first_step.raw_token,
+            test_item=first_step.test_item,
+            section=first_step.section,
+            method=first_step.method,
+            condition=first_step.condition,
+            requirement=initial_value,
+        )
+    if delta_value:
+        for index in llcr_indexes[1:]:
+            step = steps[index]
+            steps[index] = ConfirmedMatrixTestRecordPreviewStep(
+                sequence=step.sequence,
+                raw_token=step.raw_token,
+                test_item=step.test_item,
+                section=step.section,
+                method=step.method,
+                condition=step.condition,
+                requirement=delta_value,
+            )
+
+
+def _is_llcr_test_item(test_item: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]+", " ", test_item.strip().lower()).strip()
+    if not normalized:
+        return False
+    if "llcr" in normalized:
+        return True
+    if normalized in {
+        "contact resistance low level",
+        "low level contact resistance",
+    }:
+        return True
+    return "contact resistance" in normalized and "low level" in normalized
+
+
+def _split_llcr_requirement(requirement: str) -> tuple[str, str | None] | None:
+    normalized = " ".join(requirement.replace("\n", " ").split())
+    if not normalized:
+        return None
+    initial_match = re.search(r"initial\b[\s:,-]*(?P<value>(?:<=|≤)\s*[^;,]+)", normalized, re.IGNORECASE)
+    delta_match = re.search(r"(?:Δ\s*R|delta\s*r|r)\s*(?:<=|≤)\s*(?P<value>[^;,]+)", normalized, re.IGNORECASE)
+    if initial_match:
+        initial = initial_match.group("value").strip()
+    else:
+        initial = ""
+    if delta_match:
+        delta = f"ΔR ≤ {delta_match.group('value').strip()}"
+    else:
+        delta = None
+    if not initial:
+        return None
+    return (initial, delta)
 
 
 def _normalize_text(value: str | None) -> str:

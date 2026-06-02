@@ -97,7 +97,7 @@ def test_gateway_generates_confirmed_matrix_test_record_docx(tmp_path: Path) -> 
     assert step_table.rows[1].cells[1].text == "Visual"
     assert step_table.rows[1].cells[2].text == "EIA-364-18"
     assert step_table.rows[1].cells[3].text == "10x"
-    assert step_table.rows[1].cells[8].text == "No damage"
+    assert step_table.rows[1].cells[8].text == ""
     assert step_table.rows[1].cells[4].text == ""
     assert step_table.rows[1].cells[7].text == ""
     equipment_table = document.tables[1]
@@ -169,6 +169,90 @@ def test_gateway_orders_group_steps_by_step_token(tmp_path: Path) -> None:
         "High temp",
         "Examination",
     ]
+
+
+def test_gateway_writes_step_level_requirement_values_into_remark_column(tmp_path: Path) -> None:
+    template = _build_confirmed_matrix_template(tmp_path / "template.docx")
+    output = tmp_path / "confirmed-record.docx"
+    group = _ConfirmedGroup(
+        steps=(
+            _ConfirmedStep(sequence=2, raw_token="2", test_item="LLCR"),
+            _ConfirmedStep(sequence=5, raw_token="5", test_item="LLCR"),
+        )
+    )
+    group.steps[0].requirement = "≤ 0.25 mΩ"
+    group.steps[1].requirement = "ΔR ≤ 0.17 mΩ"
+
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=template,
+        output_path=output,
+        project_id="P1",
+        project_no="DL-001",
+        product_description="Connector",
+        applicable_specification="GS-12-1507",
+        confirmed_matrix_id="cmv-1",
+        groups=(group,),
+        header_metadata=TestRecordHeaderMetadata(),
+    )
+
+    step_table = Document(output).tables[0]
+    assert step_table.rows[1].cells[8].text == "≤ 0.25 mΩ"
+    assert step_table.rows[2].cells[8].text == "ΔR ≤ 0.17 mΩ"
+
+
+def test_gateway_remark_only_keeps_numeric_requirement_content(tmp_path: Path) -> None:
+    template = _build_confirmed_matrix_template(tmp_path / "template.docx")
+    output = tmp_path / "confirmed-record.docx"
+    group = _ConfirmedGroup(
+        steps=(
+            _ConfirmedStep(sequence=1, raw_token="1", test_item="Visual"),
+            _ConfirmedStep(sequence=2, raw_token="2", test_item="LLCR"),
+        )
+    )
+    group.steps[0].requirement = "No detrimental condition"
+    group.steps[1].requirement = "Initial ≤ 25mΩ"
+
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=template,
+        output_path=output,
+        project_id="P1",
+        project_no="DL-001",
+        product_description="Connector",
+        applicable_specification="GS-12-1507",
+        confirmed_matrix_id="cmv-1",
+        groups=(group,),
+        header_metadata=TestRecordHeaderMetadata(),
+    )
+
+    step_table = Document(output).tables[0]
+    assert step_table.rows[1].cells[8].text == ""
+    assert step_table.rows[2].cells[8].text == "Initial ≤ 25mΩ"
+
+
+def test_gateway_remark_drops_plain_numeric_reference_without_threshold(tmp_path: Path) -> None:
+    template = _build_confirmed_matrix_template(tmp_path / "template.docx")
+    output = tmp_path / "confirmed-record.docx"
+    group = _ConfirmedGroup(
+        steps=(
+            _ConfirmedStep(sequence=1, raw_token="1", test_item="Reference"),
+        )
+    )
+    group.steps[0].requirement = "See section 5.4 for details"
+
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=template,
+        output_path=output,
+        project_id="P1",
+        project_no="DL-001",
+        product_description="Connector",
+        applicable_specification="GS-12-1507",
+        confirmed_matrix_id="cmv-1",
+        groups=(group,),
+        header_metadata=TestRecordHeaderMetadata(),
+    )
+
+    step_table = Document(output).tables[0]
+    assert step_table.rows[1].cells[8].text == ""
 
 
 class _ConfirmedStep:
