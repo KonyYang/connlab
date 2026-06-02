@@ -67,7 +67,6 @@ function buildRowKey(step: ConfirmedMatrixTestRecordPreviewStep): string {
     normalizeText(step.section),
     normalizeText(step.method),
     normalizeText(step.condition),
-    normalizeText(step.requirement),
   ].join("::");
 }
 

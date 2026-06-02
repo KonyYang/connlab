@@ -141,6 +141,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
   it("shows Import Matrix in the header and completion actions in a sticky footer", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("spec.docx")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
     const completionDock = screen.getByRole("contentinfo", { name: "Matrix editor completion actions" });
     expect((completionDock as HTMLElement).classList.contains("matrix-editor-completion-dock")).toBe(true);

@@ -1600,6 +1600,10 @@ export function MatrixEditorWorkspace({
     ? model.matrixAuthorityDraft.source_document_name.trim()
     : "Test description unavailable";
   const matrixEditorIdentityLine = `${ltr} | ${projectLabel} | ${testDescription}`;
+  const currentSourceDocumentName =
+    importPreview?.source_document_name?.trim() ||
+    model.matrixAuthorityDraft?.source_document_name?.trim() ||
+    null;
   const projectionRef = model.runtimeAuthoritySync.projectionMatrixReference ?? "not loaded";
   const normalizedNameMap = new Map<string, string[]>();
   const emptyGroupIds = new Set<string>();
@@ -2454,6 +2458,14 @@ export function MatrixEditorWorkspace({
           {matrixEditorIdentityLine}
         </p>
         <div className="matrix-editor-target-actions">
+          {currentSourceDocumentName ? (
+            <span
+              className="matrix-editor-source-document-name"
+              title={currentSourceDocumentName}
+            >
+              {currentSourceDocumentName}
+            </span>
+          ) : null}
           <button type="button" onClick={() => void onChangeSourceMatrix()}>
             Import Matrix
           </button>

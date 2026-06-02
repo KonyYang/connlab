@@ -61,11 +61,11 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
     assert visual.detail_extraction_status == "matched"
     assert llcr.method == "EIA-364-23D"
     assert llcr.condition == "20mV max, 100mA max"
-    assert llcr.requirement == "shall not exceed 0.25 mΩ initially"
+    assert llcr.requirement == "Initial ≤ 0.25mΩ"
     assert llcr.detail_extraction_status == "matched"
     assert durability.method == "EIA-364-09D"
     assert durability.condition is None
-    assert durability.requirement is None
+    assert durability.requirement == "No damage"
     assert durability.detail_extraction_status == "partial"
 
 
@@ -78,6 +78,8 @@ def test_product_spec_matrix_parser_applies_family_aware_details_on_real_path() 
                 ["Cycling Temperature& Humidity", "8.2", "2"],
                 ["MFG", "8.6", "3"],
                 ["Dust exposure", "8.7", "4"],
+                ["Random Vibration", "8.8", "5"],
+                ["Mechanical Shock", "8.9", "6"],
             ]
         ],
         paragraphs=[
@@ -91,6 +93,10 @@ def test_product_spec_matrix_parser_applies_family_aware_details_on_real_path() 
             "Class IIA. Duration - 224 hours unmated, 112 hours mated.",
             "8.7 Dust exposure –EIA-364-91.",
             "Benign Dust Composition. Maximum Change: 0.17 mΩ.",
+            "8.8 Vibration (Random) –EIA 364-28.",
+            "Condition VIID, 15 minutes each axis. No discontinuities greater than 1 us.",
+            "8.9 Mechanical Shock – EIA 364-27.",
+            "Condition A (50G, 11 millisecond). No discontinuities greater than 1 us.",
         ],
     )
 
@@ -98,13 +104,20 @@ def test_product_spec_matrix_parser_applies_family_aware_details_on_real_path() 
     humidity = result.rows[1]
     mfg = result.rows[2]
     dust = result.rows[3]
+    vibration = result.rows[4]
+    shock = result.rows[5]
     assert temperature.method == "EIA-364-70"
+    assert temperature.requirement == "≤ 30 ℃"
     assert humidity.method == "EIA-364-31"
     assert "31 a" not in (humidity.condition or "").lower()
+    assert humidity.requirement == "No damage"
     assert mfg.method == "EIA-364-65"
     assert "65 a" not in (mfg.condition or "").lower()
     assert "class iia" in (mfg.condition or "").lower()
-    assert "Maximum Change: 0.17" in (dust.requirement or "")
+    assert mfg.requirement == "No damage"
+    assert dust.requirement == "No damage"
+    assert vibration.requirement == "No damage, No discontinuity >1us"
+    assert shock.requirement == "No damage, No discontinuity >1us"
 
 
 def test_product_spec_matrix_parser_matches_symbol_marked_and_multi_sections() -> None:

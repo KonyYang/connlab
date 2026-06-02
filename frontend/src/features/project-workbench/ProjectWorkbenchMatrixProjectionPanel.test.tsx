@@ -211,6 +211,50 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(screen.getByRole("button", { name: "3" })).toBeTruthy();
   });
 
+  it("keeps LLCR in one row when step requirements differ", async () => {
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
+      project_id: "P1",
+      confirmed_matrix_id: "cm-1",
+      preview_status: "ready",
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group 1",
+          sample_quantity_expression: "3",
+          step_count: 2,
+          steps: [
+            {
+              sequence: 2,
+              raw_token: "2",
+              test_item: "LLCR",
+              section: "6.1",
+              method: "EIA-364-23",
+              condition: "",
+              requirement: "≤ 20mΩ",
+            },
+            {
+              sequence: 5,
+              raw_token: "5",
+              test_item: "LLCR",
+              section: "6.1",
+              method: "EIA-364-23",
+              condition: "",
+              requirement: "Initial ≤ 20mΩ",
+            },
+          ],
+        },
+      ],
+    });
+
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+
+    const table = await screen.findByRole("table");
+    const llcrRows = within(table).getAllByRole("row").filter((row) => within(row).queryByText("LLCR"));
+    expect(llcrRows).toHaveLength(1);
+    expect(within(llcrRows[0]).getByRole("button", { name: "2" })).toBeTruthy();
+    expect(within(llcrRows[0]).getByRole("button", { name: "5" })).toBeTruthy();
+  });
+
   it("renders empty state for active matrix with no previewable tokens", async () => {
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",

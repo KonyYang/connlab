@@ -824,8 +824,20 @@
 .matrix-editor-target-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
+}
+
+.matrix-editor-source-document-name {
+  max-width: min(44vw, 720px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .matrix-workspace-state-banner {

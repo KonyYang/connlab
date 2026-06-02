@@ -21,7 +21,7 @@ def test_extract_row_details_by_section_extracts_llcr_mcr() -> None:
     llcr = details["6.1"]
     assert llcr.method == "EIA-364-23D"
     assert llcr.condition == "20mV max, 100mA max"
-    assert llcr.requirement == "Initial <= 0.25 mΩ; ΔR <= 0.17 mΩ"
+    assert llcr.requirement == "Initial ≤ 0.25 mΩ; ΔR ≤ 0.17 mΩ"
     assert llcr.status == "matched"
     assert details["6.2"].condition is None
     assert details["6.2"].requirement == "shall not exceed 15mV"
@@ -143,6 +143,7 @@ def test_temperature_humidity_extraction_does_not_emit_numeric_letter_fragment()
     assert "31 a" not in (detail.condition or "").lower()
     assert detail.requirement is not None
     assert detail.requirement != "Maximum Change: 0"
+    assert detail.requirement == "No damage"
 
 
 def test_mfg_extraction_does_not_emit_numeric_letter_fragment() -> None:
@@ -162,6 +163,7 @@ def test_mfg_extraction_does_not_emit_numeric_letter_fragment() -> None:
     assert "Class IIA" in (detail.condition or "")
     assert detail.requirement is not None
     assert detail.requirement != "Maximum Change: 0"
+    assert detail.requirement == "No damage"
 
 
 def test_family_coverage_safe_outputs() -> None:
@@ -171,6 +173,7 @@ def test_family_coverage_safe_outputs() -> None:
             "Temperature rise",
             "6.3.1 Temperature rise. Method 2, 75A. Temperature rise shall not exceed 30 C.",
             "EIA-364-70",
+            "≤ 30 ℃",
         ),
         (
             "7.1",
@@ -178,36 +181,42 @@ def test_family_coverage_safe_outputs() -> None:
             "7.1 Mating/Un-mating Force. Measurements shall be in accordance with EIA-364-37C. "
             "Cross Head Speed 25.4mm/min. Mating force shall not exceed 20N.",
             "EIA-364-37C",
+            None,
         ),
         (
             "7.3",
             "Durability",
             "7.3 Durability. Number Cycles - 200 cycles. Cycling Rate less than 10 cycles per minute.",
             None,
+            "No damage",
         ),
         (
             "8.1",
             "Thermal Shock",
             "8.1 Thermal Shock –EIA 364-32. Number of cycles - 10 cycles. Temperature range -55 to +85 C.",
             "EIA-364-32",
+            "No damage",
         ),
         (
             "8.4",
             "High temperature Life",
             "8.4 High Temperature Life –EIA 364-17. Test Temperature 125 C. Test Duration 114 hours.",
             "EIA-364-17",
+            "No damage",
         ),
         (
             "8.5",
             "Thermal Disturbance",
             "8.5 Thermal Disturbance –EIA 364-110. Number of cycles 10. Ramps minimum 2 C per minute.",
             "EIA-364-110",
+            "No damage",
         ),
         (
             "8.7",
             "Dust exposure",
             "8.7 Dust exposure –EIA-364-91. Benign Dust Composition. Maximum Change: 0.17 mΩ.",
             "EIA-364-91",
+            "No damage",
         ),
         (
             "8.8",
@@ -215,6 +224,7 @@ def test_family_coverage_safe_outputs() -> None:
             "8.8 Vibration (Random) –EIA 364-28. Condition VIID, 15 minutes each axis. "
             "No discontinuities greater than 1 us.",
             "EIA-364-28",
+            "No damage, No discontinuity >1us",
         ),
         (
             "8.9",
@@ -222,9 +232,10 @@ def test_family_coverage_safe_outputs() -> None:
             "8.9 Mechanical Shock – EIA 364-27. Condition A (50G, 11 millisecond). "
             "3 shocks in both directions along each axis. No discontinuities greater than 1 us.",
             "EIA-364-27",
+            "No damage, No discontinuity >1us",
         ),
     ]
-    for section, test_item, text, expected_method in cases:
+    for section, test_item, text, expected_method, expected_requirement in cases:
         detail = extract_row_details(section=section, section_text=text, test_item=test_item)
         if expected_method:
             assert detail.method == expected_method
@@ -234,6 +245,8 @@ def test_family_coverage_safe_outputs() -> None:
         assert "31 a" not in condition
         assert "65 a" not in condition
         assert requirement != "Maximum Change: 0"
+        if expected_requirement:
+            assert requirement == expected_requirement
 
 
 def test_template_fallback_applies_only_to_empty_fields() -> None:

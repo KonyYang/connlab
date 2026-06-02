@@ -29,6 +29,32 @@ CR_TEST_ITEM_ALIASES = {
     "contact resistance power",
 }
 
+NO_DAMAGE_REQUIREMENT_FAMILIES = {
+    "pre durability",
+    "pe durability",
+    "durability",
+    "durability preconditioning 20 cycles",
+    "reseating",
+    "thermal shock",
+    "cycling temperature and humidity",
+    "cycling temperature humidity",
+    "cyclic temperature and humidity",
+    "cyclic temperature humidity",
+    "temperature humidity",
+    "high temperature life",
+    "pre high temperature life",
+    "thermal disturbance",
+    "mfg",
+    "mixed flowing gas corrosion",
+    "dust exposure",
+}
+
+NO_DAMAGE_DISCONTINUITY_REQUIREMENT_FAMILIES = {
+    "random vibration",
+    "vibration random",
+    "mechanical shock",
+}
+
 
 def normalize_condition_requirement(
     *,
@@ -37,6 +63,7 @@ def normalize_condition_requirement(
     requirement: str | None,
     source_text: str,
 ) -> McrNormalizationResult:
+    """Normalize approved MCR families without changing unsupported text."""
     family = _family(test_item, source_text)
     notes: list[str] = []
     normalized_condition = _normalize_condition(condition)
@@ -71,6 +98,11 @@ def normalize_condition_requirement(
         if normalized is not None:
             normalized_requirement = normalized
             notes.append("normalized-mating-unmating-requirement")
+    else:
+        report_style = _normalize_report_style_family_requirement(test_item)
+        if report_style is not None:
+            normalized_requirement = report_style
+            notes.append("normalized-report-style-requirement")
 
     return McrNormalizationResult(
         condition=normalized_condition,
@@ -85,7 +117,8 @@ def _normalize_initial_voltage_requirement(*, source_text: str, current_requirem
         return current_requirement
     standardized = _standardize_units(text)
     match = re.search(
-        r"(?:shall\s+not\s+exceed|must\s+not\s+exceed|not\s+to\s+exceed|not\s+exceed|cannot\s+exceed|max(?:imum)?\.?|<=|≤)\s*"
+        r"(?:shall\s+not\s+exceed|must\s+not\s+exceed|not\s+to\s+exceed|not\s+exceed|"
+        r"cannot\s+exceed|max(?:imum)?\.?|<=|≤)\s*"
         r"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>mV|V)\s*(?:initially|initial)\b",
         standardized,
         re.IGNORECASE,
@@ -120,7 +153,7 @@ def _normalize_condition(condition: str | None) -> str | None:
 def _normalize_requirement(requirement: str | None) -> str | None:
     if not requirement:
         return None
-    return _collapse_ws(_standardize_units(requirement))
+    return _collapse_ws(requirement)
 
 
 def _normalize_resistance_requirement(source_text: str, current_requirement: str | None) -> str | None:
@@ -139,7 +172,14 @@ def _normalize_resistance_requirement(source_text: str, current_requirement: str
     )
     if delta_match is None:
         delta_match = re.search(
-            r"(?:shall\s+also\s+)?(?:not\s+to\s+)?(?:shall\s+not\s+exceed|must\s+not\s+exceed|not\s+exceed|<=|≤)\s*"
+            r"(?:shall\s+also\s+)?(?:shall\s+not\s+exceed|must\s+not\s+exceed|not\s+exceed|<=|≤)\s*"
+            r"(?P<value>\d+(?:\.\d+)?)\s*(?:mΩ|mohm|milliohms?)\s*"
+            r"(?:maximum\s+)?change(?:\s+in\s+resistance)?",
+            text,
+            re.IGNORECASE,
+        )
+    if delta_match is None:
+        delta_match = re.search(
             r"(?P<value>\d+(?:\.\d+)?)\s*(?:mΩ|mohm|milliohms?)\s*"
             r"(?:maximum\s+)?change(?:\s+in\s+resistance)?",
             text,
@@ -147,9 +187,10 @@ def _normalize_resistance_requirement(source_text: str, current_requirement: str
         )
     if initial_match and delta_match:
         return f"Initial ≤ {initial_match.group('value')} mΩ; ΔR ≤ {delta_match.group('value')} mΩ"
-
     if initial_match and re.search(r"\binitial(?:ly)?\b", text, re.IGNORECASE):
         return f"Initial ≤ {initial_match.group('value')}mΩ"
+    if delta_match:
+        return f"ΔR ≤ {delta_match.group('value')} mΩ"
 
     max_only = re.search(
         r"(?:shall\s+not\s+exceed|must\s+not\s+exceed|<=|≤|max(?:imum)?\.?)\s*"
@@ -193,13 +234,15 @@ def _normalize_mating_unmating_requirement(source_text: str, current_requirement
     )
     if mating is None:
         mating = re.search(
-            r"(?:mating\s+force|force\s+to\s+mate)[^.;]*?=\s*(?P<value>\d+(?:\.\d+)?)\s*N\b[^.;]*?\bmax(?:imum)?\b",
+            r"(?:mating\s+force|force\s+to\s+mate|mating)[^.;,]*?(?:=|-)?\s*"
+            r"(?P<value>\d+(?:\.\d+)?)\s*N\b[^.;,]*?\bmax(?:imum)?\b",
             text,
             re.IGNORECASE,
         )
     if unmating is None:
         unmating = re.search(
-            r"(?:un-?mating\s+force|unmating\s+force)[^.;]*?=\s*(?P<value>\d+(?:\.\d+)?)\s*N\b[^.;]*?\bmin(?:imum)?\b",
+            r"(?:un-?mating\s+force|unmating\s+force|un-?mating)[^.;,]*?(?:=|-)?\s*"
+            r"(?P<value>\d+(?:\.\d+)?)\s*N\b[^.;,]*?\bmin(?:imum)?\b",
             text,
             re.IGNORECASE,
         )
@@ -211,12 +254,20 @@ def _normalize_mating_unmating_requirement(source_text: str, current_requirement
 def _normalize_ir_requirement(source_text: str, current_requirement: str | None) -> str | None:
     text = _standardize_units(" ".join(part for part in (source_text, current_requirement) if part))
     match = re.search(
-        r"(?:not\s+(?:be\s+)?less\s+than|min(?:imum)?|>=|≥)\s*(?P<value>\d+(?:\.\d+)?)\s*(?:MΩ|mΩ|mohm|mega\s*ohms?)",
+        r"(?:(?:not\s+(?:be\s+)?less\s+than)|min(?:imum)?|>=|≥)\s*"
+        r"(?P<value>\d+(?:\.\d+)?)\s*(?:MΩ|mohm|mega\s*ohms?)",
         text,
         re.IGNORECASE,
     )
     if not match:
-        return current_requirement
+        reverse = re.search(
+            r"(?P<value>\d+(?:\.\d+)?)\s*(?:MΩ|mohm|mega\s*ohms?)\s*(?:min(?:imum)?|>=|≥)",
+            text,
+            re.IGNORECASE,
+        )
+        match = reverse
+    if not match:
+        return None
     value = Decimal(match.group("value"))
     formatted_mohm = f"{int(value):,}" if value == int(value) else f"{value.normalize():f}"
     if value >= Decimal("1000"):
@@ -233,7 +284,7 @@ def _normalize_dwv_requirement(source_text: str, current_requirement: str | None
         and re.search(r"insulation\s+breakdown", text, re.IGNORECASE)
     )
     leakage = re.search(
-        r"leakage\s+current\s*(?P<op>>=|>|<=|<|=)\s*(?P<value>\d+(?:\.\d+)?)\s*(?:mA|A)\b",
+        r"leakage\s+current\s*(?P<op>>=|>|<=|<|=|≥|≤)\s*(?P<value>\d+(?:\.\d+)?)\s*(?:mA|A)\b",
         text,
         re.IGNORECASE,
     )
@@ -242,6 +293,15 @@ def _normalize_dwv_requirement(source_text: str, current_requirement: str | None
     op = leakage.group("op")
     value = leakage.group("value")
     return f"No evidence of arc-over, insulation breakdown, or leakage current {op}{value}mA"
+
+
+def _normalize_report_style_family_requirement(test_item: str | None) -> str | None:
+    normalized = _normalize_family_label(test_item)
+    if normalized in NO_DAMAGE_DISCONTINUITY_REQUIREMENT_FAMILIES:
+        return "No damage, No discontinuity >1us"
+    if normalized in NO_DAMAGE_REQUIREMENT_FAMILIES:
+        return "No damage"
+    return None
 
 
 def _family(test_item: str | None, source_text: str) -> str:
@@ -279,12 +339,20 @@ def _is_cr_family(*, text: str, combined: str) -> bool:
     return "contact resistance" in combined
 
 
+def _normalize_family_label(test_item: str | None) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", " ", (test_item or "").lower())
+    return _collapse_ws(normalized)
+
+
 def _standardize_units(text: str) -> str:
     normalized = text
     normalized = re.sub(r"\bmilliohms?\b", "mΩ", normalized, flags=re.IGNORECASE)
     normalized = re.sub(r"\bmohms?\b", "mΩ", normalized, flags=re.IGNORECASE)
     normalized = re.sub(r"\bmohm\b", "mΩ", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"\bmega\s*ohms?\b", "MΩ", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"\bmegohms?\b", "MΩ", normalized, flags=re.IGNORECASE)
     normalized = normalized.replace("≤", "<=").replace("≥", ">=")
+    normalized = normalized.replace("μs", "us").replace("µs", "us")
     normalized = re.sub(r"(?<=\d)\s*[cC]\b", " ℃", normalized)
     normalized = re.sub(r"(?<=\d)\s*(?=[NA]\b)", " ", normalized)
     return normalized
