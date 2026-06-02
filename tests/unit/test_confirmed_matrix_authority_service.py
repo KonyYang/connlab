@@ -53,6 +53,13 @@ def test_confirmed_matrix_authority_service_happy_path_copies_scope_and_lineage(
     assert confirmed.rows[0].method == "M1"
     assert confirmed.rows[0].condition == "C1"
     assert confirmed.rows[0].requirement == "R1"
+    assert confirmed.rows[0].day_expression == "0.5x"
+    assert confirmed.version.pre_test_buffer_days == "1"
+    assert confirmed.version.post_test_buffer_days == "1"
+    assert confirmed.version.sample_received_date == "2026-06-01"
+    assert confirmed.version.planned_test_start_date == "2026-06-02"
+    assert confirmed.version.planned_test_complete_date == "2026-06-04"
+    assert confirmed.version.estimated_completion_date == "2026-06-05"
     assert len(confirmed.cells) == 2
     assert sorted(cell.cell_value for cell in confirmed.cells) == ["1", "2"]
     assert stores.draft_snapshot == before
@@ -279,6 +286,7 @@ def _service(
             method="M1",
             condition="C1",
             requirement="R1",
+            day_expression="0.5x",
             is_sample_row=False,
         ),
         ProjectMatrixDraftRow(
@@ -291,6 +299,7 @@ def _service(
             method="M2",
             condition="C2",
             requirement="R2",
+            day_expression="1",
             is_sample_row=False,
         ),
         ProjectMatrixDraftRow(
@@ -348,6 +357,12 @@ def _service(
             status=ProjectMatrixDraftStatus.DRAFT,
             created_at="2026-05-23T08:00:00+00:00",
             updated_at="2026-05-23T08:00:00+00:00",
+            pre_test_buffer_days="1",
+            post_test_buffer_days="1",
+            sample_received_date="2026-06-01",
+            planned_test_start_date="2026-06-02",
+            planned_test_complete_date="2026-06-04",
+            estimated_completion_date="2026-06-05",
         ),
         groups=groups,
         rows=rows,

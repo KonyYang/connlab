@@ -124,6 +124,12 @@ def _to_version_model(version: ConfirmedMatrixVersion) -> ConfirmedMatrixVersion
         superseded_by_confirmed_matrix_id=version.superseded_by_confirmed_matrix_id,
         superseded_at=version.superseded_at,
         superseded_reason=version.superseded_reason,
+        pre_test_buffer_days=version.pre_test_buffer_days,
+        post_test_buffer_days=version.post_test_buffer_days,
+        sample_received_date=version.sample_received_date,
+        planned_test_start_date=version.planned_test_start_date,
+        planned_test_complete_date=version.planned_test_complete_date,
+        estimated_completion_date=version.estimated_completion_date,
     )
 
 
@@ -159,6 +165,7 @@ def _to_row_models(rows: tuple[ConfirmedMatrixRow, ...]) -> list[ConfirmedMatrix
             method=row.method,
             condition=row.condition,
             requirement=row.requirement,
+            day_expression=row.day_expression,
         )
         for row in rows
     ]
@@ -196,6 +203,12 @@ def _to_version_domain(row: ConfirmedMatrixVersionModel) -> ConfirmedMatrixVersi
         superseded_by_confirmed_matrix_id=row.superseded_by_confirmed_matrix_id,
         superseded_at=row.superseded_at,
         superseded_reason=row.superseded_reason,
+        pre_test_buffer_days=row.pre_test_buffer_days,
+        post_test_buffer_days=row.post_test_buffer_days,
+        sample_received_date=row.sample_received_date,
+        planned_test_start_date=row.planned_test_start_date,
+        planned_test_complete_date=row.planned_test_complete_date,
+        estimated_completion_date=row.estimated_completion_date,
     )
 
 
@@ -225,6 +238,7 @@ def _to_row_domain(row: ConfirmedMatrixRowModel) -> ConfirmedMatrixRow:
         method=row.method,
         condition=row.condition,
         requirement=row.requirement,
+        day_expression=row.day_expression,
     )
 
 

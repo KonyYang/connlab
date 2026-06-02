@@ -121,6 +121,137 @@ def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
         engine.dispose()
 
 
+def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]},
+        )
+        assert created.status_code == 201
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+        confirmed = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirmed.status_code == 201
+
+        seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert seed.status_code == 200
+        seed_payload = seed.json()
+        editor_draft = seed_payload["editor_draft"]
+        assert editor_draft is not None
+        rows = [
+            {**row, "day_expression": "0.5x"}
+            if row["test_item"] == "Visual Examination"
+            else row
+            for row in editor_draft["rows"]
+        ]
+
+        response = client.post(
+            "/api/projects/P1/matrix-editor/session/confirm",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "confirmed_by": "operator",
+                "pre_test_buffer_days": "1",
+                "post_test_buffer_days": "1",
+                "sample_received_date": "2026-06-01",
+                "planned_test_start_date": "2026-06-02",
+                "planned_test_complete_date": "2026-06-03",
+                "estimated_completion_date": "2026-06-04",
+                "groups": editor_draft["groups"],
+                "rows": rows,
+                "cells": editor_draft["cells"],
+            },
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["publish_status"] == "published"
+        version = payload["confirmed_snapshot"]["version"]
+        assert version["pre_test_buffer_days"] == "1"
+        assert version["post_test_buffer_days"] == "1"
+        assert version["sample_received_date"] == "2026-06-01"
+        assert version["planned_test_start_date"] == "2026-06-02"
+        assert version["planned_test_complete_date"] == "2026-06-03"
+        assert version["estimated_completion_date"] == "2026-06-04"
+        assert payload["confirmed_snapshot"]["rows"][0]["day_expression"] == "0.5x"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_matrix_editor_session_confirm_rejects_invalid_schedule(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]},
+        )
+        assert created.status_code == 201
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+        confirmed = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirmed.status_code == 201
+
+        seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert seed.status_code == 200
+        seed_payload = seed.json()
+        editor_draft = seed_payload["editor_draft"]
+        assert editor_draft is not None
+        rows = [
+            {**row, "day_expression": "3"}
+            if row["test_item"] == "Visual Examination"
+            else row
+            for row in editor_draft["rows"]
+        ]
+
+        response = client.post(
+            "/api/projects/P1/matrix-editor/session/confirm",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "confirmed_by": "operator",
+                "pre_test_buffer_days": "0",
+                "post_test_buffer_days": "0",
+                "sample_received_date": "2026-06-01",
+                "planned_test_start_date": "2026-06-01",
+                "planned_test_complete_date": "2026-06-02",
+                "estimated_completion_date": "2026-06-02",
+                "groups": editor_draft["groups"],
+                "rows": rows,
+                "cells": editor_draft["cells"],
+            },
+        )
+
+        assert response.status_code == 422
+        assert "planned_test_complete_date is earlier" in response.text
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_session_confirm_after_source_change_updates_active_lineage(
     tmp_path: Path,
 ) -> None:

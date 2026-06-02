@@ -605,6 +605,12 @@ export type ProjectMatrixDraftRecord = {
   status: string;
   created_at: string;
   updated_at: string;
+  pre_test_buffer_days?: string | null;
+  post_test_buffer_days?: string | null;
+  sample_received_date?: string | null;
+  planned_test_start_date?: string | null;
+  planned_test_complete_date?: string | null;
+  estimated_completion_date?: string | null;
 };
 
 export type ProjectMatrixDraftGroup = {
@@ -627,6 +633,7 @@ export type ProjectMatrixDraftRow = {
   method?: string | null;
   condition?: string | null;
   requirement?: string | null;
+  day_expression?: string | null;
   is_sample_row: boolean;
 };
 
@@ -666,6 +673,7 @@ export type ProjectMatrixDraftSaveRowInput = {
   method?: string | null;
   condition?: string | null;
   requirement?: string | null;
+  day_expression?: string | null;
   is_sample_row?: boolean;
 };
 
@@ -679,6 +687,12 @@ export type ProjectMatrixDraftSaveRequest = {
   groups: ProjectMatrixDraftSaveGroupInput[];
   rows: ProjectMatrixDraftSaveRowInput[];
   cells: ProjectMatrixDraftSaveCellInput[];
+  pre_test_buffer_days?: string | null;
+  post_test_buffer_days?: string | null;
+  sample_received_date?: string | null;
+  planned_test_start_date?: string | null;
+  planned_test_complete_date?: string | null;
+  estimated_completion_date?: string | null;
 };
 
 export type MatrixEditorSessionDraftGroup = {
@@ -701,6 +715,7 @@ export type MatrixEditorSessionDraftRow = {
   method?: string | null;
   condition?: string | null;
   requirement?: string | null;
+  day_expression?: string | null;
   is_sample_row: boolean;
 };
 
@@ -726,6 +741,12 @@ export type MatrixEditorSessionSeed = {
   source_preview_payload?: MatrixPreviewResponse | null;
   source_status: "available" | "unavailable" | "not_required";
   source_unavailable_message?: string | null;
+  pre_test_buffer_days?: string | null;
+  post_test_buffer_days?: string | null;
+  sample_received_date?: string | null;
+  planned_test_start_date?: string | null;
+  planned_test_complete_date?: string | null;
+  estimated_completion_date?: string | null;
 };
 
 export type MatrixEditorSessionConfirmRequest = {
@@ -740,6 +761,12 @@ export type MatrixEditorSessionConfirmRequest = {
   groups: MatrixEditorSessionDraftGroup[];
   rows: MatrixEditorSessionDraftRow[];
   cells: MatrixEditorSessionDraftCell[];
+  pre_test_buffer_days?: string | null;
+  post_test_buffer_days?: string | null;
+  sample_received_date?: string | null;
+  planned_test_start_date?: string | null;
+  planned_test_complete_date?: string | null;
+  estimated_completion_date?: string | null;
 };
 
 export type MatrixEditorSessionConfirmResponse = {
@@ -767,6 +794,12 @@ export type ConfirmedMatrixVersion = {
   superseded_by_confirmed_matrix_id?: string | null;
   superseded_at?: string | null;
   superseded_reason?: string | null;
+  pre_test_buffer_days?: string | null;
+  post_test_buffer_days?: string | null;
+  sample_received_date?: string | null;
+  planned_test_start_date?: string | null;
+  planned_test_complete_date?: string | null;
+  estimated_completion_date?: string | null;
 };
 
 export type ConfirmedMatrixGroup = {
@@ -790,6 +823,7 @@ export type ConfirmedMatrixRow = {
   method?: string | null;
   condition?: string | null;
   requirement?: string | null;
+  day_expression?: string | null;
 };
 
 export type ConfirmedMatrixCell = {

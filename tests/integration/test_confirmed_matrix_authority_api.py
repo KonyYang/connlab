@@ -50,6 +50,12 @@ def test_confirm_project_matrix_draft_api_happy_path_and_immutability(tmp_path: 
         saved = client.put(
             f"/api/projects/P1/matrix-drafts/{draft_id}",
             json={
+                "pre_test_buffer_days": "1",
+                "post_test_buffer_days": "1",
+                "sample_received_date": "2026-06-01",
+                "planned_test_start_date": "2026-06-02",
+                "planned_test_complete_date": "2026-06-04",
+                "estimated_completion_date": "2026-06-05",
                 "groups": [
                     {
                         "draft_group_id": draft["groups"][0]["draft_group_id"],
@@ -82,6 +88,7 @@ def test_confirm_project_matrix_draft_api_happy_path_and_immutability(tmp_path: 
                         "method": "M1",
                         "condition": "C1",
                         "requirement": "R1",
+                        "day_expression": "0.5x",
                         "is_sample_row": False,
                     },
                     {
@@ -93,6 +100,7 @@ def test_confirm_project_matrix_draft_api_happy_path_and_immutability(tmp_path: 
                         "method": "M2",
                         "condition": "C2",
                         "requirement": "R2",
+                        "day_expression": "1",
                         "is_sample_row": False,
                     },
                     {
@@ -137,8 +145,15 @@ def test_confirm_project_matrix_draft_api_happy_path_and_immutability(tmp_path: 
         assert payload["version"]["project_matrix_draft_id"] == draft_id
         assert payload["version"]["confirmed_revision"] == 1
         assert payload["version"]["status"] == "confirmed"
+        assert payload["version"]["pre_test_buffer_days"] == "1"
+        assert payload["version"]["post_test_buffer_days"] == "1"
+        assert payload["version"]["sample_received_date"] == "2026-06-01"
+        assert payload["version"]["planned_test_start_date"] == "2026-06-02"
+        assert payload["version"]["planned_test_complete_date"] == "2026-06-04"
+        assert payload["version"]["estimated_completion_date"] == "2026-06-05"
         assert len(payload["groups"]) == 2
         assert len(payload["rows"]) == 2
+        assert payload["rows"][0]["day_expression"] == "0.5x"
         assert len(payload["cells"]) == 2
 
         draft_after = client.get(f"/api/projects/P1/matrix-drafts/{draft_id}")
@@ -300,6 +315,52 @@ def test_confirm_project_matrix_draft_api_validation_errors(tmp_path: Path) -> N
             json={"confirmed_by": "operator"},
         )
         assert missing_samples_confirm.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_confirm_project_matrix_draft_api_rejects_invalid_schedule(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id},
+        )
+        assert created.status_code == 201
+        draft = created.json()
+        draft_id = draft["record"]["project_matrix_draft_id"]
+
+        saved = client.put(
+            f"/api/projects/P1/matrix-drafts/{draft_id}",
+            json={
+                "pre_test_buffer_days": "1",
+                "post_test_buffer_days": "1",
+                "sample_received_date": "2026-06-01",
+                "planned_test_start_date": "2026-06-02",
+                "planned_test_complete_date": "2026-06-02",
+                "estimated_completion_date": "2026-06-03",
+                "groups": draft["groups"],
+                "rows": [
+                    {**row, "day_expression": "2"}
+                    if not row["is_sample_row"]
+                    else row
+                    for row in draft["rows"]
+                ],
+                "cells": draft["cells"],
+            },
+        )
+        assert saved.status_code == 200
+
+        confirmed = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+
+        assert confirmed.status_code == 422
+        assert "planned_test_complete_date is earlier" in confirmed.text
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

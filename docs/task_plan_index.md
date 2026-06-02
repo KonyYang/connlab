@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-02
-Status: no active planned task plan. Latest completed task plan is TASK_283G.
+Status: no active planned task plan. Latest completed task plan is TASK_284.
 
 ## Decision
 
@@ -50,7 +50,7 @@ none
 Latest completed task plan history:
 
 ```text
-docs/task_283g_report_style_requirement_family_normalization_plan.md
+docs/task_284_matrix_editor_test_days_and_project_schedule_plan.md
 ```
 
 Archived completed-plan pattern:

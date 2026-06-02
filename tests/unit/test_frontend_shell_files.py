@@ -2957,7 +2957,7 @@ def test_task226_matrix_editor_row_selector_and_selection_highlight_are_wired() 
         ".matrix-editor-row-selected",
         ".matrix-editor-group-selected",
         ".matrix-editor-group-selected-cell",
-        ".matrix-editor-main-table th:nth-child(n + 7)",
+        ".matrix-editor-main-table th:nth-child(n + 8)",
     ]:
         assert required_style in styles_source
 
@@ -3240,7 +3240,7 @@ def test_task237_matrix_editor_fixed_columns_bg_and_group_header_density_are_wir
     )
 
     for required_source in [
-        ".matrix-editor-main-table th:nth-child(-n + 6)",
+        ".matrix-editor-main-table th:nth-child(-n + 7)",
         "background: #f5f9ff;",
         ".matrix-editor-group-band",
         "padding: 6px 4px !important;",
@@ -4504,7 +4504,7 @@ def test_task279_matrix_editor_preserves_source_group_universe_inline() -> None:
         "isSelected: false",
         "readPreviewGroupToken(previewRow, previewGroup)",
         "readPreviewSampleValue(sourcePreview, previewGroup)",
-        "applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null)",
+        "applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null, loadedSchedulePlan)",
         "{!showSelectedGroupsOnly ? (",
         "aria-label={`Include group ${group.name || group.groupKey}`}",
         "isSourceBacked: true",
@@ -4550,3 +4550,52 @@ def test_task282_matrix_editor_consumes_source_preview_mcr_fields() -> None:
 
     assert "fetch(" not in workspace_source
     assert "StepInstance" not in workspace_source
+
+
+def test_task284_matrix_editor_schedule_planning_is_wired() -> None:
+    """TASK_284 adds Matrix planning days/date fields without calendar libs or execution scope."""
+    workspace_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    schedule_card_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixSchedulePlanningCard.tsx"
+    ).read_text(encoding="utf-8")
+    schedule_helper_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "matrixSchedulePlanning.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+    combined_source = workspace_source + "\n" + schedule_card_source + "\n" + schedule_helper_source
+
+    for required_source in [
+        "dayExpression: string;",
+        "<th>Day</th>",
+        "ariaLabel={`Row ${rowIndex + 1} day`}",
+        "MatrixSchedulePlanningCard",
+        "Project Schedule",
+        'type="date"',
+        "Test Days",
+        "calculateMatrixSchedule(",
+        "pre_test_buffer_days",
+        "planned_test_complete_date",
+        "estimated_completion_date",
+        "day_expression",
+    ]:
+        assert required_source in combined_source or required_source in client_source
+
+    for forbidden_source in [
+        "react-datepicker",
+        "@mui/x-date-pickers",
+        "FullCalendar",
+        "actual_test_start_date",
+        "actual_test_complete_date",
+        "StepInstance",
+    ]:
+        assert forbidden_source not in combined_source
+
+    assert ".matrix-editor-schedule-card" in styles_source
+    assert ".matrix-editor-test-days-row" in styles_source

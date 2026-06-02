@@ -54,6 +54,12 @@ function buildSessionSeed() {
     active_source_snapshot_id: "snapshot-a",
     source_status: "available",
     source_unavailable_message: null,
+    pre_test_buffer_days: null,
+    post_test_buffer_days: null,
+    sample_received_date: null,
+    planned_test_start_date: null,
+    planned_test_complete_date: null,
+    estimated_completion_date: null,
     source_preview_payload: {
       project_id: "P1",
       source_document_path: "D:/spec.docx",
@@ -113,6 +119,7 @@ function buildSessionSeed() {
           method: "EIA-364-18B",
           condition: "10x min magnification",
           requirement: "No detrimental condition",
+          day_expression: null,
           is_sample_row: false,
         },
       ],
@@ -714,6 +721,43 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(document.querySelector(".matrix-editor-save-status")?.textContent ?? "").not.toContain(
       "Sample quantity is required for selected groups."
     );
+    await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(0));
+  });
+
+  it("sends day and schedule planning fields when confirming Matrix", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText("Row 1 day"), { target: { value: "0.5x" } });
+    fireEvent.change(screen.getByLabelText("Pre-test buffer"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Post-test buffer"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Sample received"), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText("Planned start"), { target: { value: "2026-06-02" } });
+    fireEvent.change(screen.getByLabelText("Test complete"), { target: { value: "2026-06-03" } });
+    fireEvent.change(screen.getByLabelText("Estimated completion"), { target: { value: "2026-06-04" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+
+    await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1));
+    const request = apiMocks.confirmMatrixEditorSession.mock.calls[0][1];
+    expect(request.pre_test_buffer_days).toBe("1");
+    expect(request.post_test_buffer_days).toBe("1");
+    expect(request.sample_received_date).toBe("2026-06-01");
+    expect(request.planned_test_start_date).toBe("2026-06-02");
+    expect(request.planned_test_complete_date).toBe("2026-06-03");
+    expect(request.estimated_completion_date).toBe("2026-06-04");
+    expect(request.rows[0].day_expression).toBe("0.5x");
+  });
+
+  it("blocks confirm when schedule planning dates are insufficient", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText("Row 1 day"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Sample received"), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText("Planned start"), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText("Test complete"), { target: { value: "2026-06-02" } });
+    fireEvent.change(screen.getByLabelText("Estimated completion"), { target: { value: "2026-06-02" } });
+
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByText("Test complete is earlier than planned start plus critical group days.").length).toBeGreaterThan(0);
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(0));
   });
 

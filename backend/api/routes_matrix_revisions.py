@@ -30,6 +30,12 @@ class ProjectMatrixDraftRecordResponse(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class ProjectMatrixDraftGroupResponse(BaseModel):
@@ -56,6 +62,7 @@ class ProjectMatrixDraftRowResponse(BaseModel):
     method: str | None
     condition: str | None
     requirement: str | None
+    day_expression: str | None
     is_sample_row: bool
 
 
@@ -107,6 +114,12 @@ def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftRespons
             status=draft.record.status.value,
             created_at=draft.record.created_at,
             updated_at=draft.record.updated_at,
+            pre_test_buffer_days=draft.record.pre_test_buffer_days,
+            post_test_buffer_days=draft.record.post_test_buffer_days,
+            sample_received_date=draft.record.sample_received_date,
+            planned_test_start_date=draft.record.planned_test_start_date,
+            planned_test_complete_date=draft.record.planned_test_complete_date,
+            estimated_completion_date=draft.record.estimated_completion_date,
         ),
         groups=[
             ProjectMatrixDraftGroupResponse(
@@ -131,6 +144,7 @@ def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftRespons
                 method=row.method,
                 condition=row.condition,
                 requirement=row.requirement,
+                day_expression=row.day_expression,
                 is_sample_row=row.is_sample_row,
             )
             for row in draft.rows

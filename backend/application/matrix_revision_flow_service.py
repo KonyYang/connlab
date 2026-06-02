@@ -9,6 +9,12 @@ from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 
+from backend.application.matrix_schedule_planning import (
+    MatrixScheduleFields,
+    MatrixScheduleValidationError,
+    calculate_group_test_days,
+    validate_planned_schedule,
+)
 from backend.application.matrix_sample_quantity_guard import (
     find_selected_sample_quantity_violations,
     format_sample_quantity_violation_message,
@@ -180,6 +186,7 @@ class MatrixRevisionFlowService:
             raise MatrixRevisionFlowError(
                 format_sample_quantity_violation_message(sample_violations)
             )
+        _validate_draft_schedule(draft, selected_groups)
         snapshot = _build_confirmed_snapshot_from_revision_draft(
             draft=draft,
             selected_groups=selected_groups,
@@ -217,6 +224,12 @@ def _build_revision_draft_from_active(
         created_at=now,
         updated_at=now,
         base_confirmed_matrix_id=active.version.confirmed_matrix_id,
+        pre_test_buffer_days=active.version.pre_test_buffer_days,
+        post_test_buffer_days=active.version.post_test_buffer_days,
+        sample_received_date=active.version.sample_received_date,
+        planned_test_start_date=active.version.planned_test_start_date,
+        planned_test_complete_date=active.version.planned_test_complete_date,
+        estimated_completion_date=active.version.estimated_completion_date,
     )
     groups = tuple(
         ProjectMatrixDraftGroup(
@@ -246,6 +259,7 @@ def _build_revision_draft_from_active(
             method=row.method,
             condition=row.condition,
             requirement=row.requirement,
+            day_expression=row.day_expression,
             is_sample_row=False,
         )
         for index, row in enumerate(
@@ -321,6 +335,14 @@ def _build_confirmed_snapshot_from_revision_draft(
         status=ConfirmedMatrixStatus.CONFIRMED,
         confirmed_by=confirmed_by,
         confirmed_at=confirmed_at,
+        pre_test_buffer_days=_normalize_optional_text(draft.record.pre_test_buffer_days),
+        post_test_buffer_days=_normalize_optional_text(draft.record.post_test_buffer_days),
+        sample_received_date=_normalize_optional_text(draft.record.sample_received_date),
+        planned_test_start_date=_normalize_optional_text(draft.record.planned_test_start_date),
+        planned_test_complete_date=_normalize_optional_text(
+            draft.record.planned_test_complete_date
+        ),
+        estimated_completion_date=_normalize_optional_text(draft.record.estimated_completion_date),
     )
     sorted_groups = sorted(selected_groups, key=lambda item: item.group_order)
     groups: list[ConfirmedMatrixGroup] = []
@@ -362,6 +384,7 @@ def _build_confirmed_snapshot_from_revision_draft(
                 method=_normalize_optional_text(row.method),
                 condition=_normalize_optional_text(row.condition),
                 requirement=_normalize_optional_text(row.requirement),
+                day_expression=_normalize_optional_text(row.day_expression),
             )
         )
     cells: list[ConfirmedMatrixCell] = []
@@ -402,6 +425,46 @@ def _normalize_optional_text(value: str | None) -> str | None:
         return None
     text = value.strip()
     return text or None
+
+
+def _validate_draft_schedule(
+    draft: ProjectMatrixDraftSnapshot,
+    selected_groups: tuple[ProjectMatrixDraftGroup, ...],
+) -> None:
+    """Validate Matrix planning fields before confirming a revision."""
+    try:
+        totals = calculate_group_test_days(
+            rows=(
+                {
+                    "row_id": row.draft_row_id,
+                    "day_expression": row.day_expression,
+                    "is_sample_row": row.is_sample_row,
+                }
+                for row in draft.rows
+            ),
+            cells=(
+                {
+                    "row_id": cell.draft_row_id,
+                    "group_id": cell.draft_group_id,
+                    "cell_value": cell.cell_value,
+                }
+                for cell in draft.cells
+            ),
+            selected_group_ids=[group.draft_group_id for group in selected_groups],
+        )
+        validate_planned_schedule(
+            fields=MatrixScheduleFields(
+                pre_test_buffer_days=draft.record.pre_test_buffer_days,
+                post_test_buffer_days=draft.record.post_test_buffer_days,
+                sample_received_date=draft.record.sample_received_date,
+                planned_test_start_date=draft.record.planned_test_start_date,
+                planned_test_complete_date=draft.record.planned_test_complete_date,
+                estimated_completion_date=draft.record.estimated_completion_date,
+            ),
+            group_test_days=totals,
+        )
+    except MatrixScheduleValidationError as exc:
+        raise MatrixRevisionFlowError(str(exc)) from exc
 
 
 def _utc_now() -> str:

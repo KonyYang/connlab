@@ -48,6 +48,12 @@ class ProjectMatrixDraftRecordModel(Base):
     status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    pre_test_buffer_days: Mapped[str | None] = mapped_column(String(64))
+    post_test_buffer_days: Mapped[str | None] = mapped_column(String(64))
+    sample_received_date: Mapped[str | None] = mapped_column(String(32))
+    planned_test_start_date: Mapped[str | None] = mapped_column(String(32))
+    planned_test_complete_date: Mapped[str | None] = mapped_column(String(32))
+    estimated_completion_date: Mapped[str | None] = mapped_column(String(32))
 
 
 class ProjectMatrixDraftGroupModel(Base):
@@ -118,6 +124,7 @@ class ProjectMatrixDraftRowModel(Base):
     method: Mapped[str | None] = mapped_column(Text)
     condition: Mapped[str | None] = mapped_column(Text)
     requirement: Mapped[str | None] = mapped_column(Text)
+    day_expression: Mapped[str | None] = mapped_column(String(64))
     is_sample_row: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 

@@ -46,6 +46,12 @@ class ProjectMatrixDraftRepository:
             raise LookupError("Project matrix draft record not found.")
         record_row.status = snapshot.record.status.value
         record_row.updated_at = snapshot.record.updated_at
+        record_row.pre_test_buffer_days = snapshot.record.pre_test_buffer_days
+        record_row.post_test_buffer_days = snapshot.record.post_test_buffer_days
+        record_row.sample_received_date = snapshot.record.sample_received_date
+        record_row.planned_test_start_date = snapshot.record.planned_test_start_date
+        record_row.planned_test_complete_date = snapshot.record.planned_test_complete_date
+        record_row.estimated_completion_date = snapshot.record.estimated_completion_date
         self._session.execute(
             delete(ProjectMatrixDraftCellModel).where(
                 ProjectMatrixDraftCellModel.project_matrix_draft_id
@@ -145,6 +151,12 @@ def _to_record_model(record: ProjectMatrixDraftRecord) -> ProjectMatrixDraftReco
         status=record.status.value,
         created_at=record.created_at,
         updated_at=record.updated_at,
+        pre_test_buffer_days=record.pre_test_buffer_days,
+        post_test_buffer_days=record.post_test_buffer_days,
+        sample_received_date=record.sample_received_date,
+        planned_test_start_date=record.planned_test_start_date,
+        planned_test_complete_date=record.planned_test_complete_date,
+        estimated_completion_date=record.estimated_completion_date,
     )
 
 
@@ -177,6 +189,7 @@ def _to_row_models(rows: tuple[ProjectMatrixDraftRow, ...]) -> list[ProjectMatri
             method=row.method,
             condition=row.condition,
             requirement=row.requirement,
+            day_expression=row.day_expression,
             is_sample_row=row.is_sample_row,
         )
         for row in rows
@@ -208,6 +221,12 @@ def _to_record_domain(row: ProjectMatrixDraftRecordModel) -> ProjectMatrixDraftR
         status=ProjectMatrixDraftStatus(row.status),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        pre_test_buffer_days=row.pre_test_buffer_days,
+        post_test_buffer_days=row.post_test_buffer_days,
+        sample_received_date=row.sample_received_date,
+        planned_test_start_date=row.planned_test_start_date,
+        planned_test_complete_date=row.planned_test_complete_date,
+        estimated_completion_date=row.estimated_completion_date,
     )
 
 
@@ -236,6 +255,7 @@ def _to_row_domain(row: ProjectMatrixDraftRowModel) -> ProjectMatrixDraftRow:
         method=row.method,
         condition=row.condition,
         requirement=row.requirement,
+        day_expression=row.day_expression,
         is_sample_row=row.is_sample_row,
     )
 

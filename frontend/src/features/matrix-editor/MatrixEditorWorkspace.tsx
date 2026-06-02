@@ -17,6 +17,13 @@ import {
   type MatrixImportCommitResponse,
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
+import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
+import {
+  calculateMatrixSchedule,
+  emptySchedulePlan,
+  formatPlanningDays,
+  type MatrixSchedulePlan,
+} from "./matrixSchedulePlanning";
 import "../../workbench.css";
 
 type MatrixEditorWorkspaceProps = {
@@ -45,6 +52,7 @@ type EditableMatrixRow = {
   method: string;
   condition: string;
   requirement: string;
+  dayExpression: string;
   initialMethod: string;
   initialCondition: string;
   initialRequirement: string;
@@ -56,6 +64,7 @@ type EditableMatrixRow = {
 type MatrixSnapshot = {
   rows: EditableMatrixRow[];
   groups: GroupColumn[];
+  schedulePlan: MatrixSchedulePlan;
 };
 
 type MatrixSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -131,6 +140,7 @@ function buildInitialMatrixRows(): EditableMatrixRow[] {
       method: "EIA-364-18B",
       condition: "10x min magnification",
       requirement: "No detrimental condition",
+      dayExpression: "",
       initialMethod: "EIA-364-18B",
       initialCondition: "10x min magnification",
       initialRequirement: "No detrimental condition",
@@ -148,6 +158,7 @@ function buildInitialMatrixRows(): EditableMatrixRow[] {
       method: "",
       condition: "",
       requirement: "",
+      dayExpression: "",
       initialMethod: "",
       initialCondition: "",
       initialRequirement: "",
@@ -180,6 +191,7 @@ function buildEmptyRow(groups: string[], rowIndex: number): EditableMatrixRow {
     method: "",
     condition: "",
     requirement: "",
+    dayExpression: "",
     initialMethod: "",
     initialCondition: "",
     initialRequirement: "",
@@ -241,6 +253,7 @@ function buildMatrixFromPreview(
       method: row.method ?? "",
       condition: row.condition ?? "",
       requirement: row.requirement ?? "",
+      dayExpression: "",
       initialMethod: row.method ?? "",
       initialCondition: row.condition ?? "",
       initialRequirement: row.requirement ?? "",
@@ -438,6 +451,7 @@ function buildMatrixFromProjectMatrixDraft(
         method: row.method ?? "",
         condition: row.condition ?? "",
         requirement: row.requirement ?? "",
+        dayExpression: row.day_expression ?? "",
         initialMethod: row.method ?? "",
         initialCondition: row.condition ?? "",
         initialRequirement: row.requirement ?? "",
@@ -539,6 +553,7 @@ function buildMatrixFromSessionSeedDraft(
       method: existing?.method?.trim() ? existing.method : previewRow.method ?? "",
       condition: existing?.condition?.trim() ? existing.condition : previewRow.condition ?? "",
       requirement: existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? "",
+      dayExpression: existing?.dayExpression ?? "",
       initialMethod: existing?.initialMethod ?? (existing?.method?.trim() ? existing.method : previewRow.method ?? ""),
       initialCondition: existing?.initialCondition ?? (existing?.condition?.trim() ? existing.condition : previewRow.condition ?? ""),
       initialRequirement: existing?.initialRequirement ?? (existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? ""),
@@ -596,6 +611,7 @@ function buildSessionDraftFromProjectMatrixDraft(
       method: row.method ?? null,
       condition: row.condition ?? null,
       requirement: row.requirement ?? null,
+      day_expression: row.day_expression ?? null,
       is_sample_row: row.is_sample_row,
     })),
     cells: draft.cells.map((cell) => ({
@@ -609,7 +625,8 @@ function buildSessionDraftFromProjectMatrixDraft(
 function buildDraftSavePayload(
   rows: EditableMatrixRow[],
   groups: GroupColumn[],
-  samples: Record<string, string>
+  samples: Record<string, string>,
+  schedulePlan: MatrixSchedulePlan
 ): ProjectMatrixDraftSaveRequest {
   const payloadGroups = groups.map((group, index) => ({
     draft_group_id: group.draftGroupId ?? group.id,
@@ -630,6 +647,7 @@ function buildDraftSavePayload(
     method: row.method.trim() ? row.method : null,
     condition: row.condition.trim() ? row.condition : null,
     requirement: row.requirement.trim() ? row.requirement : null,
+    day_expression: row.dayExpression.trim() ? row.dayExpression.trim() : null,
     is_sample_row: row.isSampleRow,
   }));
   const payloadCells: ProjectMatrixDraftSaveRequest["cells"] = [];
@@ -647,6 +665,12 @@ function buildDraftSavePayload(
     });
   });
   return {
+    pre_test_buffer_days: schedulePlan.preTestBufferDays.trim() || null,
+    post_test_buffer_days: schedulePlan.postTestBufferDays.trim() || null,
+    sample_received_date: schedulePlan.sampleReceivedDate.trim() || null,
+    planned_test_start_date: schedulePlan.plannedTestStartDate.trim() || null,
+    planned_test_complete_date: schedulePlan.plannedTestCompleteDate.trim() || null,
+    estimated_completion_date: schedulePlan.estimatedCompletionDate.trim() || null,
     groups: payloadGroups,
     rows: payloadRows,
     cells: payloadCells,
@@ -669,6 +693,7 @@ type AuthorityComparableRow = {
   method: string;
   condition: string;
   requirement: string;
+  dayExpression: string;
 };
 
 type AuthorityComparableDraftGroup = AuthorityComparableGroup & {
@@ -703,6 +728,7 @@ function buildAuthorityComparableSignatureFromDraftPayload(
       method: row.method ?? "",
       condition: row.condition ?? "",
       requirement: row.requirement ?? "",
+      dayExpression: row.day_expression ?? "",
       draftRowId: row.draft_row_id ?? "",
     }))
     .sort((left, right) => left.rowOrder - right.rowOrder);
@@ -746,16 +772,26 @@ function buildAuthorityComparableSignatureFromDraftPayload(
       method: row.method.trim(),
       condition: row.condition.trim(),
       requirement: row.requirement.trim(),
+      dayExpression: row.dayExpression.trim(),
       cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
     })),
+    schedule: {
+      preTestBufferDays: payload.pre_test_buffer_days ?? "",
+      postTestBufferDays: payload.post_test_buffer_days ?? "",
+      sampleReceivedDate: payload.sample_received_date ?? "",
+      plannedTestStartDate: payload.planned_test_start_date ?? "",
+      plannedTestCompleteDate: payload.planned_test_complete_date ?? "",
+      estimatedCompletionDate: payload.estimated_completion_date ?? "",
+    },
   });
 }
 
 function buildAuthorityComparableSignatureFromDraft(
-  draft: MatrixEditorSessionDraft
+  draft: MatrixEditorSessionDraft,
+  schedulePlan: MatrixSchedulePlan
 ): string {
   const mapped = buildMatrixFromProjectMatrixDraft(draft);
-  const payload = buildDraftSavePayload(mapped.rows, mapped.groups, mapped.samples);
+  const payload = buildDraftSavePayload(mapped.rows, mapped.groups, mapped.samples, schedulePlan);
   return buildAuthorityComparableSignatureFromDraftPayload(payload);
 }
 
@@ -787,6 +823,7 @@ function buildAuthorityComparableSignatureFromConfirmedSnapshot(
       method: row.method ?? "",
       condition: row.condition ?? "",
       requirement: row.requirement ?? "",
+      dayExpression: row.day_expression ?? "",
     }))
     .sort((left, right) => left.rowOrder - right.rowOrder);
 
@@ -829,12 +866,43 @@ function buildAuthorityComparableSignatureFromConfirmedSnapshot(
       method: row.method.trim(),
       condition: row.condition.trim(),
       requirement: row.requirement.trim(),
+      dayExpression: row.dayExpression.trim(),
       cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
     })),
+    schedule: {
+      preTestBufferDays: snapshot.version.pre_test_buffer_days ?? "",
+      postTestBufferDays: snapshot.version.post_test_buffer_days ?? "",
+      sampleReceivedDate: snapshot.version.sample_received_date ?? "",
+      plannedTestStartDate: snapshot.version.planned_test_start_date ?? "",
+      plannedTestCompleteDate: snapshot.version.planned_test_complete_date ?? "",
+      estimatedCompletionDate: snapshot.version.estimated_completion_date ?? "",
+    },
   });
 }
 
 const MVP_REVISION_CONFIRMED_BY = "connlab-operator";
+
+function schedulePlanFromSeed(seed: MatrixEditorSessionSeed): MatrixSchedulePlan {
+  return {
+    preTestBufferDays: seed.pre_test_buffer_days ?? "",
+    postTestBufferDays: seed.post_test_buffer_days ?? "",
+    sampleReceivedDate: seed.sample_received_date ?? "",
+    plannedTestStartDate: seed.planned_test_start_date ?? "",
+    plannedTestCompleteDate: seed.planned_test_complete_date ?? "",
+    estimatedCompletionDate: seed.estimated_completion_date ?? "",
+  };
+}
+
+function schedulePlanFromProjectMatrixDraft(draft: ProjectMatrixDraft): MatrixSchedulePlan {
+  return {
+    preTestBufferDays: draft.record.pre_test_buffer_days ?? "",
+    postTestBufferDays: draft.record.post_test_buffer_days ?? "",
+    sampleReceivedDate: draft.record.sample_received_date ?? "",
+    plannedTestStartDate: draft.record.planned_test_start_date ?? "",
+    plannedTestCompleteDate: draft.record.planned_test_complete_date ?? "",
+    estimatedCompletionDate: draft.record.estimated_completion_date ?? "",
+  };
+}
 
 function parseRequestError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -1457,6 +1525,7 @@ export function MatrixEditorWorkspace({
   const [stepOutputOverrides, setStepOutputOverrides] = useState<Record<string, StepOutputOverride>>({});
   const [sampleValues, setSampleValues] = useState<Record<string, string>>({ "group-1": "" });
   const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});
+  const [schedulePlan, setSchedulePlan] = useState<MatrixSchedulePlan>(() => emptySchedulePlan());
   const [importPreview, setImportPreview] = useState<MatrixPreviewResponse | null>(null);
   const [importPreviewPdfToken, setImportPreviewPdfToken] = useState<string | null>(null);
   const [importingPreview, setImportingPreview] = useState(false);
@@ -1486,7 +1555,8 @@ export function MatrixEditorWorkspace({
 
   const applyDraftSnapshotToEditor = (
     draft: MatrixEditorSessionDraft,
-    sourcePreview: MatrixPreviewResponse | null = null
+    sourcePreview: MatrixPreviewResponse | null = null,
+    nextSchedulePlan: MatrixSchedulePlan = emptySchedulePlan()
   ): void => {
     const mapped = buildMatrixFromSessionSeedDraft(draft, sourcePreview);
     const nextGroups = mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns();
@@ -1496,9 +1566,10 @@ export function MatrixEditorWorkspace({
     setEditableRows(nextRows);
     setSampleValues(nextSamples);
     setSampleMergeNotes({});
+    setSchedulePlan(nextSchedulePlan);
     setSelectedGroupId(nextGroups[0]?.id ?? null);
     setSelectedRowId(null);
-    const baselinePayload = buildDraftSavePayload(nextRows, nextGroups, nextSamples);
+    const baselinePayload = buildDraftSavePayload(nextRows, nextGroups, nextSamples, nextSchedulePlan);
     setSaveBaselineSignature(JSON.stringify(baselinePayload));
     setSaveState("saved");
     setActiveAuthorityConfirmed(false);
@@ -1516,22 +1587,25 @@ export function MatrixEditorWorkspace({
           return;
         }
         if (seed.editor_draft) {
-          applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null);
+          const loadedSchedulePlan = schedulePlanFromSeed(seed);
+          applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null, loadedSchedulePlan);
           setActiveAuthorityBaselineSignature(
-            buildAuthorityComparableSignatureFromDraft(seed.editor_draft)
+            buildAuthorityComparableSignatureFromDraft(seed.editor_draft, loadedSchedulePlan)
           );
         } else {
           const defaultRows = buildInitialMatrixRows();
           const defaultGroups = buildInitialGroupColumns();
           const defaultSamples: Record<string, string> = { "group-1": "" };
+          const defaultSchedulePlan = emptySchedulePlan();
           setEditableRows(defaultRows);
           setGroupColumns(defaultGroups);
           setSampleValues(defaultSamples);
           setSampleMergeNotes({});
+          setSchedulePlan(defaultSchedulePlan);
           setSelectedGroupId(defaultGroups[0]?.id ?? null);
           setSelectedRowId(null);
           setSaveBaselineSignature(
-            JSON.stringify(buildDraftSavePayload(defaultRows, defaultGroups, defaultSamples))
+            JSON.stringify(buildDraftSavePayload(defaultRows, defaultGroups, defaultSamples, defaultSchedulePlan))
           );
           setActiveAuthorityBaselineSignature(null);
           setSaveState("idle");
@@ -1757,7 +1831,8 @@ export function MatrixEditorWorkspace({
   const currentSavePayload = buildDraftSavePayload(
     editableRows,
     groupColumns,
-    sampleValues
+    sampleValues,
+    schedulePlan
   );
   const currentSaveSignature = JSON.stringify(currentSavePayload);
   const hasUnsavedChanges =
@@ -1770,6 +1845,26 @@ export function MatrixEditorWorkspace({
   const hasAnyStepTokenValue = currentSavePayload.cells.some(
     (cell) => selectedDraftGroupIds.has(cell.draft_group_id) && (cell.cell_value ?? "").trim().length > 0
   );
+  const scheduleCalculation = calculateMatrixSchedule(
+    editableRows.map((row) => ({
+      id: row.id,
+      isSampleRow: row.isSampleRow,
+      dayExpression: row.dayExpression,
+      groups: row.groups,
+    })),
+    groupColumns.map((group) => ({
+      id: group.id,
+      name: group.name || group.groupKey,
+      isSelected: group.isSelected,
+    })),
+    schedulePlan
+  );
+  const hasSchedulePlanningError = !scheduleCalculation.isValid;
+  const schedulePlanningErrorMessage =
+    Object.values(scheduleCalculation.rowErrors)[0] ??
+    Object.values(scheduleCalculation.bufferErrors)[0] ??
+    scheduleCalculation.dateError ??
+    "";
   const invalidSelectedSampleGroupIds = buildInvalidSelectedSampleGroupIds(
     groupColumns,
     sampleValues
@@ -1784,6 +1879,8 @@ export function MatrixEditorWorkspace({
         ? groupNameErrorMessage || stepTokenErrorMessage
         : hasSelectedSampleQuantityError
           ? "Sample quantity is required for selected groups."
+        : hasSchedulePlanningError
+          ? schedulePlanningErrorMessage
         : isPublishBusy
           ? "Action in progress."
           : !hasAnyStepTokenValue
@@ -1861,7 +1958,11 @@ export function MatrixEditorWorkspace({
         preview_payload: importPreview,
         selected_group_keys: selectedGroupKeys,
       });
-      applyDraftSnapshotToEditor(buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft), importPreview);
+      applyDraftSnapshotToEditor(
+        buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
+        importPreview,
+        schedulePlanFromProjectMatrixDraft(response.project_matrix_draft)
+      );
       setSessionSourceImportId(response.source_import_id);
       setSessionSourceSnapshotId(response.source_snapshot_id);
       setSaveState("saved");
@@ -2003,7 +2104,8 @@ export function MatrixEditorWorkspace({
       ...previous,
       {
         rows: cloneRows(editableRows),
-        groups: cloneGroups(groupColumns)
+        groups: cloneGroups(groupColumns),
+        schedulePlan,
       }
     ]);
   };
@@ -2361,6 +2463,12 @@ export function MatrixEditorWorkspace({
       source_import_id: sessionSourceImportId,
       source_snapshot_id: sessionSourceSnapshotId,
       confirmed_by: MVP_REVISION_CONFIRMED_BY,
+      pre_test_buffer_days: currentSavePayload.pre_test_buffer_days ?? null,
+      post_test_buffer_days: currentSavePayload.post_test_buffer_days ?? null,
+      sample_received_date: currentSavePayload.sample_received_date ?? null,
+      planned_test_start_date: currentSavePayload.planned_test_start_date ?? null,
+      planned_test_complete_date: currentSavePayload.planned_test_complete_date ?? null,
+      estimated_completion_date: currentSavePayload.estimated_completion_date ?? null,
       groups: currentSavePayload.groups.map((group, index) => ({
         draft_group_id:
           group.draft_group_id ?? `session-group-${index + 1}`,
@@ -2381,6 +2489,7 @@ export function MatrixEditorWorkspace({
         method: row.method ?? null,
         condition: row.condition ?? null,
         requirement: row.requirement ?? null,
+        day_expression: row.day_expression ?? null,
         is_sample_row: Boolean(row.is_sample_row),
       })),
       cells: currentSavePayload.cells,
@@ -2572,6 +2681,7 @@ export function MatrixEditorWorkspace({
                   <th>Method</th>
                   <th>Condition</th>
                   <th>Requirement</th>
+                  <th>Day</th>
                   {visibleGroupColumns.map((group) => (
                     <th
                       className={`matrix-editor-group-band${selectedGroupId === group.id ? " matrix-editor-group-selected" : ""}`}
@@ -2676,6 +2786,15 @@ export function MatrixEditorWorkspace({
                             onChange={(value) => updateTextField(rowIndex, "requirement", value)}
                           />
                         </td>
+                        <td>
+                          <MatrixAutoGrowTextarea
+                            ariaLabel={`Row ${rowIndex + 1} day`}
+                            className={scheduleCalculation.rowErrors[row.id] ? "is-invalid" : undefined}
+                            errorMessage={scheduleCalculation.rowErrors[row.id]}
+                            value={row.dayExpression}
+                            onChange={(value) => updateTextField(rowIndex, "dayExpression", value)}
+                          />
+                        </td>
                         {visibleGroupColumns.map((group) => {
                           const cellKey = `${group.id}-${rowIndex}`;
                           const cellErrorMessage = stepCellErrorMessageByKey.get(cellKey) ?? "";
@@ -2719,6 +2838,7 @@ export function MatrixEditorWorkspace({
                   <td />
                   <td />
                   <td />
+                  <td />
                   {visibleGroupColumns.map((group) => (
                     <td key={`sample-${group.id}`}>
                       <MatrixAutoGrowTextarea
@@ -2739,6 +2859,20 @@ export function MatrixEditorWorkspace({
                           });
                         }}
                       />
+                    </td>
+                  ))}
+                </tr>
+                <tr className="matrix-editor-test-days-row">
+                  <td />
+                  <td className="matrix-editor-sample-label-cell">Test Days</td>
+                  <td />
+                  <td />
+                  <td />
+                  <td />
+                  <td />
+                  {visibleGroupColumns.map((group) => (
+                    <td key={`days-${group.id}`}>
+                      {group.isSelected ? `${formatPlanningDays(scheduleCalculation.groupDays[group.id] ?? 0)} d` : ""}
                     </td>
                   ))}
                 </tr>
@@ -2845,6 +2979,19 @@ export function MatrixEditorWorkspace({
               </div>
             ) : null}
           </div>
+          <MatrixSchedulePlanningCard
+            plan={schedulePlan}
+            groups={groupColumns.map((group) => ({
+              id: group.id,
+              name: group.name || group.groupKey,
+              isSelected: group.isSelected,
+            }))}
+            calculation={scheduleCalculation}
+            onChange={(nextPlan) => {
+              markUnsaved();
+              setSchedulePlan(nextPlan);
+            }}
+          />
         </section>
 
         <aside className="matrix-editor-step-workspace" aria-label="Group Step Workspace">

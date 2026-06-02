@@ -107,6 +107,7 @@ class ProjectMatrixDraftRowInput:
     method: str | None = None
     condition: str | None = None
     requirement: str | None = None
+    day_expression: str | None = None
     is_sample_row: bool = False
 
 
@@ -128,6 +129,12 @@ class UpdateProjectMatrixDraftCommand:
     groups: tuple[ProjectMatrixDraftGroupInput, ...]
     rows: tuple[ProjectMatrixDraftRowInput, ...]
     cells: tuple[ProjectMatrixDraftCellInput, ...]
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class ProjectMatrixDraftPersistenceService:
@@ -283,6 +290,7 @@ def _build_draft_snapshot(
             method=None,
             condition=None,
             requirement=None,
+            day_expression=None,
             is_sample_row=row.is_sample_row,
         )
         for row in source_snapshot.rows
@@ -399,6 +407,12 @@ def _build_updated_snapshot(
         created_at=existing.record.created_at,
         updated_at=now,
         base_confirmed_matrix_id=existing.record.base_confirmed_matrix_id,
+        pre_test_buffer_days=_normalize_optional_text(command.pre_test_buffer_days),
+        post_test_buffer_days=_normalize_optional_text(command.post_test_buffer_days),
+        sample_received_date=_normalize_optional_text(command.sample_received_date),
+        planned_test_start_date=_normalize_optional_text(command.planned_test_start_date),
+        planned_test_complete_date=_normalize_optional_text(command.planned_test_complete_date),
+        estimated_completion_date=_normalize_optional_text(command.estimated_completion_date),
     )
     return ProjectMatrixDraftSnapshot(
         record=updated_record,
@@ -466,6 +480,7 @@ def _normalized_row(
     method = _normalize_optional_text(row_input.method)
     condition = _normalize_optional_text(row_input.condition)
     requirement = _normalize_optional_text(row_input.requirement)
+    day_expression = _normalize_optional_text(row_input.day_expression)
     return ProjectMatrixDraftRow(
         draft_row_id=draft_row_id,
         project_matrix_draft_id=draft_id,
@@ -476,6 +491,7 @@ def _normalized_row(
         method=method,
         condition=condition,
         requirement=requirement,
+        day_expression=day_expression,
         is_sample_row=bool(row_input.is_sample_row),
     )
 

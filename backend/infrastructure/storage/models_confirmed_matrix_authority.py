@@ -56,6 +56,12 @@ class ConfirmedMatrixVersionModel(Base):
     )
     superseded_at: Mapped[str | None] = mapped_column(String(64))
     superseded_reason: Mapped[str | None] = mapped_column(Text)
+    pre_test_buffer_days: Mapped[str | None] = mapped_column(String(64))
+    post_test_buffer_days: Mapped[str | None] = mapped_column(String(64))
+    sample_received_date: Mapped[str | None] = mapped_column(String(32))
+    planned_test_start_date: Mapped[str | None] = mapped_column(String(32))
+    planned_test_complete_date: Mapped[str | None] = mapped_column(String(32))
+    estimated_completion_date: Mapped[str | None] = mapped_column(String(32))
 
 
 class ConfirmedMatrixGroupModel(Base):
@@ -133,6 +139,7 @@ class ConfirmedMatrixRowModel(Base):
     method: Mapped[str | None] = mapped_column(Text)
     condition: Mapped[str | None] = mapped_column(Text)
     requirement: Mapped[str | None] = mapped_column(Text)
+    day_expression: Mapped[str | None] = mapped_column(String(64))
 
 
 class ConfirmedMatrixCellModel(Base):

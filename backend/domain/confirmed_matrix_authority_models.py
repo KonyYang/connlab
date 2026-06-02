@@ -24,6 +24,12 @@ class ConfirmedMatrixVersion:
     superseded_by_confirmed_matrix_id: str | None = None
     superseded_at: str | None = None
     superseded_reason: str | None = None
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +61,7 @@ class ConfirmedMatrixRow:
     method: str | None = None
     condition: str | None = None
     requirement: str | None = None
+    day_expression: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

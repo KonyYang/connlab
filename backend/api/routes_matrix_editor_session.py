@@ -49,6 +49,7 @@ class MatrixEditorSessionRowResponse(BaseModel):
     method: str | None
     condition: str | None
     requirement: str | None
+    day_expression: str | None
     is_sample_row: bool
 
 
@@ -80,6 +81,12 @@ class MatrixEditorSessionSeedResponse(BaseModel):
     source_preview_payload: dict | None
     source_status: str
     source_unavailable_message: str | None
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class MatrixEditorSessionGroupRequest(BaseModel):
@@ -106,6 +113,7 @@ class MatrixEditorSessionRowRequest(BaseModel):
     method: str | None = None
     condition: str | None = None
     requirement: str | None = None
+    day_expression: str | None = None
     is_sample_row: bool = False
 
 
@@ -131,6 +139,12 @@ class MatrixEditorSessionConfirmRequest(BaseModel):
     groups: list[MatrixEditorSessionGroupRequest]
     rows: list[MatrixEditorSessionRowRequest]
     cells: list[MatrixEditorSessionCellRequest]
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class MatrixEditorSessionConfirmResponse(BaseModel):
@@ -185,6 +199,7 @@ def get_matrix_editor_session_seed(
                         method=row.method,
                         condition=row.condition,
                         requirement=row.requirement,
+                        day_expression=row.day_expression,
                         is_sample_row=row.is_sample_row,
                     )
                     for row in seed.editor_draft.rows
@@ -204,6 +219,12 @@ def get_matrix_editor_session_seed(
         source_preview_payload=seed.source_preview_payload,
         source_status=seed.source_status,
         source_unavailable_message=seed.source_unavailable_message,
+        pre_test_buffer_days=seed.pre_test_buffer_days,
+        post_test_buffer_days=seed.post_test_buffer_days,
+        sample_received_date=seed.sample_received_date,
+        planned_test_start_date=seed.planned_test_start_date,
+        planned_test_complete_date=seed.planned_test_complete_date,
+        estimated_completion_date=seed.estimated_completion_date,
     )
 
 
@@ -252,6 +273,7 @@ def confirm_matrix_editor_session(
                         method=item.method,
                         condition=item.condition,
                         requirement=item.requirement,
+                        day_expression=item.day_expression,
                         is_sample_row=item.is_sample_row,
                     )
                     for item in request.rows
@@ -264,6 +286,12 @@ def confirm_matrix_editor_session(
                     )
                     for item in request.cells
                 ),
+                pre_test_buffer_days=request.pre_test_buffer_days,
+                post_test_buffer_days=request.post_test_buffer_days,
+                sample_received_date=request.sample_received_date,
+                planned_test_start_date=request.planned_test_start_date,
+                planned_test_complete_date=request.planned_test_complete_date,
+                estimated_completion_date=request.estimated_completion_date,
             )
         )
     except MatrixEditorSessionNotFoundError as exc:

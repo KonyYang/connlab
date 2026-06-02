@@ -137,6 +137,12 @@ def test_project_matrix_draft_service_update_replaces_sparse_cells_and_keeps_sou
         UpdateProjectMatrixDraftCommand(
             project_id="P1",
             project_matrix_draft_id=created.record.project_matrix_draft_id,
+            pre_test_buffer_days="1",
+            post_test_buffer_days="2",
+            sample_received_date="2026-06-01",
+            planned_test_start_date="2026-06-02",
+            planned_test_complete_date="2026-06-05",
+            estimated_completion_date="2026-06-07",
             groups=tuple(
                 ProjectMatrixDraftGroupInput(
                     draft_group_id=group.draft_group_id,
@@ -160,6 +166,7 @@ def test_project_matrix_draft_service_update_replaces_sparse_cells_and_keeps_sou
                     method="M1" if row.row_order == 1 else "M2",
                     condition="C1" if row.row_order == 1 else "C2",
                     requirement="R1" if row.row_order == 1 else "R2",
+                    day_expression="0.5x" if row.row_order == 1 else "1",
                     is_sample_row=row.is_sample_row,
                 )
                 for row in created.rows
@@ -183,6 +190,13 @@ def test_project_matrix_draft_service_update_replaces_sparse_cells_and_keeps_sou
     assert updated.rows[0].method == "M1"
     assert updated.rows[0].condition == "C1"
     assert updated.rows[0].requirement == "R1"
+    assert updated.rows[0].day_expression == "0.5x"
+    assert updated.record.pre_test_buffer_days == "1"
+    assert updated.record.post_test_buffer_days == "2"
+    assert updated.record.sample_received_date == "2026-06-01"
+    assert updated.record.planned_test_start_date == "2026-06-02"
+    assert updated.record.planned_test_complete_date == "2026-06-05"
+    assert updated.record.estimated_completion_date == "2026-06-07"
     assert service._source.source_snapshot == before_source
     assert store.replaced_snapshots[-1].record.project_matrix_draft_id == created.record.project_matrix_draft_id
 

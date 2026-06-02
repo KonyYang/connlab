@@ -59,6 +59,12 @@ class ProjectMatrixDraftRecordResponse(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class ProjectMatrixDraftGroupResponse(BaseModel):
@@ -85,6 +91,7 @@ class ProjectMatrixDraftRowResponse(BaseModel):
     method: str | None
     condition: str | None
     requirement: str | None
+    day_expression: str | None
     is_sample_row: bool
 
 
@@ -117,6 +124,12 @@ class ProjectMatrixDraftSummaryResponse(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class ProjectMatrixDraftGroupSaveRequest(BaseModel):
@@ -143,6 +156,7 @@ class ProjectMatrixDraftRowSaveRequest(BaseModel):
     method: str | None = None
     condition: str | None = None
     requirement: str | None = None
+    day_expression: str | None = None
     is_sample_row: bool = False
 
 
@@ -160,6 +174,12 @@ class ProjectMatrixDraftSaveRequest(BaseModel):
     groups: list[ProjectMatrixDraftGroupSaveRequest]
     rows: list[ProjectMatrixDraftRowSaveRequest]
     cells: list[ProjectMatrixDraftCellSaveRequest]
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class ConfirmProjectMatrixDraftRequest(BaseModel):
@@ -191,6 +211,12 @@ class ConfirmedMatrixVersionResponse(BaseModel):
     superseded_by_confirmed_matrix_id: str | None
     superseded_at: str | None
     superseded_reason: str | None
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
 
 
 class ConfirmedMatrixGroupResponse(BaseModel):
@@ -218,6 +244,7 @@ class ConfirmedMatrixRowResponse(BaseModel):
     method: str | None
     condition: str | None
     requirement: str | None
+    day_expression: str | None
 
 
 class ConfirmedMatrixCellResponse(BaseModel):
@@ -310,6 +337,12 @@ def list_project_matrix_drafts(
             status=record.status.value,
             created_at=record.created_at,
             updated_at=record.updated_at,
+            pre_test_buffer_days=record.pre_test_buffer_days,
+            post_test_buffer_days=record.post_test_buffer_days,
+            sample_received_date=record.sample_received_date,
+            planned_test_start_date=record.planned_test_start_date,
+            planned_test_complete_date=record.planned_test_complete_date,
+            estimated_completion_date=record.estimated_completion_date,
         )
         for record in records
     ]
@@ -353,6 +386,7 @@ def save_project_matrix_draft(
                         method=item.method,
                         condition=item.condition,
                         requirement=item.requirement,
+                        day_expression=item.day_expression,
                         is_sample_row=item.is_sample_row,
                     )
                     for item in request.rows
@@ -365,6 +399,12 @@ def save_project_matrix_draft(
                     )
                     for item in request.cells
                 ),
+                pre_test_buffer_days=request.pre_test_buffer_days,
+                post_test_buffer_days=request.post_test_buffer_days,
+                sample_received_date=request.sample_received_date,
+                planned_test_start_date=request.planned_test_start_date,
+                planned_test_complete_date=request.planned_test_complete_date,
+                estimated_completion_date=request.estimated_completion_date,
             )
         )
     except ProjectMatrixDraftPersistenceNotFoundError as exc:
@@ -446,6 +486,12 @@ def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftRespons
             status=draft.record.status.value,
             created_at=draft.record.created_at,
             updated_at=draft.record.updated_at,
+            pre_test_buffer_days=draft.record.pre_test_buffer_days,
+            post_test_buffer_days=draft.record.post_test_buffer_days,
+            sample_received_date=draft.record.sample_received_date,
+            planned_test_start_date=draft.record.planned_test_start_date,
+            planned_test_complete_date=draft.record.planned_test_complete_date,
+            estimated_completion_date=draft.record.estimated_completion_date,
         ),
         groups=[
             ProjectMatrixDraftGroupResponse(
@@ -470,6 +516,7 @@ def _to_response(draft: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftRespons
                 method=row.method,
                 condition=row.condition,
                 requirement=row.requirement,
+                day_expression=row.day_expression,
                 is_sample_row=row.is_sample_row,
             )
             for row in draft.rows
@@ -504,6 +551,12 @@ def _to_confirmed_response(
             superseded_by_confirmed_matrix_id=snapshot.version.superseded_by_confirmed_matrix_id,
             superseded_at=snapshot.version.superseded_at,
             superseded_reason=snapshot.version.superseded_reason,
+            pre_test_buffer_days=snapshot.version.pre_test_buffer_days,
+            post_test_buffer_days=snapshot.version.post_test_buffer_days,
+            sample_received_date=snapshot.version.sample_received_date,
+            planned_test_start_date=snapshot.version.planned_test_start_date,
+            planned_test_complete_date=snapshot.version.planned_test_complete_date,
+            estimated_completion_date=snapshot.version.estimated_completion_date,
         ),
         groups=[
             ConfirmedMatrixGroupResponse(
@@ -529,6 +582,7 @@ def _to_confirmed_response(
                 method=row.method,
                 condition=row.condition,
                 requirement=row.requirement,
+                day_expression=row.day_expression,
             )
             for row in snapshot.rows
         ],
