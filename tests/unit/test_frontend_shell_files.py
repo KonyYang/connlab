@@ -224,8 +224,8 @@ def test_frontend_app_shell_uses_left_navigation_without_hero_layout() -> None:
     assert "scrollbar-gutter: stable" in styles_source
 
 
-def test_task149_settings_external_resources_ui_is_wired() -> None:
-    """TASK_149 exposes registry-backed external resources through Settings UI."""
+def test_task285a_settings_file_locations_simplified_ui_is_wired() -> None:
+    """TASK_285A rewrites Settings into a user-facing file-location page."""
     app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
     sidebar_source = (
         FRONTEND_ROOT / "src" / "components" / "layout" / "Sidebar.tsx"
@@ -235,6 +235,9 @@ def test_task149_settings_external_resources_ui_is_wired() -> None:
     )
     page_source = (
         FRONTEND_ROOT / "src" / "pages" / "SettingsPage.tsx"
+    ).read_text(encoding="utf-8")
+    bridge_source = (
+        FRONTEND_ROOT / "src" / "desktop" / "pathPickerBridge.ts"
     ).read_text(encoding="utf-8")
     panel_source = (
         FRONTEND_ROOT / "src" / "features" / "settings" / "SettingsExternalResourcesPanel.tsx"
@@ -259,21 +262,42 @@ def test_task149_settings_external_resources_ui_is_wired() -> None:
     assert "fetch(" not in page_source
     assert "fetch(" not in panel_source
     assert "project_output_root" in config_source
-    assert "Project output root" in config_source
-    assert "Shared resources" in config_source
-    assert "Local machine paths" in config_source
-    assert "LTR workbook backup directory" in config_source
-    assert "Configured by local TOML or environment settings" in config_source
-    assert "Use local paths during development" in panel_source
-    assert "Browse for" in panel_source
-    assert "Desktop path browsing will open a Windows" in panel_source
-    assert "type=\"file\"" not in panel_source
-    assert "webkitdirectory" not in panel_source
+    assert "project_folder_template" in config_source
+    assert "Project default save location" in config_source
+    assert "Template folder" in config_source
+    assert "Standard record Excel" in config_source
+    assert "Equipment calibration Excel" in config_source
+    assert "LTR registration workbook" in config_source
+    assert "Public registration and record files" in config_source
+    assert "Local machine paths" not in config_source
+    assert "application_form_template" not in config_source
+    assert "File Locations" in page_source
+    assert "Path is ready to use." not in page_source
+    assert "Check path" not in page_source
+    assert "Editable file locations" in panel_source
+    assert "hasDesktopPathPickerBridge" in page_source
+    assert "pickExternalResourcePathFromDesktop" in page_source
+    assert "pickExternalResourcePath," not in page_source
+    assert "connlabDesktopPathPicker" in bridge_source
+    assert "browseEnabled={hasDesktopPathPickerBridge()}" in page_source
+    assert "browseEnabled" in panel_source
+    assert "filePickerRef" not in panel_source
+    assert "extractBrowserFilePath" not in panel_source
+    assert 'type="file"' not in panel_source
+    assert "Browse file" in panel_source
+    assert "Browse folder" in panel_source
+    assert "pickExternalResourcePath" in client_source
+    assert "onBrowse" in panel_source
     assert "buildSettingsResourceRows" in selectors_source
     assert ".settings-resource-row" in styles_source
     assert ".settings-path-control" in styles_source
-    assert ".settings-browse-hint" in styles_source
-    assert ".settings-status-success" in styles_source
+    assert ".settings-path-control-no-browse" in styles_source
+    assert ".settings-validation-cell" not in styles_source
+    assert ".settings-status-success" not in styles_source
+    assert "settings-row-actions" not in styles_source
+    assert ".ui-primary-action" not in styles_source
+    assert '>"Valid"' not in panel_source
+    assert "Not checked" not in panel_source
 
 
 def test_task150_workbench_folder_uses_configured_resources() -> None:

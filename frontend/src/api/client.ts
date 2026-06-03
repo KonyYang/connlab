@@ -368,6 +368,10 @@ export type ExternalResource = {
   validation_failure_reason: string | null;
 };
 
+export type ExternalResourcePickResult = {
+  path: string | null;
+};
+
 export type ConfirmIntakeCase = {
   case_id: string;
   project_id: string;
@@ -1580,6 +1584,15 @@ export function validateExternalResource(
 ): Promise<ExternalResource> {
   return requestJson<ExternalResource>(
     `/api/external-resources/${encodeURIComponent(resourceType)}/validate`,
+    { method: "POST" }
+  );
+}
+
+export function pickExternalResourcePath(
+  resourceType: ExternalResourceType
+): Promise<ExternalResourcePickResult> {
+  return requestJson<ExternalResourcePickResult>(
+    `/api/external-resources/${encodeURIComponent(resourceType)}/pick`,
     { method: "POST" }
   );
 }

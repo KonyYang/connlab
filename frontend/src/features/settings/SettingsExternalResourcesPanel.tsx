@@ -1,39 +1,47 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
-import type { ExternalResource, ExternalResourceType } from "../../api/client";
 import {
-  LOCAL_MACHINE_PATH_CONFIGS,
-  SHARED_RESOURCE_CONFIGS
-} from "./settingsResourceConfig";
+  useEffect,
+  useMemo,
+  useState,
+  type ReactElement
+} from "react";
+import type { ExternalResource, ExternalResourceType } from "../../api/client";
+import { SHARED_RESOURCE_CONFIGS } from "./settingsResourceConfig";
 import { buildSettingsResourceRows, type SettingsResourceRow } from "./settingsSelectors";
 
 type SettingsExternalResourcesPanelProps = {
   resources: ExternalResource[];
   savingType: ExternalResourceType | null;
-  validatingType: ExternalResourceType | null;
+  browseEnabled: boolean;
+  pathValidationMessages: Record<ExternalResourceType, string | null>;
+  onPathChange: (resourceType: ExternalResourceType) => void;
   onSave: (
     resourceType: ExternalResourceType,
     input: { path: string; active: boolean }
   ) => Promise<void>;
-  onValidate: (resourceType: ExternalResourceType) => Promise<void>;
+  onBrowse: (resourceType: ExternalResourceType) => Promise<string | null>;
 };
 
 type DraftValue = {
   path: string;
-  active: boolean;
 };
 
 export function SettingsExternalResourcesPanel({
   resources,
   savingType,
-  validatingType,
+  browseEnabled,
+  pathValidationMessages,
+  onPathChange,
   onSave,
-  onValidate
+  onBrowse
 }: SettingsExternalResourcesPanelProps): ReactElement {
   const rows = useMemo(() => buildSettingsResourceRows(resources), [resources]);
+  const categoryOrder = useMemo(
+    () => [...new Set(SHARED_RESOURCE_CONFIGS.map((item) => item.category))],
+    []
+  );
   const [drafts, setDrafts] = useState<Record<ExternalResourceType, DraftValue>>(
     () => initialDrafts(rows)
   );
-  const [browseHintType, setBrowseHintType] = useState<ExternalResourceType | null>(null);
 
   useEffect(() => {
     setDrafts(initialDrafts(rows));
@@ -44,7 +52,6 @@ export function SettingsExternalResourcesPanel({
       ...current,
       [resourceType]: {
         path: current[resourceType]?.path ?? "",
-        active: current[resourceType]?.active ?? true,
         ...value
       }
     }));
@@ -54,46 +61,42 @@ export function SettingsExternalResourcesPanel({
     <section className="settings-panel">
       <div className="settings-panel-heading">
         <div>
-          <h2 className="ui-panel-title">External resources</h2>
-          <p>Use local paths during development. Switch to public-drive paths before production use.</p>
+          <h2 className="ui-panel-title">Editable file locations</h2>
         </div>
       </div>
 
-      <div className="settings-resource-group">
-        <h3 className="ui-section-title">Shared resources</h3>
-        <div className="settings-resource-list">
-          {rows.map((row) => (
-            <ResourceRow
-              draft={drafts[row.resourceType] ?? { path: row.path, active: row.active }}
-              key={row.resourceType}
-              row={row}
-              saving={savingType === row.resourceType}
-              validating={validatingType === row.resourceType}
-              showBrowseHint={browseHintType === row.resourceType}
-              onBrowseRequest={() => setBrowseHintType(row.resourceType)}
-              onDraftChange={(value) => updateDraft(row.resourceType, value)}
-              onSave={() => onSave(row.resourceType, drafts[row.resourceType] ?? row)}
-              onValidate={() => onValidate(row.resourceType)}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="settings-resource-group">
-        <h3 className="ui-section-title">Local machine paths</h3>
-        <div className="settings-local-list">
-          {LOCAL_MACHINE_PATH_CONFIGS.map((item) => (
-            <article className="settings-local-row" key={item.key}>
-              <div>
-                <strong>{item.label}</strong>
-                <span>{item.expectedKind}</span>
-              </div>
-              <p>{item.note}</p>
-              <span className="settings-status-badge settings-status-neutral">Local setting</span>
-            </article>
-          ))}
-        </div>
-      </div>
+      {categoryOrder.map((category) => {
+        const categoryRows = rows.filter((row) => row.category === category);
+        if (categoryRows.length === 0) {
+          return null;
+        }
+        return (
+          <div className="settings-resource-group" key={category}>
+            <h3 className="ui-section-title">{category}</h3>
+            <div className="settings-resource-list">
+              {categoryRows.map((row) => (
+                <ResourceRow
+                  draft={drafts[row.resourceType] ?? { path: row.path }}
+                  key={row.resourceType}
+                  row={row}
+                  saving={savingType === row.resourceType}
+                  browseEnabled={browseEnabled}
+                  validationMessage={pathValidationMessages[row.resourceType] ?? null}
+                  onDraftChange={(value) => updateDraft(row.resourceType, value)}
+                  onPathChange={() => onPathChange(row.resourceType)}
+                  onSave={(nextPath) =>
+                    onSave(row.resourceType, {
+                      path: nextPath,
+                      active: row.active
+                    })
+                  }
+                  onBrowse={() => onBrowse(row.resourceType)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -102,89 +105,102 @@ function ResourceRow({
   row,
   draft,
   saving,
-  validating,
-  showBrowseHint,
-  onBrowseRequest,
+  browseEnabled,
+  validationMessage,
   onDraftChange,
+  onPathChange,
   onSave,
-  onValidate
+  onBrowse
 }: {
   row: SettingsResourceRow;
   draft: DraftValue;
   saving: boolean;
-  validating: boolean;
-  showBrowseHint: boolean;
-  onBrowseRequest: () => void;
+  browseEnabled: boolean;
+  validationMessage: string | null;
   onDraftChange: (value: Partial<DraftValue>) => void;
-  onSave: () => void;
-  onValidate: () => void;
+  onPathChange: () => void;
+  onSave: (path: string) => void;
+  onBrowse: () => Promise<string | null>;
 }): ReactElement {
-  const canSave = draft.path.trim().length > 0 && !saving;
-  const canValidate = Boolean(row.resource) && !validating;
+  const isFolder = row.expectedKind === "Folder";
+  const canBrowse = browseEnabled;
+  const inputClassName = validationMessage
+    ? "settings-path-input is-invalid-path"
+    : "settings-path-input";
+  const [picking, setPicking] = useState(false);
+
+  function autoSaveFromInput(path: string): void {
+    const normalized = path.trim();
+    if (!normalized || saving) {
+      return;
+    }
+    void onSave(normalized);
+  }
+
+  async function browseForPath(): Promise<void> {
+    setPicking(true);
+    try {
+      const nextPath = await onBrowse();
+      if (!nextPath) {
+        return;
+      }
+      onDraftChange({ path: nextPath });
+      onPathChange();
+      autoSaveFromInput(nextPath);
+    } finally {
+      setPicking(false);
+    }
+  }
+
+  const browseLabel = isFolder ? "Browse folder" : "Browse file";
 
   return (
     <article className="settings-resource-row">
       <div className="settings-resource-label">
         <strong>{row.label}</strong>
-        <span>{row.expectedKind}</span>
       </div>
       <label className="settings-path-field">
-        <span>Path</span>
-        <div className="settings-path-control">
+        <div
+          className={
+            canBrowse
+              ? "settings-path-control"
+              : "settings-path-control settings-path-control-no-browse"
+          }
+        >
           <input
             aria-label={`${row.label} path`}
+            className={inputClassName}
+            aria-invalid={validationMessage ? "true" : "false"}
+            title={validationMessage ?? `${row.label} path`}
             value={draft.path}
-            onChange={(event) => onDraftChange({ path: event.target.value })}
-            placeholder="Paste local or public-drive path"
+            onChange={(event) => {
+              onDraftChange({ path: event.target.value });
+              onPathChange();
+            }}
+            onBlur={(event) => autoSaveFromInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                autoSaveFromInput((event.target as HTMLInputElement).value);
+                event.preventDefault();
+              }
+            }}
+            disabled={saving}
+            placeholder="Paste path"
           />
-          <button
-            aria-label={`Browse for ${row.label}`}
-            title="Browse path"
-            type="button"
-            onClick={onBrowseRequest}
-          >
-            ...
-          </button>
+          {canBrowse ? (
+            <button
+              className="ui-tertiary-action"
+              type="button"
+              disabled={saving || picking}
+              onClick={() => {
+                void browseForPath();
+              }}
+            >
+              {browseLabel}
+            </button>
+          ) : null}
         </div>
-        {showBrowseHint && (
-          <small className="settings-browse-hint">
-            Desktop path browsing will open a Windows {row.expectedKind === "Folder" ? "folder" : "file"} picker here. Paste the path for now, then Save and Validate.
-          </small>
-        )}
       </label>
-      <label className="settings-active-toggle">
-        <input
-          checked={draft.active}
-          type="checkbox"
-          onChange={(event) => onDraftChange({ active: event.target.checked })}
-        />
-        <span>Active</span>
-      </label>
-      <div className="settings-validation-cell">
-        <span className={`settings-status-badge settings-status-${row.statusTone}`}>
-          {row.statusLabel}
-        </span>
-        <small>Last checked: {row.lastChecked}</small>
-        {row.failureReason && <p>{row.failureReason}</p>}
-      </div>
-      <div className="settings-row-actions">
-        <button
-          className="ui-secondary-action"
-          disabled={!canSave}
-          type="button"
-          onClick={onSave}
-        >
-          {saving ? "Saving" : "Save"}
-        </button>
-        <button
-          className="ui-primary-action"
-          disabled={!canValidate}
-          type="button"
-          onClick={onValidate}
-        >
-          {validating ? "Checking" : "Validate"}
-        </button>
-      </div>
     </article>
   );
 }
@@ -194,8 +210,7 @@ function initialDrafts(rows: SettingsResourceRow[]): Record<ExternalResourceType
     (drafts, config) => {
       const row = rows.find((item) => item.resourceType === config.resourceType);
       drafts[config.resourceType] = {
-        path: row?.path ?? "",
-        active: row?.active ?? true
+        path: row?.path ?? ""
       };
       return drafts;
     },

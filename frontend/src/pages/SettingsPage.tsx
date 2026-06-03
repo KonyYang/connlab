@@ -8,16 +8,21 @@ import {
 } from "../api/client";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
+import {
+  hasDesktopPathPickerBridge,
+  pickExternalResourcePathFromDesktop
+} from "../desktop/pathPickerBridge";
 import { SettingsExternalResourcesPanel } from "../features/settings/SettingsExternalResourcesPanel";
 import "../settings.css";
 
 export function SettingsPage(): ReactElement {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingType, setSavingType] = useState<ExternalResourceType | null>(null);
-  const [validatingType, setValidatingType] = useState<ExternalResourceType | null>(null);
+  const [pathValidationMessages, setPathValidationMessages] = useState<
+    Record<ExternalResourceType, string | null>
+  >({} as Record<ExternalResourceType, string | null>);
 
   useEffect(() => {
     void refreshResources();
@@ -26,7 +31,19 @@ export function SettingsPage(): ReactElement {
   async function refreshResources(): Promise<void> {
     setLoading(true);
     try {
-      setResources(await listExternalResources());
+      const currentResources = await listExternalResources();
+      setResources(currentResources);
+      setPathValidationMessages((current) => {
+        const next: Record<ExternalResourceType, string | null> = {
+          ...current
+        };
+        for (const resource of currentResources) {
+          next[resource.resource_type] = resource.validation_status === "invalid"
+            ? resource.validation_failure_reason ?? "Invalid path"
+            : null;
+        }
+        return next;
+      });
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -39,39 +56,36 @@ export function SettingsPage(): ReactElement {
     resourceType: ExternalResourceType,
     input: { path: string; active: boolean }
   ): Promise<void> {
+    if (input.path.trim().length === 0) {
+      setError("Please enter a path.");
+      return;
+    }
     setSavingType(resourceType);
     setError(null);
-    setMessage(null);
+    setPathValidationMessages((current) => ({ ...current, [resourceType]: null }));
     try {
       const saved = await saveExternalResource(resourceType, {
         path: input.path.trim(),
         active: input.active
       });
       upsertResource(saved);
-      setMessage("Resource path saved. Validate it before using it in project work.");
+      const validated = await validateExternalResource(resourceType);
+      setPathValidationMessages((current) => ({
+        ...current,
+        [resourceType]:
+          validated.validation_status === "invalid"
+            ? validated.validation_failure_reason ?? "Invalid path"
+            : null
+      }));
     } catch (err) {
       setError((err as Error).message);
+      setPathValidationMessages((current) => ({
+        ...current,
+        [resourceType]: (err as Error).message
+      }));
+      return;
     } finally {
       setSavingType(null);
-    }
-  }
-
-  async function handleValidate(resourceType: ExternalResourceType): Promise<void> {
-    setValidatingType(resourceType);
-    setError(null);
-    setMessage(null);
-    try {
-      const validated = await validateExternalResource(resourceType);
-      upsertResource(validated);
-      setMessage(
-        validated.validation_status === "valid"
-          ? "Resource path is valid."
-          : "Resource path needs attention."
-      );
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setValidatingType(null);
     }
   }
 
@@ -87,27 +101,41 @@ export function SettingsPage(): ReactElement {
     });
   }
 
+  async function handleBrowse(
+    resourceType: ExternalResourceType
+  ): Promise<string | null> {
+    setError(null);
+    if (hasDesktopPathPickerBridge()) {
+      return pickExternalResourcePathFromDesktop(resourceType);
+    }
+    return null;
+  }
+
   return (
     <section className="settings-page">
       <div className="settings-header">
         <div>
-          <span className="settings-eyebrow">Configuration</span>
-          <h1>Settings</h1>
-          <p>Control the paths ConnLab checks before shared workbook and folder workflows.</p>
+          <h1>File Locations</h1>
         </div>
       </div>
 
       {loading && <LoadingState label="Loading settings" />}
       {error && <ErrorMessage message={error} />}
-      {message && <p className="settings-message">{message}</p>}
 
       {!loading && (
         <SettingsExternalResourcesPanel
           resources={resources}
           savingType={savingType}
-          validatingType={validatingType}
           onSave={handleSave}
-          onValidate={handleValidate}
+          browseEnabled={hasDesktopPathPickerBridge()}
+          onBrowse={handleBrowse}
+          pathValidationMessages={pathValidationMessages}
+          onPathChange={(resourceType) =>
+            setPathValidationMessages((current) => ({
+              ...current,
+              [resourceType]: null
+            }))
+          }
         />
       )}
     </section>

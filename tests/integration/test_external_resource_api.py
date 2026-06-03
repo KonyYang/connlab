@@ -6,8 +6,13 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_session, get_settings
+from backend.api.dependencies import (
+    get_local_path_picker_service,
+    get_session,
+    get_settings,
+)
 from backend.api.main import app
+from backend.application.local_path_picker_service import LocalPathPickerService
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -104,6 +109,21 @@ def test_external_resource_api_returns_404_for_missing_registration(
         engine.dispose()
 
 
+def test_external_resource_api_picks_directory_path(tmp_path: Path) -> None:
+    client, engine = _client(tmp_path)
+    chosen = tmp_path / "templates"
+    chosen.mkdir()
+    app.dependency_overrides[get_local_path_picker_service] = lambda: _PickerService(chosen)
+    try:
+        response = client.post("/api/external-resources/project_folder_template/pick")
+
+        assert response.status_code == 200
+        assert response.json() == {"path": str(chosen)}
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _client(tmp_path: Path) -> tuple[TestClient, object]:
     """Create an isolated external resource API client."""
     settings = Settings(
@@ -129,3 +149,11 @@ def _client(tmp_path: Path) -> tuple[TestClient, object]:
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
     return TestClient(app), engine
+
+
+class _PickerService(LocalPathPickerService):
+    def __init__(self, chosen: Path | None) -> None:
+        self._chosen = chosen
+
+    def pick_path(self, resource_type):  # type: ignore[override]
+        return self._chosen

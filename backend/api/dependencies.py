@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.exception_workflow_service import ExceptionWorkflowService
 from backend.application.external_excel_read_service import ExternalExcelReadService
+from backend.application.local_path_picker_service import LocalPathPickerService
 from backend.application.external_resource_service import ExternalResourceService
 from backend.application.frozen_field_revision_request_service import (
     FrozenFieldRevisionRequestService,
@@ -143,6 +144,7 @@ from backend.application.runtime_projection_read_only_service import (
     RuntimeProjectionReadOnlyService,
 )
 from backend.infrastructure.files import IntakeStorage
+from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
     FeeEvaluationWorkbookGateway,
     TestRecordDocumentGateway,
@@ -529,6 +531,11 @@ def get_external_excel_read_service(
 ) -> ExternalExcelReadService:
     """Build the read-only external Excel structured read service."""
     return ExternalExcelReadService(ExternalResourceRepository(session))
+
+
+def get_local_path_picker_service() -> LocalPathPickerService:
+    """Build the native local path picker service."""
+    return LocalPathPickerService(WindowsPathPicker())
 
 
 def get_ltr_workbook_compatibility_service(

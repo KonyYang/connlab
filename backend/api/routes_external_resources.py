@@ -7,11 +7,15 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_external_resource_service
+from backend.api.dependencies import (
+    get_external_resource_service,
+    get_local_path_picker_service,
+)
 from backend.application.external_resource_service import (
     ExternalResourceNotFoundError,
     ExternalResourceService,
 )
+from backend.application.local_path_picker_service import LocalPathPickerService
 from backend.domain import ExternalResource, ExternalResourceType
 
 
@@ -35,6 +39,12 @@ class ExternalResourceResponse(BaseModel):
     validation_status: str
     last_validated_at: str | None
     validation_failure_reason: str | None
+
+
+class ExternalResourcePickResponse(BaseModel):
+    """Native picker selection response."""
+
+    path: str | None
 
 
 @router.get(
@@ -75,6 +85,19 @@ def validate_external_resource(
         return _to_response(service.validate_resource(resource_type))
     except ExternalResourceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/external-resources/{resource_type}/pick",
+    response_model=ExternalResourcePickResponse,
+)
+def pick_external_resource_path(
+    resource_type: ExternalResourceType,
+    service: LocalPathPickerService = Depends(get_local_path_picker_service),
+) -> ExternalResourcePickResponse:
+    """Open a native picker for one external resource path."""
+    selected = service.pick_path(resource_type)
+    return ExternalResourcePickResponse(path=str(selected) if selected else None)
 
 
 def _to_response(resource: ExternalResource) -> ExternalResourceResponse:

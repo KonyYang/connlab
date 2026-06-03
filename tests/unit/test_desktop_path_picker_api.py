@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+import builtins
+from pathlib import Path
+
+import pytest
+
+from backend.desktop.shell import desktop_bridge_script, run_desktop_shell
+from backend.desktop.path_picker_api import DesktopPathPickerApi
+
+
+def test_desktop_path_picker_api_routes_folder_resources_to_directory_picker() -> None:
+    """Folder-backed Settings resources use the native directory picker."""
+    picker = _Picker(file_path=Path("C:/files/source.xlsx"), directory_path=Path("C:/templates"))
+    api = DesktopPathPickerApi(picker=picker)
+
+    selected = api.pickExternalResourcePath("project_folder_template")
+
+    assert selected == "C:\\templates"
+    assert picker.file_requests == []
+    assert picker.directory_requests == ["project_folder_template"]
+
+
+def test_desktop_path_picker_api_routes_file_resources_to_file_picker() -> None:
+    """File-backed Settings resources use the native file picker."""
+    picker = _Picker(file_path=Path("C:/files/ltr.xlsx"), directory_path=Path("C:/templates"))
+    api = DesktopPathPickerApi(picker=picker)
+
+    selected = api.pickExternalResourcePath("ltr_workbook")
+
+    assert selected == "C:\\files\\ltr.xlsx"
+    assert picker.file_requests == ["ltr_workbook"]
+    assert picker.directory_requests == []
+
+
+def test_desktop_path_picker_api_returns_none_when_cancelled() -> None:
+    """Picker cancellation returns null-compatible None to the frontend bridge."""
+    picker = _Picker(file_path=None, directory_path=None)
+    api = DesktopPathPickerApi(picker=picker)
+
+    selected = api.pickExternalResourcePath("project_output_root")
+
+    assert selected is None
+    assert picker.directory_requests == ["project_output_root"]
+
+
+def test_desktop_shell_reports_missing_pywebview_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The shell fails clearly when the optional desktop runtime is absent."""
+    original_import = builtins.__import__
+
+    def guarded_import(name: str, *args: object, **kwargs: object) -> object:
+        if name == "webview":
+            raise ImportError("missing test webview")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+
+    with pytest.raises(RuntimeError, match="requires pywebview"):
+        run_desktop_shell()
+
+
+def test_desktop_bridge_script_installs_frontend_contract() -> None:
+    """The shell injects the bridge name expected by the React frontend."""
+    script = desktop_bridge_script()
+
+    assert "window.connlabDesktopPathPicker" in script
+    assert "window.pywebview.api.pickExternalResourcePath" in script
+
+
+class _Picker:
+    def __init__(self, *, file_path: Path | None, directory_path: Path | None) -> None:
+        self._file_path = file_path
+        self._directory_path = directory_path
+        self.file_requests: list[str] = []
+        self.directory_requests: list[str] = []
+
+    def pick_file(self, resource_type: str) -> Path | None:
+        self.file_requests.append(resource_type)
+        return self._file_path
+
+    def pick_directory(self, resource_type: str) -> Path | None:
+        self.directory_requests.append(resource_type)
+        return self._directory_path

@@ -107,6 +107,25 @@ Frontend architecture control:
 - Every future feature must attach to a Project lifecycle stage.
 - Test Record, Report, Fee Evaluation, and Approval Package are derived outputs, not primary data sources.
 
+### 5.1 Legacy Authority Compatibility Mode
+
+ConnLab currently uses a legacy-authority compatibility mode:
+
+```text
+Public-drive LTR Excel files and existing Word/Excel templates remain the current business authority or delivery templates.
+Local SQLite is only a personal workstation cache, automation aid, synchronization backup, and future migration backup.
+After ConnLab upgrades to a server deployment, authority may migrate to the server database, and Word/Excel files should become derived outputs for user reading, review, approval, and delivery.
+```
+
+Current-stage rules:
+
+- Do not silently replace public-drive authoritative Excel workflows with local SQLite-only workflows.
+- LTR registration, project-number lookup, and required legacy workbook writeback must continue to support the current public-drive `.xlsx` authority path when the active task touches those workflows.
+- User-editable external reference and template file paths should be exposed as plain file-path settings, not as database concepts.
+- SQLite may store local snapshots, recent paths, operation records, parsed data, and migration-ready backups, but this must remain an implementation detail for operators.
+- Programmers may maintain structured configuration, rule libraries, and backups through controlled config files or approved maintenance tasks.
+- When future server deployment is explicitly approved, plan the authority cutover as a separate migration task rather than an incidental refactor.
+
 ## 6. Domain Objects
 
 Historical MVP objects:

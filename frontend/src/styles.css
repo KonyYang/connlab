@@ -403,13 +403,13 @@ button {
 }
 
 .main-work-area {
-  width: min(1280px, calc(100% - 36px));
+  width: min(1680px, calc(100% - 36px));
   margin: 0 auto;
   padding: 20px 0 34px;
 }
 
 .app-shell.app-shell-sidebar-collapsed .main-work-area {
-  width: min(1400px, calc(100% - 24px));
+  width: min(1760px, calc(100% - 24px));
 }
 
 .eyebrow {

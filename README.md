@@ -101,10 +101,22 @@ Frontend:
 .\scripts\run_frontend.ps1
 ```
 
+Desktop shell (after backend and frontend are running):
+
+```powershell
+.\scripts\run_desktop_shell.ps1
+```
+
 Or start both in separate PowerShell windows:
 
 ```powershell
 .\scripts\run_mvp_dev.ps1
+```
+
+Or start backend, frontend, and the desktop shell in separate PowerShell windows:
+
+```powershell
+.\scripts\run_mvp_dev.ps1 -WithDesktopShell
 ```
 
 Open the Vite URL shown by the frontend script. The frontend proxies `/api` to `http://127.0.0.1:8000`.
