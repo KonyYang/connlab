@@ -75,7 +75,10 @@ Every draft must include:
 - `pricing_rule_version_id`
 - `pricing_source_file_name`
 - `pricing_source_hash`
+- concrete `pricing_effective_from`
 - `generated_at`
+
+For the current V1 rule source, `pricing_effective_from` is the project `sample_received_date`.
 
 ### Review Required
 
@@ -91,13 +94,14 @@ Rows must be review-required when:
 
 1. API can return a fee draft for a project with active Confirmed Matrix authority.
 2. The draft includes pricing rule version metadata.
-3. Only selected/confirmed groups contribute fee line candidates.
-4. Matrix source row/group/step traceability is preserved per line.
-5. Deterministic rules produce calculated fees.
-6. Manual/ambiguous/unmatched rows are marked review-required with business-readable reasons.
-7. Existing `test_record_fee_*` services are not expanded into the new authority-driven fee engine.
-8. Tests cover happy path, no authority, no rule match, manual-required, and selected-group behavior.
-9. Scope boundary is held: no UI, no Excel export, no persistence for edited fee drafts.
+3. The draft records concrete `pricing_effective_from` from project `sample_received_date` for the current rule source.
+4. Only selected/confirmed groups contribute fee line candidates.
+5. Matrix source row/group/step traceability is preserved per line.
+6. Deterministic rules produce calculated fees.
+7. Manual/ambiguous/unmatched rows are marked review-required with business-readable reasons.
+8. Existing `test_record_fee_*` services are not expanded into the new authority-driven fee engine.
+9. Tests cover happy path, no authority, no rule match, manual-required, and selected-group behavior.
+10. Scope boundary is held: no UI, no Excel export, no persistence for edited fee drafts.
 
 ## Model Fit Assessment
 

@@ -38,7 +38,10 @@ The laboratory currently prepares `Testing Prices` manually from Matrix groups/s
 4. Reject overwrite unless explicitly allowed.
 5. Update `ProjectOutputRecord` for `fee_evaluation`.
 6. Mark fee output stale when Matrix authority or fee rule version changes, if existing output status infrastructure can support it without broad redesign.
-7. Add backend tests for workbook gateway behavior, export service, output-record update, and no-overwrite guard.
+7. Use the ConnLab login user first, then Windows/computer user, as default `Prepared by`.
+8. Leave `Approved by` for per-export manual entry/review.
+9. Allow `.xlsx` output as a V1 fallback when Excel automation for `.xls` is unavailable or unsuitable.
+10. Add backend tests for workbook gateway behavior, export service, output-record update, fallback behavior, and no-overwrite guard.
 
 ### Out Of Scope
 
@@ -66,6 +69,16 @@ The generated output must retain enough metadata in service results and output-r
 - output path
 - generation timestamp
 
+### Prepared And Approved By
+
+`Prepared by` defaults to the ConnLab login user when available. If no ConnLab login user exists, fall back to the current Windows/computer user.
+
+`Approved by` is not auto-filled in V1 and must remain a per-export manual value.
+
+### Workbook Format Fallback
+
+The preferred template remains the official fee workbook. V1 may output `.xlsx` when `.xls` automation is unavailable or unsuitable, as long as the exported workbook preserves the required fee rows, totals, and traceability fields.
+
 ## Acceptance Criteria
 
 1. Export creates a `.xls` or `.xlsx` fee evaluation workbook from a reviewed fee draft.
@@ -73,10 +86,13 @@ The generated output must retain enough metadata in service results and output-r
 3. Totals match the structured draft totals.
 4. Existing files are not overwritten unless explicitly allowed.
 5. Missing template or unavailable Excel automation returns actionable errors.
-6. `ProjectOutputRecord` is updated for generated fee evaluation output.
-7. Fee output can be identified as stale against later Matrix/rule changes where current infrastructure supports it.
-8. Tests cover gateway write behavior, export service, output status update, and overwrite guard.
-9. Scope boundary is held: no rule-maintenance UI, no StepInstance, no report expansion.
+6. When `.xls` automation is unavailable or unsuitable, `.xlsx` fallback is allowed and tested.
+7. `Prepared by` defaults to ConnLab login user first, then Windows/computer user.
+8. `Approved by` remains manually supplied for each export.
+9. `ProjectOutputRecord` is updated for generated fee evaluation output.
+10. Fee output can be identified as stale against later Matrix/rule changes where current infrastructure supports it.
+11. Tests cover gateway write behavior, export service, output status update, fallback behavior, and overwrite guard.
+12. Scope boundary is held: no rule-maintenance UI, no StepInstance, no report expansion.
 
 ## Model Fit Assessment
 

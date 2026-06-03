@@ -86,6 +86,14 @@ No rule-maintenance UI and no execution persistence.
 
 The `Unit Price Reference` sheet may change. ConnLab should therefore treat each imported or curated reference as a pricing-rule version.
 
+The current V1 authoritative reference source is:
+
+```text
+D:\Source\Template\Testing Fee Evaluation-Even.xls
+```
+
+Use the workbook's `Unit Price Reference` sheet as the current business-approved pricing reference.
+
 Every fee draft must record:
 
 - `pricing_rule_version_id`
@@ -93,7 +101,18 @@ Every fee draft must record:
 - `pricing_source_hash`
 - `generated_at`
 
+The TASK_285 seed records `effective_from_basis: "project.sample_received_date"` instead of a concrete project date. TASK_286 fee drafts should resolve that basis and record the concrete `sample_received_date` as `pricing_effective_from` when using this rule version.
+
 New pricing versions do not silently reprice historical drafts. Later tasks may add an explicit reprice action and version comparison surface.
+
+## Fee Form Defaults
+
+Generated fee forms use these V1 defaults:
+
+- `Prepared by`: ConnLab login user first; if unavailable, fallback to the current Windows/computer user.
+- `Approved by`: manually supplied for each export.
+
+V1 may output `.xlsx` when `.xls` Excel automation is unavailable or unsuitable, provided the exported workbook preserves required fee rows, totals, and traceability.
 
 ## Main Risks
 
@@ -116,12 +135,9 @@ Regression tests should include Confirmed Matrix authority and Workbench output 
 
 ## User Inputs Needed Before Implementation
 
-1. The authoritative current `Unit Price Reference` source file for TASK_285.
-2. Whether `effective_from` should mean file version date, activation date, or business-effective price date.
-3. The default prepared/approved names for generated fee forms, if any.
-4. Whether V1 may use `.xlsx` output when `.xls` automation is unavailable, or must preserve `.xls`.
+1. Whether `Approved by` should be a free-text field only, or selected from a controlled approver list in a later task.
 
-For TASK_285 specifically, items 1 and 2 are blocking. Items 3 and 4 belong to later TASK_287/TASK_288 planning and must not block the seed-library plan review.
+TASK_285 has no remaining blocking user-input questions after the confirmed source file and `effective_from_basis` decisions. The remaining `Approved by` choice belongs to later TASK_287/TASK_288 planning and must not block the seed-library plan review.
 
 ## Stop Rule
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Awaiting user review and approval before implementation.
+Complete. Implemented and validated on 2026-06-03.
 
 ## Current Phase
 
@@ -18,6 +18,14 @@ This task creates a structured fee rule source for later fee-draft generation. I
 
 The `Testing Prices` sheet is manually produced from the product specification Matrix, section detail, and the laboratory's fee reference rules. ConnLab needs a structured, versioned rule library so later tasks can generate reviewable fee-evaluation drafts from Confirmed Matrix authority.
 
+The current authoritative reference source for V1 is:
+
+```text
+D:\Source\Template\Testing Fee Evaluation-Even.xls
+```
+
+Use its `Unit Price Reference` sheet as the current business-approved pricing reference.
+
 The `Unit Price Reference` sheet may change over time. Each imported or curated rule seed must therefore carry a version identity and source traceability. Existing fee evaluations must never be silently repriced when a newer reference version appears.
 
 ## Scope
@@ -30,7 +38,7 @@ The `Unit Price Reference` sheet may change over time. Each imported or curated 
    - `source_file_name`
    - `source_sheet`
    - `source_hash`
-   - `effective_from`
+   - `effective_from_basis`
    - `created_at`
 3. Model individual fee rules:
    - stable `rule_id`
@@ -67,6 +75,10 @@ The `Unit Price Reference` sheet may change over time. Each imported or curated 
 
 A fee rule version is the pricing authority snapshot used by later fee-draft generation. Later tasks must record the selected `version_id` on generated fee drafts.
 
+The seed must not store a project-specific effective date. It stores `effective_from_basis: "project.sample_received_date"` to declare where the concrete business-effective date comes from.
+
+Later TASK_286 fee drafts must resolve that basis against the project and record the concrete date as `pricing_effective_from`.
+
 ### Source Traceability
 
 The source Excel file is a reference input, not the runtime data model. ConnLab runtime code must consume the reviewed structured seed file, not read `Unit Price Reference` dynamically during normal fee draft generation.
@@ -90,14 +102,16 @@ Rules with ambiguous base fee, discount, or special lab judgment must use `revie
 ## Acceptance Criteria
 
 1. A versioned fee rule seed file exists and includes source/version metadata.
-2. The seed contains representative rules for common families visible in the reference sheet, including LLCR, Visual Examination, Durability, environmental tests, report preparation, and manual/complex items.
-3. The loader rejects malformed rule files with actionable errors.
-4. Duplicate aliases inside the active version are detected.
-5. Matrix-style test item text can match deterministic aliases.
-6. Ambiguous or special-case rules surface `review_required`.
-7. Unmatched rows return a stable no-match result instead of guessing.
-8. Tests cover seed loading, rule validation, matching, and no-match behavior.
-9. Scope boundary is held: no Matrix-to-fee generation, no UI, no Excel output.
+2. The initial seed source is `D:\Source\Template\Testing Fee Evaluation-Even.xls`, sheet `Unit Price Reference`.
+3. `effective_from_basis` is modeled as `project.sample_received_date`; TASK_285 does not store a concrete project effective date in the seed.
+4. The seed contains representative rules for common families visible in the reference sheet, including LLCR, Visual Examination, Durability, environmental tests, report preparation, and manual/complex items.
+5. The loader rejects malformed rule files with actionable errors.
+6. Duplicate aliases inside the active version are detected.
+7. Matrix-style test item text can match deterministic aliases.
+8. Ambiguous or special-case rules surface `review_required`.
+9. Unmatched rows return a stable no-match result instead of guessing.
+10. Tests cover seed loading, source file/sheet/hash metadata, `effective_from_basis`, rule validation, matching, and no-match behavior.
+11. Scope boundary is held: no Matrix-to-fee generation, no UI, no Excel output.
 
 ## Model Fit Assessment
 
@@ -109,4 +123,4 @@ Use `superpowers:executing-plans` for implementation. Also read `docs/project_ma
 
 ## Stop Rule
 
-Do not implement until this task file and its executable plan are reviewed and explicitly approved by the user.
+Implementation completed after user approval and bounded to this task only.

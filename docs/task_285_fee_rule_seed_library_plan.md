@@ -1,6 +1,6 @@
 # TASK_285 Fee Rule Seed Library Plan
 
-> Status: proposed for review
+> Status: superseded by completed execution plan and implementation
 > Created: 2026-06-03
 > Phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
 > Current active task: TASK_285_FEE_RULE_SEED_LIBRARY (planned)
@@ -13,16 +13,17 @@ This task only creates the rule source, loader, validator, and deterministic mat
 
 ## 2. Inputs
 
-### Required Before Implementation
+### Confirmed Before Implementation
 
-Implementation must not start until these inputs are confirmed:
+These inputs were confirmed before implementation:
 
 1. Authoritative current fee reference workbook path.
+   - Confirmed source: `D:\Source\Template\Testing Fee Evaluation-Even.xls`.
    - Required source sheet: `Unit Price Reference`.
-   - The selected file name and SHA256 hash will be recorded in seed metadata.
-2. `effective_from` meaning.
-   - Recommended V1 meaning: business-effective price date.
-   - If the workbook has no explicit business-effective date, use a user-confirmed version date.
+   - Recorded source SHA256: `sha256:b19cce35f774ad3a83260805f7b717d5446f23ca1a90c209a08d8cb7f91fe226`.
+2. `effective_from_basis` meaning.
+   - Confirmed V1 basis: `project.sample_received_date`.
+   - TASK_285 does not store a concrete project effective date. TASK_286 resolves this basis into `pricing_effective_from`.
 
 ### Runtime Input After Implementation
 
@@ -93,7 +94,7 @@ Top-level shape:
     "source_file_name": "Unit Price Reference workbook name.xlsx",
     "source_sheet": "Unit Price Reference",
     "source_hash": "sha256:<hex>",
-    "effective_from": "2026-06-03",
+    "effective_from_basis": "project.sample_received_date",
     "created_at": "2026-06-03T00:00:00+08:00"
   },
   "rules": [
@@ -135,7 +136,7 @@ class FeeRuleVersion:
     source_file_name: str
     source_sheet: str
     source_hash: str
-    effective_from: str
+    effective_from_basis: str
     created_at: str
 
 @dataclass(frozen=True, slots=True)
@@ -253,7 +254,7 @@ No frontend build is required because TASK_285 has no UI scope.
 
 1. The authoritative workbook path is not yet confirmed.
    - Mitigation: block implementation until the selected file is confirmed.
-2. `effective_from` may be interpreted inconsistently.
+2. `effective_from_basis` may be interpreted inconsistently.
    - Mitigation: record the user-confirmed meaning in the seed metadata and this task completion note.
 3. Existing legacy fee services may tempt reuse.
    - Mitigation: do not modify them in TASK_285; treat them as historical reference only.
@@ -274,16 +275,12 @@ No frontend build is required because TASK_285 has no UI scope.
 8. Tests cover loading, validation, matching, and no-match behavior.
 9. Scope boundary is held: no Matrix-to-fee generation, no UI, no Excel output.
 
-## 14. Approval Gate
+## 14. Completion Note
 
-Implementation starts only after:
+Implementation was completed after:
 
 1. This plan is reviewed and approved.
 2. The authoritative `Unit Price Reference` workbook is identified.
-3. The `effective_from` meaning is confirmed.
+3. The `effective_from_basis` meaning is confirmed as `project.sample_received_date`.
 
-Example approval:
-
-```text
-批准执行 TASK_285，并使用 <source file path>，effective_from 表示 <meaning/date>
-```
+Final implementation details are recorded in `docs/task_285_fee_rule_seed_library_execution_plan.md` and `docs/task_board.md`.
