@@ -1209,6 +1209,80 @@ export type ConfirmedMatrixTestRecordPreview = {
   groups: ConfirmedMatrixTestRecordPreviewGroup[];
 };
 
+export type FeeEvaluationDraftStatus = "ready" | "empty" | "needs_review";
+
+export type FeeEvaluationLineStatus =
+  | "calculated"
+  | "review_required"
+  | "no_rule_match";
+
+export type FeeEvaluationWarning = {
+  code: string;
+  message: string;
+  scope: string;
+};
+
+export type FeeEvaluationLineItem = {
+  line_id: string;
+  status: FeeEvaluationLineStatus;
+  review_required: boolean;
+  review_reason: string | null;
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  group_key: string;
+  group_label: string;
+  confirmed_group_id: string;
+  sample_quantity_expression: string;
+  confirmed_row_id: string;
+  source_row_id: string | null;
+  row_order: number;
+  test_item: string;
+  section: string;
+  method: string;
+  condition: string;
+  requirement: string;
+  step_tokens: string[];
+  matched_rule_id: string | null;
+  matched_rule_version_id: string | null;
+  matched_rule_name: string | null;
+  match_reason: string;
+  calculation_strategy: string | null;
+  unit_label: string;
+  unit_price: string | null;
+  units: string | null;
+  base_fee: string | null;
+  discount_percent: string | null;
+  testing_fee: string | null;
+  warnings: FeeEvaluationWarning[];
+};
+
+export type FeeEvaluationGroup = {
+  group_key: string;
+  group_label: string;
+  sample_quantity_expression: string;
+  line_items: FeeEvaluationLineItem[];
+};
+
+export type FeeEvaluationHeader = {
+  project_id: string;
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  pricing_rule_version_id: string;
+  pricing_source_file_name: string;
+  pricing_source_hash: string;
+  pricing_effective_from: string | null;
+  generated_at: string;
+};
+
+export type FeeEvaluationDraft = {
+  header: FeeEvaluationHeader;
+  draft_status: FeeEvaluationDraftStatus;
+  total_fee: string | null;
+  review_required_count: number;
+  groups: FeeEvaluationGroup[];
+  warnings: FeeEvaluationWarning[];
+};
+
 export type ConfirmedMatrixAuthorityHistoryEntry = {
   confirmed_matrix_id: string;
   confirmed_revision: number;
@@ -2042,6 +2116,15 @@ export function fetchConfirmedMatrixTestRecordPreview(
 ): Promise<ConfirmedMatrixTestRecordPreview> {
   return requestJson<ConfirmedMatrixTestRecordPreview>(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function fetchConfirmedMatrixFeeDraft(
+  projectId: string
+): Promise<FeeEvaluationDraft> {
+  return requestJson<FeeEvaluationDraft>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-draft`,
     { cache: "no-store" }
   );
 }

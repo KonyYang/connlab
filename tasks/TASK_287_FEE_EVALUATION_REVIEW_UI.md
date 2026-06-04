@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned follow-up. Blocked until TASK_286 is complete.
+Complete. Implemented after explicit user approval on 2026-06-04.
 
 ## Current Phase
 
@@ -74,6 +74,18 @@ Frontend work must follow `$impeccable`, `docs/02_ARCHITECTURE_RULES.md`, and `d
 6. UI copy avoids technical backend terms and remains operator-readable.
 7. Tests cover loading, empty/no-authority, calculated rows, and review-required rows.
 8. Scope boundary is held: no export, no rule maintenance UI, no Matrix editing changes.
+
+## Completion Notes
+
+- Added typed frontend API client support for `GET /api/projects/{project_id}/confirmed-matrix/fee-draft`.
+- Added a Workbench Fee Evaluation derived-output status summary and review panel.
+- Review panel shows Matrix-derived line items, matched fee rule/version, unit price, units, base fee, discount, calculated fee, total status, pricing traceability, and review-required reasons.
+- Follow-up review fixes wire the status summary to the existing Workbench `fee_evaluation` output freshness item, add direct status-summary tests, and avoid duplicate `no_rule_match` reason text.
+- Operator edits are local-only review inputs; no persistence, export, rule maintenance, or Matrix editing path was added.
+- Validation:
+  - `cd frontend; npm test -- --run FeeEvaluationReviewPanel FeeEvaluationStatusSummary ProjectWorkbenchMatrixProjectionPanel --watch=false` -> `15 passed`
+  - `cd frontend; npm run build` -> passed
+  - `py -m pytest tests/unit/test_frontend_shell_files.py -q -k "project_workbench or fee"` -> `2 passed`
 
 ## Model Fit Assessment
 

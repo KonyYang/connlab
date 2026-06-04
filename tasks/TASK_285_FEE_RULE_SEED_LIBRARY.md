@@ -77,7 +77,7 @@ A fee rule version is the pricing authority snapshot used by later fee-draft gen
 
 The seed must not store a project-specific effective date. It stores `effective_from_basis: "project.sample_received_date"` to declare where the concrete business-effective date comes from.
 
-Later TASK_286 fee drafts must resolve that basis against the project and record the concrete date as `pricing_effective_from`.
+Later TASK_286 fee drafts must resolve that basis against the active Confirmed Matrix authority version and record the concrete date as `pricing_effective_from`.
 
 ### Source Traceability
 

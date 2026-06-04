@@ -6,7 +6,7 @@
 
 ## Current Progress
 
-`docs/task_board.md` currently marks `TASK_285_FEE_RULE_SEED_LIBRARY` as the current active planned task. Implementation still requires the TASK_285 task file, the TASK_285 executable plan, and required source/version inputs to be reviewed and explicitly approved.
+`TASK_285_FEE_RULE_SEED_LIBRARY` and `TASK_286_CONFIRMED_MATRIX_TO_FEE_DRAFT` are complete. `docs/task_board.md` currently marks `TASK_287_FEE_EVALUATION_REVIEW_UI` as the next planned task awaiting explicit approval.
 
 ## Business Goal
 
@@ -101,7 +101,9 @@ Every fee draft must record:
 - `pricing_source_hash`
 - `generated_at`
 
-The TASK_285 seed records `effective_from_basis: "project.sample_received_date"` instead of a concrete project date. TASK_286 fee drafts should resolve that basis and record the concrete `sample_received_date` as `pricing_effective_from` when using this rule version.
+The TASK_285 seed records `effective_from_basis: "project.sample_received_date"` instead of a concrete project date. For V1, TASK_286 resolves that basis from the active Confirmed Matrix authority version (`ConfirmedMatrixVersion.sample_received_date`) and records it as `pricing_effective_from`. TASK_286 must not add a Project model field or application-form lookup for this date.
+
+TASK_286 must calculate fees only when the needed unit basis is deterministic from Confirmed Matrix authority. Numeric price alone is not enough. Photo count, reading count, cycle count, Day-to-hour conversion, marker-bearing sample expressions, and manual-required rules must produce review-required fee lines unless a later approved task defines deterministic derivation.
 
 New pricing versions do not silently reprice historical drafts. Later tasks may add an explicit reprice action and version comparison surface.
 

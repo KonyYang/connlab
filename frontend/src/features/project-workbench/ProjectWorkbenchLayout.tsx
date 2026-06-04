@@ -1,5 +1,7 @@
 import { useState, type ReactElement } from "react";
 import type { Project } from "../../api/client";
+import { FeeEvaluationReviewPanel } from "./FeeEvaluationReviewPanel";
+import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -62,11 +64,19 @@ export function ProjectWorkbenchLayout({
         : "Ready after Matrix confirmation",
       placeholder: !matrixAuthorityDraft,
     },
-    { title: "Sample images", value: "Future evidence input", placeholder: true },
+    {
+      title: "Fee Evaluation",
+      value: matrixAuthorityDraft ? "Ready for review" : "Ready after Matrix confirmation",
+      placeholder: !matrixAuthorityDraft,
+    },
     { title: "Approval package", value: "Future output package", placeholder: true },
   ];
 
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
+  const feeEvaluationOutputStatus =
+    runtimeModel.versionStatus.downstream.find(
+      (item) => item.key === "fee_evaluation"
+    ) ?? null;
   const selectedWorkspaceToken = selectedWorkspace?.selected_token ?? null;
   const hasSelectedStep =
     selectedProjectionToken !== null || selectedWorkspaceToken !== null;
@@ -140,6 +150,11 @@ export function ProjectWorkbenchLayout({
             onOpenMatrixEditor={onOpenMatrixEditor}
             onTokenSelect={setSelectedProjectionToken}
           />
+          <FeeEvaluationReviewPanel
+            projectId={project.project_id}
+            ltrNumber={latestLtr}
+            projectDescription={project.product_name}
+          />
         </div>
 
         <div className="runtime-console-side-column">
@@ -202,7 +217,10 @@ export function ProjectWorkbenchLayout({
               />
             </label>
           </aside>
-          <FeeEstimateSurface />
+          <FeeEvaluationStatusSummary
+            projectId={project.project_id}
+            outputStatus={feeEvaluationOutputStatus}
+          />
         </div>
       </section>
     </section>
@@ -256,23 +274,6 @@ function StepExecutionPlaceholder(): ReactElement {
       Select a Matrix step to view method, condition, requirement, and execution
       placeholders.
     </p>
-  );
-}
-
-function FeeEstimateSurface(): ReactElement {
-  return (
-    <section className="runtime-console-fee" aria-label="Fee estimate">
-      <header>
-        <p className="eyebrow">Fee estimate</p>
-        <h3>Total estimated fee</h3>
-      </header>
-      <div className="runtime-console-fee-grid">
-        <div>
-          <span>Total</span>
-          <strong>Pending estimate</strong>
-        </div>
-      </div>
-    </section>
   );
 }
 

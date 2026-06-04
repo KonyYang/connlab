@@ -101,6 +101,9 @@ from backend.application.confirmed_matrix_runtime_projection_service import (
 from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewService,
 )
+from backend.application.confirmed_matrix_fee_draft_service import (
+    ConfirmedMatrixFeeDraftService,
+)
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
@@ -287,6 +290,15 @@ def get_confirmed_matrix_test_record_preview_service(
 ) -> ConfirmedMatrixTestRecordPreviewService:
     """Build confirmed-authority Test Record preview read-only service."""
     return ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_confirmed_matrix_fee_draft_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedMatrixFeeDraftService:
+    """Build confirmed-authority Fee Evaluation draft read-only service."""
+    return ConfirmedMatrixFeeDraftService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
     )
 
