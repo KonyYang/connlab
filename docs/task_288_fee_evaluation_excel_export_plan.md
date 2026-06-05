@@ -4,7 +4,7 @@
 
 **Goal:** Export the reviewed Matrix-derived Fee Evaluation draft into the official fee workbook template and register the generated output lineage.
 
-**Architecture:** Add a backend application export service that consumes TASK_286 fee draft data, writes the workbook through the Office gateway boundary, and registers a `ProjectOutputRecord` for `fee_evaluation`. Keep Excel as an output artifact and keep fee rule maintenance, UI review persistence, StepInstance, and report expansion out of scope.
+**Architecture:** Add a backend application export service that consumes TASK_286 fee draft data, writes the workbook through the Office gateway boundary, and registers a `ProjectOutputRecord` for `fee_evaluation`. V1 freshness uses the existing draft-version output status model; confirmed Matrix id/revision and fee rule version are retained as traceability metadata. Keep Excel as an output artifact and keep fee rule maintenance, UI review persistence, StepInstance, and report expansion out of scope.
 
 **Tech Stack:** Python 3.11+, FastAPI, pytest, existing Office gateway boundary, existing `ProjectOutputRecordService`, existing external resource/project folder infrastructure where available.
 
@@ -13,8 +13,8 @@
 ## Current Task Context
 
 - Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-- Current dependency chain: TASK_288 is blocked until TASK_287 is complete.
-- Why this task becomes allowed: TASK_288 can only be implemented after TASK_286 and TASK_287 are complete and this plan is explicitly approved.
+- Current dependency chain: TASK_286 and TASK_287 are complete.
+- Why this task becomes allowed: `docs/task_board.md` marks TASK_288 as the current active planned task awaiting explicit approval.
 - Current planning allowance: user explicitly requested a detailed TASK_288 executable plan.
 - Implementation gate: do not write implementation code until the user explicitly approves this plan and the task board marks TASK_288 as current/allowed.
 
@@ -32,7 +32,7 @@
   - ConnLab login user first when future login context is available.
   - Windows/computer user fallback in V1.
 - Approved by is supplied per export or left blank for manual Excel completion according to request.
-- `.xlsx` fallback allowed when `.xls` COM automation is unavailable or unsuitable.
+- `.xlsx` fallback allowed only through Excel COM SaveAs when `.xls` output is unsuitable; no Python workbook-writer dependency is added in V1.
 - Backend unit and integration tests.
 
 ### Out Of Scope
@@ -104,6 +104,19 @@ Workbook write input must retain:
 - line-level confirmed group/row identifiers.
 
 Traceability may be written into hidden workbook cells, a metadata note block, or an output-record note. It must be available in service result and output record note even if the official visible sheet has limited room.
+
+### V1 Freshness Boundary
+
+Existing `ProjectOutputRecordService` calculates current/stale freshness from `ProjectTestPlanDraft` id/version. It does not compare confirmed Matrix id/revision or fee rule version.
+
+TASK_288 V1 must therefore:
+
+- register `fee_evaluation` output through the existing output-record service;
+- use existing draft-version freshness for Workbench `current` / `stale` status;
+- store confirmed Matrix id/revision and fee rule version in the service result and output-record note for traceability;
+- not claim automatic stale detection for fee rule version changes or confirmed-Matrix-only lineage changes.
+
+A future task may add a small read model/comparator for confirmed Matrix id/revision and fee rule version freshness. That comparator is not part of TASK_288.
 
 ### Prepared By
 
@@ -193,7 +206,7 @@ Status mapping:
 - `400`: invalid request, existing output without overwrite, not-ready draft.
 - `404`: project, confirmed Matrix, template, or output directory not found.
 - `422`: internal draft/gateway data cannot be mapped to workbook rows.
-- `503`: Excel automation unavailable and `.xlsx` fallback cannot be produced.
+- `503`: Excel COM automation unavailable.
 
 No browser download behavior is required in this task.
 
@@ -283,11 +296,11 @@ Validation flow:
    - `status=ProjectOutputStatus.CURRENT`
    - `source=ProjectOutputSource.SYSTEM_GENERATED`
    - `output_path=str(result.output_path)`
-   - `draft_id`/version bridge: use active reviewed draft id if available from existing `ProjectOutputRecordService` path, or register against a confirmed-matrix-compatible draft id only if repository already exposes it.
+   - `draft_id`/version bridge: use the active reviewed Project Matrix draft id that existing `ProjectOutputRecordService` can evaluate.
 
 Important lineage note:
 
-Current `ProjectOutputRecordService` links freshness to `ProjectTestPlanDraft` ids/versions. Confirmed Matrix authority has its own ids/revisions. TASK_288 should not redesign the output record schema. If no direct confirmed-to-draft id is available from existing repositories, register the output record with the active reviewed draft id returned by existing output-status infrastructure, and store confirmed Matrix id/revision plus fee rule version in `note`.
+Current `ProjectOutputRecordService` links freshness to `ProjectTestPlanDraft` ids/versions. Confirmed Matrix authority has its own ids/revisions. TASK_288 must not redesign the output record schema. Register the output record against the active reviewed Project Matrix draft id used by existing output-status infrastructure, and store confirmed Matrix id/revision plus fee rule version in `note`.
 
 ## Workbook Gateway Design
 
@@ -335,10 +348,10 @@ Visible workbook write policy:
 Fallback policy:
 
 - Preferred path for `.xls`: Excel COM open template and SaveAs target.
-- If COM is unavailable and target/template can be represented as `.xlsx`, write `.xlsx` fallback using project-available Python spreadsheet tooling only if already available in dependencies.
-- If no safe fallback writer is available, raise `OfficeAutomationUnavailable` and map route to `503`.
+- V1 `.xlsx` fallback means Excel COM opens the official template and saves the generated workbook as `.xlsx` when `.xls` output is unsuitable.
+- If Excel COM is unavailable, raise `OfficeAutomationUnavailable` and map route to `503`.
 
-Do not add a new external dependency solely for fallback unless separately approved.
+Do not add `openpyxl`, `xlsxwriter`, `xlwt`, or another external workbook-writer dependency in TASK_288 unless separately approved before implementation.
 
 ## File-Level Changes
 
@@ -396,6 +409,7 @@ Do not add a new external dependency solely for fallback unless separately appro
 - [ ] Test existing output path rejects when `overwrite=False`.
 - [ ] Test prepared-by uses supplied ConnLab user over Windows fallback.
 - [ ] Test approved-by remains blank/manual when omitted.
+- [ ] Test confirmed Matrix id/revision and fee rule version are retained in result/note but do not drive V1 stale calculation.
 
 ### Task 3: Implement Application Export Service
 
@@ -413,7 +427,8 @@ Do not add a new external dependency solely for fallback unless separately appro
 - [ ] Test missing template still fails.
 - [ ] Test missing `Testing Prices` sheet fails when COM/fallback fake workbook exposes that condition.
 - [ ] Test structured writer maps groups/rows/total fields into workbook writer calls using a fake Excel adapter if direct COM is not available.
-- [ ] Test fallback `.xlsx` path when COM is unavailable and fallback writer is available.
+- [ ] Test `.xlsx` output path selection for COM SaveAs fallback when `.xls` output is unsuitable.
+- [ ] Test unavailable Excel COM maps to an actionable unavailable error instead of attempting a dependency-free Python writer.
 
 ### Task 5: Implement Workbook Gateway Method
 
@@ -444,7 +459,8 @@ Do not add a new external dependency solely for fallback unless separately appro
 - [ ] Test export route rejects needs-review draft by default where fixture can produce one.
 - [ ] Test successful route registers `fee_evaluation` output record using a fake writer dependency override.
 - [ ] Test output status summary shows `fee_evaluation` current after export.
-- [ ] Test later active Matrix/draft change can surface stale where existing output-status infrastructure supports it.
+- [ ] Test later active Project Matrix draft-version change can surface stale through existing output-status infrastructure.
+- [ ] Test confirmed Matrix id/rule version traceability is present in export result or output-record note.
 
 ### Task 9: Validation And Task Closure
 
@@ -478,9 +494,9 @@ git diff --check
 ## Risks And Mitigations
 
 - Risk: Official `.xls` template requires Excel COM and may be unavailable in CI.
-  - Mitigation: isolate COM behind gateway, unit-test with fakes, and test fallback behavior without requiring Office.
+  - Mitigation: isolate COM behind gateway, unit-test with fakes, test COM SaveAs `.xlsx` fallback selection with fakes, and return `503` when automation is unavailable.
 - Risk: Existing `ProjectOutputRecord` links to Project Matrix draft rather than Confirmed Matrix id.
-  - Mitigation: use existing output-status draft linkage for freshness and store confirmed Matrix/rule traceability in record note/service result.
+  - Mitigation: explicitly limit V1 freshness to existing draft-version linkage and store confirmed Matrix/rule traceability in record note/service result.
 - Risk: Review-required rows could be exported with guessed values.
   - Mitigation: reject needs-review by default and preserve blanks/warnings when explicitly allowed.
 - Risk: Hard-coded operator template path.
@@ -494,10 +510,10 @@ git diff --check
 - `Testing Prices` rows and totals: covered by structured writer.
 - No-overwrite guard: covered by service tests.
 - Actionable template/automation errors: covered by route/gateway tests.
-- `.xlsx` fallback: covered where project dependencies support a safe writer; otherwise route returns clear unavailable status.
+- `.xlsx` fallback: covered through Excel COM SaveAs selection; unavailable Excel COM returns clear unavailable status.
 - Prepared/Approved by semantics: covered by resolver and request mapping.
 - Output record update: covered by `ProjectOutputRecordService` registration.
-- Stale visibility: covered by existing output status infrastructure where supported.
+- Stale visibility: covered by existing draft-version output status infrastructure; confirmed Matrix/rule-version stale comparison is traceability-only in V1.
 - Scope boundary: maintained by no UI, no rule maintenance, no StepInstance/report expansion.
 
 ## Stop Rule

@@ -48,6 +48,7 @@ def test_confirmed_matrix_fee_draft_api_happy_path(tmp_path: Path) -> None:
         assert payload["groups"][0]["group_key"] == "g1"
         assert payload["groups"][0]["line_items"][0]["matched_rule_id"] == "fee_rule_visual_exam"
         assert payload["groups"][0]["line_items"][0]["matched_rule_version_id"] == "fee_rules_v2026_06_03"
+        assert payload["groups"][0]["line_items"][0]["spend_time"] == "2D"
         assert payload["groups"][0]["line_items"][0]["unit_price"] == "10"
         assert payload["groups"][0]["line_items"][0]["testing_fee"] is None
     finally:
@@ -157,6 +158,7 @@ def _seed_active_confirmed_snapshot(project_id: str, tmp_path: Path) -> None:
                         method="EIA-364-18",
                         condition="Visual Inspection",
                         requirement="No damage",
+                        day_expression="2D",
                     ),
                 ),
                 cells=(

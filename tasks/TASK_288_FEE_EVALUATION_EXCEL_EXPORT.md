@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned follow-up. Blocked until TASK_287 is complete.
+Complete. Implemented after explicit user approval on 2026-06-04.
 
 ## Current Phase
 
@@ -37,11 +37,11 @@ The laboratory currently prepares `Testing Prices` manually from Matrix groups/s
 3. Generate output into the controlled project output/generated-output location.
 4. Reject overwrite unless explicitly allowed.
 5. Update `ProjectOutputRecord` for `fee_evaluation`.
-6. Mark fee output stale when Matrix authority or fee rule version changes, if existing output status infrastructure can support it without broad redesign.
+6. Mark fee output freshness using the existing `ProjectOutputRecord` draft-version status model; preserve confirmed Matrix id/revision and fee rule version as traceability metadata. V1 does not add a new confirmed-Matrix/rule-version stale comparator.
 7. Use the ConnLab login user first, then Windows/computer user, as default `Prepared by`.
 8. Leave `Approved by` for per-export manual entry/review.
-9. Allow `.xlsx` output as a V1 fallback when Excel automation for `.xls` is unavailable or unsuitable.
-10. Add backend tests for workbook gateway behavior, export service, output-record update, fallback behavior, and no-overwrite guard.
+9. Allow `.xlsx` output as a V1 fallback only through Excel COM SaveAs when `.xls` output is unsuitable. If Excel COM is unavailable, return an actionable unavailable error instead of adding a new workbook-writer dependency.
+10. Add backend tests for workbook gateway behavior, export service, output-record update, COM SaveAs `.xlsx` fallback selection, unavailable-automation behavior, and no-overwrite guard.
 
 ### Out Of Scope
 
@@ -77,7 +77,7 @@ The generated output must retain enough metadata in service results and output-r
 
 ### Workbook Format Fallback
 
-The preferred template remains the official fee workbook. V1 may output `.xlsx` when `.xls` automation is unavailable or unsuitable, as long as the exported workbook preserves the required fee rows, totals, and traceability fields.
+The preferred template remains the official fee workbook. V1 may output `.xlsx` when Excel COM can open the official template and save the generated workbook as `.xlsx`. V1 does not add `openpyxl`, `xlsxwriter`, `xlwt`, or another workbook-writer dependency. If Excel COM is unavailable, return an actionable unavailable error.
 
 ## Acceptance Criteria
 
@@ -86,12 +86,12 @@ The preferred template remains the official fee workbook. V1 may output `.xlsx` 
 3. Totals match the structured draft totals.
 4. Existing files are not overwritten unless explicitly allowed.
 5. Missing template or unavailable Excel automation returns actionable errors.
-6. When `.xls` automation is unavailable or unsuitable, `.xlsx` fallback is allowed and tested.
+6. When `.xls` output is unsuitable but Excel COM is available, `.xlsx` SaveAs fallback is allowed and tested. When Excel COM is unavailable, the export returns an actionable unavailable error.
 7. `Prepared by` defaults to ConnLab login user first, then Windows/computer user.
 8. `Approved by` remains manually supplied for each export.
 9. `ProjectOutputRecord` is updated for generated fee evaluation output.
-10. Fee output can be identified as stale against later Matrix/rule changes where current infrastructure supports it.
-11. Tests cover gateway write behavior, export service, output status update, fallback behavior, and overwrite guard.
+10. Fee output freshness is identified by the existing draft-version output status model; confirmed Matrix id/revision and fee rule version are retained for traceability but do not drive V1 stale calculation.
+11. Tests cover gateway write behavior, export service, output status update, COM SaveAs `.xlsx` fallback selection, unavailable-automation behavior, and overwrite guard.
 12. Scope boundary is held: no rule-maintenance UI, no StepInstance, no report expansion.
 
 ## Model Fit Assessment
@@ -105,3 +105,18 @@ Use `superpowers:executing-plans` for implementation. Also read `docs/project_ma
 ## Stop Rule
 
 Do not implement until this task file and its executable plan are reviewed and explicitly approved by the user.
+
+## Completion Notes
+
+- Added backend export service for active Confirmed Matrix Fee Evaluation drafts.
+- Added `POST /api/projects/{project_id}/confirmed-matrix/fee-evaluation/export`.
+- Added structured workbook writer support for the `Testing Prices` sheet behind the Office gateway boundary.
+- Registered generated outputs as `ProjectOutputKind.FEE_EVALUATION` through the existing `ProjectOutputRecord` draft-version freshness model.
+- Preserved confirmed Matrix id/revision, pricing rule version, and pricing effective date in service results and output-record notes.
+- Follow-up review fixes preserve line-level traceability in service results, API responses, output-record notes, and workbook rows: line id, confirmed group/row ids, source row id, matched rule id/version, and step tokens.
+- Follow-up review fixes carry Matrix row `day_expression` as export `spend_time` and write it to `Testing Prices`.
+- Kept `.xlsx` fallback limited to Excel COM SaveAs behavior with explicit Excel `FileFormat` selection; no workbook-writer dependency was added.
+- Validation:
+  - `py -m pytest tests/unit/test_confirmed_matrix_fee_evaluation_export_service.py tests/unit/test_fee_evaluation_workbook_gateway.py -q` -> `12 passed`
+  - `py -m pytest tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py tests/integration/test_project_output_records_api.py -q` -> `8 passed`
+  - `py -m pytest tests/unit/test_confirmed_matrix_fee_draft_service.py tests/integration/test_confirmed_matrix_fee_draft_api.py -q` -> `12 passed`

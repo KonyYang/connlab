@@ -104,6 +104,9 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
 from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftService,
 )
+from backend.application.confirmed_matrix_fee_evaluation_export_service import (
+    ConfirmedMatrixFeeEvaluationExportService,
+)
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
@@ -300,6 +303,25 @@ def get_confirmed_matrix_fee_draft_service(
     """Build confirmed-authority Fee Evaluation draft read-only service."""
     return ConfirmedMatrixFeeDraftService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_confirmed_matrix_fee_evaluation_export_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedMatrixFeeEvaluationExportService:
+    """Build confirmed-authority Fee Evaluation workbook export service."""
+    confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+    return ConfirmedMatrixFeeEvaluationExportService(
+        fee_draft_service=ConfirmedMatrixFeeDraftService(
+            confirmed_store=confirmed_store,
+        ),
+        confirmed_store=confirmed_store,
+        project_output_service=ProjectOutputRecordService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectTestPlanDraftRepository(session),
+            output_store=ProjectOutputRecordRepository(session),
+        ),
+        workbook_writer=FeeEvaluationWorkbookGateway(),
     )
 
 

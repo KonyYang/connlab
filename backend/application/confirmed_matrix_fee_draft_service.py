@@ -68,6 +68,7 @@ class FeeEvaluationLineItem:
     group_label: str
     confirmed_group_id: str
     sample_quantity_expression: str
+    spend_time: str
     confirmed_row_id: str
     source_row_id: str | None
     row_order: int
@@ -339,6 +340,7 @@ def _build_line_item(
         group_label=group.group_label.strip(),
         confirmed_group_id=group.confirmed_group_id,
         sample_quantity_expression=_text(group.sample_quantity_expression),
+        spend_time=_text(row.day_expression),
         confirmed_row_id=row.confirmed_row_id,
         source_row_id=row.source_row_snapshot_id,
         row_order=row.row_order,

@@ -40,6 +40,7 @@ class FeeEvaluationLineItemResponse(BaseModel):
     group_label: str
     confirmed_group_id: str
     sample_quantity_expression: str
+    spend_time: str
     confirmed_row_id: str
     source_row_id: str | None
     row_order: int
@@ -149,6 +150,7 @@ def _to_line_response(line: FeeEvaluationLineItem) -> FeeEvaluationLineItemRespo
         group_label=line.group_label,
         confirmed_group_id=line.confirmed_group_id,
         sample_quantity_expression=line.sample_quantity_expression,
+        spend_time=line.spend_time,
         confirmed_row_id=line.confirmed_row_id,
         source_row_id=line.source_row_id,
         row_order=line.row_order,

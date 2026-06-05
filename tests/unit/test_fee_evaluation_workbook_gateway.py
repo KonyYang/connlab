@@ -1,12 +1,26 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
+from backend.application.confirmed_matrix_fee_draft_service import (
+    FeeEvaluationDraft,
+    FeeEvaluationGroup,
+    FeeEvaluationHeader,
+    FeeEvaluationLineItem,
+)
+from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    MatrixBasicFillGroup,
+    MatrixBasicFillHeader,
+    MatrixBasicFillLine,
+    MatrixBasicFillWorkbook,
+)
 from backend.infrastructure.office.fee_evaluation_workbook_gateway import (
     FeeEvaluationWorkbookGateway,
 )
+from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 
 
 def test_fee_gateway_rejects_unsupported_template_type(tmp_path: Path) -> None:
@@ -28,3 +42,465 @@ def test_fee_gateway_rejects_missing_template(tmp_path: Path) -> None:
             output_path=tmp_path / "out.xls",
             preview=None,
         )
+
+
+def test_fee_gateway_structured_writer_maps_draft_rows_to_testing_prices_sheet(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    excel = _FakeExcel(_FakeWorkbook(sheet_names=("Testing Prices",)))
+    output = tmp_path / "fee_out.xls"
+
+    result = FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_from_draft(
+        template_path=template,
+        output_path=output,
+        draft=_draft(),
+        prepared_by="Operator",
+        approved_by="Lead",
+    )
+
+    sheet = excel.workbook.sheet
+    assert result.output_path == output
+    assert excel.workbook.opened_path == str(template)
+    assert excel.workbook.saved_path == str(output)
+    assert excel.workbook.saved_file_format == 56
+    assert sheet.cells[(2, 1)] == "Project ID: P1"
+    assert sheet.cells[(3, 1)] == "Confirmed Matrix: cmv-1 / rev 1"
+    assert sheet.cells[(4, 1)] == "Fee rule version: fee_rules_v2026_06_03"
+    assert sheet.cells[(6, 1)] == "Prepared by: Operator"
+    assert sheet.cells[(7, 1)] == "Approved by: Lead"
+    assert sheet.cells[(10, 1)] == "Group 1"
+    assert sheet.cells[(10, 2)] == "2D"
+    assert sheet.cells[(10, 3)] == "Fixture setup"
+    assert sheet.cells[(10, 4)] == "100"
+    assert sheet.cells[(10, 5)] == "1"
+    assert sheet.cells[(10, 8)] == "100"
+    assert sheet.cells[(10, 9)] == "line-1"
+    assert sheet.cells[(10, 10)] == "cmg-1"
+    assert sheet.cells[(10, 11)] == "cmr-1"
+    assert sheet.cells[(10, 13)] == "fee_rule_fixture"
+    assert sheet.cells[(10, 14)] == "fee_rules_v2026_06_03"
+    assert sheet.cells[(11, 7)] == "Total"
+    assert sheet.cells[(11, 8)] == "100"
+
+
+def test_fee_gateway_structured_writer_rejects_missing_testing_prices_sheet(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    excel = _FakeExcel(_FakeWorkbook(sheet_names=("Other",)))
+
+    with pytest.raises(ValueError, match="Testing Prices"):
+        FeeEvaluationWorkbookGateway(
+            excel_app_factory=lambda: excel
+        ).generate_from_draft(
+            template_path=template,
+            output_path=tmp_path / "out.xls",
+            draft=_draft(),
+            prepared_by="Operator",
+            approved_by=None,
+        )
+
+
+def test_fee_gateway_structured_writer_uses_com_saveas_for_xlsx_output(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    excel = _FakeExcel(_FakeWorkbook(sheet_names=("Testing Prices",)))
+    output = tmp_path / "fee_out.xlsx"
+
+    FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_from_draft(
+        template_path=template,
+        output_path=output,
+        draft=_draft(),
+        prepared_by="Operator",
+        approved_by=None,
+    )
+
+    assert excel.workbook.saved_path == str(output)
+    assert excel.workbook.saved_file_format == 51
+
+
+def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(5, 2)] = "0.5"
+    workbook.sheet.cells[(5, 3)] = "Sample preparation(if needed)"
+    workbook.sheet.cells[(5, 5)] = "per sample"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cell_fills[(2, 3)] = 0xD9D9D9
+    workbook.sheet.cell_fills[(4, 1)] = 0xFCE4D6
+    workbook.sheet.cell_fills[(5, 2)] = 65535
+    workbook.sheet.cell_fills[(5, 3)] = 65535
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.cells[(7, 2)] = "1"
+    workbook.sheet.cells[(7, 5)] = "per report"
+    workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.cells[(8, 2)] = "1"
+    workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    excel = _FakeExcel(workbook)
+    output = tmp_path / "fee_out.xls"
+
+    result = FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=output,
+        basic_fill=_basic_fill(),
+        review_required=True,
+        prepared_by="Operator",
+        approved_by=None,
+    )
+
+    sheet = excel.workbook.sheet
+    assert result.output_path == output
+    assert sheet.cells[(5, 1)] == "1"
+    assert sheet.cells[(5, 3)] == "Sample preparation(if needed)"
+    assert sheet.cells[(5, 2)] == "0.5"
+    assert sheet.cells[(5, 5)] == "per sample"
+    assert sheet.formulas[(5, 9)] == "=D5*F5*(1-H5)+G5"
+    assert sheet.cells[(6, 1)] == ""
+    assert sheet.cells[(6, 3)] == "Visual Examination"
+    assert sheet.formulas[(6, 9)] == "=D6*F6*(1-H6)+G6"
+    assert sheet.cells[(7, 1)] == ""
+    assert sheet.cells[(7, 3)] == "LLCR"
+    assert sheet.formulas[(7, 9)] == "=D7*F7*(1-H7)+G7"
+    assert sheet.cells[(8, 1)] == "2"
+    assert sheet.cells[(8, 3)] == "Sample preparation(if needed)"
+    assert sheet.cells[(8, 2)] == "0.5"
+    assert sheet.cells[(8, 5)] == "per sample"
+    assert sheet.formulas[(8, 9)] == "=D8*F8*(1-H8)+G8"
+    assert sheet.cells[(9, 1)] == ""
+    assert sheet.cells[(9, 3)] == "Dust Test"
+    assert sheet.formulas[(9, 9)] == "=D9*F9*(1-H9)+G9"
+    assert sheet.cells[(10, 3)] == "Report preparation"
+    assert sheet.cells[(10, 2)] == "1"
+    assert sheet.cells[(10, 5)] == "per report"
+    assert sheet.formulas[(10, 9)] == "=D10*F10*(1-H10)+G10"
+    assert sheet.cells[(11, 1)] == "条件确认"
+    assert sheet.cells[(11, 2)] == "1"
+    assert sheet.formulas[(11, 9)] == "=D11*F11*(1-H11)+G11"
+    assert sheet.formulas[(12, 2)] == "=SUM(B5:B11)"
+    assert sheet.formulas[(12, 9)] == "=SUM(I5:I11)"
+    assert sheet.cells[(6, 2)] == ""
+    assert sheet.cells[(6, 4)] == ""
+    assert sheet.cells[(6, 9)] == "0.0"
+    assert sheet.merged_ranges == []
+    assert sheet.a_column_border_cleared_ranges == []
+    assert sheet.a_column_group_borders == [(5, 7), (8, 9)]
+    assert sheet.a_column_fills[(5, 7)] == 0xD9D9D9
+    assert sheet.a_column_fills[(8, 9)] == 0xDDEBF7
+    assert sheet.cell_fills[(5, 3)] == sheet.cell_fills[(8, 3)] == 0xD9D9D9
+    assert (5, 2) not in sheet.cell_fills
+    assert (6, 2) not in sheet.cell_fills
+    assert (7, 2) not in sheet.cell_fills
+    assert (8, 2) not in sheet.cell_fills
+    assert (9, 2) not in sheet.cell_fills
+    assert (10, 2) not in sheet.cell_fills
+    assert (11, 2) not in sheet.cell_fills
+    assert sheet.a_column_bold_ranges == [(5, 14)]
+    assert "Matrix basic fill only." in result.warnings
+
+
+def test_fee_gateway_structured_writer_reports_unavailable_com(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+
+    def unavailable() -> object:
+        raise OfficeAutomationUnavailable("Excel COM automation is unavailable.")
+
+    with pytest.raises(OfficeAutomationUnavailable, match="unavailable"):
+        FeeEvaluationWorkbookGateway(
+            excel_app_factory=unavailable
+        ).generate_from_draft(
+            template_path=template,
+            output_path=tmp_path / "out.xls",
+            draft=_draft(),
+            prepared_by="Operator",
+            approved_by=None,
+        )
+
+
+def _basic_fill() -> MatrixBasicFillWorkbook:
+    return MatrixBasicFillWorkbook(
+        header=MatrixBasicFillHeader(
+            project_id="P1",
+            confirmed_matrix_id="cmv-1",
+            confirmed_revision=1,
+            generated_at="2026-06-05T10:00:00+08:00",
+        ),
+        status="ready",
+        groups=(
+            MatrixBasicFillGroup(
+                group_key="g1",
+                group_label="Group 1",
+                confirmed_group_id="cmg-1",
+                sample_quantity_expression="5",
+                lines=(
+                    MatrixBasicFillLine(
+                        line_id="cmv-1:g1:cmr-visual",
+                        group_key="g1",
+                        group_label="Group 1",
+                        confirmed_group_id="cmg-1",
+                        confirmed_row_id="cmr-visual",
+                        source_row_id="smr-visual",
+                        row_order=1,
+                        test_item="Visual Examination",
+                        cell_value="1 X",
+                        step_tokens=(),
+                    ),
+                    MatrixBasicFillLine(
+                        line_id="cmv-1:g1:cmr-llcr",
+                        group_key="g1",
+                        group_label="Group 1",
+                        confirmed_group_id="cmg-1",
+                        confirmed_row_id="cmr-llcr",
+                        source_row_id="smr-llcr",
+                        row_order=2,
+                        test_item="LLCR",
+                        cell_value="abc",
+                        step_tokens=(),
+                    ),
+                ),
+            ),
+            MatrixBasicFillGroup(
+                group_key="g2",
+                group_label="Group 2",
+                confirmed_group_id="cmg-2",
+                sample_quantity_expression="3",
+                lines=(
+                    MatrixBasicFillLine(
+                        line_id="cmv-1:g2:cmr-dust",
+                        group_key="g2",
+                        group_label="Group 2",
+                        confirmed_group_id="cmg-2",
+                        confirmed_row_id="cmr-dust",
+                        source_row_id="smr-dust",
+                        row_order=3,
+                        test_item="Dust Test",
+                        cell_value="1",
+                        step_tokens=(),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def _draft() -> FeeEvaluationDraft:
+    line = FeeEvaluationLineItem(
+        line_id="line-1",
+        status="calculated",
+        review_required=False,
+        review_reason=None,
+        confirmed_matrix_id="cmv-1",
+        confirmed_revision=1,
+        group_key="g1",
+        group_label="Group 1",
+        confirmed_group_id="cmg-1",
+        sample_quantity_expression="1",
+        spend_time="2D",
+        confirmed_row_id="cmr-1",
+        source_row_id="smr-1",
+        row_order=1,
+        test_item="Fixture setup",
+        section="6.1",
+        method="Fixture",
+        condition="",
+        requirement="",
+        step_tokens=("1",),
+        matched_rule_id="fee_rule_fixture",
+        matched_rule_version_id="fee_rules_v2026_06_03",
+        matched_rule_name="Fixture setup",
+        match_reason="exact",
+        calculation_strategy="fixed_per_group",
+        unit_label="group",
+        unit_price=Decimal("100"),
+        units=Decimal("1"),
+        base_fee=Decimal("0"),
+        discount_percent=Decimal("0"),
+        testing_fee=Decimal("100"),
+        warnings=(),
+    )
+    return FeeEvaluationDraft(
+        header=FeeEvaluationHeader(
+            project_id="P1",
+            confirmed_matrix_id="cmv-1",
+            confirmed_revision=1,
+            pricing_rule_version_id="fee_rules_v2026_06_03",
+            pricing_source_file_name="Testing Fee Evaluation-Even.xls",
+            pricing_source_hash="sha256:abc",
+            pricing_effective_from="2026-06-03",
+            generated_at="2026-06-04T10:00:00+08:00",
+        ),
+        draft_status="ready",
+        total_fee=Decimal("100"),
+        review_required_count=0,
+        groups=(
+            FeeEvaluationGroup(
+                group_key="g1",
+                group_label="Group 1",
+                sample_quantity_expression="1",
+                line_items=(line,),
+            ),
+        ),
+        warnings=(),
+    )
+
+
+class _FakeCell:
+    def __init__(self, sheet: "_FakeSheet", row: int, column: int) -> None:
+        self._sheet = sheet
+        self._row = row
+        self._column = column
+
+    @property
+    def Value(self) -> str | None:
+        return self._sheet.cells.get((self._row, self._column))
+
+    @Value.setter
+    def Value(self, value: object) -> None:
+        self._sheet.cells[(self._row, self._column)] = "" if value is None else str(value)
+
+    @property
+    def Formula(self) -> str | None:
+        return self._sheet.formulas.get((self._row, self._column), self.Value)
+
+    @Formula.setter
+    def Formula(self, value: object) -> None:
+        text = "" if value is None else str(value)
+        self._sheet.formulas[(self._row, self._column)] = text
+        self._sheet.cells[(self._row, self._column)] = "0.0" if text.startswith("=") else text
+
+    @property
+    def Interior(self) -> "_FakeInterior":
+        return _FakeInterior(self._sheet, self._row, self._column)
+
+
+class _FakeInterior:
+    def __init__(self, sheet: "_FakeSheet", row: int, column: int) -> None:
+        self._sheet = sheet
+        self._row = row
+        self._column = column
+
+    @property
+    def Color(self) -> int:
+        return self._sheet.cell_fills.get((self._row, self._column), 16777215)
+
+    @Color.setter
+    def Color(self, value: int) -> None:
+        self._sheet.cell_fills[(self._row, self._column)] = value
+
+
+class _FakeSheet:
+    def __init__(self) -> None:
+        self.cells: dict[tuple[int, int], str] = {}
+        self.formulas: dict[tuple[int, int], str] = {}
+        self.cell_fills: dict[tuple[int, int], int] = {}
+        self.merged_ranges: list[tuple[int, int, int, int]] = []
+        self.a_column_fills: dict[tuple[int, int], int] = {}
+        self.a_column_border_cleared_ranges: list[tuple[int, int]] = []
+        self.a_column_group_borders: list[tuple[int, int]] = []
+        self.a_column_bold_ranges: list[tuple[int, int]] = []
+
+    def Cells(self, row: int, column: int) -> _FakeCell:
+        return _FakeCell(self, row, column)
+
+    def insert_rows(self, row: int, count: int) -> None:
+        shifted: dict[tuple[int, int], str] = {}
+        for (cell_row, column), value in self.cells.items():
+            shifted[(cell_row + count if cell_row >= row else cell_row, column)] = value
+        self.cells = shifted
+        shifted_formulas: dict[tuple[int, int], str] = {}
+        for (cell_row, column), value in self.formulas.items():
+            shifted_formulas[(cell_row + count if cell_row >= row else cell_row, column)] = value
+        self.formulas = shifted_formulas
+        shifted_fills: dict[tuple[int, int], int] = {}
+        for (cell_row, column), value in self.cell_fills.items():
+            shifted_fills[(cell_row + count if cell_row >= row else cell_row, column)] = value
+        self.cell_fills = shifted_fills
+
+    def set_a_column_fill(self, start_row: int, end_row: int, color: int) -> None:
+        self.a_column_fills[(start_row, end_row)] = color
+
+    def clear_a_column_borders(self, start_row: int, end_row: int) -> None:
+        self.a_column_border_cleared_ranges.append((start_row, end_row))
+
+    def set_cell_fill(self, row: int, column: int, color: int) -> None:
+        self.cell_fills[(row, column)] = color
+
+    def clear_cell_fill(self, row: int, column: int) -> None:
+        self.cell_fills.pop((row, column), None)
+
+    def set_a_column_bold(self, start_row: int, end_row: int, bold: bool) -> None:
+        if bold:
+            self.a_column_bold_ranges.append((start_row, end_row))
+
+    def apply_a_column_group_borders(self, start_row: int, end_row: int) -> None:
+        self.a_column_group_borders.append((start_row, end_row))
+
+
+class _FakeWorksheets:
+    def __init__(self, names: tuple[str, ...], sheet: _FakeSheet) -> None:
+        self._names = names
+        self._sheet = sheet
+
+    def Item(self, key: object) -> _FakeSheet:
+        if key == "Testing Prices" and "Testing Prices" in self._names:
+            return self._sheet
+        if isinstance(key, int) and 1 <= key <= len(self._names):
+            return self._sheet
+        raise RuntimeError(f"Sheet not found: {key}")
+
+
+class _FakeWorkbook:
+    def __init__(self, sheet_names: tuple[str, ...]) -> None:
+        self.sheet = _FakeSheet()
+        self.Worksheets = _FakeWorksheets(sheet_names, self.sheet)
+        self.opened_path: str | None = None
+        self.saved_path: str | None = None
+        self.saved_file_format: int | None = None
+        self.closed = False
+
+    def SaveAs(self, path: str, FileFormat: int | None = None) -> None:
+        self.saved_path = path
+        self.saved_file_format = FileFormat
+
+    def Close(self, SaveChanges: bool = False) -> None:
+        self.closed = True
+
+
+class _FakeWorkbooks:
+    def __init__(self, workbook: _FakeWorkbook) -> None:
+        self._workbook = workbook
+
+    def Open(self, path: str) -> _FakeWorkbook:
+        self._workbook.opened_path = path
+        return self._workbook
+
+
+class _FakeExcel:
+    def __init__(self, workbook: _FakeWorkbook) -> None:
+        self.workbook = workbook
+        self.Workbooks = _FakeWorkbooks(workbook)
+        self.Visible = True
+        self.DisplayAlerts = True
+        self.quit = False
+
+    def Quit(self) -> None:
+        self.quit = True

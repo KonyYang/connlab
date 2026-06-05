@@ -1,12 +1,12 @@
 # TASK_285-288 Fee Evaluation Automation Series Plan
 
-> Status: proposed for review
+> Status: TASK_285-TASK_288 complete
 > Created: 2026-06-03
 > Phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
 
 ## Current Progress
 
-`TASK_285_FEE_RULE_SEED_LIBRARY` and `TASK_286_CONFIRMED_MATRIX_TO_FEE_DRAFT` are complete. `docs/task_board.md` currently marks `TASK_287_FEE_EVALUATION_REVIEW_UI` as the next planned task awaiting explicit approval.
+`TASK_285_FEE_RULE_SEED_LIBRARY`, `TASK_286_CONFIRMED_MATRIX_TO_FEE_DRAFT`, `TASK_287_FEE_EVALUATION_REVIEW_UI`, and `TASK_288_FEE_EVALUATION_EXCEL_EXPORT` are complete. `docs/task_board.md` currently has no active follow-up task for this fee-evaluation series.
 
 ## Business Goal
 
@@ -80,6 +80,12 @@ Deliverable:
 - no-overwrite guard;
 - `ProjectOutputRecord` update.
 
+Completion note:
+
+- V1 output freshness uses the existing `ProjectOutputRecord` draft-version model.
+- Confirmed Matrix id/revision and fee rule version are retained as traceability metadata.
+- `.xlsx` fallback is limited to Excel COM SaveAs behavior; no Python workbook-writer dependency was added.
+
 No rule-maintenance UI and no execution persistence.
 
 ## Versioning Policy
@@ -114,7 +120,7 @@ Generated fee forms use these V1 defaults:
 - `Prepared by`: ConnLab login user first; if unavailable, fallback to the current Windows/computer user.
 - `Approved by`: manually supplied for each export.
 
-V1 may output `.xlsx` when `.xls` Excel automation is unavailable or unsuitable, provided the exported workbook preserves required fee rows, totals, and traceability.
+V1 may output `.xlsx` through Excel COM SaveAs when `.xls` output is unsuitable, provided the exported workbook preserves required fee rows, totals, and traceability. V1 does not add a Python workbook-writer dependency; if Excel COM is unavailable, the export returns an actionable unavailable error.
 
 ## Main Risks
 
