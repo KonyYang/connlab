@@ -118,8 +118,12 @@ def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
     summary_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "FeeEvaluationStatusSummary.tsx"
     ).read_text(encoding="utf-8")
-    fee_page_source = (
-        FRONTEND_ROOT / "src" / "features" / "fee-evaluation" / "FeeEvaluationReviewExportPage.tsx"
+    fee_feature_root = FRONTEND_ROOT / "src" / "features" / "fee-evaluation"
+    fee_page_source = (fee_feature_root / "FeeEvaluationReviewExportPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    fee_review_details_source = (
+        fee_feature_root / "FeeEvaluationReviewDetails.tsx"
     ).read_text(encoding="utf-8")
 
     for required_app_symbol in [
@@ -145,12 +149,12 @@ def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
         "MATRIX_BASIC_FILL_TEMPLATE_PATH",
         "fill_mode: \"matrix_basic\"",
         "allow_review_required: true",
-        "Generate Matrix basic fill",
+        "Generate Excel file",
         "Fee Evaluation review rows",
         "No rule match",
         "manual_cleanup_warning",
     ]:
-        assert required_fee_page_symbol in fee_page_source
+        assert required_fee_page_symbol in fee_page_source + fee_review_details_source
 
     for forbidden_fee_page_symbol in [
         "Local review edits only",
@@ -158,6 +162,53 @@ def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
         "setOverrides",
     ]:
         assert forbidden_fee_page_symbol not in fee_page_source
+
+
+def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
+    """TASK_293 makes Fee Evaluation preview the Testing Prices sheet first."""
+    fee_feature_root = FRONTEND_ROOT / "src" / "features" / "fee-evaluation"
+    fee_page_source = (fee_feature_root / "FeeEvaluationReviewExportPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    preview_model_source = (fee_feature_root / "feeEvaluationPreviewModel.ts").read_text(
+        encoding="utf-8"
+    )
+    preview_table_source = (fee_feature_root / "FeeEvaluationPreviewTable.tsx").read_text(
+        encoding="utf-8"
+    )
+    review_details_source = (fee_feature_root / "FeeEvaluationReviewDetails.tsx").read_text(
+        encoding="utf-8"
+    )
+
+    for required_source_symbol in [
+        "buildFeeEvaluationPreviewRows",
+        "buildFeeEvaluationPreviewTotals",
+        "FeeEvaluationPreviewTable",
+        "FeeEvaluationReviewDetails",
+    ]:
+        assert required_source_symbol in fee_page_source
+
+    for required_preview_symbol in [
+        "Testing Prices preview rows",
+        "Testing Prices header",
+        "LTR Number",
+        "Test description",
+        "Requestor",
+        "Site",
+        "Spend Time",
+        "Unit Type",
+        "Testing Fee",
+        "Pending Excel confirmation",
+        "Pricing needs completion",
+    ]:
+        assert required_preview_symbol in preview_table_source + preview_model_source
+
+    assert "Review details" in review_details_source
+    assert "Fee Evaluation review rows" in review_details_source
+    assert "Generate Excel file" in fee_page_source
+    assert "Generate Matrix basic fill" not in fee_page_source
+    assert "exportConfirmedMatrixFeeEvaluation" in fee_page_source
+    assert "fetch(" not in fee_page_source
 
 
 def test_frontend_shell_shows_only_mvp_workflow_steps() -> None:

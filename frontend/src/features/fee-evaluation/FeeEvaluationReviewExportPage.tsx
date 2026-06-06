@@ -20,6 +20,16 @@ import {
   type Project,
   type ProjectOutputStatusItem,
 } from "../../api/client";
+import {
+  FeeEvaluationReviewDetails,
+  type FeeLineFilter,
+} from "./FeeEvaluationReviewDetails";
+import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
+import {
+  buildFeeEvaluationPreviewHeader,
+  buildFeeEvaluationPreviewRows,
+  buildFeeEvaluationPreviewTotals,
+} from "./feeEvaluationPreviewModel";
 
 const MATRIX_BASIC_FILL_TEMPLATE_PATH =
   "D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls";
@@ -40,8 +50,6 @@ type FeePageContextState =
       outputStatus: ProjectOutputStatusItem | null;
     }
   | { kind: "error"; message: string };
-
-type FeeLineFilter = "all" | "review_required" | "calculated" | "no_rule_match";
 
 type ExportState =
   | { kind: "idle" }
@@ -126,6 +134,19 @@ export function FeeEvaluationReviewExportPage({
 
   const draft = draftState.kind === "ready" ? draftState.draft : null;
   const lines = useMemo(() => flattenDraftLines(draft), [draft]);
+  const previewRows = useMemo(() => buildFeeEvaluationPreviewRows(draft), [draft]);
+  const previewHeader = useMemo(
+    () =>
+      buildFeeEvaluationPreviewHeader({
+        ltrNumber: contextState.kind === "ready" ? contextState.ltrNumber : null,
+        requestor: contextState.kind === "ready" ? contextState.project.requestor : null,
+      }),
+    [contextState]
+  );
+  const previewTotals = useMemo(
+    () => buildFeeEvaluationPreviewTotals(draft, approvedBy),
+    [approvedBy, draft]
+  );
   const groupOptions = useMemo(
     () => Array.from(new Set(lines.map((line) => line.group_label))).sort(),
     [lines]
@@ -134,7 +155,6 @@ export function FeeEvaluationReviewExportPage({
     () => filterLines(lines, filter, groupFilter, search),
     [filter, groupFilter, lines, search]
   );
-  const reviewCount = draft?.review_required_count ?? 0;
   const projectFolderPath =
     contextState.kind === "ready" ? contextState.projectFolderPath : null;
   const exportDisabledReason = exportBlocker(draftState, contextState);
@@ -188,13 +208,15 @@ export function FeeEvaluationReviewExportPage({
           <p>{contextSubtitle(contextState)}</p>
         </div>
         <div className="fee-evaluation-topbar-status">
-          <span>{draftStatusLabel(draft)}</span>
-          <strong>{reviewCount} review</strong>
+          <span>{previewTotals.confirmationLabel}</span>
+          <strong>Total fee: {previewTotals.testFeeTotal}</strong>
         </div>
       </header>
 
       <section className="fee-evaluation-summary-strip" aria-label="Fee summary">
-        <SummaryFact label="Draft status" value={draftStatusLabel(draft)} />
+        <SummaryFact label="Pricing status" value={previewTotals.confirmationLabel} />
+        <SummaryFact label="Total fee" value={previewTotals.testFeeTotal} />
+        <SummaryFact label="Working hours" value={previewTotals.workingHours} />
         <SummaryFact
           label="Rule version"
           value={draft?.header.pricing_rule_version_id ?? "-"}
@@ -202,10 +224,6 @@ export function FeeEvaluationReviewExportPage({
         <SummaryFact
           label="Pricing effective"
           value={displayValue(draft?.header.pricing_effective_from)}
-        />
-        <SummaryFact
-          label="Generated"
-          value={draft ? formatDateTime(draft.header.generated_at) : "-"}
         />
         <SummaryFact
           label="Output freshness"
@@ -217,10 +235,10 @@ export function FeeEvaluationReviewExportPage({
       <section className="fee-evaluation-export-panel" aria-label="Matrix basic fill export">
         <div>
           <p className="eyebrow">Excel output</p>
-          <h3>Generate Matrix basic fill</h3>
+          <h3>Generate Excel file</h3>
           <p>
-            Fills the official Testing Prices template with Matrix group and test-item
-            structure. Pricing columns stay ready for Excel-side completion.
+            Creates the official Testing Prices workbook from the Matrix structure.
+            Pricing fields remain ready for Excel-side completion.
           </p>
         </div>
         <div className="fee-evaluation-export-fields">
@@ -251,7 +269,7 @@ export function FeeEvaluationReviewExportPage({
             onClick={handleExport}
             disabled={Boolean(exportDisabledReason) || exportState.kind === "running"}
           >
-            {exportState.kind === "running" ? "Generating..." : "Generate Matrix basic fill"}
+            {exportState.kind === "running" ? "Generating..." : "Generate Excel file"}
           </button>
           {exportDisabledReason ? (
             <p className="fee-evaluation-export-blocker">{exportDisabledReason}</p>
@@ -265,92 +283,24 @@ export function FeeEvaluationReviewExportPage({
         <ExportResult state={exportState} />
       </section>
 
-      <section className="fee-evaluation-review-surface" aria-label="Fee review table">
-        <header className="fee-evaluation-review-header">
-          <div>
-            <p className="eyebrow">Review table</p>
-            <h3>{lines.length} Matrix fee lines</h3>
-          </div>
-          <div className="fee-evaluation-review-filters">
-            <FilterButton current={filter} value="all" onChange={setFilter} label="All" />
-            <FilterButton
-              current={filter}
-              value="review_required"
-              onChange={setFilter}
-              label="Review required"
-            />
-            <FilterButton
-              current={filter}
-              value="calculated"
-              onChange={setFilter}
-              label="Calculated"
-            />
-            <FilterButton
-              current={filter}
-              value="no_rule_match"
-              onChange={setFilter}
-              label="No rule match"
-            />
-          </div>
-        </header>
+      <FeeEvaluationPreviewTable
+        header={previewHeader}
+        rows={previewRows}
+        totals={previewTotals}
+      />
 
-        <div className="fee-evaluation-review-toolbar">
-          <label>
-            Group
-            <select
-              value={groupFilter}
-              onChange={(event) => setGroupFilter(event.currentTarget.value)}
-            >
-              <option value="all">All groups</option>
-              {groupOptions.map((group) => (
-                <option key={group} value={group}>
-                  {group}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Search
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.currentTarget.value)}
-              placeholder="Test item, rule, reason"
-            />
-          </label>
-        </div>
-
-        {draftState.kind === "loading" ? (
-          <p className="fee-evaluation-empty">Loading Fee Evaluation draft...</p>
-        ) : draftState.kind === "not_ready" ? (
-          <p className="fee-evaluation-empty">
-            No active confirmed Matrix authority yet. Confirm Matrix before fee review.
-          </p>
-        ) : draftState.kind === "error" ? (
-          <p className="error">{draftState.message}</p>
-        ) : visibleLines.length === 0 ? (
-          <p className="fee-evaluation-empty">No fee rows match the current filters.</p>
-        ) : (
-          <div className="fee-evaluation-table-wrap">
-            <table className="fee-evaluation-table" aria-label="Fee Evaluation review rows">
-              <thead>
-                <tr>
-                  <th>Group</th>
-                  <th>Matrix source</th>
-                  <th>Matched rule</th>
-                  <th>Price basis</th>
-                  <th>Calculated fee</th>
-                  <th>Status / reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleLines.map((line) => (
-                  <FeeReviewRow key={line.line_id} line={line} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <FeeEvaluationReviewDetails
+        lines={lines}
+        visibleLines={visibleLines}
+        filter={filter}
+        setFilter={setFilter}
+        groupFilter={groupFilter}
+        setGroupFilter={setGroupFilter}
+        search={search}
+        setSearch={setSearch}
+        groupOptions={groupOptions}
+        stateMessage={reviewStateMessage(draftState)}
+      />
     </section>
   );
 }
@@ -370,65 +320,6 @@ function SummaryFact({
       <strong>{value}</strong>
       {detail ? <p>{detail}</p> : null}
     </div>
-  );
-}
-
-function FilterButton({
-  current,
-  value,
-  label,
-  onChange,
-}: {
-  current: FeeLineFilter;
-  value: FeeLineFilter;
-  label: string;
-  onChange: (value: FeeLineFilter) => void;
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      className={current === value ? "is-active" : undefined}
-      onClick={() => onChange(value)}
-    >
-      {label}
-    </button>
-  );
-}
-
-function FeeReviewRow({ line }: { line: FeeEvaluationLineItem }): ReactElement {
-  return (
-    <tr className={line.review_required ? "fee-evaluation-row-review" : undefined}>
-      <td>{line.group_label}</td>
-      <td>
-        <strong>{line.test_item}</strong>
-        <span>
-          Row {line.row_order} / step {line.step_tokens.join(", ") || "-"} / sample{" "}
-          {line.sample_quantity_expression || "-"}
-        </span>
-      </td>
-      <td>
-        <strong>{displayValue(line.matched_rule_name)}</strong>
-        <span>{displayValue(line.matched_rule_id)}</span>
-        <span>{displayValue(line.matched_rule_version_id)}</span>
-      </td>
-      <td>
-        <strong>{formatMoney(line.unit_price)}</strong>
-        <span>{line.calculation_strategy ?? "manual"}</span>
-        <span>{line.unit_label}</span>
-      </td>
-      <td>{formatMoney(line.testing_fee)}</td>
-      <td>
-        <span className="fee-evaluation-status-pill">{lineStatusLabel(line)}</span>
-        {line.review_reason ? (
-          <p>{line.review_reason}</p>
-        ) : line.status === "no_rule_match" ? (
-          <p>No fee rule match.</p>
-        ) : null}
-        {line.warnings.map((warning) => (
-          <p key={`${line.line_id}:${warning.code}`}>{warning.message}</p>
-        ))}
-      </td>
-    </tr>
   );
 }
 
@@ -556,6 +447,23 @@ function exportBlocker(
   return null;
 }
 
+function reviewStateMessage(draftState: DraftLoadState): ReactElement | null {
+  if (draftState.kind === "loading") {
+    return <p className="fee-evaluation-empty">Loading Fee Evaluation draft...</p>;
+  }
+  if (draftState.kind === "not_ready") {
+    return (
+      <p className="fee-evaluation-empty">
+        No active confirmed Matrix authority yet. Confirm Matrix before fee review.
+      </p>
+    );
+  }
+  if (draftState.kind === "error") {
+    return <p className="error">{draftState.message}</p>;
+  }
+  return null;
+}
+
 function contextTitle(state: FeePageContextState): string {
   if (state.kind !== "ready") {
     return "Project fee review";
@@ -574,19 +482,6 @@ function contextSubtitle(state: FeePageContextState): string {
   return state.projectFolderPath
     ? `Output folder: ${state.projectFolderPath}`
     : "Project folder is required before export.";
-}
-
-function draftStatusLabel(draft: FeeEvaluationDraft | null): string {
-  if (!draft) {
-    return "Checking";
-  }
-  if (draft.draft_status === "needs_review") {
-    return "Needs review";
-  }
-  if (draft.draft_status === "empty") {
-    return "No fee rows";
-  }
-  return "Draft ready";
 }
 
 function outputFreshnessLabel(state: FeePageContextState): string {
@@ -615,16 +510,6 @@ function outputFreshnessDetail(state: FeePageContextState): string {
   return state.outputStatus.reason;
 }
 
-function lineStatusLabel(line: FeeEvaluationLineItem): string {
-  if (line.status === "calculated") {
-    return "Calculated";
-  }
-  if (line.status === "no_rule_match") {
-    return "No rule match";
-  }
-  return "Review required";
-}
-
 function displayValue(value: string | null | undefined): string {
   const normalized = value?.trim() ?? "";
   return normalized.length > 0 ? normalized : "-";
@@ -641,31 +526,6 @@ function normalizeOutputFileName(value: string): string | null {
     return null;
   }
   return /\.(xls|xlsx)$/i.test(normalized) ? normalized : `${normalized}.xls`;
-}
-
-function formatMoney(value: string | null | undefined): string {
-  if (!value) {
-    return "-";
-  }
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return value;
-  }
-  return parsed.toFixed(2);
-}
-
-function formatDateTime(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function isErrorDetailObject(

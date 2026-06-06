@@ -2994,6 +2994,7 @@
 .fee-evaluation-topbar,
 .fee-evaluation-summary-strip,
 .fee-evaluation-export-panel,
+.fee-evaluation-preview-surface,
 .fee-evaluation-review-surface {
   border: 1px solid var(--color-border);
   border-radius: 10px;
@@ -3012,6 +3013,7 @@
 .fee-evaluation-topbar p,
 .fee-evaluation-export-panel h3,
 .fee-evaluation-export-panel p,
+.fee-evaluation-preview-header h3,
 .fee-evaluation-review-header h3,
 .fee-evaluation-review-header p {
   margin: 0;
@@ -3078,6 +3080,169 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #f8fbff;
+}
+
+.fee-evaluation-preview-surface {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.fee-evaluation-preview-header {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.fee-evaluation-preview-header h3 {
+  font-size: 16px;
+}
+
+.fee-evaluation-preview-state {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid #b9d7e6;
+  border-radius: 8px;
+  background: #eef8fb;
+}
+
+.fee-evaluation-preview-state span,
+.fee-evaluation-preview-totals dt {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fee-evaluation-preview-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.fee-evaluation-preview-header-band {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr 1fr;
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fee-evaluation-preview-header-band div {
+  display: grid;
+  grid-template-columns: minmax(94px, 0.42fr) minmax(0, 1fr);
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+}
+
+.fee-evaluation-preview-header-band div:last-child {
+  border-right: 0;
+}
+
+.fee-evaluation-preview-header-band dt,
+.fee-evaluation-preview-header-band dd {
+  margin: 0;
+  padding: 7px 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.fee-evaluation-preview-header-band dt {
+  background: #e8eef6;
+  color: var(--color-ink-muted);
+  font-weight: 800;
+}
+
+.fee-evaluation-preview-header-band dd {
+  background: #fbfdff;
+  font-weight: 700;
+}
+
+.fee-evaluation-preview-table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.fee-evaluation-preview-table th,
+.fee-evaluation-preview-table td {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.fee-evaluation-preview-table th:last-child,
+.fee-evaluation-preview-table td:last-child {
+  border-right: 0;
+}
+
+.fee-evaluation-preview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #e8eef6;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fee-evaluation-preview-table td:nth-child(1),
+.fee-evaluation-preview-table td:nth-child(4),
+.fee-evaluation-preview-table td:nth-child(5),
+.fee-evaluation-preview-table td:nth-child(6),
+.fee-evaluation-preview-table td:nth-child(7),
+.fee-evaluation-preview-table td:nth-child(8),
+.fee-evaluation-preview-table td:nth-child(9) {
+  white-space: nowrap;
+}
+
+.fee-evaluation-preview-table td:nth-child(3) {
+  min-width: 260px;
+}
+
+.fee-evaluation-preview-table td:nth-child(3) strong,
+.fee-evaluation-preview-table td:nth-child(3) span {
+  display: block;
+}
+
+.fee-evaluation-preview-table td:nth-child(3) span {
+  margin-top: 3px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.fee-evaluation-preview-row-pending {
+  background: #fff9ed;
+}
+
+.fee-evaluation-preview-totals {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.fee-evaluation-preview-totals div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.fee-evaluation-preview-totals dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
 }
 
 .fee-evaluation-summary-strip strong,
@@ -5010,6 +5175,9 @@
   .fee-evaluation-summary-strip,
   .fee-evaluation-export-panel,
   .fee-evaluation-export-fields,
+  .fee-evaluation-preview-header,
+  .fee-evaluation-preview-header-band,
+  .fee-evaluation-preview-totals,
   .project-workbench-matrix-header,
   .project-workbench-mini-grid,
   .project-workbench-status-grid,

@@ -38,29 +38,64 @@ describe("FeeEvaluationReviewExportPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders fee rows and filters review-required and no-rule-match lines", async () => {
+  it("renders Testing Prices preview before secondary review details", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
     expect(await screen.findByText("DL-2026-001 | CoolPower HDF")).toBeTruthy();
-    const table = screen.getByRole("table", { name: "Fee Evaluation review rows" });
-    expect(within(table).getAllByText("Fixture setup").length).toBeGreaterThan(0);
-    expect(within(table).getAllByText("Visual Examination").length).toBeGreaterThan(0);
-    expect(within(table).getByText("Unknown specialized test")).toBeTruthy();
+    expect(screen.getByText("Testing Prices preview")).toBeTruthy();
+    expect(screen.getByText("Review details")).toBeTruthy();
+    expect(screen.getByText("Total fee")).toBeTruthy();
+    expect(screen.getAllByText("Pending Excel confirmation").length).toBeGreaterThan(0);
+
+    const tables = screen.getAllByRole("table");
+    expect(tables[0].getAttribute("aria-label")).toBe("Testing Prices preview rows");
+    expect(tables[1].getAttribute("aria-label")).toBe("Fee Evaluation review rows");
+
+    const previewTable = screen.getByRole("table", {
+      name: "Testing Prices preview rows",
+    });
+    const headerBand = screen.getByLabelText("Testing Prices header");
+    expect(within(headerBand).getByText("LTR Number")).toBeTruthy();
+    expect(within(headerBand).getByText("DL-2026-001")).toBeTruthy();
+    expect(within(headerBand).getByText("Requestor")).toBeTruthy();
+    expect(within(headerBand).getByText("Lab User")).toBeTruthy();
+    expect(within(headerBand).getByText("Test description")).toBeTruthy();
+    expect(within(headerBand).getAllByText("Pending").length).toBeGreaterThan(0);
+    for (const column of [
+      "Group",
+      "Spend Time",
+      "Description",
+      "Unit Price",
+      "Unit Type",
+      "Units",
+      "Base Fee",
+      "Discount",
+      "Testing Fee",
+    ]) {
+      expect(within(previewTable).getByRole("columnheader", { name: column })).toBeTruthy();
+    }
+    expect(within(previewTable).getAllByText("Pending").length).toBeGreaterThan(0);
+    expect(within(previewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
+
+    const reviewTable = screen.getByRole("table", { name: "Fee Evaluation review rows" });
+    expect(within(reviewTable).getAllByText("Fixture setup").length).toBeGreaterThan(0);
+    expect(within(reviewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
+    expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
     expect(screen.queryByLabelText("Units")).toBeNull();
     expect(screen.queryByLabelText("Base fee")).toBeNull();
     expect(screen.queryByLabelText("Discount")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Review required" }));
-    expect(within(table).queryByText("Fixture setup")).toBeNull();
-    expect(within(table).getAllByText("Visual Examination").length).toBeGreaterThan(0);
-    expect(within(table).getByText("Unknown specialized test")).toBeTruthy();
+    expect(within(reviewTable).queryByText("Fixture setup")).toBeNull();
+    expect(within(reviewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
+    expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "No rule match" }));
-    expect(within(table).queryByText("Visual Examination")).toBeNull();
-    expect(within(table).getByText("Unknown specialized test")).toBeTruthy();
+    expect(within(reviewTable).queryByText("Visual Examination")).toBeNull();
+    expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
   });
 
   it("disables export when the project folder path is missing", async () => {
@@ -70,7 +105,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
     const exportButton = await screen.findByRole("button", {
-      name: "Generate Matrix basic fill",
+      name: "Generate Excel file",
     });
     expect((exportButton as HTMLButtonElement).disabled).toBe(true);
     expect(
@@ -93,7 +128,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.change(screen.getByLabelText("File name"), {
       target: { value: "fee draft" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate Matrix basic fill" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate Excel file" }));
 
     await waitFor(() => {
       expect(apiMocks.exportConfirmedMatrixFeeEvaluation).toHaveBeenCalledWith("P1", {
@@ -126,7 +161,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Generate Matrix basic fill" })
+      await screen.findByRole("button", { name: "Generate Excel file" })
     );
 
     expect(
