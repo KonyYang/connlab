@@ -107,6 +107,9 @@ from backend.application.confirmed_matrix_fee_draft_service import (
 from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ConfirmedMatrixFeeEvaluationExportService,
 )
+from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service import (
+    ConfirmedMatrixFeeEvaluationExportTimeoutService,
+)
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
@@ -157,6 +160,9 @@ from backend.infrastructure.office import (
     LtrWorkbookTransactionConfig,
     LtrWorkbookTransactionGateway,
     OfficeFacade,
+)
+from backend.infrastructure.office.fee_evaluation_export_subprocess_runner import (
+    FeeEvaluationExportSubprocessRunner,
 )
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -306,10 +312,19 @@ def get_confirmed_matrix_fee_draft_service(
     )
 
 
-def get_confirmed_matrix_fee_evaluation_export_service(
+def get_confirmed_matrix_fee_evaluation_export_service() -> (
+    ConfirmedMatrixFeeEvaluationExportTimeoutService
+):
+    """Build timeout-protected Fee Evaluation workbook export service."""
+    return ConfirmedMatrixFeeEvaluationExportTimeoutService(
+        runner=FeeEvaluationExportSubprocessRunner()
+    )
+
+
+def build_direct_confirmed_matrix_fee_evaluation_export_service(
     session: Session = Depends(get_session),
 ) -> ConfirmedMatrixFeeEvaluationExportService:
-    """Build confirmed-authority Fee Evaluation workbook export service."""
+    """Build direct confirmed-authority Fee Evaluation export service."""
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
     return ConfirmedMatrixFeeEvaluationExportService(
         fee_draft_service=ConfirmedMatrixFeeDraftService(

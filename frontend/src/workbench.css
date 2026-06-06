@@ -2741,6 +2741,7 @@
 
 .runtime-console-step-tools button:disabled,
 .runtime-console-step-actions button:disabled,
+.runtime-console-fee button:disabled,
 .runtime-console-save-button:disabled {
   color: var(--color-ink-muted);
   border-color: var(--color-border);
@@ -2972,6 +2973,303 @@
   color: var(--color-ink-muted);
   font-size: 11px;
   font-weight: 800;
+}
+
+.runtime-console-fee-secondary {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.runtime-console-fee button {
+  justify-self: start;
+  padding: 7px 10px;
+}
+
+.fee-evaluation-page {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.fee-evaluation-topbar,
+.fee-evaluation-summary-strip,
+.fee-evaluation-export-panel,
+.fee-evaluation-review-surface {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.fee-evaluation-topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+}
+
+.fee-evaluation-topbar h2,
+.fee-evaluation-topbar p,
+.fee-evaluation-export-panel h3,
+.fee-evaluation-export-panel p,
+.fee-evaluation-review-header h3,
+.fee-evaluation-review-header p {
+  margin: 0;
+}
+
+.fee-evaluation-topbar h2 {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.fee-evaluation-topbar p:not(.eyebrow),
+.fee-evaluation-export-panel p,
+.fee-evaluation-summary-strip p {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.fee-evaluation-back-button,
+.fee-evaluation-review-filters button,
+.fee-evaluation-export-actions button {
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fee-evaluation-back-button {
+  padding: 7px 10px;
+}
+
+.fee-evaluation-topbar-status {
+  display: grid;
+  min-width: 120px;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.fee-evaluation-topbar-status span,
+.fee-evaluation-summary-strip span,
+.fee-evaluation-export-fields label,
+.fee-evaluation-review-toolbar label {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fee-evaluation-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.fee-evaluation-summary-strip div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.fee-evaluation-summary-strip strong,
+.fee-evaluation-summary-strip p {
+  overflow-wrap: anywhere;
+}
+
+.fee-evaluation-export-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.5fr) minmax(210px, 0.7fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+}
+
+.fee-evaluation-export-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(130px, 0.75fr) minmax(190px, 1fr);
+  gap: 8px;
+}
+
+.fee-evaluation-export-fields label,
+.fee-evaluation-review-toolbar label {
+  display: grid;
+  gap: 5px;
+}
+
+.fee-evaluation-export-fields input,
+.fee-evaluation-review-toolbar input,
+.fee-evaluation-review-toolbar select {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 12px;
+  padding: 7px 8px;
+}
+
+.fee-evaluation-export-fields input[readonly] {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+
+.fee-evaluation-export-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.fee-evaluation-export-actions button {
+  min-height: 34px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.fee-evaluation-export-actions button:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
+}
+
+.fee-evaluation-export-blocker,
+.fee-evaluation-export-error p {
+  color: var(--color-danger);
+}
+
+.fee-evaluation-export-result,
+.fee-evaluation-export-error {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.fee-evaluation-export-result {
+  border: 1px solid #b9d7e6;
+  background: #eef8fb;
+}
+
+.fee-evaluation-export-error {
+  border: 1px solid #e8b8b5;
+  background: #fff1f0;
+}
+
+.fee-evaluation-review-surface {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.fee-evaluation-review-header,
+.fee-evaluation-review-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.fee-evaluation-review-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fee-evaluation-review-filters button {
+  padding: 6px 9px;
+}
+
+.fee-evaluation-review-filters button.is-active {
+  border-color: var(--color-primary);
+  background: #eef8fb;
+}
+
+.fee-evaluation-review-toolbar {
+  justify-content: start;
+}
+
+.fee-evaluation-review-toolbar label {
+  min-width: 220px;
+}
+
+.fee-evaluation-table-wrap {
+  max-height: min(66vh, 720px);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.fee-evaluation-table {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.fee-evaluation-table th,
+.fee-evaluation-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.fee-evaluation-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fee-evaluation-table td:nth-child(2),
+.fee-evaluation-table td:nth-child(3),
+.fee-evaluation-table td:nth-child(4),
+.fee-evaluation-table td:nth-child(6) {
+  display: grid;
+  gap: 4px;
+}
+
+.fee-evaluation-table span,
+.fee-evaluation-table p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.fee-evaluation-row-review {
+  background: #fff9ed;
+}
+
+.fee-evaluation-status-pill {
+  display: inline-flex;
+  width: max-content;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fee-evaluation-empty {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  color: var(--color-ink-muted);
 }
 
 .runtime-console-attention-tile strong {
@@ -4708,6 +5006,10 @@
   .runtime-console-step-status-card,
   .runtime-console-step-actions,
   .runtime-console-fee-grid,
+  .fee-evaluation-topbar,
+  .fee-evaluation-summary-strip,
+  .fee-evaluation-export-panel,
+  .fee-evaluation-export-fields,
   .project-workbench-matrix-header,
   .project-workbench-mini-grid,
   .project-workbench-status-grid,

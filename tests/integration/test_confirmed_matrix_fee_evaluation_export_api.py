@@ -20,6 +20,7 @@ from backend.application.confirmed_matrix_fee_draft_service import (
 from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ConfirmedMatrixFeeEvaluationExportError,
     ConfirmedMatrixFeeEvaluationExportNotFoundError,
+    ConfirmedMatrixFeeEvaluationExportTimeoutError,
     ConfirmedMatrixFeeEvaluationExportUnavailableError,
     ExportConfirmedMatrixFeeEvaluationCommand,
     ExportConfirmedMatrixFeeEvaluationResult,
@@ -168,6 +169,36 @@ def test_confirmed_matrix_fee_evaluation_export_api_maps_unavailable_to_503(
 
     assert response.status_code == 503
     assert "Excel COM automation" in response.json()["detail"]
+
+
+def test_confirmed_matrix_fee_evaluation_export_api_maps_timeout_to_structured_503(
+    tmp_path: Path,
+) -> None:
+    app.dependency_overrides[
+        get_confirmed_matrix_fee_evaluation_export_service
+    ] = lambda: _FailingExportService(
+        ConfirmedMatrixFeeEvaluationExportTimeoutError(
+            "Fee Evaluation export timed out after 90.0 seconds.",
+            elapsed_seconds=90.0,
+            manual_cleanup_warning="Inspect Excel and the output file manually.",
+        )
+    )
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/export",
+            json={
+                "template_path": str(tmp_path / "template.xls"),
+                "output_dir": str(tmp_path),
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert "timed out" in detail["message"]
+    assert detail["elapsed_seconds"] == 90.0
+    assert "Inspect Excel" in detail["manual_cleanup_warning"]
 
 
 def test_confirmed_matrix_fee_evaluation_export_api_registers_output_status(

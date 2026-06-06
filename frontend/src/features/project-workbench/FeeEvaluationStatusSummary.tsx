@@ -15,11 +15,15 @@ type FeeEvaluationStatusState =
 type FeeEvaluationStatusSummaryProps = {
   projectId: string;
   outputStatus: WorkbenchDocumentStatus | null;
+  canOpen: boolean;
+  onOpenFeeEvaluation: () => void;
 };
 
 export function FeeEvaluationStatusSummary({
   projectId,
-  outputStatus,
+  outputStatus: _outputStatus,
+  canOpen,
+  onOpenFeeEvaluation,
 }: FeeEvaluationStatusSummaryProps): ReactElement {
   const [state, setState] = useState<FeeEvaluationStatusState>({
     kind: "loading",
@@ -58,72 +62,50 @@ export function FeeEvaluationStatusSummary({
   return (
     <section className="runtime-console-fee" aria-label="Fee Evaluation status">
       <header>
-        <p className="eyebrow">Derived output</p>
-        <h3>Fee Evaluation</h3>
+        <p className="eyebrow">Fee Evaluation</p>
       </header>
       <div className="runtime-console-fee-grid">
         <div>
-          <span>Status</span>
-          <strong>{statusLabel(state, outputStatus)}</strong>
-          <p>{statusDetail(state, outputStatus)}</p>
+          <p>{totalDetail(state)}</p>
         </div>
       </div>
+      <button
+        type="button"
+        disabled={!(canOpen || state.kind === "ready")}
+        onClick={onOpenFeeEvaluation}
+      >
+        Open Fee Evaluation
+      </button>
     </section>
   );
 }
 
-function statusLabel(
-  state: FeeEvaluationStatusState,
-  outputStatus: WorkbenchDocumentStatus | null
-): string {
-  if (outputStatus?.freshness === "stale") {
-    return "Stale";
-  }
-  if (outputStatus?.freshness === "failed") {
-    return "Unavailable";
-  }
-  if (state.kind === "loading") {
-    return "Checking";
-  }
-  if (state.kind === "missing") {
-    return "Missing";
-  }
-  if (state.kind === "stale") {
-    return "Stale / unavailable";
-  }
-  if (state.draft.draft_status === "needs_review") {
-    return "Needs review";
-  }
-  if (state.draft.draft_status === "empty") {
-    return "No fee rows";
-  }
-  return "Draft ready";
-}
-
-function statusDetail(
-  state: FeeEvaluationStatusState,
-  outputStatus: WorkbenchDocumentStatus | null
-): string {
-  if (outputStatus?.freshness === "stale" || outputStatus?.freshness === "failed") {
-    return outputStatus.reason;
-  }
+function totalDetail(state: FeeEvaluationStatusState): string {
   if (state.kind === "loading") {
     return "Reading active Matrix-derived fee draft.";
   }
   if (state.kind === "missing") {
-    return "Confirm Matrix authority before fee review.";
+    return "Total fee: Pending Matrix confirmation.";
   }
   if (state.kind === "stale") {
     return state.message;
   }
   if (state.draft.draft_status === "needs_review") {
-    return `${state.draft.review_required_count} line(s) require operator review.`;
+    return "Total fee: Pending Excel confirmation.";
   }
   if (state.draft.draft_status === "empty") {
-    return "Active Matrix has no fee rows available.";
+    return "Total fee: No fee rows.";
   }
-  if (outputStatus?.freshness === "manual") {
-    return outputStatus.reason;
+  return `Total fee: ${formatMoney(state.draft.total_fee)}`;
+}
+
+function formatMoney(value: string | null | undefined): string {
+  if (!value) {
+    return "Pending";
   }
-  return "All fee lines are calculated from the active rule version.";
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return value;
+  }
+  return parsed.toFixed(2);
 }

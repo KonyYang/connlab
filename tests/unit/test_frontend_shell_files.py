@@ -61,6 +61,8 @@ def test_frontend_shell_core_files_exist() -> None:
         "src/features/project-workbench/ProjectWorkbenchMatrixInspector.tsx",
         "src/features/project-workbench/projectWorkbenchMatrixHelpers.ts",
         "src/features/project-workbench/projectWorkbenchVersionSelectors.ts",
+        "src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "src/pages/ProjectFeeEvaluationPage.tsx",
         "src/features/settings/SettingsExternalResourcesPanel.tsx",
         "src/features/settings/settingsResourceConfig.ts",
         "src/features/settings/settingsSelectors.ts",
@@ -99,6 +101,63 @@ def test_frontend_shell_uses_api_client_and_mvp_routes() -> None:
     assert "getProject" in workbench_model_source
     assert '"/api/projects"' in client_source
     assert 'fetch(`${API_BASE}${path}`' in client_source
+
+
+def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
+    """TASK_292 moves full Fee Evaluation review/export out of Workbench."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    workbench_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    summary_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "FeeEvaluationStatusSummary.tsx"
+    ).read_text(encoding="utf-8")
+    fee_page_source = (
+        FRONTEND_ROOT / "src" / "features" / "fee-evaluation" / "FeeEvaluationReviewExportPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_app_symbol in [
+        "projectFeeEvaluation",
+        "/fee-evaluation",
+        "ProjectFeeEvaluationPage",
+    ]:
+        assert required_app_symbol in app_source
+
+    for required_client_symbol in [
+        "export type FeeEvaluationExportRequest = {",
+        "export type FeeEvaluationExportResponse = {",
+        "exportConfirmedMatrixFeeEvaluation(",
+        "/confirmed-matrix/fee-evaluation/export",
+    ]:
+        assert required_client_symbol in client_source
+
+    assert "onOpenFeeEvaluation" in workbench_page_source
+    assert "FeeEvaluationReviewPanel" not in layout_source
+    assert "Open Fee Evaluation" in summary_source
+
+    for required_fee_page_symbol in [
+        "MATRIX_BASIC_FILL_TEMPLATE_PATH",
+        "fill_mode: \"matrix_basic\"",
+        "allow_review_required: true",
+        "Generate Matrix basic fill",
+        "Fee Evaluation review rows",
+        "No rule match",
+        "manual_cleanup_warning",
+    ]:
+        assert required_fee_page_symbol in fee_page_source
+
+    for forbidden_fee_page_symbol in [
+        "Local review edits only",
+        "Edited locally",
+        "setOverrides",
+    ]:
+        assert forbidden_fee_page_symbol not in fee_page_source
 
 
 def test_frontend_shell_shows_only_mvp_workflow_steps() -> None:

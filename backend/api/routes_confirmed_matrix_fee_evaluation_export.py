@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ from backend.application.confirmed_matrix_fee_draft_service import (
 from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ConfirmedMatrixFeeEvaluationExportError,
     ConfirmedMatrixFeeEvaluationExportNotFoundError,
-    ConfirmedMatrixFeeEvaluationExportService,
+    ConfirmedMatrixFeeEvaluationExportTimeoutError,
     ConfirmedMatrixFeeEvaluationExportUnavailableError,
     ExportConfirmedMatrixFeeEvaluationCommand,
     ExportConfirmedMatrixFeeEvaluationResult,
@@ -30,6 +30,15 @@ from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnava
 
 
 router = APIRouter(tags=["confirmed-matrix-fee-evaluation-export"])
+
+
+class FeeEvaluationExportServicePort(Protocol):
+    """Route dependency contract for Fee Evaluation export services."""
+
+    def export(
+        self, command: ExportConfirmedMatrixFeeEvaluationCommand
+    ) -> ExportConfirmedMatrixFeeEvaluationResult:
+        """Export one Fee Evaluation workbook."""
 
 
 class ConfirmedMatrixFeeEvaluationExportRequest(BaseModel):
@@ -80,7 +89,7 @@ class FeeEvaluationExportLineTraceResponse(BaseModel):
 def export_confirmed_matrix_fee_evaluation(
     project_id: str,
     request: ConfirmedMatrixFeeEvaluationExportRequest,
-    service: ConfirmedMatrixFeeEvaluationExportService = Depends(
+    service: FeeEvaluationExportServicePort = Depends(
         get_confirmed_matrix_fee_evaluation_export_service
     ),
 ) -> ConfirmedMatrixFeeEvaluationExportResponse:
@@ -110,6 +119,15 @@ def export_confirmed_matrix_fee_evaluation(
         OfficeAutomationUnavailable,
     ) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ConfirmedMatrixFeeEvaluationExportTimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": str(exc),
+                "elapsed_seconds": exc.elapsed_seconds,
+                "manual_cleanup_warning": exc.manual_cleanup_warning,
+            },
+        ) from exc
     except (ConfirmedMatrixFeeEvaluationExportError, ProjectOutputRecordError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:

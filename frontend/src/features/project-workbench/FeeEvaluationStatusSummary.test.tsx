@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ApiRequestError } from "../../api/client";
 import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
 import type { WorkbenchDocumentStatus } from "./projectWorkbenchVersionSelectors";
@@ -31,28 +31,39 @@ describe("FeeEvaluationStatusSummary", () => {
       <FeeEvaluationStatusSummary
         projectId="P1"
         outputStatus={feeOutputStatus("missing", "No output path is available yet.")}
+        canOpen={false}
+        onOpenFeeEvaluation={vi.fn()}
       />
     );
 
-    expect(await screen.findByText("Missing")).toBeTruthy();
-    expect(screen.getByText("Confirm Matrix authority before fee review.")).toBeTruthy();
+    expect(await screen.findByText("Total fee: Pending Matrix confirmation.")).toBeTruthy();
+    expect(screen.getByText("Total fee: Pending Matrix confirmation.")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Open Fee Evaluation" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
   });
 
   it("shows needs-review draft readiness from the fee draft", async () => {
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft("needs_review", 2));
+    const onOpen = vi.fn();
 
     render(
       <FeeEvaluationStatusSummary
         projectId="P1"
         outputStatus={feeOutputStatus("missing", "No output path is available yet.")}
+        canOpen={true}
+        onOpenFeeEvaluation={onOpen}
       />
     );
 
-    expect(await screen.findByText("Needs review")).toBeTruthy();
-    expect(screen.getByText("2 line(s) require operator review.")).toBeTruthy();
+    expect(await screen.findByText("Total fee: Pending Excel confirmation.")).toBeTruthy();
+    expect(screen.getByText("Total fee: Pending Excel confirmation.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open Fee Evaluation" }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("shows ready when the draft is deterministic and output status is current", async () => {
+  it("shows confirmed and total when the draft is deterministic", async () => {
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft("ready", 0));
 
     render(
@@ -62,16 +73,16 @@ describe("FeeEvaluationStatusSummary", () => {
           "current",
           "Output reference is aligned with the current authority context."
         )}
+        canOpen={true}
+        onOpenFeeEvaluation={vi.fn()}
       />
     );
 
-    expect(await screen.findByText("Draft ready")).toBeTruthy();
-    expect(
-      screen.getByText("All fee lines are calculated from the active rule version.")
-    ).toBeTruthy();
+    expect(await screen.findByText("Total fee: 100.00")).toBeTruthy();
+    expect(screen.queryByText(/Output:/)).toBeNull();
   });
 
-  it("uses Workbench output freshness for stale status", async () => {
+  it("keeps Workbench summary focused on total fee instead of output record details", async () => {
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft("ready", 0));
 
     render(
@@ -81,13 +92,33 @@ describe("FeeEvaluationStatusSummary", () => {
           "stale",
           "Output reference was captured before the current authority version."
         )}
+        canOpen={true}
+        onOpenFeeEvaluation={vi.fn()}
       />
     );
 
-    expect(await screen.findByText("Stale")).toBeTruthy();
-    expect(
-      screen.getByText("Output reference was captured before the current authority version.")
-    ).toBeTruthy();
+    expect(await screen.findByText("Total fee: 100.00")).toBeTruthy();
+    expect(screen.queryByText(/Output:/)).toBeNull();
+  });
+
+  it("enables the page action when the fee draft is available", async () => {
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft("needs_review", 2));
+    const onOpen = vi.fn();
+
+    render(
+      <FeeEvaluationStatusSummary
+        projectId="P1"
+        outputStatus={feeOutputStatus("missing", "No output path is available yet.")}
+        canOpen={false}
+        onOpenFeeEvaluation={onOpen}
+      />
+    );
+
+    expect(await screen.findByText("Total fee: Pending Excel confirmation.")).toBeTruthy();
+    const button = screen.getByRole("button", { name: "Open Fee Evaluation" });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -52,6 +52,21 @@ class ConfirmedMatrixFeeEvaluationExportUnavailableError(RuntimeError):
     """Raised when the workbook writer is unavailable for export."""
 
 
+class ConfirmedMatrixFeeEvaluationExportTimeoutError(RuntimeError):
+    """Raised when a production fee evaluation export exceeds its timeout."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        elapsed_seconds: float,
+        manual_cleanup_warning: str,
+    ) -> None:
+        super().__init__(message)
+        self.elapsed_seconds = elapsed_seconds
+        self.manual_cleanup_warning = manual_cleanup_warning
+
+
 @dataclass(frozen=True, slots=True)
 class ExportConfirmedMatrixFeeEvaluationCommand:
     """Input command for exporting a confirmed-Matrix fee evaluation workbook."""

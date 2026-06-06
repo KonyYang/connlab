@@ -1283,6 +1283,49 @@ export type FeeEvaluationDraft = {
   warnings: FeeEvaluationWarning[];
 };
 
+export type FeeEvaluationExportFillMode = "fee_draft" | "matrix_basic";
+
+export type FeeEvaluationExportRequest = {
+  template_path: string;
+  output_dir?: string | null;
+  output_file_name?: string | null;
+  overwrite?: boolean;
+  allow_review_required?: boolean;
+  fill_mode?: FeeEvaluationExportFillMode;
+  prepared_by?: string | null;
+  approved_by?: string | null;
+};
+
+export type FeeEvaluationExportLineTrace = {
+  line_id: string;
+  group_key: string;
+  group_label: string;
+  confirmed_group_id: string;
+  confirmed_row_id: string;
+  source_row_id: string | null;
+  row_order: number;
+  matched_rule_id: string | null;
+  matched_rule_version_id: string | null;
+  step_tokens: string[];
+  cell_value?: string | null;
+};
+
+export type FeeEvaluationExportResponse = {
+  project_id: string;
+  output_path: string;
+  output_format: string;
+  status: string;
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  pricing_rule_version_id: string;
+  pricing_effective_from: string | null;
+  prepared_by: string | null;
+  approved_by: string | null;
+  output_record_id: string | null;
+  line_traceability: FeeEvaluationExportLineTrace[];
+  warnings: string[];
+};
+
 export type ConfirmedMatrixAuthorityHistoryEntry = {
   confirmed_matrix_id: string;
   confirmed_revision: number;
@@ -2126,6 +2169,19 @@ export function fetchConfirmedMatrixFeeDraft(
   return requestJson<FeeEvaluationDraft>(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-draft`,
     { cache: "no-store" }
+  );
+}
+
+export function exportConfirmedMatrixFeeEvaluation(
+  projectId: string,
+  input: FeeEvaluationExportRequest
+): Promise<FeeEvaluationExportResponse> {
+  return requestJson<FeeEvaluationExportResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/export`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
   );
 }
 

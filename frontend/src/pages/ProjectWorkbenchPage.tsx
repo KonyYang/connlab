@@ -10,12 +10,14 @@ type ProjectWorkbenchPageProps = {
   projectId: string;
   onBack: () => void;
   onOpenMatrixEditor: () => void;
+  onOpenFeeEvaluation: () => void;
 };
 
 export function ProjectWorkbenchPage({
   projectId,
   onBack,
-  onOpenMatrixEditor
+  onOpenMatrixEditor,
+  onOpenFeeEvaluation
 }: ProjectWorkbenchPageProps): ReactElement {
   const model = useProjectWorkbenchModel(projectId);
   const runtimeModel = selectProjectRuntimeConsoleModel(model);
@@ -33,6 +35,7 @@ export function ProjectWorkbenchPage({
           runtimeModel={runtimeModel}
           onBack={onBack}
           onOpenMatrixEditor={onOpenMatrixEditor}
+          onOpenFeeEvaluation={onOpenFeeEvaluation}
           project={model.project}
         />
       )}

@@ -11,6 +11,7 @@ import { IntakeInboxPage } from "./pages/IntakeInboxPage";
 import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectMatrixEditorPage } from "./pages/ProjectMatrixEditorPage";
+import { ProjectFeeEvaluationPage } from "./pages/ProjectFeeEvaluationPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
 import { RuntimeProjectionPrototypePage } from "./pages/RuntimeProjectionPrototypePage";
@@ -24,6 +25,7 @@ type Route =
   | { name: "intakeCaseReview"; packageId: string }
   | { name: "projectDetail"; projectId: string }
   | { name: "projectMatrixEditor"; projectId: string }
+  | { name: "projectFeeEvaluation"; projectId: string }
   | { name: "runtimeProjection" }
   | { name: "settings" }
   | { name: "notFound" };
@@ -60,6 +62,11 @@ function parseRoute(pathname: string): Route {
     return { name: "projectMatrixEditor", projectId: decodeURIComponent(matrixEditorMatch[1]) };
   }
 
+  const feeEvaluationMatch = pathname.match(/^\/projects\/([^/]+)\/fee-evaluation$/);
+  if (feeEvaluationMatch) {
+    return { name: "projectFeeEvaluation", projectId: decodeURIComponent(feeEvaluationMatch[1]) };
+  }
+
   const match = pathname.match(/^\/projects\/([^/]+)$/);
   if (match) {
     return { name: "projectDetail", projectId: decodeURIComponent(match[1]) };
@@ -92,6 +99,8 @@ export default function App(): ReactElement {
     route.name === "projectDetail"
       ? "workbench"
       : route.name === "projectMatrixEditor"
+        ? "workbench"
+      : route.name === "projectFeeEvaluation"
         ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
@@ -153,10 +162,19 @@ export default function App(): ReactElement {
           onOpenMatrixEditor={() =>
             navigate(`/projects/${encodeURIComponent(route.projectId)}/matrix-editor`)
           }
+          onOpenFeeEvaluation={() =>
+            navigate(`/projects/${encodeURIComponent(route.projectId)}/fee-evaluation`)
+          }
         />
       )}
       {route.name === "projectMatrixEditor" && (
         <ProjectMatrixEditorPage
+          projectId={route.projectId}
+          onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+        />
+      )}
+      {route.name === "projectFeeEvaluation" && (
+        <ProjectFeeEvaluationPage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
         />

@@ -1,6 +1,5 @@
 import { useState, type ReactElement } from "react";
 import type { Project } from "../../api/client";
-import { FeeEvaluationReviewPanel } from "./FeeEvaluationReviewPanel";
 import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
@@ -11,6 +10,7 @@ type ProjectWorkbenchLayoutProps = {
   project: Project;
   onBack: () => void;
   onOpenMatrixEditor: () => void;
+  onOpenFeeEvaluation: () => void;
 };
 
 type SetupMaterialItem = {
@@ -38,6 +38,7 @@ export function ProjectWorkbenchLayout({
   project,
   onBack,
   onOpenMatrixEditor,
+  onOpenFeeEvaluation,
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const [selectedProjectionToken, setSelectedProjectionToken] =
     useState<MatrixProjectionTokenCell | null>(null);
@@ -150,11 +151,6 @@ export function ProjectWorkbenchLayout({
             onOpenMatrixEditor={onOpenMatrixEditor}
             onTokenSelect={setSelectedProjectionToken}
           />
-          <FeeEvaluationReviewPanel
-            projectId={project.project_id}
-            ltrNumber={latestLtr}
-            projectDescription={project.product_name}
-          />
         </div>
 
         <div className="runtime-console-side-column">
@@ -220,6 +216,8 @@ export function ProjectWorkbenchLayout({
           <FeeEvaluationStatusSummary
             projectId={project.project_id}
             outputStatus={feeEvaluationOutputStatus}
+            canOpen={Boolean(matrixAuthorityDraft)}
+            onOpenFeeEvaluation={onOpenFeeEvaluation}
           />
         </div>
       </section>
