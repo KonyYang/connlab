@@ -11,6 +11,7 @@ from backend.application.intake_section1_precheck import (
     clear_disallowed_section1_values,
     evaluate_section1_precheck,
 )
+from backend.application.new_project_setup_policy import normalize_lab_performing_tests
 from backend.domain import (
     IntakeAsset,
     IntakeCase,
@@ -340,9 +341,15 @@ class IntakeCaseReviewService:
             "location",
             "test_type_in_sheet",
             "project_leader",
+            "lab_performing_tests",
         }
         normalized: dict[str, str] = {}
         for key in allowed_keys:
+            if key == "lab_performing_tests":
+                lab = normalize_lab_performing_tests(values.get(key), required=False)
+                if lab is not None:
+                    normalized[key] = lab
+                continue
             value = self._normalized_override(values.get(key))
             if value is not None:
                 normalized[key] = value

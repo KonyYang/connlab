@@ -19,7 +19,7 @@ from backend.infrastructure.office.word_numbering import paragraph_texts_with_nu
 
 
 SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
-    "lab": ("lab", "laboratory"),
+    "lab": ("lab", "laboratory", "lab performing the tests"),
     "assigned_personnel": (
         "assigned personnel",
         "assigned engineer",

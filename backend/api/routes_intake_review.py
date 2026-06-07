@@ -219,6 +219,8 @@ def update_intake_case_review_fields(
                 "field_keys": list(exc.field_keys),
             },
         ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post(

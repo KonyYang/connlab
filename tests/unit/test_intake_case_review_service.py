@@ -269,6 +269,7 @@ def test_review_service_persists_project_setup_per_draft(tmp_path: Path) -> None
             "location": "AIPG Guangzhou",
             "test_type_in_sheet": "Qualification",
             "project_leader": "White",
+            "lab_performing_tests": "Valley Green",
             "ignored": "not persisted",
         },
     )
@@ -281,7 +282,27 @@ def test_review_service_persists_project_setup_per_draft(tmp_path: Path) -> None
         "location": "AIPG Guangzhou",
         "test_type_in_sheet": "Qualification",
         "project_leader": "White",
+        "lab_performing_tests": "Valley Green",
     }
+
+
+def test_review_service_rejects_invalid_lab_performing_tests_setup(
+    tmp_path: Path,
+) -> None:
+    """Invalid New Project lab setup values are rejected before draft persistence."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(_complete_section1_fields()),
+    )
+
+    with pytest.raises(ValueError, match="Lab Performing the Tests"):
+        service.update_case_fields(
+            "case-1",
+            {},
+            project_setup={"lab_performing_tests": "Nantong Lab"},
+        )
 
 
 def test_review_service_requested_testing_rows_syncs_to_compatibility_field(tmp_path: Path) -> None:

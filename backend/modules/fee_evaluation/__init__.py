@@ -8,6 +8,7 @@ from backend.modules.fee_evaluation.fee_rule_matcher import (
 )
 from backend.modules.fee_evaluation.fee_rule_models import (
     ALLOWED_CALCULATION_STRATEGIES,
+    ALLOWED_UNIT_LABELS,
     SUPPORTED_EFFECTIVE_FROM_BASES,
     CalculationStrategy,
     FeeAmount,
@@ -25,6 +26,7 @@ from backend.modules.fee_evaluation.fee_rule_seed_loader import (
 
 __all__ = [
     "ALLOWED_CALCULATION_STRATEGIES",
+    "ALLOWED_UNIT_LABELS",
     "SUPPORTED_EFFECTIVE_FROM_BASES",
     "CalculationStrategy",
     "FeeAmount",

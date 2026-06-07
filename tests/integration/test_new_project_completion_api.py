@@ -40,6 +40,7 @@ from backend.infrastructure.storage.database import (
     init_db,
 )
 from backend.infrastructure.storage.repositories import (
+    ApplicationFormRepository,
     LtrRecordRepository,
     ProjectFolderRecordRepository,
     ProjectRepository,
@@ -114,6 +115,8 @@ def test_complete_new_project_auto_ltr_applies_ltr_without_folder(
             folders = ProjectFolderRecordRepository(session).list_by_project(project_id)
             assert project is not None
             assert project.status.value == "ltr_registered"
+            forms = ApplicationFormRepository(session).list_by_project(project_id)
+            assert forms[-1].lab == "Valley Green"
             assert [ltr.ltr_number for ltr in ltrs] == ["DL-2026-05-001"]
             assert folders == []
     finally:
@@ -247,6 +250,65 @@ def test_complete_new_project_is_idempotent_for_completed_case(tmp_path: Path) -
             assert len(projects) == 1
             assert [ltr.ltr_number for ltr in ltrs] == ["DL-2026-05-001"]
             assert folders == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_complete_new_project_does_not_mutate_lab_on_registered_idempotent_retry(
+    tmp_path: Path,
+) -> None:
+    """Repeating completion after registered LTR preserves frozen ApplicationForm.lab."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = override_ltr_commit_service
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="LABIDEM")
+        first = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json={**_completion_payload("auto"), "lab_performing_tests": "Valley Green"},
+        )
+        assert first.status_code == 201
+        project_id = first.json()["project_id"]
+
+        retry = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json={**_completion_payload("auto"), "lab_performing_tests": "Dongguan"},
+        )
+
+        assert retry.status_code == 201
+        with session_factory() as session:
+            forms = ApplicationFormRepository(session).list_by_project(project_id)
+            assert forms[-1].lab == "Valley Green"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -454,6 +516,48 @@ def test_complete_new_project_returns_409_when_local_ltr_unique_conflicts(
         engine.dispose()
 
 
+def test_complete_new_project_rejects_invalid_lab_performing_tests(tmp_path: Path) -> None:
+    """Completion rejects unsupported lab-performing-tests values."""
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_ltr_authority_service] = (
+        lambda session=Depends(get_session): _FakeWorkbookCommitService(session, _FakeWorkbookNumberState())
+    )
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="BADLAB")
+        response = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json={**_completion_payload("auto"), "lab_performing_tests": "Nantong Lab"},
+        )
+        assert response.status_code == 400
+        assert "Lab Performing the Tests" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _seed_intake_case(session_factory, tmp_path: Path, suffix: str = "") -> str:
     package_id = f"PKG{suffix or '1'}"
     asset_id = f"ASSET{suffix or '1'}"
@@ -554,6 +658,7 @@ def _completion_payload(ltr_mode: str) -> dict[str, object]:
         "location": "AIPG Guangzhou",
         "test_type_in_sheet": "Qualification",
         "project_leader": "Alice",
+        "lab_performing_tests": "Valley Green",
     }
 
 

@@ -57,6 +57,26 @@ def test_ltr_readiness_returns_review_required_when_blockers_are_confirmed() -> 
     assert fields["dl"].state == "confirmed"
     assert fields["location"].state == "needs_review"
     assert fields["project_leader"].state == "needs_review"
+    assert fields["lab_performing_tests"].value == "DGLAB"
+    assert fields["lab_performing_tests"].source == "application_form.lab"
+    assert fields["lab_performing_tests"].state == "confirmed"
+
+
+def test_ltr_readiness_uses_promoted_application_form_lab() -> None:
+    """Lab Performing the Tests readiness comes from confirmed ApplicationForm.lab."""
+    service = _build_service(
+        projects={"P1": _project()},
+        forms={"P1": [_complete_form(lab="Valley Green")]},
+        samples={"P1": [_sample()]},
+        assets={"P1": [_spec_asset()]},
+    )
+
+    result = service.evaluate_project("P1", proposed_ltr_number="DL-2026-04-001")
+
+    field = next(item for item in result.fields if item.key == "lab_performing_tests")
+    assert field.value == "Valley Green"
+    assert field.source == "application_form.lab"
+    assert field.state == "confirmed"
 
 
 def test_ltr_readiness_uses_explicit_placeholder_policy() -> None:
@@ -141,7 +161,7 @@ def _project() -> Project:
     )
 
 
-def _complete_form() -> ApplicationForm:
+def _complete_form(*, lab: str = "DGLAB") -> ApplicationForm:
     return ApplicationForm(
         form_id="F1",
         project_id="P1",
@@ -157,7 +177,7 @@ def _complete_form() -> ApplicationForm:
         project_type="Qualification",
         post_testing_disposition="Return samples",
         additional_information="PO pending",
-        lab="DGLAB",
+        lab=lab,
         assigned_personnel="Bob",
     )
 

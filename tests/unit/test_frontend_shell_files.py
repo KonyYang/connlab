@@ -103,6 +103,47 @@ def test_frontend_shell_uses_api_client_and_mvp_routes() -> None:
     assert 'fetch(`${API_BASE}${path}`' in client_source
 
 
+def test_task303_project_registry_summary_ui_is_wired() -> None:
+    """TASK_303 uses backend registry rows for the Projects table."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    list_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectListPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "export type ProjectRegistryRow" in client_source
+    assert '"/api/projects/registry"' in client_source
+    assert "listProjectRegistryRows" in list_page_source
+    assert "listProjectLtrs" not in list_page_source
+    assert "JSON.parse(row." not in list_page_source
+    assert "JSON.parse(row.notes" not in list_page_source
+
+    for required_header in ["Sample Description", "Notes"]:
+        assert f"<th>{required_header}</th>" in list_page_source
+    assert "Test Item</th>" in list_page_source
+    for removed_header in [
+        "Project Name",
+        "Product",
+        "Requestor",
+        "Business Unit",
+        "Recent Activity",
+    ]:
+        assert f"<th>{removed_header}</th>" not in list_page_source
+
+    for searchable_field in [
+        "sample_description",
+        "test_item",
+        "status",
+        "notes",
+    ]:
+        assert f"row.{searchable_field}" in list_page_source
+    assert "row.requestor" not in list_page_source
+    assert "row.business_unit" not in list_page_source
+    assert 'className="registry-test-item-column"' in list_page_source
+    assert "project.product_name" not in list_page_source
+
+
 def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
     """TASK_292 moves full Fee Evaluation review/export out of Workbench."""
     app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
@@ -184,7 +225,6 @@ def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
         "buildFeeEvaluationPreviewRows",
         "buildFeeEvaluationPreviewTotals",
         "FeeEvaluationPreviewTable",
-        "FeeEvaluationReviewDetails",
     ]:
         assert required_source_symbol in fee_page_source
 
@@ -200,16 +240,15 @@ def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
         "Test description",
         "Requestor",
         "Site",
-        "Spend Time",
+        "Man-hour",
         "Unit Type",
         "Testing Fee",
-        "Pending Excel confirmation",
-        "Pricing needs completion",
     ]:
         assert required_preview_symbol in preview_table_source + preview_model_source
 
     assert "Review details" in review_details_source
     assert "Fee Evaluation review rows" in review_details_source
+    assert "FeeEvaluationReviewDetails" not in fee_page_source
     assert "generateConfirmedMatrixFeeFileDownload" in fee_page_source
     assert "Generate Matrix basic fill" not in fee_page_source
     assert "fee-evaluation-topbar" not in fee_page_source
@@ -272,16 +311,15 @@ def test_task295_fee_evaluation_step_based_preview_table_is_wired() -> None:
         "rowKind",
         "manual_trailing",
         "Report preparation",
-        "Condition confirmation",
-        "External Cost (tooling / purchase cost)",
         "buildFeeEvaluationCostRisk",
         "Lab manpower cost exceeds Grand Cost",
     ]:
         assert required_model_symbol in preview_model_source
 
     for required_table_symbol in [
-        "Grand Cost preview",
-        "Lab manpower cost preview",
+        "Condition confirmation spend time",
+        "External Cost preview",
+        "Lab manpower hourly rate",
         "fee-evaluation-preview-row-manual",
         "fee-evaluation-preview-group-",
     ]:
@@ -329,6 +367,7 @@ def test_task297_fee_evaluation_preview_restores_step_column_and_discount_label(
         "Base Fee",
         "Discount",
         "Testing Fee",
+        "Notes",
     ]:
         assert required_column in preview_table_source
     assert "Price Percent Off" not in preview_table_source
@@ -2516,6 +2555,32 @@ def test_task146_new_project_applies_ltr_before_project_handoff() -> None:
     assert "ltr_number: string;" in client_source
 
     assert hook_source.count("completeNewProject(activeCase.case_id") == 1
+
+
+def test_task304_new_project_lab_performing_tests_is_wired() -> None:
+    """TASK_304 wires Lab Performing the Tests through setup UI and completion payload."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    setup_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "NewProjectSetupConfirmationPanel.tsx"
+    ).read_text(encoding="utf-8")
+    hook_source = (
+        FRONTEND_ROOT / "src" / "features" / "new-project" / "useNewProjectCompletion.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "labPerformingTests: string;" in setup_source
+    assert "Lab Performing the Tests*" in setup_source
+    assert "Dongguan" in setup_source
+    assert "Valley Green" in setup_source
+    assert 'labPerformingTests: "Dongguan"' in page_source
+    assert "projectSetup?.lab_performing_tests" in page_source
+    assert 'assignText(payload, "lab_performing_tests", values.labPerformingTests)' in page_source
+    assert '"lab_performing_tests"' in hook_source
+    assert "lab_performing_tests?: string | null;" in client_source
 
 
 def test_new_project_duplicate_scope_is_draft_only() -> None:

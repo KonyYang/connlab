@@ -82,6 +82,9 @@ from backend.application.project_lifecycle_service import ProjectLifecycleServic
 from backend.application.project_ltr_cleanup_audit_service import (
     ProjectLtrCleanupAuditService,
 )
+from backend.application.project_registry_summary_service import (
+    ProjectRegistrySummaryService,
+)
 from backend.application.project_service import ProjectService
 from backend.application.project_test_plan_matrix_preview_service import (
     ProjectTestPlanMatrixPreviewService,
@@ -227,6 +230,16 @@ def get_session() -> Generator[Session, None, None]:
 def get_project_service(session: Session = Depends(get_session)) -> ProjectService:
     """Build a project service for API routes."""
     return ProjectService(ProjectRepository(session))
+
+
+def get_project_registry_summary_service(
+    session: Session = Depends(get_session),
+) -> ProjectRegistrySummaryService:
+    """Build a read-only Project registry summary service."""
+    return ProjectRegistrySummaryService(
+        project_store=ProjectRepository(session),
+        ltr_store=LtrRecordRepository(session),
+    )
 
 
 def get_project_test_plan_matrix_preview_service() -> ProjectTestPlanMatrixPreviewService:
@@ -995,6 +1008,7 @@ def get_new_project_completion_service(
         intake_case_store=IntakeCaseRepository(session),
         project_store=project_repository,
         ltr_store=ltr_repository,
+        application_form_store=ApplicationFormRepository(session),
         confirmation_service=confirmation_service,
         ltr_commit_service=ltr_commit_service,
     )

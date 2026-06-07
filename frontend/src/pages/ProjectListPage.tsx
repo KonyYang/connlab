@@ -1,9 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from "react";
 import {
-  listProjectLtrs,
-  listProjects,
-  type LtrRecord,
-  type Project
+  listProjectRegistryRows,
+  type ProjectRegistryRow
 } from "../api/client";
 import { EmptyState } from "../components/common/EmptyState";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -17,10 +15,7 @@ type ProjectListPageProps = {
   onOpenProject: (projectId: string) => void;
 };
 
-type RegistryRow = {
-  project: Project;
-  ltrNumbers: string[];
-};
+type RegistryRow = ProjectRegistryRow;
 
 export function ProjectListPage({
   onNewProject,
@@ -70,14 +65,7 @@ export function ProjectListPage({
   async function refreshProjects(): Promise<void> {
     setLoading(true);
     try {
-      const projects = await listProjects();
-      const nextRows = await Promise.all(
-        projects.map(async (project) => ({
-          project,
-          ltrNumbers: await safeLtrNumbers(project.project_id)
-        }))
-      );
-      setRows(nextRows);
+      setRows(await listProjectRegistryRows());
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -141,7 +129,7 @@ export function ProjectListPage({
               <span className="project-search-input">
                 <UiIcon name="search" />
                 <input
-                  placeholder="Search LTR Number, product, requestor..."
+                  placeholder="Search LTR Number, sample, test item, requestor..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
@@ -211,39 +199,35 @@ export function ProjectListPage({
               <thead>
                 <tr>
                   <th>LTR Number</th>
-                  <th>Project Name</th>
-                  <th>Product</th>
-                  <th>Requestor</th>
-                  <th>Business Unit</th>
+                  <th>Sample Description</th>
+                  <th className="registry-test-item-column">Test Item</th>
                   <th>Status</th>
                   <th>Progress</th>
-                  <th>Recent Activity</th>
+                  <th>Notes</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedRows.map((row) => (
-                  <tr key={row.project.project_id}>
+                  <tr key={row.project_id}>
                     <td className="project-no">{businessIdentifier(row)}</td>
-                    <td>{projectDisplayName(row.project)}</td>
-                    <td>{row.project.product_name}</td>
-                    <td>{row.project.requestor}</td>
-                    <td>{row.project.business_unit || "Not set"}</td>
-                    <td><ProjectStatusBadge status={row.project.status} /></td>
+                    <td>{displayText(row.sample_description, "Not recorded")}</td>
+                    <td className="registry-test-item-column">{displayText(row.test_item, "Not recorded")}</td>
+                    <td><ProjectStatusBadge status={row.status} /></td>
                     <td>
                       <div className="progress-cell">
                         <span>
-                          <i style={{ width: `${statusProgress(row.project.status)}%` }} />
+                          <i style={{ width: `${row.progress}%` }} />
                         </span>
-                        <strong>{statusProgress(row.project.status)}%</strong>
+                        <strong>{row.progress}%</strong>
                       </div>
                     </td>
-                    <td>{activityText(row)}</td>
+                    <td>{displayText(row.notes, "None")}</td>
                     <td>
                       <button
                         className="row-action"
                         type="button"
-                        onClick={() => onOpenProject(row.project.project_id)}
+                        onClick={() => onOpenProject(row.project_id)}
                       >
                         Open
                       </button>
@@ -283,15 +267,6 @@ export function ProjectListPage({
   );
 }
 
-async function safeLtrNumbers(projectId: string): Promise<string[]> {
-  try {
-    const records = await listProjectLtrs(projectId);
-    return records.map((record: LtrRecord) => record.ltr_number).filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
   const query = search.trim().toLowerCase();
   if (!query) {
@@ -300,11 +275,10 @@ function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
   return rows.filter((row) =>
     [
       businessIdentifier(row),
-      row.project.project_no ?? "",
-      row.project.product_name,
-      row.project.requestor,
-      row.project.business_unit ?? "",
-      row.project.status
+      row.sample_description ?? "",
+      row.test_item ?? "",
+      row.status,
+      row.notes ?? ""
     ]
       .join(" ")
       .toLowerCase()
@@ -316,11 +290,11 @@ function visibleRowsForScope(rows: RegistryRow[], showCancelled: boolean): Regis
   if (showCancelled) {
     return rows;
   }
-  return rows.filter((row) => row.project.status !== "cancelled");
+  return rows.filter((row) => row.status !== "cancelled");
 }
 
 function cancelledRowCount(rows: RegistryRow[]): number {
-  return rows.filter((row) => row.project.status === "cancelled").length;
+  return rows.filter((row) => row.status === "cancelled").length;
 }
 
 function buildMetrics(rows: RegistryRow[]): Array<{
@@ -343,38 +317,34 @@ function buildMetrics(rows: RegistryRow[]): Array<{
       icon: "clock",
       label: "In progress",
       tone: "progress",
-      value: rows.filter((row) => isInProgress(row.project.status)).length
+      value: rows.filter((row) => isInProgress(row.status)).length
     },
     {
       caption: "Awaiting action",
       icon: "hourglass",
       label: "Pending review",
       tone: "review",
-      value: rows.filter((row) => isPendingReview(row.project.status)).length
+      value: rows.filter((row) => isPendingReview(row.status)).length
     },
     {
       caption: "Closed or folder ready",
       icon: "new-project",
       label: "Completed",
       tone: "completed",
-      value: rows.filter((row) => isCompleted(row.project.status)).length
+      value: rows.filter((row) => isCompleted(row.status)).length
     },
     {
       caption: "No LTR Number yet",
       icon: "package",
       label: "Draft",
       tone: "draft",
-      value: rows.filter((row) => row.ltrNumbers.length === 0).length
+      value: rows.filter((row) => !row.ltr_number).length
     }
   ];
 }
 
 function businessIdentifier(row: RegistryRow): string {
-  return row.ltrNumbers[0] ?? "Pending LTR Number";
-}
-
-function projectDisplayName(project: Project): string {
-  return project.project_no || project.product_name;
+  return row.ltr_number ?? "Pending LTR Number";
 }
 
 function isCompleted(status: string): boolean {
@@ -389,30 +359,9 @@ function isPendingReview(status: string): boolean {
   return ["draft", "intake_received", "precheck_pending", "precheck_failed"].includes(status);
 }
 
-function statusProgress(status: string): number {
-  const values: Record<string, number> = {
-    cancelled: 0,
-    closed: 100,
-    confirmed: 45,
-    draft: 10,
-    folder_created: 100,
-    intake_received: 25,
-    ltr_registered: 70,
-    precheck_failed: 35,
-    precheck_passed: 55,
-    precheck_pending: 30
-  };
-  return values[status] ?? 20;
-}
-
-function activityText(row: RegistryRow): string {
-  if (row.ltrNumbers.length > 0) {
-    return `LTR Number registered: ${row.ltrNumbers[0]}`;
-  }
-  if (row.project.status === "intake_received") {
-    return "Project confirmed from request package";
-  }
-  return "Awaiting LTR Number registration";
+function displayText(value: string | null | undefined, fallback: string): string {
+  const text = value?.trim();
+  return text || fallback;
 }
 
 type LastLtrApplyResult = {

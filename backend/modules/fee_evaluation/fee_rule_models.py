@@ -32,6 +32,20 @@ ALLOWED_CALCULATION_STRATEGIES: tuple[CalculationStrategy, ...] = (
     "unknown",
 )
 
+ALLOWED_UNIT_LABELS: tuple[str, ...] = (
+    "sample",
+    "reading",
+    "cycle",
+    "hour",
+    "day",
+    "photo",
+    "specimen",
+    "group",
+    "contact",
+    "time",
+    "report",
+)
+
 SUPPORTED_EFFECTIVE_FROM_BASES: tuple[str, ...] = ("project.sample_received_date",)
 
 

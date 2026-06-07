@@ -1,5 +1,35 @@
 import type { FeeEvaluationDraft, FeeEvaluationLineItem } from "../../api/client";
 
+export const FEE_UNIT_TYPE_OPTIONS = [
+  "per sample",
+  "per reading",
+  "per contact",
+  "per cycle",
+  "per time",
+  "per hour",
+  "per day",
+  "per photo",
+  "per report",
+] as const;
+
+export type FeeEvaluationEditableField =
+  | "spendTime"
+  | "unitPrice"
+  | "unitType"
+  | "units"
+  | "baseFee"
+  | "discount"
+  | "notes";
+
+export type FeeEvaluationRowEdits = Partial<
+  Record<FeeEvaluationEditableField, string>
+>;
+
+export type FeeEvaluationPreviewEditState = Record<
+  string,
+  FeeEvaluationRowEdits
+>;
+
 export type FeeEvaluationPreviewRow = {
   lineId: string;
   sourceLineId: string;
@@ -13,6 +43,7 @@ export type FeeEvaluationPreviewRow = {
   baseFee: string;
   discount: string;
   testingFee: string;
+  notes: string;
   status: "confirmed" | "pending";
   reviewReason: string | null;
   rowKind: "matrix_step" | "manual_trailing";
@@ -81,9 +112,9 @@ export function buildFeeEvaluationPreviewTotals(
   const normalizedApprovedBy = approvedBy.trim();
   return {
     testFeeTotal: draft?.total_fee ?? "Pending Excel confirmation",
-    workingHours: "Pending",
-    labManpowerCost: "Pending",
-    externalCost: "Pending",
+    workingHours: "0.0",
+    labManpowerCost: "0",
+    externalCost: "0",
     grandCost: "Pending",
     preparedBy: "Default on export",
     approvedBy: normalizedApprovedBy.length > 0 ? normalizedApprovedBy : "Pending",
@@ -96,29 +127,141 @@ export function buildFeeEvaluationPreviewScopeTotal(
   rows: FeeEvaluationPreviewRow[],
   groupFilter: string
 ): string {
-  const scopedRows =
-    groupFilter === "all"
-      ? rows.filter((row) => row.rowKind === "matrix_step")
-      : rows.filter(
-          (row) => row.rowKind === "matrix_step" && row.groupLabel === groupFilter
-        );
+  const scopedRows = filterFeeEvaluationPreviewRowsForScope(rows, groupFilter);
   if (scopedRows.length === 0) {
     return "Pending";
   }
   let total = 0;
-  const countedSourceLines = new Set<string>();
   for (const row of scopedRows) {
-    if (countedSourceLines.has(row.sourceLineId)) {
-      continue;
-    }
     const parsed = Number(row.testingFee);
     if (!Number.isFinite(parsed)) {
       return "Pending";
     }
-    countedSourceLines.add(row.sourceLineId);
     total += parsed;
   }
   return total.toFixed(2);
+}
+
+export function filterFeeEvaluationPreviewRowsForScope(
+  rows: FeeEvaluationPreviewRow[],
+  groupFilter: string
+): FeeEvaluationPreviewRow[] {
+  if (groupFilter === "all") {
+    return rows;
+  }
+  return rows.filter(
+    (row) => row.rowKind === "matrix_step" && row.groupLabel === groupFilter
+  );
+}
+
+export function buildFeeEvaluationPreviewGrandCost(
+  rows: FeeEvaluationPreviewRow[],
+  externalCost: string,
+  pendingLabel = "Pending"
+): string {
+  if (rows.length === 0) {
+    return pendingLabel;
+  }
+  let total = 0;
+  for (const row of rows) {
+    const parsed = Number(row.testingFee);
+    if (!Number.isFinite(parsed)) {
+      return pendingLabel;
+    }
+    total += parsed;
+  }
+  const external =
+    externalCost.trim().length > 0
+      ? parsePreviewNumber(externalCost)
+      : 0;
+  if (external === null) {
+    return pendingLabel;
+  }
+  return (total + external).toFixed(2);
+}
+
+export function buildFeeEvaluationLabManpowerCost(
+  workingHours: string,
+  hourlyRate: string
+): string {
+  const parsedWorkingHours = parsePreviewNumber(workingHours);
+  const parsedHourlyRate = parsePreviewNumber(hourlyRate);
+  if (parsedWorkingHours === null || parsedHourlyRate === null) {
+    return "Pending";
+  }
+  return formatPreviewWholeAmount(parsedWorkingHours * parsedHourlyRate);
+}
+
+export function buildFeeEvaluationPreviewWorkingHours(
+  rows: FeeEvaluationPreviewRow[],
+  conditionConfirmationSpendTime: string
+): string {
+  let total = 0;
+  for (const row of rows) {
+    const parsed = parsePreviewNumber(row.spendTime);
+    if (parsed === null) {
+      return "Pending";
+    }
+    total += parsed;
+  }
+  const conditionSpendTime =
+    conditionConfirmationSpendTime.trim().length > 0
+      ? parsePreviewNumber(conditionConfirmationSpendTime)
+      : 0;
+  if (conditionSpendTime === null) {
+    return "Pending";
+  }
+  return (total + conditionSpendTime).toFixed(1);
+}
+
+export function applyFeeEvaluationPreviewEdits(
+  rows: FeeEvaluationPreviewRow[],
+  edits: FeeEvaluationPreviewEditState
+): FeeEvaluationPreviewRow[] {
+  return rows.map((row) => {
+    const rowEdits = edits[row.lineId] ?? {};
+    const unitPrice = rowEdits.unitPrice ?? editableDefault(row.unitPrice, "0");
+    const units = rowEdits.units ?? editableDefault(row.units, "1");
+    const baseFee = rowEdits.baseFee ?? editableDefault(row.baseFee, "0");
+    const discount = rowEdits.discount ?? editableDefault(row.discount, "0%");
+    return {
+      ...row,
+      spendTime: rowEdits.spendTime ?? editableDefault(row.spendTime, "0"),
+      unitPrice,
+      unitType: rowEdits.unitType ?? formatUnitTypeForPreview(row.unitType),
+      units,
+      baseFee,
+      discount,
+      testingFee: calculateFeePreviewTestingFee({
+        unitPrice,
+        units,
+        baseFee,
+        discount,
+      }),
+      notes: rowEdits.notes ?? row.notes,
+    };
+  });
+}
+
+export function calculateFeePreviewTestingFee(input: {
+  unitPrice: string;
+  units: string;
+  baseFee: string;
+  discount: string;
+}): string {
+  const unitPrice = parseRequiredEditableNumber(input.unitPrice);
+  const units = parseRequiredEditableNumber(input.units);
+  const baseFee = parseOptionalEditableNumber(input.baseFee);
+  const discount = parseEditableDiscount(input.discount);
+  if (
+    unitPrice === null ||
+    units === null ||
+    baseFee === null ||
+    discount === null
+  ) {
+    return "Pending";
+  }
+  return formatPreviewWholeAmount(unitPrice * units * (1 - discount) + baseFee);
 }
 
 export function buildFeeEvaluationCostRisk(input: {
@@ -164,6 +307,7 @@ function buildMatrixStepRows(
       baseFee: blankValue(line.base_fee),
       discount: formatDiscount(line.discount_percent),
       testingFee: pendingValue(line.testing_fee),
+      notes: "",
       status: line.review_required ? "pending" : "confirmed",
       reviewReason: line.review_reason,
       rowKind: "matrix_step" as const,
@@ -228,6 +372,7 @@ function buildManualTrailingRow(
     baseFee: "",
     discount: "",
     testingFee: "Pending",
+    notes: "",
     status: "pending",
     reviewReason: "Manual completion in Fee Form.",
     rowKind: "manual_trailing",
@@ -254,6 +399,78 @@ function displayOrPending(value: string | null | undefined): string {
   return normalized.length > 0 ? normalized : "Pending";
 }
 
+function formatUnitTypeForPreview(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized === "pending") {
+    return "Pending";
+  }
+  const map: Record<string, string> = {
+    sample: "per sample",
+    specimen: "per sample",
+    reading: "per reading",
+    contact: "per contact",
+    cycle: "per cycle",
+    time: "per time",
+    hour: "per hour",
+    day: "per day",
+    photo: "per photo",
+    report: "per report",
+    "per sample": "per sample",
+    "per reading": "per reading",
+    "per contact": "per contact",
+    "per cycle": "per cycle",
+    "per time": "per time",
+    "per hour": "per hour",
+    "per day": "per day",
+    "per photo": "per photo",
+    "per report": "per report",
+  };
+  return map[normalized] ?? value.trim();
+}
+
+function parseRequiredEditableNumber(value: string): number | null {
+  const normalized = normalizeEditableNumber(value);
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseOptionalEditableNumber(value: string): number | null {
+  const normalized = normalizeEditableNumber(value);
+  if (!normalized) {
+    return 0;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseEditableDiscount(value: string): number | null {
+  const normalized = normalizeEditableNumber(value.replace(/%/g, ""));
+  if (!normalized) {
+    return 0;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed / 100 : null;
+}
+
+function normalizeEditableNumber(value: string): string {
+  const normalized = value.trim();
+  if (!normalized || normalized.toLowerCase() === "pending") {
+    return "";
+  }
+  return normalized.replace(/[$,\s]/g, "");
+}
+
+function editableDefault(value: string, fallback: string): string {
+  const normalized = value.trim();
+  if (!normalized || normalized.toLowerCase() === "pending") {
+    return fallback;
+  }
+  return normalized;
+}
+
 function parsePreviewNumber(value: string): number | null {
   const normalized = value.trim().replace(/[$,\s]/g, "");
   if (!normalized) {
@@ -261,4 +478,11 @@ function parsePreviewNumber(value: string): number | null {
   }
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatPreviewWholeAmount(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "Pending";
+  }
+  return value.toFixed(0);
 }

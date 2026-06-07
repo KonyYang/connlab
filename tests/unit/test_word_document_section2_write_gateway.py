@@ -38,6 +38,20 @@ def test_word_gateway_writes_section2_fields(tmp_path: Path) -> None:
     assert result.unchanged_fields == ()
 
 
+def test_word_gateway_matches_lab_performing_the_tests_label(tmp_path: Path) -> None:
+    """Real Section 2 label text maps to the existing lab field."""
+    path = _section2_docx(
+        tmp_path / "request.docx",
+        lab_label="Lab Performing the Tests:",
+    )
+
+    result = WordDocumentGateway().write_section2_fields(path, {"lab": "Dongguan"})
+
+    values = _table_values(path)
+    assert values["Lab Performing the Tests:"] == "Dongguan"
+    assert result.changed_fields[0].field_key == "lab"
+
+
 def test_word_gateway_rejects_missing_section2_location_without_save(
     tmp_path: Path,
 ) -> None:
@@ -65,10 +79,15 @@ def test_word_gateway_rejects_non_docx(tmp_path: Path) -> None:
         WordDocumentGateway().write_section2_fields(path, {"lab": "Connector Lab"})
 
 
-def _section2_docx(path: Path, *, include_sample_condition: bool = True) -> Path:
+def _section2_docx(
+    path: Path,
+    *,
+    include_sample_condition: bool = True,
+    lab_label: str = "Lab",
+) -> Path:
     document = Document()
     labels = [
-        "Lab",
+        lab_label,
         "Assigned Personnel",
         "Received Date",
         "Estimated Completion Date",

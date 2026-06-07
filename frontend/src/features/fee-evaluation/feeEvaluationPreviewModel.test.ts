@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { FeeEvaluationDraft, FeeEvaluationLineItem } from "../../api/client";
 import {
+  applyFeeEvaluationPreviewEdits,
   buildFeeEvaluationCostRisk,
+  buildFeeEvaluationLabManpowerCost,
   buildFeeEvaluationPreviewHeader,
+  buildFeeEvaluationPreviewGrandCost,
   buildFeeEvaluationPreviewRows,
   buildFeeEvaluationPreviewScopeTotal,
   buildFeeEvaluationPreviewTotals,
+  buildFeeEvaluationPreviewWorkingHours,
+  calculateFeePreviewTestingFee,
+  FEE_UNIT_TYPE_OPTIONS,
+  filterFeeEvaluationPreviewRowsForScope,
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
@@ -17,8 +24,6 @@ describe("feeEvaluationPreviewModel", () => {
       ["Group 1", "2", "Visual Examination"],
       ["Group 1", "3", "Visual Examination"],
       ["", "-", "Report preparation"],
-      ["", "-", "Condition confirmation"],
-      ["", "-", "External Cost (tooling / purchase cost)"],
     ]);
     expect(rows[0]).toMatchObject({
       lineId: "fixture:1:0",
@@ -56,9 +61,9 @@ describe("feeEvaluationPreviewModel", () => {
   it("builds totals that mirror the Excel completion state", () => {
     expect(buildFeeEvaluationPreviewTotals(createDraft(), "")).toEqual({
       testFeeTotal: "Pending Excel confirmation",
-      workingHours: "Pending",
-      labManpowerCost: "Pending",
-      externalCost: "Pending",
+      workingHours: "0.0",
+      labManpowerCost: "0",
+      externalCost: "0",
       grandCost: "Pending",
       preparedBy: "Default on export",
       approvedBy: "Pending",
@@ -128,6 +133,158 @@ describe("feeEvaluationPreviewModel", () => {
     expect(buildFeeEvaluationPreviewScopeTotal(rows, "all")).toBe("Pending");
   });
 
+  it("calculates local editable Testing Fee from unit price, units, discount, and base fee", () => {
+    expect(
+      calculateFeePreviewTestingFee({
+        unitPrice: "100",
+        units: "2",
+        baseFee: "5",
+        discount: "10",
+      })
+    ).toBe("185");
+    expect(
+      calculateFeePreviewTestingFee({
+        unitPrice: "100",
+        units: "2",
+        baseFee: "5",
+        discount: "10%",
+      })
+    ).toBe("185");
+    expect(
+      calculateFeePreviewTestingFee({
+        unitPrice: "100",
+        units: "2",
+        baseFee: "",
+        discount: "",
+      })
+    ).toBe("200");
+    expect(
+      calculateFeePreviewTestingFee({
+        unitPrice: "Pending",
+        units: "2",
+        baseFee: "",
+        discount: "",
+      })
+    ).toBe("Pending");
+  });
+
+  it("applies local row edits and maps canonical unit labels to operator labels", () => {
+    const rows = buildFeeEvaluationPreviewRows(createDraft());
+    const editedRows = applyFeeEvaluationPreviewEdits(rows, {
+      "visual:2:0": {
+        unitPrice: "10",
+        unitType: "per time",
+        units: "3",
+        baseFee: "2",
+        discount: "10%",
+      },
+    });
+
+    expect(FEE_UNIT_TYPE_OPTIONS).toContain("per time");
+    expect(editedRows.find((row) => row.lineId === "fixture:1:0")).toMatchObject({
+      unitType: "group",
+      testingFee: "100",
+    });
+    expect(editedRows.find((row) => row.lineId === "visual:2:0")).toMatchObject({
+      unitType: "per time",
+      testingFee: "29",
+    });
+    expect(editedRows.find((row) => row.lineId === "visual:3:1")).toMatchObject({
+      unitType: "per photo",
+      testingFee: "10",
+    });
+  });
+
+  it("defaults editable preview rows to zero-cost calculable values", () => {
+    const rows = applyFeeEvaluationPreviewEdits(buildFeeEvaluationPreviewRows(createDraft()), {});
+
+    expect(rows.find((row) => row.lineId === "visual:2:0")).toMatchObject({
+      spendTime: "0",
+      unitPrice: "10.00",
+      units: "1",
+      baseFee: "0",
+      discount: "0%",
+      testingFee: "10",
+    });
+    expect(rows.find((row) => row.lineId === "manual-report-preparation")).toMatchObject({
+      spendTime: "0",
+      unitPrice: "0",
+      units: "1",
+      baseFee: "0",
+      discount: "0%",
+      testingFee: "0",
+    });
+  });
+
+  it("builds working hours from row spend time and condition confirmation time", () => {
+    const rows = applyFeeEvaluationPreviewEdits(buildFeeEvaluationPreviewRows(createDraft()), {
+      "fixture:1:0": { spendTime: "1.5" },
+      "visual:2:0": { spendTime: "2" },
+    });
+
+    expect(buildFeeEvaluationPreviewWorkingHours(rows, "0.5")).toBe("4.0");
+  });
+
+  it("filters preview totals to the selected Matrix group scope", () => {
+    const rows = applyFeeEvaluationPreviewEdits(
+      buildFeeEvaluationPreviewRows(createDraftWithTwoGroups()),
+      {
+        "fixture:1:0": { spendTime: "1" },
+        "visual:2:0": { spendTime: "2" },
+        "group-2-fixture:1:0": { spendTime: "3" },
+      }
+    );
+
+    expect(filterFeeEvaluationPreviewRowsForScope(rows, "Group 1")).toHaveLength(3);
+    expect(filterFeeEvaluationPreviewRowsForScope(rows, "Group 2")).toHaveLength(1);
+    expect(
+      buildFeeEvaluationPreviewWorkingHours(
+        filterFeeEvaluationPreviewRowsForScope(rows, "Group 2"),
+        "0"
+      )
+    ).toBe("3.0");
+  });
+
+  it("calculates Lab manpower cost from scoped working hours and editable hourly rate", () => {
+    expect(buildFeeEvaluationLabManpowerCost("13.0", "200")).toBe("2600");
+    expect(buildFeeEvaluationLabManpowerCost("13", "225.5")).toBe("2932");
+    expect(buildFeeEvaluationLabManpowerCost("Pending", "200")).toBe("Pending");
+  });
+
+  it("uses edited step rows for scope totals and Grand Cost", () => {
+    const rows = applyFeeEvaluationPreviewEdits(buildFeeEvaluationPreviewRows(createDraft()), {
+      "visual:2:0": { unitPrice: "10", units: "2", baseFee: "", discount: "" },
+      "visual:3:1": { unitPrice: "10", units: "3", baseFee: "", discount: "" },
+      "manual-report-preparation": { unitPrice: "5", units: "1", baseFee: "", discount: "" },
+    });
+
+    expect(buildFeeEvaluationPreviewScopeTotal(rows, "Group 1")).toBe("150.00");
+    expect(buildFeeEvaluationPreviewScopeTotal(rows, "all")).toBe("155.00");
+    expect(buildFeeEvaluationPreviewGrandCost(rows, "25")).toBe("180.00");
+  });
+
+  it("treats expanded step rows as independent pricing rows for preview totals", () => {
+    const rows = buildFeeEvaluationPreviewRows({
+      ...createDraft(),
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group 1",
+          sample_quantity_expression: "5",
+          line_items: [
+            createLine({
+              line_id: "multi-step-priced",
+              step_tokens: ["1", "2"],
+              testing_fee: "10.00",
+            }),
+          ],
+        },
+      ],
+    });
+
+    expect(buildFeeEvaluationPreviewScopeTotal(rows, "Group 1")).toBe("20.00");
+  });
+
   it("keeps one fallback preview row when a Matrix line has no step tokens", () => {
     const rows = buildFeeEvaluationPreviewRows({
       ...createDraft(),
@@ -170,10 +327,8 @@ describe("feeEvaluationPreviewModel", () => {
         .filter((row) => row.groupLabel === "Group 2")
         .map((row) => row.stepToken)
     ).toEqual(["1", "2", "11"]);
-    expect(rows.slice(-3).map((row) => row.description)).toEqual([
+    expect(rows.slice(-1).map((row) => row.description)).toEqual([
       "Report preparation",
-      "Condition confirmation",
-      "External Cost (tooling / purchase cost)",
     ]);
   });
 

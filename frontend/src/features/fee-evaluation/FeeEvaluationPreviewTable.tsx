@@ -1,14 +1,18 @@
 import type { ReactElement } from "react";
 import type {
+  FeeEvaluationEditableField,
   FeeEvaluationPreviewHeader,
   FeeEvaluationPreviewRow,
   FeeEvaluationPreviewTotals,
   FeeEvaluationCostRisk,
 } from "./feeEvaluationPreviewModel";
+import { FEE_UNIT_TYPE_OPTIONS } from "./feeEvaluationPreviewModel";
 
 type FeeEvaluationPreviewTableProps = {
   costPreviewValues: FeeEvaluationCostPreviewValues;
   costRisk: FeeEvaluationCostRisk;
+  grandCostLabel: string;
+  labManpowerCostLabel: string;
   groupFilter: string;
   header: FeeEvaluationPreviewHeader;
   downloadState: FeeFileDownloadState;
@@ -17,6 +21,11 @@ type FeeEvaluationPreviewTableProps = {
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
   onGenerateFeeFile: () => void;
   onGroupFilterChange: (value: string) => void;
+  onRowEditChange: (
+    lineId: string,
+    field: FeeEvaluationEditableField,
+    value: string
+  ) => void;
   scopeFeeLabel: string;
   groupOptions: string[];
   rows: FeeEvaluationPreviewRow[];
@@ -26,8 +35,8 @@ type FeeEvaluationPreviewTableProps = {
 export type FeeEvaluationCostPreviewValues = {
   conditionConfirmationSpendTime: string;
   externalCost: string;
-  grandCost: string;
-  labManpowerCost: string;
+  externalCostNote: string;
+  labManpowerHourlyRate: string;
 };
 
 type FeeFileDownloadState =
@@ -39,6 +48,8 @@ type FeeFileDownloadState =
 export function FeeEvaluationPreviewTable({
   costPreviewValues,
   costRisk,
+  grandCostLabel,
+  labManpowerCostLabel,
   groupFilter,
   header,
   downloadState,
@@ -47,13 +58,12 @@ export function FeeEvaluationPreviewTable({
   onCostPreviewChange,
   onGenerateFeeFile,
   onGroupFilterChange,
+  onRowEditChange,
   scopeFeeLabel,
   groupOptions,
   rows,
   totals,
 }: FeeEvaluationPreviewTableProps): ReactElement {
-  const grandCostLabel = calculateGrandCostLabel(rows, costPreviewValues.externalCost, totals.grandCost);
-
   return (
     <section className="fee-evaluation-preview-surface" aria-label="Testing Prices preview">
       <header className="fee-evaluation-preview-header">
@@ -84,6 +94,7 @@ export function FeeEvaluationPreviewTable({
               </select>
             </label>
             <div className="fee-evaluation-preview-scope-fee" aria-label="Selected group fee">
+              <span>Total Testing Fee</span>
               <strong>{scopeFeeLabel}</strong>
             </div>
           </div>
@@ -101,6 +112,100 @@ export function FeeEvaluationPreviewTable({
           disabledReason={generateDisabledReason}
         />
       </header>
+
+      <dl className="fee-evaluation-preview-totals" aria-label="Testing Prices totals">
+        <div className="fee-evaluation-preview-cost-entry">
+          <dt>
+            <label htmlFor="fee-evaluation-condition-confirmation-spend-time">
+              Condition confirmation
+            </label>
+          </dt>
+          <dd>
+            <input
+              id="fee-evaluation-condition-confirmation-spend-time"
+              aria-label="Condition confirmation spend time"
+              inputMode="decimal"
+              placeholder="Spend Time"
+              value={costPreviewValues.conditionConfirmationSpendTime}
+              onChange={(event) =>
+                onCostPreviewChange(
+                  "conditionConfirmationSpendTime",
+                  event.currentTarget.value
+                )
+              }
+            />
+          </dd>
+        </div>
+        <div className="fee-evaluation-preview-cost-entry fee-evaluation-preview-rate-entry">
+          <dt>
+            <label htmlFor="fee-evaluation-lab-manpower-hourly-rate">
+              Working hours
+            </label>
+          </dt>
+          <dd>
+            <strong className="fee-evaluation-preview-cost-result">
+              {totals.workingHours}
+            </strong>
+            <span aria-hidden="true" className="fee-evaluation-preview-formula-mark">
+              *
+            </span>
+            <input
+              id="fee-evaluation-lab-manpower-hourly-rate"
+              aria-label="Lab manpower hourly rate"
+              inputMode="decimal"
+              placeholder="200"
+              value={costPreviewValues.labManpowerHourlyRate}
+              onChange={(event) =>
+                onCostPreviewChange("labManpowerHourlyRate", event.currentTarget.value)
+              }
+            />
+            <span aria-hidden="true" className="fee-evaluation-preview-formula-mark">
+              =
+            </span>
+            <span className="fee-evaluation-preview-formula-label">
+              Lab manpower cost
+            </span>
+            <strong className="fee-evaluation-preview-cost-result">
+              {labManpowerCostLabel}
+            </strong>
+          </dd>
+        </div>
+        <div className="fee-evaluation-preview-cost-entry fee-evaluation-preview-external-entry">
+          <dt>
+            <label htmlFor="fee-evaluation-external-cost">External Cost</label>
+          </dt>
+          <dd>
+            <input
+              id="fee-evaluation-external-cost"
+              aria-label="External Cost preview"
+              inputMode="decimal"
+              placeholder={totals.externalCost}
+              value={costPreviewValues.externalCost}
+              onChange={(event) =>
+                onCostPreviewChange("externalCost", event.currentTarget.value)
+              }
+            />
+            <input
+              id="fee-evaluation-external-cost-note"
+              aria-label="External Cost note"
+              placeholder="Cost note"
+              value={costPreviewValues.externalCostNote}
+              onChange={(event) =>
+                onCostPreviewChange("externalCostNote", event.currentTarget.value)
+              }
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>Grand Cost</dt>
+          <dd>{grandCostLabel}</dd>
+        </div>
+      </dl>
+      {costRisk.severity === "loss_warning" && costRisk.message ? (
+        <p className="fee-evaluation-preview-cost-warning" role="alert">
+          {costRisk.message}
+        </p>
+      ) : null}
 
       <dl className="fee-evaluation-preview-header-band" aria-label="Testing Prices header">
         <div>
@@ -133,7 +238,7 @@ export function FeeEvaluationPreviewTable({
               <tr>
                 <th>Group</th>
                 <th>Step</th>
-                <th>Spend Time</th>
+                <th>Man-hour</th>
                 <th>Description</th>
                 <th>Unit Price</th>
                 <th>Unit Type</th>
@@ -141,6 +246,7 @@ export function FeeEvaluationPreviewTable({
                 <th>Base Fee</th>
                 <th>Discount</th>
                 <th>Testing Fee</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -148,17 +254,70 @@ export function FeeEvaluationPreviewTable({
                 <tr key={row.lineId} className={previewRowClassName(row)}>
                   <td>{row.groupLabel}</td>
                   <td>{row.stepToken}</td>
-                  <td>{row.spendTime}</td>
+                  <td>
+                    <EditablePreviewInput
+                      ariaLabel={`Spend Time for group ${row.groupLabel || "manual"} step ${row.stepToken}`}
+                      value={row.spendTime}
+                      onChange={(value) =>
+                        onRowEditChange(row.lineId, "spendTime", value)
+                      }
+                    />
+                  </td>
                   <td>
                     <strong>{row.description}</strong>
-                    {row.reviewReason ? <span>{row.reviewReason}</span> : null}
                   </td>
-                  <td>{row.unitPrice}</td>
-                  <td>{row.unitType}</td>
-                  <td>{row.units}</td>
-                  <td>{row.baseFee}</td>
-                  <td>{row.discount}</td>
+                  <td>
+                    <EditablePreviewInput
+                      ariaLabel={`Unit Price for ${row.description}`}
+                      value={row.unitPrice}
+                      onChange={(value) =>
+                        onRowEditChange(row.lineId, "unitPrice", value)
+                      }
+                    />
+                  </td>
+                  <td>
+                    <EditableUnitTypeSelect
+                      value={row.unitType}
+                      onChange={(value) =>
+                        onRowEditChange(row.lineId, "unitType", value)
+                      }
+                    />
+                  </td>
+                  <td>
+                    <EditablePreviewInput
+                      ariaLabel={`Units for ${row.description}`}
+                      value={row.units}
+                      onChange={(value) => onRowEditChange(row.lineId, "units", value)}
+                    />
+                  </td>
+                  <td>
+                    <EditablePreviewInput
+                      ariaLabel={`Base Fee for ${row.description}`}
+                      value={row.baseFee}
+                      onChange={(value) =>
+                        onRowEditChange(row.lineId, "baseFee", value)
+                      }
+                    />
+                  </td>
+                  <td>
+                    <EditablePreviewInput
+                      ariaLabel={`Discount for ${row.description}`}
+                      value={row.discount}
+                      onChange={(value) =>
+                        onRowEditChange(row.lineId, "discount", value)
+                      }
+                    />
+                  </td>
                   <td>{row.testingFee}</td>
+                  <td>
+                    <EditablePreviewInput
+                      ariaLabel={`Notes for ${row.description}`}
+                      inputMode="text"
+                      placeholder=""
+                      value={row.notes}
+                      onChange={(value) => onRowEditChange(row.lineId, "notes", value)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -166,77 +325,6 @@ export function FeeEvaluationPreviewTable({
         </div>
       )}
 
-      <dl className="fee-evaluation-preview-totals" aria-label="Testing Prices totals">
-        <div className="fee-evaluation-preview-cost-entry">
-          <dt>
-            <label htmlFor="fee-evaluation-condition-confirmation-spend-time">
-              Condition confirmation
-            </label>
-          </dt>
-          <dd>
-            <input
-              id="fee-evaluation-condition-confirmation-spend-time"
-              aria-label="Condition confirmation spend time"
-              inputMode="decimal"
-              placeholder="Spend Time"
-              value={costPreviewValues.conditionConfirmationSpendTime}
-              onChange={(event) =>
-                onCostPreviewChange(
-                  "conditionConfirmationSpendTime",
-                  event.currentTarget.value
-                )
-              }
-            />
-          </dd>
-        </div>
-        <div>
-          <dt>Working hours</dt>
-          <dd>{totals.workingHours}</dd>
-        </div>
-        <div className="fee-evaluation-preview-cost-entry">
-          <dt>
-            <label htmlFor="fee-evaluation-lab-manpower-cost">Lab manpower cost</label>
-          </dt>
-          <dd>
-            <input
-              id="fee-evaluation-lab-manpower-cost"
-              aria-label="Lab manpower cost preview"
-              inputMode="decimal"
-              placeholder={totals.labManpowerCost}
-              value={costPreviewValues.labManpowerCost}
-              onChange={(event) =>
-                onCostPreviewChange("labManpowerCost", event.currentTarget.value)
-              }
-            />
-          </dd>
-        </div>
-        <div className="fee-evaluation-preview-cost-entry">
-          <dt>
-            <label htmlFor="fee-evaluation-external-cost">External Cost</label>
-          </dt>
-          <dd>
-            <input
-              id="fee-evaluation-external-cost"
-              aria-label="External Cost preview"
-              inputMode="decimal"
-              placeholder={totals.externalCost}
-              value={costPreviewValues.externalCost}
-              onChange={(event) =>
-                onCostPreviewChange("externalCost", event.currentTarget.value)
-              }
-            />
-          </dd>
-        </div>
-        <div>
-          <dt>Grand Cost</dt>
-          <dd>{grandCostLabel}</dd>
-        </div>
-      </dl>
-      {costRisk.severity === "loss_warning" && costRisk.message ? (
-        <p className="fee-evaluation-preview-cost-warning" role="alert">
-          {costRisk.message}
-        </p>
-      ) : null}
     </section>
   );
 }
@@ -252,39 +340,63 @@ function previewRowClassName(row: FeeEvaluationPreviewRow): string {
   return classNames.join(" ");
 }
 
-function calculateGrandCostLabel(
-  rows: FeeEvaluationPreviewRow[],
-  externalCost: string,
-  pendingLabel: string
-): string {
-  if (rows.length === 0) {
-    return pendingLabel;
-  }
-
-  let total = 0;
-  for (const row of rows) {
-    const testingFee = parsePreviewNumber(row.testingFee);
-    if (testingFee === null) {
-      return pendingLabel;
-    }
-    total += testingFee;
-  }
-
-  const external = externalCost.trim().length > 0 ? parsePreviewNumber(externalCost) : 0;
-  if (external === null) {
-    return pendingLabel;
-  }
-
-  return String(total + external);
+function EditablePreviewInput({
+  ariaLabel,
+  inputMode = "decimal",
+  onChange,
+  placeholder = "Pending",
+  value,
+}: {
+  ariaLabel: string;
+  inputMode?: "decimal" | "text";
+  onChange: (value: string) => void;
+  placeholder?: string;
+  value: string;
+}): ReactElement {
+  return (
+    <input
+      aria-label={ariaLabel}
+      className="fee-evaluation-preview-cell-input"
+      inputMode={inputMode}
+      placeholder={placeholder}
+      value={editableInputValue(value)}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    />
+  );
 }
 
-function parsePreviewNumber(value: string): number | null {
-  const normalized = value.replace(/[$,]/g, "").trim();
-  if (normalized.length === 0) {
-    return null;
-  }
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
+function EditableUnitTypeSelect({
+  onChange,
+  value,
+}: {
+  onChange: (value: string) => void;
+  value: string;
+}): ReactElement {
+  const normalizedValue = value.trim() || "Pending";
+  const hasStandardValue = FEE_UNIT_TYPE_OPTIONS.some(
+    (option) => option === normalizedValue
+  );
+  return (
+    <select
+      aria-label="Unit Type"
+      className="fee-evaluation-preview-cell-select"
+      value={normalizedValue}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    >
+      {!hasStandardValue ? (
+        <option value={normalizedValue}>{normalizedValue}</option>
+      ) : null}
+      {FEE_UNIT_TYPE_OPTIONS.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function editableInputValue(value: string): string {
+  return value.trim().toLowerCase() === "pending" ? "" : value;
 }
 
 function FeeFileDownloadStatus({

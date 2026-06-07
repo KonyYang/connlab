@@ -37,7 +37,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders Fee File preview before secondary review details", async () => {
+  it("renders the editable Fee Evaluation preview without the removed review details surface", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
     const onBackToWorkbench = vi.fn();
@@ -56,13 +56,11 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Selected total")).toBeNull();
     expect(screen.queryByText("Output freshness")).toBeNull();
     expect(screen.queryByText("Rule version")).toBeNull();
-    expect(screen.getByText("Review details")).toBeTruthy();
-    expect(screen.getByText("Test Fee Total")).toBeTruthy();
-    expect(screen.getAllByText("Pending Excel confirmation").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Review details")).toBeNull();
 
     const tables = screen.getAllByRole("table");
+    expect(tables).toHaveLength(1);
     expect(tables[0].getAttribute("aria-label")).toBe("Testing Prices preview rows");
-    expect(tables[1].getAttribute("aria-label")).toBe("Fee Evaluation review rows");
 
     const previewTable = screen.getByRole("table", {
       name: "Testing Prices preview rows",
@@ -74,8 +72,8 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
     expect(screen.queryByText("Fee")).toBeNull();
     expect(screen.getByLabelText("Selected group fee")).toBeTruthy();
+    expect(screen.getByText("Total Testing Fee")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Fee Form" })).toBeTruthy();
-    expect(screen.getAllByText("Pending Excel confirmation").length).toBeGreaterThan(0);
     const previewSurface = screen.getByLabelText("Testing Prices preview");
     const backButton = within(previewSurface).getByRole("button", {
       name: "Back to Workbench",
@@ -92,7 +90,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     for (const column of [
       "Group",
       "Step",
-      "Spend Time",
+      "Man-hour",
       "Description",
       "Unit Price",
       "Unit Type",
@@ -100,6 +98,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       "Base Fee",
       "Discount",
       "Testing Fee",
+      "Notes",
     ]) {
       expect(within(previewTable).getByRole("columnheader", { name: column })).toBeTruthy();
     }
@@ -108,27 +107,14 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(within(previewTable).getAllByText("Pending").length).toBeGreaterThan(0);
     expect(within(previewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
     expect(within(previewTable).getByText("Report preparation")).toBeTruthy();
-    expect(within(previewTable).getByText("Condition confirmation")).toBeTruthy();
-    expect(within(previewTable).getByText("External Cost (tooling / purchase cost)")).toBeTruthy();
-    expect(screen.getByLabelText("Grand Cost preview")).toBeTruthy();
-    expect(screen.getByLabelText("Lab manpower cost preview")).toBeTruthy();
-
-    const reviewTable = screen.getByRole("table", { name: "Fee Evaluation review rows" });
-    expect(within(reviewTable).getAllByText("Fixture setup").length).toBeGreaterThan(0);
-    expect(within(reviewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
-    expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
-    expect(screen.queryByLabelText("Units")).toBeNull();
-    expect(screen.queryByLabelText("Base fee")).toBeNull();
-    expect(screen.queryByLabelText("Discount")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Review required" }));
-    expect(within(reviewTable).queryByText("Fixture setup")).toBeNull();
-    expect(within(reviewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
-    expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "No rule match" }));
-    expect(within(reviewTable).queryByText("Visual Examination")).toBeNull();
-    expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
+    expect(within(previewTable).queryByText("Condition confirmation")).toBeNull();
+    expect(within(previewTable).queryByText("External Cost (tooling / purchase cost)")).toBeNull();
+    expect(screen.getByLabelText("Condition confirmation spend time")).toBeTruthy();
+    expect(screen.getByLabelText("External Cost preview")).toBeTruthy();
+    expect(screen.getByLabelText("Lab manpower hourly rate")).toBeTruthy();
+    expect(screen.getByLabelText("Unit Price for Fixture setup")).toBeTruthy();
+    expect(screen.getByLabelText("Units for Fixture setup")).toBeTruthy();
+    expect(screen.getAllByLabelText("Unit Type").length).toBeGreaterThan(0);
   });
 
   it("filters the Testing Prices preview by group and updates the group fee card", async () => {
@@ -149,16 +135,82 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(within(previewTable).getByText("Fixture setup")).toBeTruthy();
     expect(within(previewTable).queryByText("Group 2 calculated")).toBeNull();
     expect(within(previewTable).getByText("Report preparation")).toBeTruthy();
-    expect(within(previewTable).getByText("Condition confirmation")).toBeTruthy();
-    expect(within(previewTable).getByText("External Cost (tooling / purchase cost)")).toBeTruthy();
     expect(screen.queryByText("Selected total")).toBeNull();
     expect(screen.queryByText("Fee")).toBeNull();
-    expect(screen.getAllByText("100.00").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Selected group fee").textContent).toContain("120.00");
   });
 
-  it("shows a local preview loss warning without sending cost values to the Fee Form download", async () => {
+  it("updates Working hours and Grand Cost when the group filter changes", async () => {
     arrangeSuccessfulContext();
-    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
+      createDraftWithTwoCalculatedGroups()
+    );
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    fireEvent.change(screen.getByLabelText("Spend Time for group Group 1 step 1"), {
+      target: { value: "1" },
+    });
+    fireEvent.change(screen.getByLabelText("Spend Time for group Group 2 step 1"), {
+      target: { value: "2" },
+    });
+
+    const totals = screen.getByLabelText("Testing Prices totals");
+    expect(within(totals).getByText("Working hours")).toBeTruthy();
+    expect(within(totals).getByText("3.0")).toBeTruthy();
+    expect(within(totals).getByText("125.00")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Preview group"), {
+      target: { value: "Group 1" },
+    });
+
+    expect(screen.getByLabelText("Selected group fee").textContent).toContain("100.00");
+    expect(within(totals).getByText("Grand Cost")).toBeTruthy();
+    expect(within(totals).getByText("1.0")).toBeTruthy();
+    expect(within(totals).getByText("100.00")).toBeTruthy();
+  });
+
+  it("clears local cost preview values when the project draft reloads", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+
+    const { rerender } = render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
+    );
+
+    const externalCostInput = await screen.findByLabelText("External Cost preview");
+    fireEvent.change(externalCostInput, { target: { value: "500" } });
+    fireEvent.change(screen.getByLabelText("Lab manpower hourly rate"), {
+      target: { value: "125" },
+    });
+    fireEvent.change(screen.getByLabelText("Condition confirmation spend time"), {
+      target: { value: "2" },
+    });
+
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithTwoCalculatedGroups());
+    rerender(<FeeEvaluationReviewExportPage projectId="P2" onBackToWorkbench={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(apiMocks.fetchConfirmedMatrixFeeDraft).toHaveBeenCalledWith("P2");
+    });
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText("External Cost preview") as HTMLInputElement).value
+      ).toBe("0");
+      expect(
+        (screen.getByLabelText("Lab manpower hourly rate") as HTMLInputElement).value
+      ).toBe("200");
+      expect(
+        (screen.getByLabelText("Condition confirmation spend time") as HTMLInputElement)
+          .value
+      ).toBe("0");
+    });
+  });
+
+  it("updates local row calculations without sending edited values to the Fee Form download", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
       blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
       fileName: "Fee-P1.xls",
@@ -171,10 +223,24 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.change(await screen.findByLabelText("Grand Cost preview"), {
-      target: { value: "100" },
+    fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
+      target: { value: "10" },
     });
-    fireEvent.change(screen.getByLabelText("Lab manpower cost preview"), {
+    fireEvent.change(screen.getByLabelText("Units for Visual Examination"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("Base Fee for Visual Examination"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("Discount for Visual Examination"), {
+      target: { value: "10%" },
+    });
+    expect(screen.getAllByText("29").length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText("Spend Time for group Group 1 step 1"), {
+      target: { value: "1" },
+    });
+    fireEvent.change(screen.getByLabelText("Lab manpower hourly rate"), {
       target: { value: "125" },
     });
 
@@ -349,6 +415,81 @@ function createDraftWithTwoGroups() {
             testing_fee: "25.00",
             unit_price: "25.00",
             units: "1",
+          }),
+        ],
+      },
+    ],
+  };
+}
+
+function createDraftWithTwoCalculatedGroups() {
+  return {
+    ...createDraft(),
+    groups: [
+      {
+        group_key: "g1",
+        group_label: "Group 1",
+        sample_quantity_expression: "5",
+        line_items: [
+          createLine({
+            line_id: "g1-calculated",
+            test_item: "Group 1 calculated",
+            unit_price: "100.00",
+            units: "1",
+            base_fee: "0.00",
+            discount_percent: "0",
+            testing_fee: "100.00",
+          }),
+        ],
+      },
+      {
+        group_key: "g2",
+        group_label: "Group 2",
+        sample_quantity_expression: "3",
+        line_items: [
+          createLine({
+            line_id: "g2-calculated",
+            group_key: "g2",
+            group_label: "Group 2",
+            confirmed_group_id: "cmg-2",
+            confirmed_row_id: "row-2",
+            test_item: "Group 2 calculated",
+            unit_price: "25.00",
+            units: "1",
+            base_fee: "0.00",
+            discount_percent: "0",
+            testing_fee: "25.00",
+          }),
+        ],
+      },
+    ],
+  };
+}
+
+function createDraftWithEditableSingleLine() {
+  return {
+    ...createDraft(),
+    groups: [
+      {
+        group_key: "g1",
+        group_label: "Group 1",
+        sample_quantity_expression: "5",
+        line_items: [
+          createLine({
+            line_id: "visual",
+            status: "review_required",
+            review_required: true,
+            review_reason: "Photo count is not available from Matrix authority.",
+            test_item: "Visual Examination",
+            matched_rule_name: "Visual Examination",
+            matched_rule_id: "fee_rule_visual_exam",
+            calculation_strategy: "per_photo",
+            unit_label: "photo",
+            unit_price: "10.00",
+            units: null,
+            base_fee: null,
+            discount_percent: null,
+            testing_fee: null,
           }),
         ],
       },

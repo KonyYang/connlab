@@ -3093,8 +3093,8 @@
 }
 
 .fee-evaluation-preview-group-card {
-  grid-template-columns: minmax(160px, 0.8fr) minmax(140px, 1fr);
-  align-items: end;
+  grid-template-columns: 90px max-content;
+  align-items: center;
 }
 
 .fee-evaluation-preview-group-card label,
@@ -3104,14 +3104,19 @@
   min-width: 0;
 }
 
-.fee-evaluation-preview-scope-fee {
+.fee-evaluation-preview-group-card .fee-evaluation-preview-scope-fee {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: 34px;
+  min-width: max-content;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .fee-evaluation-preview-controls select {
   width: 100%;
+  min-width: 90px;
   border: 1px solid var(--color-border);
   border-radius: 7px;
   background: var(--color-surface);
@@ -3131,7 +3136,8 @@
   overflow-wrap: anywhere;
 }
 
-.fee-evaluation-preview-scope-fee strong {
+.fee-evaluation-preview-group-card .fee-evaluation-preview-scope-fee span,
+.fee-evaluation-preview-group-card .fee-evaluation-preview-scope-fee strong {
   color: var(--color-ink-muted);
   font-size: 13px;
   font-weight: 800;
@@ -3264,6 +3270,18 @@
   white-space: nowrap;
 }
 
+.fee-evaluation-preview-table td:nth-child(1),
+.fee-evaluation-preview-table td:nth-child(2),
+.fee-evaluation-preview-table td:nth-child(3),
+.fee-evaluation-preview-table td:nth-child(5),
+.fee-evaluation-preview-table td:nth-child(6),
+.fee-evaluation-preview-table td:nth-child(7),
+.fee-evaluation-preview-table td:nth-child(8),
+.fee-evaluation-preview-table td:nth-child(9),
+.fee-evaluation-preview-table td:nth-child(10) {
+  vertical-align: middle;
+}
+
 .fee-evaluation-preview-table th:nth-child(1),
 .fee-evaluation-preview-table td:nth-child(1) {
   text-align: center;
@@ -3280,8 +3298,9 @@
 }
 
 .fee-evaluation-preview-table td:nth-child(4) {
-  min-width: 220px;
-  max-width: 320px;
+  min-width: 225px;
+  max-width: 330px;
+  white-space: nowrap;
 }
 
 .fee-evaluation-preview-table td:nth-child(4) strong,
@@ -3293,6 +3312,104 @@
   margin-left: 8px;
   color: var(--color-ink-muted);
   font-size: 11px;
+}
+
+.fee-evaluation-preview-table th:nth-child(3),
+.fee-evaluation-preview-table td:nth-child(3) {
+  width: 96px;
+  min-width: 96px;
+  max-width: 104px;
+}
+
+.fee-evaluation-preview-table th:nth-child(5),
+.fee-evaluation-preview-table td:nth-child(5),
+.fee-evaluation-preview-table th:nth-child(7),
+.fee-evaluation-preview-table td:nth-child(7),
+.fee-evaluation-preview-table th:nth-child(9),
+.fee-evaluation-preview-table td:nth-child(9) {
+  width: 72px;
+  min-width: 72px;
+  max-width: 82px;
+}
+
+.fee-evaluation-preview-table th:nth-child(8),
+.fee-evaluation-preview-table td:nth-child(8) {
+  width: 58px;
+  min-width: 58px;
+  max-width: 68px;
+}
+
+.fee-evaluation-preview-table th:nth-child(10),
+.fee-evaluation-preview-table td:nth-child(10) {
+  width: 96px;
+  min-width: 96px;
+  white-space: nowrap;
+}
+
+.fee-evaluation-preview-table th:nth-child(11),
+.fee-evaluation-preview-table td:nth-child(11) {
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.fee-evaluation-preview-table td:nth-child(11) {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.fee-evaluation-preview-cell-input,
+.fee-evaluation-preview-cell-select {
+  width: 100%;
+  min-width: 58px;
+  min-height: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+}
+
+.fee-evaluation-preview-cell-input {
+  text-align: right;
+}
+
+.fee-evaluation-preview-table td:nth-child(3) .fee-evaluation-preview-cell-input {
+  text-align: left;
+}
+
+.fee-evaluation-preview-table td:nth-child(3) .fee-evaluation-preview-cell-input,
+.fee-evaluation-preview-table td:nth-child(5) .fee-evaluation-preview-cell-input,
+.fee-evaluation-preview-table td:nth-child(7) .fee-evaluation-preview-cell-input,
+.fee-evaluation-preview-table td:nth-child(8) .fee-evaluation-preview-cell-input,
+.fee-evaluation-preview-table td:nth-child(9) .fee-evaluation-preview-cell-input {
+  text-align: left;
+  min-width: 58px;
+}
+
+.fee-evaluation-preview-cell-select {
+  min-width: 96px;
+}
+
+.fee-evaluation-preview-table th:nth-child(6),
+.fee-evaluation-preview-table td:nth-child(6) {
+  width: 104px;
+  min-width: 104px;
+  max-width: 112px;
+}
+
+.fee-evaluation-preview-cell-input::placeholder {
+  color: var(--color-ink-muted);
+  opacity: 0.75;
+}
+
+.fee-evaluation-preview-cell-input:focus-visible,
+.fee-evaluation-preview-cell-select:focus-visible {
+  outline: 2px solid rgba(31, 102, 209, 0.28);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
 }
 
 .fee-evaluation-preview-group-tone-a {
@@ -3327,11 +3444,10 @@
 .fee-evaluation-preview-totals {
   display: grid;
   grid-template-columns:
-    minmax(210px, 1fr)
-    minmax(150px, 0.7fr)
-    minmax(220px, 1fr)
-    minmax(220px, 1fr)
-    minmax(190px, 0.9fr);
+    minmax(160px, 0.65fr)
+    minmax(460px, 1.55fr)
+    minmax(520px, 2fr)
+    minmax(150px, 0.6fr);
   gap: 6px;
   margin: 0;
 }
@@ -3357,7 +3473,7 @@
 }
 
 .fee-evaluation-preview-cost-entry input {
-  width: 96px;
+  width: 72px;
   min-height: 26px;
   border: 1px solid var(--color-border);
   border-radius: 7px;
@@ -3369,9 +3485,50 @@
   padding: 4px 7px;
 }
 
-.fee-evaluation-preview-cost-entry input#fee-evaluation-lab-manpower-cost,
+.fee-evaluation-preview-cost-entry input#fee-evaluation-lab-manpower-hourly-rate,
 .fee-evaluation-preview-cost-entry input#fee-evaluation-external-cost {
-  width: 128px;
+  width: 86px;
+}
+
+.fee-evaluation-preview-cost-entry input#fee-evaluation-condition-confirmation-spend-time {
+  width: 48px;
+}
+
+.fee-evaluation-preview-external-entry dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.fee-evaluation-preview-cost-entry input#fee-evaluation-external-cost-note {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 220px;
+}
+
+.fee-evaluation-preview-rate-entry dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fee-evaluation-preview-cost-result {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fee-evaluation-preview-formula-mark,
+.fee-evaluation-preview-formula-label {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .fee-evaluation-preview-cost-entry input:focus-visible {
@@ -5349,6 +5506,17 @@
 
   .precheck-issue-details div {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .fee-evaluation-preview-totals {
+    grid-template-columns: minmax(200px, 0.6fr) minmax(380px, 1.4fr);
+  }
+
+  .fee-evaluation-preview-external-entry,
+  .fee-evaluation-preview-totals > div:last-child {
+    grid-column: 1 / -1;
   }
 }
 .matrix-editor-import-modal-backdrop {

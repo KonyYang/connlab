@@ -53,7 +53,8 @@ export function useNewProjectCompletion({
         test_item: setupValues.testItem,
         sample_description: setupValues.sampleDescription,
         test_type_in_sheet: setupValues.testTypeInSheet,
-        project_leader: setupValues.projectLeader
+        project_leader: setupValues.projectLeader,
+        "lab_performing_tests": setupValues.labPerformingTests
       });
       storeLastLtrApplyResult({
         project_id: result.project_id,

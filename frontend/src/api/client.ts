@@ -8,6 +8,18 @@ export type Project = {
   created_on?: string | null;
 };
 
+export type ProjectRegistryRow = {
+  project_id: string;
+  ltr_number?: string | null;
+  sample_description?: string | null;
+  test_item?: string | null;
+  requestor: string;
+  business_unit?: string | null;
+  status: string;
+  progress: number;
+  notes?: string | null;
+};
+
 export type ProjectCreateInput = {
   project_no?: string | null;
   product_name: string;
@@ -1020,6 +1032,7 @@ export type CompleteNewProjectInput = {
   location?: string | null;
   test_type_in_sheet?: string | null;
   project_leader?: string | null;
+  lab_performing_tests?: string | null;
 };
 
 export type CompleteNewProject = {
@@ -1445,6 +1458,10 @@ async function requestBlobResponse(
 
 export function listProjects(): Promise<Project[]> {
   return requestJson<Project[]>("/api/projects");
+}
+
+export function listProjectRegistryRows(): Promise<ProjectRegistryRow[]> {
+  return requestJson<ProjectRegistryRow[]>("/api/projects/registry");
 }
 
 export function createProject(input: ProjectCreateInput): Promise<Project> {

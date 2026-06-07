@@ -56,6 +56,7 @@ class CompleteNewProjectRequest(BaseModel):
     location: str | None = None
     test_type_in_sheet: str | None = None
     project_leader: str | None = None
+    lab_performing_tests: str | None = None
 
 
 class NewProjectCompletionOptionsResponse(BaseModel):
@@ -119,6 +120,7 @@ def complete_new_project(
                     location=request.location,
                     test_type_in_sheet=request.test_type_in_sheet,
                     project_leader=request.project_leader,
+                    lab_performing_tests=request.lab_performing_tests,
                 )
             )
         )

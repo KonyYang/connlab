@@ -122,7 +122,8 @@ export function IntakeInboxPage({
     testItem: "",
     sampleDescription: "",
     testTypeInSheet: "",
-    projectLeader: ""
+    projectLeader: "",
+    labPerformingTests: "Dongguan"
   });
   const [completionSetupError, setCompletionSetupError] = useState<string | null>(null);
   const fieldValuesRef = useRef<Record<string, string>>({});
@@ -174,6 +175,7 @@ export function IntakeInboxPage({
     if (!setupValues.sampleDescription.trim()) missing.add("sample_description");
     if (!setupValues.testTypeInSheet.trim()) missing.add("test_type_in_sheet");
     if (!setupValues.projectLeader.trim()) missing.add("project_leader");
+    if (!setupValues.labPerformingTests.trim()) missing.add("lab_performing_tests");
     return missing;
   }, [setupValues]);
   const completionText = useMemo(() => {
@@ -919,7 +921,8 @@ function emptySetupValues(defaultProjectLeader = ""): NewProjectSetupConfirmatio
     testItem: "",
     sampleDescription: "",
     testTypeInSheet: "",
-    projectLeader: defaultProjectLeader
+    projectLeader: defaultProjectLeader,
+    labPerformingTests: "Dongguan"
   };
 }
 
@@ -934,7 +937,8 @@ function setupValuesFromProjectSetup(
     testItem: stringValue(projectSetup?.test_item),
     sampleDescription: stringValue(projectSetup?.sample_description),
     testTypeInSheet: stringValue(projectSetup?.test_type_in_sheet),
-    projectLeader: stringValue(projectSetup?.project_leader) || defaultProjectLeader
+    projectLeader: stringValue(projectSetup?.project_leader) || defaultProjectLeader,
+    labPerformingTests: stringValue(projectSetup?.lab_performing_tests) || "Dongguan"
   };
 }
 
@@ -951,6 +955,7 @@ function projectSetupPayload(
   assignText(payload, "sample_description", values.sampleDescription);
   assignText(payload, "test_type_in_sheet", values.testTypeInSheet);
   assignText(payload, "project_leader", values.projectLeader);
+  assignText(payload, "lab_performing_tests", values.labPerformingTests);
   return payload;
 }
 

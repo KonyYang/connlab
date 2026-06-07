@@ -12,6 +12,7 @@ from typing import Any
 
 from backend.modules.fee_evaluation.fee_rule_models import (
     ALLOWED_CALCULATION_STRATEGIES,
+    ALLOWED_UNIT_LABELS,
     SUPPORTED_EFFECTIVE_FROM_BASES,
     FeeAmount,
     FeeRule,
@@ -87,6 +88,10 @@ def validate_fee_rule_library(library: FeeRuleLibrary) -> None:
             raise FeeRuleSeedValidationError(
                 f"Rule {rule.rule_id} has unsupported calculation_strategy: "
                 f"{rule.calculation_strategy}"
+            )
+        if rule.unit_label not in ALLOWED_UNIT_LABELS:
+            raise FeeRuleSeedValidationError(
+                f"Rule {rule.rule_id} has unsupported unit_label: {rule.unit_label}"
             )
         if rule.review_required and not (rule.review_reason or "").strip():
             raise FeeRuleSeedValidationError(

@@ -7,6 +7,7 @@ export type NewProjectSetupConfirmationValues = {
   sampleDescription: string;
   testTypeInSheet: string;
   projectLeader: string;
+  labPerformingTests: string;
 };
 
 type NewProjectSetupConfirmationPanelProps = {
@@ -16,6 +17,8 @@ type NewProjectSetupConfirmationPanelProps = {
   values: NewProjectSetupConfirmationValues;
   onChange: (values: NewProjectSetupConfirmationValues) => void;
 };
+
+const LAB_PERFORMING_TESTS_OPTIONS = ["Dongguan", "Valley Green"] as const;
 
 export function NewProjectSetupConfirmationPanel({
   disabled,
@@ -81,6 +84,22 @@ export function NewProjectSetupConfirmationPanel({
           value={values.projectLeader}
           onChange={(event) => update({ projectLeader: event.target.value })}
         />
+      </label>
+
+      <label className="new-project-setup-field">
+        <span>Lab Performing the Tests*</span>
+        <select
+          className={missingKeys.has("lab_performing_tests") ? "setup-field-missing" : ""}
+          disabled={disabled}
+          value={values.labPerformingTests}
+          onChange={(event) => update({ labPerformingTests: event.target.value })}
+        >
+          {LAB_PERFORMING_TESTS_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </label>
     </section>
   );

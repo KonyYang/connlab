@@ -292,6 +292,11 @@
   white-space: nowrap;
 }
 
+.registry-test-item-column {
+  width: 34%;
+  min-width: 320px;
+}
+
 .progress-cell {
   display: grid;
   grid-template-columns: 68px max-content;

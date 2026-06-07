@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import get_args
 
 from backend.modules.fee_evaluation import FeeRuleMatcher, load_active_fee_rule_library, normalize_fee_rule_text
-from backend.modules.fee_evaluation.fee_rule_models import FeeAmount, FeeRule, FeeRuleLibrary, FeeRuleVersion
+from backend.modules.fee_evaluation.fee_rule_models import (
+    FeeAmount,
+    FeeRule,
+    FeeRuleLibrary,
+    FeeRuleMatchStatus,
+    FeeRuleVersion,
+)
 
 
 def test_normalize_fee_rule_text_handles_mixed_language_punctuation() -> None:
@@ -43,6 +50,22 @@ def test_fee_rule_matcher_returns_no_match_for_ambiguous_token_match() -> None:
     assert result.rule is None
     assert result.review_required is True
     assert "Ambiguous token match" in result.match_reason
+    assert result.review_reason == "Multiple fee rules matched the same test item text."
+
+
+def test_fee_rule_matcher_prefers_longest_contains_alias() -> None:
+    matcher = FeeRuleMatcher(_longest_alias_library())
+
+    result = matcher.match_test_item("Visual inspection package after conditioning")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "rule_visual_package"
+    assert result.match_reason == "token_alias_match:visual inspection package"
+
+
+def test_fee_rule_match_status_values_remain_unchanged() -> None:
+    assert set(get_args(FeeRuleMatchStatus)) == {"matched", "no_rule_match"}
 
 
 def test_fee_rule_matcher_returns_stable_no_match_when_unmatched() -> None:
@@ -84,6 +107,49 @@ def _ambiguous_library() -> FeeRuleLibrary:
             FeeRule(
                 rule_id="rule_visual_b",
                 display_name="Visual B",
+                aliases=("visual inspection package",),
+                base_fee=amount,
+                unit_price=amount,
+                unit_label="sample",
+                applicable_standard="N/A",
+                range_condition="N/A",
+                calculation_strategy="per_sample",
+                review_required=False,
+                review_reason=None,
+            ),
+        ),
+    )
+
+
+def _longest_alias_library() -> FeeRuleLibrary:
+    version = FeeRuleVersion(
+        version_id="fee_rules_v2026_06_03",
+        source_file_name="Testing Fee Evaluation-Even.xls",
+        source_sheet="Unit Price Reference",
+        source_hash="sha256:b19cce35f774ad3a83260805f7b717d5446f23ca1a90c209a08d8cb7f91fe226",
+        effective_from_basis="project.sample_received_date",
+        created_at="2026-06-03T00:00:00+08:00",
+    )
+    amount = FeeAmount(amount=Decimal("0"), text="0")
+    return FeeRuleLibrary(
+        version=version,
+        rules=(
+            FeeRule(
+                rule_id="rule_visual",
+                display_name="Visual",
+                aliases=("visual inspection",),
+                base_fee=amount,
+                unit_price=amount,
+                unit_label="sample",
+                applicable_standard="N/A",
+                range_condition="N/A",
+                calculation_strategy="per_sample",
+                review_required=False,
+                review_reason=None,
+            ),
+            FeeRule(
+                rule_id="rule_visual_package",
+                display_name="Visual Package",
                 aliases=("visual inspection package",),
                 base_fee=amount,
                 unit_price=amount,

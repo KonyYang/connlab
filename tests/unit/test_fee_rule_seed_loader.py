@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from backend.modules.fee_evaluation import (
+    ALLOWED_UNIT_LABELS,
     FeeRuleSeedLoaderError,
     FeeRuleSeedValidationError,
     load_active_fee_rule_library,
@@ -13,9 +14,11 @@ from backend.modules.fee_evaluation import (
 )
 
 
-def test_load_active_fee_rule_library_includes_confirmed_source_metadata() -> None:
+def test_load_active_fee_rule_library_keeps_original_reference_snapshot_metadata() -> None:
     library = load_active_fee_rule_library()
 
+    # TASK_289 optimized the Testing Prices sheet only; Unit Price Reference
+    # remains the reviewed TASK_285 source snapshot until a controlled update.
     assert library.version.version_id == "fee_rules_v2026_06_03"
     assert library.version.source_file_name == "Testing Fee Evaluation-Even.xls"
     assert library.version.source_sheet == "Unit Price Reference"
@@ -32,6 +35,57 @@ def test_mfg_daily_source_price_is_not_marked_as_per_hour() -> None:
     assert mfg_rule.unit_label == "day"
     assert mfg_rule.calculation_strategy == "manual_required"
     assert mfg_rule.review_required is True
+
+
+def test_allowed_unit_labels_preserve_existing_and_future_fee_units() -> None:
+    assert "group" in ALLOWED_UNIT_LABELS
+    assert "specimen" in ALLOWED_UNIT_LABELS
+    assert "contact" in ALLOWED_UNIT_LABELS
+    assert "time" in ALLOWED_UNIT_LABELS
+    assert "report" in ALLOWED_UNIT_LABELS
+
+
+def test_load_fee_rule_library_accepts_compatible_unit_labels(tmp_path: Path) -> None:
+    seed_path = tmp_path / "compatible_unit_labels.json"
+    seed_path.write_text(
+        json.dumps(
+            {
+                "version": _valid_version(),
+                "rules": [
+                    _valid_rule("rule_group", aliases=["Group setup"], unit_label="group"),
+                    _valid_rule("rule_specimen", aliases=["Specimen setup"], unit_label="specimen"),
+                    _valid_rule("rule_contact", aliases=["Contact setup"], unit_label="contact"),
+                    _valid_rule("rule_time", aliases=["Per occurrence setup"], unit_label="time"),
+                    _valid_rule("rule_report", aliases=["Report setup"], unit_label="report"),
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    library = load_fee_rule_library(seed_path)
+
+    assert [rule.unit_label for rule in library.rules] == [
+        "group",
+        "specimen",
+        "contact",
+        "time",
+        "report",
+    ]
+
+
+def test_load_fee_rule_library_rejects_unknown_unit_label(tmp_path: Path) -> None:
+    seed_path = tmp_path / "bad_unit_label.json"
+    payload = {
+        "version": _valid_version(),
+        "rules": [
+            _valid_rule("rule_a", unit_label="duration"),
+        ],
+    }
+    seed_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(FeeRuleSeedValidationError, match="unsupported unit_label"):
+        load_fee_rule_library(seed_path)
 
 
 def test_load_fee_rule_library_rejects_missing_metadata_field(tmp_path: Path) -> None:
@@ -132,6 +186,7 @@ def _valid_rule(
     *,
     aliases: list[str] | None = None,
     calculation_strategy: str = "per_sample",
+    unit_label: str = "specimen",
 ) -> dict[str, object]:
     return {
         "rule_id": rule_id,
@@ -139,7 +194,7 @@ def _valid_rule(
         "aliases": aliases or [rule_id],
         "base_fee": {"amount": 0, "text": "0"},
         "unit_price": {"amount": 10, "text": "10/specimen"},
-        "unit_label": "specimen",
+        "unit_label": unit_label,
         "applicable_standard": "EIA-364-23",
         "range_condition": "N/A",
         "calculation_strategy": calculation_strategy,

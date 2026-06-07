@@ -7,7 +7,14 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.api.dependencies import get_project_service
+from backend.api.dependencies import (
+    get_project_registry_summary_service,
+    get_project_service,
+)
+from backend.application.project_registry_summary_service import (
+    ProjectRegistryRow,
+    ProjectRegistrySummaryService,
+)
 from backend.application.project_service import (
     CreateProjectCommand,
     ProjectNotFoundError,
@@ -42,6 +49,20 @@ class ProjectResponse(BaseModel):
     created_on: date | None = None
 
 
+class ProjectRegistryRowResponse(BaseModel):
+    """Typed row returned by the Project registry summary endpoint."""
+
+    project_id: str
+    ltr_number: str | None = None
+    sample_description: str | None = None
+    test_item: str | None = None
+    requestor: str
+    business_unit: str | None = None
+    status: str
+    progress: int
+    notes: str | None = None
+
+
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(
     request: ProjectCreateRequest,
@@ -67,6 +88,16 @@ def list_projects(
     return [_to_response(project) for project in service.list_projects()]
 
 
+@router.get("/registry", response_model=list[ProjectRegistryRowResponse])
+def list_project_registry_rows(
+    service: ProjectRegistrySummaryService = Depends(
+        get_project_registry_summary_service
+    ),
+) -> list[ProjectRegistryRowResponse]:
+    """List display-ready Project registry rows."""
+    return [_to_registry_response(row) for row in service.list_rows()]
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
     project_id: str,
@@ -89,4 +120,19 @@ def _to_response(project: Project) -> ProjectResponse:
         status=project.status.value,
         business_unit=project.business_unit,
         created_on=project.created_on,
+    )
+
+
+def _to_registry_response(row: ProjectRegistryRow) -> ProjectRegistryRowResponse:
+    """Convert a registry application row to an API response DTO."""
+    return ProjectRegistryRowResponse(
+        project_id=row.project_id,
+        ltr_number=row.ltr_number,
+        sample_description=row.sample_description,
+        test_item=row.test_item,
+        requestor=row.requestor,
+        business_unit=row.business_unit,
+        status=row.status,
+        progress=row.progress,
+        notes=row.notes,
     )

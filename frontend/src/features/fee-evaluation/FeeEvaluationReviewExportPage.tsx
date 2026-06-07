@@ -17,10 +17,17 @@ import {
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
 import {
   buildFeeEvaluationCostRisk,
+  buildFeeEvaluationLabManpowerCost,
+  buildFeeEvaluationPreviewGrandCost,
   buildFeeEvaluationPreviewHeader,
   buildFeeEvaluationPreviewRows,
   buildFeeEvaluationPreviewScopeTotal,
   buildFeeEvaluationPreviewTotals,
+  buildFeeEvaluationPreviewWorkingHours,
+  applyFeeEvaluationPreviewEdits,
+  filterFeeEvaluationPreviewRowsForScope,
+  type FeeEvaluationEditableField,
+  type FeeEvaluationPreviewEditState,
 } from "./feeEvaluationPreviewModel";
 
 type DraftLoadState =
@@ -49,6 +56,13 @@ type FeeEvaluationReviewExportPageProps = {
   onBackToWorkbench: () => void;
 };
 
+const EMPTY_COST_PREVIEW_VALUES = {
+  conditionConfirmationSpendTime: "0",
+  externalCost: "0",
+  externalCostNote: "",
+  labManpowerHourlyRate: "200",
+};
+
 export function FeeEvaluationReviewExportPage({
   projectId,
   onBackToWorkbench,
@@ -58,12 +72,10 @@ export function FeeEvaluationReviewExportPage({
   });
   const [draftState, setDraftState] = useState<DraftLoadState>({ kind: "loading" });
   const [previewGroupFilter, setPreviewGroupFilter] = useState("all");
-  const [costPreviewValues, setCostPreviewValues] = useState({
-    conditionConfirmationSpendTime: "",
-    externalCost: "",
-    grandCost: "",
-    labManpowerCost: "",
-  });
+  const [previewEdits, setPreviewEdits] = useState<FeeEvaluationPreviewEditState>({});
+  const [costPreviewValues, setCostPreviewValues] = useState(
+    EMPTY_COST_PREVIEW_VALUES
+  );
   const [downloadState, setDownloadState] = useState<FeeFileDownloadState>({
     kind: "idle",
   });
@@ -96,10 +108,14 @@ export function FeeEvaluationReviewExportPage({
   useEffect(() => {
     let active = true;
     setDraftState({ kind: "loading" });
+    setPreviewEdits({});
+    setCostPreviewValues(EMPTY_COST_PREVIEW_VALUES);
     void fetchConfirmedMatrixFeeDraft(projectId)
       .then((draft) => {
         if (active) {
           setDraftState({ kind: "ready", draft });
+          setPreviewEdits({});
+          setCostPreviewValues(EMPTY_COST_PREVIEW_VALUES);
         }
       })
       .catch((error: unknown) => {
@@ -125,7 +141,11 @@ export function FeeEvaluationReviewExportPage({
 
   const draft = draftState.kind === "ready" ? draftState.draft : null;
   const lines = useMemo(() => flattenDraftLines(draft), [draft]);
-  const previewRows = useMemo(() => buildFeeEvaluationPreviewRows(draft), [draft]);
+  const sourcePreviewRows = useMemo(() => buildFeeEvaluationPreviewRows(draft), [draft]);
+  const previewRows = useMemo(
+    () => applyFeeEvaluationPreviewEdits(sourcePreviewRows, previewEdits),
+    [previewEdits, sourcePreviewRows]
+  );
   const visiblePreviewRows = useMemo(
     () =>
       previewGroupFilter === "all"
@@ -134,6 +154,10 @@ export function FeeEvaluationReviewExportPage({
             (row) =>
               row.rowKind === "manual_trailing" || row.groupLabel === previewGroupFilter
           ),
+    [previewGroupFilter, previewRows]
+  );
+  const scopedPreviewRows = useMemo(
+    () => filterFeeEvaluationPreviewRowsForScope(previewRows, previewGroupFilter),
     [previewGroupFilter, previewRows]
   );
   const selectedPreviewTotal = useMemo(
@@ -148,13 +172,56 @@ export function FeeEvaluationReviewExportPage({
       }),
     [contextState]
   );
-  const previewTotals = useMemo(
+  const basePreviewTotals = useMemo(
     () => buildFeeEvaluationPreviewTotals(draft, ""),
     [draft]
   );
+  const workingHoursLabel = useMemo(
+    () =>
+      buildFeeEvaluationPreviewWorkingHours(
+        scopedPreviewRows,
+        costPreviewValues.conditionConfirmationSpendTime
+      ),
+    [costPreviewValues.conditionConfirmationSpendTime, scopedPreviewRows]
+  );
+  const labManpowerCostLabel = useMemo(
+    () =>
+      buildFeeEvaluationLabManpowerCost(
+        workingHoursLabel,
+        costPreviewValues.labManpowerHourlyRate
+      ),
+    [costPreviewValues.labManpowerHourlyRate, workingHoursLabel]
+  );
+  const previewTotals = useMemo(
+    () => ({
+      ...basePreviewTotals,
+      workingHours: workingHoursLabel,
+      labManpowerCost: labManpowerCostLabel,
+      externalCost: costPreviewValues.externalCost,
+    }),
+    [
+      basePreviewTotals,
+      costPreviewValues.externalCost,
+      labManpowerCostLabel,
+      workingHoursLabel,
+    ]
+  );
+  const grandCostLabel = useMemo(
+    () =>
+      buildFeeEvaluationPreviewGrandCost(
+        scopedPreviewRows,
+        costPreviewValues.externalCost,
+        previewTotals.grandCost
+      ),
+    [costPreviewValues.externalCost, previewTotals.grandCost, scopedPreviewRows]
+  );
   const costRisk = useMemo(
-    () => buildFeeEvaluationCostRisk(costPreviewValues),
-    [costPreviewValues]
+    () =>
+      buildFeeEvaluationCostRisk({
+        grandCost: grandCostLabel,
+        labManpowerCost: labManpowerCostLabel,
+      }),
+    [grandCostLabel, labManpowerCostLabel]
   );
   const groupOptions = useMemo(
     () => Array.from(new Set(lines.map((line) => line.group_label))).sort(),
@@ -194,11 +261,27 @@ export function FeeEvaluationReviewExportPage({
     setCostPreviewValues((current) => ({ ...current, [field]: value }));
   }
 
+  function handlePreviewRowEditChange(
+    lineId: string,
+    field: FeeEvaluationEditableField,
+    value: string
+  ): void {
+    setPreviewEdits((current) => ({
+      ...current,
+      [lineId]: {
+        ...(current[lineId] ?? {}),
+        [field]: value,
+      },
+    }));
+  }
+
   return (
     <section className="fee-evaluation-page" aria-label="Fee Evaluation review and export">
       <FeeEvaluationPreviewTable
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
+        grandCostLabel={grandCostLabel}
+        labManpowerCostLabel={labManpowerCostLabel}
         groupFilter={previewGroupFilter}
         groupOptions={groupOptions}
         header={previewHeader}
@@ -208,6 +291,7 @@ export function FeeEvaluationReviewExportPage({
         onCostPreviewChange={handleCostPreviewChange}
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
+        onRowEditChange={handlePreviewRowEditChange}
         scopeFeeLabel={selectedPreviewTotal}
         rows={visiblePreviewRows}
         totals={previewTotals}
