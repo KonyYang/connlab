@@ -11,11 +11,9 @@ import { ApiRequestError, type FeeEvaluationLineItem } from "../../api/client";
 import { FeeEvaluationReviewExportPage } from "./FeeEvaluationReviewExportPage";
 
 const apiMocks = vi.hoisted(() => ({
-  exportConfirmedMatrixFeeEvaluation: vi.fn(),
   fetchConfirmedMatrixFeeDraft: vi.fn(),
-  getLatestProjectFolder: vi.fn(),
+  generateConfirmedMatrixFeeFileDownload: vi.fn(),
   getProject: vi.fn(),
-  getProjectOutputStatusSummary: vi.fn(),
   listProjectLtrs: vi.fn(),
 }));
 
@@ -23,11 +21,10 @@ vi.mock("../../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../api/client")>();
   return {
     ...actual,
-    exportConfirmedMatrixFeeEvaluation: apiMocks.exportConfirmedMatrixFeeEvaluation,
     fetchConfirmedMatrixFeeDraft: apiMocks.fetchConfirmedMatrixFeeDraft,
-    getLatestProjectFolder: apiMocks.getLatestProjectFolder,
+    generateConfirmedMatrixFeeFileDownload:
+      apiMocks.generateConfirmedMatrixFeeFileDownload,
     getProject: apiMocks.getProject,
-    getProjectOutputStatusSummary: apiMocks.getProjectOutputStatusSummary,
     listProjectLtrs: apiMocks.listProjectLtrs,
   };
 });
@@ -36,18 +33,31 @@ describe("FeeEvaluationReviewExportPage", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("renders Testing Prices preview before secondary review details", async () => {
+  it("renders Fee File preview before secondary review details", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+    const onBackToWorkbench = vi.fn();
 
-    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    const { container } = render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+    );
 
-    expect(await screen.findByText("DL-2026-001 | CoolPower HDF")).toBeTruthy();
-    expect(screen.getByText("Testing Prices preview")).toBeTruthy();
+    expect(await screen.findByText("Fee Evaluation")).toBeTruthy();
+    expect(screen.queryByText(/Matrix line\(s\)/)).toBeNull();
+    expect(container.querySelector(".fee-evaluation-topbar")).toBeNull();
+    expect(screen.queryByLabelText("Fee summary")).toBeNull();
+    expect(screen.queryByLabelText("Matrix basic fill export")).toBeNull();
+    expect(screen.queryByText("Excel output")).toBeNull();
+    expect(screen.queryByText("Output directory")).toBeNull();
+    expect(screen.queryByText("Selected total")).toBeNull();
+    expect(screen.queryByText("Output freshness")).toBeNull();
+    expect(screen.queryByText("Rule version")).toBeNull();
     expect(screen.getByText("Review details")).toBeTruthy();
-    expect(screen.getByText("Total fee")).toBeTruthy();
+    expect(screen.getByText("Test Fee Total")).toBeTruthy();
     expect(screen.getAllByText("Pending Excel confirmation").length).toBeGreaterThan(0);
 
     const tables = screen.getAllByRole("table");
@@ -57,6 +67,21 @@ describe("FeeEvaluationReviewExportPage", () => {
     const previewTable = screen.getByRole("table", {
       name: "Testing Prices preview rows",
     });
+    const previewFilter = screen.getByLabelText("Preview group");
+    expect((previewFilter as HTMLSelectElement).value).toBe("all");
+    expect(screen.getByText("Preview group").className).toContain(
+      "fee-evaluation-sr-only"
+    );
+    expect(screen.queryByText("Fee")).toBeNull();
+    expect(screen.getByLabelText("Selected group fee")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fee Form" })).toBeTruthy();
+    expect(screen.getAllByText("Pending Excel confirmation").length).toBeGreaterThan(0);
+    const previewSurface = screen.getByLabelText("Testing Prices preview");
+    const backButton = within(previewSurface).getByRole("button", {
+      name: "Back to Workbench",
+    });
+    fireEvent.click(backButton);
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
     const headerBand = screen.getByLabelText("Testing Prices header");
     expect(within(headerBand).getByText("LTR Number")).toBeTruthy();
     expect(within(headerBand).getByText("DL-2026-001")).toBeTruthy();
@@ -66,6 +91,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(within(headerBand).getAllByText("Pending").length).toBeGreaterThan(0);
     for (const column of [
       "Group",
+      "Step",
       "Spend Time",
       "Description",
       "Unit Price",
@@ -77,8 +103,15 @@ describe("FeeEvaluationReviewExportPage", () => {
     ]) {
       expect(within(previewTable).getByRole("columnheader", { name: column })).toBeTruthy();
     }
+    expect(within(previewTable).queryByRole("columnheader", { name: "Price Percent Off" })).toBeNull();
+    expect(within(previewTable).getAllByText("1").length).toBeGreaterThan(0);
     expect(within(previewTable).getAllByText("Pending").length).toBeGreaterThan(0);
     expect(within(previewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
+    expect(within(previewTable).getByText("Report preparation")).toBeTruthy();
+    expect(within(previewTable).getByText("Condition confirmation")).toBeTruthy();
+    expect(within(previewTable).getByText("External Cost (tooling / purchase cost)")).toBeTruthy();
+    expect(screen.getByLabelText("Grand Cost preview")).toBeTruthy();
+    expect(screen.getByLabelText("Lab manpower cost preview")).toBeTruthy();
 
     const reviewTable = screen.getByRole("table", { name: "Fee Evaluation review rows" });
     expect(within(reviewTable).getAllByText("Fixture setup").length).toBeGreaterThan(0);
@@ -98,59 +131,107 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(within(reviewTable).getByText("Unknown specialized test")).toBeTruthy();
   });
 
-  it("disables export when the project folder path is missing", async () => {
+  it("filters the Testing Prices preview by group and updates the group fee card", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithTwoGroups());
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    const previewTable = await screen.findByRole("table", {
+      name: "Testing Prices preview rows",
+    });
+    expect(within(previewTable).getByText("Group 2 calculated")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Preview group"), {
+      target: { value: "Group 1" },
+    });
+
+    expect(within(previewTable).getByText("Fixture setup")).toBeTruthy();
+    expect(within(previewTable).queryByText("Group 2 calculated")).toBeNull();
+    expect(within(previewTable).getByText("Report preparation")).toBeTruthy();
+    expect(within(previewTable).getByText("Condition confirmation")).toBeTruthy();
+    expect(within(previewTable).getByText("External Cost (tooling / purchase cost)")).toBeTruthy();
+    expect(screen.queryByText("Selected total")).toBeNull();
+    expect(screen.queryByText("Fee")).toBeNull();
+    expect(screen.getAllByText("100.00").length).toBeGreaterThan(0);
+  });
+
+  it("shows a local preview loss warning without sending cost values to the Fee Form download", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+    apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
+      blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
+      fileName: "Fee-P1.xls",
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:fee-file"),
+      revokeObjectURL: vi.fn(),
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.change(await screen.findByLabelText("Grand Cost preview"), {
+      target: { value: "100" },
+    });
+    fireEvent.change(screen.getByLabelText("Lab manpower cost preview"), {
+      target: { value: "125" },
+    });
+
+    expect(
+      screen.getByText("Lab manpower cost exceeds Grand Cost. Review pricing before sending the fee form.")
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fee Form" }));
+
+    await waitFor(() => {
+      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith("P1");
+    });
+  });
+
+  it("keeps the Fee file action enabled when the project folder path is missing", async () => {
     arrangeSuccessfulContext({ folderPath: null });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    const exportButton = await screen.findByRole("button", {
-      name: "Generate Excel file",
-    });
-    expect((exportButton as HTMLButtonElement).disabled).toBe(true);
+    const exportButton = await screen.findByRole("button", { name: "Fee Form" });
+    expect((exportButton as HTMLButtonElement).disabled).toBe(false);
     expect(
-      screen.getByText("Create the project folder before generating the workbook.")
-    ).toBeTruthy();
+      screen.queryByText("Create the project folder before generating the workbook.")
+    ).toBeNull();
   });
 
-  it("exports Matrix basic fill and shows the generated path", async () => {
-    arrangeSuccessfulContext();
-    apiMocks.getProjectOutputStatusSummary
-      .mockResolvedValueOnce(outputStatusSummary("stale"))
-      .mockResolvedValueOnce(outputStatusSummary("current"));
+  it("downloads the generated Fee file through the direct download endpoint", async () => {
+    arrangeSuccessfulContext({ folderPath: null });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
-    apiMocks.exportConfirmedMatrixFeeEvaluation.mockResolvedValue(createExportResult());
+    apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
+      blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
+      fileName: "Fee-P1.xls",
+    });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:fee-file"),
+      revokeObjectURL: vi.fn(),
+    });
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    const approvedBy = await screen.findByLabelText("Approved by");
-    fireEvent.change(approvedBy, { target: { value: "Lab Manager" } });
-    fireEvent.change(screen.getByLabelText("File name"), {
-      target: { value: "fee draft" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Generate Excel file" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
 
     await waitFor(() => {
-      expect(apiMocks.exportConfirmedMatrixFeeEvaluation).toHaveBeenCalledWith("P1", {
-        template_path: "D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls",
-        output_dir: "D:\\Projects\\DL-2026-001",
-        output_file_name: "fee draft.xls",
-        overwrite: false,
-        allow_review_required: true,
-        fill_mode: "matrix_basic",
-        approved_by: "Lab Manager",
-      });
+      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith("P1");
     });
-    expect(await screen.findByText("D:\\Projects\\DL-2026-001\\Fee.xls")).toBeTruthy();
-    await waitFor(() => {
-      expect(screen.getByText("Current")).toBeTruthy();
-    });
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Fee-P1.xls downloaded.")).toBeTruthy();
   });
 
   it("shows timeout cleanup guidance from structured API detail", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
-    apiMocks.exportConfirmedMatrixFeeEvaluation.mockRejectedValue(
+    apiMocks.generateConfirmedMatrixFeeFileDownload.mockRejectedValue(
       new ApiRequestError("Fee Evaluation export timed out after 90 seconds.", 503, {
         message: "Fee Evaluation export timed out after 90 seconds.",
         elapsed_seconds: 90,
@@ -160,20 +241,16 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Generate Excel file" })
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
 
     expect(
       await screen.findByText("Fee Evaluation export timed out after 90 seconds.")
     ).toBeTruthy();
-    expect(
-      screen.getByText("Close the Excel instance opened by ConnLab if it remains.")
-    ).toBeTruthy();
+    expect(screen.getByText("Close the Excel instance opened by ConnLab if it remains.")).toBeTruthy();
   });
 });
 
-function arrangeSuccessfulContext(input: { folderPath?: string | null } = {}): void {
+function arrangeSuccessfulContext(_input: { folderPath?: string | null } = {}): void {
   apiMocks.getProject.mockResolvedValue({
     project_id: "P1",
     project_no: "CP-001",
@@ -182,39 +259,6 @@ function arrangeSuccessfulContext(input: { folderPath?: string | null } = {}): v
     status: "folder_created",
   });
   apiMocks.listProjectLtrs.mockResolvedValue([{ ltr_number: "DL-2026-001" }]);
-  if (input.folderPath === null) {
-    apiMocks.getLatestProjectFolder.mockRejectedValue(new Error("No folder"));
-  } else {
-    apiMocks.getLatestProjectFolder.mockResolvedValue({
-      folder_id: "folder-1",
-      project_id: "P1",
-      project_folder_path: input.folderPath ?? "D:\\Projects\\DL-2026-001",
-    });
-  }
-  apiMocks.getProjectOutputStatusSummary.mockResolvedValue(outputStatusSummary("stale"));
-}
-
-function outputStatusSummary(status: "current" | "stale") {
-  return {
-    project_id: "P1",
-    active_draft_id: "draft-1",
-    active_draft_version: 2,
-    items: [
-      {
-        output_kind: "fee_evaluation",
-        status,
-        output_path: "D:\\Projects\\old.xls",
-        source: "system_generated",
-        draft_id: "draft-1",
-        draft_version: status === "current" ? 2 : 1,
-        reason:
-          status === "current"
-            ? "Output reference is aligned with the current authority context."
-            : "Output reference was captured before the current authority version.",
-        updated_at: "2026-06-05T09:00:00+08:00",
-      },
-    ],
-  };
 }
 
 function createDraft() {
@@ -262,6 +306,7 @@ function createDraft() {
             calculation_strategy: "per_photo",
             unit_label: "photo",
             unit_price: "10.00",
+            step_tokens: ["2", "3"],
             testing_fee: null,
           }),
           createLine({
@@ -276,6 +321,34 @@ function createDraft() {
             unit_label: "manual",
             unit_price: null,
             testing_fee: null,
+          }),
+        ],
+      },
+    ],
+  };
+}
+
+function createDraftWithTwoGroups() {
+  const draft = createDraft();
+  return {
+    ...draft,
+    groups: [
+      draft.groups[0],
+      {
+        group_key: "g2",
+        group_label: "Group 2",
+        sample_quantity_expression: "3",
+        line_items: [
+          createLine({
+            line_id: "g2-calculated",
+            group_key: "g2",
+            group_label: "Group 2",
+            confirmed_group_id: "cmg-2",
+            confirmed_row_id: "row-2",
+            test_item: "Group 2 calculated",
+            testing_fee: "25.00",
+            unit_price: "25.00",
+            units: "1",
           }),
         ],
       },
@@ -323,23 +396,5 @@ function baseLine(): FeeEvaluationLineItem {
     discount_percent: "0",
     testing_fee: "100.00",
     warnings: [],
-  };
-}
-
-function createExportResult() {
-  return {
-    project_id: "P1",
-    output_path: "D:\\Projects\\DL-2026-001\\Fee.xls",
-    output_format: "xls",
-    status: "generated",
-    confirmed_matrix_id: "cmv-1",
-    confirmed_revision: 1,
-    pricing_rule_version_id: "fee_rules_v2026_06_03",
-    pricing_effective_from: "2026-06-03",
-    prepared_by: "Lab User",
-    approved_by: "Lab Manager",
-    output_record_id: "output-1",
-    line_traceability: [],
-    warnings: ["Review-required lines were exported for manual pricing."],
   };
 }

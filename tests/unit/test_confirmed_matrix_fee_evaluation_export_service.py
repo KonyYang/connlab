@@ -213,6 +213,34 @@ def test_matrix_basic_fill_does_not_require_fee_draft_success(
     assert 'cell_value="abc"' in note
 
 
+def test_matrix_basic_fill_download_does_not_require_active_output_draft(
+    tmp_path: Path,
+) -> None:
+    output_service = _OutputService(active_draft_id=None)
+    service = _service(
+        draft=_draft(status="needs_review"),
+        output_service=output_service,
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+
+    result = service.export(
+        ExportConfirmedMatrixFeeEvaluationCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=tmp_path,
+            fill_mode="matrix_basic",
+        )
+    )
+
+    assert result.status == "generated"
+    assert result.output_record_id is None
+    assert output_service.commands == []
+    assert (
+        "Fee output record was not registered because no active reviewed draft exists."
+        in result.warnings
+    )
+
+
 def test_matrix_basic_fill_propagates_unexpected_fee_draft_errors(
     tmp_path: Path,
 ) -> None:

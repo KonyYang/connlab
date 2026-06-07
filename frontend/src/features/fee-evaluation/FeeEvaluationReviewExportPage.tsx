@@ -2,37 +2,26 @@ import {
   useEffect,
   useMemo,
   useState,
-  type Dispatch,
   type ReactElement,
-  type SetStateAction,
 } from "react";
 import {
   ApiRequestError,
-  exportConfirmedMatrixFeeEvaluation,
   fetchConfirmedMatrixFeeDraft,
-  getLatestProjectFolder,
+  generateConfirmedMatrixFeeFileDownload,
   getProject,
-  getProjectOutputStatusSummary,
   listProjectLtrs,
   type FeeEvaluationDraft,
-  type FeeEvaluationExportResponse,
   type FeeEvaluationLineItem,
   type Project,
-  type ProjectOutputStatusItem,
 } from "../../api/client";
-import {
-  FeeEvaluationReviewDetails,
-  type FeeLineFilter,
-} from "./FeeEvaluationReviewDetails";
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
 import {
+  buildFeeEvaluationCostRisk,
   buildFeeEvaluationPreviewHeader,
   buildFeeEvaluationPreviewRows,
+  buildFeeEvaluationPreviewScopeTotal,
   buildFeeEvaluationPreviewTotals,
 } from "./feeEvaluationPreviewModel";
-
-const MATRIX_BASIC_FILL_TEMPLATE_PATH =
-  "D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls";
 
 type DraftLoadState =
   | { kind: "loading" }
@@ -46,15 +35,13 @@ type FeePageContextState =
       kind: "ready";
       project: Project;
       ltrNumber: string | null;
-      projectFolderPath: string | null;
-      outputStatus: ProjectOutputStatusItem | null;
     }
   | { kind: "error"; message: string };
 
-type ExportState =
+export type FeeFileDownloadState =
   | { kind: "idle" }
   | { kind: "running" }
-  | { kind: "success"; result: FeeEvaluationExportResponse }
+  | { kind: "success"; fileName: string | null }
   | { kind: "error"; message: string; manualCleanupWarning?: string | null };
 
 type FeeEvaluationReviewExportPageProps = {
@@ -70,12 +57,16 @@ export function FeeEvaluationReviewExportPage({
     kind: "loading",
   });
   const [draftState, setDraftState] = useState<DraftLoadState>({ kind: "loading" });
-  const [filter, setFilter] = useState<FeeLineFilter>("all");
-  const [groupFilter, setGroupFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [approvedBy, setApprovedBy] = useState("");
-  const [outputFileName, setOutputFileName] = useState("");
-  const [exportState, setExportState] = useState<ExportState>({ kind: "idle" });
+  const [previewGroupFilter, setPreviewGroupFilter] = useState("all");
+  const [costPreviewValues, setCostPreviewValues] = useState({
+    conditionConfirmationSpendTime: "",
+    externalCost: "",
+    grandCost: "",
+    labManpowerCost: "",
+  });
+  const [downloadState, setDownloadState] = useState<FeeFileDownloadState>({
+    kind: "idle",
+  });
 
   useEffect(() => {
     let active = true;
@@ -135,6 +126,20 @@ export function FeeEvaluationReviewExportPage({
   const draft = draftState.kind === "ready" ? draftState.draft : null;
   const lines = useMemo(() => flattenDraftLines(draft), [draft]);
   const previewRows = useMemo(() => buildFeeEvaluationPreviewRows(draft), [draft]);
+  const visiblePreviewRows = useMemo(
+    () =>
+      previewGroupFilter === "all"
+        ? previewRows
+        : previewRows.filter(
+            (row) =>
+              row.rowKind === "manual_trailing" || row.groupLabel === previewGroupFilter
+          ),
+    [previewGroupFilter, previewRows]
+  );
+  const selectedPreviewTotal = useMemo(
+    () => buildFeeEvaluationPreviewScopeTotal(previewRows, previewGroupFilter),
+    [previewGroupFilter, previewRows]
+  );
   const previewHeader = useMemo(
     () =>
       buildFeeEvaluationPreviewHeader({
@@ -144,392 +149,131 @@ export function FeeEvaluationReviewExportPage({
     [contextState]
   );
   const previewTotals = useMemo(
-    () => buildFeeEvaluationPreviewTotals(draft, approvedBy),
-    [approvedBy, draft]
+    () => buildFeeEvaluationPreviewTotals(draft, ""),
+    [draft]
+  );
+  const costRisk = useMemo(
+    () => buildFeeEvaluationCostRisk(costPreviewValues),
+    [costPreviewValues]
   );
   const groupOptions = useMemo(
     () => Array.from(new Set(lines.map((line) => line.group_label))).sort(),
     [lines]
   );
-  const visibleLines = useMemo(
-    () => filterLines(lines, filter, groupFilter, search),
-    [filter, groupFilter, lines, search]
-  );
-  const projectFolderPath =
-    contextState.kind === "ready" ? contextState.projectFolderPath : null;
-  const exportDisabledReason = exportBlocker(draftState, contextState);
+  const generateDisabledReason = feeFileDownloadBlocker(draftState);
 
-  async function handleExport(): Promise<void> {
-    if (exportDisabledReason || !projectFolderPath) {
+  async function handleGenerateFeeFile(): Promise<void> {
+    if (generateDisabledReason || downloadState.kind === "running") {
       return;
     }
-    setExportState({ kind: "running" });
+    setDownloadState({ kind: "running" });
     try {
-      const result = await exportConfirmedMatrixFeeEvaluation(projectId, {
-        template_path: MATRIX_BASIC_FILL_TEMPLATE_PATH,
-        output_dir: projectFolderPath,
-        output_file_name: normalizeOutputFileName(outputFileName),
-        overwrite: false,
-        allow_review_required: true,
-        fill_mode: "matrix_basic",
-        approved_by: emptyToNull(approvedBy),
-      });
-      setExportState({ kind: "success", result });
-      await refreshFeeOutputStatus(projectId, setContextState);
+      const response = await generateConfirmedMatrixFeeFileDownload(projectId);
+      downloadBlob(response.blob, response.fileName ?? defaultFeeFileName(projectId));
+      setDownloadState({ kind: "success", fileName: response.fileName });
     } catch (error: unknown) {
       const detail =
         error instanceof ApiRequestError && isErrorDetailObject(error.detail)
           ? error.detail
           : null;
-      setExportState({
+      setDownloadState({
         kind: "error",
         message:
           error instanceof ApiRequestError
-            ? error.message
-            : "Fee Evaluation export failed.",
+            ? businessReadableDownloadError(error)
+            : "Fee file generation failed.",
         manualCleanupWarning: detail?.manual_cleanup_warning ?? null,
       });
     }
   }
 
+  function handleCostPreviewChange(
+    field: keyof typeof costPreviewValues,
+    value: string
+  ): void {
+    setCostPreviewValues((current) => ({ ...current, [field]: value }));
+  }
+
   return (
     <section className="fee-evaluation-page" aria-label="Fee Evaluation review and export">
-      <header className="fee-evaluation-topbar">
-        <button
-          className="fee-evaluation-back-button"
-          type="button"
-          onClick={onBackToWorkbench}
-        >
-          Back to Workbench
-        </button>
-        <div>
-          <p className="eyebrow">Fee Evaluation</p>
-          <h2>{contextTitle(contextState)}</h2>
-          <p>{contextSubtitle(contextState)}</p>
-        </div>
-        <div className="fee-evaluation-topbar-status">
-          <span>{previewTotals.confirmationLabel}</span>
-          <strong>Total fee: {previewTotals.testFeeTotal}</strong>
-        </div>
-      </header>
-
-      <section className="fee-evaluation-summary-strip" aria-label="Fee summary">
-        <SummaryFact label="Pricing status" value={previewTotals.confirmationLabel} />
-        <SummaryFact label="Total fee" value={previewTotals.testFeeTotal} />
-        <SummaryFact label="Working hours" value={previewTotals.workingHours} />
-        <SummaryFact
-          label="Rule version"
-          value={draft?.header.pricing_rule_version_id ?? "-"}
-        />
-        <SummaryFact
-          label="Pricing effective"
-          value={displayValue(draft?.header.pricing_effective_from)}
-        />
-        <SummaryFact
-          label="Output freshness"
-          value={outputFreshnessLabel(contextState)}
-          detail={outputFreshnessDetail(contextState)}
-        />
-      </section>
-
-      <section className="fee-evaluation-export-panel" aria-label="Matrix basic fill export">
-        <div>
-          <p className="eyebrow">Excel output</p>
-          <h3>Generate Excel file</h3>
-          <p>
-            Creates the official Testing Prices workbook from the Matrix structure.
-            Pricing fields remain ready for Excel-side completion.
-          </p>
-        </div>
-        <div className="fee-evaluation-export-fields">
-          <label>
-            Output directory
-            <input readOnly value={projectFolderPath ?? ""} placeholder="Project folder is not available" />
-          </label>
-          <label>
-            Approved by
-            <input
-              value={approvedBy}
-              onChange={(event) => setApprovedBy(event.currentTarget.value)}
-              placeholder="Optional"
-            />
-          </label>
-          <label>
-            File name
-            <input
-              value={outputFileName}
-              onChange={(event) => setOutputFileName(event.currentTarget.value)}
-              placeholder="Optional, backend default if blank"
-            />
-          </label>
-        </div>
-        <div className="fee-evaluation-export-actions">
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={Boolean(exportDisabledReason) || exportState.kind === "running"}
-          >
-            {exportState.kind === "running" ? "Generating..." : "Generate Excel file"}
-          </button>
-          {exportDisabledReason ? (
-            <p className="fee-evaluation-export-blocker">{exportDisabledReason}</p>
-          ) : (
-            <p>
-              Review-required lines can export in this mode; the workbook still needs
-              manual price confirmation.
-            </p>
-          )}
-        </div>
-        <ExportResult state={exportState} />
-      </section>
-
       <FeeEvaluationPreviewTable
+        costPreviewValues={costPreviewValues}
+        costRisk={costRisk}
+        groupFilter={previewGroupFilter}
+        groupOptions={groupOptions}
         header={previewHeader}
-        rows={previewRows}
+        downloadState={downloadState}
+        generateDisabledReason={generateDisabledReason}
+        onBackToWorkbench={onBackToWorkbench}
+        onCostPreviewChange={handleCostPreviewChange}
+        onGenerateFeeFile={handleGenerateFeeFile}
+        onGroupFilterChange={setPreviewGroupFilter}
+        scopeFeeLabel={selectedPreviewTotal}
+        rows={visiblePreviewRows}
         totals={previewTotals}
       />
-
-      <FeeEvaluationReviewDetails
-        lines={lines}
-        visibleLines={visibleLines}
-        filter={filter}
-        setFilter={setFilter}
-        groupFilter={groupFilter}
-        setGroupFilter={setGroupFilter}
-        search={search}
-        setSearch={setSearch}
-        groupOptions={groupOptions}
-        stateMessage={reviewStateMessage(draftState)}
-      />
     </section>
-  );
-}
-
-function SummaryFact({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-}): ReactElement {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail ? <p>{detail}</p> : null}
-    </div>
-  );
-}
-
-function ExportResult({ state }: { state: ExportState }): ReactElement | null {
-  if (state.kind === "idle" || state.kind === "running") {
-    return null;
-  }
-  if (state.kind === "success") {
-    return (
-      <div className="fee-evaluation-export-result" role="status">
-        <strong>Generated</strong>
-        <p>{state.result.output_path}</p>
-        {state.result.warnings.map((warning) => (
-          <p key={warning}>{warning}</p>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div className="fee-evaluation-export-error" role="alert">
-      <strong>Export failed</strong>
-      <p>{state.message}</p>
-      {state.manualCleanupWarning ? <p>{state.manualCleanupWarning}</p> : null}
-    </div>
   );
 }
 
 async function loadPageContext(projectId: string): Promise<{
   project: Project;
   ltrNumber: string | null;
-  projectFolderPath: string | null;
-  outputStatus: ProjectOutputStatusItem | null;
 }> {
-  const [project, ltrs, folderResult, outputStatusResult] = await Promise.all([
+  const [project, ltrs] = await Promise.all([
     getProject(projectId),
     listProjectLtrs(projectId),
-    getLatestProjectFolder(projectId).catch(() => null),
-    getProjectOutputStatusSummary(projectId).catch(() => null),
   ]);
   return {
     project,
     ltrNumber: ltrs.at(-1)?.ltr_number ?? null,
-    projectFolderPath: folderResult?.project_folder_path ?? null,
-    outputStatus:
-      outputStatusResult?.items.find(
-        (item) => item.output_kind === "fee_evaluation"
-      ) ?? null,
   };
-}
-
-async function refreshFeeOutputStatus(
-  projectId: string,
-  setContextState: Dispatch<SetStateAction<FeePageContextState>>
-): Promise<void> {
-  const outputStatusResult = await getProjectOutputStatusSummary(projectId).catch(() => null);
-  const outputStatus =
-    outputStatusResult?.items.find((item) => item.output_kind === "fee_evaluation") ?? null;
-  setContextState((current) =>
-    current.kind === "ready" ? { ...current, outputStatus } : current
-  );
 }
 
 function flattenDraftLines(draft: FeeEvaluationDraft | null): FeeEvaluationLineItem[] {
   return draft?.groups.flatMap((group) => group.line_items) ?? [];
 }
 
-function filterLines(
-  lines: FeeEvaluationLineItem[],
-  filter: FeeLineFilter,
-  groupFilter: string,
-  search: string
-): FeeEvaluationLineItem[] {
-  const query = search.trim().toLowerCase();
-  return lines.filter((line) => {
-    if (groupFilter !== "all" && line.group_label !== groupFilter) {
-      return false;
-    }
-    if (filter === "review_required" && !line.review_required) {
-      return false;
-    }
-    if (filter === "calculated" && line.status !== "calculated") {
-      return false;
-    }
-    if (filter === "no_rule_match" && line.status !== "no_rule_match") {
-      return false;
-    }
-    if (!query) {
-      return true;
-    }
-    return [
-      line.test_item,
-      line.group_label,
-      line.matched_rule_name,
-      line.matched_rule_id,
-      line.review_reason,
-      line.match_reason,
-      ...line.warnings.map((warning) => warning.message),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
-      .includes(query);
-  });
-}
-
-function exportBlocker(
-  draftState: DraftLoadState,
-  contextState: FeePageContextState
-): string | null {
-  if (contextState.kind === "loading" || draftState.kind === "loading") {
-    return "Waiting for project and fee draft status.";
-  }
-  if (contextState.kind === "error") {
-    return contextState.message;
+function feeFileDownloadBlocker(draftState: DraftLoadState): string | null {
+  if (draftState.kind === "loading") {
+    return "Waiting for Fee Evaluation draft.";
   }
   if (draftState.kind === "not_ready") {
-    return "Confirm Matrix authority before generating Fee Evaluation.";
+    return "Confirm Matrix authority before generating the Fee file.";
   }
   if (draftState.kind === "error") {
     return draftState.message;
   }
-  if (!contextState.projectFolderPath) {
-    return "Create the project folder before generating the workbook.";
-  }
   return null;
-}
-
-function reviewStateMessage(draftState: DraftLoadState): ReactElement | null {
-  if (draftState.kind === "loading") {
-    return <p className="fee-evaluation-empty">Loading Fee Evaluation draft...</p>;
-  }
-  if (draftState.kind === "not_ready") {
-    return (
-      <p className="fee-evaluation-empty">
-        No active confirmed Matrix authority yet. Confirm Matrix before fee review.
-      </p>
-    );
-  }
-  if (draftState.kind === "error") {
-    return <p className="error">{draftState.message}</p>;
-  }
-  return null;
-}
-
-function contextTitle(state: FeePageContextState): string {
-  if (state.kind !== "ready") {
-    return "Project fee review";
-  }
-  const identity = state.ltrNumber ?? state.project.project_no ?? state.project.project_id;
-  return `${identity} | ${state.project.product_name}`;
-}
-
-function contextSubtitle(state: FeePageContextState): string {
-  if (state.kind === "loading") {
-    return "Loading project context.";
-  }
-  if (state.kind === "error") {
-    return state.message;
-  }
-  return state.projectFolderPath
-    ? `Output folder: ${state.projectFolderPath}`
-    : "Project folder is required before export.";
-}
-
-function outputFreshnessLabel(state: FeePageContextState): string {
-  if (state.kind !== "ready" || !state.outputStatus) {
-    return "Missing";
-  }
-  if (state.outputStatus.status === "current") {
-    return "Current";
-  }
-  if (state.outputStatus.status === "stale") {
-    return "Stale";
-  }
-  if (state.outputStatus.status === "failed") {
-    return "Failed";
-  }
-  if (state.outputStatus.status === "manual") {
-    return "Manual";
-  }
-  return "Missing";
-}
-
-function outputFreshnessDetail(state: FeePageContextState): string {
-  if (state.kind !== "ready" || !state.outputStatus) {
-    return "No Fee Evaluation output recorded.";
-  }
-  return state.outputStatus.reason;
-}
-
-function displayValue(value: string | null | undefined): string {
-  const normalized = value?.trim() ?? "";
-  return normalized.length > 0 ? normalized : "-";
-}
-
-function emptyToNull(value: string): string | null {
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
-function normalizeOutputFileName(value: string): string | null {
-  const normalized = value.trim();
-  if (!normalized) {
-    return null;
-  }
-  return /\.(xls|xlsx)$/i.test(normalized) ? normalized : `${normalized}.xls`;
 }
 
 function isErrorDetailObject(
   detail: unknown
 ): detail is { manual_cleanup_warning?: string | null } {
   return Boolean(detail) && typeof detail === "object";
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function defaultFeeFileName(projectId: string): string {
+  return `fee-file-${projectId}.xls`;
+}
+
+function businessReadableDownloadError(error: ApiRequestError): string {
+  if (error.status === 503) {
+    return error.message;
+  }
+  if (error.status === 404) {
+    return "Confirm Matrix authority before generating the Fee file.";
+  }
+  return error.message || "Fee file generation failed.";
 }

@@ -17,7 +17,7 @@ from backend.domain import (
 )
 
 
-def test_basic_fill_uses_confirmed_matrix_selected_cells_without_step_token_filtering() -> None:
+def test_basic_fill_expands_confirmed_matrix_step_tokens_in_preview_order() -> None:
     service = ConfirmedMatrixFeeTemplateBasicFillService(
         confirmed_store=_Store(_snapshot_with_malformed_cells())
     )
@@ -32,10 +32,23 @@ def test_basic_fill_uses_confirmed_matrix_selected_cells_without_step_token_filt
     assert [line.test_item for line in result.groups[0].lines] == [
         "Visual Examination",
         "LLCR",
+        "Visual Examination",
+        "Dust Test",
     ]
-    assert [line.cell_value for line in result.groups[0].lines] == ["1 X", "abc"]
+    assert [line.step_tokens for line in result.groups[0].lines] == [
+        ("1",),
+        ("2",),
+        ("3",),
+        (),
+    ]
+    assert [line.cell_value for line in result.groups[0].lines] == [
+        "1 3 X",
+        "2",
+        "1 3 X",
+        "abc",
+    ]
     assert [line.test_item for line in result.groups[1].lines] == ["Visual Examination"]
-    assert all(line.step_tokens == () for group in result.groups for line in group.lines)
+    assert result.groups[1].lines[0].step_tokens == ("1",)
 
 
 def test_basic_fill_skips_empty_confirmed_matrix_cells() -> None:
@@ -73,10 +86,10 @@ def _snapshot_with_malformed_cells() -> ConfirmedMatrixSnapshot:
         groups=groups,
         rows=rows,
         cells=(
-            _cell("cmc-a1", groups[0], rows[0], "1 X"),
-            _cell("cmc-a2", groups[0], rows[1], "abc"),
-            _cell("cmc-a3", groups[0], rows[2], " "),
-            _cell("cmc-b1", groups[1], rows[0], "2"),
+            _cell("cmc-a1", groups[0], rows[0], "1 3 X"),
+            _cell("cmc-a2", groups[0], rows[1], "2"),
+            _cell("cmc-a3", groups[0], rows[2], "abc"),
+            _cell("cmc-b1", groups[1], rows[0], "1"),
         ),
     )
 

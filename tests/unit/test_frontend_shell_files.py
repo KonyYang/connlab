@@ -138,6 +138,8 @@ def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
         "export type FeeEvaluationExportResponse = {",
         "exportConfirmedMatrixFeeEvaluation(",
         "/confirmed-matrix/fee-evaluation/export",
+        "generateConfirmedMatrixFeeFileDownload(",
+        "/confirmed-matrix/fee-evaluation/file/generate",
     ]:
         assert required_client_symbol in client_source
 
@@ -146,10 +148,8 @@ def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
     assert "Open Fee Evaluation" in summary_source
 
     for required_fee_page_symbol in [
-        "MATRIX_BASIC_FILL_TEMPLATE_PATH",
-        "fill_mode: \"matrix_basic\"",
-        "allow_review_required: true",
-        "Generate Excel file",
+        "generateConfirmedMatrixFeeFileDownload",
+        "Fee file generation failed.",
         "Fee Evaluation review rows",
         "No rule match",
         "manual_cleanup_warning",
@@ -191,6 +191,11 @@ def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
     for required_preview_symbol in [
         "Testing Prices preview rows",
         "Testing Prices header",
+        "Preview group",
+        "All Group",
+        "Fee Evaluation",
+        "Fee Form",
+        "Back to Workbench",
         "LTR Number",
         "Test description",
         "Requestor",
@@ -205,9 +210,130 @@ def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
 
     assert "Review details" in review_details_source
     assert "Fee Evaluation review rows" in review_details_source
-    assert "Generate Excel file" in fee_page_source
+    assert "generateConfirmedMatrixFeeFileDownload" in fee_page_source
     assert "Generate Matrix basic fill" not in fee_page_source
-    assert "exportConfirmedMatrixFeeEvaluation" in fee_page_source
+    assert "fee-evaluation-topbar" not in fee_page_source
+    assert "fee-evaluation-summary-strip" not in fee_page_source
+    assert "Output freshness" not in fee_page_source
+    assert "exportConfirmedMatrixFeeEvaluation" not in fee_page_source
+    assert "getLatestProjectFolder" not in fee_page_source
+    assert "Create the project folder before generating the workbook." not in fee_page_source
+    assert "Selected total" not in preview_table_source
+    assert "Excel output" not in fee_page_source
+    assert "Output directory" not in fee_page_source
+    assert "fetch(" not in fee_page_source
+
+
+def test_task294_fee_file_direct_download_action_is_wired() -> None:
+    """TASK_294 makes Fee file a direct browser download action inside the preview card."""
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    fee_feature_root = FRONTEND_ROOT / "src" / "features" / "fee-evaluation"
+    fee_page_source = (fee_feature_root / "FeeEvaluationReviewExportPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    preview_table_source = (fee_feature_root / "FeeEvaluationPreviewTable.tsx").read_text(
+        encoding="utf-8"
+    )
+
+    assert "generateConfirmedMatrixFeeFileDownload(" in client_source
+    assert "/confirmed-matrix/fee-evaluation/file/generate" in client_source
+    assert "requestBlobResponse(" in client_source
+    assert "generateConfirmedMatrixFeeFileDownload(projectId)" in fee_page_source
+    assert "downloadBlob(response.blob" in fee_page_source
+    assert "Fee Evaluation" in preview_table_source
+    assert "Fee Form" in preview_table_source
+    assert "scopeFeeLabel" in preview_table_source
+    assert "Selected group fee" in preview_table_source
+    assert "Selected total" not in preview_table_source
+    assert "getLatestProjectFolder" not in fee_page_source
+    assert "exportConfirmedMatrixFeeEvaluation" not in fee_page_source
+
+
+def test_task295_fee_evaluation_step_based_preview_table_is_wired() -> None:
+    """TASK_295 makes Fee Evaluation preview step-based with local cost risk only."""
+    fee_feature_root = FRONTEND_ROOT / "src" / "features" / "fee-evaluation"
+    preview_model_source = (fee_feature_root / "feeEvaluationPreviewModel.ts").read_text(
+        encoding="utf-8"
+    )
+    preview_table_source = (fee_feature_root / "FeeEvaluationPreviewTable.tsx").read_text(
+        encoding="utf-8"
+    )
+    fee_page_source = (fee_feature_root / "FeeEvaluationReviewExportPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required_model_symbol in [
+        "stepToken",
+        "rowKind",
+        "manual_trailing",
+        "Report preparation",
+        "Condition confirmation",
+        "External Cost (tooling / purchase cost)",
+        "buildFeeEvaluationCostRisk",
+        "Lab manpower cost exceeds Grand Cost",
+    ]:
+        assert required_model_symbol in preview_model_source
+
+    for required_table_symbol in [
+        "Grand Cost preview",
+        "Lab manpower cost preview",
+        "fee-evaluation-preview-row-manual",
+        "fee-evaluation-preview-group-",
+    ]:
+        assert required_table_symbol in preview_table_source
+
+    for required_style_symbol in [
+        ".fee-evaluation-preview-group-tone-a",
+        ".fee-evaluation-preview-group-tone-b",
+        ".fee-evaluation-preview-row-manual",
+        ".fee-evaluation-preview-cost-warning",
+        "text-align: center;",
+    ]:
+        assert required_style_symbol in styles_source
+
+    assert "costPreviewValues" in fee_page_source
+    assert "generateConfirmedMatrixFeeFileDownload(projectId)" in fee_page_source
+    assert "generateConfirmedMatrixFeeFileDownload(projectId," not in fee_page_source
+    assert "exportConfirmedMatrixFeeEvaluation" not in fee_page_source
+    assert "fetch(" not in fee_page_source
+
+
+def test_task297_fee_evaluation_preview_restores_step_column_and_discount_label() -> None:
+    """TASK_297 keeps step ordering while showing Step and Discount columns."""
+    fee_feature_root = FRONTEND_ROOT / "src" / "features" / "fee-evaluation"
+    preview_model_source = (fee_feature_root / "feeEvaluationPreviewModel.ts").read_text(
+        encoding="utf-8"
+    )
+    preview_table_source = (fee_feature_root / "FeeEvaluationPreviewTable.tsx").read_text(
+        encoding="utf-8"
+    )
+    fee_page_source = (fee_feature_root / "FeeEvaluationReviewExportPage.tsx").read_text(
+        encoding="utf-8"
+    )
+
+    assert "stepToken" in preview_model_source
+    assert "parseStepSortValue" in preview_model_source
+    assert "sourceLineOrder" in preview_model_source
+    assert "sourceTokenOrder" in preview_model_source
+    assert "<th>Step</th>" in preview_table_source
+    assert "<td>{row.stepToken}</td>" in preview_table_source
+    for required_column in [
+        "Unit Price",
+        "Unit Type",
+        "Units",
+        "Base Fee",
+        "Discount",
+        "Testing Fee",
+    ]:
+        assert required_column in preview_table_source
+    assert "Price Percent Off" not in preview_table_source
+    assert "generateConfirmedMatrixFeeFileDownload(projectId)" in fee_page_source
+    assert "exportConfirmedMatrixFeeEvaluation" not in fee_page_source
     assert "fetch(" not in fee_page_source
 
 

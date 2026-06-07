@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Literal, Protocol
 
 from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixRow, ConfirmedMatrixSnapshot
+from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
 
 MatrixBasicFillStatus = Literal["ready", "empty"]
 
@@ -119,14 +120,20 @@ def _build_groups(
     )
     groups: list[MatrixBasicFillGroup] = []
     for group in snapshot.groups:
-        lines = [
-            _line_from_authority(snapshot=snapshot, group=group, row=row, cell=value)
-            for row, value in _selected_rows_for_group(
-                group=group,
-                rows=snapshot.rows,
-                cell_lookup=cell_lookup,
-            )
-        ]
+        lines = sorted(
+            [
+                line
+                for row, value in _selected_rows_for_group(
+                    group=group,
+                    rows=snapshot.rows,
+                    cell_lookup=cell_lookup,
+                )
+                for line in _lines_from_authority(
+                    snapshot=snapshot, group=group, row=row, cell=value
+                )
+            ],
+            key=_line_sort_key,
+        )
         if not lines:
             continue
         groups.append(
@@ -173,15 +180,53 @@ def _selected_rows_for_group(
     return selected
 
 
+def _lines_from_authority(
+    *,
+    snapshot: ConfirmedMatrixSnapshot,
+    group: ConfirmedMatrixGroup,
+    row: ConfirmedMatrixRow,
+    cell: str,
+) -> tuple[MatrixBasicFillLine, ...]:
+    parsed_tokens, _warnings = parse_step_tokens(cell)
+    if not parsed_tokens:
+        return (
+            _line_from_authority(
+                snapshot=snapshot,
+                group=group,
+                row=row,
+                cell=cell,
+                step_token=None,
+                token_index=0,
+            ),
+        )
+    return tuple(
+        _line_from_authority(
+            snapshot=snapshot,
+            group=group,
+            row=row,
+            cell=cell,
+            step_token=token.raw_token,
+            token_index=index,
+        )
+        for index, token in enumerate(parsed_tokens)
+    )
+
+
 def _line_from_authority(
     *,
     snapshot: ConfirmedMatrixSnapshot,
     group: ConfirmedMatrixGroup,
     row: ConfirmedMatrixRow,
     cell: str,
+    step_token: str | None,
+    token_index: int,
 ) -> MatrixBasicFillLine:
+    token_suffix = f":{step_token}:{token_index}" if step_token else ""
     return MatrixBasicFillLine(
-        line_id=f"{snapshot.version.confirmed_matrix_id}:{group.group_key.strip()}:{row.confirmed_row_id}",
+        line_id=(
+            f"{snapshot.version.confirmed_matrix_id}:"
+            f"{group.group_key.strip()}:{row.confirmed_row_id}{token_suffix}"
+        ),
         group_key=group.group_key.strip(),
         group_label=group.group_label.strip(),
         confirmed_group_id=group.confirmed_group_id,
@@ -190,8 +235,16 @@ def _line_from_authority(
         row_order=row.row_order,
         test_item=_text(row.test_item),
         cell_value=cell,
-        step_tokens=(),
+        step_tokens=(step_token,) if step_token else (),
     )
+
+
+def _line_sort_key(line: MatrixBasicFillLine) -> tuple[int, int, str]:
+    if line.step_tokens:
+        token = line.step_tokens[0].strip()
+        if token.isdigit():
+            return (int(token), line.row_order, line.line_id)
+    return (10_000 + line.row_order, line.row_order, line.line_id)
 
 def _text(value: str | None) -> str:
     if value is None:

@@ -23,6 +23,7 @@ _EXCEL_FILE_FORMATS = {
     ".xlsx": 51,
     ".xls": 56,
 }
+_EXCEL_CALCULATION_MANUAL = -4135
 _DETAIL_START_ROW = 5
 _LIGHT_BLUE_FILL = 0xDDEBF7
 _WHITE_FILL = 0xFFFFFF
@@ -65,9 +66,11 @@ class FeeEvaluationWorkbookGateway:
 
         excel = self._open_excel_application()
         workbook = None
+        excel_state = None
         try:
             excel.Visible = False
             excel.DisplayAlerts = False
+            excel_state = _begin_excel_batch(excel)
             workbook = excel.Workbooks.Open(str(template))
             summary = preview.fee_dataset.summary if preview.fee_dataset is not None else None
             sheet = workbook.Worksheets.Item(1)
@@ -84,6 +87,7 @@ class FeeEvaluationWorkbookGateway:
         finally:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
+            _restore_excel_batch(excel, excel_state)
             excel.Quit()
 
         return FeeEvaluationWorkbookWriteResult(
@@ -115,9 +119,11 @@ class FeeEvaluationWorkbookGateway:
 
         excel = self._open_excel_application()
         workbook = None
+        excel_state = None
         try:
             excel.Visible = False
             excel.DisplayAlerts = False
+            excel_state = _begin_excel_batch(excel)
             workbook = excel.Workbooks.Open(str(template))
             sheet = _testing_prices_sheet(workbook)
             _write_structured_fee_draft(
@@ -130,6 +136,7 @@ class FeeEvaluationWorkbookGateway:
         finally:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
+            _restore_excel_batch(excel, excel_state)
             excel.Quit()
 
         return FeeEvaluationWorkbookWriteResult(
@@ -162,9 +169,11 @@ class FeeEvaluationWorkbookGateway:
 
         excel = self._open_excel_application()
         workbook = None
+        excel_state = None
         try:
             excel.Visible = False
             excel.DisplayAlerts = False
+            excel_state = _begin_excel_batch(excel)
             workbook = excel.Workbooks.Open(str(template))
             sheet = _testing_prices_sheet(workbook)
             _write_matrix_basic_fill(sheet=sheet, basic_fill=basic_fill)
@@ -172,6 +181,7 @@ class FeeEvaluationWorkbookGateway:
         finally:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
+            _restore_excel_batch(excel, excel_state)
             excel.Quit()
 
         warnings = ["Matrix basic fill only."]
@@ -200,6 +210,31 @@ def _testing_prices_sheet(workbook: Any) -> Any:
         return workbook.Worksheets.Item("Testing Prices")
     except Exception as exc:
         raise ValueError("Workbook sheet 'Testing Prices' was not found.") from exc
+
+
+def _begin_excel_batch(excel: Any) -> dict[str, Any]:
+    state: dict[str, Any] = {}
+    for name, value in (
+        ("ScreenUpdating", False),
+        ("EnableEvents", False),
+        ("Calculation", _EXCEL_CALCULATION_MANUAL),
+    ):
+        try:
+            state[name] = getattr(excel, name)
+            setattr(excel, name, value)
+        except Exception:
+            state.pop(name, None)
+    return state
+
+
+def _restore_excel_batch(excel: Any, state: dict[str, Any] | None) -> None:
+    if not state:
+        return
+    for name, value in state.items():
+        try:
+            setattr(excel, name, value)
+        except Exception:
+            continue
 
 
 def _write_structured_fee_draft(
@@ -446,6 +481,11 @@ def _insert_rows(sheet: Any, row: int, count: int) -> None:
     if hasattr(sheet, "insert_rows"):
         sheet.insert_rows(row, count)
         return
+    try:
+        sheet.Rows(f"{row}:{row + count - 1}").Insert()
+        return
+    except Exception:
+        pass
     for _ in range(count):
         sheet.Rows(row).Insert()
 

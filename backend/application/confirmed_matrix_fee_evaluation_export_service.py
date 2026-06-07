@@ -287,7 +287,12 @@ class ConfirmedMatrixFeeEvaluationExportService:
                 basic_fill=basic_fill,
                 pricing_requires_review=pricing_requires_review,
             ),
+            require_active_draft=False,
         )
+        if record_id is None:
+            warnings.append(
+                "Fee output record was not registered because no active reviewed draft exists."
+            )
         return ExportConfirmedMatrixFeeEvaluationResult(
             project_id=command.project_id,
             output_path=write.output_path,
@@ -329,9 +334,12 @@ class ConfirmedMatrixFeeEvaluationExportService:
         project_id: str,
         output_path: Path,
         note: str,
+        require_active_draft: bool = True,
     ) -> str | None:
         summary = self._project_output_service.get_status_summary(project_id)
         if not summary.active_draft_id:
+            if not require_active_draft:
+                return None
             raise ConfirmedMatrixFeeEvaluationExportError(
                 "An active reviewed draft is required to register fee evaluation output."
             )

@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Literal, Protocol
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.api.dependencies import (
     get_confirmed_matrix_fee_evaluation_export_service,
+    get_settings,
 )
 from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftNotFoundError,
@@ -27,9 +29,16 @@ from backend.application.project_output_record_service import (
     ProjectOutputRecordNotFoundError,
 )
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.shared.config import Settings
 
 
 router = APIRouter(tags=["confirmed-matrix-fee-evaluation-export"])
+
+FEE_FILE_TEMPLATE_PATH = Path(
+    "D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls"
+)
+FEE_FILE_DOWNLOAD_DIR_NAME = "generated_fee_files"
+FEE_FILE_MEDIA_TYPE = "application/vnd.ms-excel"
 
 
 class FeeEvaluationExportServicePort(Protocol):
@@ -135,6 +144,65 @@ def export_confirmed_matrix_fee_evaluation(
     return _to_response(result)
 
 
+@router.post("/api/projects/{project_id}/confirmed-matrix/fee-evaluation/file/generate")
+def generate_confirmed_matrix_fee_file(
+    project_id: str,
+    service: FeeEvaluationExportServicePort = Depends(
+        get_confirmed_matrix_fee_evaluation_export_service
+    ),
+    settings: Settings = Depends(get_settings),
+) -> FileResponse:
+    """Generate a Matrix basic-fill Fee Evaluation workbook for browser download."""
+    output_dir = settings.data_dir / FEE_FILE_DOWNLOAD_DIR_NAME
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        result = service.export(
+            ExportConfirmedMatrixFeeEvaluationCommand(
+                project_id=project_id,
+                template_path=FEE_FILE_TEMPLATE_PATH,
+                output_dir=output_dir,
+                output_file_name=None,
+                overwrite=True,
+                allow_review_required=True,
+                fill_mode="matrix_basic",
+            )
+        )
+    except (
+        ConfirmedMatrixFeeEvaluationExportNotFoundError,
+        ConfirmedMatrixFeeDraftNotFoundError,
+        ProjectOutputRecordNotFoundError,
+    ) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (
+        ConfirmedMatrixFeeEvaluationExportUnavailableError,
+        OfficeAutomationUnavailable,
+    ) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ConfirmedMatrixFeeEvaluationExportTimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": str(exc),
+                "elapsed_seconds": exc.elapsed_seconds,
+                "manual_cleanup_warning": exc.manual_cleanup_warning,
+            },
+        ) from exc
+    except (ConfirmedMatrixFeeEvaluationExportError, ProjectOutputRecordError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    resolved_output_path = _validate_fee_file_download_path(
+        result.output_path,
+        output_dir,
+    )
+    return FileResponse(
+        path=resolved_output_path,
+        filename=resolved_output_path.name,
+        media_type=FEE_FILE_MEDIA_TYPE,
+    )
+
+
 def _to_response(
     result: ExportConfirmedMatrixFeeEvaluationResult,
 ) -> ConfirmedMatrixFeeEvaluationExportResponse:
@@ -168,3 +236,26 @@ def _to_response(
         ],
         warnings=list(result.warnings),
     )
+
+
+def _validate_fee_file_download_path(output_path: Path, output_dir: Path) -> Path:
+    resolved_output_dir = output_dir.resolve()
+    resolved_output_path = output_path.resolve()
+    try:
+        resolved_output_path.relative_to(resolved_output_dir)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid generated Fee file path: outside generated_fee_files.",
+        ) from exc
+    if not resolved_output_path.exists() or not resolved_output_path.is_file():
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid generated Fee file path: file was not created.",
+        )
+    if resolved_output_path.suffix.lower() != ".xls":
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid generated Fee file path: expected a .xls workbook.",
+        )
+    return resolved_output_path

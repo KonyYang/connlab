@@ -2185,6 +2185,15 @@ export function exportConfirmedMatrixFeeEvaluation(
   );
 }
 
+export function generateConfirmedMatrixFeeFileDownload(
+  projectId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/file/generate`,
+    { method: "POST" }
+  );
+}
+
 export function generateConfirmedMatrixTestRecordDraft(
   projectId: string
 ): Promise<Blob> {
