@@ -28,6 +28,11 @@ from backend.application.fee_evaluation_export_lineage import (
     matrix_basic_lineage_note,
     matrix_basic_line_traceability,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportValues,
+    edited_row_lookup,
+    validate_supported_manual_rows,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordService,
     RegisterProjectOutputCommand,
@@ -81,6 +86,7 @@ class ExportConfirmedMatrixFeeEvaluationCommand:
     approved_by: str | None = None
     connlab_user: str | None = None
     fill_mode: Literal["fee_draft", "matrix_basic"] = "fee_draft"
+    edited_values: FeeEvaluationEditedExportValues | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +131,7 @@ class FeeEvaluationWorkbookWriter(Protocol):
         review_required: bool,
         prepared_by: str | None,
         approved_by: str | None,
+        edited_values: FeeEvaluationEditedExportValues | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         """Generate a workbook from Matrix basic-fill rows."""
 
@@ -243,6 +250,7 @@ class ConfirmedMatrixFeeEvaluationExportService:
             raise ConfirmedMatrixFeeEvaluationExportError(
                 "Confirmed Matrix has no selected rows to export."
             )
+        _validate_edited_values(command.edited_values, basic_fill)
         draft, draft_warnings = self._try_build_fee_draft(command.project_id)
         output_path = output_dir / _output_file_name(command, draft, template_path, basic_fill)
         if output_path.exists() and not command.overwrite:
@@ -275,6 +283,7 @@ class ConfirmedMatrixFeeEvaluationExportService:
             review_required=pricing_requires_review,
             prepared_by=prepared_by,
             approved_by=approved_by,
+            edited_values=command.edited_values,
         )
         warnings.extend(
             warning for warning in write.warnings if warning not in warnings
@@ -472,6 +481,20 @@ def _matrix_basic_review_state(
         requires_review = True
         warnings.append("Matrix basic fill includes rows not present in fee draft.")
     return requires_review, warnings
+
+
+def _validate_edited_values(
+    edited_values: FeeEvaluationEditedExportValues | None,
+    basic_fill: MatrixBasicFillWorkbook,
+) -> None:
+    """Validate edited export values against Matrix basic-fill lineage."""
+    if edited_values is None:
+        return
+    try:
+        edited_row_lookup(edited_values, basic_fill)
+        validate_supported_manual_rows(edited_values.manual_rows)
+    except ValueError as exc:
+        raise ConfirmedMatrixFeeEvaluationExportError(str(exc)) from exc
 
 
 def _sanitize_file_name(value: str) -> str:

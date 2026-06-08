@@ -8,9 +8,12 @@ import {
   ApiRequestError,
   fetchConfirmedMatrixFeeDraft,
   generateConfirmedMatrixFeeFileDownload,
+  getFeeEvaluationPricingDraft,
   getProject,
   listProjectLtrs,
+  saveFeeEvaluationPricingDraft,
   type FeeEvaluationDraft,
+  type FeeEvaluationEditedFileExportRequest,
   type FeeEvaluationLineItem,
   type Project,
 } from "../../api/client";
@@ -26,6 +29,7 @@ import {
   buildFeeEvaluationPreviewWorkingHours,
   applyFeeEvaluationPreviewEdits,
   filterFeeEvaluationPreviewRowsForScope,
+  hydrateFeeEvaluationPreviewEditsFromSavedDraft,
   type FeeEvaluationEditableField,
   type FeeEvaluationPreviewEditState,
 } from "./feeEvaluationPreviewModel";
@@ -50,6 +54,15 @@ export type FeeFileDownloadState =
   | { kind: "running" }
   | { kind: "success"; fileName: string | null }
   | { kind: "error"; message: string; manualCleanupWarning?: string | null };
+
+type FeePricingDraftSaveState =
+  | { kind: "loading" }
+  | { kind: "idle"; message: string | null }
+  | { kind: "dirty" }
+  | { kind: "saving" }
+  | { kind: "saved"; message: string }
+  | { kind: "stale"; message: string }
+  | { kind: "error"; message: string };
 
 type FeeEvaluationReviewExportPageProps = {
   projectId: string;
@@ -78,6 +91,9 @@ export function FeeEvaluationReviewExportPage({
   );
   const [downloadState, setDownloadState] = useState<FeeFileDownloadState>({
     kind: "idle",
+  });
+  const [saveState, setSaveState] = useState<FeePricingDraftSaveState>({
+    kind: "loading",
   });
 
   useEffect(() => {
@@ -110,12 +126,14 @@ export function FeeEvaluationReviewExportPage({
     setDraftState({ kind: "loading" });
     setPreviewEdits({});
     setCostPreviewValues(EMPTY_COST_PREVIEW_VALUES);
+    setSaveState({ kind: "loading" });
     void fetchConfirmedMatrixFeeDraft(projectId)
       .then((draft) => {
         if (active) {
           setDraftState({ kind: "ready", draft });
           setPreviewEdits({});
           setCostPreviewValues(EMPTY_COST_PREVIEW_VALUES);
+          setSaveState({ kind: "idle", message: null });
         }
       })
       .catch((error: unknown) => {
@@ -124,6 +142,7 @@ export function FeeEvaluationReviewExportPage({
         }
         if (error instanceof ApiRequestError && error.status === 404) {
           setDraftState({ kind: "not_ready" });
+          setSaveState({ kind: "idle", message: null });
           return;
         }
         setDraftState({
@@ -142,6 +161,66 @@ export function FeeEvaluationReviewExportPage({
   const draft = draftState.kind === "ready" ? draftState.draft : null;
   const lines = useMemo(() => flattenDraftLines(draft), [draft]);
   const sourcePreviewRows = useMemo(() => buildFeeEvaluationPreviewRows(draft), [draft]);
+
+  useEffect(() => {
+    if (draftState.kind !== "ready") {
+      return;
+    }
+    let active = true;
+    setSaveState({ kind: "loading" });
+    void getFeeEvaluationPricingDraft(projectId)
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        if (result.status === "current" && result.payload) {
+          const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+            sourcePreviewRows,
+            result.payload
+          );
+          setPreviewEdits(hydrated.edits);
+          setCostPreviewValues(hydrated.costPreviewValues);
+          if (hydrated.unmatchedRowCount > 0) {
+            setSaveState({
+              kind: "stale",
+              message:
+                "Saved pricing draft had rows that no longer match this Matrix. Unmatched rows were not applied.",
+            });
+          } else {
+            setSaveState({
+              kind: "saved",
+              message: "Loaded saved pricing draft.",
+            });
+          }
+          return;
+        }
+        if (result.status === "stale") {
+          setSaveState({
+            kind: "stale",
+            message:
+              "Saved pricing draft belongs to an older Matrix or fee rule version. Current defaults are shown.",
+          });
+          return;
+        }
+        setSaveState({ kind: "idle", message: null });
+      })
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+        setSaveState({
+          kind: "error",
+          message:
+            error instanceof ApiRequestError
+              ? error.message
+              : "Unable to load saved pricing draft.",
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [draftState.kind, projectId, sourcePreviewRows]);
+
   const previewRows = useMemo(
     () => applyFeeEvaluationPreviewEdits(sourcePreviewRows, previewEdits),
     [previewEdits, sourcePreviewRows]
@@ -235,7 +314,10 @@ export function FeeEvaluationReviewExportPage({
     }
     setDownloadState({ kind: "running" });
     try {
-      const response = await generateConfirmedMatrixFeeFileDownload(projectId);
+      const response = await generateConfirmedMatrixFeeFileDownload(
+        projectId,
+        buildEditedExportPayload(previewRows, costPreviewValues)
+      );
       downloadBlob(response.blob, response.fileName ?? defaultFeeFileName(projectId));
       setDownloadState({ kind: "success", fileName: response.fileName });
     } catch (error: unknown) {
@@ -254,11 +336,41 @@ export function FeeEvaluationReviewExportPage({
     }
   }
 
+  async function handleSavePricingDraft(): Promise<void> {
+    if (draftState.kind !== "ready" || saveState.kind === "saving") {
+      return;
+    }
+    setSaveState({ kind: "saving" });
+    try {
+      const result = await saveFeeEvaluationPricingDraft(
+        projectId,
+        buildEditedExportPayload(previewRows, costPreviewValues)
+      );
+      if (result.status === "current") {
+        setSaveState({ kind: "saved", message: "Saved pricing draft." });
+        return;
+      }
+      setSaveState({
+        kind: "stale",
+        message: "Saved draft is not current for this Matrix or fee rule version.",
+      });
+    } catch (error: unknown) {
+      setSaveState({
+        kind: "error",
+        message:
+          error instanceof ApiRequestError
+            ? error.message
+            : "Unable to save pricing draft.",
+      });
+    }
+  }
+
   function handleCostPreviewChange(
     field: keyof typeof costPreviewValues,
     value: string
   ): void {
     setCostPreviewValues((current) => ({ ...current, [field]: value }));
+    markPricingDraftDirty();
   }
 
   function handlePreviewRowEditChange(
@@ -273,6 +385,15 @@ export function FeeEvaluationReviewExportPage({
         [field]: value,
       },
     }));
+    markPricingDraftDirty();
+  }
+
+  function markPricingDraftDirty(): void {
+    setSaveState((current) =>
+      current.kind === "loading" || current.kind === "saving"
+        ? current
+        : { kind: "dirty" }
+    );
   }
 
   return (
@@ -292,6 +413,8 @@ export function FeeEvaluationReviewExportPage({
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
+        onSavePricingDraft={handleSavePricingDraft}
+        saveState={saveState}
         scopeFeeLabel={selectedPreviewTotal}
         rows={visiblePreviewRows}
         totals={previewTotals}
@@ -329,6 +452,55 @@ function feeFileDownloadBlocker(draftState: DraftLoadState): string | null {
     return draftState.message;
   }
   return null;
+}
+
+function buildEditedExportPayload(
+  rows: ReturnType<typeof buildFeeEvaluationPreviewRows>,
+  costPreviewValues: typeof EMPTY_COST_PREVIEW_VALUES
+): FeeEvaluationEditedFileExportRequest {
+  return {
+    rows: rows
+      .filter((row) => row.rowKind === "matrix_step")
+      .map((row) => ({
+        source_line_id: row.sourceLineId,
+        confirmed_group_id: row.confirmedGroupId,
+        confirmed_row_id: row.confirmedRowId,
+        step_token: row.stepToken === "-" ? "" : row.stepToken,
+        step_index: row.stepIndex,
+        spend_time: row.spendTime,
+        unit_price: row.unitPrice,
+        unit_type: row.unitType,
+        units: row.units,
+        base_fee: row.baseFee,
+        discount: row.discount,
+        testing_fee: row.testingFee,
+        notes: row.notes,
+      })),
+    summary: {
+      condition_confirmation_spend_time:
+        costPreviewValues.conditionConfirmationSpendTime,
+      external_cost: costPreviewValues.externalCost,
+      external_cost_note: costPreviewValues.externalCostNote,
+      lab_manpower_hourly_rate: costPreviewValues.labManpowerHourlyRate,
+    },
+    manual_rows: rows
+      .filter(
+        (row) =>
+          row.rowKind === "manual_trailing" &&
+          row.lineId === "manual-report-preparation"
+      )
+      .map((row) => ({
+        row_kind: "report_preparation" as const,
+        spend_time: row.spendTime,
+        unit_price: row.unitPrice,
+        unit_type: row.unitType,
+        units: row.units,
+        base_fee: row.baseFee,
+        discount: row.discount,
+        testing_fee: row.testingFee,
+        notes: row.notes,
+      })),
+  };
 }
 
 function isErrorDetailObject(

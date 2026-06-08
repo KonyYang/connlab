@@ -351,3 +351,31 @@ class ProjectOutputRecordModel(Base):
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
+
+
+class FeeEvaluationPricingDraftEditModel(Base):
+    """Database row for one saved Fee Evaluation pricing draft edit payload."""
+
+    __tablename__ = "fee_evaluation_pricing_draft_edits"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "confirmed_matrix_id",
+            "confirmed_revision",
+            "fee_rule_version_id",
+            name="uq_fee_evaluation_pricing_draft_current",
+        ),
+    )
+
+    draft_edit_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    confirmed_matrix_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    confirmed_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    fee_rule_version_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -37,6 +37,9 @@ from backend.infrastructure.storage.repositories.source_matrix_import import (
 from backend.infrastructure.storage.repositories.project_output_record import (
     ProjectOutputRecordRepository,
 )
+from backend.infrastructure.storage.repositories.fee_evaluation_pricing_draft_edit import (
+    FeeEvaluationPricingDraftEditRepository,
+)
 from backend.infrastructure.storage.repositories.records import (
     FileAssetRepository,
     LtrRecordRepository,
@@ -47,6 +50,7 @@ __all__ = [
     "ApplicationFormRepository",
     "ConfirmedMatrixAuthorityRepository",
     "ExternalResourceRepository",
+    "FeeEvaluationPricingDraftEditRepository",
     "FileAssetRepository",
     "FrozenFieldRevisionRequestRepository",
     "IntakeAssetRepository",

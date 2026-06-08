@@ -279,7 +279,8 @@ def test_task294_fee_file_direct_download_action_is_wired() -> None:
     assert "generateConfirmedMatrixFeeFileDownload(" in client_source
     assert "/confirmed-matrix/fee-evaluation/file/generate" in client_source
     assert "requestBlobResponse(" in client_source
-    assert "generateConfirmedMatrixFeeFileDownload(projectId)" in fee_page_source
+    assert "buildEditedExportPayload(previewRows, costPreviewValues)" in fee_page_source
+    assert "generateConfirmedMatrixFeeFileDownload(" in fee_page_source
     assert "downloadBlob(response.blob" in fee_page_source
     assert "Fee Evaluation" in preview_table_source
     assert "Fee Form" in preview_table_source
@@ -335,7 +336,8 @@ def test_task295_fee_evaluation_step_based_preview_table_is_wired() -> None:
         assert required_style_symbol in styles_source
 
     assert "costPreviewValues" in fee_page_source
-    assert "generateConfirmedMatrixFeeFileDownload(projectId)" in fee_page_source
+    assert "buildEditedExportPayload(previewRows, costPreviewValues)" in fee_page_source
+    assert "generateConfirmedMatrixFeeFileDownload(" in fee_page_source
     assert "generateConfirmedMatrixFeeFileDownload(projectId," not in fee_page_source
     assert "exportConfirmedMatrixFeeEvaluation" not in fee_page_source
     assert "fetch(" not in fee_page_source
@@ -371,9 +373,62 @@ def test_task297_fee_evaluation_preview_restores_step_column_and_discount_label(
     ]:
         assert required_column in preview_table_source
     assert "Price Percent Off" not in preview_table_source
-    assert "generateConfirmedMatrixFeeFileDownload(projectId)" in fee_page_source
+    assert "buildEditedExportPayload(previewRows, costPreviewValues)" in fee_page_source
+    assert "generateConfirmedMatrixFeeFileDownload(" in fee_page_source
     assert "exportConfirmedMatrixFeeEvaluation" not in fee_page_source
     assert "fetch(" not in fee_page_source
+
+
+def test_task300_fee_unit_type_options_are_accepted_by_export_route() -> None:
+    """TASK_300 keeps frontend Unit Type options aligned with backend validation."""
+    preview_model_source = (
+        FRONTEND_ROOT / "src" / "features" / "fee-evaluation" / "feeEvaluationPreviewModel.ts"
+    ).read_text(encoding="utf-8")
+    export_route_source = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "api"
+        / "routes_confirmed_matrix_fee_evaluation_export.py"
+    ).read_text(encoding="utf-8")
+
+    expected_options = [
+        "per sample",
+        "per reading",
+        "per contact",
+        "per cycle",
+        "per time",
+        "per hour",
+        "per day",
+        "per photo",
+        "per report",
+    ]
+
+    assert "FEE_UNIT_TYPE_OPTIONS" in preview_model_source
+    assert "FEE_EDITED_UNIT_TYPES" in export_route_source
+    for unit_type in expected_options:
+        assert f'"{unit_type}"' in preview_model_source
+        assert f'"{unit_type}"' in export_route_source
+
+
+def test_fee_evaluation_notes_column_is_left_aligned() -> None:
+    """Fee Evaluation preview Notes cells keep operator notes horizontally left-aligned."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    notes_input_selector = (
+        ".fee-evaluation-preview-table td:nth-child(11) "
+        ".fee-evaluation-preview-cell-input"
+    )
+
+    assert (
+        ".fee-evaluation-preview-table td:nth-child(11) {\n"
+        "  color: var(--color-ink-muted);\n"
+        "  font-size: 11px;\n"
+        "  text-align: left;\n"
+        "}"
+    ) in styles_source
+    assert notes_input_selector in styles_source
 
 
 def test_frontend_shell_shows_only_mvp_workflow_steps() -> None:

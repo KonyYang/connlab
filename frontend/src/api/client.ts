@@ -1309,6 +1309,61 @@ export type FeeEvaluationExportRequest = {
   approved_by?: string | null;
 };
 
+export type FeeEvaluationEditedRowExportInput = {
+  source_line_id: string;
+  confirmed_group_id: string;
+  confirmed_row_id: string;
+  step_token: string;
+  step_index: number;
+  spend_time: string;
+  unit_price: string;
+  unit_type: string;
+  units: string;
+  base_fee: string;
+  discount: string;
+  testing_fee: string;
+  notes: string;
+};
+
+export type FeeEvaluationEditedManualRowExportInput = {
+  row_kind: "report_preparation";
+  spend_time: string;
+  unit_price: string;
+  unit_type: string;
+  units: string;
+  base_fee: string;
+  discount: string;
+  testing_fee: string;
+  notes: string;
+};
+
+export type FeeEvaluationEditedSummaryExportInput = {
+  condition_confirmation_spend_time: string;
+  external_cost: string;
+  external_cost_note: string;
+  lab_manpower_hourly_rate: string;
+};
+
+export type FeeEvaluationEditedFileExportRequest = {
+  rows: FeeEvaluationEditedRowExportInput[];
+  summary: FeeEvaluationEditedSummaryExportInput;
+  manual_rows?: FeeEvaluationEditedManualRowExportInput[];
+};
+
+export type FeeEvaluationPricingDraftStatus = "missing" | "current" | "stale";
+
+export type FeeEvaluationPricingDraftResponse = {
+  status: FeeEvaluationPricingDraftStatus;
+  current_confirmed_matrix_id: string;
+  current_confirmed_revision: number;
+  current_fee_rule_version_id: string;
+  saved_confirmed_matrix_id?: string | null;
+  saved_confirmed_revision?: number | null;
+  saved_fee_rule_version_id?: string | null;
+  saved_updated_at?: string | null;
+  payload?: FeeEvaluationEditedFileExportRequest | null;
+};
+
 export type FeeEvaluationExportLineTrace = {
   line_id: string;
   group_key: string;
@@ -2203,11 +2258,39 @@ export function exportConfirmedMatrixFeeEvaluation(
 }
 
 export function generateConfirmedMatrixFeeFileDownload(
-  projectId: string
+  projectId: string,
+  input?: FeeEvaluationEditedFileExportRequest
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/file/generate`,
-    { method: "POST" }
+    input
+      ? {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        }
+      : { method: "POST" }
+  );
+}
+
+export function getFeeEvaluationPricingDraft(
+  projectId: string
+): Promise<FeeEvaluationPricingDraftResponse> {
+  return requestJson<FeeEvaluationPricingDraftResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/pricing-draft`
+  );
+}
+
+export function saveFeeEvaluationPricingDraft(
+  projectId: string,
+  input: FeeEvaluationEditedFileExportRequest
+): Promise<FeeEvaluationPricingDraftResponse> {
+  return requestJson<FeeEvaluationPricingDraftResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/pricing-draft`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }
   );
 }
 

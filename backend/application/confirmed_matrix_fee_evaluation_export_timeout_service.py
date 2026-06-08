@@ -14,6 +14,12 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ExportConfirmedMatrixFeeEvaluationCommand,
     ExportConfirmedMatrixFeeEvaluationResult,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+    FeeEvaluationEditedManualRow,
+)
 from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
 )
@@ -92,6 +98,7 @@ def command_to_payload(command: ExportConfirmedMatrixFeeEvaluationCommand) -> di
         "approved_by": command.approved_by,
         "connlab_user": command.connlab_user,
         "fill_mode": command.fill_mode,
+        "edited_values": _edited_values_to_payload(command.edited_values),
     }
 
 
@@ -112,6 +119,7 @@ def command_from_payload(payload: dict[str, Any]) -> ExportConfirmedMatrixFeeEva
         approved_by=_optional_str(payload.get("approved_by")),
         connlab_user=_optional_str(payload.get("connlab_user")),
         fill_mode=fill_mode,  # type: ignore[arg-type]
+        edited_values=_edited_values_from_payload(payload.get("edited_values")),
     )
 
 
@@ -211,3 +219,102 @@ def _optional_str(value: Any) -> str | None:
         return None
     text = str(value)
     return text if text else None
+
+
+def _edited_values_to_payload(
+    edited_values: FeeEvaluationEditedExportValues | None,
+) -> dict[str, Any] | None:
+    if edited_values is None:
+        return None
+    return {
+        "rows": [
+            {
+                "source_line_id": row.source_line_id,
+                "confirmed_group_id": row.confirmed_group_id,
+                "confirmed_row_id": row.confirmed_row_id,
+                "step_token": row.step_token,
+                "step_index": row.step_index,
+                "spend_time": row.spend_time,
+                "unit_price": row.unit_price,
+                "unit_type": row.unit_type,
+                "units": row.units,
+                "base_fee": row.base_fee,
+                "discount": row.discount,
+                "testing_fee": row.testing_fee,
+                "notes": row.notes,
+            }
+            for row in edited_values.rows
+        ],
+        "summary": {
+            "condition_confirmation_spend_time": (
+                edited_values.summary.condition_confirmation_spend_time
+            ),
+            "external_cost": edited_values.summary.external_cost,
+            "external_cost_note": edited_values.summary.external_cost_note,
+            "lab_manpower_hourly_rate": edited_values.summary.lab_manpower_hourly_rate,
+        },
+        "manual_rows": [
+            {
+                "row_kind": row.row_kind,
+                "spend_time": row.spend_time,
+                "unit_price": row.unit_price,
+                "unit_type": row.unit_type,
+                "units": row.units,
+                "base_fee": row.base_fee,
+                "discount": row.discount,
+                "testing_fee": row.testing_fee,
+                "notes": row.notes,
+            }
+            for row in edited_values.manual_rows
+        ],
+    }
+
+
+def _edited_values_from_payload(payload: Any) -> FeeEvaluationEditedExportValues | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise ValueError("Fee Evaluation edited export payload is invalid.")
+    summary = payload.get("summary") or {}
+    return FeeEvaluationEditedExportValues(
+        rows=tuple(
+            FeeEvaluationEditedExportRow(
+                source_line_id=str(row.get("source_line_id") or ""),
+                confirmed_group_id=str(row.get("confirmed_group_id") or ""),
+                confirmed_row_id=str(row.get("confirmed_row_id") or ""),
+                step_token=str(row.get("step_token") or ""),
+                step_index=int(row.get("step_index") or 0),
+                spend_time=str(row.get("spend_time") or ""),
+                unit_price=str(row.get("unit_price") or ""),
+                unit_type=str(row.get("unit_type") or ""),
+                units=str(row.get("units") or ""),
+                base_fee=str(row.get("base_fee") or ""),
+                discount=str(row.get("discount") or ""),
+                testing_fee=str(row.get("testing_fee") or ""),
+                notes=str(row.get("notes") or ""),
+            )
+            for row in payload.get("rows", [])
+        ),
+        summary=FeeEvaluationEditedExportSummary(
+            condition_confirmation_spend_time=str(
+                summary.get("condition_confirmation_spend_time") or ""
+            ),
+            external_cost=str(summary.get("external_cost") or ""),
+            external_cost_note=str(summary.get("external_cost_note") or ""),
+            lab_manpower_hourly_rate=str(summary.get("lab_manpower_hourly_rate") or ""),
+        ),
+        manual_rows=tuple(
+            FeeEvaluationEditedManualRow(
+                row_kind=str(row.get("row_kind") or ""),
+                spend_time=str(row.get("spend_time") or ""),
+                unit_price=str(row.get("unit_price") or ""),
+                unit_type=str(row.get("unit_type") or ""),
+                units=str(row.get("units") or ""),
+                base_fee=str(row.get("base_fee") or ""),
+                discount=str(row.get("discount") or ""),
+                testing_fee=str(row.get("testing_fee") or ""),
+                notes=str(row.get("notes") or ""),
+            )
+            for row in payload.get("manual_rows", [])
+        ),
+    )

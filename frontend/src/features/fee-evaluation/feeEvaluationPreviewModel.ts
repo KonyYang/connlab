@@ -1,4 +1,8 @@
-import type { FeeEvaluationDraft, FeeEvaluationLineItem } from "../../api/client";
+import type {
+  FeeEvaluationDraft,
+  FeeEvaluationEditedFileExportRequest,
+  FeeEvaluationLineItem,
+} from "../../api/client";
 
 export const FEE_UNIT_TYPE_OPTIONS = [
   "per sample",
@@ -33,8 +37,11 @@ export type FeeEvaluationPreviewEditState = Record<
 export type FeeEvaluationPreviewRow = {
   lineId: string;
   sourceLineId: string;
+  confirmedGroupId: string;
+  confirmedRowId: string;
   groupLabel: string;
   stepToken: string;
+  stepIndex: number;
   spendTime: string;
   description: string;
   unitPrice: string;
@@ -71,6 +78,18 @@ export type FeeEvaluationPreviewHeader = {
 export type FeeEvaluationCostRisk = {
   severity: "none" | "loss_warning";
   message: string | null;
+};
+
+export type FeeEvaluationSavedDraftHydrationResult = {
+  edits: FeeEvaluationPreviewEditState;
+  costPreviewValues: {
+    conditionConfirmationSpendTime: string;
+    externalCost: string;
+    externalCostNote: string;
+    labManpowerHourlyRate: string;
+  };
+  appliedRowCount: number;
+  unmatchedRowCount: number;
 };
 
 type ExpandedStepRow = FeeEvaluationPreviewRow & {
@@ -243,6 +262,96 @@ export function applyFeeEvaluationPreviewEdits(
   });
 }
 
+export function buildFeeEvaluationPreviewStableIdentity(
+  row: FeeEvaluationPreviewRow
+): string {
+  return JSON.stringify([
+    row.sourceLineId,
+    row.confirmedGroupId,
+    row.confirmedRowId,
+    row.stepToken === "-" ? "" : row.stepToken,
+    row.stepIndex,
+  ]);
+}
+
+export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+  previewRows: FeeEvaluationPreviewRow[],
+  savedDraft: FeeEvaluationEditedFileExportRequest
+): FeeEvaluationSavedDraftHydrationResult {
+  const byIdentity = new Map(
+    previewRows
+      .filter((row) => row.rowKind === "matrix_step")
+      .map((row) => [buildFeeEvaluationPreviewStableIdentity(row), row])
+  );
+  const edits: FeeEvaluationPreviewEditState = {};
+  let appliedRowCount = 0;
+  let unmatchedRowCount = 0;
+
+  for (const row of savedDraft.rows) {
+    const identity = JSON.stringify([
+      row.source_line_id,
+      row.confirmed_group_id,
+      row.confirmed_row_id,
+      row.step_token,
+      row.step_index,
+    ]);
+    const previewRow = byIdentity.get(identity);
+    if (!previewRow) {
+      unmatchedRowCount += 1;
+      continue;
+    }
+    edits[previewRow.lineId] = {
+      spendTime: row.spend_time,
+      unitPrice: row.unit_price,
+      unitType: row.unit_type,
+      units: row.units,
+      baseFee: row.base_fee,
+      discount: row.discount,
+      notes: row.notes,
+    };
+    appliedRowCount += 1;
+  }
+
+  for (const row of savedDraft.manual_rows ?? []) {
+    if (row.row_kind !== "report_preparation") {
+      unmatchedRowCount += 1;
+      continue;
+    }
+    const previewRow = previewRows.find(
+      (candidate) =>
+        candidate.rowKind === "manual_trailing" &&
+        candidate.lineId === "manual-report-preparation"
+    );
+    if (!previewRow) {
+      unmatchedRowCount += 1;
+      continue;
+    }
+    edits[previewRow.lineId] = {
+      spendTime: row.spend_time,
+      unitPrice: row.unit_price,
+      unitType: row.unit_type,
+      units: row.units,
+      baseFee: row.base_fee,
+      discount: row.discount,
+      notes: row.notes,
+    };
+    appliedRowCount += 1;
+  }
+
+  return {
+    edits,
+    costPreviewValues: {
+      conditionConfirmationSpendTime:
+        savedDraft.summary.condition_confirmation_spend_time,
+      externalCost: savedDraft.summary.external_cost,
+      externalCostNote: savedDraft.summary.external_cost_note,
+      labManpowerHourlyRate: savedDraft.summary.lab_manpower_hourly_rate,
+    },
+    appliedRowCount,
+    unmatchedRowCount,
+  };
+}
+
 export function calculateFeePreviewTestingFee(input: {
   unitPrice: string;
   units: string;
@@ -294,11 +403,18 @@ function buildMatrixStepRows(
     const stepDisplay = normalizedStepToken.length > 0 ? normalizedStepToken : "-";
     const lineIdToken =
       normalizedStepToken.length > 0 ? normalizedStepToken : "no-step";
+    const backendLineId =
+      normalizedStepToken.length > 0
+        ? `${line.line_id}:${normalizedStepToken}:${index}`
+        : line.line_id;
     return {
       lineId: `${line.line_id}:${lineIdToken}:${index}`,
-      sourceLineId: line.line_id,
+      sourceLineId: backendLineId,
+      confirmedGroupId: line.confirmed_group_id,
+      confirmedRowId: line.confirmed_row_id,
       groupLabel: line.group_label,
       stepToken: stepDisplay,
+      stepIndex: index,
       spendTime: "Pending",
       description: line.test_item,
       unitPrice: pendingValue(line.unit_price),
@@ -362,8 +478,11 @@ function buildManualTrailingRow(
   return {
     lineId,
     sourceLineId: lineId,
+    confirmedGroupId: "",
+    confirmedRowId: "",
     groupLabel: "",
     stepToken: "-",
+    stepIndex: 0,
     spendTime: "Pending",
     description,
     unitPrice: "Pending",

@@ -6,7 +6,7 @@ Controlled series in progress.
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current board context: TASK_298 and TASK_299 are complete. TASK_300 requires a separate task file, executable plan, and explicit approval before implementation.
+Current board context: TASK_298, TASK_299, TASK_300, and TASK_301 are complete. TASK_302 remains a future controlled task and requires its own explicit approval before implementation.
 
 ## Goal
 
@@ -72,15 +72,19 @@ V1 should treat `10` and `10%` as 10% discount.
 
 ### TASK_300_FEE_EDITED_VALUES_TO_FEE_FORM_EXPORT
 
+Completed.
+
 Carry frontend-edited pricing values into Fee Form generation.
 
 The generated workbook should reflect the same row order and editable field values shown in the Fee Evaluation preview.
 
 ### TASK_301_FEE_PRICING_DRAFT_PERSISTENCE
 
+Completed.
+
 Persist and reload operator-edited fee values.
 
-Persistence should be attached to the project and active Confirmed Matrix authority version so stale behavior can be reasoned about later.
+Persistence is attached to the project, active Confirmed Matrix authority version, and active fee rule version so saved edits are not applied after Matrix or rule-version changes.
 
 ### TASK_302_FEE_REFERENCE_UPDATE_WORKFLOW
 

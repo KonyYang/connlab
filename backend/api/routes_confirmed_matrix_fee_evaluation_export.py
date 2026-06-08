@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal, Protocol
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 
 from backend.api.dependencies import (
     get_confirmed_matrix_fee_evaluation_export_service,
@@ -24,6 +24,12 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ExportConfirmedMatrixFeeEvaluationCommand,
     ExportConfirmedMatrixFeeEvaluationResult,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+    FeeEvaluationEditedManualRow,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
     ProjectOutputRecordNotFoundError,
@@ -39,6 +45,29 @@ FEE_FILE_TEMPLATE_PATH = Path(
 )
 FEE_FILE_DOWNLOAD_DIR_NAME = "generated_fee_files"
 FEE_FILE_MEDIA_TYPE = "application/vnd.ms-excel"
+FEE_EDITED_UNIT_TYPES = {
+    "per sample",
+    "per reading",
+    "per contact",
+    "per cycle",
+    "per time",
+    "per hour",
+    "per day",
+    "per photo",
+    "per report",
+    "sample",
+    "reading",
+    "contact",
+    "cycle",
+    "time",
+    "hour",
+    "day",
+    "photo",
+    "report",
+    "group",
+    "specimen",
+    "pending",
+}
 
 
 class FeeEvaluationExportServicePort(Protocol):
@@ -89,6 +118,193 @@ class FeeEvaluationExportLineTraceResponse(BaseModel):
     matched_rule_version_id: str | None
     step_tokens: list[str]
     cell_value: str | None = None
+
+
+class FeeEvaluationEditedRowExportRequest(BaseModel):
+    source_line_id: str
+    confirmed_group_id: str
+    confirmed_row_id: str
+    step_token: str = ""
+    step_index: int
+    spend_time: str
+    unit_price: str
+    unit_type: str
+    units: str
+    base_fee: str
+    discount: str
+    testing_fee: str
+    notes: str = ""
+
+    @field_validator(
+        "source_line_id",
+        "confirmed_group_id",
+        "confirmed_row_id",
+        "spend_time",
+        "unit_price",
+        "unit_type",
+        "units",
+        "base_fee",
+        "discount",
+        "testing_fee",
+        "notes",
+        "step_token",
+    )
+    @classmethod
+    def _strip_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("source_line_id", "confirmed_group_id", "confirmed_row_id")
+    @classmethod
+    def _require_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Fee Evaluation edited row identity is required.")
+        return value
+
+    @field_validator("step_index")
+    @classmethod
+    def _require_non_negative_step_index(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("Fee Evaluation edited row step_index must be non-negative.")
+        return value
+
+    @field_validator("unit_type")
+    @classmethod
+    def _validate_unit_type(cls, value: str) -> str:
+        if value.lower() not in FEE_EDITED_UNIT_TYPES:
+            raise ValueError(f"Unsupported Fee Evaluation Unit Type: {value}")
+        return value
+
+    def to_application(self) -> FeeEvaluationEditedExportRow:
+        """Convert this route DTO into an application-layer edited row."""
+        return FeeEvaluationEditedExportRow(
+            source_line_id=self.source_line_id,
+            confirmed_group_id=self.confirmed_group_id,
+            confirmed_row_id=self.confirmed_row_id,
+            step_token=self.step_token,
+            step_index=self.step_index,
+            spend_time=self.spend_time,
+            unit_price=self.unit_price,
+            unit_type=self.unit_type,
+            units=self.units,
+            base_fee=self.base_fee,
+            discount=self.discount,
+            testing_fee=self.testing_fee,
+            notes=self.notes,
+        )
+
+
+class FeeEvaluationEditedManualRowExportRequest(BaseModel):
+    row_kind: str
+    spend_time: str
+    unit_price: str
+    unit_type: str
+    units: str
+    base_fee: str
+    discount: str
+    testing_fee: str
+    notes: str = ""
+
+    @field_validator(
+        "row_kind",
+        "spend_time",
+        "unit_price",
+        "unit_type",
+        "units",
+        "base_fee",
+        "discount",
+        "testing_fee",
+        "notes",
+    )
+    @classmethod
+    def _strip_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("row_kind")
+    @classmethod
+    def _validate_row_kind(cls, value: str) -> str:
+        if value != "report_preparation":
+            raise ValueError(f"Unsupported Fee Evaluation manual row: {value}")
+        return value
+
+    @field_validator("unit_type")
+    @classmethod
+    def _validate_unit_type(cls, value: str) -> str:
+        if value.lower() not in FEE_EDITED_UNIT_TYPES:
+            raise ValueError(f"Unsupported Fee Evaluation Unit Type: {value}")
+        return value
+
+    def to_application(self) -> FeeEvaluationEditedManualRow:
+        """Convert this route DTO into an application-layer manual row."""
+        return FeeEvaluationEditedManualRow(
+            row_kind=self.row_kind,
+            spend_time=self.spend_time,
+            unit_price=self.unit_price,
+            unit_type=self.unit_type,
+            units=self.units,
+            base_fee=self.base_fee,
+            discount=self.discount,
+            testing_fee=self.testing_fee,
+            notes=self.notes,
+        )
+
+
+class FeeEvaluationEditedSummaryExportRequest(BaseModel):
+    condition_confirmation_spend_time: str = "0"
+    external_cost: str = "0"
+    external_cost_note: str = ""
+    lab_manpower_hourly_rate: str = "200"
+
+    @field_validator(
+        "condition_confirmation_spend_time",
+        "external_cost",
+        "external_cost_note",
+        "lab_manpower_hourly_rate",
+    )
+    @classmethod
+    def _strip_text(cls, value: str) -> str:
+        return value.strip()
+
+    def to_application(self) -> FeeEvaluationEditedExportSummary:
+        """Convert this route DTO into an application-layer summary."""
+        return FeeEvaluationEditedExportSummary(
+            condition_confirmation_spend_time=self.condition_confirmation_spend_time,
+            external_cost=self.external_cost,
+            external_cost_note=self.external_cost_note,
+            lab_manpower_hourly_rate=self.lab_manpower_hourly_rate,
+        )
+
+
+class ConfirmedMatrixFeeEvaluationEditedFileRequest(BaseModel):
+    rows: list[FeeEvaluationEditedRowExportRequest] = []
+    summary: FeeEvaluationEditedSummaryExportRequest
+    manual_rows: list[FeeEvaluationEditedManualRowExportRequest] = []
+
+    @model_validator(mode="after")
+    def _reject_duplicate_identities(self) -> "ConfirmedMatrixFeeEvaluationEditedFileRequest":
+        identities = [
+            (
+                row.source_line_id,
+                row.confirmed_group_id,
+                row.confirmed_row_id,
+                row.step_token,
+                row.step_index,
+            )
+            for row in self.rows
+        ]
+        if len(set(identities)) != len(identities):
+            raise ValueError("Duplicate Fee Evaluation edited row identity.")
+        manual_identities = [row.row_kind for row in self.manual_rows]
+        if len(set(manual_identities)) != len(manual_identities):
+            raise ValueError("Duplicate Fee Evaluation manual row identity.")
+        return self
+
+    def to_application(self) -> FeeEvaluationEditedExportValues:
+        """Convert this route DTO into application-layer edited export values."""
+        return FeeEvaluationEditedExportValues(
+            rows=tuple(row.to_application() for row in self.rows),
+            summary=self.summary.to_application(),
+            manual_rows=tuple(row.to_application() for row in self.manual_rows),
+        )
 
 
 @router.post(
@@ -147,6 +363,7 @@ def export_confirmed_matrix_fee_evaluation(
 @router.post("/api/projects/{project_id}/confirmed-matrix/fee-evaluation/file/generate")
 def generate_confirmed_matrix_fee_file(
     project_id: str,
+    request: ConfirmedMatrixFeeEvaluationEditedFileRequest | None = Body(default=None),
     service: FeeEvaluationExportServicePort = Depends(
         get_confirmed_matrix_fee_evaluation_export_service
     ),
@@ -165,6 +382,7 @@ def generate_confirmed_matrix_fee_file(
                 overwrite=True,
                 allow_review_required=True,
                 fill_mode="matrix_basic",
+                edited_values=request.to_application() if request else None,
             )
         )
     except (

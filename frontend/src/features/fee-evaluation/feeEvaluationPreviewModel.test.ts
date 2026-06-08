@@ -13,6 +13,7 @@ import {
   calculateFeePreviewTestingFee,
   FEE_UNIT_TYPE_OPTIONS,
   filterFeeEvaluationPreviewRowsForScope,
+  hydrateFeeEvaluationPreviewEditsFromSavedDraft,
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
@@ -27,6 +28,10 @@ describe("feeEvaluationPreviewModel", () => {
     ]);
     expect(rows[0]).toMatchObject({
       lineId: "fixture:1:0",
+      sourceLineId: "fixture:1:0",
+      confirmedGroupId: "cmg-1",
+      confirmedRowId: "row-1",
+      stepIndex: 0,
       rowKind: "matrix_step",
       groupTone: "tone-a",
       unitPrice: "100.00",
@@ -350,6 +355,101 @@ describe("feeEvaluationPreviewModel", () => {
     expect(
       rows.filter((row) => row.rowKind === "matrix_step").map((row) => row.stepToken)
     ).toEqual(["1", "2", "A", "1(a)"]);
+  });
+
+  it("hydrates saved pricing draft rows through stable backend identity", () => {
+    const rows = buildFeeEvaluationPreviewRows(createDraft());
+    const result = hydrateFeeEvaluationPreviewEditsFromSavedDraft(rows, {
+      rows: [
+        {
+          source_line_id: "visual:2:0",
+          confirmed_group_id: "cmg-1",
+          confirmed_row_id: "row-1",
+          step_token: "2",
+          step_index: 0,
+          spend_time: "1.5",
+          unit_price: "25",
+          unit_type: "per sample",
+          units: "2",
+          base_fee: "5",
+          discount: "10%",
+          testing_fee: "50",
+          notes: "saved note",
+        },
+      ],
+      manual_rows: [
+        {
+          row_kind: "report_preparation",
+          spend_time: "0.5",
+          unit_price: "100",
+          unit_type: "per report",
+          units: "1",
+          base_fee: "0",
+          discount: "0%",
+          testing_fee: "100",
+          notes: "",
+        },
+      ],
+      summary: {
+        condition_confirmation_spend_time: "0.25",
+        external_cost: "150",
+        external_cost_note: "tooling",
+        lab_manpower_hourly_rate: "220",
+      },
+    });
+
+    expect(result.unmatchedRowCount).toBe(0);
+    expect(result.appliedRowCount).toBe(2);
+    expect(result.edits["visual:2:0"]).toMatchObject({
+      spendTime: "1.5",
+      unitPrice: "25",
+      notes: "saved note",
+    });
+    expect(result.edits["manual-report-preparation"]).toMatchObject({
+      unitType: "per report",
+    });
+    expect("testingFee" in result.edits["manual-report-preparation"]).toBe(false);
+    expect(result.costPreviewValues).toEqual({
+      conditionConfirmationSpendTime: "0.25",
+      externalCost: "150",
+      externalCostNote: "tooling",
+      labManpowerHourlyRate: "220",
+    });
+  });
+
+  it("does not apply saved pricing draft rows that no longer match the preview", () => {
+    const result = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+      buildFeeEvaluationPreviewRows(createDraft()),
+      {
+        rows: [
+          {
+            source_line_id: "missing",
+            confirmed_group_id: "cmg-1",
+            confirmed_row_id: "missing",
+            step_token: "1",
+            step_index: 0,
+            spend_time: "1",
+            unit_price: "10",
+            unit_type: "per sample",
+            units: "1",
+            base_fee: "0",
+            discount: "0%",
+            testing_fee: "10",
+            notes: "",
+          },
+        ],
+        summary: {
+          condition_confirmation_spend_time: "0",
+          external_cost: "0",
+          external_cost_note: "",
+          lab_manpower_hourly_rate: "200",
+        },
+      }
+    );
+
+    expect(result.appliedRowCount).toBe(0);
+    expect(result.unmatchedRowCount).toBe(1);
+    expect(result.edits).toEqual({});
   });
 
   it("builds a loss warning only from local preview numeric costs", () => {

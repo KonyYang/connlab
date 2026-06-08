@@ -58,6 +58,110 @@ def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fil
     )
 
 
+def test_fee_file_download_route_accepts_edited_payload(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    service = _FakeDownloadExportService()
+    app.dependency_overrides[
+        get_confirmed_matrix_fee_evaluation_export_service
+    ] = lambda: service
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json={
+                "rows": [
+                    {
+                        "source_line_id": "cmv-1:g1:cmr-1:1:0",
+                        "confirmed_group_id": "cmg-1",
+                        "confirmed_row_id": "cmr-1",
+                        "step_token": "1",
+                        "step_index": 0,
+                        "spend_time": "1.5",
+                        "unit_price": "20",
+                        "unit_type": "per sample",
+                        "units": "2",
+                        "base_fee": "5",
+                        "discount": "10%",
+                        "testing_fee": "41",
+                        "notes": "operator note",
+                    }
+                ],
+                "manual_rows": [
+                    {
+                        "row_kind": "report_preparation",
+                        "spend_time": "0.5",
+                        "unit_price": "100",
+                        "unit_type": "per report",
+                        "units": "1",
+                        "base_fee": "0",
+                        "discount": "0%",
+                        "testing_fee": "100",
+                        "notes": "",
+                    }
+                ],
+                "summary": {
+                    "condition_confirmation_spend_time": "0.25",
+                    "external_cost": "150",
+                    "external_cost_note": "tooling",
+                    "lab_manpower_hourly_rate": "200",
+                },
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    command = service.commands[0]
+    assert command.edited_values is not None
+    assert command.edited_values.rows[0].notes == "operator note"
+    assert command.edited_values.manual_rows[0].row_kind == "report_preparation"
+    assert command.edited_values.summary.external_cost_note == "tooling"
+
+
+def test_fee_file_download_route_rejects_duplicate_edited_row_identity(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    app.dependency_overrides[
+        get_confirmed_matrix_fee_evaluation_export_service
+    ] = _FakeDownloadExportService
+    app.dependency_overrides[get_settings] = lambda: settings
+    row = {
+        "source_line_id": "cmv-1:g1:cmr-1:1:0",
+        "confirmed_group_id": "cmg-1",
+        "confirmed_row_id": "cmr-1",
+        "step_token": "1",
+        "step_index": 0,
+        "spend_time": "1",
+        "unit_price": "20",
+        "unit_type": "per sample",
+        "units": "1",
+        "base_fee": "0",
+        "discount": "0%",
+        "testing_fee": "20",
+        "notes": "",
+    }
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json={
+                "rows": [row, row],
+                "summary": {
+                    "condition_confirmation_spend_time": "0",
+                    "external_cost": "0",
+                    "external_cost_note": "",
+                    "lab_manpower_hourly_rate": "200",
+                },
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
 def test_fee_file_download_route_rejects_service_path_outside_generated_fee_dir(
     tmp_path: Path,
 ) -> None:

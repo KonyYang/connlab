@@ -26,6 +26,8 @@ type FeeEvaluationPreviewTableProps = {
     field: FeeEvaluationEditableField,
     value: string
   ) => void;
+  onSavePricingDraft: () => void;
+  saveState: FeePricingDraftSaveState;
   scopeFeeLabel: string;
   groupOptions: string[];
   rows: FeeEvaluationPreviewRow[];
@@ -45,6 +47,15 @@ type FeeFileDownloadState =
   | { kind: "success"; fileName: string | null }
   | { kind: "error"; message: string; manualCleanupWarning?: string | null };
 
+type FeePricingDraftSaveState =
+  | { kind: "loading" }
+  | { kind: "idle"; message: string | null }
+  | { kind: "dirty" }
+  | { kind: "saving" }
+  | { kind: "saved"; message: string }
+  | { kind: "stale"; message: string }
+  | { kind: "error"; message: string };
+
 export function FeeEvaluationPreviewTable({
   costPreviewValues,
   costRisk,
@@ -59,6 +70,8 @@ export function FeeEvaluationPreviewTable({
   onGenerateFeeFile,
   onGroupFilterChange,
   onRowEditChange,
+  onSavePricingDraft,
+  saveState,
   scopeFeeLabel,
   groupOptions,
   rows,
@@ -99,6 +112,14 @@ export function FeeEvaluationPreviewTable({
             </div>
           </div>
           <button
+            className="fee-evaluation-save-button"
+            type="button"
+            onClick={onSavePricingDraft}
+            disabled={saveState.kind === "loading" || saveState.kind === "saving"}
+          >
+            {saveState.kind === "saving" ? "Saving..." : "Save changes"}
+          </button>
+          <button
             className="fee-evaluation-file-button"
             type="button"
             onClick={onGenerateFeeFile}
@@ -111,6 +132,7 @@ export function FeeEvaluationPreviewTable({
           state={downloadState}
           disabledReason={generateDisabledReason}
         />
+        <FeePricingDraftSaveStatus state={saveState} />
       </header>
 
       <dl className="fee-evaluation-preview-totals" aria-label="Testing Prices totals">
@@ -326,6 +348,32 @@ export function FeeEvaluationPreviewTable({
       )}
 
     </section>
+  );
+}
+
+function FeePricingDraftSaveStatus({
+  state,
+}: {
+  state: FeePricingDraftSaveState;
+}): ReactElement | null {
+  if (state.kind === "loading" || state.kind === "idle") {
+    return state.kind === "idle" && state.message ? (
+      <p className="fee-evaluation-save-status">{state.message}</p>
+    ) : null;
+  }
+  if (state.kind === "dirty") {
+    return <p className="fee-evaluation-save-status">Unsaved changes.</p>;
+  }
+  if (state.kind === "saving") {
+    return <p className="fee-evaluation-save-status">Saving pricing draft...</p>;
+  }
+  if (state.kind === "saved") {
+    return <p className="fee-evaluation-save-status" role="status">{state.message}</p>;
+  }
+  return (
+    <p className="fee-evaluation-save-error" role="alert">
+      {state.message}
+    </p>
   );
 }
 

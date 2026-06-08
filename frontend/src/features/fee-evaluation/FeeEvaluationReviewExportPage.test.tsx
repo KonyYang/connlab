@@ -13,8 +13,10 @@ import { FeeEvaluationReviewExportPage } from "./FeeEvaluationReviewExportPage";
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixFeeDraft: vi.fn(),
   generateConfirmedMatrixFeeFileDownload: vi.fn(),
+  getFeeEvaluationPricingDraft: vi.fn(),
   getProject: vi.fn(),
   listProjectLtrs: vi.fn(),
+  saveFeeEvaluationPricingDraft: vi.fn(),
 }));
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -24,8 +26,10 @@ vi.mock("../../api/client", async (importOriginal) => {
     fetchConfirmedMatrixFeeDraft: apiMocks.fetchConfirmedMatrixFeeDraft,
     generateConfirmedMatrixFeeFileDownload:
       apiMocks.generateConfirmedMatrixFeeFileDownload,
+    getFeeEvaluationPricingDraft: apiMocks.getFeeEvaluationPricingDraft,
     getProject: apiMocks.getProject,
     listProjectLtrs: apiMocks.listProjectLtrs,
+    saveFeeEvaluationPricingDraft: apiMocks.saveFeeEvaluationPricingDraft,
   };
 });
 
@@ -208,7 +212,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
   });
 
-  it("updates local row calculations without sending edited values to the Fee Form download", async () => {
+  it("sends current edited preview values to the Fee Form download", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
@@ -235,10 +239,22 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.change(screen.getByLabelText("Discount for Visual Examination"), {
       target: { value: "10%" },
     });
+    fireEvent.change(screen.getByLabelText("Notes for Visual Examination"), {
+      target: { value: "discount approved" },
+    });
     expect(screen.getAllByText("29").length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Spend Time for group Group 1 step 1"), {
       target: { value: "1" },
+    });
+    fireEvent.change(screen.getByLabelText("Condition confirmation spend time"), {
+      target: { value: "0.5" },
+    });
+    fireEvent.change(screen.getByLabelText("External Cost preview"), {
+      target: { value: "150" },
+    });
+    fireEvent.change(screen.getByLabelText("External Cost note"), {
+      target: { value: "tooling" },
     });
     fireEvent.change(screen.getByLabelText("Lab manpower hourly rate"), {
       target: { value: "125" },
@@ -251,8 +267,65 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fee Form" }));
 
     await waitFor(() => {
-      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith("P1");
+      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled();
     });
+    const payload = apiMocks.generateConfirmedMatrixFeeFileDownload.mock.calls[0][1];
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith(
+      "P1",
+      expect.any(Object)
+    );
+    expect(payload.rows[0]).toMatchObject({
+      source_line_id: "cmv-1:g1:row-1:1:0",
+      confirmed_group_id: "cmg-1",
+      confirmed_row_id: "row-1",
+      step_token: "1",
+      step_index: 0,
+      spend_time: "1",
+    });
+    expect(payload.rows[0].notes).toBe("discount approved");
+    expect(payload.summary).toMatchObject({
+      condition_confirmation_spend_time: "0.5",
+      external_cost: "150",
+      external_cost_note: "tooling",
+      lab_manpower_hourly_rate: "125",
+    });
+    expect(payload.manual_rows[0]).toMatchObject({
+      row_kind: "report_preparation",
+      unit_price: "0",
+    });
+  });
+
+  it("saves current pricing draft edits through the pricing draft endpoint", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
+      status: "current",
+      current_confirmed_matrix_id: "cmv-1",
+      current_confirmed_revision: 1,
+      current_fee_rule_version_id: "fee_rules_v2026_06_03",
+      payload: null,
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
+      target: { value: "12" },
+    });
+    expect(await screen.findByText("Unsaved changes.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
+        "P1",
+        expect.any(Object)
+      );
+    });
+    const payload = apiMocks.saveFeeEvaluationPricingDraft.mock.calls[0][1];
+    expect(payload.rows[0]).toMatchObject({
+      source_line_id: "cmv-1:g1:row-1:1:0",
+      unit_price: "12",
+    });
+    expect(await screen.findByText("Saved pricing draft.")).toBeTruthy();
   });
 
   it("keeps the Fee file action enabled when the project folder path is missing", async () => {
@@ -288,7 +361,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
 
     await waitFor(() => {
-      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith("P1");
+      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith(
+        "P1",
+        expect.any(Object)
+      );
     });
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Fee-P1.xls downloaded.")).toBeTruthy();
@@ -325,6 +401,13 @@ function arrangeSuccessfulContext(_input: { folderPath?: string | null } = {}): 
     status: "folder_created",
   });
   apiMocks.listProjectLtrs.mockResolvedValue([{ ltr_number: "DL-2026-001" }]);
+  apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue({
+    status: "missing",
+    current_confirmed_matrix_id: "cmv-1",
+    current_confirmed_revision: 1,
+    current_fee_rule_version_id: "fee_rules_v2026_06_03",
+    payload: null,
+  });
 }
 
 function createDraft() {
@@ -362,7 +445,7 @@ function createDraft() {
             testing_fee: "100.00",
           }),
           createLine({
-            line_id: "visual",
+            line_id: "cmv-1:g1:row-1",
             status: "review_required",
             review_required: true,
             review_reason: "Photo count is not available from Matrix authority.",
@@ -476,7 +559,7 @@ function createDraftWithEditableSingleLine() {
         sample_quantity_expression: "5",
         line_items: [
           createLine({
-            line_id: "visual",
+            line_id: "cmv-1:g1:row-1",
             status: "review_required",
             review_required: true,
             review_reason: "Photo count is not available from Matrix authority.",

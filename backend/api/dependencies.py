@@ -113,6 +113,12 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
 from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service import (
     ConfirmedMatrixFeeEvaluationExportTimeoutService,
 )
+from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    ConfirmedMatrixFeeTemplateBasicFillService,
+)
+from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    FeeEvaluationPricingDraftPersistenceService,
+)
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
@@ -176,6 +182,7 @@ from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
     ConfirmedMatrixAuthorityRepository,
     ExternalResourceRepository,
+    FeeEvaluationPricingDraftEditRepository,
     FileAssetRepository,
     FrozenFieldRevisionRequestRepository,
     LtrRecordRepository,
@@ -331,6 +338,18 @@ def get_confirmed_matrix_fee_evaluation_export_service() -> (
     """Build timeout-protected Fee Evaluation workbook export service."""
     return ConfirmedMatrixFeeEvaluationExportTimeoutService(
         runner=FeeEvaluationExportSubprocessRunner()
+    )
+
+
+def get_fee_evaluation_pricing_draft_service(
+    session: Session = Depends(get_session),
+) -> FeeEvaluationPricingDraftPersistenceService:
+    """Build the Fee Evaluation pricing draft persistence service."""
+    return FeeEvaluationPricingDraftPersistenceService(
+        basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
+            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        ),
+        draft_store=FeeEvaluationPricingDraftEditRepository(session),
     )
 
 

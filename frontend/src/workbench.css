@@ -3015,6 +3015,7 @@
 .fee-evaluation-back-button,
 .fee-evaluation-review-filters button,
 .fee-evaluation-export-actions button,
+.fee-evaluation-save-button,
 .fee-evaluation-file-button {
   border: 1px solid var(--color-border);
   border-radius: 7px;
@@ -3071,7 +3072,7 @@
 
 .fee-evaluation-preview-controls {
   display: grid;
-  grid-template-columns: max-content minmax(260px, 1fr) max-content;
+  grid-template-columns: max-content minmax(260px, 1fr) max-content max-content;
   gap: 8px;
   align-items: center;
   min-width: min(620px, 100%);
@@ -3152,6 +3153,19 @@
   white-space: nowrap;
 }
 
+.fee-evaluation-save-button {
+  min-height: 36px;
+  padding: 0 12px;
+  background: var(--color-surface);
+  white-space: nowrap;
+}
+
+.fee-evaluation-save-button:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
+}
+
 .fee-evaluation-file-button:disabled {
   background: var(--color-surface-muted);
   color: var(--color-ink-muted);
@@ -3159,14 +3173,17 @@
 }
 
 .fee-evaluation-download-status,
-.fee-evaluation-download-error {
+.fee-evaluation-download-error,
+.fee-evaluation-save-status,
+.fee-evaluation-save-error {
   grid-column: 1 / -1;
   margin: 0;
   color: var(--color-ink-muted);
   font-size: 12px;
 }
 
-.fee-evaluation-download-error {
+.fee-evaluation-download-error,
+.fee-evaluation-save-error {
   display: grid;
   gap: 4px;
   padding: 8px 10px;
@@ -3355,6 +3372,7 @@
 .fee-evaluation-preview-table td:nth-child(11) {
   color: var(--color-ink-muted);
   font-size: 11px;
+  text-align: left;
 }
 
 .fee-evaluation-preview-cell-input,
@@ -3383,7 +3401,8 @@
 .fee-evaluation-preview-table td:nth-child(5) .fee-evaluation-preview-cell-input,
 .fee-evaluation-preview-table td:nth-child(7) .fee-evaluation-preview-cell-input,
 .fee-evaluation-preview-table td:nth-child(8) .fee-evaluation-preview-cell-input,
-.fee-evaluation-preview-table td:nth-child(9) .fee-evaluation-preview-cell-input {
+.fee-evaluation-preview-table td:nth-child(9) .fee-evaluation-preview-cell-input,
+.fee-evaluation-preview-table td:nth-child(11) .fee-evaluation-preview-cell-input {
   text-align: left;
   min-width: 58px;
 }

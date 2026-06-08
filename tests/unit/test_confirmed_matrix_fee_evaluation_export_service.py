@@ -21,6 +21,11 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ExportConfirmedMatrixFeeEvaluationCommand,
     ConfirmedMatrixFeeEvaluationExportService,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputStatusItem,
     ProjectOutputStatusSummary,
@@ -241,6 +246,104 @@ def test_matrix_basic_fill_download_does_not_require_active_output_draft(
     )
 
 
+def test_matrix_basic_fill_passes_edited_values_to_writer(tmp_path: Path) -> None:
+    writer = _Writer()
+    service = _service(
+        draft=_draft(status="needs_review"),
+        writer=writer,
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+    edited_values = _edited_values(_edited_visual_row())
+
+    result = service.export(
+        ExportConfirmedMatrixFeeEvaluationCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=tmp_path,
+            fill_mode="matrix_basic",
+            edited_values=edited_values,
+        )
+    )
+
+    assert result.status == "generated"
+    assert writer.basic_calls[0].edited_values == edited_values
+
+
+def test_matrix_basic_fill_rejects_duplicate_edited_row_identity(tmp_path: Path) -> None:
+    service = _service(
+        draft=_draft(status="needs_review"),
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+    edited_values = _edited_values(_edited_visual_row(), _edited_visual_row())
+
+    with pytest.raises(ConfirmedMatrixFeeEvaluationExportError, match="Duplicate"):
+        service.export(
+            ExportConfirmedMatrixFeeEvaluationCommand(
+                project_id="P1",
+                template_path=_template(tmp_path),
+                output_dir=tmp_path,
+                fill_mode="matrix_basic",
+                edited_values=edited_values,
+            )
+        )
+
+
+def test_matrix_basic_fill_rejects_unknown_edited_row_identity(tmp_path: Path) -> None:
+    service = _service(
+        draft=_draft(status="needs_review"),
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+    edited_values = _edited_values(
+        FeeEvaluationEditedExportRow(
+            source_line_id="cmv-1:g1:unknown:1:0",
+            confirmed_group_id="cmg-1",
+            confirmed_row_id="unknown",
+            step_token="1",
+            step_index=0,
+            spend_time="1",
+            unit_price="10",
+            unit_type="per sample",
+            units="1",
+            base_fee="0",
+            discount="0%",
+            testing_fee="10",
+            notes="",
+        )
+    )
+
+    with pytest.raises(ConfirmedMatrixFeeEvaluationExportError, match="not found"):
+        service.export(
+            ExportConfirmedMatrixFeeEvaluationCommand(
+                project_id="P1",
+                template_path=_template(tmp_path),
+                output_dir=tmp_path,
+                fill_mode="matrix_basic",
+                edited_values=edited_values,
+            )
+        )
+
+
+def test_matrix_basic_fill_allows_missing_edited_rows(tmp_path: Path) -> None:
+    writer = _Writer()
+    service = _service(
+        draft=_draft(status="needs_review"),
+        writer=writer,
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+
+    service.export(
+        ExportConfirmedMatrixFeeEvaluationCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=tmp_path,
+            fill_mode="matrix_basic",
+            edited_values=_edited_values(),
+        )
+    )
+
+    assert writer.basic_calls[0].edited_values is not None
+
+
 def test_matrix_basic_fill_propagates_unexpected_fee_draft_errors(
     tmp_path: Path,
 ) -> None:
@@ -391,6 +494,38 @@ def _template(tmp_path: Path) -> Path:
     return template
 
 
+def _edited_values(
+    *rows: FeeEvaluationEditedExportRow,
+) -> FeeEvaluationEditedExportValues:
+    return FeeEvaluationEditedExportValues(
+        rows=rows,
+        summary=FeeEvaluationEditedExportSummary(
+            condition_confirmation_spend_time="0",
+            external_cost="0",
+            external_cost_note="",
+            lab_manpower_hourly_rate="200",
+        ),
+    )
+
+
+def _edited_visual_row() -> FeeEvaluationEditedExportRow:
+    return FeeEvaluationEditedExportRow(
+        source_line_id="cmv-1:g1:cmr-visual:1:0",
+        confirmed_group_id="cmg-1",
+        confirmed_row_id="cmr-visual",
+        step_token="1",
+        step_index=0,
+        spend_time="1",
+        unit_price="10",
+        unit_type="per sample",
+        units="2",
+        base_fee="5",
+        discount="10%",
+        testing_fee="23",
+        notes="special discount",
+    )
+
+
 def _draft(
     *,
     status: str,
@@ -493,6 +628,7 @@ class _BasicWriteCall:
     review_required: bool
     prepared_by: str | None
     approved_by: str | None
+    edited_values: FeeEvaluationEditedExportValues | None
 
 
 class _Writer:
@@ -534,6 +670,7 @@ class _Writer:
         review_required: bool,
         prepared_by: str | None,
         approved_by: str | None,
+        edited_values: FeeEvaluationEditedExportValues | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         self.basic_calls.append(
             _BasicWriteCall(
@@ -543,6 +680,7 @@ class _Writer:
                 review_required=review_required,
                 prepared_by=prepared_by,
                 approved_by=approved_by,
+                edited_values=edited_values,
             )
         )
         output_path.write_text("generated-basic", encoding="utf-8")

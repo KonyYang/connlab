@@ -55,6 +55,7 @@ class MatrixBasicFillLine:
     confirmed_row_id: str
     source_row_id: str | None
     row_order: int
+    step_index: int
     test_item: str
     cell_value: str
     step_tokens: tuple[str, ...]
@@ -233,6 +234,7 @@ def _line_from_authority(
         confirmed_row_id=row.confirmed_row_id,
         source_row_id=row.source_row_snapshot_id,
         row_order=row.row_order,
+        step_index=token_index,
         test_item=_text(row.test_item),
         cell_value=cell,
         step_tokens=(step_token,) if step_token else (),

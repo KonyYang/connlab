@@ -53,6 +53,9 @@ from backend.api.routes_confirmed_matrix_fee_draft import (
 from backend.api.routes_confirmed_matrix_fee_evaluation_export import (
     router as confirmed_matrix_fee_evaluation_export_router,
 )
+from backend.api.routes_confirmed_matrix_fee_evaluation_pricing_draft import (
+    router as confirmed_matrix_fee_evaluation_pricing_draft_router,
+)
 from backend.api.routes_confirmed_matrix_test_record_generation import (
     router as confirmed_matrix_test_record_generation_router,
 )
@@ -110,6 +113,7 @@ app.include_router(confirmed_matrix_runtime_projection_router)
 app.include_router(confirmed_matrix_test_record_preview_router)
 app.include_router(confirmed_matrix_fee_draft_router)
 app.include_router(confirmed_matrix_fee_evaluation_export_router)
+app.include_router(confirmed_matrix_fee_evaluation_pricing_draft_router)
 app.include_router(confirmed_matrix_test_record_generation_router)
 app.include_router(confirmed_matrix_authority_history_router)
 app.include_router(confirmed_matrix_active_snapshot_router)

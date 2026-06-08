@@ -20,6 +20,11 @@ from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service 
     result_from_payload,
     result_to_payload,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+)
 from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
 )
@@ -42,6 +47,46 @@ def test_command_payload_round_trip_preserves_export_options(tmp_path: Path) -> 
     restored = command_from_payload(command_to_payload(command))
 
     assert restored == command
+
+
+def test_command_payload_round_trip_preserves_edited_values(tmp_path: Path) -> None:
+    command = ExportConfirmedMatrixFeeEvaluationCommand(
+        project_id="P1",
+        template_path=tmp_path / "template.xls",
+        output_dir=tmp_path / "out",
+        fill_mode="matrix_basic",
+        edited_values=FeeEvaluationEditedExportValues(
+            rows=(
+                FeeEvaluationEditedExportRow(
+                    source_line_id="cmv-1:g1:cmr-1:1:0",
+                    confirmed_group_id="cmg-1",
+                    confirmed_row_id="cmr-1",
+                    step_token="1",
+                    step_index=0,
+                    spend_time="1.5",
+                    unit_price="20",
+                    unit_type="per sample",
+                    units="2",
+                    base_fee="5",
+                    discount="10%",
+                    testing_fee="41",
+                    notes="operator note",
+                ),
+            ),
+            summary=FeeEvaluationEditedExportSummary(
+                condition_confirmation_spend_time="0.5",
+                external_cost="150",
+                external_cost_note="tooling",
+                lab_manpower_hourly_rate="200",
+            ),
+        ),
+    )
+
+    restored = command_from_payload(command_to_payload(command))
+
+    assert restored == command
+    assert restored.edited_values is not None
+    assert restored.edited_values.rows[0].notes == "operator note"
 
 
 def test_result_payload_round_trip_preserves_traceability() -> None:

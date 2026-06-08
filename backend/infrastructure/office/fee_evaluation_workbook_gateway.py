@@ -10,7 +10,15 @@ from typing import Any
 
 from backend.application.confirmed_matrix_fee_draft_service import FeeEvaluationDraft
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    MatrixBasicFillLine,
     MatrixBasicFillWorkbook,
+)
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportValues,
+    basic_fill_line_identity,
+    edited_row_lookup,
+    manual_row_lookup,
 )
 from backend.application.test_record_fee_dataset_preview_service import (
     TestRecordFeeDatasetPreview,
@@ -120,6 +128,7 @@ class FeeEvaluationWorkbookGateway:
         excel = self._open_excel_application()
         workbook = None
         excel_state = None
+        gateway_warnings: tuple[str, ...] = ()
         try:
             excel.Visible = False
             excel.DisplayAlerts = False
@@ -154,6 +163,7 @@ class FeeEvaluationWorkbookGateway:
         review_required: bool,
         prepared_by: str | None,
         approved_by: str | None,
+        edited_values: FeeEvaluationEditedExportValues | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         """Write Matrix basic-fill A/C rows to the Testing Prices sheet."""
         template = Path(template_path)
@@ -176,7 +186,11 @@ class FeeEvaluationWorkbookGateway:
             excel_state = _begin_excel_batch(excel)
             workbook = excel.Workbooks.Open(str(template))
             sheet = _testing_prices_sheet(workbook)
-            _write_matrix_basic_fill(sheet=sheet, basic_fill=basic_fill)
+            gateway_warnings = _write_matrix_basic_fill(
+                sheet=sheet,
+                basic_fill=basic_fill,
+                edited_values=edited_values,
+            )
             _save_as(workbook, target)
         finally:
             if workbook is not None:
@@ -185,6 +199,7 @@ class FeeEvaluationWorkbookGateway:
             excel.Quit()
 
         warnings = ["Matrix basic fill only."]
+        warnings.extend(gateway_warnings)
         if review_required:
             warnings.append("Pricing still requires review.")
         return FeeEvaluationWorkbookWriteResult(
@@ -307,7 +322,11 @@ def _write_matrix_basic_fill(
     *,
     sheet: Any,
     basic_fill: MatrixBasicFillWorkbook,
-) -> None:
+    edited_values: FeeEvaluationEditedExportValues | None,
+) -> tuple[str, ...]:
+    warnings: list[str] = []
+    edited_lookup = edited_row_lookup(edited_values, basic_fill)
+    manual_lookup = manual_row_lookup(edited_values)
     report_row = _find_required_row(sheet, "Report preparation")
     condition_row = _find_required_row(sheet, "条件确认")
     total_row = _find_required_row(sheet, "Total")
@@ -323,6 +342,7 @@ def _write_matrix_basic_fill(
     existing_detail_count = total_row - _DETAIL_START_ROW
     if generated_detail_count > existing_detail_count:
         _insert_rows(sheet, total_row, generated_detail_count - existing_detail_count)
+    external_cost_row = _find_optional_row(sheet, "External Cost")
 
     row_index = _DETAIL_START_ROW
     for group_index, group in enumerate(basic_fill.groups):
@@ -340,10 +360,14 @@ def _write_matrix_basic_fill(
         _set_cell_fill(sheet=sheet, row_index=row_index, column=3, color=ltr_number_fill)
         row_index += 1
         for line in group.lines:
-            _write_matrix_detail_row(
-                sheet=sheet,
-                row_index=row_index,
-                description=line.test_item,
+            edited_row = edited_lookup.get(basic_fill_line_identity(line))
+            warnings.extend(
+                _write_matrix_detail_row(
+                    sheet=sheet,
+                    row_index=row_index,
+                    line=line,
+                    edited_row=edited_row,
+                )
             )
             row_index += 1
         _set_a_column_fill(
@@ -361,6 +385,23 @@ def _write_matrix_basic_fill(
         row_index=report_row_index,
         overrides={1: "", 3: "Report preparation"},
     )
+    report_edit = manual_lookup.get("report_preparation")
+    if report_edit is not None:
+        warnings.extend(
+            _write_edited_values_to_row(
+                sheet=sheet,
+                row_index=report_row_index,
+                spend_time=report_edit.spend_time,
+                unit_price=report_edit.unit_price,
+                unit_type=report_edit.unit_type,
+                units=report_edit.units,
+                base_fee=report_edit.base_fee,
+                discount=report_edit.discount,
+                testing_fee=report_edit.testing_fee,
+                notes=report_edit.notes,
+                comment_warning="Report preparation note was not exported because Excel comment creation failed.",
+            )
+        )
     _clear_cell_fill(sheet=sheet, row_index=report_row_index, column=2)
     row_index += 1
     _write_template_row(
@@ -369,7 +410,35 @@ def _write_matrix_basic_fill(
         row_index=row_index,
         overrides={1: "条件确认"},
     )
+    if edited_values is not None:
+        sheet.Cells(row_index, 2).Value = _numeric_cell_value(
+            edited_values.summary.condition_confirmation_spend_time,
+            default="0",
+        )
     _clear_cell_fill(sheet=sheet, row_index=row_index, column=2)
+    if external_cost_row is not None and edited_values is not None:
+        sheet.Cells(external_cost_row, 9).Value = _numeric_cell_value(
+            edited_values.summary.external_cost,
+            default="0",
+        )
+        external_note_warning = _set_cell_comment(
+            sheet=sheet,
+            row_index=external_cost_row,
+            column=9,
+            text=edited_values.summary.external_cost_note,
+            failure_warning="External Cost note was not exported because Excel comment creation failed.",
+        )
+        if external_note_warning:
+            warnings.append(external_note_warning)
+    elif edited_values is not None:
+        if _numeric_cell_value(edited_values.summary.external_cost, default="0") != "0":
+            warnings.append(
+                "External Cost was not exported because no stable template anchor was found."
+            )
+        if edited_values.summary.external_cost_note.strip():
+            warnings.append(
+                "External Cost note was not exported because no stable template anchor was found."
+            )
     total_row_index = row_index + 1
     _write_total_formulas(
         sheet=sheet,
@@ -377,20 +446,82 @@ def _write_matrix_basic_fill(
         last_detail_row=row_index,
     )
     _set_a_column_bold(sheet, _DETAIL_START_ROW, total_row_index + 2)
+    return tuple(warnings)
 
 
 def _write_matrix_detail_row(
     *,
     sheet: Any,
     row_index: int,
-    description: str,
-) -> None:
+    line: MatrixBasicFillLine,
+    edited_row: FeeEvaluationEditedExportRow | None,
+) -> tuple[str, ...]:
     sheet.Cells(row_index, 1).Value = ""
-    sheet.Cells(row_index, 3).Value = description
-    for column in (2, 4, 5, 6, 7, 8):
-        sheet.Cells(row_index, column).Value = ""
+    sheet.Cells(row_index, 3).Value = line.test_item
     _clear_cell_fill(sheet=sheet, row_index=row_index, column=2)
+    if edited_row is None:
+        for column in (2, 4, 5, 6, 7, 8):
+            sheet.Cells(row_index, column).Value = ""
+        _set_cell_comment(
+            sheet=sheet,
+            row_index=row_index,
+            column=9,
+            text="",
+            failure_warning="",
+        )
+        warnings: tuple[str, ...] = ()
+    else:
+        warnings = _write_edited_values_to_row(
+            sheet=sheet,
+            row_index=row_index,
+            spend_time=edited_row.spend_time,
+            unit_price=edited_row.unit_price,
+            unit_type=edited_row.unit_type,
+            units=edited_row.units,
+            base_fee=edited_row.base_fee,
+            discount=edited_row.discount,
+            testing_fee=edited_row.testing_fee,
+            notes=edited_row.notes,
+            comment_warning=(
+                f"Fee row note for {line.group_label} step {_line_step_label(line)} "
+                "was not exported because Excel comment creation failed."
+            ),
+        )
     _set_formula(sheet, row_index, 9, _detail_fee_formula(row_index))
+    return warnings
+
+
+def _write_edited_values_to_row(
+    *,
+    sheet: Any,
+    row_index: int,
+    spend_time: str,
+    unit_price: str,
+    unit_type: str,
+    units: str,
+    base_fee: str,
+    discount: str,
+    testing_fee: str,
+    notes: str,
+    comment_warning: str,
+) -> tuple[str, ...]:
+    """Write TASK_300 editable values to one Testing Prices row."""
+    sheet.Cells(row_index, 2).Value = _numeric_cell_value(spend_time, default="0")
+    sheet.Cells(row_index, 4).Value = _numeric_cell_value(unit_price, default="0")
+    sheet.Cells(row_index, 5).Value = _unit_type_text(unit_type)
+    sheet.Cells(row_index, 6).Value = _numeric_cell_value(units, default="1")
+    sheet.Cells(row_index, 7).Value = _numeric_cell_value(base_fee, default="0")
+    sheet.Cells(row_index, 8).Value = _discount_fraction(discount)
+    if not _supports_formula(sheet, row_index, 9):
+        sheet.Cells(row_index, 9).Value = _numeric_cell_value(testing_fee, default="0")
+    warning = _set_cell_comment(
+        sheet=sheet,
+        row_index=row_index,
+        column=9,
+        text=notes,
+        failure_warning=comment_warning,
+    )
+    return (warning,) if warning else ()
 
 
 def _display_group_label(group_label: str) -> str:
@@ -398,6 +529,10 @@ def _display_group_label(group_label: str) -> str:
     if label.lower().startswith("group "):
         return label[6:].strip()
     return label
+
+
+def _line_step_label(line: MatrixBasicFillLine) -> str:
+    return ", ".join(token for token in line.step_tokens if token.strip()) or "-"
 
 
 def _capture_template_row(sheet: Any, row_index: int) -> _TemplateRow:
@@ -442,6 +577,14 @@ def _write_total_formulas(
     _set_formula(sheet, total_row_index, 9, f"=SUM(I{_DETAIL_START_ROW}:I{last_detail_row})")
 
 
+def _find_optional_row(sheet: Any, text: str) -> int | None:
+    for row in range(1, 201):
+        for column in range(1, 10):
+            if _cell_text(sheet, row, column).lower() == text.lower():
+                return row
+    return None
+
+
 def _find_required_row(sheet: Any, text: str) -> int:
     for row in range(1, 201):
         for column in range(1, 10):
@@ -473,6 +616,61 @@ def _cell_formula(sheet: Any, row: int, column: int) -> str:
 
 def _set_formula(sheet: Any, row: int, column: int, formula: str) -> None:
     sheet.Cells(row, column).Formula = formula
+
+
+def _supports_formula(sheet: Any, row: int, column: int) -> bool:
+    return hasattr(sheet.Cells(row, column), "Formula")
+
+
+def _set_cell_comment(
+    *,
+    sheet: Any,
+    row_index: int,
+    column: int,
+    text: str,
+    failure_warning: str,
+) -> str | None:
+    normalized = text.strip()
+    if hasattr(sheet, "set_cell_comment"):
+        try:
+            sheet.set_cell_comment(row_index, column, normalized)
+        except Exception:
+            return failure_warning if normalized else None
+        return None
+    cell = sheet.Cells(row_index, column)
+    try:
+        cell.ClearComments()
+    except Exception:
+        pass
+    if not normalized:
+        return None
+    try:
+        cell.AddComment(normalized)
+    except Exception:
+        return failure_warning
+    return None
+
+
+def _numeric_cell_value(value: str, *, default: str) -> str:
+    normalized = value.strip()
+    if not normalized or normalized.lower() == "pending":
+        return default
+    return normalized.replace("$", "").replace(",", "")
+
+
+def _discount_fraction(value: str) -> str:
+    normalized = value.strip().replace("%", "")
+    if not normalized or normalized.lower() == "pending":
+        return "0"
+    try:
+        return format(Decimal(normalized.replace(",", "")) / Decimal("100"), "f")
+    except Exception:
+        return "0"
+
+
+def _unit_type_text(value: str) -> str:
+    normalized = value.strip()
+    return normalized if normalized else "per sample"
 
 
 def _insert_rows(sheet: Any, row: int, count: int) -> None:

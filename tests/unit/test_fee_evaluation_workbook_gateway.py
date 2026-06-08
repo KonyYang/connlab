@@ -17,6 +17,12 @@ from backend.application.confirmed_matrix_fee_template_basic_fill_service import
     MatrixBasicFillLine,
     MatrixBasicFillWorkbook,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+    FeeEvaluationEditedManualRow,
+)
 from backend.infrastructure.office.fee_evaluation_workbook_gateway import (
     FeeEvaluationWorkbookGateway,
 )
@@ -215,6 +221,97 @@ def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
     assert "Matrix basic fill only." in result.warnings
 
 
+def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(5, 3)] = "Sample preparation(if needed)"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cell_fills[(2, 3)] = 0xD9D9D9
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(10, 1)] = "External Cost"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    excel = _FakeExcel(workbook)
+    output = tmp_path / "fee_out.xls"
+
+    result = FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=output,
+        basic_fill=_basic_fill(),
+        review_required=False,
+        prepared_by="Operator",
+        approved_by=None,
+        edited_values=_edited_values(),
+    )
+
+    sheet = excel.workbook.sheet
+    assert result.output_path == output
+    assert sheet.cells[(6, 2)] == "1.5"
+    assert sheet.cells[(6, 4)] == "20"
+    assert sheet.cells[(6, 5)] == "per sample"
+    assert sheet.cells[(6, 6)] == "2"
+    assert sheet.cells[(6, 7)] == "5"
+    assert sheet.cells[(6, 8)] == "0.1"
+    assert sheet.formulas[(6, 9)] == "=D6*F6*(1-H6)+G6"
+    assert sheet.comments[(6, 9)] == "discount approved"
+    assert (7, 9) not in sheet.comments
+    assert sheet.cells[(10, 2)] == "0.75"
+    assert sheet.cells[(10, 4)] == "100"
+    assert sheet.cells[(10, 5)] == "per report"
+    assert sheet.cells[(10, 6)] == "1"
+    assert sheet.cells[(10, 7)] == "0"
+    assert sheet.cells[(10, 8)] == "0"
+    assert sheet.comments[(10, 9)] == "report note"
+    assert sheet.cells[(11, 2)] == "0.5"
+    assert sheet.cells[(13, 9)] == "150"
+    assert sheet.comments[(13, 9)] == "external tooling"
+
+
+def test_fee_gateway_matrix_basic_fill_warns_when_note_comment_fails(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(5, 3)] = "Sample preparation(if needed)"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(10, 1)] = "External Cost"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    workbook.sheet.comment_failures.update({(6, 9), (13, 9)})
+    excel = _FakeExcel(workbook)
+    output = tmp_path / "fee_out.xls"
+
+    result = FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=output,
+        basic_fill=_basic_fill(),
+        review_required=False,
+        prepared_by="Operator",
+        approved_by=None,
+        edited_values=_edited_values(),
+    )
+
+    assert any("Fee row note for Group 1 step -" in warning for warning in result.warnings)
+    assert any("External Cost note was not exported" in warning for warning in result.warnings)
+    assert (6, 9) not in excel.workbook.sheet.comments
+    assert (13, 9) not in excel.workbook.sheet.comments
+
+
 def test_fee_gateway_structured_writer_reports_unavailable_com(
     tmp_path: Path,
 ) -> None:
@@ -260,6 +357,7 @@ def _basic_fill() -> MatrixBasicFillWorkbook:
                         confirmed_row_id="cmr-visual",
                         source_row_id="smr-visual",
                         row_order=1,
+                        step_index=0,
                         test_item="Visual Examination",
                         cell_value="1 X",
                         step_tokens=(),
@@ -272,6 +370,7 @@ def _basic_fill() -> MatrixBasicFillWorkbook:
                         confirmed_row_id="cmr-llcr",
                         source_row_id="smr-llcr",
                         row_order=2,
+                        step_index=0,
                         test_item="LLCR",
                         cell_value="abc",
                         step_tokens=(),
@@ -292,12 +391,69 @@ def _basic_fill() -> MatrixBasicFillWorkbook:
                         confirmed_row_id="cmr-dust",
                         source_row_id="smr-dust",
                         row_order=3,
+                        step_index=0,
                         test_item="Dust Test",
                         cell_value="1",
                         step_tokens=(),
                     ),
                 ),
             ),
+        ),
+    )
+
+
+def _edited_values() -> FeeEvaluationEditedExportValues:
+    return FeeEvaluationEditedExportValues(
+        rows=(
+            FeeEvaluationEditedExportRow(
+                source_line_id="cmv-1:g1:cmr-visual",
+                confirmed_group_id="cmg-1",
+                confirmed_row_id="cmr-visual",
+                step_token="",
+                step_index=0,
+                spend_time="1.5",
+                unit_price="20",
+                unit_type="per sample",
+                units="2",
+                base_fee="5",
+                discount="10%",
+                testing_fee="41",
+                notes="discount approved",
+            ),
+            FeeEvaluationEditedExportRow(
+                source_line_id="cmv-1:g1:cmr-llcr",
+                confirmed_group_id="cmg-1",
+                confirmed_row_id="cmr-llcr",
+                step_token="",
+                step_index=0,
+                spend_time="0",
+                unit_price="0",
+                unit_type="per reading",
+                units="1",
+                base_fee="0",
+                discount="0%",
+                testing_fee="0",
+                notes="",
+            ),
+        ),
+        manual_rows=(
+            FeeEvaluationEditedManualRow(
+                row_kind="report_preparation",
+                spend_time="0.75",
+                unit_price="100",
+                unit_type="per report",
+                units="1",
+                base_fee="0",
+                discount="0%",
+                testing_fee="100",
+                notes="report note",
+            ),
+        ),
+        summary=FeeEvaluationEditedExportSummary(
+            condition_confirmation_spend_time="0.5",
+            external_cost="150",
+            external_cost_note="external tooling",
+            lab_manpower_hourly_rate="200",
         ),
     )
 
@@ -391,6 +547,14 @@ class _FakeCell:
     def Interior(self) -> "_FakeInterior":
         return _FakeInterior(self._sheet, self._row, self._column)
 
+    def ClearComments(self) -> None:
+        self._sheet.comments.pop((self._row, self._column), None)
+
+    def AddComment(self, text: str) -> None:
+        if (self._row, self._column) in self._sheet.comment_failures:
+            raise RuntimeError("comment failed")
+        self._sheet.comments[(self._row, self._column)] = text
+
 
 class _FakeInterior:
     def __init__(self, sheet: "_FakeSheet", row: int, column: int) -> None:
@@ -417,6 +581,8 @@ class _FakeSheet:
         self.a_column_border_cleared_ranges: list[tuple[int, int]] = []
         self.a_column_group_borders: list[tuple[int, int]] = []
         self.a_column_bold_ranges: list[tuple[int, int]] = []
+        self.comments: dict[tuple[int, int], str] = {}
+        self.comment_failures: set[tuple[int, int]] = set()
 
     def Cells(self, row: int, column: int) -> _FakeCell:
         return _FakeCell(self, row, column)
@@ -434,6 +600,10 @@ class _FakeSheet:
         for (cell_row, column), value in self.cell_fills.items():
             shifted_fills[(cell_row + count if cell_row >= row else cell_row, column)] = value
         self.cell_fills = shifted_fills
+        shifted_comments: dict[tuple[int, int], str] = {}
+        for (cell_row, column), value in self.comments.items():
+            shifted_comments[(cell_row + count if cell_row >= row else cell_row, column)] = value
+        self.comments = shifted_comments
 
     def set_a_column_fill(self, start_row: int, end_row: int, color: int) -> None:
         self.a_column_fills[(start_row, end_row)] = color
@@ -453,6 +623,14 @@ class _FakeSheet:
 
     def apply_a_column_group_borders(self, start_row: int, end_row: int) -> None:
         self.a_column_group_borders.append((start_row, end_row))
+
+    def set_cell_comment(self, row: int, column: int, text: str) -> None:
+        if text and (row, column) in self.comment_failures:
+            raise RuntimeError("comment failed")
+        if text:
+            self.comments[(row, column)] = text
+        else:
+            self.comments.pop((row, column), None)
 
 
 class _FakeWorksheets:
