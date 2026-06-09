@@ -141,7 +141,7 @@ def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
     template.write_text("template", encoding="utf-8")
     workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
     workbook.sheet.cells[(5, 2)] = "0.5"
-    workbook.sheet.cells[(5, 3)] = "Sample preparation(if needed)"
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
     workbook.sheet.cells[(5, 5)] = "per sample"
     workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
     workbook.sheet.cell_fills[(2, 3)] = 0xD9D9D9
@@ -174,9 +174,13 @@ def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
     sheet = excel.workbook.sheet
     assert result.output_path == output
     assert sheet.cells[(5, 1)] == "1"
-    assert sheet.cells[(5, 3)] == "Sample preparation(if needed)"
-    assert sheet.cells[(5, 2)] == "0.5"
+    assert sheet.cells[(5, 3)] == "Sample preparation"
+    assert sheet.cells[(5, 2)] == "0"
+    assert sheet.cells[(5, 4)] == "0"
     assert sheet.cells[(5, 5)] == "per sample"
+    assert sheet.cells[(5, 6)] == "1"
+    assert sheet.cells[(5, 7)] == "0"
+    assert sheet.cells[(5, 8)] == "0"
     assert sheet.formulas[(5, 9)] == "=D5*F5*(1-H5)+G5"
     assert sheet.cells[(6, 1)] == ""
     assert sheet.cells[(6, 3)] == "Visual Examination"
@@ -185,9 +189,13 @@ def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
     assert sheet.cells[(7, 3)] == "LLCR"
     assert sheet.formulas[(7, 9)] == "=D7*F7*(1-H7)+G7"
     assert sheet.cells[(8, 1)] == "2"
-    assert sheet.cells[(8, 3)] == "Sample preparation(if needed)"
-    assert sheet.cells[(8, 2)] == "0.5"
+    assert sheet.cells[(8, 3)] == "Sample preparation"
+    assert sheet.cells[(8, 2)] == "0"
+    assert sheet.cells[(8, 4)] == "0"
     assert sheet.cells[(8, 5)] == "per sample"
+    assert sheet.cells[(8, 6)] == "1"
+    assert sheet.cells[(8, 7)] == "0"
+    assert sheet.cells[(8, 8)] == "0"
     assert sheet.formulas[(8, 9)] == "=D8*F8*(1-H8)+G8"
     assert sheet.cells[(9, 1)] == ""
     assert sheet.cells[(9, 3)] == "Dust Test"
@@ -227,7 +235,7 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     template = tmp_path / "fee.xls"
     template.write_text("template", encoding="utf-8")
     workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
-    workbook.sheet.cells[(5, 3)] = "Sample preparation(if needed)"
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
     workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
     workbook.sheet.cell_fills[(2, 3)] = 0xD9D9D9
     workbook.sheet.cells[(7, 3)] = "Report preparation"
@@ -236,6 +244,7 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
     workbook.sheet.cells[(9, 7)] = "Total"
     workbook.sheet.cells[(10, 1)] = "External Cost"
+    workbook.sheet.formulas[(10, 9)] = "=D10"
     workbook.sheet.cells[(11, 3)] = "Grand Cost"
     excel = _FakeExcel(workbook)
     output = tmp_path / "fee_out.xls"
@@ -254,6 +263,14 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
 
     sheet = excel.workbook.sheet
     assert result.output_path == output
+    assert sheet.cells[(5, 2)] == "0.25"
+    assert sheet.cells[(5, 4)] == "15"
+    assert sheet.cells[(5, 5)] == "per sample"
+    assert sheet.cells[(5, 6)] == "5"
+    assert sheet.cells[(5, 7)] == "2"
+    assert sheet.cells[(5, 8)] == "0.05"
+    assert sheet.formulas[(5, 9)] == "=D5*F5*(1-H5)+G5"
+    assert sheet.comments[(5, 9)] == "sample prep note"
     assert sheet.cells[(6, 2)] == "1.5"
     assert sheet.cells[(6, 4)] == "20"
     assert sheet.cells[(6, 5)] == "per sample"
@@ -271,8 +288,10 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     assert sheet.cells[(10, 8)] == "0"
     assert sheet.comments[(10, 9)] == "report note"
     assert sheet.cells[(11, 2)] == "0.5"
-    assert sheet.cells[(13, 9)] == "150"
-    assert sheet.comments[(13, 9)] == "external tooling"
+    assert sheet.cells[(13, 4)] == "150"
+    assert sheet.formulas[(13, 9)] == "=D10"
+    assert (13, 9) not in sheet.cells
+    assert sheet.comments[(13, 4)] == "external tooling"
 
 
 def test_fee_gateway_matrix_basic_fill_warns_when_note_comment_fails(
@@ -281,7 +300,7 @@ def test_fee_gateway_matrix_basic_fill_warns_when_note_comment_fails(
     template = tmp_path / "fee.xls"
     template.write_text("template", encoding="utf-8")
     workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
-    workbook.sheet.cells[(5, 3)] = "Sample preparation(if needed)"
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
     workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
     workbook.sheet.cells[(7, 3)] = "Report preparation"
     workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
@@ -290,7 +309,7 @@ def test_fee_gateway_matrix_basic_fill_warns_when_note_comment_fails(
     workbook.sheet.cells[(9, 7)] = "Total"
     workbook.sheet.cells[(10, 1)] = "External Cost"
     workbook.sheet.cells[(11, 3)] = "Grand Cost"
-    workbook.sheet.comment_failures.update({(6, 9), (13, 9)})
+    workbook.sheet.comment_failures.update({(6, 9), (13, 4)})
     excel = _FakeExcel(workbook)
     output = tmp_path / "fee_out.xls"
 
@@ -309,7 +328,7 @@ def test_fee_gateway_matrix_basic_fill_warns_when_note_comment_fails(
     assert any("Fee row note for Group 1 step -" in warning for warning in result.warnings)
     assert any("External Cost note was not exported" in warning for warning in result.warnings)
     assert (6, 9) not in excel.workbook.sheet.comments
-    assert (13, 9) not in excel.workbook.sheet.comments
+    assert (13, 4) not in excel.workbook.sheet.comments
 
 
 def test_fee_gateway_structured_writer_reports_unavailable_com(
@@ -437,6 +456,20 @@ def _edited_values() -> FeeEvaluationEditedExportValues:
             ),
         ),
         manual_rows=(
+            FeeEvaluationEditedManualRow(
+                row_kind="sample_preparation",
+                confirmed_group_id="cmg-1",
+                group_key="g1",
+                group_label="Group 1",
+                spend_time="0.25",
+                unit_price="15",
+                unit_type="per sample",
+                units="5",
+                base_fee="2",
+                discount="5%",
+                testing_fee="73.25",
+                notes="sample prep note",
+            ),
             FeeEvaluationEditedManualRow(
                 row_kind="report_preparation",
                 spend_time="0.75",

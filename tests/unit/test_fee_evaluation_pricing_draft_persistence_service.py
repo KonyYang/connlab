@@ -10,6 +10,7 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
+    FeeEvaluationEditedManualRow,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftPersistenceService,
@@ -43,6 +44,11 @@ def test_save_then_load_current_pricing_draft_preserves_notes() -> None:
     assert loaded.saved_snapshot.confirmed_revision == 1
     assert loaded.saved_snapshot.fee_rule_version_id == "fee_rules_v2026_06_03"
     assert loaded.saved_snapshot.edited_values.rows[0].notes == "discount reason"
+    assert loaded.saved_snapshot.edited_values.manual_rows[0].row_kind == (
+        "sample_preparation"
+    )
+    assert loaded.saved_snapshot.edited_values.manual_rows[0].confirmed_group_id == "cmg-1"
+    assert loaded.saved_snapshot.edited_values.manual_rows[0].notes == "sample prep note"
     assert loaded.saved_snapshot.edited_values.summary.external_cost_note == "tooling"
 
 
@@ -90,6 +96,7 @@ def test_load_reports_stale_when_fee_rule_version_differs() -> None:
     assert result.current_context.fee_rule_version_id == "fee_rules_v2026_06_03"
     assert result.saved_snapshot is not None
     assert result.saved_snapshot.fee_rule_version_id == "old_fee_rules"
+    assert result.saved_snapshot.edited_values.rows[0].unit_price == "20"
 
 
 def test_save_rejects_unknown_row_identity() -> None:
@@ -141,6 +148,22 @@ def _edited_values(
     return FeeEvaluationEditedExportValues(
         rows=(_edited_row(confirmed_row_id=confirmed_row_id, notes=notes),),
         summary=_summary(),
+        manual_rows=(
+            FeeEvaluationEditedManualRow(
+                row_kind="sample_preparation",
+                confirmed_group_id="cmg-1",
+                group_key="g1",
+                group_label="Group 1",
+                spend_time="0.25",
+                unit_price="15",
+                unit_type="per sample",
+                units="5",
+                base_fee="2",
+                discount="5%",
+                testing_fee="73.25",
+                notes="sample prep note",
+            ),
+        ),
     )
 
 

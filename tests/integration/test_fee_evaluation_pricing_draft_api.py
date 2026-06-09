@@ -62,8 +62,26 @@ def test_pricing_draft_put_saves_payload_and_get_can_return_current_payload() ->
     assert save_response.status_code == 200
     assert save_response.json()["status"] == "current"
     assert save_response.json()["payload"]["rows"][0]["notes"] == "operator note"
+    assert save_response.json()["payload"]["manual_rows"][0] == {
+        "row_kind": "sample_preparation",
+        "confirmed_group_id": "cmg-1",
+        "group_key": "g1",
+        "group_label": "Group 1",
+        "spend_time": "0.25",
+        "unit_price": "15",
+        "unit_type": "per sample",
+        "units": "5",
+        "base_fee": "2",
+        "discount": "5%",
+        "testing_fee": "73.25",
+        "notes": "sample prep note",
+    }
     assert service.commands[0].project_id == "P1"
     assert service.commands[0].edited_values.rows[0].unit_type == "per sample"
+    assert service.commands[0].edited_values.manual_rows[0].row_kind == (
+        "sample_preparation"
+    )
+    assert service.commands[0].edited_values.manual_rows[0].confirmed_group_id == "cmg-1"
     assert get_response.status_code == 200
     assert get_response.json()["payload"]["summary"]["external_cost_note"] == "tooling"
 
@@ -143,6 +161,20 @@ def _payload() -> dict[str, object]:
             }
         ],
         "manual_rows": [
+            {
+                "row_kind": "sample_preparation",
+                "confirmed_group_id": "cmg-1",
+                "group_key": "g1",
+                "group_label": "Group 1",
+                "spend_time": "0.25",
+                "unit_price": "15",
+                "unit_type": "per sample",
+                "units": "5",
+                "base_fee": "2",
+                "discount": "5%",
+                "testing_fee": "73.25",
+                "notes": "sample prep note",
+            },
             {
                 "row_kind": "report_preparation",
                 "spend_time": "0.5",

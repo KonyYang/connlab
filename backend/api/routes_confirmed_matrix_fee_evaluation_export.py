@@ -195,6 +195,9 @@ class FeeEvaluationEditedRowExportRequest(BaseModel):
 
 class FeeEvaluationEditedManualRowExportRequest(BaseModel):
     row_kind: str
+    confirmed_group_id: str = ""
+    group_key: str = ""
+    group_label: str = ""
     spend_time: str
     unit_price: str
     unit_type: str
@@ -206,6 +209,9 @@ class FeeEvaluationEditedManualRowExportRequest(BaseModel):
 
     @field_validator(
         "row_kind",
+        "confirmed_group_id",
+        "group_key",
+        "group_label",
         "spend_time",
         "unit_price",
         "unit_type",
@@ -222,7 +228,7 @@ class FeeEvaluationEditedManualRowExportRequest(BaseModel):
     @field_validator("row_kind")
     @classmethod
     def _validate_row_kind(cls, value: str) -> str:
-        if value != "report_preparation":
+        if value not in {"report_preparation", "sample_preparation"}:
             raise ValueError(f"Unsupported Fee Evaluation manual row: {value}")
         return value
 
@@ -232,6 +238,17 @@ class FeeEvaluationEditedManualRowExportRequest(BaseModel):
         if value.lower() not in FEE_EDITED_UNIT_TYPES:
             raise ValueError(f"Unsupported Fee Evaluation Unit Type: {value}")
         return value
+
+    @model_validator(mode="after")
+    def _validate_manual_row_identity(self) -> "FeeEvaluationEditedManualRowExportRequest":
+        if self.row_kind == "sample_preparation" and not (
+            self.confirmed_group_id and self.group_key and self.group_label
+        ):
+            raise ValueError(
+                "Sample preparation manual row requires confirmed_group_id, "
+                "group_key, and group_label."
+            )
+        return self
 
     def to_application(self) -> FeeEvaluationEditedManualRow:
         """Convert this route DTO into an application-layer manual row."""
@@ -245,6 +262,9 @@ class FeeEvaluationEditedManualRowExportRequest(BaseModel):
             discount=self.discount,
             testing_fee=self.testing_fee,
             notes=self.notes,
+            confirmed_group_id=self.confirmed_group_id,
+            group_key=self.group_key,
+            group_label=self.group_label,
         )
 
 
@@ -293,7 +313,15 @@ class ConfirmedMatrixFeeEvaluationEditedFileRequest(BaseModel):
         ]
         if len(set(identities)) != len(identities):
             raise ValueError("Duplicate Fee Evaluation edited row identity.")
-        manual_identities = [row.row_kind for row in self.manual_rows]
+        manual_identities = [
+            (
+                row.row_kind,
+                row.confirmed_group_id if row.row_kind == "sample_preparation" else "",
+                row.group_key if row.row_kind == "sample_preparation" else "",
+                row.group_label if row.row_kind == "sample_preparation" else "",
+            )
+            for row in self.manual_rows
+        ]
         if len(set(manual_identities)) != len(manual_identities):
             raise ValueError("Duplicate Fee Evaluation manual row identity.")
         return self

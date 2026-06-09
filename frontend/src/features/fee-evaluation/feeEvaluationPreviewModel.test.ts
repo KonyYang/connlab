@@ -21,12 +21,25 @@ describe("feeEvaluationPreviewModel", () => {
     const rows = buildFeeEvaluationPreviewRows(createDraft());
 
     expect(rows.map((row) => [row.groupLabel, row.stepToken, row.description])).toEqual([
+      ["Group 1", "0", "Sample preparation"],
       ["Group 1", "1", "Fixture setup"],
       ["Group 1", "2", "Visual Examination"],
       ["Group 1", "3", "Visual Examination"],
       ["", "-", "Report preparation"],
     ]);
     expect(rows[0]).toMatchObject({
+      lineId: "sample-preparation:g1",
+      rowKind: "sample_preparation",
+      stepToken: "0",
+      description: "Sample preparation",
+      unitPrice: "0",
+      unitType: "per sample",
+      units: "1",
+      baseFee: "0",
+      discount: "0%",
+      testingFee: "0",
+    });
+    expect(rows[1]).toMatchObject({
       lineId: "fixture:1:0",
       sourceLineId: "fixture:1:0",
       confirmedGroupId: "cmg-1",
@@ -43,7 +56,7 @@ describe("feeEvaluationPreviewModel", () => {
       status: "confirmed",
       reviewReason: null,
     });
-    expect(rows[1]).toMatchObject({
+    expect(rows[2]).toMatchObject({
       lineId: "visual:2:0",
       rowKind: "matrix_step",
       groupTone: "tone-a",
@@ -186,6 +199,10 @@ describe("feeEvaluationPreviewModel", () => {
     });
 
     expect(FEE_UNIT_TYPE_OPTIONS).toContain("per time");
+    expect(editedRows.find((row) => row.lineId === "sample-preparation:g1")).toMatchObject({
+      unitType: "per sample",
+      testingFee: "0",
+    });
     expect(editedRows.find((row) => row.lineId === "fixture:1:0")).toMatchObject({
       unitType: "group",
       testingFee: "100",
@@ -210,6 +227,14 @@ describe("feeEvaluationPreviewModel", () => {
       baseFee: "0",
       discount: "0%",
       testingFee: "10",
+    });
+    expect(rows.find((row) => row.lineId === "sample-preparation:g1")).toMatchObject({
+      spendTime: "0",
+      unitPrice: "0",
+      units: "1",
+      baseFee: "0",
+      discount: "0%",
+      testingFee: "0",
     });
     expect(rows.find((row) => row.lineId === "manual-report-preparation")).toMatchObject({
       spendTime: "0",
@@ -240,8 +265,8 @@ describe("feeEvaluationPreviewModel", () => {
       }
     );
 
-    expect(filterFeeEvaluationPreviewRowsForScope(rows, "Group 1")).toHaveLength(3);
-    expect(filterFeeEvaluationPreviewRowsForScope(rows, "Group 2")).toHaveLength(1);
+    expect(filterFeeEvaluationPreviewRowsForScope(rows, "Group 1")).toHaveLength(4);
+    expect(filterFeeEvaluationPreviewRowsForScope(rows, "Group 2")).toHaveLength(2);
     expect(
       buildFeeEvaluationPreviewWorkingHours(
         filterFeeEvaluationPreviewRowsForScope(rows, "Group 2"),
@@ -304,6 +329,11 @@ describe("feeEvaluationPreviewModel", () => {
     });
 
     expect(rows[0]).toMatchObject({
+      lineId: "sample-preparation:g1",
+      stepToken: "0",
+      description: "Sample preparation",
+    });
+    expect(rows[1]).toMatchObject({
       lineId: "no-step:no-step:0",
       stepToken: "-",
       description: "Fixture setup",
@@ -327,6 +357,11 @@ describe("feeEvaluationPreviewModel", () => {
         .filter((row) => row.groupLabel === "Group 1")
         .map((row) => row.stepToken)
     ).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+    expect(
+      rows
+        .filter((row) => row.groupLabel === "Group 1")
+        .map((row) => row.stepToken)
+    ).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
     expect(
       matrixRows
         .filter((row) => row.groupLabel === "Group 2")
@@ -414,6 +449,47 @@ describe("feeEvaluationPreviewModel", () => {
       externalCost: "150",
       externalCostNote: "tooling",
       labManpowerHourlyRate: "220",
+    });
+  });
+
+  it("hydrates saved Sample preparation rows through stable group identity", () => {
+    const rows = buildFeeEvaluationPreviewRows(createDraft());
+    const result = hydrateFeeEvaluationPreviewEditsFromSavedDraft(rows, {
+      rows: [],
+      manual_rows: [
+        {
+          row_kind: "sample_preparation",
+          confirmed_group_id: "cmg-1",
+          group_key: "g1",
+          group_label: "Group 1",
+          spend_time: "0.5",
+          unit_price: "25",
+          unit_type: "per sample",
+          units: "5",
+          base_fee: "10",
+          discount: "10%",
+          testing_fee: "122.5",
+          notes: "sample prep note",
+        },
+      ],
+      summary: {
+        condition_confirmation_spend_time: "0",
+        external_cost: "0",
+        external_cost_note: "",
+        lab_manpower_hourly_rate: "200",
+      },
+    });
+
+    expect(result.unmatchedRowCount).toBe(0);
+    expect(result.appliedRowCount).toBe(1);
+    expect(result.edits["sample-preparation:g1"]).toMatchObject({
+      spendTime: "0.5",
+      unitPrice: "25",
+      unitType: "per sample",
+      units: "5",
+      baseFee: "10",
+      discount: "10%",
+      notes: "sample prep note",
     });
   });
 

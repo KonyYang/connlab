@@ -492,7 +492,7 @@ def _validate_edited_values(
         return
     try:
         edited_row_lookup(edited_values, basic_fill)
-        validate_supported_manual_rows(edited_values.manual_rows)
+        validate_supported_manual_rows(edited_values.manual_rows, basic_fill)
     except ValueError as exc:
         raise ConfirmedMatrixFeeEvaluationExportError(str(exc)) from exc
 

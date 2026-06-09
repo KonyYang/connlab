@@ -16,9 +16,11 @@ from backend.application.confirmed_matrix_fee_template_basic_fill_service import
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportValues,
+    REPORT_PREPARATION_MANUAL_IDENTITY,
     basic_fill_line_identity,
     edited_row_lookup,
     manual_row_lookup,
+    sample_preparation_group_identity,
 )
 from backend.application.test_record_fee_dataset_preview_service import (
     TestRecordFeeDatasetPreview,
@@ -353,11 +355,38 @@ def _write_matrix_basic_fill(
             row_index=row_index,
             overrides={
                 1: _display_group_label(group.group_label),
-                3: "Sample preparation(if needed)",
+                2: "0",
+                3: "Sample preparation",
+                4: "0",
+                5: "per sample",
+                6: "1",
+                7: "0",
+                8: "0",
             },
         )
         _clear_cell_fill(sheet=sheet, row_index=row_index, column=2)
         _set_cell_fill(sheet=sheet, row_index=row_index, column=3, color=ltr_number_fill)
+        sample_edit = manual_lookup.get(sample_preparation_group_identity(group))
+        if sample_edit is not None:
+            warnings.extend(
+                _write_edited_values_to_row(
+                    sheet=sheet,
+                    row_index=row_index,
+                    spend_time=sample_edit.spend_time,
+                    unit_price=sample_edit.unit_price,
+                    unit_type=sample_edit.unit_type,
+                    units=sample_edit.units,
+                    base_fee=sample_edit.base_fee,
+                    discount=sample_edit.discount,
+                    testing_fee=sample_edit.testing_fee,
+                    notes=sample_edit.notes,
+                    comment_warning=(
+                        f"Sample preparation note for {group.group_label} "
+                        "was not exported because Excel comment creation failed."
+                    ),
+                )
+            )
+        _set_formula(sheet, row_index, 9, _detail_fee_formula(row_index))
         row_index += 1
         for line in group.lines:
             edited_row = edited_lookup.get(basic_fill_line_identity(line))
@@ -385,7 +414,7 @@ def _write_matrix_basic_fill(
         row_index=report_row_index,
         overrides={1: "", 3: "Report preparation"},
     )
-    report_edit = manual_lookup.get("report_preparation")
+    report_edit = manual_lookup.get(REPORT_PREPARATION_MANUAL_IDENTITY)
     if report_edit is not None:
         warnings.extend(
             _write_edited_values_to_row(
@@ -417,14 +446,14 @@ def _write_matrix_basic_fill(
         )
     _clear_cell_fill(sheet=sheet, row_index=row_index, column=2)
     if external_cost_row is not None and edited_values is not None:
-        sheet.Cells(external_cost_row, 9).Value = _numeric_cell_value(
+        sheet.Cells(external_cost_row, 4).Value = _numeric_cell_value(
             edited_values.summary.external_cost,
             default="0",
         )
         external_note_warning = _set_cell_comment(
             sheet=sheet,
             row_index=external_cost_row,
-            column=9,
+            column=4,
             text=edited_values.summary.external_cost_note,
             failure_warning="External Cost note was not exported because Excel comment creation failed.",
         )

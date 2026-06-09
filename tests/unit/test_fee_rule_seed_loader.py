@@ -12,6 +12,7 @@ from backend.modules.fee_evaluation import (
     load_active_fee_rule_library,
     load_fee_rule_library,
 )
+from backend.modules.fee_evaluation.fee_rule_seed_loader import _parse_active_seed_name
 
 
 def test_load_active_fee_rule_library_keeps_original_reference_snapshot_metadata() -> None:
@@ -25,6 +26,27 @@ def test_load_active_fee_rule_library_keeps_original_reference_snapshot_metadata
     assert library.version.source_hash == "sha256:b19cce35f774ad3a83260805f7b717d5446f23ca1a90c209a08d8cb7f91fe226"
     assert library.version.effective_from_basis == "project.sample_received_date"
     assert any(rule.rule_id == "fee_rule_report_preparation" for rule in library.rules)
+
+
+def test_active_seed_manifest_accepts_file_name_only() -> None:
+    assert _parse_active_seed_name({"active_seed_name": "fee_rules_v2026_06_03.json"}) == (
+        "fee_rules_v2026_06_03.json"
+    )
+
+
+@pytest.mark.parametrize(
+    "seed_name",
+    [
+        "../fee_rules_v2026_06_03.json",
+        "subdir/fee_rules_v2026_06_03.json",
+        "subdir\\fee_rules_v2026_06_03.json",
+        "active_fee_rule_seed.json",
+        "fee_rules_v2026_06_03.txt",
+    ],
+)
+def test_active_seed_manifest_rejects_unsafe_seed_names(seed_name: str) -> None:
+    with pytest.raises(FeeRuleSeedValidationError):
+        _parse_active_seed_name({"active_seed_name": seed_name})
 
 
 def test_mfg_daily_source_price_is_not_marked_as_per_hour() -> None:

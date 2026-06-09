@@ -148,6 +148,9 @@ def _to_payload(
         manual_rows=[
             FeeEvaluationEditedManualRowExportRequest(
                 row_kind=row.row_kind,
+                confirmed_group_id=row.confirmed_group_id,
+                group_key=row.group_key,
+                group_label=row.group_label,
                 spend_time=row.spend_time,
                 unit_price=row.unit_price,
                 unit_type=row.unit_type,

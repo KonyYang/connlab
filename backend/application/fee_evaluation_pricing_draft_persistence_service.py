@@ -193,6 +193,9 @@ def edited_values_to_json(values: FeeEvaluationEditedExportValues) -> str:
                 "discount": row.discount,
                 "testing_fee": row.testing_fee,
                 "notes": row.notes,
+                "confirmed_group_id": row.confirmed_group_id,
+                "group_key": row.group_key,
+                "group_label": row.group_label,
             }
             for row in values.manual_rows
         ],
@@ -242,6 +245,9 @@ def edited_values_from_json(payload_json: str) -> FeeEvaluationEditedExportValue
                 discount=str(row["discount"]),
                 testing_fee=str(row["testing_fee"]),
                 notes=str(row.get("notes", "")),
+                confirmed_group_id=str(row.get("confirmed_group_id", "")),
+                group_key=str(row.get("group_key", "")),
+                group_label=str(row.get("group_label", "")),
             )
             for row in payload.get("manual_rows", [])
         ),
@@ -253,7 +259,7 @@ def _validate_edited_values(
     basic_fill: MatrixBasicFillWorkbook,
 ) -> None:
     edited_row_lookup(values, basic_fill)
-    validate_supported_manual_rows(values.manual_rows)
+    validate_supported_manual_rows(values.manual_rows, basic_fill)
 
 
 def _context_from_basic_fill(

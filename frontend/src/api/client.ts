@@ -1326,7 +1326,10 @@ export type FeeEvaluationEditedRowExportInput = {
 };
 
 export type FeeEvaluationEditedManualRowExportInput = {
-  row_kind: "report_preparation";
+  row_kind: "report_preparation" | "sample_preparation";
+  confirmed_group_id?: string;
+  group_key?: string;
+  group_label?: string;
   spend_time: string;
   unit_price: string;
   unit_type: string;

@@ -39,6 +39,7 @@ export type FeeEvaluationPreviewRow = {
   sourceLineId: string;
   confirmedGroupId: string;
   confirmedRowId: string;
+  groupKey: string;
   groupLabel: string;
   stepToken: string;
   stepIndex: number;
@@ -53,7 +54,7 @@ export type FeeEvaluationPreviewRow = {
   notes: string;
   status: "confirmed" | "pending";
   reviewReason: string | null;
-  rowKind: "matrix_step" | "manual_trailing";
+  rowKind: "matrix_step" | "sample_preparation" | "manual_trailing";
   groupTone: "tone-a" | "tone-b" | "manual";
 };
 
@@ -116,10 +117,20 @@ export function buildFeeEvaluationPreviewRows(
   const rows =
     draft?.groups.flatMap((group, groupIndex) => {
       const groupTone = groupIndex % 2 === 0 ? "tone-a" : "tone-b";
-      return group.line_items
+      const matrixRows = group.line_items
         .flatMap((line, lineIndex) => buildMatrixStepRows(line, groupTone, lineIndex))
         .sort(comparePreviewRows)
         .map(stripPreviewSortMetadata);
+      const firstLine = group.line_items[0];
+      return [
+        buildSamplePreparationRow(
+          group.group_key,
+          group.group_label,
+          firstLine?.confirmed_group_id ?? "",
+          groupTone
+        ),
+        ...matrixRows,
+      ];
     }) ?? [];
   return [...rows, ...buildManualTrailingRows()];
 }
@@ -169,7 +180,9 @@ export function filterFeeEvaluationPreviewRowsForScope(
     return rows;
   }
   return rows.filter(
-    (row) => row.rowKind === "matrix_step" && row.groupLabel === groupFilter
+    (row) =>
+      (row.rowKind === "matrix_step" || row.rowKind === "sample_preparation") &&
+      row.groupLabel === groupFilter
   );
 }
 
@@ -283,6 +296,9 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
       .filter((row) => row.rowKind === "matrix_step")
       .map((row) => [buildFeeEvaluationPreviewStableIdentity(row), row])
   );
+  const samplePreparationRows = previewRows.filter(
+    (row) => row.rowKind === "sample_preparation"
+  );
   const edits: FeeEvaluationPreviewEditState = {};
   let appliedRowCount = 0;
   let unmatchedRowCount = 0;
@@ -313,6 +329,26 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
   }
 
   for (const row of savedDraft.manual_rows ?? []) {
+    if (row.row_kind === "sample_preparation") {
+      const previewRow = samplePreparationRows.find((candidate) =>
+        samplePreparationRowMatches(candidate, row)
+      );
+      if (!previewRow) {
+        unmatchedRowCount += 1;
+        continue;
+      }
+      edits[previewRow.lineId] = {
+        spendTime: row.spend_time,
+        unitPrice: row.unit_price,
+        unitType: row.unit_type,
+        units: row.units,
+        baseFee: row.base_fee,
+        discount: row.discount,
+        notes: row.notes,
+      };
+      appliedRowCount += 1;
+      continue;
+    }
     if (row.row_kind !== "report_preparation") {
       unmatchedRowCount += 1;
       continue;
@@ -412,6 +448,7 @@ function buildMatrixStepRows(
       sourceLineId: backendLineId,
       confirmedGroupId: line.confirmed_group_id,
       confirmedRowId: line.confirmed_row_id,
+      groupKey: line.group_key,
       groupLabel: line.group_label,
       stepToken: stepDisplay,
       stepIndex: index,
@@ -456,6 +493,37 @@ function stripPreviewSortMetadata(row: ExpandedStepRow): FeeEvaluationPreviewRow
   return previewRow;
 }
 
+function buildSamplePreparationRow(
+  groupKey: string,
+  groupLabel: string,
+  confirmedGroupId: string,
+  groupTone: "tone-a" | "tone-b"
+): FeeEvaluationPreviewRow {
+  return {
+    lineId: `sample-preparation:${groupKey || groupLabel}`,
+    sourceLineId: `sample-preparation:${groupKey || groupLabel}`,
+    confirmedGroupId,
+    confirmedRowId: "",
+    groupKey,
+    groupLabel,
+    stepToken: "0",
+    stepIndex: 0,
+    spendTime: "0",
+    description: "Sample preparation",
+    unitPrice: "0",
+    unitType: "per sample",
+    units: "1",
+    baseFee: "0",
+    discount: "0%",
+    testingFee: "0",
+    notes: "",
+    status: "pending",
+    reviewReason: null,
+    rowKind: "sample_preparation",
+    groupTone,
+  };
+}
+
 function parseStepSortValue(value: string): number | null {
   const normalized = value.trim();
   if (!/^\d+$/.test(normalized)) {
@@ -480,6 +548,7 @@ function buildManualTrailingRow(
     sourceLineId: lineId,
     confirmedGroupId: "",
     confirmedRowId: "",
+    groupKey: "",
     groupLabel: "",
     stepToken: "-",
     stepIndex: 0,
@@ -497,6 +566,22 @@ function buildManualTrailingRow(
     rowKind: "manual_trailing",
     groupTone: "manual",
   };
+}
+
+function samplePreparationRowMatches(
+  previewRow: FeeEvaluationPreviewRow,
+  savedRow: NonNullable<FeeEvaluationEditedFileExportRequest["manual_rows"]>[number]
+): boolean {
+  const savedGroupId = (savedRow.confirmed_group_id ?? "").trim();
+  if (savedGroupId && previewRow.confirmedGroupId === savedGroupId) {
+    return true;
+  }
+  const savedGroupKey = (savedRow.group_key ?? "").trim();
+  if (savedGroupKey && previewRow.groupKey === savedGroupKey) {
+    return true;
+  }
+  const savedGroupLabel = (savedRow.group_label ?? "").trim();
+  return Boolean(savedGroupLabel && previewRow.groupLabel === savedGroupLabel);
 }
 
 function pendingValue(value: string | null | undefined): string {

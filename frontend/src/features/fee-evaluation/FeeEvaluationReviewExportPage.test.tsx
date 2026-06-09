@@ -290,6 +290,19 @@ describe("FeeEvaluationReviewExportPage", () => {
       lab_manpower_hourly_rate: "125",
     });
     expect(payload.manual_rows[0]).toMatchObject({
+      row_kind: "sample_preparation",
+      confirmed_group_id: "cmg-1",
+      group_key: "g1",
+      group_label: "Group 1",
+      spend_time: "0",
+      unit_price: "0",
+      unit_type: "per sample",
+      units: "1",
+      base_fee: "0",
+      discount: "0%",
+      notes: "",
+    });
+    expect(payload.manual_rows[1]).toMatchObject({
       row_kind: "report_preparation",
       unit_price: "0",
     });

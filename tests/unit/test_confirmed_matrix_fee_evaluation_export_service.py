@@ -23,6 +23,7 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
 )
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedManualRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
 )
@@ -312,6 +313,51 @@ def test_matrix_basic_fill_rejects_unknown_edited_row_identity(tmp_path: Path) -
     )
 
     with pytest.raises(ConfirmedMatrixFeeEvaluationExportError, match="not found"):
+        service.export(
+            ExportConfirmedMatrixFeeEvaluationCommand(
+                project_id="P1",
+                template_path=_template(tmp_path),
+                output_dir=tmp_path,
+                fill_mode="matrix_basic",
+                edited_values=edited_values,
+            )
+        )
+
+
+def test_matrix_basic_fill_rejects_incomplete_sample_preparation_identity(
+    tmp_path: Path,
+) -> None:
+    service = _service(
+        draft=_draft(status="needs_review"),
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+    edited_values = FeeEvaluationEditedExportValues(
+        rows=(),
+        summary=FeeEvaluationEditedExportSummary(
+            condition_confirmation_spend_time="0",
+            external_cost="0",
+            external_cost_note="",
+            lab_manpower_hourly_rate="200",
+        ),
+        manual_rows=(
+            FeeEvaluationEditedManualRow(
+                row_kind="sample_preparation",
+                confirmed_group_id="cmg-1",
+                group_key="g1",
+                group_label="",
+                spend_time="0",
+                unit_price="0",
+                unit_type="per sample",
+                units="1",
+                base_fee="0",
+                discount="0%",
+                testing_fee="0",
+                notes="",
+            ),
+        ),
+    )
+
+    with pytest.raises(ConfirmedMatrixFeeEvaluationExportError, match="complete group identity"):
         service.export(
             ExportConfirmedMatrixFeeEvaluationCommand(
                 project_id="P1",

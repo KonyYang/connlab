@@ -120,6 +120,51 @@ def test_fee_file_download_route_accepts_edited_payload(
     assert command.edited_values.summary.external_cost_note == "tooling"
 
 
+def test_fee_file_download_route_rejects_incomplete_sample_preparation_identity(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    app.dependency_overrides[
+        get_confirmed_matrix_fee_evaluation_export_service
+    ] = _FakeDownloadExportService
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json={
+                "manual_rows": [
+                    {
+                        "row_kind": "sample_preparation",
+                        "confirmed_group_id": "cmg-1",
+                        "group_key": "g1",
+                        "group_label": "",
+                        "spend_time": "0",
+                        "unit_price": "0",
+                        "unit_type": "per sample",
+                        "units": "1",
+                        "base_fee": "0",
+                        "discount": "0%",
+                        "testing_fee": "0",
+                        "notes": "",
+                    }
+                ],
+                "summary": {
+                    "condition_confirmation_spend_time": "0",
+                    "external_cost": "0",
+                    "external_cost_note": "",
+                    "lab_manpower_hourly_rate": "200",
+                },
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+    assert "confirmed_group_id" in response.text
+    assert "group_key" in response.text
+    assert "group_label" in response.text
+
+
 def test_fee_file_download_route_rejects_duplicate_edited_row_identity(
     tmp_path: Path,
 ) -> None:

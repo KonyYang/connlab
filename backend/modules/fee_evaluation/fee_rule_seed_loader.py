@@ -23,7 +23,7 @@ from backend.modules.fee_evaluation.fee_rule_models import (
 
 _SOURCE_HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _ACTIVE_SEED_PACKAGE = "backend.modules.fee_evaluation.seeds"
-_ACTIVE_SEED_NAME = "fee_rules_v2026_06_03.json"
+_ACTIVE_SEED_MANIFEST_NAME = "active_fee_rule_seed.json"
 
 
 class FeeRuleSeedLoaderError(ValueError):
@@ -32,7 +32,8 @@ class FeeRuleSeedLoaderError(ValueError):
 
 def load_active_fee_rule_library() -> FeeRuleLibrary:
     """Load the bundled active reviewed fee-rule seed."""
-    seed_path = resources.files(_ACTIVE_SEED_PACKAGE).joinpath(_ACTIVE_SEED_NAME)
+    seed_name = _load_active_seed_name()
+    seed_path = resources.files(_ACTIVE_SEED_PACKAGE).joinpath(seed_name)
     with resources.as_file(seed_path) as resolved_path:
         return load_fee_rule_library(resolved_path)
 
@@ -51,6 +52,30 @@ def load_fee_rule_library(path: Path) -> FeeRuleLibrary:
     library = _parse_library(payload)
     validate_fee_rule_library(library)
     return library
+
+
+def _load_active_seed_name() -> str:
+    manifest_path = resources.files(_ACTIVE_SEED_PACKAGE).joinpath(_ACTIVE_SEED_MANIFEST_NAME)
+    with resources.as_file(manifest_path) as resolved_path:
+        try:
+            payload = json.loads(resolved_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise FeeRuleSeedLoaderError("Unable to read active fee rule seed manifest.") from exc
+        except json.JSONDecodeError as exc:
+            raise FeeRuleSeedLoaderError("Invalid JSON in active fee rule seed manifest.") from exc
+    return _parse_active_seed_name(payload)
+
+
+def _parse_active_seed_name(payload: Any) -> str:
+    manifest = _require_mapping(payload, "active seed manifest")
+    seed_name = _require_string(manifest, "active_seed_name", context="active seed manifest")
+    if seed_name == _ACTIVE_SEED_MANIFEST_NAME:
+        raise FeeRuleSeedValidationError("active_seed_name must reference a fee-rule seed file.")
+    if "/" in seed_name or "\\" in seed_name:
+        raise FeeRuleSeedValidationError("active_seed_name must be a file name, not a path.")
+    if not seed_name.endswith(".json"):
+        raise FeeRuleSeedValidationError("active_seed_name must reference a JSON seed file.")
+    return seed_name
 
 
 def validate_fee_rule_library(library: FeeRuleLibrary) -> None:

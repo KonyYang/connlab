@@ -2,11 +2,11 @@
 
 ## Status
 
-Controlled series in progress.
+Controlled series complete.
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current board context: TASK_298, TASK_299, TASK_300, and TASK_301 are complete. TASK_302 remains a future controlled task and requires its own explicit approval before implementation.
+Current board context: TASK_298, TASK_299, TASK_300, TASK_301, and TASK_302 are complete.
 
 ## Goal
 
@@ -88,7 +88,16 @@ Persistence is attached to the project, active Confirmed Matrix authority versio
 
 ### TASK_302_FEE_REFERENCE_UPDATE_WORKFLOW
 
+Completed.
+
 Add a controlled workflow for future `Unit Price Reference` updates.
+
+Implementation note:
+
+- Production runtime still uses bundled JSON through `load_active_fee_rule_library()`.
+- The active bundled seed is selected through a reviewed manifest file.
+- TASK_302 V1 uses a structured candidate representation; direct workbook extraction remains future scope.
+- Candidate activation is blocked when content or metadata changes reuse the active `version_id`, preserving TASK_301 stale detection.
 
 Expected concerns:
 

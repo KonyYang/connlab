@@ -486,11 +486,20 @@ function buildEditedExportPayload(
     manual_rows: rows
       .filter(
         (row) =>
-          row.rowKind === "manual_trailing" &&
-          row.lineId === "manual-report-preparation"
+          row.rowKind === "sample_preparation" ||
+          (row.rowKind === "manual_trailing" &&
+            row.lineId === "manual-report-preparation")
       )
       .map((row) => ({
-        row_kind: "report_preparation" as const,
+        row_kind:
+          row.rowKind === "sample_preparation"
+            ? ("sample_preparation" as const)
+            : ("report_preparation" as const),
+        confirmed_group_id:
+          row.rowKind === "sample_preparation" ? row.confirmedGroupId : undefined,
+        group_key: row.rowKind === "sample_preparation" ? row.groupKey : undefined,
+        group_label:
+          row.rowKind === "sample_preparation" ? row.groupLabel : undefined,
         spend_time: row.spendTime,
         unit_price: row.unitPrice,
         unit_type: row.unitType,

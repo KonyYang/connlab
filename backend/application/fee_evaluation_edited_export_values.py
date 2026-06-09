@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    MatrixBasicFillGroup,
     MatrixBasicFillLine,
     MatrixBasicFillWorkbook,
 )
@@ -43,6 +44,9 @@ class FeeEvaluationEditedManualRow:
     discount: str
     testing_fee: str
     notes: str
+    confirmed_group_id: str = ""
+    group_key: str = ""
+    group_label: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +69,13 @@ class FeeEvaluationEditedExportValues:
 
 
 FeeEvaluationEditedRowIdentity = tuple[str, str, str, str, int]
+FeeEvaluationManualRowIdentity = tuple[str, str, str, str]
+REPORT_PREPARATION_MANUAL_IDENTITY: FeeEvaluationManualRowIdentity = (
+    "report_preparation",
+    "",
+    "",
+    "",
+)
 
 
 def edited_row_identity(
@@ -124,24 +135,67 @@ def edited_row_lookup(
 
 def manual_row_lookup(
     edited_values: FeeEvaluationEditedExportValues | None,
-) -> dict[str, FeeEvaluationEditedManualRow]:
+) -> dict[FeeEvaluationManualRowIdentity, FeeEvaluationEditedManualRow]:
     """Index manual edited rows by kind, rejecting duplicates."""
     if edited_values is None:
         return {}
-    lookup: dict[str, FeeEvaluationEditedManualRow] = {}
+    lookup: dict[FeeEvaluationManualRowIdentity, FeeEvaluationEditedManualRow] = {}
     for row in edited_values.manual_rows:
-        key = row.row_kind.strip()
+        key = manual_row_identity(row)
         if key in lookup:
             raise ValueError(f"Duplicate Fee Evaluation manual row identity: {key}")
         lookup[key] = row
     return lookup
 
 
+def manual_row_identity(row: FeeEvaluationEditedManualRow) -> FeeEvaluationManualRowIdentity:
+    """Return the stable identity for one manual Fee Evaluation row."""
+    row_kind = row.row_kind.strip()
+    if row_kind == "sample_preparation":
+        return (
+            row_kind,
+            row.confirmed_group_id.strip(),
+            row.group_key.strip(),
+            row.group_label.strip(),
+        )
+    return (row_kind, "", "", "")
+
+
+def sample_preparation_group_identity(
+    group: MatrixBasicFillGroup,
+) -> FeeEvaluationManualRowIdentity:
+    """Return the manual-row identity for a group's Sample preparation row."""
+    return (
+        "sample_preparation",
+        group.confirmed_group_id.strip(),
+        group.group_key.strip(),
+        group.group_label.strip(),
+    )
+
+
 def validate_supported_manual_rows(
     rows: Iterable[FeeEvaluationEditedManualRow],
+    basic_fill: MatrixBasicFillWorkbook | None = None,
 ) -> None:
-    """Reject manual row kinds that TASK_300 does not export."""
-    allowed = {"report_preparation"}
+    """Reject manual rows that are not supported by the active Matrix basic-fill view."""
+    allowed = {"report_preparation", "sample_preparation"}
+    allowed_sample_identities: set[FeeEvaluationManualRowIdentity] = set()
+    if basic_fill is not None:
+        allowed_sample_identities = {
+            sample_preparation_group_identity(group) for group in basic_fill.groups
+        }
     for row in rows:
-        if row.row_kind.strip() not in allowed:
+        row_kind = row.row_kind.strip()
+        if row_kind not in allowed:
             raise ValueError(f"Unsupported Fee Evaluation manual row: {row.row_kind}")
+        if row_kind != "sample_preparation":
+            continue
+        identity = manual_row_identity(row)
+        if not all(identity[index] for index in (1, 2, 3)):
+            raise ValueError(
+                "Sample preparation manual row requires complete group identity."
+            )
+        if basic_fill is not None and identity not in allowed_sample_identities:
+            raise ValueError(
+                "Sample preparation manual row identity was not found in Matrix basic fill."
+            )
