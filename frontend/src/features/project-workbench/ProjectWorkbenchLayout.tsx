@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from "react";
 import type { Project } from "../../api/client";
 import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
+import { ProjectFolderCreationPanel } from "./ProjectFolderCreationPanel";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -42,8 +43,14 @@ export function ProjectWorkbenchLayout({
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const [selectedProjectionToken, setSelectedProjectionToken] =
     useState<MatrixProjectionTokenCell | null>(null);
-  const { folderReady, latestLtr, matrixAuthorityDraft, runtimeProjectionSnapshot } =
-    runtimeModel;
+  const {
+    folderReady,
+    folderResources,
+    latestLtr,
+    matrixAuthorityDraft,
+    onFolderCreated,
+    runtimeProjectionSnapshot,
+  } = runtimeModel;
   const projectIdentity =
     latestLtr ?? `Temporary project ${project.project_id.slice(0, 8)}`;
   const testDescription = deriveWorkbenchTestDescription(
@@ -143,6 +150,16 @@ export function ProjectWorkbenchLayout({
           <RuntimeSetupItem key={item.title} item={item} />
         ))}
       </section>
+
+      <ProjectFolderCreationPanel
+        configuredOutputRoot={folderResources.outputRoot}
+        configuredTemplate={folderResources.template}
+        folderReady={folderReady}
+        latestLtrNumber={latestLtr}
+        onFolderCreated={onFolderCreated}
+        projectId={project.project_id}
+        projectStatus={project.status}
+      />
 
       <section className="runtime-console-workspace">
         <div className="runtime-console-main">

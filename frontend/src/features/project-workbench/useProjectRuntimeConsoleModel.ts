@@ -8,6 +8,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "baselineItems"
   | "error"
   | "folderReady"
+  | "folderResources"
   | "latestLtr"
   | "matrixAuthorityDraft"
   | "matrixCandidateDraft"
@@ -23,6 +24,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "runtimeProjectionSnapshot"
   | "runtimeSelectedTokenReference"
   | "setRuntimeSelectedTokenReference"
+  | "onFolderCreated"
   | "versionStatus"
 >;
 
@@ -33,6 +35,7 @@ export function selectProjectRuntimeConsoleModel(
     baselineItems: model.baselineItems,
     error: model.error,
     folderReady: model.folderReady,
+    folderResources: model.folderResources,
     latestLtr: model.latestLtr,
     matrixAuthorityDraft: model.matrixAuthorityDraft,
     matrixCandidateDraft: model.matrixCandidateDraft,
@@ -48,6 +51,7 @@ export function selectProjectRuntimeConsoleModel(
     runtimeProjectionSnapshot: model.runtimeProjectionSnapshot,
     runtimeSelectedTokenReference: model.runtimeSelectedTokenReference,
     setRuntimeSelectedTokenReference: model.setRuntimeSelectedTokenReference,
+    onFolderCreated: model.onFolderCreated,
     versionStatus: model.versionStatus
   };
 }

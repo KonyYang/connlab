@@ -472,11 +472,11 @@ def test_frontend_workflow_integration_calls_mvp_actions() -> None:
             assert blocked_term not in workbench_source
         for term in [
             "ProjectLookupPanel",
-            "ProjectFolderCreationPanel",
             "previewEvidencePlacement",
             "placeEvidence",
         ]:
             assert term not in layout_source
+        assert "ProjectFolderCreationPanel" in layout_source
         assert "previewFolder" in project_folder_source
         assert "generateFolder" in project_folder_source
         assert "getLatestProjectFolder" in project_folder_source
@@ -654,7 +654,9 @@ def test_task150_workbench_folder_uses_configured_resources() -> None:
     assert "useProjectWorkbenchModel" in workbench_source
     assert "listExternalResources" in model_source
     assert "configuredFolderResources" in model_source
-    assert "ProjectFolderCreationPanel" not in layout_source
+    assert "ProjectFolderCreationPanel" in layout_source
+    assert "configuredOutputRoot={folderResources.outputRoot}" in layout_source
+    assert "configuredTemplate={folderResources.template}" in layout_source
     assert "configuredTemplate" in folder_panel_source
     assert "configuredOutputRoot" in folder_panel_source
     assert "Project folder template" in folder_panel_source
@@ -2713,8 +2715,8 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     )
     for term in ["previewEvidencePlacement", "placeEvidence"]:
         assert term in model_source or term in workbench_source
-    for term in ["ProjectFolderCreationPanel"]:
-        assert term not in layout_source + workbench_source
+    assert "ProjectFolderCreationPanel" in layout_source
+    assert "ProjectFolderCreationPanel" not in workbench_source
 
     for removed_term in [
         "uploadApplicationForm",
@@ -2953,7 +2955,7 @@ def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_
         assert "Step Workspace" in layout_source
         assert "RuntimeAttentionSurface" in layout_source
         assert "ProjectWorkbenchDocumentStatusPanel" not in layout_source
-        assert "ProjectFolderCreationPanel" not in layout_source
+        assert "ProjectFolderCreationPanel" in layout_source
         assert "ApprovalPackagePanel" not in layout_source
         assert "ProjectWorkbenchMatrixInspector" not in layout_source
         assert ".runtime-console-shell" in styles_source
@@ -3082,12 +3084,13 @@ def test_task219f_removes_legacy_support_surfaces_from_workbench() -> None:
         assert removed_label not in layout_source
 
     for removed_component in [
-        "ProjectFolderCreationPanel",
         "ApprovalPackagePanel",
         "ProjectWorkbenchEvidencePanel",
         "ProjectLookupPanel",
     ]:
         assert removed_component not in layout_source
+
+    assert "ProjectFolderCreationPanel" in layout_source
 
     for removed_runtime_label in [
         "Derived outputs",
@@ -3112,6 +3115,41 @@ def test_task219f_removes_legacy_support_surfaces_from_workbench() -> None:
 
     assert "runtime-support-shell" not in layout_source
     assert "ProjectWorkbenchMatrixOverview" in layout_source
+
+
+def test_task306_project_folder_panel_is_workbench_entry_only() -> None:
+    """TASK_306 exposes folder creation without adding later package actions."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    runtime_model_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+
+    assert "ProjectFolderCreationPanel" in layout_source
+    assert "configuredOutputRoot={folderResources.outputRoot}" in layout_source
+    assert "configuredTemplate={folderResources.template}" in layout_source
+    assert "onFolderCreated={onFolderCreated}" in layout_source
+
+    assert '"folderResources"' in runtime_model_source
+    assert '"onFolderCreated"' in runtime_model_source
+    assert "folderResources: model.folderResources" in runtime_model_source
+    assert "onFolderCreated: model.onFolderCreated" in runtime_model_source
+
+    for future_action in [
+        "ApprovalPackagePanel",
+        "ProjectWorkbenchEvidencePanel",
+        "TestRecordDraftGenerationButton",
+        "Fee Form",
+        "Customer Feedback",
+        "Preview placement",
+        "Confirm placement",
+    ]:
+        assert future_action not in layout_source
 
 
 def test_task220_target_ui_alignment_structure_is_present() -> None:
