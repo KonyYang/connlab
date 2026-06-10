@@ -1061,6 +1061,12 @@
   font-weight: 700;
 }
 
+.matrix-editor-save-status-error {
+  border-color: #f0b6b6;
+  background: #fff5f5;
+  color: #b42318;
+}
+
 .matrix-editor-target-actions button,
 .matrix-editor-completion-dock button,
 .matrix-workspace-action-item button,
@@ -1875,6 +1881,96 @@
   margin-top: 3px;
   color: var(--color-ink-muted);
   font-size: 12px;
+}
+
+.runtime-console-section2-sync {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  padding: 10px 12px;
+}
+
+.runtime-console-section2-sync header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runtime-console-section2-sync header p,
+.runtime-console-section2-sync header strong,
+.runtime-console-section2-sync p,
+.runtime-console-section2-sync dl {
+  margin: 0;
+}
+
+.runtime-console-section2-sync header strong {
+  color: var(--color-ink);
+  font-size: 15px;
+}
+
+.runtime-console-section2-sync > p,
+.runtime-console-section2-sync small {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.runtime-console-section2-sync-error {
+  color: #b42318 !important;
+}
+
+.runtime-console-section2-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.runtime-console-section2-sync-actions button {
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.runtime-console-section2-sync-actions button:disabled {
+  color: var(--color-ink-muted);
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  cursor: not-allowed;
+}
+
+.runtime-console-section2-sync-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.runtime-console-section2-sync-fields div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  padding: 8px;
+}
+
+.runtime-console-section2-sync-fields dt {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.runtime-console-section2-sync-fields dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .runtime-console-state-dot {
@@ -3016,7 +3112,8 @@
 .fee-evaluation-review-filters button,
 .fee-evaluation-export-actions button,
 .fee-evaluation-save-button,
-.fee-evaluation-file-button {
+.fee-evaluation-file-button,
+.fee-evaluation-confirm-button {
   border: 1px solid var(--color-border);
   border-radius: 7px;
   background: var(--color-surface);
@@ -3172,6 +3269,101 @@
   cursor: not-allowed;
 }
 
+.fee-evaluation-confirm-strip {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) max-content;
+  gap: 8px;
+  align-items: center;
+}
+
+.fee-evaluation-confirm-status,
+.fee-evaluation-confirm-by {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f8fbff;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.fee-evaluation-confirm-status strong,
+.fee-evaluation-confirm-by span {
+  color: var(--color-ink);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fee-evaluation-confirm-status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-evaluation-confirm-status-current {
+  border-color: #b7dfcd;
+  background: #f1fbf6;
+}
+
+.fee-evaluation-confirm-status-dirty,
+.fee-evaluation-confirm-status-stale {
+  border-color: #f1cf8f;
+  background: #fff8e8;
+}
+
+.fee-evaluation-confirm-status-error {
+  border-color: #e8b8b5;
+  background: #fff1f0;
+}
+
+.fee-evaluation-confirm-by input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.fee-evaluation-confirm-button {
+  min-height: 36px;
+  padding: 0 12px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  white-space: nowrap;
+}
+
+.fee-evaluation-confirm-button:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
+}
+
+.fee-evaluation-confirm-error,
+.fee-evaluation-confirm-success {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.fee-evaluation-confirm-error {
+  border: 1px solid #e8b8b5;
+  background: #fff1f0;
+  color: var(--color-danger);
+}
+
+.fee-evaluation-confirm-success {
+  border: 1px solid #b7dfcd;
+  background: #f1fbf6;
+  color: #226346;
+}
+
 .fee-evaluation-download-status,
 .fee-evaluation-download-error,
 .fee-evaluation-save-status,
@@ -3195,6 +3387,16 @@
 
 .fee-evaluation-download-error p {
   margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .fee-evaluation-confirm-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .fee-evaluation-confirm-button {
+    justify-self: start;
+  }
 }
 
 .fee-evaluation-preview-table-wrap {

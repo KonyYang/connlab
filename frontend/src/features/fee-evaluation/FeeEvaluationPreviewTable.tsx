@@ -11,6 +11,10 @@ import { FEE_UNIT_TYPE_OPTIONS } from "./feeEvaluationPreviewModel";
 type FeeEvaluationPreviewTableProps = {
   costPreviewValues: FeeEvaluationCostPreviewValues;
   costRisk: FeeEvaluationCostRisk;
+  confirmFeeActionState: ConfirmFeeActionState;
+  confirmFeeDisabledReason: string | null;
+  confirmedBy: string;
+  confirmedFeeViewState: ConfirmedFeeViewState;
   grandCostLabel: string;
   labManpowerCostLabel: string;
   groupFilter: string;
@@ -19,6 +23,8 @@ type FeeEvaluationPreviewTableProps = {
   generateDisabledReason: string | null;
   onBackToWorkbench: () => void;
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
+  onConfirmFee: () => void;
+  onConfirmedByChange: (value: string) => void;
   onGenerateFeeFile: () => void;
   onGroupFilterChange: (value: string) => void;
   onRowEditChange: (
@@ -56,9 +62,25 @@ type FeePricingDraftSaveState =
   | { kind: "stale"; message: string }
   | { kind: "error"; message: string };
 
+type ConfirmFeeActionState =
+  | { kind: "idle" }
+  | { kind: "confirming" }
+  | { kind: "success"; message: string }
+  | { kind: "error"; message: string };
+
+type ConfirmedFeeViewState = {
+  label: string;
+  detail: string | null;
+  tone: "loading" | "missing" | "current" | "stale" | "dirty" | "error";
+};
+
 export function FeeEvaluationPreviewTable({
   costPreviewValues,
   costRisk,
+  confirmFeeActionState,
+  confirmFeeDisabledReason,
+  confirmedBy,
+  confirmedFeeViewState,
   grandCostLabel,
   labManpowerCostLabel,
   groupFilter,
@@ -67,6 +89,8 @@ export function FeeEvaluationPreviewTable({
   generateDisabledReason,
   onBackToWorkbench,
   onCostPreviewChange,
+  onConfirmFee,
+  onConfirmedByChange,
   onGenerateFeeFile,
   onGroupFilterChange,
   onRowEditChange,
@@ -134,6 +158,45 @@ export function FeeEvaluationPreviewTable({
         />
         <FeePricingDraftSaveStatus state={saveState} />
       </header>
+
+      <div className="fee-evaluation-confirm-strip" aria-label="Confirmed Fee status">
+        <div
+          className={`fee-evaluation-confirm-status fee-evaluation-confirm-status-${confirmedFeeViewState.tone}`}
+        >
+          <strong>{confirmedFeeViewState.label}</strong>
+          {confirmedFeeViewState.detail ? <span>{confirmedFeeViewState.detail}</span> : null}
+        </div>
+        <label className="fee-evaluation-confirm-by">
+          <span>Confirmed by</span>
+          <input
+            aria-label="Confirmed by"
+            value={confirmedBy}
+            onChange={(event) => onConfirmedByChange(event.currentTarget.value)}
+          />
+        </label>
+        <button
+          className="fee-evaluation-confirm-button"
+          type="button"
+          onClick={onConfirmFee}
+          disabled={
+            Boolean(confirmFeeDisabledReason) ||
+            confirmFeeActionState.kind === "confirming"
+          }
+          title={confirmFeeDisabledReason ?? undefined}
+        >
+          {confirmFeeActionState.kind === "confirming" ? "Confirming..." : "Confirm Fee"}
+        </button>
+      </div>
+      {confirmFeeActionState.kind === "error" ? (
+        <p className="fee-evaluation-confirm-error" role="alert">
+          {confirmFeeActionState.message}
+        </p>
+      ) : null}
+      {confirmFeeActionState.kind === "success" ? (
+        <p className="fee-evaluation-confirm-success" role="status">
+          {confirmFeeActionState.message}
+        </p>
+      ) : null}
 
       <dl className="fee-evaluation-preview-totals" aria-label="Testing Prices totals">
         <div className="fee-evaluation-preview-cost-entry">

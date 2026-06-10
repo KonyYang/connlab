@@ -2,6 +2,7 @@ import { useState, type ReactElement } from "react";
 import type { Project } from "../../api/client";
 import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
 import { ProjectFolderCreationPanel } from "./ProjectFolderCreationPanel";
+import { ProjectSection2SyncPanel } from "./ProjectSection2SyncPanel";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -49,7 +50,13 @@ export function ProjectWorkbenchLayout({
     latestLtr,
     matrixAuthorityDraft,
     onFolderCreated,
+    onRefreshSection2Sync,
+    onSyncSection2,
     runtimeProjectionSnapshot,
+    section2SyncError,
+    section2SyncLoading,
+    section2SyncPreview,
+    section2SyncSyncing,
   } = runtimeModel;
   const projectIdentity =
     latestLtr ?? `Temporary project ${project.project_id.slice(0, 8)}`;
@@ -159,6 +166,15 @@ export function ProjectWorkbenchLayout({
         onFolderCreated={onFolderCreated}
         projectId={project.project_id}
         projectStatus={project.status}
+      />
+
+      <ProjectSection2SyncPanel
+        preview={section2SyncPreview}
+        loading={section2SyncLoading}
+        syncing={section2SyncSyncing}
+        error={section2SyncError}
+        onRefresh={onRefreshSection2Sync}
+        onSync={onSyncSection2}
       />
 
       <section className="runtime-console-workspace">

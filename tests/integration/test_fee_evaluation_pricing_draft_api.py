@@ -39,6 +39,7 @@ def test_pricing_draft_get_missing_returns_current_context() -> None:
         "saved_confirmed_matrix_id": None,
         "saved_confirmed_revision": None,
         "saved_fee_rule_version_id": None,
+        "saved_draft_edit_id": None,
         "saved_updated_at": None,
         "payload": None,
     }
@@ -61,6 +62,7 @@ def test_pricing_draft_put_saves_payload_and_get_can_return_current_payload() ->
 
     assert save_response.status_code == 200
     assert save_response.json()["status"] == "current"
+    assert save_response.json()["saved_draft_edit_id"] == "fed-1"
     assert save_response.json()["payload"]["rows"][0]["notes"] == "operator note"
     assert save_response.json()["payload"]["manual_rows"][0] == {
         "row_kind": "sample_preparation",
@@ -83,6 +85,7 @@ def test_pricing_draft_put_saves_payload_and_get_can_return_current_payload() ->
     )
     assert service.commands[0].edited_values.manual_rows[0].confirmed_group_id == "cmg-1"
     assert get_response.status_code == 200
+    assert get_response.json()["saved_draft_edit_id"] == "fed-1"
     assert get_response.json()["payload"]["summary"]["external_cost_note"] == "tooling"
 
 

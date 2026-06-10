@@ -116,6 +116,9 @@ from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service 
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     ConfirmedMatrixFeeTemplateBasicFillService,
 )
+from backend.application.confirmed_fee_version_service import (
+    ConfirmedFeeVersionService,
+)
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftPersistenceService,
 )
@@ -124,6 +127,12 @@ from backend.application.confirmed_matrix_authority_history_service import (
 )
 from backend.application.confirmed_matrix_test_record_document_generation_service import (
     ConfirmedMatrixTestRecordDocumentGenerationService,
+)
+from backend.application.matrix_editor_test_record_document_generation_service import (
+    MatrixEditorTestRecordDocumentGenerationService,
+)
+from backend.application.project_section2_sync_service import (
+    ProjectSection2SyncService,
 )
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
@@ -180,6 +189,7 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
+    ConfirmedFeeAuthorityRepository,
     ConfirmedMatrixAuthorityRepository,
     ExternalResourceRepository,
     FeeEvaluationPricingDraftEditRepository,
@@ -353,6 +363,21 @@ def get_fee_evaluation_pricing_draft_service(
     )
 
 
+def get_confirmed_fee_version_service(
+    session: Session = Depends(get_session),
+) -> ConfirmedFeeVersionService:
+    """Build the Confirmed Fee authority version service."""
+    return ConfirmedFeeVersionService(
+        pricing_draft_loader=FeeEvaluationPricingDraftPersistenceService(
+            basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
+                confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+            ),
+            draft_store=FeeEvaluationPricingDraftEditRepository(session),
+        ),
+        confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
+    )
+
+
 def build_direct_confirmed_matrix_fee_evaluation_export_service(
     session: Session = Depends(get_session),
 ) -> ConfirmedMatrixFeeEvaluationExportService:
@@ -392,6 +417,20 @@ def get_confirmed_matrix_test_record_document_generation_service(
         project_store=ProjectRepository(session),
         writer=TestRecordDocumentGateway(),
         folder_store=ProjectFolderRecordRepository(session),
+        ltr_store=LtrRecordRepository(session),
+        intake_case_store=IntakeCaseRepository(session),
+        intake_draft_store=IntakeDraftRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+    )
+
+
+def get_matrix_editor_test_record_document_generation_service(
+    session: Session = Depends(get_session),
+) -> MatrixEditorTestRecordDocumentGenerationService:
+    """Build Matrix-Editor-current-state Test Record preview generation service."""
+    return MatrixEditorTestRecordDocumentGenerationService(
+        project_store=ProjectRepository(session),
+        writer=TestRecordDocumentGateway(),
         ltr_store=LtrRecordRepository(session),
         intake_case_store=IntakeCaseRepository(session),
         intake_draft_store=IntakeDraftRepository(session),
@@ -495,6 +534,17 @@ def get_section2_write_back_service(
     return Section2WriteBackService(
         project_store=ProjectRepository(session),
         draft_store=ProjectTestPlanDraftRepository(session),
+    )
+
+
+def get_project_section2_sync_service(
+    session: Session = Depends(get_session),
+) -> ProjectSection2SyncService:
+    """Build the structured Project Section 2 date sync service."""
+    return ProjectSection2SyncService(
+        project_store=ProjectRepository(session),
+        confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        application_form_store=ApplicationFormRepository(session),
     )
 
 

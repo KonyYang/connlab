@@ -3152,6 +3152,45 @@ def test_task306_project_folder_panel_is_workbench_entry_only() -> None:
         assert future_action not in layout_source
 
 
+def test_task310_section2_sync_panel_is_structured_date_sync_only() -> None:
+    """TASK_310 exposes Section 2 sync without package or document-write actions."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    runtime_model_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectSection2SyncPanel.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ProjectSection2SyncPanel" in layout_source
+    assert "onRefreshSection2Sync" in runtime_model_source
+    assert "onSyncSection2" in runtime_model_source
+    assert "fetchProjectSection2SyncPreview" in client_source
+    assert "syncProjectSection2FromConfirmedMatrix" in client_source
+    assert "/section2-sync/preview" in client_source
+    assert "/section2-sync" in client_source
+
+    for future_action in [
+        "CustomerFeedback",
+        "PackageOrchestrator",
+        "ProjectWorkbenchEvidencePanel",
+        "TestRecordDraftGenerationButton",
+        "Fee Form",
+        "write-back",
+        "public drive",
+    ]:
+        assert future_action not in panel_source
+
+
 def test_task220_target_ui_alignment_structure_is_present() -> None:
     """TASK_220 aligns runtime console structure to target workbench UI contract."""
     layout_source = (

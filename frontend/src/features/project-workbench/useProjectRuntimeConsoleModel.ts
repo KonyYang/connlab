@@ -23,8 +23,14 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "runtimeProjectionLoading"
   | "runtimeProjectionSnapshot"
   | "runtimeSelectedTokenReference"
+  | "section2SyncError"
+  | "section2SyncLoading"
+  | "section2SyncPreview"
+  | "section2SyncSyncing"
   | "setRuntimeSelectedTokenReference"
   | "onFolderCreated"
+  | "onRefreshSection2Sync"
+  | "onSyncSection2"
   | "versionStatus"
 >;
 
@@ -50,8 +56,14 @@ export function selectProjectRuntimeConsoleModel(
     runtimeProjectionLoading: model.runtimeProjectionLoading,
     runtimeProjectionSnapshot: model.runtimeProjectionSnapshot,
     runtimeSelectedTokenReference: model.runtimeSelectedTokenReference,
+    section2SyncError: model.section2SyncError,
+    section2SyncLoading: model.section2SyncLoading,
+    section2SyncPreview: model.section2SyncPreview,
+    section2SyncSyncing: model.section2SyncSyncing,
     setRuntimeSelectedTokenReference: model.setRuntimeSelectedTokenReference,
     onFolderCreated: model.onFolderCreated,
+    onRefreshSection2Sync: model.onRefreshSection2Sync,
+    onSyncSection2: model.onSyncSection2,
     versionStatus: model.versionStatus
   };
 }

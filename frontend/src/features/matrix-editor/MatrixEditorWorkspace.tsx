@@ -6,9 +6,11 @@ import {
   commitMatrixImport,
   confirmMatrixEditorSession,
   fetchMatrixEditorSession,
+  generateMatrixEditorTestRecordDraftDownload,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromUpload,
   type ConfirmedMatrixSnapshot,
+  type MatrixEditorTestRecordDraftRequest,
   type MatrixEditorSessionDraft,
   type MatrixEditorSessionSeed,
   type MatrixEditorSessionConfirmResponse,
@@ -69,6 +71,7 @@ type MatrixSnapshot = {
 
 type MatrixSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 type MatrixPublishState = "idle" | "loading" | "success" | "error";
+type MatrixTestRecordState = "idle" | "loading" | "success" | "error";
 type MatrixPublishMode = "first_authority" | "revision_authority";
 
 const AUTO_SAVE_STATUS_COPY: Record<MatrixSaveState, string> = {
@@ -676,6 +679,38 @@ function buildDraftSavePayload(
   };
 }
 
+function buildMatrixEditorTestRecordDraftRequest(
+  rows: EditableMatrixRow[],
+  groups: GroupColumn[],
+  samples: Record<string, string>
+): MatrixEditorTestRecordDraftRequest {
+  const selectedGroups = groups.filter((group) => group.isSelected);
+  return {
+    source: "matrix_editor_current_ui_state",
+    groups: selectedGroups.map((group, index) => ({
+      group_key: group.groupKey.trim() || `g${index + 1}`,
+      group_label: group.name.trim() || `${index + 1}`,
+      sample_quantity_expression: samples[group.id]?.trim() ?? "",
+    })),
+    rows: rows.map((row) => {
+      const groupValues: Record<string, string> = {};
+      selectedGroups.forEach((group, index) => {
+        const groupKey = group.groupKey.trim() || `g${index + 1}`;
+        groupValues[groupKey] = row.groups[group.id] ?? "";
+      });
+      return {
+        test_item: row.item,
+        section: row.section,
+        method: row.method,
+        condition: row.condition,
+        requirement: row.requirement,
+        is_sample_row: row.isSampleRow,
+        group_values: groupValues,
+      };
+    }),
+  };
+}
+
 type AuthorityComparableGroup = {
   groupOrder: number;
   groupKey: string;
@@ -904,6 +939,17 @@ function parseRequestError(error: unknown, fallback: string): string {
     return error.message;
   }
   return fallback;
+}
+
+function triggerBlobDownload(blob: Blob, fileName: string): void {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 function parsePositiveInteger(input: string): number | null {
@@ -1539,6 +1585,8 @@ export function MatrixEditorWorkspace({
   const [saveBaselineSignature, setSaveBaselineSignature] = useState<string | null>(null);
   const [confirmActiveState, setConfirmActiveState] = useState<MatrixPublishState>("idle");
   const [confirmActiveMessage, setConfirmActiveMessage] = useState<string>("");
+  const [testRecordState, setTestRecordState] = useState<MatrixTestRecordState>("idle");
+  const [testRecordMessage, setTestRecordMessage] = useState<string>("");
   const [activeAuthorityConfirmed, setActiveAuthorityConfirmed] = useState(false);
   const [activeAuthorityBaselineSignature, setActiveAuthorityBaselineSignature] = useState<string | null>(null);
   const [activeConfirmedMatrixId, setActiveConfirmedMatrixId] = useState<string | null>(null);
@@ -1840,6 +1888,13 @@ export function MatrixEditorWorkspace({
   const hasAnyStepTokenValue = currentSavePayload.cells.some(
     (cell) => selectedDraftGroupIds.has(cell.draft_group_id) && (cell.cell_value ?? "").trim().length > 0
   );
+  const testRecordDraftRequest = buildMatrixEditorTestRecordDraftRequest(
+    editableRows,
+    groupColumns,
+    sampleValues
+  );
+  const canGenerateTestRecord =
+    testRecordDraftRequest.groups.length > 0 && hasAnyStepTokenValue && !hasStepTokenError;
   const scheduleCalculation = calculateMatrixSchedule(
     editableRows.map((row) => ({
       id: row.id,
@@ -2436,6 +2491,37 @@ export function MatrixEditorWorkspace({
     onBackToWorkbench();
   };
 
+  const onGenerateTestRecordPreview = async (): Promise<void> => {
+    if (!canGenerateTestRecord) {
+      setTestRecordState("error");
+      setTestRecordMessage(
+        hasStepTokenError
+          ? "Fix Matrix step numbering before generating a Test Record preview."
+          : "Select at least one group with Matrix steps before generating a Test Record preview."
+      );
+      return;
+    }
+    setTestRecordState("loading");
+    setTestRecordMessage("Generating Test Record preview...");
+    try {
+      const response = await generateMatrixEditorTestRecordDraftDownload(
+        projectId,
+        testRecordDraftRequest
+      );
+      triggerBlobDownload(
+        response.blob,
+        response.fileName ?? `${projectId} Test Record Preview - Unconfirmed Matrix draft.docx`
+      );
+      setTestRecordState("success");
+      setTestRecordMessage("Downloaded unconfirmed Test Record preview.");
+    } catch (error) {
+      setTestRecordState("error");
+      setTestRecordMessage(
+        parseRequestError(error, "Failed to generate Test Record preview.")
+      );
+    }
+  };
+
   const onConfirmMatrix = async (): Promise<void> => {
     if (!canPublishActiveMatrix) {
       if (
@@ -2573,12 +2659,28 @@ export function MatrixEditorWorkspace({
           <button type="button" onClick={() => void onChangeSourceMatrix()}>
             Import Matrix
           </button>
+          <button
+            type="button"
+            disabled={!canGenerateTestRecord || testRecordState === "loading"}
+            onClick={() => void onGenerateTestRecordPreview()}
+          >
+            {testRecordState === "loading" ? "Generating..." : "Test record"}
+          </button>
         </div>
       </section>
 
       {editorStatusMessage ? (
         <section className="matrix-editor-save-status">
           {editorStatusMessage}
+        </section>
+      ) : null}
+      {testRecordMessage ? (
+        <section
+          className={`matrix-editor-save-status${
+            testRecordState === "error" ? " matrix-editor-save-status-error" : ""
+          }`}
+        >
+          {testRecordMessage}
         </section>
       ) : null}
       <input

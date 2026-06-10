@@ -38,6 +38,47 @@ export type ApplicationForm = {
   requested_testing?: string | null;
 };
 
+export type ProjectSection2SyncFieldStatus =
+  | "will_change"
+  | "changed"
+  | "unchanged"
+  | "skipped_missing_source"
+  | "blocked_invalid_source";
+
+export type ProjectSection2SyncStatus =
+  | "ready"
+  | "up_to_date"
+  | "partial"
+  | "blocked"
+  | "synced";
+
+export type ProjectSection2SyncField = {
+  field_key: "received_date" | "estimated_completion_date";
+  source_field_key: "sample_received_date" | "estimated_completion_date";
+  source_value?: string | null;
+  current_value?: string | null;
+  next_value?: string | null;
+  status: ProjectSection2SyncFieldStatus;
+  message: string;
+};
+
+export type ProjectSection2SyncResponse = {
+  project_id: string;
+  application_form_id: string;
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  fields: ProjectSection2SyncField[];
+  status: ProjectSection2SyncStatus;
+  synced_at?: string | null;
+  operator?: string | null;
+};
+
+export type ProjectSection2SyncRequest = {
+  expected_confirmed_matrix_id: string;
+  expected_confirmed_revision: number;
+  operator?: string | null;
+};
+
 export type PrecheckIssue = {
   issue_id: string;
   category: string;
@@ -791,6 +832,28 @@ export type MatrixEditorSessionConfirmResponse = {
   confirmed_snapshot?: ConfirmedMatrixSnapshot | null;
 };
 
+export type MatrixEditorTestRecordDraftGroupRequest = {
+  group_key: string;
+  group_label: string;
+  sample_quantity_expression: string;
+};
+
+export type MatrixEditorTestRecordDraftRowRequest = {
+  test_item: string;
+  section: string;
+  method: string;
+  condition: string;
+  requirement: string;
+  is_sample_row: boolean;
+  group_values: Record<string, string>;
+};
+
+export type MatrixEditorTestRecordDraftRequest = {
+  source: "matrix_editor_current_ui_state";
+  groups: MatrixEditorTestRecordDraftGroupRequest[];
+  rows: MatrixEditorTestRecordDraftRowRequest[];
+};
+
 export type ConfirmProjectMatrixRevisionDraftInput = {
   confirmed_by: string;
   superseded_reason?: string | null;
@@ -1363,8 +1426,49 @@ export type FeeEvaluationPricingDraftResponse = {
   saved_confirmed_matrix_id?: string | null;
   saved_confirmed_revision?: number | null;
   saved_fee_rule_version_id?: string | null;
+  saved_draft_edit_id?: string | null;
   saved_updated_at?: string | null;
   payload?: FeeEvaluationEditedFileExportRequest | null;
+};
+
+export type ConfirmedFeeStatus = "missing" | "current" | "stale";
+
+export type ConfirmedFeeSummary = {
+  testing_fee_total: string;
+  working_hours: string;
+  lab_manpower_cost: string;
+  external_cost: string;
+  grand_cost: string;
+};
+
+export type ConfirmedFeeVersion = {
+  confirmed_fee_id: string;
+  project_id: string;
+  confirmed_fee_revision: number;
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  fee_rule_version_id: string;
+  pricing_draft_edit_id: string;
+  pricing_effective_from?: string | null;
+  summary: ConfirmedFeeSummary;
+  confirmed_by: string;
+  confirmed_at: string;
+  confirmation_note?: string | null;
+};
+
+export type ConfirmedFeeLatestResponse = {
+  status: ConfirmedFeeStatus;
+  current_confirmed_matrix_id: string;
+  current_confirmed_revision: number;
+  current_fee_rule_version_id: string;
+  confirmed_fee?: ConfirmedFeeVersion | null;
+};
+
+export type ConfirmFeeVersionRequest = {
+  confirmed_by: string;
+  expected_pricing_draft_edit_id: string;
+  summary: ConfirmedFeeSummary;
+  confirmation_note?: string | null;
 };
 
 export type FeeEvaluationExportLineTrace = {
@@ -2217,6 +2321,28 @@ export function getProjectOutputStatusSummary(
   );
 }
 
+export function fetchProjectSection2SyncPreview(
+  projectId: string
+): Promise<ProjectSection2SyncResponse> {
+  return requestJson<ProjectSection2SyncResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/section2-sync/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function syncProjectSection2FromConfirmedMatrix(
+  projectId: string,
+  input: ProjectSection2SyncRequest
+): Promise<ProjectSection2SyncResponse> {
+  return requestJson<ProjectSection2SyncResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/section2-sync`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export function getRuntimeProjectionReadOnlySnapshot(
   input: RuntimeProjectionSnapshotRequest
 ): Promise<RuntimeProjectionSnapshotResponse> {
@@ -2297,6 +2423,27 @@ export function saveFeeEvaluationPricingDraft(
   );
 }
 
+export function getConfirmedFeeLatest(
+  projectId: string
+): Promise<ConfirmedFeeLatestResponse> {
+  return requestJson<ConfirmedFeeLatestResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-fee/latest`
+  );
+}
+
+export function confirmFeeVersion(
+  projectId: string,
+  input: ConfirmFeeVersionRequest
+): Promise<ConfirmedFeeLatestResponse> {
+  return requestJson<ConfirmedFeeLatestResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-fee/versions`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
 export function generateConfirmedMatrixTestRecordDraft(
   projectId: string
 ): Promise<Blob> {
@@ -2312,6 +2459,20 @@ export function generateConfirmedMatrixTestRecordDraftDownload(
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-draft/generate`,
     { method: "POST" }
+  );
+}
+
+export function generateMatrixEditorTestRecordDraftDownload(
+  projectId: string,
+  input: MatrixEditorTestRecordDraftRequest
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-draft/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
   );
 }
 

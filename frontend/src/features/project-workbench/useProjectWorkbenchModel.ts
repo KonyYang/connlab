@@ -5,6 +5,7 @@ import {
   executeApprovalPackage,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
+  fetchProjectSection2SyncPreview,
   getProjectTestPlanDraft,
   getProject,
   getRuntimeProjectionReadOnlySnapshot,
@@ -17,6 +18,7 @@ import {
   placeEvidence,
   previewApprovalPackage,
   previewEvidencePlacement,
+  syncProjectSection2FromConfirmedMatrix,
   updateProjectTestPlanMatrixDraft,
   validateProjectTestPlanMatrixDraft,
   type ApprovalPackageRequest,
@@ -31,6 +33,8 @@ import {
   type MatrixSourceCandidatesResponse,
   type MatrixValidationSummary,
   type Project,
+  type ProjectSection2SyncRequest,
+  type ProjectSection2SyncResponse,
   type ProjectTestPlanDraftGroup,
   type ProjectTestPlanDraft,
   type ProjectOutputStatusSummary,
@@ -69,6 +73,10 @@ export type ProjectWorkbenchModel = {
   };
   latestLtr: string | null;
   message: string | null;
+  section2SyncPreview: ProjectSection2SyncResponse | null;
+  section2SyncLoading: boolean;
+  section2SyncSyncing: boolean;
+  section2SyncError: string | null;
   matrixAuthorityDraft: ProjectTestPlanDraft | null;
   matrixCandidateDraft: ProjectTestPlanDraft | null;
   matrixDraft: ProjectTestPlanDraft | null;
@@ -122,6 +130,8 @@ export type ProjectWorkbenchModel = {
   onValidateMatrixDraft: () => Promise<void>;
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
+  onRefreshSection2Sync: () => Promise<void>;
+  onSyncSection2: (input: ProjectSection2SyncRequest) => Promise<void>;
   onExecuteApprovalPackage: () => Promise<void>;
   onPlaceEvidence: () => Promise<void>;
   onPreviewApprovalPackage: () => Promise<void>;
@@ -206,6 +216,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [latestProjectFolderPath, setLatestProjectFolderPath] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [section2SyncPreview, setSection2SyncPreview] =
+    useState<ProjectSection2SyncResponse | null>(null);
+  const [section2SyncLoading, setSection2SyncLoading] = useState(false);
+  const [section2SyncSyncing, setSection2SyncSyncing] = useState(false);
+  const [section2SyncError, setSection2SyncError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadWorkbench(
@@ -218,6 +233,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setError
     );
     void reloadMatrixDraft();
+    void onRefreshSection2Sync();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -421,6 +437,35 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setOutputStatusSummary,
       setError
     );
+  }
+
+  async function onRefreshSection2Sync(): Promise<void> {
+    setSection2SyncLoading(true);
+    try {
+      const preview = await fetchProjectSection2SyncPreview(projectId);
+      setSection2SyncPreview(preview);
+      setSection2SyncError(null);
+    } catch (err) {
+      setSection2SyncPreview(null);
+      setSection2SyncError((err as Error).message);
+    } finally {
+      setSection2SyncLoading(false);
+    }
+  }
+
+  async function onSyncSection2(input: ProjectSection2SyncRequest): Promise<void> {
+    setSection2SyncSyncing(true);
+    try {
+      const result = await syncProjectSection2FromConfirmedMatrix(projectId, input);
+      setSection2SyncPreview(result);
+      setSection2SyncError(null);
+      setMessage("Section 2 dates synced from Confirmed Matrix.");
+      setError(null);
+    } catch (err) {
+      setSection2SyncError((err as Error).message);
+    } finally {
+      setSection2SyncSyncing(false);
+    }
   }
 
   async function onPreviewApprovalPackage(): Promise<void> {
@@ -722,6 +767,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     folderResources,
     latestLtr,
     message,
+    section2SyncPreview,
+    section2SyncLoading,
+    section2SyncSyncing,
+    section2SyncError,
     matrixAuthorityDraft,
     matrixCandidateDraft,
     matrixDraft,
@@ -768,6 +817,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onValidateMatrixDraft,
     onConfirmMatrixDraft,
     onFolderCreated,
+    onRefreshSection2Sync,
+    onSyncSection2,
     onExecuteApprovalPackage,
     onPlaceEvidence,
     onPreviewApprovalPackage,

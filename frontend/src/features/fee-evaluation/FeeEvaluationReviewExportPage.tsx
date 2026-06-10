@@ -6,12 +6,15 @@ import {
 } from "react";
 import {
   ApiRequestError,
+  confirmFeeVersion,
   fetchConfirmedMatrixFeeDraft,
   generateConfirmedMatrixFeeFileDownload,
+  getConfirmedFeeLatest,
   getFeeEvaluationPricingDraft,
   getProject,
   listProjectLtrs,
   saveFeeEvaluationPricingDraft,
+  type ConfirmedFeeLatestResponse,
   type FeeEvaluationDraft,
   type FeeEvaluationEditedFileExportRequest,
   type FeeEvaluationLineItem,
@@ -64,6 +67,25 @@ type FeePricingDraftSaveState =
   | { kind: "stale"; message: string }
   | { kind: "error"; message: string };
 
+type PricingDraftLoadStatus = "loading" | "missing" | "current" | "stale" | "error";
+
+type ConfirmedFeeLoadState =
+  | { kind: "loading" }
+  | { kind: "ready"; data: ConfirmedFeeLatestResponse }
+  | { kind: "error"; message: string };
+
+type ConfirmFeeActionState =
+  | { kind: "idle" }
+  | { kind: "confirming" }
+  | { kind: "success"; message: string }
+  | { kind: "error"; message: string };
+
+type ConfirmedFeeViewState = {
+  label: string;
+  detail: string | null;
+  tone: "loading" | "missing" | "current" | "stale" | "dirty" | "error";
+};
+
 type FeeEvaluationReviewExportPageProps = {
   projectId: string;
   onBackToWorkbench: () => void;
@@ -95,10 +117,24 @@ export function FeeEvaluationReviewExportPage({
   const [saveState, setSaveState] = useState<FeePricingDraftSaveState>({
     kind: "loading",
   });
+  const [confirmedFeeState, setConfirmedFeeState] = useState<ConfirmedFeeLoadState>({
+    kind: "loading",
+  });
+  const [confirmFeeActionState, setConfirmFeeActionState] =
+    useState<ConfirmFeeActionState>({ kind: "idle" });
+  const [confirmedBy, setConfirmedBy] = useState("Lab User");
+  const [latestSavedPricingDraftId, setLatestSavedPricingDraftId] = useState<
+    string | null
+  >(null);
+  const [pricingDraftLoadStatus, setPricingDraftLoadStatus] =
+    useState<PricingDraftLoadStatus>("loading");
+  const [pricingDraftDirtySinceConfirm, setPricingDraftDirtySinceConfirm] =
+    useState(false);
 
   useEffect(() => {
     let active = true;
     setContextState({ kind: "loading" });
+    setConfirmedBy("Lab User");
     void loadPageContext(projectId)
       .then((context) => {
         if (active) {
@@ -127,6 +163,10 @@ export function FeeEvaluationReviewExportPage({
     setPreviewEdits({});
     setCostPreviewValues(EMPTY_COST_PREVIEW_VALUES);
     setSaveState({ kind: "loading" });
+    setLatestSavedPricingDraftId(null);
+    setPricingDraftLoadStatus("loading");
+    setPricingDraftDirtySinceConfirm(false);
+    setConfirmFeeActionState({ kind: "idle" });
     void fetchConfirmedMatrixFeeDraft(projectId)
       .then((draft) => {
         if (active) {
@@ -143,6 +183,8 @@ export function FeeEvaluationReviewExportPage({
         if (error instanceof ApiRequestError && error.status === 404) {
           setDraftState({ kind: "not_ready" });
           setSaveState({ kind: "idle", message: null });
+          setLatestSavedPricingDraftId(null);
+          setPricingDraftLoadStatus("missing");
           return;
         }
         setDraftState({
@@ -152,6 +194,31 @@ export function FeeEvaluationReviewExportPage({
               ? error.message
               : "Unable to load Fee Evaluation draft.",
         });
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    let active = true;
+    setConfirmedFeeState({ kind: "loading" });
+    void getConfirmedFeeLatest(projectId)
+      .then((data) => {
+        if (active) {
+          setConfirmedFeeState({ kind: "ready", data });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setConfirmedFeeState({
+            kind: "error",
+            message:
+              error instanceof ApiRequestError
+                ? error.message
+                : "Unable to load Confirmed Fee status.",
+          });
+        }
       });
     return () => {
       active = false;
@@ -168,12 +235,24 @@ export function FeeEvaluationReviewExportPage({
     }
     let active = true;
     setSaveState({ kind: "loading" });
+    setPricingDraftLoadStatus("loading");
     void getFeeEvaluationPricingDraft(projectId)
       .then((result) => {
         if (!active) {
           return;
         }
-        if (result.status === "current" && result.payload) {
+        if (result.status === "current") {
+          setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
+          setPricingDraftLoadStatus("current");
+          setPricingDraftDirtySinceConfirm(false);
+          if (!result.payload) {
+            setSaveState(
+              result.saved_draft_edit_id
+                ? { kind: "saved", message: "Loaded saved pricing draft." }
+                : { kind: "idle", message: null }
+            );
+            return;
+          }
           const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
             sourcePreviewRows,
             result.payload
@@ -195,6 +274,9 @@ export function FeeEvaluationReviewExportPage({
           return;
         }
         if (result.status === "stale") {
+          setLatestSavedPricingDraftId(null);
+          setPricingDraftLoadStatus("stale");
+          setPricingDraftDirtySinceConfirm(false);
           setSaveState({
             kind: "stale",
             message:
@@ -202,6 +284,9 @@ export function FeeEvaluationReviewExportPage({
           });
           return;
         }
+        setLatestSavedPricingDraftId(null);
+        setPricingDraftLoadStatus("missing");
+        setPricingDraftDirtySinceConfirm(false);
         setSaveState({ kind: "idle", message: null });
       })
       .catch((error: unknown) => {
@@ -215,6 +300,7 @@ export function FeeEvaluationReviewExportPage({
               ? error.message
               : "Unable to load saved pricing draft.",
         });
+        setPricingDraftLoadStatus("error");
       });
     return () => {
       active = false;
@@ -239,9 +325,17 @@ export function FeeEvaluationReviewExportPage({
     () => filterFeeEvaluationPreviewRowsForScope(previewRows, previewGroupFilter),
     [previewGroupFilter, previewRows]
   );
+  const allPreviewRows = useMemo(
+    () => filterFeeEvaluationPreviewRowsForScope(previewRows, "all"),
+    [previewRows]
+  );
   const selectedPreviewTotal = useMemo(
     () => buildFeeEvaluationPreviewScopeTotal(previewRows, previewGroupFilter),
     [previewGroupFilter, previewRows]
+  );
+  const allPreviewTotal = useMemo(
+    () => buildFeeEvaluationPreviewScopeTotal(previewRows, "all"),
+    [previewRows]
   );
   const previewHeader = useMemo(
     () =>
@@ -263,6 +357,14 @@ export function FeeEvaluationReviewExportPage({
       ),
     [costPreviewValues.conditionConfirmationSpendTime, scopedPreviewRows]
   );
+  const allWorkingHoursLabel = useMemo(
+    () =>
+      buildFeeEvaluationPreviewWorkingHours(
+        allPreviewRows,
+        costPreviewValues.conditionConfirmationSpendTime
+      ),
+    [allPreviewRows, costPreviewValues.conditionConfirmationSpendTime]
+  );
   const labManpowerCostLabel = useMemo(
     () =>
       buildFeeEvaluationLabManpowerCost(
@@ -270,6 +372,14 @@ export function FeeEvaluationReviewExportPage({
         costPreviewValues.labManpowerHourlyRate
       ),
     [costPreviewValues.labManpowerHourlyRate, workingHoursLabel]
+  );
+  const allLabManpowerCostLabel = useMemo(
+    () =>
+      buildFeeEvaluationLabManpowerCost(
+        allWorkingHoursLabel,
+        costPreviewValues.labManpowerHourlyRate
+      ),
+    [allWorkingHoursLabel, costPreviewValues.labManpowerHourlyRate]
   );
   const previewTotals = useMemo(
     () => ({
@@ -294,6 +404,15 @@ export function FeeEvaluationReviewExportPage({
       ),
     [costPreviewValues.externalCost, previewTotals.grandCost, scopedPreviewRows]
   );
+  const allGrandCostLabel = useMemo(
+    () =>
+      buildFeeEvaluationPreviewGrandCost(
+        allPreviewRows,
+        costPreviewValues.externalCost,
+        previewTotals.grandCost
+      ),
+    [allPreviewRows, costPreviewValues.externalCost, previewTotals.grandCost]
+  );
   const costRisk = useMemo(
     () =>
       buildFeeEvaluationCostRisk({
@@ -306,6 +425,26 @@ export function FeeEvaluationReviewExportPage({
     () => Array.from(new Set(lines.map((line) => line.group_label))).sort(),
     [lines]
   );
+  const confirmedFeeViewState = useMemo(
+    () =>
+      buildConfirmedFeeViewState({
+        confirmedFeeState,
+        latestSavedPricingDraftId,
+        pricingDraftLoadStatus,
+        pricingDraftDirtySinceConfirm,
+      }),
+    [
+      confirmedFeeState,
+      latestSavedPricingDraftId,
+      pricingDraftDirtySinceConfirm,
+      pricingDraftLoadStatus,
+    ]
+  );
+  const confirmFeeDisabledReason = confirmFeeBlocker({
+    draftState,
+    confirmedBy,
+    confirmedFeeState,
+  });
   const generateDisabledReason = feeFileDownloadBlocker(draftState);
 
   async function handleGenerateFeeFile(): Promise<void> {
@@ -347,9 +486,14 @@ export function FeeEvaluationReviewExportPage({
         buildEditedExportPayload(previewRows, costPreviewValues)
       );
       if (result.status === "current") {
+        setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
+        setPricingDraftLoadStatus("current");
+        setPricingDraftDirtySinceConfirm(false);
         setSaveState({ kind: "saved", message: "Saved pricing draft." });
         return;
       }
+      setLatestSavedPricingDraftId(null);
+      setPricingDraftLoadStatus("stale");
       setSaveState({
         kind: "stale",
         message: "Saved draft is not current for this Matrix or fee rule version.",
@@ -362,6 +506,76 @@ export function FeeEvaluationReviewExportPage({
             ? error.message
             : "Unable to save pricing draft.",
       });
+    }
+  }
+
+  async function handleConfirmFee(): Promise<void> {
+    if (
+      draftState.kind !== "ready" ||
+      confirmFeeActionState.kind === "confirming" ||
+      confirmFeeDisabledReason
+    ) {
+      if (!confirmedBy.trim()) {
+        setConfirmFeeActionState({
+          kind: "error",
+          message: "Enter confirmed by before confirming.",
+        });
+      }
+      return;
+    }
+    setConfirmFeeActionState({ kind: "confirming" });
+    setSaveState({ kind: "saving" });
+    try {
+      const saveResult = await saveFeeEvaluationPricingDraft(
+        projectId,
+        buildEditedExportPayload(previewRows, costPreviewValues)
+      );
+      if (saveResult.status !== "current") {
+        setLatestSavedPricingDraftId(null);
+        setPricingDraftLoadStatus("stale");
+        setSaveState({
+          kind: "stale",
+          message: "Saved draft is not current for this Matrix or fee rule version.",
+        });
+        setConfirmFeeActionState({
+          kind: "error",
+          message: "Saved draft is not current for this Matrix or fee rule version.",
+        });
+        return;
+      }
+
+      const savedDraftId = saveResult.saved_draft_edit_id ?? null;
+      setLatestSavedPricingDraftId(savedDraftId);
+      setPricingDraftLoadStatus("current");
+      setSaveState({ kind: "saved", message: "Saved pricing draft." });
+      if (!savedDraftId) {
+        setConfirmFeeActionState({
+          kind: "error",
+          message:
+            "Save returned no pricing draft id. Refresh and save again before confirming.",
+        });
+        return;
+      }
+
+      const result = await confirmFeeVersion(projectId, {
+        confirmed_by: confirmedBy.trim(),
+        expected_pricing_draft_edit_id: savedDraftId,
+        summary: {
+          testing_fee_total: allPreviewTotal,
+          working_hours: allWorkingHoursLabel,
+          lab_manpower_cost: allLabManpowerCostLabel,
+          external_cost: costPreviewValues.externalCost,
+          grand_cost: allGrandCostLabel,
+        },
+      });
+      setConfirmedFeeState({ kind: "ready", data: result });
+      setPricingDraftDirtySinceConfirm(false);
+      setConfirmFeeActionState({ kind: "success", message: "Fee confirmed." });
+    } catch (error: unknown) {
+      const message =
+        error instanceof ApiRequestError ? error.message : "Unable to confirm Fee.";
+      setConfirmFeeActionState({ kind: "error", message });
+      setSaveState({ kind: "error", message });
     }
   }
 
@@ -389,6 +603,10 @@ export function FeeEvaluationReviewExportPage({
   }
 
   function markPricingDraftDirty(): void {
+    setPricingDraftDirtySinceConfirm(true);
+    setConfirmFeeActionState((current) =>
+      current.kind === "confirming" ? current : { kind: "idle" }
+    );
     setSaveState((current) =>
       current.kind === "loading" || current.kind === "saving"
         ? current
@@ -401,6 +619,10 @@ export function FeeEvaluationReviewExportPage({
       <FeeEvaluationPreviewTable
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
+        confirmFeeActionState={confirmFeeActionState}
+        confirmFeeDisabledReason={confirmFeeDisabledReason}
+        confirmedBy={confirmedBy}
+        confirmedFeeViewState={confirmedFeeViewState}
         grandCostLabel={grandCostLabel}
         labManpowerCostLabel={labManpowerCostLabel}
         groupFilter={previewGroupFilter}
@@ -410,6 +632,8 @@ export function FeeEvaluationReviewExportPage({
         generateDisabledReason={generateDisabledReason}
         onBackToWorkbench={onBackToWorkbench}
         onCostPreviewChange={handleCostPreviewChange}
+        onConfirmFee={handleConfirmFee}
+        onConfirmedByChange={setConfirmedBy}
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
@@ -421,6 +645,112 @@ export function FeeEvaluationReviewExportPage({
       />
     </section>
   );
+}
+
+function buildConfirmedFeeViewState(input: {
+  confirmedFeeState: ConfirmedFeeLoadState;
+  latestSavedPricingDraftId: string | null;
+  pricingDraftLoadStatus: PricingDraftLoadStatus;
+  pricingDraftDirtySinceConfirm: boolean;
+}): ConfirmedFeeViewState {
+  if (input.confirmedFeeState.kind === "loading") {
+    return {
+      label: "Checking Confirmed Fee",
+      detail: null,
+      tone: "loading",
+    };
+  }
+  if (input.confirmedFeeState.kind === "error") {
+    return {
+      label: "Confirmed Fee status unavailable",
+      detail: input.confirmedFeeState.message,
+      tone: "error",
+    };
+  }
+  const confirmedFee = input.confirmedFeeState.data.confirmed_fee ?? null;
+  if (!confirmedFee) {
+    return {
+      label: "Not confirmed",
+      detail: "Save the current pricing draft, then confirm.",
+      tone: "missing",
+    };
+  }
+  if (input.confirmedFeeState.data.status === "stale") {
+    return {
+      label: "Confirmed Fee stale",
+      detail: "Matrix or fee rule version changed after confirmation.",
+      tone: "stale",
+    };
+  }
+  if (input.pricingDraftDirtySinceConfirm) {
+    return {
+      label: "Unconfirmed local changes",
+      detail: "Save and confirm again after reviewing the local pricing changes.",
+      tone: "dirty",
+    };
+  }
+  if (
+    input.latestSavedPricingDraftId &&
+    confirmedFee.pricing_draft_edit_id !== input.latestSavedPricingDraftId
+  ) {
+    return {
+      label: "Unconfirmed saved changes",
+      detail: "Confirm again after reviewing the latest saved pricing draft.",
+      tone: "dirty",
+    };
+  }
+  if (input.pricingDraftLoadStatus === "loading") {
+    return {
+      label: "Checking pricing draft",
+      detail: null,
+      tone: "loading",
+    };
+  }
+  if (
+    input.pricingDraftLoadStatus === "missing" ||
+    input.pricingDraftLoadStatus === "stale"
+  ) {
+    return {
+      label: "Unconfirmed pricing draft",
+      detail: "Save the current pricing draft before relying on this confirmation.",
+      tone: "dirty",
+    };
+  }
+  if (input.pricingDraftLoadStatus === "error") {
+    return {
+      label: "Pricing draft status unavailable",
+      detail: "Reload the saved pricing draft before relying on this confirmation.",
+      tone: "error",
+    };
+  }
+  return {
+    label: "Confirmed",
+    detail: `Confirmed by ${confirmedFee.confirmed_by}.`,
+    tone: "current",
+  };
+}
+
+function confirmFeeBlocker(input: {
+  draftState: DraftLoadState;
+  confirmedBy: string;
+  confirmedFeeState: ConfirmedFeeLoadState;
+}): string | null {
+  if (input.draftState.kind === "loading") {
+    return "Waiting for Fee Evaluation draft.";
+  }
+  if (input.draftState.kind === "not_ready") {
+    return "Confirm Matrix authority before confirming Fee.";
+  }
+  if (input.draftState.kind === "error") {
+    return input.draftState.message;
+  }
+  if (input.confirmedFeeState.kind === "loading") {
+    return "Waiting for Confirmed Fee status.";
+  }
+  if (!input.confirmedBy.trim()) {
+    return "Enter confirmed by before confirming.";
+  }
+  return null;
 }
 
 async function loadPageContext(projectId: string): Promise<{

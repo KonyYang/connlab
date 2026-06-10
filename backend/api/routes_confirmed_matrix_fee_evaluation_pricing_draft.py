@@ -47,6 +47,7 @@ class FeeEvaluationPricingDraftResponse(BaseModel):
     saved_confirmed_matrix_id: str | None = None
     saved_confirmed_revision: int | None = None
     saved_fee_rule_version_id: str | None = None
+    saved_draft_edit_id: str | None = None
     saved_updated_at: str | None = None
     payload: ConfirmedMatrixFeeEvaluationEditedFileRequest | None = None
 
@@ -109,6 +110,7 @@ def _to_response(
         saved_confirmed_matrix_id=snapshot.confirmed_matrix_id if snapshot else None,
         saved_confirmed_revision=snapshot.confirmed_revision if snapshot else None,
         saved_fee_rule_version_id=snapshot.fee_rule_version_id if snapshot else None,
+        saved_draft_edit_id=snapshot.draft_edit_id if snapshot else None,
         saved_updated_at=snapshot.updated_at if snapshot else None,
         payload=_to_payload(snapshot) if result.status == "current" and snapshot else None,
     )

@@ -6,6 +6,7 @@ import { ApiRequestError } from "../../api/client";
 const apiMocks = vi.hoisted(() => ({
   fetchMatrixEditorSession: vi.fn(),
   confirmMatrixEditorSession: vi.fn(),
+  generateMatrixEditorTestRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
   commitMatrixImport: vi.fn(),
   matrixPreviewPdfUrl: vi.fn((token: string) => `/api/pdf/${token}`),
@@ -26,6 +27,7 @@ vi.mock("../../api/client", () => {
     ApiRequestError: MockApiRequestError,
     fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
+    generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
     commitMatrixImport: apiMocks.commitMatrixImport,
     matrixPreviewPdfUrl: apiMocks.matrixPreviewPdfUrl,
@@ -137,6 +139,27 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       message: "Matrix confirmed (v4).",
       confirmed_snapshot: null,
     });
+    apiMocks.generateMatrixEditorTestRecordDraftDownload.mockResolvedValue({
+      blob: new Blob(["docx"], {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      }),
+      fileName: "DL-2026 Test Record Preview - Unconfirmed Matrix draft.docx",
+    });
+    if (!window.URL.createObjectURL) {
+      Object.defineProperty(window.URL, "createObjectURL", {
+        configurable: true,
+        value: vi.fn(),
+      });
+    }
+    if (!window.URL.revokeObjectURL) {
+      Object.defineProperty(window.URL, "revokeObjectURL", {
+        configurable: true,
+        value: vi.fn(),
+      });
+    }
+    vi.spyOn(window.URL, "createObjectURL").mockReturnValue("blob:test-record-preview");
+    vi.spyOn(window.URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
@@ -150,6 +173,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
     expect(screen.getByText("spec.docx")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Test record" })).toBeTruthy();
     const completionDock = screen.getByRole("contentinfo", { name: "Matrix editor completion actions" });
     expect((completionDock as HTMLElement).classList.contains("matrix-editor-completion-dock")).toBe(true);
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
@@ -157,6 +181,38 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Confirm As Active Matrix")).toBeNull();
     expect(screen.queryByText("Create Revision Draft")).toBeNull();
     expect(screen.queryByText("Confirm Revision")).toBeNull();
+  });
+
+  it("downloads a Test Record preview from current unsaved Matrix Editor state", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Row 1 method"), {
+      target: { value: "Updated unsaved UI method" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
+
+    await waitFor(() =>
+      expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).toHaveBeenCalledTimes(1)
+    );
+    const [projectId, payload] = apiMocks.generateMatrixEditorTestRecordDraftDownload.mock.calls[0];
+    expect(projectId).toBe("P1");
+    expect(payload.source).toBe("matrix_editor_current_ui_state");
+    expect(payload.groups).toEqual([
+      {
+        group_key: "g1",
+        group_label: "1",
+        sample_quantity_expression: "5",
+      },
+    ]);
+    expect(payload.rows[0]).toMatchObject({
+      test_item: "Visual Examination",
+      method: "Updated unsaved UI method",
+      condition: "10x min magnification",
+      requirement: "No detrimental condition",
+      group_values: { g1: "1" },
+    });
+    expect(screen.getByText("Downloaded unconfirmed Test Record preview.")).toBeTruthy();
   });
 
   it("keeps Append disabled in import modal", async () => {

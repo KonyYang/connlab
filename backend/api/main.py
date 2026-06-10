@@ -56,6 +56,9 @@ from backend.api.routes_confirmed_matrix_fee_evaluation_export import (
 from backend.api.routes_confirmed_matrix_fee_evaluation_pricing_draft import (
     router as confirmed_matrix_fee_evaluation_pricing_draft_router,
 )
+from backend.api.routes_confirmed_fee_version import (
+    router as confirmed_fee_version_router,
+)
 from backend.api.routes_confirmed_matrix_test_record_generation import (
     router as confirmed_matrix_test_record_generation_router,
 )
@@ -68,6 +71,9 @@ from backend.api.routes_confirmed_matrix_active_snapshot import (
 from backend.api.routes_matrix_editor_session import (
     router as matrix_editor_session_router,
 )
+from backend.api.routes_matrix_editor_test_record_generation import (
+    router as matrix_editor_test_record_generation_router,
+)
 from backend.api.routes_project_output_records import (
     router as project_output_records_router,
 )
@@ -76,6 +82,9 @@ from backend.api.routes_section2_completion_preview import (
 )
 from backend.api.routes_section2_write_back import (
     router as section2_write_back_router,
+)
+from backend.api.routes_project_section2_sync import (
+    router as project_section2_sync_router,
 )
 from backend.api.routes_test_record_fee_dataset_preview import (
     router as test_record_fee_dataset_preview_router,
@@ -114,13 +123,16 @@ app.include_router(confirmed_matrix_test_record_preview_router)
 app.include_router(confirmed_matrix_fee_draft_router)
 app.include_router(confirmed_matrix_fee_evaluation_export_router)
 app.include_router(confirmed_matrix_fee_evaluation_pricing_draft_router)
+app.include_router(confirmed_fee_version_router)
 app.include_router(confirmed_matrix_test_record_generation_router)
 app.include_router(confirmed_matrix_authority_history_router)
 app.include_router(confirmed_matrix_active_snapshot_router)
 app.include_router(matrix_editor_session_router)
+app.include_router(matrix_editor_test_record_generation_router)
 app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)
+app.include_router(project_section2_sync_router)
 app.include_router(test_record_fee_dataset_preview_router)
 app.include_router(test_record_fee_document_generation_router)
 

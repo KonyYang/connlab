@@ -2,11 +2,11 @@
 
 ## Status
 
-Controlled series registered. TASK_306 is complete; TASK_307 requires its own task file, executable plan, and explicit approval before implementation.
+Controlled series registered. TASK_306, TASK_307, TASK_308, TASK_309, and TASK_310 are complete. TASK_311 requires a task file, executable plan, and explicit approval before implementation.
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current board context: TASK_306 is complete. No TASK_307 implementation is active until a task file and executable plan are approved.
+Current board context: TASK_306, TASK_307, TASK_308, TASK_309, and TASK_310 are complete. TASK_311 is the next planned follow-up and must start with task definition and executable planning.
 
 ## Goal
 
@@ -14,7 +14,7 @@ Move ConnLab from separate Matrix / Test Record / Fee Evaluation / Folder capabi
 
 ```text
 Project Workbench folder entry
-  -> Confirmed Matrix Test Record draft entry
+  -> Matrix Editor Test Record draft preview entry
   -> Confirm Fee authority
   -> Fee stale guard
   -> Section 2 sync
@@ -56,36 +56,38 @@ Expose the existing `ProjectFolderCreationPanel` in Project Workbench so operato
 
 V1 is frontend wiring only. It does not create a package orchestrator and does not generate Test Record, Fee Form, Customer Feedback Form, or evidence placement.
 
-### TASK_307_CONFIRMED_MATRIX_TEST_RECORD_DRAFT_ENTRY
+### TASK_307_MATRIX_EDITOR_TEST_RECORD_DRAFT_PREVIEW_ENTRY
 
-Planned follow-up.
+Complete.
 
-Expose the existing confirmed-Matrix Test Record draft download action in Workbench.
+Add a `Test record` action to Matrix Editor so operators can download and inspect a Test Record draft generated from the current Matrix Editor page state at click time, including unconfirmed visible edits. V1 captures this by sending a bounded current UI state payload, similar to Fee Evaluation `Fee Form`, without forcing a Matrix draft save first.
 
-Important boundary: V1 uses active Confirmed Matrix authority. It is not a Matrix Editor unconfirmed-draft Word preview. If an unconfirmed Matrix Editor Word preview is needed, that must become a separate later task.
+Important boundary: this is an immediate draft preview/download for operator review before Confirm Matrix. It must not require selecting historical draft versions, export all revisions, register a current project output, save the Matrix draft as a side effect, create a Confirmed Matrix authority snapshot, publish to the project folder, or move anything into the official public-drive package. The downloaded file must be visibly marked as Preview / Unconfirmed Matrix draft. The Workbench Test Record remains the active Confirmed Matrix authority version for later package preview/execute tasks.
 
 ### TASK_308_CONFIRMED_FEE_VERSION_FOUNDATION
 
-Planned follow-up.
+Complete.
 
-Add a Confirm Fee backend foundation that snapshots the current Fee Evaluation pricing draft, active Confirmed Matrix id/revision, active fee rule version, and current totals into a versioned confirmed fee authority record.
+Added a Confirm Fee backend foundation that snapshots the current saved Fee Evaluation pricing draft, active Confirmed Matrix id/revision, active fee rule version, and current totals into a versioned confirmed fee authority record.
 
 ### TASK_309_FEE_CONFIRM_UI_AND_STALE_GUARD
 
-Planned follow-up.
+Complete.
 
-Add the operator-facing Confirm Fee action and confirmed/stale status in Fee Evaluation. Confirmed Fee becomes stale when the active Matrix authority or active fee rule version changes.
+Added the operator-facing Confirm Fee action and confirmed/stale/local-unconfirmed status in Fee Evaluation. Confirm Fee saves the current visible pricing draft first, requires the returned saved pricing draft id, then creates a Confirmed Fee authority version from full `All Group` totals. The page shows unconfirmed saved changes when the latest saved pricing draft id differs from the latest Confirmed Fee pricing draft id, and local edits after confirmation also mark the page unconfirmed.
 
 ### TASK_310_PROJECT_SECTION2_SYNC_FROM_CONFIRMED_MATRIX
 
-Planned follow-up.
+Complete.
 
-Add an explicit sync operation that copies Confirmed Matrix schedule fields into Application Form Section 2 fields:
+Added an explicit sync operation that copies Confirmed Matrix schedule fields into Application Form Section 2 fields:
 
 - `sample_received_date` -> `received_date`
 - `estimated_completion_date` -> `estimated_completion_date`
 
 This is not an implicit side effect of Confirm Matrix.
+
+V1 scope is structured-data sync only. It updates Application Form Section 2 date fields in SQLite from active Confirmed Matrix authority values. It does not write the Word application form, register a ProjectOutputRecord, generate Customer Feedback, publish to public drive, or start package orchestration. It blocks ambiguous multiple Application Form targets and requires POST sync to match the previewed Confirmed Matrix id/revision.
 
 ### TASK_311_CUSTOMER_FEEDBACK_FORM_GENERATION
 

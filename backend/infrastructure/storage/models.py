@@ -379,3 +379,34 @@ class FeeEvaluationPricingDraftEditModel(Base):
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ConfirmedFeeVersionModel(Base):
+    """Database row for one immutable Confirmed Fee authority version."""
+
+    __tablename__ = "confirmed_fee_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "confirmed_fee_revision",
+            name="uq_confirmed_fee_project_revision",
+        ),
+    )
+
+    confirmed_fee_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    confirmed_fee_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    confirmed_matrix_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    confirmed_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    fee_rule_version_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    pricing_draft_edit_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    pricing_effective_from: Mapped[str | None] = mapped_column(String(64))
+    summary_json: Mapped[str] = mapped_column(Text, nullable=False)
+    pricing_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    confirmed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    confirmed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    confirmation_note: Mapped[str | None] = mapped_column(Text)
