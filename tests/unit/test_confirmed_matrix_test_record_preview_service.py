@@ -28,7 +28,7 @@ def test_confirmed_matrix_test_record_preview_happy_path_preserves_group_row_tok
     assert preview.preview_status == "ready"
     assert [group.group_key for group in preview.groups] == ["g1", "g2"]
     assert preview.groups[0].sample_quantity_expression == "5"
-    assert [step.raw_token for step in preview.groups[0].steps] == ["1", "2(a)", "5"]
+    assert [step.raw_token for step in preview.groups[0].steps] == ["1", "2", "5"]
     assert preview.groups[0].steps[0].section == "6.1"
     assert preview.groups[0].steps[0].method == "M1"
 
@@ -61,6 +61,32 @@ def test_confirmed_matrix_test_record_preview_empty_when_active_authority_has_no
     preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
     assert preview.preview_status == "empty"
     assert preview.groups == ()
+
+
+def test_confirmed_matrix_test_record_preview_uses_numeric_raw_token_for_suffixed_steps() -> None:
+    service = ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                cells=(
+                    ConfirmedMatrixCell(
+                        confirmed_cell_id="cmc-1",
+                        confirmed_matrix_id="cmv-1",
+                        confirmed_row_id="cmr-1",
+                        confirmed_group_id="cmg-1",
+                        draft_row_id="pmdr-1",
+                        draft_group_id="pmdg-1",
+                        cell_value="3(a)",
+                    ),
+                )
+            )
+        )
+    )
+
+    preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+
+    step = preview.groups[0].steps[0]
+    assert step.raw_token == "3"
+    assert step.sequence == 3
 
 
 def test_confirmed_matrix_test_record_preview_uses_empty_strings_for_missing_fields() -> None:

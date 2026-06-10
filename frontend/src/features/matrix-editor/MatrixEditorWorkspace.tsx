@@ -1135,7 +1135,10 @@ function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[
   if (normalized === "") {
     return { isValid: true, numbers: [], tokens: [], errorMessage: "" };
   }
-  const normalizedForSplit = normalized.replaceAll("\n", ",").replaceAll("，", ",").replaceAll(";", ",");
+  const normalizedForSplit = normalized
+    .replaceAll("\n", ",")
+    .replaceAll(";", ",")
+    .replace(/(\d|\)|[*#])\s+(?=\d)/g, "$1,");
   const parts = normalizedForSplit.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
   const tokens: ParsedStepToken[] = [];
   for (const part of parts) {
@@ -1145,7 +1148,7 @@ function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[
         isValid: false,
         numbers: [],
         tokens: [],
-        errorMessage: "Only digits and commas are allowed (extended tokens: 3(a), 4(1), 6#, 10*).",
+        errorMessage: "Only digits, commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).",
       };
     }
     tokens.push({

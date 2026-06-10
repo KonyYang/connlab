@@ -134,6 +134,9 @@ from backend.application.matrix_editor_test_record_document_generation_service i
 from backend.application.project_section2_sync_service import (
     ProjectSection2SyncService,
 )
+from backend.application.customer_feedback_form_generation_service import (
+    CustomerFeedbackFormGenerationService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -174,6 +177,7 @@ from backend.infrastructure.files import IntakeStorage
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
     FeeEvaluationWorkbookGateway,
+    CustomerFeedbackWorkbookGateway,
     TestRecordDocumentGateway,
     LtrWorkbookTransactionConfig,
     LtrWorkbookTransactionGateway,
@@ -607,6 +611,19 @@ def get_no_ltr_project_cleanup_service(
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings.load()
+
+
+def get_customer_feedback_form_generation_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> CustomerFeedbackFormGenerationService:
+    """Build the Customer Feedback Form generation service for API routes."""
+    return CustomerFeedbackFormGenerationService(
+        project_store=ProjectRepository(session),
+        external_resource_store=ExternalResourceRepository(session),
+        workbook_gateway=CustomerFeedbackWorkbookGateway(),
+        generated_root=settings.data_dir / "generated_customer_feedback",
+    )
 
 
 def get_duplicate_draft_history_cleanup_service(

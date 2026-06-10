@@ -163,7 +163,7 @@ def test_gateway_orders_group_steps_by_step_token(tmp_path: Path) -> None:
     )
 
     step_table = Document(output).tables[0]
-    assert [row.cells[0].text for row in step_table.rows[1:]] == ["2", "4(b)", "9"]
+    assert [row.cells[0].text for row in step_table.rows[1:]] == ["2", "4", "9"]
     assert [row.cells[1].text for row in step_table.rows[1:]] == [
         "LLCR",
         "High temp",

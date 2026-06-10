@@ -13,6 +13,21 @@ def test_parse_step_tokens_extracts_sequence_and_suffix() -> None:
     assert [item.suffix_note for item in parsed] == [None, "(a)", "(b)", None]
 
 
+def test_parse_step_tokens_splits_full_width_commas_after_confirmation() -> None:
+    parsed, warnings = parse_step_tokens("8，10")
+    assert warnings == ()
+    assert [item.raw_token for item in parsed] == ["8", "10"]
+    assert [item.sequence for item in parsed] == [8, 10]
+
+
+def test_parse_step_tokens_uses_numeric_raw_token_and_preserves_suffix_note() -> None:
+    parsed, warnings = parse_step_tokens("3(a),4(b),6#,10*")
+    assert warnings == ()
+    assert [item.raw_token for item in parsed] == ["3", "4", "6", "10"]
+    assert [item.sequence for item in parsed] == [3, 4, 6, 10]
+    assert [item.suffix_note for item in parsed] == ["(a)", "(b)", "#", "*"]
+
+
 def test_parse_step_tokens_reports_invalid_values() -> None:
     parsed, warnings = parse_step_tokens("A, B")
     assert parsed == ()

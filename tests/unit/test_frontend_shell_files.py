@@ -3516,7 +3516,7 @@ def test_task230_matrix_editor_step_token_validation_guards_are_wired() -> None:
 
     for required_source in [
         "function parseStepTokens(",
-        "Only digits and commas are allowed",
+        "Only digits, commas, and spaces are allowed",
         "missing:",
         "duplicates:",
         "stepCellErrorMessageByKey",
@@ -3532,6 +3532,53 @@ def test_task230_matrix_editor_step_token_validation_guards_are_wired() -> None:
         assert required_source in matrix_editor_source
 
     assert ".matrix-editor-inline-input.is-invalid" in styles_source
+
+
+def test_task310a_matrix_editor_step_token_separator_hotfix_is_wired() -> None:
+    """TASK_310A keeps Chinese comma and whitespace step separators covered."""
+    matrix_editor_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_editor_test_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.test.tsx"
+    ).read_text(encoding="utf-8")
+
+    for required_source in [
+        '.replaceAll("，", ",")',
+        r'.replace(/(\d|\)|[*#])\s+(?=\d)/g, "$1,")',
+        "Only digits, commas, and spaces are allowed",
+    ]:
+        assert required_source in matrix_editor_source
+
+    for required_test_source in [
+        "treats Chinese commas and spaces as step separators",
+        "Group 1: 5 steps",
+        "Step 5 description",
+    ]:
+        assert required_test_source in matrix_editor_test_source
+
+
+def test_task310b_workbench_projection_uses_numeric_step_labels() -> None:
+    """TASK_310B keeps Workbench Matrix labels numeric-only for suffixed tokens."""
+    selector_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "projectWorkbenchMatrixProjectionSelectors.ts"
+    ).read_text(encoding="utf-8")
+    panel_test_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.test.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "const visibleToken = `${step.sequence}`;" in selector_source
+    assert "rawToken: visibleToken" in selector_source
+    assert "displays numeric-only labels for suffixed confirmed tokens" in panel_test_source
+    assert 'queryByRole("button", { name: "3(a)" })' in panel_test_source
 
 
 def test_task231_matrix_editor_step_preview_derives_selected_group_output_rows() -> None:

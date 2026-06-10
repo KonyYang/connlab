@@ -515,10 +515,16 @@ def _normalize_group_number_label(group_label: str) -> str:
 
 
 def _step_display_text(step: object) -> str:
+    sequence = getattr(step, "sequence", None)
+    if isinstance(sequence, int):
+        return str(sequence)
     raw_token = _as_text(getattr(step, "raw_token", "")).strip()
     if raw_token:
+        match = re.search(r"\d+", raw_token)
+        if match is not None:
+            return str(int(match.group(0)))
         return raw_token
-    return _as_text(getattr(step, "sequence", None))
+    return _as_text(sequence)
 
 
 def _step_sort_key(step: object) -> tuple[int, int, str]:

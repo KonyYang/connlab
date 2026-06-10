@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 
 
-_TOKEN_SPLIT_RE = re.compile(r"[,\s]+")
+_TOKEN_SPLIT_RE = re.compile(r"[,，;\s]+")
 _TOKEN_PARSE_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
 
 
@@ -20,7 +20,7 @@ class ParsedStepToken:
 
 
 def parse_step_tokens(value: str | None) -> tuple[tuple[ParsedStepToken, ...], tuple[str, ...]]:
-    """Parse step tokens separated by comma, whitespace, or newline."""
+    """Parse step tokens separated by common comma, semicolon, or whitespace separators."""
     if value is None:
         return (), ("Step token is missing.",)
     normalized = value.strip()
@@ -33,11 +33,12 @@ def parse_step_tokens(value: str | None) -> tuple[tuple[ParsedStepToken, ...], t
         if match is None:
             warnings.append(f"Unrecognized step token: '{token}'.")
             continue
+        sequence = int(match.group("number"))
         suffix = match.group("suffix").strip() or None
         parsed.append(
             ParsedStepToken(
-                raw_token=token,
-                sequence=int(match.group("number")),
+                raw_token=str(sequence),
+                sequence=sequence,
                 suffix_note=suffix,
             )
         )

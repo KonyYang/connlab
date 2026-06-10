@@ -211,6 +211,39 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(screen.getByRole("button", { name: "3" })).toBeTruthy();
   });
 
+  it("displays numeric-only labels for suffixed confirmed tokens", async () => {
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
+      project_id: "P1",
+      confirmed_matrix_id: "cm-1",
+      preview_status: "ready",
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group 1",
+          sample_quantity_expression: "3",
+          step_count: 1,
+          steps: [
+            {
+              sequence: 3,
+              raw_token: "3(a)",
+              test_item: "Durability",
+              section: "8.1",
+              method: "EIA-364-09",
+              condition: "",
+              requirement: "No damage",
+            },
+          ],
+        },
+      ],
+    });
+
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+
+    await screen.findByRole("columnheader", { name: "Group 1" });
+    expect(screen.getByRole("button", { name: "3" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "3(a)" })).toBeNull();
+  });
+
   it("keeps LLCR in one row when step requirements differ", async () => {
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",

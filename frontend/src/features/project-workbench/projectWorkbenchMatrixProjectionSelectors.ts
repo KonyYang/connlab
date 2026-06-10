@@ -111,11 +111,12 @@ function buildTokenCell(
   group: ConfirmedMatrixTestRecordPreviewGroup,
   step: ConfirmedMatrixTestRecordPreviewStep
 ): MatrixProjectionTokenCell {
+  const visibleToken = `${step.sequence}`;
   return {
     tokenReference: `${rowKey}:${group.group_key}:${step.sequence}:${step.raw_token}`,
     groupKey: group.group_key,
     groupLabel: group.group_label,
-    rawToken: step.raw_token,
+    rawToken: visibleToken,
     sequence: step.sequence,
     statusTone: deriveMatrixProjectionStatusTone(step.sequence),
     sampleQuantityExpression: group.sample_quantity_expression || "-",

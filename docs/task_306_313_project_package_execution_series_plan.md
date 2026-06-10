@@ -2,11 +2,11 @@
 
 ## Status
 
-Controlled series registered. TASK_306, TASK_307, TASK_308, TASK_309, and TASK_310 are complete. TASK_311 requires a task file, executable plan, and explicit approval before implementation.
+Controlled series registered. TASK_306, TASK_307, TASK_308, TASK_309, TASK_310, and TASK_311 are complete. TASK_312 requires a task file, executable plan, and explicit approval before implementation.
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current board context: TASK_306, TASK_307, TASK_308, TASK_309, and TASK_310 are complete. TASK_311 is the next planned follow-up and must start with task definition and executable planning.
+Current board context: TASK_306, TASK_307, TASK_308, TASK_309, TASK_310, and TASK_311 are complete. TASK_312 is the next planned follow-up and must start with task definition and executable planning.
 
 ## Goal
 
@@ -91,9 +91,9 @@ V1 scope is structured-data sync only. It updates Application Form Section 2 dat
 
 ### TASK_311_CUSTOMER_FEEDBACK_FORM_GENERATION
 
-Planned follow-up.
+Complete.
 
-Add a controlled Customer Feedback Form generator from `E-4243_D Customer Feedback Form.xlsx`, copying the template and filling safe project identity fields.
+Added a controlled Customer Feedback Form generator that locates exactly one `.xlsx` template whose filename contains `E-4243` from the configured Template folder, copies the template to a controlled local generated output location, and returns generated file metadata and warnings.
 
 This task owns the form generator only. It does not orchestrate the full project package.
 
@@ -132,5 +132,5 @@ The orchestrator must call application services directly, not call backend HTTP 
 - `ProjectFolderCreationPanel` already exists and can be reused for TASK_306.
 - `TestRecordDraftGenerationButton` already exists but is confirmed-Matrix based.
 - Fee Evaluation edit/export/persistence is complete through TASK_305.
-- Customer Feedback Form generation is future scope until TASK_311.
+- Customer Feedback Form generation foundation is complete through TASK_311.
 - Clarizen tracking and lab execution are intentionally deferred until the project package chain is stable.

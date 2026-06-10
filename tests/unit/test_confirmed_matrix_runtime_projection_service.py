@@ -108,6 +108,65 @@ def test_confirmed_matrix_runtime_projection_sparse_mapping_omits_missing_cells(
     assert "Missing step token value." not in snapshot.parser_warnings
 
 
+def test_confirmed_matrix_runtime_projection_splits_full_width_comma_tokens() -> None:
+    service = ConfirmedMatrixRuntimeProjectionService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                cells=(
+                    ConfirmedMatrixCell(
+                        confirmed_cell_id="cmc-1",
+                        confirmed_matrix_id="cmv-1",
+                        confirmed_row_id="cmr-1",
+                        confirmed_group_id="cmg-1",
+                        draft_row_id="pmdr-1",
+                        draft_group_id="pmdg-1",
+                        cell_value="8，10",
+                    ),
+                )
+            )
+        ),
+        runtime_projection_service=RuntimeProjectionReadOnlyService(),
+    )
+
+    snapshot = service.build_snapshot(
+        BuildConfirmedMatrixRuntimeProjectionCommand(project_id="P1")
+    )
+
+    tokens = snapshot.matrix_overview.groups[0].tokens
+    assert [token.raw_token for token in tokens] == ["8", "10"]
+    assert [token.sequence_number for token in tokens] == [8, 10]
+
+
+def test_confirmed_matrix_runtime_projection_uses_numeric_raw_token_for_suffixed_steps() -> None:
+    service = ConfirmedMatrixRuntimeProjectionService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                cells=(
+                    ConfirmedMatrixCell(
+                        confirmed_cell_id="cmc-1",
+                        confirmed_matrix_id="cmv-1",
+                        confirmed_row_id="cmr-1",
+                        confirmed_group_id="cmg-1",
+                        draft_row_id="pmdr-1",
+                        draft_group_id="pmdg-1",
+                        cell_value="3(a)",
+                    ),
+                )
+            )
+        ),
+        runtime_projection_service=RuntimeProjectionReadOnlyService(),
+    )
+
+    snapshot = service.build_snapshot(
+        BuildConfirmedMatrixRuntimeProjectionCommand(project_id="P1")
+    )
+
+    token = snapshot.matrix_overview.groups[0].tokens[0]
+    assert token.raw_token == "3"
+    assert token.sequence_number == 3
+    assert token.suffix_note == "(a)"
+
+
 class _ConfirmedStore:
     def __init__(self, active: ConfirmedMatrixSnapshot | None) -> None:
         self.active = active

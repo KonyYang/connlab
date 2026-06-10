@@ -59,6 +59,9 @@ from backend.infrastructure.office.outlook_msg_gateway import (
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
 from backend.infrastructure.office.test_record_document_gateway import TestRecordDocumentGateway
 from backend.infrastructure.office.fee_evaluation_workbook_gateway import FeeEvaluationWorkbookGateway
+from backend.infrastructure.office.customer_feedback_workbook_gateway import (
+    CustomerFeedbackWorkbookGateway,
+)
 
 __all__ = [
     "ImportedMailAttachment",
@@ -105,5 +108,6 @@ __all__ = [
     "FeeEvaluationWorkbookWriteResult",
     "TestRecordDocumentGateway",
     "FeeEvaluationWorkbookGateway",
+    "CustomerFeedbackWorkbookGateway",
     "probe_msg_samples",
 ]
