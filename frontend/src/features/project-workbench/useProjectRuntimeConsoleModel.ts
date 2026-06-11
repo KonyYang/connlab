@@ -10,12 +10,17 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "folderReady"
   | "folderResources"
   | "latestLtr"
+  | "activeConfirmedMatrixSnapshot"
+  | "activeConfirmedMatrixLoading"
   | "matrixAuthorityDraft"
   | "matrixCandidateDraft"
   | "matrixDraft"
   | "matrixDraftError"
   | "matrixDraftLoading"
   | "message"
+  | "packagePreview"
+  | "packagePreviewError"
+  | "packagePreviewLoading"
   | "project"
   | "projectId"
   | "runtimeAuthoritySync"
@@ -29,6 +34,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "section2SyncSyncing"
   | "setRuntimeSelectedTokenReference"
   | "onFolderCreated"
+  | "onRefreshPackagePreview"
   | "onRefreshSection2Sync"
   | "onSyncSection2"
   | "versionStatus"
@@ -43,12 +49,17 @@ export function selectProjectRuntimeConsoleModel(
     folderReady: model.folderReady,
     folderResources: model.folderResources,
     latestLtr: model.latestLtr,
+    activeConfirmedMatrixSnapshot: model.activeConfirmedMatrixSnapshot,
+    activeConfirmedMatrixLoading: model.activeConfirmedMatrixLoading,
     matrixAuthorityDraft: model.matrixAuthorityDraft,
     matrixCandidateDraft: model.matrixCandidateDraft,
     matrixDraft: model.matrixDraft,
     matrixDraftError: model.matrixDraftError,
     matrixDraftLoading: model.matrixDraftLoading,
     message: model.message,
+    packagePreview: model.packagePreview,
+    packagePreviewError: model.packagePreviewError,
+    packagePreviewLoading: model.packagePreviewLoading,
     project: model.project,
     projectId: model.projectId,
     runtimeAuthoritySync: model.runtimeAuthoritySync,
@@ -62,6 +73,7 @@ export function selectProjectRuntimeConsoleModel(
     section2SyncSyncing: model.section2SyncSyncing,
     setRuntimeSelectedTokenReference: model.setRuntimeSelectedTokenReference,
     onFolderCreated: model.onFolderCreated,
+    onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshSection2Sync: model.onRefreshSection2Sync,
     onSyncSection2: model.onSyncSection2,
     versionStatus: model.versionStatus

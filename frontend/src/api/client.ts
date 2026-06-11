@@ -79,6 +79,47 @@ export type ProjectSection2SyncRequest = {
   operator?: string | null;
 };
 
+export type ProjectPackagePreviewStatus = "ready" | "blocked";
+export type ProjectPackagePreviewItemStatus =
+  | "ready"
+  | "blocked"
+  | "warning"
+  | "deferred";
+
+export type ProjectPackageFolderPreview = {
+  status: ProjectPackagePreviewItemStatus;
+  path?: string | null;
+  message: string;
+};
+
+export type ProjectPackageAuthorityContext = {
+  confirmed_matrix_id?: string | null;
+  confirmed_revision?: number | null;
+  confirmed_fee_id?: string | null;
+  confirmed_fee_revision?: number | null;
+  confirmed_fee_status: string;
+};
+
+export type ProjectPackagePreviewItem = {
+  key: string;
+  label: string;
+  status: ProjectPackagePreviewItemStatus;
+  target_folder?: string | null;
+  target_path?: string | null;
+  message: string;
+};
+
+export type ProjectPackagePreview = {
+  project_id: string;
+  status: ProjectPackagePreviewStatus;
+  project_folder: ProjectPackageFolderPreview;
+  authority_context: ProjectPackageAuthorityContext;
+  required_items: ProjectPackagePreviewItem[];
+  optional_items: ProjectPackagePreviewItem[];
+  blockers: string[];
+  warnings: string[];
+};
+
 export type PrecheckIssue = {
   issue_id: string;
   category: string;
@@ -2153,6 +2194,20 @@ export function fetchActiveConfirmedMatrixSnapshot(
   );
 }
 
+export function fetchConfirmedMatrixRuntimeProjectionSnapshot(
+  projectId: string,
+  selectedTokenReference?: string | null
+): Promise<RuntimeProjectionSnapshotResponse> {
+  const search = new URLSearchParams();
+  if (selectedTokenReference) {
+    search.set("selected_token_reference", selectedTokenReference);
+  }
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  return requestJson<RuntimeProjectionSnapshotResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/runtime-projection/confirmed-matrix-snapshot${suffix}`
+  );
+}
+
 export function fetchMatrixEditorSession(
   projectId: string
 ): Promise<MatrixEditorSessionSeed> {
@@ -2326,6 +2381,13 @@ export function fetchProjectSection2SyncPreview(
 ): Promise<ProjectSection2SyncResponse> {
   return requestJson<ProjectSection2SyncResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/section2-sync/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function fetchProjectPackagePreview(projectId: string): Promise<ProjectPackagePreview> {
+  return requestJson<ProjectPackagePreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/project-package/preview`,
     { cache: "no-store" }
   );
 }

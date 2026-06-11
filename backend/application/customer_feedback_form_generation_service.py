@@ -6,6 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from backend.application.customer_feedback_template_discovery import (
+    CustomerFeedbackTemplateAmbiguousError as TemplateDiscoveryAmbiguousError,
+    CustomerFeedbackTemplateDiscoveryError,
+    discover_customer_feedback_template,
+)
 from backend.domain import ExternalResource, ExternalResourceType, Project
 
 
@@ -100,7 +105,7 @@ class CustomerFeedbackFormGenerationService:
                 f"Project was not found: {command.project_id}"
             )
         template_folder = self._template_folder()
-        template_path = _discover_customer_feedback_template(template_folder)
+        template_path = _discover_template(template_folder)
         output_dir = self._controlled_output_dir(command)
         output_path = _available_output_path(output_dir, _output_file_name(project))
         identity = _identity_from_project(project)
@@ -156,29 +161,13 @@ class CustomerFeedbackFormGenerationService:
         return resolved_output_dir
 
 
-def _discover_customer_feedback_template(template_folder: Path) -> Path:
-    candidates = sorted(
-        (
-            path
-            for path in template_folder.iterdir()
-            if path.is_file()
-            and path.suffix.lower() == ".xlsx"
-            and "e-4243" in path.name.lower()
-        ),
-        key=lambda path: path.name.lower(),
-    )
-    if not candidates:
-        raise CustomerFeedbackReadinessError(
-            "Customer Feedback template was not found in Template folder. "
-            "Add an .xlsx file whose name contains E-4243."
-        )
-    if len(candidates) > 1:
-        names = ", ".join(path.name for path in candidates)
-        raise CustomerFeedbackTemplateAmbiguousError(
-            "Multiple Customer Feedback templates were found. "
-            f"Keep exactly one E-4243 .xlsx template in Template folder: {names}"
-        )
-    return candidates[0]
+def _discover_template(template_folder: Path) -> Path:
+    try:
+        return discover_customer_feedback_template(template_folder)
+    except TemplateDiscoveryAmbiguousError as exc:
+        raise CustomerFeedbackTemplateAmbiguousError(str(exc)) from exc
+    except CustomerFeedbackTemplateDiscoveryError as exc:
+        raise CustomerFeedbackReadinessError(str(exc)) from exc
 
 
 def _identity_from_project(project: Project) -> dict[str, str]:

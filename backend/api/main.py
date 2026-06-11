@@ -89,6 +89,9 @@ from backend.api.routes_project_section2_sync import (
 from backend.api.routes_customer_feedback_form_generation import (
     router as customer_feedback_form_generation_router,
 )
+from backend.api.routes_project_package_preview import (
+    router as project_package_preview_router,
+)
 from backend.api.routes_test_record_fee_dataset_preview import (
     router as test_record_fee_dataset_preview_router,
 )
@@ -137,6 +140,7 @@ app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)
 app.include_router(project_section2_sync_router)
 app.include_router(customer_feedback_form_generation_router)
+app.include_router(project_package_preview_router)
 app.include_router(test_record_fee_dataset_preview_router)
 app.include_router(test_record_fee_document_generation_router)
 

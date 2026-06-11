@@ -165,6 +165,7 @@ export default function App(): ReactElement {
           onOpenFeeEvaluation={() =>
             navigate(`/projects/${encodeURIComponent(route.projectId)}/fee-evaluation`)
           }
+          onOpenSettings={() => navigate("/settings")}
         />
       )}
       {route.name === "projectMatrixEditor" && (

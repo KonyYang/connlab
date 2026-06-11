@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ApiRequestError,
   confirmProjectTestPlanMatrixDraft,
   createProjectTestPlanDraft,
   executeApprovalPackage,
+  fetchActiveConfirmedMatrixSnapshot,
+  fetchConfirmedMatrixRuntimeProjectionSnapshot,
+  fetchProjectPackagePreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
   fetchProjectSection2SyncPreview,
@@ -23,6 +27,7 @@ import {
   validateProjectTestPlanMatrixDraft,
   type ApprovalPackageRequest,
   type ApprovalPackageResponse,
+  type ConfirmedMatrixSnapshot,
   type EvidencePlacementPlan,
   type EvidencePlacementResult,
   type ExternalResource,
@@ -33,6 +38,7 @@ import {
   type MatrixSourceCandidatesResponse,
   type MatrixValidationSummary,
   type Project,
+  type ProjectPackagePreview,
   type ProjectSection2SyncRequest,
   type ProjectSection2SyncResponse,
   type ProjectTestPlanDraftGroup,
@@ -73,6 +79,11 @@ export type ProjectWorkbenchModel = {
   };
   latestLtr: string | null;
   message: string | null;
+  activeConfirmedMatrixSnapshot: ConfirmedMatrixSnapshot | null;
+  activeConfirmedMatrixLoading: boolean;
+  packagePreview: ProjectPackagePreview | null;
+  packagePreviewLoading: boolean;
+  packagePreviewError: string | null;
   section2SyncPreview: ProjectSection2SyncResponse | null;
   section2SyncLoading: boolean;
   section2SyncSyncing: boolean;
@@ -130,6 +141,7 @@ export type ProjectWorkbenchModel = {
   onValidateMatrixDraft: () => Promise<void>;
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
+  onRefreshPackagePreview: () => Promise<void>;
   onRefreshSection2Sync: () => Promise<void>;
   onSyncSection2: (input: ProjectSection2SyncRequest) => Promise<void>;
   onExecuteApprovalPackage: () => Promise<void>;
@@ -216,6 +228,12 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [latestProjectFolderPath, setLatestProjectFolderPath] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeConfirmedMatrixSnapshot, setActiveConfirmedMatrixSnapshot] =
+    useState<ConfirmedMatrixSnapshot | null>(null);
+  const [activeConfirmedMatrixLoading, setActiveConfirmedMatrixLoading] = useState(true);
+  const [packagePreview, setPackagePreview] = useState<ProjectPackagePreview | null>(null);
+  const [packagePreviewLoading, setPackagePreviewLoading] = useState(false);
+  const [packagePreviewError, setPackagePreviewError] = useState<string | null>(null);
   const [section2SyncPreview, setSection2SyncPreview] =
     useState<ProjectSection2SyncResponse | null>(null);
   const [section2SyncLoading, setSection2SyncLoading] = useState(false);
@@ -233,7 +251,13 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setError
     );
     void reloadMatrixDraft();
+    void loadActiveConfirmedMatrixSnapshot(
+      projectId,
+      setActiveConfirmedMatrixSnapshot,
+      setActiveConfirmedMatrixLoading
+    );
     void onRefreshSection2Sync();
+    void onRefreshPackagePreview();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -297,8 +321,31 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   );
 
   useEffect(() => {
+    if (!project) {
+      setRuntimeProjectionSnapshot(null);
+      setRuntimeProjectionError(null);
+      return;
+    }
+
+    if (activeConfirmedMatrixSnapshot) {
+      setRuntimeProjectionLoading(true);
+      setRuntimeProjectionError(null);
+      void fetchConfirmedMatrixRuntimeProjectionSnapshot(
+        projectId,
+        runtimeSelectedTokenReference
+      )
+        .then((snapshot) => setRuntimeProjectionSnapshot(snapshot))
+        .catch((err) =>
+          setRuntimeProjectionError(
+            err instanceof Error ? err.message : "Failed to load runtime projection snapshot."
+          )
+        )
+        .finally(() => setRuntimeProjectionLoading(false));
+      return;
+    }
+
     const projectionDraft = matrixAuthorityDraft ?? matrixDraft;
-    if (!project || !projectionDraft) {
+    if (!projectionDraft) {
       setRuntimeProjectionSnapshot(null);
       setRuntimeProjectionError(null);
       return;
@@ -328,10 +375,12 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       )
       .finally(() => setRuntimeProjectionLoading(false));
   }, [
+    activeConfirmedMatrixSnapshot,
     matrixAuthorityDraft,
     matrixDraft,
     matrixValidation,
     project,
+    projectId,
     runtimeSelectedTokenReference,
     versionStatus
   ]);
@@ -437,6 +486,21 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setOutputStatusSummary,
       setError
     );
+    await onRefreshPackagePreview();
+  }
+
+  async function onRefreshPackagePreview(): Promise<void> {
+    setPackagePreviewLoading(true);
+    try {
+      const preview = await fetchProjectPackagePreview(projectId);
+      setPackagePreview(preview);
+      setPackagePreviewError(null);
+    } catch (err) {
+      setPackagePreview(null);
+      setPackagePreviewError((err as Error).message);
+    } finally {
+      setPackagePreviewLoading(false);
+    }
   }
 
   async function onRefreshSection2Sync(): Promise<void> {
@@ -460,6 +524,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setSection2SyncPreview(result);
       setSection2SyncError(null);
       setMessage("Section 2 dates synced from Confirmed Matrix.");
+      await onRefreshPackagePreview();
       setError(null);
     } catch (err) {
       setSection2SyncError((err as Error).message);
@@ -744,6 +809,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setMatrixValidation(response.validation);
       setMessage("Matrix draft confirmed as project test-plan authority.");
       await refreshOutputStatus(projectId, setOutputStatusSummary);
+      await onRefreshPackagePreview();
       setError(null);
       setMatrixDraftError(null);
     } catch (err) {
@@ -767,6 +833,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     folderResources,
     latestLtr,
     message,
+    activeConfirmedMatrixSnapshot,
+    activeConfirmedMatrixLoading,
+    packagePreview,
+    packagePreviewLoading,
+    packagePreviewError,
     section2SyncPreview,
     section2SyncLoading,
     section2SyncSyncing,
@@ -817,6 +888,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onValidateMatrixDraft,
     onConfirmMatrixDraft,
     onFolderCreated,
+    onRefreshPackagePreview,
     onRefreshSection2Sync,
     onSyncSection2,
     onExecuteApprovalPackage,
@@ -867,6 +939,26 @@ async function loadWorkbench(
     setError(null);
   } catch (err) {
     setError((err as Error).message);
+  }
+}
+
+async function loadActiveConfirmedMatrixSnapshot(
+  projectId: string,
+  setActiveConfirmedMatrixSnapshot: (snapshot: ConfirmedMatrixSnapshot | null) => void,
+  setActiveConfirmedMatrixLoading: (loading: boolean) => void
+): Promise<void> {
+  setActiveConfirmedMatrixLoading(true);
+  try {
+    const snapshot = await fetchActiveConfirmedMatrixSnapshot(projectId);
+    setActiveConfirmedMatrixSnapshot(snapshot);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      setActiveConfirmedMatrixSnapshot(null);
+    } else {
+      setActiveConfirmedMatrixSnapshot(null);
+    }
+  } finally {
+    setActiveConfirmedMatrixLoading(false);
   }
 }
 

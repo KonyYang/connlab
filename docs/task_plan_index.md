@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-06-02
-Status: no active planned task plan. Latest completed task plan is TASK_284.
+Last Updated: 2026-06-11
+Status: no active implementation plan. Latest completed task plan is TASK_313A in this index snapshot.
 
 ## Decision
 
@@ -41,10 +41,10 @@ Root-level active/proposed/review pattern:
 docs/task_XXX_*_plan.md
 ```
 
-Current active planned task plan:
+Latest completed task plan:
 
 ```text
-none
+docs/task_313a_project_workbench_lifecycle_mode_redesign_plan.md
 ```
 
 Latest completed task plan history:

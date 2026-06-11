@@ -137,6 +137,9 @@ from backend.application.project_section2_sync_service import (
 from backend.application.customer_feedback_form_generation_service import (
     CustomerFeedbackFormGenerationService,
 )
+from backend.application.project_package_preview_service import (
+    ProjectPackagePreviewService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -623,6 +626,20 @@ def get_customer_feedback_form_generation_service(
         external_resource_store=ExternalResourceRepository(session),
         workbook_gateway=CustomerFeedbackWorkbookGateway(),
         generated_root=settings.data_dir / "generated_customer_feedback",
+    )
+
+
+def get_project_package_preview_service(
+    session: Session = Depends(get_session),
+) -> ProjectPackagePreviewService:
+    """Build the read-only project package preview service."""
+    return ProjectPackagePreviewService(
+        project_store=ProjectRepository(session),
+        folder_store=ProjectFolderRecordRepository(session),
+        confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        confirmed_fee_reader=get_confirmed_fee_version_service(session),
+        section2_previewer=get_project_section2_sync_service(session),
+        external_resource_store=ExternalResourceRepository(session),
     )
 
 

@@ -1,12 +1,12 @@
-# TASK_306-TASK_313 Project Package Execution Series Plan
+# TASK_306-TASK_313A Project Package Execution Series Plan
 
 ## Status
 
-Controlled series registered. TASK_306, TASK_307, TASK_308, TASK_309, TASK_310, and TASK_311 are complete. TASK_312 requires a task file, executable plan, and explicit approval before implementation.
+Controlled series registered. TASK_306, TASK_307, TASK_308, TASK_309, TASK_310, TASK_311, TASK_312, and TASK_313A are complete. TASK_313 task file and executable plan are prepared but deferred pending explicit prioritization after TASK_314/TASK_315 are re-reviewed.
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current board context: TASK_306, TASK_307, TASK_308, TASK_309, TASK_310, and TASK_311 are complete. TASK_312 is the next planned follow-up and must start with task definition and executable planning.
+Current board context: TASK_306, TASK_307, TASK_308, TASK_309, TASK_310, TASK_311, TASK_312, and TASK_313A are complete. TASK_313 remains deferred until package execution is explicitly reprioritized.
 
 ## Goal
 
@@ -24,6 +24,8 @@ Project Workbench folder entry
 ```
 
 The series keeps Project as the lifecycle container, Matrix as the execution authority map, and generated Word/Excel files as derived delivery artifacts.
+
+TASK_313A is added as a prerequisite because the Workbench has accumulated temporary planning, registered setup, package preparation, and execution surfaces in one page. Package execution should not be added to a confusing all-in-one surface; it should be placed inside a lifecycle-mode Workbench where Package Preparation and Execution Console are distinct.
 
 ## Transition Authority Principle
 
@@ -99,21 +101,53 @@ This task owns the form generator only. It does not orchestrate the full project
 
 ### TASK_312_PROJECT_PACKAGE_ORCHESTRATOR_PREVIEW
 
-Planned follow-up.
+Complete.
 
 Add a read-only package preview that lists required inputs, generated outputs, evidence placement candidates, target folder paths, blockers, and conflicts before any file operation.
 
+V1 is read-only. It must not generate Test Record, Fee Form, or Customer Feedback files; must not copy evidence; must not write public-drive package contents; must not register `ProjectOutputRecord`; and must not call the old `/approval-package/execute` flow. Workbench UI may expose only a refresh/preview action until TASK_313 is separately approved.
+
+### TASK_313A_PROJECT_WORKBENCH_LIFECYCLE_MODE_REDESIGN
+
+Complete.
+
+Redesign Project Workbench as a lifecycle-mode driven project management console before package execution resumes.
+
+V1 introduces frontend-only lifecycle modes:
+
+- Temporary Planning: no DL/LTR, Matrix and Fee planning only.
+- Registered Setup: DL/LTR exists but no active Matrix authority, focus on Matrix editing and confirmation.
+- Package Preparation: active Matrix authority exists, show folder readiness, Section 2 sync, Confirmed Fee readiness, Customer Feedback readiness, and package preview.
+- Execution Console: active Matrix authority exists, show Matrix execution map and right Step Workspace.
+
+Scope boundary:
+
+- No backend/API/domain/storage changes.
+- No package execute.
+- No TASK_314 autosave or TASK_315 Matrix/Fee rebase.
+- No StepInstance, TestResult, evidence/image, report, AI, permission, LAN, or multi-user scope.
+
 ### TASK_313_PROJECT_PACKAGE_ORCHESTRATOR_EXECUTE
 
-Planned follow-up.
+Deferred; task file and executable plan prepared. Re-review after TASK_314/TASK_315 priority is explicitly decided or the task board is explicitly reprioritized.
 
-Execute the approved package plan by reusing existing application services and gateways:
+Execute the approved V1 package plan by reusing existing application services and gateways.
 
-- project folder generation or verified existing folder
-- confirmed-Matrix Test Record generation
-- confirmed Fee Form export
-- Customer Feedback Form generation
+V1 executes only three package files:
+
+- Confirmed Matrix Test Record
+- Confirmed Fee Form
+- Customer Feedback Form
+
+V1 target placement is the latest project folder's `Submitted Material` directory. Execution must revalidate the package preview context, stage generated files before final copy, use deterministic business-readable final filenames, block if any final target already exists, and avoid overwriting existing project output files.
+
+Deferred beyond TASK_313:
+
 - evidence placement
+- Application Form Word write-back
+- public-drive publish beyond the latest configured project folder
+- package-level `ProjectOutputRecord` registration
+- artifact-level `ProjectOutputRecord` registration from reused generation paths
 
 The orchestrator must call application services directly, not call backend HTTP routes from backend code.
 

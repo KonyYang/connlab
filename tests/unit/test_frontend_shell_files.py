@@ -59,7 +59,10 @@ def test_frontend_shell_core_files_exist() -> None:
         "src/features/project-workbench/ProjectWorkbenchMatrixAuthorityBar.tsx",
         "src/features/project-workbench/ProjectWorkbenchMatrixOverview.tsx",
         "src/features/project-workbench/ProjectWorkbenchMatrixInspector.tsx",
+        "src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+        "src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
         "src/features/project-workbench/projectWorkbenchMatrixHelpers.ts",
+        "src/features/project-workbench/projectWorkbenchLifecycleSelectors.ts",
         "src/features/project-workbench/projectWorkbenchVersionSelectors.ts",
         "src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
         "src/pages/ProjectFeeEvaluationPage.tsx",
@@ -155,6 +158,13 @@ def test_task292_fee_evaluation_review_export_page_is_wired() -> None:
     ).read_text(encoding="utf-8")
     layout_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    execution_console_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchExecutionConsole.tsx"
     ).read_text(encoding="utf-8")
     summary_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "FeeEvaluationStatusSummary.tsx"
@@ -3191,6 +3201,51 @@ def test_task310_section2_sync_panel_is_structured_date_sync_only() -> None:
         assert future_action not in panel_source
 
 
+def test_task312_package_preview_is_read_only_workbench_entry() -> None:
+    """TASK_312 exposes package readiness preview without package execution actions."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    runtime_model_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    panel_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectPackagePreviewPanel.tsx"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ProjectPackagePreviewPanel" in layout_source
+    assert "preview={packagePreview}" in layout_source
+    assert "onRefresh={onRefreshPackagePreview}" in layout_source
+    assert '"packagePreview"' in runtime_model_source
+    assert '"onRefreshPackagePreview"' in runtime_model_source
+    assert "fetchProjectPackagePreview" in client_source
+    assert "/project-package/preview" in client_source
+    assert "Refresh preview" in panel_source
+
+    for future_action in [
+        "ApprovalPackagePanel",
+        "ProjectWorkbenchEvidencePanel",
+        "TestRecordDraftGenerationButton",
+    ]:
+        assert future_action not in layout_source
+
+    for forbidden_panel_action in [
+        "Execute package",
+        "Publish package",
+        "Generate package",
+        "Customer Feedback generation",
+        "Fee Form generation",
+    ]:
+        assert forbidden_panel_action not in panel_source
+
+
 def test_task220_target_ui_alignment_structure_is_present() -> None:
     """TASK_220 aligns runtime console structure to target workbench UI contract."""
     layout_source = (
@@ -4456,6 +4511,13 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
         / "project-workbench"
         / "ProjectWorkbenchMatrixProjectionPanel.tsx"
     ).read_text(encoding="utf-8")
+    execution_console_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchExecutionConsole.tsx"
+    ).read_text(encoding="utf-8")
     selector_source = (
         FRONTEND_ROOT
         / "src"
@@ -4465,9 +4527,10 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
     ).read_text(encoding="utf-8")
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
 
-    assert "ProjectWorkbenchMatrixProjectionPanel" in layout_source
-    assert "projectId={project.project_id}" in layout_source
-    assert "onTokenSelect={setSelectedProjectionToken}" in layout_source
+    assert "ProjectWorkbenchExecutionConsole" in layout_source
+    assert "ProjectWorkbenchMatrixProjectionPanel" in execution_console_source
+    assert "projectId={projectId}" in execution_console_source
+    assert "onTokenSelect={setSelectedProjectionToken}" in execution_console_source
     assert "<TestRecordPreviewSmokePanel projectId={project.project_id} />" not in layout_source
     assert "fetchConfirmedMatrixTestRecordPreview" in projection_source
     assert (
@@ -4781,8 +4844,8 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
         assert removed_field not in layout_source
     for removed_action in ["Edit step", "Copy to other steps", "Generate record"]:
         assert removed_action not in layout_source
-    assert "Import data" in layout_source
-    assert "Image" in layout_source
+    assert "Import data" not in layout_source
+    assert "Image" not in layout_source
     assert "Result judgement" in layout_source
     assert "readOnly" in layout_source
     assert "Select a Matrix step from the Matrix table" in layout_source
@@ -4796,6 +4859,85 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
     assert "runtime-console-step-status-compact" in css_source
     assert "review required" not in projection_source_lower
     assert "reopened / retest" not in projection_source_lower
+
+
+def test_task313a_project_workbench_lifecycle_mode_redesign_is_wired() -> None:
+    """TASK_313A separates Workbench lifecycle modes before package execution."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    selector_source = (feature_root / "projectWorkbenchLifecycleSelectors.ts").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    lifecycle_sections_source = (
+        feature_root / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+    execution_console_source = (
+        feature_root / "ProjectWorkbenchExecutionConsole.tsx"
+    ).read_text(encoding="utf-8")
+    package_panel_source = (feature_root / "ProjectPackagePreviewPanel.tsx").read_text(
+        encoding="utf-8"
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    for required_mode in [
+        "temporary_planning",
+        "registered_setup",
+        "package_preparation",
+        "execution_console",
+    ]:
+        assert required_mode in selector_source
+
+    combined_workbench_source = (
+        selector_source
+        + "\n"
+        + layout_source
+        + "\n"
+        + lifecycle_sections_source
+        + "\n"
+        + execution_console_source
+        + "\n"
+        + package_panel_source
+    )
+
+    for required_layout_symbol in [
+        "deriveProjectWorkbenchLifecycle",
+        "WorkbenchStageBanner",
+        "WorkbenchModeTabs",
+        "TemporaryPlanningMode",
+        "RegisteredSetupMode",
+        "PackagePreparationMode",
+        "ProjectWorkbenchExecutionConsole",
+        "Current stage",
+        "Next action",
+        "Package preparation",
+        "Execution console",
+    ]:
+        assert required_layout_symbol in combined_workbench_source
+
+    assert "ProjectWorkbenchMatrixProjectionPanel" in execution_console_source
+    assert "ProjectPackagePreviewPanel" in lifecycle_sections_source
+    assert ".runtime-console-stage-banner" in styles_source
+    assert ".runtime-console-mode-tabs" in styles_source
+    assert "deriveProjectNumber" in layout_source
+    assert "sanitizePackageMessage" in package_panel_source
+
+    forbidden_operator_copy = [
+        "TASK_313",
+        "read-only in this task",
+        "Future output package",
+        "execution placeholders",
+    ]
+    for forbidden in forbidden_operator_copy:
+        assert forbidden not in combined_workbench_source
+
+    assert "/project-package/execute" not in client_source
 
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:
