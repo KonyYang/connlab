@@ -79,6 +79,9 @@ from backend.application.project_creation_draft_query_service import (
     ProjectCreationDraftQueryService,
 )
 from backend.application.project_lifecycle_service import ProjectLifecycleService
+from backend.application.project_lifecycle_management_service import (
+    ProjectLifecycleManagementService,
+)
 from backend.application.project_ltr_cleanup_audit_service import (
     ProjectLtrCleanupAuditService,
 )
@@ -286,6 +289,26 @@ def get_project_registry_summary_service(
         project_store=ProjectRepository(session),
         ltr_store=LtrRecordRepository(session),
         temporary_context_store=ProjectTemporaryContextRepository(session),
+    )
+
+
+def get_project_lifecycle_management_service(
+    session: Session = Depends(get_session),
+) -> ProjectLifecycleManagementService:
+    """Build project lifecycle stop/delete management service."""
+    return ProjectLifecycleManagementService(
+        project_store=ProjectRepository(session),
+        temporary_context_store=ProjectTemporaryContextRepository(session),
+        ltr_store=LtrRecordRepository(session),
+        confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        official_workspace_store=ProjectOfficialWorkspaceRepository(session),
+        folder_store=ProjectFolderRecordRepository(session),
+        file_asset_store=FileAssetRepository(session),
+        output_store=ProjectOutputRecordRepository(session),
+        request_material_store=ProjectRequestMaterialCollectionRepository(session),
+        confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
+        matrix_draft_store=ProjectMatrixDraftRepository(session),
+        audit_store=ProjectCleanupAuditRecordRepository(session),
     )
 
 

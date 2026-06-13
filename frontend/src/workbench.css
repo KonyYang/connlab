@@ -1962,6 +1962,38 @@
   color: var(--color-ink);
 }
 
+.runtime-console-lifecycle-management {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 12px;
+}
+
+.runtime-console-lifecycle-management p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+
+.runtime-console-lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.runtime-console-lifecycle-actions button {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.runtime-console-lifecycle-actions button:last-child:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-border));
+  color: var(--color-danger);
+}
+
 .runtime-console-summary {
   display: grid;
   grid-template-columns: minmax(240px, 1.2fr) repeat(5, minmax(112px, 0.7fr));

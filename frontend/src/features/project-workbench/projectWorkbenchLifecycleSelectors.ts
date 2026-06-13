@@ -86,11 +86,11 @@ export function deriveProjectWorkbenchLifecycle(
   if (input.isCancelled) {
     return {
       mode: "overview",
-      stageLabel: "Cancelled project",
-      stageSummary: "This project is cancelled or archived. Planning and promotion actions are not available.",
+      stageLabel: "Stopped project",
+      stageSummary: "This project is stopped and retained for review. Planning and promotion actions are not available.",
       nextAction: {
         title: "No action",
-        reason: "Cancelled projects are retained for review only.",
+        reason: "Stopped projects are retained for review only.",
         tone: "neutral",
       },
       tabs: [],

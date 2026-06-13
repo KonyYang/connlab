@@ -34,6 +34,19 @@ class ProjectTemporaryContextRepository:
         )
         return _to_domain(row) if row else None
 
+    def delete_by_project(self, project_id: str) -> bool:
+        """Delete temporary context by project id when one exists."""
+        row = self._session.scalar(
+            select(ProjectTemporaryContextModel).where(
+                ProjectTemporaryContextModel.project_id == project_id
+            )
+        )
+        if row is None:
+            return False
+        self._session.delete(row)
+        self._session.flush()
+        return True
+
 
 def _to_model(context: ProjectTemporaryContext) -> ProjectTemporaryContextModel:
     return ProjectTemporaryContextModel(

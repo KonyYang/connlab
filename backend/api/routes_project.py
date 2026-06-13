@@ -8,8 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.dependencies import (
+    get_project_lifecycle_management_service,
     get_project_registry_summary_service,
     get_project_service,
+)
+from backend.application.project_lifecycle_management_service import (
+    ProjectLifecycleManagementError,
+    ProjectLifecycleManagementNotFoundError,
+    ProjectLifecycleManagementService,
+    ProjectStopCommand,
+    ProjectStopResult,
+    TemporaryProjectDeletePreview,
+    TemporaryProjectDeleteResult,
 )
 from backend.application.project_registry_summary_service import (
     ProjectRegistryRow,
@@ -74,6 +84,42 @@ class TemporaryProjectCreateResponse(BaseModel):
     has_registered_ltr: bool
     status: str
     next_route: str
+
+
+class TemporaryProjectDeletePreviewResponse(BaseModel):
+    """Response for safe temporary project deletion preview."""
+
+    project_id: str
+    can_delete: bool
+    blockers: list[str]
+    warnings: list[str]
+    recommended_action: str
+
+
+class TemporaryProjectDeleteResponse(BaseModel):
+    """Response returned after deleting a safe temporary project."""
+
+    project_id: str
+    deleted: bool
+    deleted_temporary_context: bool
+
+
+class ProjectStopRequest(BaseModel):
+    """Request body for stopping a project."""
+
+    reason: str | None = None
+    operator: str | None = None
+
+
+class ProjectStopResponse(BaseModel):
+    """Response returned after stopping a project."""
+
+    project_id: str
+    previous_status: str
+    status: str
+    status_label: str
+    reason: str
+    audit_recorded: bool
 
 
 class ProjectRegistryRowResponse(BaseModel):
@@ -179,6 +225,66 @@ def list_project_registry_rows(
     return [_to_registry_response(row) for row in service.list_rows()]
 
 
+@router.get(
+    "/{project_id}/delete-preview",
+    response_model=TemporaryProjectDeletePreviewResponse,
+)
+def preview_temporary_project_delete(
+    project_id: str,
+    service: ProjectLifecycleManagementService = Depends(
+        get_project_lifecycle_management_service
+    ),
+) -> TemporaryProjectDeletePreviewResponse:
+    """Preview whether a temporary project can be safely deleted."""
+    try:
+        preview = service.preview_temporary_delete(project_id)
+    except ProjectLifecycleManagementNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_delete_preview_response(preview)
+
+
+@router.delete(
+    "/{project_id}/temporary",
+    response_model=TemporaryProjectDeleteResponse,
+)
+def delete_temporary_project(
+    project_id: str,
+    service: ProjectLifecycleManagementService = Depends(
+        get_project_lifecycle_management_service
+    ),
+) -> TemporaryProjectDeleteResponse:
+    """Delete one safe mistaken or duplicate temporary planning project."""
+    try:
+        result = service.delete_temporary_project(project_id)
+    except ProjectLifecycleManagementNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleManagementError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _to_delete_response(result)
+
+
+@router.post("/{project_id}/stop", response_model=ProjectStopResponse)
+def stop_project(
+    project_id: str,
+    request: ProjectStopRequest,
+    service: ProjectLifecycleManagementService = Depends(
+        get_project_lifecycle_management_service
+    ),
+) -> ProjectStopResponse:
+    """Stop a project while preserving history."""
+    try:
+        result = service.stop_project(
+            ProjectStopCommand(
+                project_id=project_id,
+                reason=request.reason,
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleManagementNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_stop_response(result)
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
     project_id: str,
@@ -239,4 +345,40 @@ def _to_registry_response(row: ProjectRegistryRow) -> ProjectRegistryRowResponse
         temporary_project_id=row.temporary_project_id,
         registered_ltr_number=row.registered_ltr_number,
         temporary_source_asset_ids=list(row.temporary_source_asset_ids),
+    )
+
+
+def _to_delete_preview_response(
+    preview: TemporaryProjectDeletePreview,
+) -> TemporaryProjectDeletePreviewResponse:
+    """Convert safe-delete preview into an API response."""
+    return TemporaryProjectDeletePreviewResponse(
+        project_id=preview.project_id,
+        can_delete=preview.can_delete,
+        blockers=list(preview.blockers),
+        warnings=list(preview.warnings),
+        recommended_action=preview.recommended_action,
+    )
+
+
+def _to_delete_response(
+    result: TemporaryProjectDeleteResult,
+) -> TemporaryProjectDeleteResponse:
+    """Convert delete result into an API response."""
+    return TemporaryProjectDeleteResponse(
+        project_id=result.project_id,
+        deleted=result.deleted,
+        deleted_temporary_context=result.deleted_temporary_context,
+    )
+
+
+def _to_stop_response(result: ProjectStopResult) -> ProjectStopResponse:
+    """Convert stop result into an API response."""
+    return ProjectStopResponse(
+        project_id=result.project_id,
+        previous_status=result.previous_status,
+        status=result.status,
+        status_label=result.status_label,
+        reason=result.reason,
+        audit_recorded=result.audit_recorded,
     )

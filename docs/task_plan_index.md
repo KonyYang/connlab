@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-13
-Status: TASK_317D proposed after TASK_317C/TASK_318. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. TASK_318 implements Official project folder check/repair in the Project Folder model and replaces TASK_312's user-facing readiness/check role without enhancing the old package-preview surface.
+Status: TASK_317E complete after TASK_317D. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. TASK_318 implements Official project folder check/repair in the Project Folder model and replaces TASK_312's user-facing readiness/check role without enhancing the old package-preview surface.
 
 ## Decision
 
@@ -62,25 +62,25 @@ docs/task_313b_official_project_workspace_execution_guide.md
 Latest completed task file:
 
 ```text
-tasks/TASK_317C_TEMPORARY_PROJECT_PLANNING_IDENTITY.md
+tasks/TASK_317E_TEMPORARY_PROJECT_STOP_AND_SAFE_DELETE.md
 ```
 
 Latest completed executable plan:
 
 ```text
-docs/task_317c_temporary_project_planning_identity_plan.md
+docs/task_317e_temporary_project_stop_and_safe_delete_plan.md
 ```
 
 Latest proposed task file:
 
 ```text
-tasks/TASK_317D_TEMPORARY_PROJECT_LIFECYCLE_AND_PROMOTION.md
+None
 ```
 
 Latest proposed executable plan:
 
 ```text
-docs/task_317d_temporary_project_lifecycle_and_promotion_plan.md
+None
 ```
 
 Latest accepted planning prerequisite:

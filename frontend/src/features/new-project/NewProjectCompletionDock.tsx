@@ -9,9 +9,11 @@ type NewProjectCompletionDockProps = {
   completionText: string;
   disabled: boolean;
   missingKeys: Set<string>;
+  temporaryCreating?: boolean;
   values: NewProjectSetupConfirmationValues;
   onChange: (values: NewProjectSetupConfirmationValues) => void;
   onComplete: () => void;
+  onCreateTemporaryProject?: () => void;
 };
 
 export function NewProjectCompletionDock({
@@ -20,9 +22,11 @@ export function NewProjectCompletionDock({
   completionText,
   disabled,
   missingKeys,
+  temporaryCreating = false,
   values,
   onChange,
-  onComplete
+  onComplete,
+  onCreateTemporaryProject
 }: NewProjectCompletionDockProps): ReactElement {
   const update = (patch: Partial<NewProjectSetupConfirmationValues>) =>
     onChange({ ...values, ...patch });
@@ -86,6 +90,17 @@ export function NewProjectCompletionDock({
           <UiIcon name="clock" />
           <span title="required fields remaining">{completionText}</span>
         </span>
+
+        {onCreateTemporaryProject ? (
+          <button
+            className="secondary-action"
+            disabled={temporaryCreating || completionLoading || disabled}
+            type="button"
+            onClick={onCreateTemporaryProject}
+          >
+            {temporaryCreating ? "Creating..." : "Create Temporary Project"}
+          </button>
+        ) : null}
 
         <button
           className="new-project-primary-action ui-primary-action"

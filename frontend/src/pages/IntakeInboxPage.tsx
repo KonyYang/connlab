@@ -863,20 +863,6 @@ export function IntakeInboxPage({
         </main>
       </div>
 
-      <div className="temporary-project-entry-strip" aria-label="Temporary project entry">
-        <span>
-          Create a planning project before LTR registration when the request needs Matrix or Fee
-          estimation first.
-        </span>
-        <button
-          className="secondary-action"
-          disabled={temporaryCreating || completionLoading || editorLoading}
-          type="button"
-          onClick={() => void handleCreateTemporaryProject()}
-        >
-          {temporaryCreating ? "Creating temporary project..." : "Create Temporary Project"}
-        </button>
-      </div>
       {temporaryError ? <p className="intake-error">{temporaryError}</p> : null}
 
       {packageImport && activeCase != null ? (
@@ -886,6 +872,7 @@ export function IntakeInboxPage({
           completionText={completionText}
           disabled={completionLoading || editorLoading || Boolean(activeCase.confirmed_project_id)}
           missingKeys={setupMissingKeys}
+          temporaryCreating={temporaryCreating}
           values={setupValues}
           onChange={(values) => {
             setSetupValues(values);
@@ -894,12 +881,19 @@ export function IntakeInboxPage({
             setCompletionSetupError(null);
           }}
           onComplete={() => void completeProject()}
+          onCreateTemporaryProject={() => void handleCreateTemporaryProject()}
         />
       ) : (
         <div className="step-footer new-project-completion-dock new-project-completion-dock-empty">
-          <span>Import the request source before editing application information.</span>
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
+          <span />
+          <button
+            className="secondary-action"
+            disabled={temporaryCreating || completionLoading || editorLoading}
+            type="button"
+            onClick={() => void handleCreateTemporaryProject()}
+          >
+            {temporaryCreating ? "Creating..." : "Create Temporary Project"}
+          </button>
         </div>
       )}
     </section>

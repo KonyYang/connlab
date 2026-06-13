@@ -55,6 +55,34 @@ export type CreateTemporaryProjectResponse = {
   next_route: string;
 };
 
+export type TemporaryProjectDeletePreview = {
+  project_id: string;
+  can_delete: boolean;
+  blockers: string[];
+  warnings: string[];
+  recommended_action: "delete" | "stop";
+};
+
+export type TemporaryProjectDeleteResponse = {
+  project_id: string;
+  deleted: boolean;
+  deleted_temporary_context: boolean;
+};
+
+export type ProjectStopRequest = {
+  reason?: string | null;
+  operator?: string | null;
+};
+
+export type ProjectStopResponse = {
+  project_id: string;
+  previous_status: string;
+  status: string;
+  status_label: string;
+  reason: string;
+  audit_recorded: boolean;
+};
+
 export type ApplicationForm = {
   form_id: string;
   project_id: string;
@@ -1852,6 +1880,37 @@ export function createTemporaryProject(
 
 export function getProject(projectId: string): Promise<Project> {
   return requestJson<Project>(`/api/projects/${encodeURIComponent(projectId)}`);
+}
+
+export function previewTemporaryProjectDelete(
+  projectId: string
+): Promise<TemporaryProjectDeletePreview> {
+  return requestJson<TemporaryProjectDeletePreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/delete-preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function deleteTemporaryProject(
+  projectId: string
+): Promise<TemporaryProjectDeleteResponse> {
+  return requestJson<TemporaryProjectDeleteResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/temporary`,
+    { method: "DELETE" }
+  );
+}
+
+export function stopProject(
+  projectId: string,
+  input: ProjectStopRequest
+): Promise<ProjectStopResponse> {
+  return requestJson<ProjectStopResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/stop`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
 }
 
 export function uploadApplicationForm(

@@ -1,9 +1,16 @@
-import { useState, type ReactElement } from "react";
-import type { Project } from "../../api/client";
+import { useEffect, useState, type ReactElement } from "react";
+import {
+  deleteTemporaryProject,
+  previewTemporaryProjectDelete,
+  stopProject,
+  type Project,
+  type TemporaryProjectDeletePreview,
+} from "../../api/client";
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
 import { OfficialWorkspaceActionPanel } from "./OfficialWorkspaceActionPanel";
 import {
   PackagePreparationMode,
+  ProjectLifecycleManagementPanel,
   RegisteredSetupMode,
   TemporaryPlanningMode,
   WorkbenchModeTabs,
@@ -40,6 +47,10 @@ export function ProjectWorkbenchLayout({
     useState<WorkbenchLifecycleMode | null>(null);
   const [temporaryPromotionMessage, setTemporaryPromotionMessage] =
     useState<string | null>(null);
+  const [deletePreview, setDeletePreview] =
+    useState<TemporaryProjectDeletePreview | null>(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -125,6 +136,79 @@ export function ProjectWorkbenchLayout({
       officialWorkspacePreview?.status === "blocked" ||
       officialWorkspacePreview?.status === "inconsistent");
 
+  useEffect(() => {
+    let cancelled = false;
+    if (project.status === "cancelled" || projectNumber) {
+      setDeletePreview(null);
+      return;
+    }
+    previewTemporaryProjectDelete(project.project_id)
+      .then((preview) => {
+        if (!cancelled) {
+          setDeletePreview(preview);
+          setLifecycleError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setDeletePreview(null);
+          setLifecycleError((err as Error).message);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.project_id, project.status, projectNumber]);
+
+  async function handleStopProject(): Promise<void> {
+    const reason = window.prompt(
+      "Reason for stopping this project",
+      "Project will not continue."
+    );
+    if (reason === null) {
+      return;
+    }
+    if (!window.confirm("Stop this project and keep its history for review?")) {
+      return;
+    }
+    setLifecycleBusy(true);
+    try {
+      await stopProject(project.project_id, {
+        reason,
+        operator: null,
+      });
+      setLifecycleError(null);
+      onBack();
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+  async function handleDeleteTemporaryProject(): Promise<void> {
+    if (!deletePreview?.can_delete) {
+      return;
+    }
+    if (
+      !window.confirm(
+        "Delete this mistaken temporary project from ConnLab? This does not touch public-drive files or LTR workbooks."
+      )
+    ) {
+      return;
+    }
+    setLifecycleBusy(true);
+    try {
+      await deleteTemporaryProject(project.project_id);
+      setLifecycleError(null);
+      onBack();
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
   return (
     <section className="runtime-console-shell" aria-label="Project runtime console">
       <header className="runtime-console-topbar">
@@ -158,13 +242,25 @@ export function ProjectWorkbenchLayout({
       </header>
 
       {shouldShowWorkspaceCreation ? (
-        <OfficialWorkspaceActionPanel
-          preview={officialWorkspacePreview}
-          loading={officialWorkspaceLoading}
-          creating={officialWorkspaceCreating}
-          error={officialWorkspaceError}
-          onCreate={onCreateOfficialWorkspace}
-        />
+        <>
+          <OfficialWorkspaceActionPanel
+            preview={officialWorkspacePreview}
+            loading={officialWorkspaceLoading}
+            creating={officialWorkspaceCreating}
+            error={officialWorkspaceError}
+            onCreate={onCreateOfficialWorkspace}
+          />
+          {project.status !== "cancelled" ? (
+            <ProjectLifecycleManagementPanel
+              allowDelete={false}
+              deletePreview={null}
+              lifecycleBusy={lifecycleBusy}
+              lifecycleError={lifecycleError}
+              onDeleteTemporaryProject={() => undefined}
+              onStopProject={() => void handleStopProject()}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           <WorkbenchStageBanner
@@ -184,48 +280,64 @@ export function ProjectWorkbenchLayout({
             onSelect={setSelectedLifecycleMode}
           />
 
-      {lifecycle.mode === "temporary_planning" ? (
-        <TemporaryPlanningMode
-          feePlanningAvailable={Boolean(matrixCandidateDraft ?? matrixDraft)}
-          onOpenMatrixEditor={onOpenMatrixEditor}
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-          onStartPromotion={() => {
-            setTemporaryPromotionMessage(
-              "Same-project LTR registration is not wired yet. This temporary project stays intact; no duplicate project was created."
-            );
-          }}
-          promotionMessage={temporaryPromotionMessage}
-        />
-      ) : null}
+          {lifecycle.mode === "temporary_planning" ? (
+            <TemporaryPlanningMode
+              deletePreview={deletePreview}
+              lifecycleBusy={lifecycleBusy}
+              lifecycleError={lifecycleError}
+              feePlanningAvailable={Boolean(matrixCandidateDraft ?? matrixDraft)}
+              onOpenMatrixEditor={onOpenMatrixEditor}
+              onOpenFeeEvaluation={onOpenFeeEvaluation}
+              onStartPromotion={() => {
+                setTemporaryPromotionMessage(
+                  "Same-project LTR registration is not wired yet. This temporary project stays intact; no duplicate project was created."
+                );
+              }}
+              onStopProject={() => void handleStopProject()}
+              onDeleteTemporaryProject={() => void handleDeleteTemporaryProject()}
+              promotionMessage={temporaryPromotionMessage}
+            />
+          ) : null}
 
-      {lifecycle.mode === "registered_setup" ? (
-        <RegisteredSetupMode
-          hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
-          onOpenMatrixEditor={onOpenMatrixEditor}
-        />
-      ) : null}
+          {lifecycle.mode === "registered_setup" ? (
+            <RegisteredSetupMode
+              hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
+              onOpenMatrixEditor={onOpenMatrixEditor}
+            />
+          ) : null}
 
-      {lifecycle.mode === "package_preparation" ? (
-        <PackagePreparationMode
-          setupMaterials={setupMaterials}
-          requestMaterialPreview={requestMaterialPreview}
-          requestMaterialError={requestMaterialError}
-          requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
-        />
-      ) : null}
+          {lifecycle.mode === "package_preparation" ? (
+            <PackagePreparationMode
+              setupMaterials={setupMaterials}
+              requestMaterialPreview={requestMaterialPreview}
+              requestMaterialError={requestMaterialError}
+              requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
+            />
+          ) : null}
 
-      {lifecycle.mode === "execution_console" ? (
-        <ProjectWorkbenchExecutionConsole
-          feeEvaluationOutputStatus={feeEvaluationOutputStatus}
-          activeMatrixAuthorityReady={activeMatrixAuthorityReady}
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-          onOpenMatrixEditor={onOpenMatrixEditor}
-          projectId={project.project_id}
-          runtimeProjectionSnapshot={runtimeProjectionSnapshot}
-          selectedProjectionToken={selectedProjectionToken}
-          setSelectedProjectionToken={setSelectedProjectionToken}
-        />
-      ) : null}
+          {lifecycle.mode === "execution_console" ? (
+            <ProjectWorkbenchExecutionConsole
+              feeEvaluationOutputStatus={feeEvaluationOutputStatus}
+              activeMatrixAuthorityReady={activeMatrixAuthorityReady}
+              onOpenFeeEvaluation={onOpenFeeEvaluation}
+              onOpenMatrixEditor={onOpenMatrixEditor}
+              projectId={project.project_id}
+              runtimeProjectionSnapshot={runtimeProjectionSnapshot}
+              selectedProjectionToken={selectedProjectionToken}
+              setSelectedProjectionToken={setSelectedProjectionToken}
+            />
+          ) : null}
+
+          {lifecycle.mode !== "temporary_planning" && project.status !== "cancelled" ? (
+            <ProjectLifecycleManagementPanel
+              allowDelete={false}
+              deletePreview={null}
+              lifecycleBusy={lifecycleBusy}
+              lifecycleError={lifecycleError}
+              onDeleteTemporaryProject={() => undefined}
+              onStopProject={() => void handleStopProject()}
+            />
+          ) : null}
         </>
       )}
     </section>

@@ -10,14 +10,23 @@ from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session
 from backend.api.main import app
-from backend.domain import LtrRecord, LtrStatus, Project, ProjectStatus
+from backend.domain import (
+    FileAsset,
+    FileAssetType,
+    LtrRecord,
+    LtrStatus,
+    Project,
+    ProjectStatus,
+)
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
     init_db,
 )
 from backend.infrastructure.storage.repositories import (
+    FileAssetRepository,
     LtrRecordRepository,
+    ProjectCleanupAuditRecordRepository,
     ProjectRepository,
 )
 from backend.shared.config import Settings
@@ -109,6 +118,125 @@ def test_temporary_project_api_creates_planning_project_with_tmp_identity(
         assert detail.json()["test_item"] == "Duration estimate"
         assert detail.json()["temporary_notes"] == "Temporary project from email"
         assert detail.json()["temporary_source_asset_ids"] == ["ASSET1"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_temporary_project_delete_preview_and_delete_api(tmp_path: Path) -> None:
+    client, engine, _session_factory = _client(tmp_path)
+    try:
+        created = client.post(
+            "/api/projects/temporary",
+            json={"sample_description": "Duplicate temporary request"},
+        ).json()
+
+        preview = client.get(f"/api/projects/{created['project_id']}/delete-preview")
+        assert preview.status_code == 200
+        assert preview.json()["can_delete"] is True
+        assert preview.json()["recommended_action"] == "delete"
+
+        deleted = client.delete(f"/api/projects/{created['project_id']}/temporary")
+        assert deleted.status_code == 200
+        assert deleted.json()["deleted"] is True
+        assert deleted.json()["deleted_temporary_context"] is True
+
+        registry = client.get("/api/projects/registry")
+        assert registry.status_code == 200
+        assert registry.json() == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_registered_project_delete_api_is_blocked(tmp_path: Path) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    try:
+        _seed_registry_project(session_factory)
+
+        preview = client.get("/api/projects/P1/delete-preview")
+        assert preview.status_code == 200
+        assert preview.json()["can_delete"] is False
+        assert preview.json()["recommended_action"] == "stop"
+        assert any("LTR/DL" in blocker for blocker in preview.json()["blockers"])
+
+        deleted = client.delete("/api/projects/P1/temporary")
+        assert deleted.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_project_file_asset_blocks_temporary_delete_api(tmp_path: Path) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    try:
+        created = client.post(
+            "/api/projects/temporary",
+            json={"sample_description": "Temporary request with uploaded material"},
+        ).json()
+        with session_factory() as session:
+            FileAssetRepository(session).create(
+                FileAsset(
+                    asset_id="ASSET1",
+                    project_id=created["project_id"],
+                    asset_type=FileAssetType.ATTACHMENT,
+                    path=Path("D:/ConnLab/source/specification.pdf"),
+                    original_name="specification.pdf",
+                    registered_on=date(2026, 6, 13),
+                )
+            )
+            session.commit()
+
+        preview = client.get(f"/api/projects/{created['project_id']}/delete-preview")
+        assert preview.status_code == 200
+        assert preview.json()["can_delete"] is False
+        assert preview.json()["recommended_action"] == "stop"
+        assert any("file assets" in blocker.lower() for blocker in preview.json()["blockers"])
+
+        deleted = client.delete(f"/api/projects/{created['project_id']}/temporary")
+        assert deleted.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_temporary_project_delete_missing_project_returns_404(tmp_path: Path) -> None:
+    client, engine, _session_factory = _client(tmp_path)
+    try:
+        deleted = client.delete("/api/projects/MISSING/temporary")
+
+        assert deleted.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_stop_project_api_marks_project_stopped_and_records_reason(tmp_path: Path) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    try:
+        created = client.post(
+            "/api/projects/temporary",
+            json={"sample_description": "Will not start"},
+        ).json()
+
+        stopped = client.post(
+            f"/api/projects/{created['project_id']}/stop",
+            json={"reason": "Customer decided not to continue.", "operator": "Lab User"},
+        )
+
+        assert stopped.status_code == 200
+        assert stopped.json()["status"] == "cancelled"
+        assert stopped.json()["status_label"] == "Stopped"
+        assert stopped.json()["reason"] == "Customer decided not to continue."
+        assert stopped.json()["audit_recorded"] is True
+
+        detail = client.get(f"/api/projects/{created['project_id']}")
+        assert detail.json()["status"] == "cancelled"
+
+        with session_factory() as session:
+            audits = ProjectCleanupAuditRecordRepository(session).list()
+        assert audits[-1].cleanup_type == "project_stopped"
+        assert audits[-1].reason == "Customer decided not to continue."
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

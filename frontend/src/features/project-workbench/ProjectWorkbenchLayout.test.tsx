@@ -32,6 +32,23 @@ vi.mock("./FeeEvaluationStatusSummary", () => ({
   FeeEvaluationStatusSummary: () => <section>Fee summary panel</section>,
 }));
 
+vi.mock("../../api/client", () => ({
+  previewTemporaryProjectDelete: vi.fn(() => new Promise(() => {})),
+  deleteTemporaryProject: vi.fn().mockResolvedValue({
+    project_id: "2cd4b0e7ff6f4df99448c9ffdd78629f",
+    deleted: true,
+    deleted_temporary_context: true,
+  }),
+  stopProject: vi.fn().mockResolvedValue({
+    project_id: "2cd4b0e7ff6f4df99448c9ffdd78629f",
+    previous_status: "draft",
+    status: "cancelled",
+    status_label: "Stopped",
+    reason: "Project will not continue.",
+    audit_recorded: true,
+  }),
+}));
+
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
   it("shows temporary planning without formal package or execution surfaces", () => {
     const onOpenFeeEvaluation = vi.fn();
@@ -50,6 +67,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
     expect(screen.getByText(/This project has no registered LTR Number yet/)).toBeTruthy();
     expect(screen.getByText(/Official package actions require LTR registration/)).toBeTruthy();
+    expect(screen.getByText("Project lifecycle")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete temporary project" })).toBeTruthy();
     expect(onOpenFeeEvaluation).not.toHaveBeenCalled();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
@@ -83,9 +103,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { status: "cancelled" }
     );
 
-    expect(screen.getByText("Cancelled project")).toBeTruthy();
+    expect(screen.getByText("Stopped project")).toBeTruthy();
     expect(screen.getByText("No action")).toBeTruthy();
     expect(screen.queryByText("Temporary Planning")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Convert to Formal Project" })).toBeNull();
   });
 
@@ -122,6 +143,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByText("Matrix authority setup")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Confirm Matrix authority" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
   });
@@ -318,6 +341,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(
       screen.getByText("The official project folder has not been created locally.")
     ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 

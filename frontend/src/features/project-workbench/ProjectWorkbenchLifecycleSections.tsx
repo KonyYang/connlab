@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import type { TemporaryProjectDeletePreview } from "../../api/client";
 import type {
   WorkbenchLifecycleMode,
   WorkbenchLifecycleTab,
@@ -139,16 +140,26 @@ export function ProjectOverviewMode({
 }
 
 export function TemporaryPlanningMode({
+  deletePreview,
+  lifecycleError,
+  lifecycleBusy,
   feePlanningAvailable,
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
   onStartPromotion,
+  onStopProject,
+  onDeleteTemporaryProject,
   promotionMessage,
 }: {
+  deletePreview: TemporaryProjectDeletePreview | null;
+  lifecycleError: string | null;
+  lifecycleBusy: boolean;
   feePlanningAvailable: boolean;
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
   onStartPromotion: () => void;
+  onStopProject: () => void;
+  onDeleteTemporaryProject: () => void;
   promotionMessage: string | null;
 }): ReactElement {
   return (
@@ -197,6 +208,73 @@ export function TemporaryPlanningMode({
           ) : null}
         </article>
       </div>
+      <ProjectLifecycleManagementPanel
+        allowDelete
+        deletePreview={deletePreview}
+        lifecycleBusy={lifecycleBusy}
+        lifecycleError={lifecycleError}
+        onDeleteTemporaryProject={onDeleteTemporaryProject}
+        onStopProject={onStopProject}
+      />
+    </section>
+  );
+}
+
+export function ProjectLifecycleManagementPanel({
+  allowDelete,
+  deletePreview,
+  lifecycleBusy,
+  lifecycleError,
+  onDeleteTemporaryProject,
+  onStopProject,
+}: {
+  allowDelete: boolean;
+  deletePreview: TemporaryProjectDeletePreview | null;
+  lifecycleBusy: boolean;
+  lifecycleError: string | null;
+  onDeleteTemporaryProject: () => void;
+  onStopProject: () => void;
+}): ReactElement {
+  const blockers = deletePreview?.blockers ?? [];
+  return (
+    <section className="runtime-console-lifecycle-management" aria-label="Project lifecycle">
+      <div>
+        <p className="eyebrow">Project lifecycle</p>
+        <strong>
+          {allowDelete
+            ? "Stop or safely remove this temporary record"
+            : "Stop this project lifecycle"}
+        </strong>
+        <p>
+          {allowDelete
+            ? "Stop keeps the project for review. Delete is only available for mistaken or duplicate temporary records with no formal or temporary workspace blockers."
+            : "Stop keeps the project for review when business work should not continue."}
+        </p>
+      </div>
+      <div className="runtime-console-lifecycle-actions">
+        <button type="button" disabled={lifecycleBusy} onClick={onStopProject}>
+          Stop project
+        </button>
+        {allowDelete ? (
+          <button
+            type="button"
+            disabled={lifecycleBusy || !deletePreview?.can_delete}
+            onClick={onDeleteTemporaryProject}
+          >
+            Delete temporary project
+          </button>
+        ) : null}
+      </div>
+      {blockers.length > 0 ? (
+        <ul className="runtime-console-blocker-list">
+          {blockers.map((blocker) => (
+            <li key={blocker}>{blocker}</li>
+          ))}
+        </ul>
+      ) : null}
+      {lifecycleError ? (
+        <p className="runtime-console-error">{lifecycleError}</p>
+      ) : null}
     </section>
   );
 }

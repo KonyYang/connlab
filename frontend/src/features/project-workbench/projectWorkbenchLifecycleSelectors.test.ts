@@ -75,7 +75,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.actionTarget).toBe("fee");
   });
 
-  it("keeps cancelled no-DL projects out of temporary planning", () => {
+  it("keeps stopped no-DL projects out of temporary planning", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
       hasLtr: false,
@@ -84,7 +84,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     });
 
     expect(lifecycle.mode).toBe("overview");
-    expect(lifecycle.stageLabel).toBe("Cancelled project");
+    expect(lifecycle.stageLabel).toBe("Stopped project");
     expect(lifecycle.nextAction.title).toBe("No action");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
     expect(lifecycle.tabs).toEqual([]);

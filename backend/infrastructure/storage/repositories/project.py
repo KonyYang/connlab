@@ -48,6 +48,15 @@ class ProjectRepository:
         self._session.flush()
         return project
 
+    def delete(self, project_id: str) -> bool:
+        """Delete one project row when it exists."""
+        row = self._session.get(ProjectModel, project_id)
+        if row is None:
+            return False
+        self._session.delete(row)
+        self._session.flush()
+        return True
+
 
 def _to_model(project: Project) -> ProjectModel:
     """Convert a project domain record to an ORM row."""

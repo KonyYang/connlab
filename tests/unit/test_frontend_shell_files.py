@@ -728,10 +728,14 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "Pending review" not in list_page_source
     assert "Draft" not in list_page_source
     assert ".project-metric-card" not in styles_source
-    # TASK_317B: Queue Filter Bar
-    assert "queue-filter-bar" in list_page_source
-    assert "queue-filter-button" in list_page_source
-    assert "queue-filter-button-active" in list_page_source
+    # TASK_317E follow-up: queue and lifecycle filters are unified into one view select.
+    assert "queue-filter-bar" not in list_page_source
+    assert "queue-filter-button" not in list_page_source
+    assert "queue-filter-button-active" not in list_page_source
+    assert ".queue-filter-bar" not in styles_source
+    assert ".queue-filter-button" not in styles_source
+    assert "<h3>Project registry</h3>" not in list_page_source
+    assert "Search and open existing projects." not in list_page_source
     assert "Need Action" not in list_page_source
     assert "Needs Attention" not in list_page_source
     assert "Package Blocked" not in list_page_source
@@ -743,6 +747,10 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "Ready to Test" in list_page_source
     assert "Folder Blocked" in list_page_source
     assert "Completed" in list_page_source
+    assert "Ongoing" in list_page_source
+    assert "Stopped" in list_page_source
+    assert "Project view" in list_page_source
+    assert "Lifecycle" not in list_page_source
     assert "active-queue-label" not in list_page_source
     assert "Showing: {QUEUE_LABELS[activeQueue]} Projects" not in list_page_source
     assert "display_project_id" in api_client_source
@@ -772,24 +780,45 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "left navigation New Project entry" in list_page_source
     assert "onNewProject" not in list_page_source
     assert '<button className="primary-action" type="button" onClick={onNewProject}>' not in list_page_source
-    assert "Filter" in list_page_source
-    assert "Columns" in list_page_source
-    assert "view-toggle" in list_page_source
-    assert "showCancelled" in list_page_source
-    assert "visibleRowsForScope" in list_page_source
-    assert "cancelledRowCount" in list_page_source
-    assert "Show cancelled" in list_page_source
-    assert "cancelled project" in list_page_source
-    assert "No active projects in this view" in list_page_source
-    assert 'Enable "Show cancelled" to inspect cancelled projects.' in list_page_source
+    assert "Filter" not in list_page_source
+    assert "Columns" not in list_page_source
+    assert "view-toggle" not in list_page_source
+    assert "selectedView" in list_page_source
+    assert "projectIdSort" in list_page_source
+    assert "sortRowsByProjectId" in list_page_source
+    assert "projectIdSortKey" in list_page_source
+    assert "Sort Project ID descending" in list_page_source
+    assert "Sort Project ID ascending" in list_page_source
+    assert "sort-ascending" in list_page_source
+    assert "sort-descending" in list_page_source
+    assert "buildViewCounts" not in list_page_source
+    assert "rowsForView" in list_page_source
+    assert "refreshProjects" in list_page_source
+    assert 'name="refresh"' not in list_page_source
+    assert "toolbar-icon-button" not in list_page_source
+    assert "Active work" not in list_page_source
+    assert "All lifecycle states" not in list_page_source
+    assert "visibleRowsForScope" not in list_page_source
+    assert 'setActiveQueue("all");' not in list_page_source
+    assert "cancelledRowCount" not in list_page_source
+    assert "Show cancelled" not in list_page_source
+    assert "Cancelled" not in list_page_source
+    assert "No projects in this view" in list_page_source
     assert ".project-table" in styles_source
     assert ".progress-cell" not in styles_source
     assert ".registry-status-badge" in styles_source
     assert ".registry-next-step" in styles_source
     assert ".registry-tools" in styles_source
     assert ".toolbar-button" in styles_source
-    assert ".registry-scope-toggle" in styles_source
-    assert ".registry-scope-note" in styles_source
+    assert ".toolbar-icon-button" not in styles_source
+    assert ".view-toggle" not in styles_source
+    assert ".view-toggle-active" not in styles_source
+    assert ".registry-view-select" in styles_source
+    assert ".project-id-sort-button" in styles_source
+    assert ".registry-control-sr-only" in styles_source
+    assert ".registry-lifecycle-scope" not in styles_source
+    assert ".registry-scope-toggle" not in styles_source
+    assert ".registry-scope-note" not in styles_source
     assert "@media (min-width: 761px) and (max-width: 1366px)" in styles_source
 
 
@@ -840,6 +869,9 @@ def test_task317d_temporary_project_entry_and_promotion_gap_are_wired() -> None:
     assert "Convert to Formal Project" in lifecycle_sections_source
     assert "Same-project LTR registration is not wired yet." in layout_source
     assert "no duplicate project was created" in layout_source
+    assert "operator: null" in layout_source
+    assert "allowDelete={false}" in layout_source
+    assert "Delete temporary project" in lifecycle_sections_source
 
 
 def test_project_workbench_uses_sequential_stepper() -> None:

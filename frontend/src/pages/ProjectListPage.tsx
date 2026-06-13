@@ -16,39 +16,35 @@ type ProjectListPageProps = {
 type RegistryRow = ProjectRegistryRow;
 
 type QueueName =
-  | "all"
   | "planning"
   | "matrix_needed"
   | "ready_to_test"
   | "folder_blocked"
   | "completed";
-type ClassifiedQueueName = Exclude<QueueName, "all">;
+type ClassifiedQueueName = QueueName;
+type RegistryView = "ongoing" | QueueName | "stopped" | "all";
+type ProjectIdSortDirection = "asc" | "desc";
 
-const QUEUE_LABELS: Record<QueueName, string> = {
+const VIEW_LABELS: Record<RegistryView, string> = {
+  ongoing: "Ongoing",
   all: "All",
   planning: "Planning",
   matrix_needed: "Matrix Needed",
   ready_to_test: "Ready to Test",
   folder_blocked: "Folder Blocked",
   completed: "Completed",
+  stopped: "Stopped",
 };
 
-const QUEUE_DESCRIPTIONS: Record<QueueName, string> = {
-  all: "All projects in the current cancelled visibility scope.",
-  planning: "Temporary projects without a formal registered LTR or DL number.",
-  matrix_needed: "Registered projects that need an active Matrix authority map.",
-  ready_to_test: "Projects with active Matrix authority available for Matrix-based testing.",
-  folder_blocked: "Registered projects blocked by formal Project Folder preparation.",
-  completed: "Projects already completed or closed.",
-};
-
-const QUEUE_ORDER: QueueName[] = [
-  "all",
+const VIEW_ORDER: RegistryView[] = [
+  "ongoing",
   "planning",
   "matrix_needed",
   "ready_to_test",
   "folder_blocked",
   "completed",
+  "stopped",
+  "all",
 ];
 
 export function ProjectListPage({
@@ -59,12 +55,11 @@ export function ProjectListPage({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [showCancelled, setShowCancelled] = useState(false);
+  const [selectedView, setSelectedView] = useState<RegistryView>("ongoing");
+  const [projectIdSort, setProjectIdSort] = useState<ProjectIdSortDirection>("asc");
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
   const deferredSearch = useDeferredValue(search);
   const pageSize = 20;
-
-  const [activeQueue, setActiveQueue] = useState<QueueName>("all");
 
   useEffect(() => {
     void refreshProjects();
@@ -73,56 +68,26 @@ export function ProjectListPage({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearch, showCancelled, activeQueue]);
+  }, [deferredSearch, selectedView, projectIdSort]);
 
-  const scopedRows = useMemo(
-    () => visibleRowsForScope(rows, showCancelled),
-    [rows, showCancelled]
+  const viewRows = useMemo(
+    () => rowsForView(rows, selectedView),
+    [rows, selectedView]
   );
-  const hiddenCancelledCount = useMemo(() => {
-    if (showCancelled) {
-      return 0;
-    }
-    return cancelledRowCount(rows);
-  }, [rows, showCancelled]);
-  const queueCounts = useMemo(() => {
-    const counts: Record<QueueName, number> = {
-      all: scopedRows.length,
-      planning: 0,
-      matrix_needed: 0,
-      ready_to_test: 0,
-      folder_blocked: 0,
-      completed: 0,
-    };
-    for (const row of scopedRows) {
-      if (row.status === "cancelled") {
-        continue;
-      }
-      const queue = classifyQueue(row);
-      if (queue) {
-        counts[queue] += 1;
-      }
-    }
-    return counts;
-  }, [scopedRows]);
-  const queueFilteredRows = useMemo(() => {
-    if (activeQueue === "all") {
-      return scopedRows;
-    }
-    return scopedRows.filter(
-      (row) => row.status !== "cancelled" && classifyQueue(row) === activeQueue
-    );
-  }, [activeQueue, scopedRows]);
   const filteredRows = useMemo(
-    () => filterRows(queueFilteredRows, deferredSearch),
-    [deferredSearch, queueFilteredRows]
+    () => filterRows(viewRows, deferredSearch),
+    [deferredSearch, viewRows]
   );
-  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const sortedRows = useMemo(
+    () => sortRowsByProjectId(filteredRows, projectIdSort),
+    [filteredRows, projectIdSort]
+  );
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const page = Math.min(currentPage, pageCount);
   const pagedRows = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, page, pageSize]);
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, page, pageSize]);
 
   async function refreshProjects(): Promise<void> {
     setLoading(true);
@@ -134,6 +99,10 @@ export function ProjectListPage({
     } finally {
       setLoading(false);
     }
+  }
+
+  function toggleProjectIdSort(): void {
+    setProjectIdSort((current) => (current === "asc" ? "desc" : "asc"));
   }
 
   return (
@@ -165,75 +134,36 @@ export function ProjectListPage({
             </button>
           </div>
         ) : null}
-        <div className="queue-filter-bar" role="tablist" aria-label="Project queue filter">
-          {QUEUE_ORDER.map((queue) => (
-            <button
-              key={queue}
-              className={`queue-filter-button${activeQueue === queue ? " queue-filter-button-active" : ""}`}
-              role="tab"
-              aria-selected={activeQueue === queue}
-              aria-label={`${QUEUE_LABELS[queue]}: ${QUEUE_DESCRIPTIONS[queue]}`}
-              title={QUEUE_DESCRIPTIONS[queue]}
-              type="button"
-              onClick={() => setActiveQueue(queue)}
-            >
-              <span className="queue-filter-label">{QUEUE_LABELS[queue]}</span>
-              <span className="queue-filter-count">{queueCounts[queue]}</span>
-            </button>
-          ))}
-        </div>
         <div className="register-toolbar">
-          <div>
-            <h3>Project registry</h3>
-            <p>Search and open existing projects. Project ID shows either registered LTR/DL identity or a temporary planning ID.</p>
-          </div>
           <div className="registry-tools">
             <label className="project-search">
-              <span>Search projects</span>
+              <span className="registry-control-sr-only">Search projects</span>
               <span className="project-search-input">
                 <UiIcon name="search" />
                 <input
+                  aria-label="Search projects"
                   placeholder="Search Project ID, sample, test item, requestor..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </span>
             </label>
-            <label className="registry-scope-toggle">
-              <input
-                checked={showCancelled}
-                type="checkbox"
-                onChange={(event) => setShowCancelled(event.target.checked)}
-              />
-              Show cancelled
+            <label className="registry-view-select">
+              <span className="registry-control-sr-only">Project view</span>
+              <select
+                aria-label="Project view"
+                value={selectedView}
+                onChange={(event) => setSelectedView(event.target.value as RegistryView)}
+              >
+                {VIEW_ORDER.map((view) => (
+                  <option key={view} value={view}>
+                    {VIEW_LABELS[view]}
+                  </option>
+                ))}
+              </select>
             </label>
-            <button className="toolbar-button" disabled title="Filter is not active in this phase" type="button">
-              <UiIcon name="filter" />
-              Filter
-            </button>
-            <button className="toolbar-button" disabled title="Column presets are not active in this phase" type="button">
-              <UiIcon name="columns" />
-              Columns
-            </button>
-            <div className="view-toggle" aria-label="Registry view">
-              <button className="view-toggle-active" type="button" title="List view">
-                <UiIcon name="list" />
-              </button>
-              <button disabled type="button" title="Grid view is not active in this phase">
-                <UiIcon name="grid" />
-              </button>
-            </div>
-            <button className="toolbar-button toolbar-icon-button" type="button" onClick={() => void refreshProjects()}>
-              <UiIcon name="refresh" />
-            </button>
           </div>
         </div>
-        {hiddenCancelledCount > 0 ? (
-          <p className="registry-scope-note">
-            {hiddenCancelledCount} cancelled project{hiddenCancelledCount === 1 ? "" : "s"} hidden
-          </p>
-        ) : null}
-
         {loading && <LoadingState label="Loading project registry..." />}
         {error && <ErrorMessage message={error} />}
         {!loading && !error && rows.length === 0 && (
@@ -242,22 +172,16 @@ export function ProjectListPage({
             message="Use the left navigation New Project entry to import a request package or create a manual project request."
           />
         )}
-        {!loading && !error && rows.length > 0 && scopedRows.length === 0 && (
+        {!loading && !error && rows.length > 0 && viewRows.length === 0 && (
           <EmptyState
-            title="No active projects in this view"
-            message='Enable "Show cancelled" to inspect cancelled projects.'
+            title="No projects in this view"
+            message="Choose another view or clear the search text."
           />
         )}
-        {!loading && !error && scopedRows.length > 0 && queueFilteredRows.length === 0 && activeQueue !== "all" && (
-          <EmptyState
-            title="No projects in this queue"
-            message="Select All or another queue to see more projects."
-          />
-        )}
-        {!loading && !error && queueFilteredRows.length > 0 && filteredRows.length === 0 && (
+        {!loading && !error && viewRows.length > 0 && filteredRows.length === 0 && (
           <EmptyState
             title="No matching projects"
-            message="Adjust the search text to return to the current queue view."
+            message="Adjust the search text to return to the current view."
           />
         )}
         {!loading && !error && filteredRows.length > 0 && (
@@ -265,7 +189,26 @@ export function ProjectListPage({
             <table className="project-table">
               <thead>
                 <tr>
-                  <th>Project ID</th>
+                  <th>
+                    <button
+                      className="project-id-sort-button"
+                      type="button"
+                      aria-label={
+                        projectIdSort === "asc"
+                          ? "Sort Project ID descending"
+                          : "Sort Project ID ascending"
+                      }
+                      title={
+                        projectIdSort === "asc"
+                          ? "Sort Project ID descending"
+                          : "Sort Project ID ascending"
+                      }
+                      onClick={toggleProjectIdSort}
+                    >
+                      <span>Project ID</span>
+                      <UiIcon name={projectIdSort === "asc" ? "sort-ascending" : "sort-descending"} />
+                    </button>
+                  </th>
                   <th>Sample Description</th>
                   <th className="registry-test-item-column">Test Item</th>
                   <th>Status</th>
@@ -303,7 +246,8 @@ export function ProjectListPage({
             </table>
             <div className="registry-footer">
               <span>
-                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredRows.length)} of {filteredRows.length} projects
+                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredRows.length)} of {filteredRows.length}{" "}
+                {footerProjectLabel(selectedView)}
               </span>
               <div className="registry-pagination">
                 <button
@@ -351,15 +295,99 @@ function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
   );
 }
 
-function visibleRowsForScope(rows: RegistryRow[], showCancelled: boolean): RegistryRow[] {
-  if (showCancelled) {
-    return rows;
-  }
-  return rows.filter((row) => row.status !== "cancelled");
+function sortRowsByProjectId(rows: RegistryRow[], direction: ProjectIdSortDirection): RegistryRow[] {
+  const directionFactor = direction === "asc" ? 1 : -1;
+  return rows
+    .map((row, index) => ({ row, index, key: projectIdSortKey(row) }))
+    .sort((left, right) => {
+      const comparison = compareProjectIdSortKeys(left.key, right.key);
+      if (comparison !== 0) {
+        return comparison * directionFactor;
+      }
+      return left.index - right.index;
+    })
+    .map((item) => item.row);
 }
 
-function cancelledRowCount(rows: RegistryRow[]): number {
-  return rows.filter((row) => row.status === "cancelled").length;
+type ProjectIdSortKey = {
+  kindRank: number;
+  year: number;
+  month: number;
+  sequence: number;
+  suffix: string;
+  original: string;
+};
+
+function projectIdSortKey(row: RegistryRow): ProjectIdSortKey {
+  const original = businessIdentifier(row).trim();
+  const normalized = original.toUpperCase();
+  const registeredMatch = normalized.match(/^(?:DL|LTR)[-\s]*(\d{4})[-\s]*(\d{1,2})[-\s]*(\d+)/);
+  if (registeredMatch) {
+    return {
+      kindRank: 0,
+      year: Number(registeredMatch[1]),
+      month: Number(registeredMatch[2]),
+      sequence: Number(registeredMatch[3]),
+      suffix: "",
+      original: normalized,
+    };
+  }
+  const temporaryMatch = normalized.match(/^TMP[-\s]*([A-Z0-9]{8,})/);
+  if (temporaryMatch) {
+    return {
+      kindRank: 1,
+      year: 0,
+      month: 0,
+      sequence: 0,
+      suffix: temporaryMatch[1],
+      original: normalized,
+    };
+  }
+  return {
+    kindRank: 2,
+    year: 0,
+    month: 0,
+    sequence: 0,
+    suffix: normalized,
+    original: normalized,
+  };
+}
+
+function compareProjectIdSortKeys(left: ProjectIdSortKey, right: ProjectIdSortKey): number {
+  const numericFields: Array<keyof Pick<ProjectIdSortKey, "kindRank" | "year" | "month" | "sequence">> = [
+    "kindRank",
+    "year",
+    "month",
+    "sequence",
+  ];
+  for (const field of numericFields) {
+    const difference = left[field] - right[field];
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+  const suffixComparison = left.suffix.localeCompare(right.suffix);
+  if (suffixComparison !== 0) {
+    return suffixComparison;
+  }
+  return left.original.localeCompare(right.original);
+}
+
+function rowsForView(rows: RegistryRow[], view: RegistryView): RegistryRow[] {
+  if (view === "all") {
+    return rows;
+  }
+  if (view === "ongoing") {
+    return rows.filter(
+      (row) => row.status !== "cancelled" && classifyQueue(row) !== "completed"
+    );
+  }
+  if (view === "stopped") {
+    return rows.filter((row) => row.status === "cancelled");
+  }
+  return rows.filter(
+    (row) => row.status !== "cancelled" && classifyQueue(row) === view
+  );
 }
 
 function classifyQueue(row: RegistryRow): ClassifiedQueueName | null {
@@ -386,12 +414,19 @@ function businessIdentifier(row: RegistryRow): string {
   return row.display_project_id;
 }
 
+function footerProjectLabel(view: RegistryView): string {
+  if (view === "all") {
+    return "projects";
+  }
+  return `${VIEW_LABELS[view]} projects`;
+}
+
 function registryStatusLabel(row: RegistryRow): string {
   if (row.status === "cancelled") {
-    return "Cancelled";
+    return "Stopped";
   }
   const queue = classifyQueue(row);
-  return queue ? QUEUE_LABELS[queue] : "Planning";
+  return queue ? VIEW_LABELS[queue] : "Planning";
 }
 
 function nextStepLabel(row: RegistryRow): string {
