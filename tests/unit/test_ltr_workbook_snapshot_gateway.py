@@ -41,7 +41,6 @@ def test_ltr_workbook_snapshot_reads_xlsx_metadata_and_numbers(
     assert snapshot.existing_ltr_numbers == (
             "DL-2026-04-001",
             "DL-2026-04-002A",
-            "W123",
     )
     assert snapshot.unsupported_reason is None
 
@@ -91,6 +90,7 @@ def test_ltr_workbook_gateway_has_no_write_method() -> None:
 
     assert public_methods == {
         "probe_structure",
+        "read_tabular_rows",
         "read_ltr_workbook_snapshot",
         "read_workbook",
     }

@@ -55,6 +55,7 @@ ConnLab must not look or behave like:
 - A dark neon developer tool
 - A decorative glassmorphism concept UI
 - A future-feature showcase that exposes Reports, AI, permissions, or deployment work as active features before task approval
+- A Matrix, Reports, or AI showcase that blurs approved current work with future scope
 - An Excel-like Matrix editor where cells remain unstructured strings
 - An approval package dashboard where setup documents crowd out the live Matrix execution view
 

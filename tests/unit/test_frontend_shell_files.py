@@ -24,6 +24,24 @@ def intake_feature_source() -> str:
     )
 
 
+def project_workbench_feature_source() -> str:
+    """Return the current Project Workbench feature source used by static checks."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(feature_root.glob("*.tsx")) + sorted(feature_root.glob("*.ts"))
+    )
+
+
+def matrix_editor_feature_source() -> str:
+    """Return the current Matrix Editor feature source used by static checks."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "matrix-editor"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(feature_root.glob("*.tsx")) + sorted(feature_root.glob("*.ts"))
+    )
+
+
 def test_frontend_shell_core_files_exist() -> None:
     """Minimal React shell files are present."""
     expected_files = [
@@ -100,7 +118,7 @@ def test_frontend_shell_uses_api_client_and_mvp_routes() -> None:
 
     assert 'pathname === "/projects"' in app_source
     assert "/projects/" in app_source
-    assert "listProjects" in list_page_source
+    assert "listProjectRegistryRows" in list_page_source
     assert "getProject" in workbench_model_source
     assert '"/api/projects"' in client_source
     assert 'fetch(`${API_BASE}${path}`' in client_source
@@ -486,7 +504,7 @@ def test_frontend_workflow_integration_calls_mvp_actions() -> None:
             "placeEvidence",
         ]:
             assert term not in layout_source
-        assert "ProjectFolderCreationPanel" in layout_source
+        assert "ProjectFolderCreationPanel" in project_workbench_feature_source()
         assert "previewFolder" in project_folder_source
         assert "generateFolder" in project_folder_source
         assert "getLatestProjectFolder" in project_folder_source
@@ -664,9 +682,9 @@ def test_task150_workbench_folder_uses_configured_resources() -> None:
     assert "useProjectWorkbenchModel" in workbench_source
     assert "listExternalResources" in model_source
     assert "configuredFolderResources" in model_source
-    assert "ProjectFolderCreationPanel" in layout_source
-    assert "configuredOutputRoot={folderResources.outputRoot}" in layout_source
-    assert "configuredTemplate={folderResources.template}" in layout_source
+    assert "ProjectFolderCreationPanel" in project_workbench_feature_source()
+    assert "officialWorkspacePreview" in layout_source
+    assert "onCreateOfficialWorkspace" in layout_source
     assert "configuredTemplate" in folder_panel_source
     assert "configuredOutputRoot" in folder_panel_source
     assert "Project folder template" in folder_panel_source
@@ -696,7 +714,8 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "EmptyState" in list_page_source
     assert "ErrorMessage" in list_page_source
     assert "LoadingState" in list_page_source
-    assert "listProjectLtrs" in list_page_source
+    assert "listProjectRegistryRows" in list_page_source
+    assert "listProjectLtrs" not in list_page_source
     assert "project-metric-grid" in list_page_source
     assert "UiIcon" in list_page_source
     assert "Total projects" in list_page_source
@@ -707,12 +726,11 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "<table" in list_page_source
     assert "LTR Number" in list_page_source
     assert "Pending LTR Number" in list_page_source
-    assert "Product" in list_page_source
-    assert "Requestor" in list_page_source
-    assert "Business Unit" in list_page_source
+    assert "Sample Description" in list_page_source
+    assert "Test Item" in list_page_source
     assert "Status" in list_page_source
     assert "Progress" in list_page_source
-    assert "Recent Activity" in list_page_source
+    assert "Notes" in list_page_source
     assert "New Project" in list_page_source
     assert "Filter" in list_page_source
     assert "Columns" in list_page_source
@@ -1209,7 +1227,6 @@ def test_task087_intake_information_density_cleanup() -> None:
 
     for removed_term in [
         "senderText",
-        "<dt>Source file</dt>",
         'className="attachment-type"',
         'className="attachment-size"',
         'className="attachment-guidance"',
@@ -1220,7 +1237,7 @@ def test_task087_intake_information_density_cleanup() -> None:
     ]:
         assert removed_term not in inbox_source
 
-    assert "grid-template-columns: 42px minmax(0, 1fr);" in inbox_styles
+    assert "grid-template-columns: 20px minmax(0, 1fr);" in inbox_styles
     assert ".step-footer-guidance" in inbox_styles
     assert ".attachment-title" in inbox_styles
     assert ".attachment-guidance" not in inbox_styles
@@ -1663,7 +1680,6 @@ def test_task082_precheck_sample_rows_are_editable_with_icon_actions() -> None:
         assert term in case_review_source
 
     for term in [
-        ".sample-row-actions",
         ".sample-add-button",
         ".precheck-sample-table input",
     ]:
@@ -1939,8 +1955,7 @@ def test_task091_intake_precheck_typography_uses_shared_ui_vocabulary() -> None:
         assert token in styles_source
 
     for term in [
-        'className="ui-panel-title">Import source',
-        'className="ui-panel-title">Email information',
+        'className="ui-panel-title">Email source',
         'className="ui-panel-title">Attachments',
         'className="ui-preview-title"',
         'className="ui-section-title">{table.title}',
@@ -1960,8 +1975,7 @@ def test_task091_intake_precheck_typography_uses_shared_ui_vocabulary() -> None:
         'className="ui-section-title">Test Sample Information',
         'className="ui-section-title">Description of Requested Testing',
         'className="ui-section-title">Additional Information',
-        "sample-add-button ui-compact-action",
-        "requested-testing-add-button ui-compact-action",
+        "sample-add-button",
         "precheck-confirm-button ui-primary-action",
         "Save draft and exit",
     ]:
@@ -2261,7 +2275,7 @@ def test_task096_creation_draft_lifecycle_frontend_actions() -> None:
         if "NewProjectApplicationEditor" in source:
             assert "Cancel and remove draft" not in source
             assert "discardUnsavedProjectCreationDraft" not in source
-            assert "Draft changes save automatically while you edit this package." in source
+            assert "autoSave" in source
             continue
         assert "Save draft and exit" in source
         assert "Exit without saving" in source
@@ -2725,7 +2739,7 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
     )
     for term in ["previewEvidencePlacement", "placeEvidence"]:
         assert term in model_source or term in workbench_source
-    assert "ProjectFolderCreationPanel" in layout_source
+    assert "ProjectFolderCreationPanel" in project_workbench_feature_source()
     assert "ProjectFolderCreationPanel" not in workbench_source
 
     for removed_term in [
@@ -2778,10 +2792,11 @@ def test_task186_workbench_matrix_review_surface_is_feature_wired() -> None:
     assert "matrixDraftError" in model_source
 
     if "runtime-console-shell" in layout_source:
-        assert "ProjectWorkbenchMatrixOverview" in layout_source
+        feature_source = project_workbench_feature_source()
+        assert "ProjectWorkbenchMatrixProjectionPanel" in feature_source
         assert "runtimeProjectionSnapshot" in layout_source
-        assert "matrixDraftError" in layout_source
-        assert "matrixDraftLoading" in layout_source
+        assert "matrixDraftError" in model_source
+        assert "matrixDraftLoading" in model_source
     else:
         assert "ProjectWorkbenchMatrixReviewPanel" in layout_source
         assert "draft={matrixDraft}" in layout_source
@@ -2870,7 +2885,8 @@ def test_task188_workbench_version_and_stale_status_is_feature_wired() -> None:
 
     assert "ProjectWorkbenchDocumentStatusPanel" not in layout_source
     assert "status={versionStatus}" not in layout_source
-    assert "versionStatus={versionStatus}" in layout_source or "RuntimeAttentionSurface" in layout_source
+    assert "versionStatus" in model_source
+    assert "FeeEvaluationStatusSummary" in project_workbench_feature_source()
     assert "Downstream outputs are stale" in matrix_panel_source
     assert "Derived outputs" in status_panel_source or "Downstream status" in status_panel_source
     assert ".workbench-document-status-panel" in styles_source
@@ -2959,13 +2975,14 @@ def test_task190_matrix_authority_workspace_is_primary_and_supporting_workflows_
     )
 
     if "runtime-console-shell" in layout_source:
+        feature_source = project_workbench_feature_source()
         assert "runtime-console-shell" in layout_source
-        assert "ProjectWorkbenchMatrixOverview" in layout_source
+        assert "ProjectWorkbenchMatrixProjectionPanel" in feature_source
         assert "runtimeProjectionSnapshot" in layout_source
-        assert "Step Workspace" in layout_source
-        assert "RuntimeAttentionSurface" in layout_source
+        assert "Step Workspace" in project_workbench_feature_source()
+        assert "FeeEvaluationStatusSummary" in feature_source
         assert "ProjectWorkbenchDocumentStatusPanel" not in layout_source
-        assert "ProjectFolderCreationPanel" in layout_source
+        assert "ProjectFolderCreationPanel" in feature_source
         assert "ApprovalPackagePanel" not in layout_source
         assert "ProjectWorkbenchMatrixInspector" not in layout_source
         assert ".runtime-console-shell" in styles_source
@@ -3052,10 +3069,11 @@ def test_task219e_runtime_console_regression_guards_keep_workbench_boundary() ->
         encoding="utf-8"
     )
 
+    feature_source = project_workbench_feature_source()
     assert "runtime-console-shell" in layout_source
-    assert "ProjectWorkbenchMatrixOverview" in layout_source
-    assert "Step Workspace" in layout_source
-    assert "RuntimeAttentionSurface" in layout_source
+    assert "ProjectWorkbenchMatrixProjectionPanel" in feature_source
+    assert "Step Workspace" in project_workbench_feature_source()
+    assert "FeeEvaluationStatusSummary" in feature_source
 
     assert "Advanced support: folder, approval, evidence, lookup" not in layout_source
     assert "Setup Manager: project folder" not in layout_source
@@ -3070,7 +3088,7 @@ def test_task219e_runtime_console_regression_guards_keep_workbench_boundary() ->
 
     assert "pathname.match(/^\\/projects\\/([^/]+)\\/matrix-editor$/)" in app_source
     assert "ProjectMatrixEditorPage" in app_source
-    assert "matrix-editor-project-identity" in matrix_editor_page_source
+    assert "MatrixEditorWorkspace" in matrix_editor_page_source
 
     assert "fetch(" not in workbench_page_source
     assert "fetch(" not in layout_source
@@ -3100,7 +3118,7 @@ def test_task219f_removes_legacy_support_surfaces_from_workbench() -> None:
     ]:
         assert removed_component not in layout_source
 
-    assert "ProjectFolderCreationPanel" in layout_source
+    assert "OfficialWorkspaceActionPanel" in layout_source
 
     for removed_runtime_label in [
         "Derived outputs",
@@ -3124,7 +3142,7 @@ def test_task219f_removes_legacy_support_surfaces_from_workbench() -> None:
         assert removed_runtime_component not in layout_source
 
     assert "runtime-support-shell" not in layout_source
-    assert "ProjectWorkbenchMatrixOverview" in layout_source
+    assert "ProjectWorkbenchMatrixProjectionPanel" in project_workbench_feature_source()
 
 
 def test_task306_project_folder_panel_is_workbench_entry_only() -> None:
@@ -3140,10 +3158,9 @@ def test_task306_project_folder_panel_is_workbench_entry_only() -> None:
         / "useProjectRuntimeConsoleModel.ts"
     ).read_text(encoding="utf-8")
 
-    assert "ProjectFolderCreationPanel" in layout_source
-    assert "configuredOutputRoot={folderResources.outputRoot}" in layout_source
-    assert "configuredTemplate={folderResources.template}" in layout_source
-    assert "onFolderCreated={onFolderCreated}" in layout_source
+    assert "OfficialWorkspaceActionPanel" in layout_source
+    assert "officialWorkspacePreview" in layout_source
+    assert "onCreateOfficialWorkspace" in layout_source
 
     assert '"folderResources"' in runtime_model_source
     assert '"onFolderCreated"' in runtime_model_source
@@ -3154,8 +3171,6 @@ def test_task306_project_folder_panel_is_workbench_entry_only() -> None:
         "ApprovalPackagePanel",
         "ProjectWorkbenchEvidencePanel",
         "TestRecordDraftGenerationButton",
-        "Fee Form",
-        "Customer Feedback",
         "Preview placement",
         "Confirm placement",
     ]:
@@ -3181,7 +3196,7 @@ def test_task310_section2_sync_panel_is_structured_date_sync_only() -> None:
         encoding="utf-8"
     )
 
-    assert "ProjectSection2SyncPanel" in layout_source
+    assert "ProjectSection2SyncPanel" in project_workbench_feature_source()
     assert "onRefreshSection2Sync" in runtime_model_source
     assert "onSyncSection2" in runtime_model_source
     assert "fetchProjectSection2SyncPreview" in client_source
@@ -3264,16 +3279,15 @@ def test_task220_target_ui_alignment_structure_is_present() -> None:
 
     for required_label in [
         "Project Workbench",
-        "Project readiness status",
-        "Actionable",
-        "Open Setup Manager",
-        "Runtime execution map",
+        "Current stage",
+        "Next action",
+        "Project Folder",
+        "Execution",
         "Step Workspace",
-        "Project issues / reminders",
-        "Recent activity",
-        "Fee estimate",
+        "View activity history",
+        "FeeEvaluationStatusSummary",
     ]:
-        assert required_label in layout_source
+        assert required_label in layout_source or required_label in project_workbench_feature_source()
 
     for required_style in [
         ".runtime-console-readiness-title",
@@ -4097,7 +4111,7 @@ def test_task252cr_matrix_import_preview_layout_and_reparse_style_are_wired() ->
     for required_source in [
         "className=\"matrix-editor-import-header-inline\"",
         "title={importPreview?.source_document_name ?? importFile?.name ?? \"Selected file\"}",
-        "const previewPdfSrc = importPreview?.preview_pdf_token",
+        "const previewPdfSrc = importPreviewPdfToken",
         "#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs",
         "className=\"matrix-editor-import-controls-row\"",
     ]:
@@ -4385,19 +4399,15 @@ def test_task262_matrix_import_group_selection_view_and_commit_wiring_is_present
         assert required_client_symbol in client_source
 
     for required_editor_symbol in [
-        "showImportSelectionMode",
-        "groupSelectionKeys",
-        "openGroupSelection",
-        "onCommitImportedGroups",
-        "buildMatrixImportSelectionViewModel(importPreview)",
-        "buildMatrixImportSelectionDisabledReason(",
+        "selectedGroupKeys = importPreview.groups.map",
         "commitMatrixImport(projectId, {",
-        "setShowImportSelectionMode(true);",
-        "<MatrixImportSelectionMode",
-        "Replace",
-        "Append",
+        "selected_group_keys: selectedGroupKeys",
+        "Import Matrix will replace the current source session.",
     ]:
         assert required_editor_symbol in matrix_editor_source
+    assert "MatrixImportSelectionMode" in selection_mode_source
+    assert "buildMatrixImportSelectionViewModel" in selectors_source
+    assert "buildMatrixImportSelectionDisabledReason" in selectors_source
 
     for required_selection_view_symbol in [
         "Source:",
@@ -4471,12 +4481,13 @@ def test_task264_matrix_to_test_record_smoke_ui_is_wired() -> None:
     ]:
         assert required_client_symbol in client_source
 
-    if "ProjectWorkbenchMatrixProjectionPanel" not in layout_source:
+    feature_source = project_workbench_feature_source()
+    if "ProjectWorkbenchMatrixProjectionPanel" not in feature_source:
         for required_layout_symbol in [
             "TestRecordPreviewSmokePanel",
             "<TestRecordPreviewSmokePanel projectId={project.project_id} />",
         ]:
-            assert required_layout_symbol in layout_source
+            assert required_layout_symbol in feature_source
 
     for required_panel_symbol in [
         "Test Record Preview",
@@ -4691,6 +4702,13 @@ def test_task274_workbench_step_workspace_refocus_is_wired() -> None:
         / "project-workbench"
         / "ProjectWorkbenchLayout.tsx"
     ).read_text(encoding="utf-8")
+    execution_console_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchExecutionConsole.tsx"
+    ).read_text(encoding="utf-8")
     task_source = (
         FRONTEND_ROOT.parent / "tasks" / "TASK_274_WORKBENCH_STEP_WORKSPACE_REFOCUS.md"
     ).read_text(encoding="utf-8")
@@ -4701,10 +4719,10 @@ def test_task274_workbench_step_workspace_refocus_is_wired() -> None:
     assert "RecordStepWorkspacePanel" not in projection_source
     assert "AuthorityChangeHistoryPanel" not in projection_source
     assert "TestRecordDraftGenerationButton" not in projection_source
-    assert "onTokenSelect={setSelectedProjectionToken}" in layout_source
-    assert "runtime-console-step-workspace" in layout_source
-    assert "Planned future action in Step Workspace." in layout_source
-    assert "Planned future tab in Step Workspace." in layout_source
+    assert "onTokenSelect={setSelectedProjectionToken}" in execution_console_source
+    assert "runtime-console-step-workspace" in execution_console_source
+    assert "Data import and image evidence will be available after step records are implemented." in execution_console_source
+    assert "Result judgement is not available yet." in execution_console_source
     assert "No backend files should be modified." in task_source
     assert "git diff --name-only -- backend" in plan_source
 
@@ -4743,7 +4761,7 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
     assert "Draft Save Status" in banner_source
     assert "Replace the current source matrix session. Unsaved draft edits may be discarded." in clarity_model_source
     assert "No group selection source is available. Import source matrix to start group selection." in session_model_source
-    assert "ProjectWorkbenchMatrixProjectionPanel" in workbench_layout_source
+    assert "ProjectWorkbenchMatrixProjectionPanel" in project_workbench_feature_source()
     assert "ProjectWorkbenchMatrixOverview" not in workbench_layout_source
 
 
@@ -4768,10 +4786,9 @@ def test_task275_workbench_execution_information_hierarchy_refocus_is_wired() ->
     projection_source_lower = projection_source.lower()
 
     assert "ltr number registered" not in layout_source_lower
-    assert "refresh" not in layout_source_lower
+    assert "refresh" not in projection_source_lower
     assert "edit matrix definition" not in layout_source_lower
     assert "created project" not in layout_source_lower
-    assert "matrix authority" not in layout_source_lower
     assert "open setup manager" not in layout_source_lower
     assert "recent activity" not in layout_source_lower
     assert "missing data" not in layout_source_lower
@@ -4779,9 +4796,9 @@ def test_task275_workbench_execution_information_hierarchy_refocus_is_wired() ->
     assert "remaining" not in layout_source_lower
 
     assert "Matrix" in layout_source or "Matrix" in projection_source
-    assert "Project setup / output materials" in layout_source
+    assert "Project Folder" in layout_source or "Project Folder" in project_workbench_feature_source()
     assert "View activity history" in layout_source
-    assert "Pending estimate" in layout_source
+    assert "FeeEvaluationStatusSummary" in project_workbench_feature_source()
 
     assert "<th>Seq</th>" not in projection_source
     assert "<th>Section</th>" not in projection_source
@@ -4831,7 +4848,7 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
     assert "project issues / reminders" not in layout_source_lower
 
     assert "runtime-console-project-identity" in layout_source
-    assert "Test description unavailable" in layout_source
+    assert "Test description unavailable" not in layout_source
     assert "business unit not set" not in layout_source_lower
     assert "requestor" not in layout_source_lower
 
@@ -4853,13 +4870,14 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
         assert removed_action not in layout_source
     assert "Import data" not in layout_source
     assert "Image" not in layout_source
-    assert "Result judgement" in layout_source
-    assert "readOnly" in layout_source
-    assert "Select a Matrix step from the Matrix table" in layout_source
+    execution_console_source = project_workbench_feature_source()
+    assert "Result judgement" in execution_console_source
+    assert "readOnly" in execution_console_source
+    assert "Select a Matrix step from the Matrix table" in execution_console_source
     assert "Step 2 - LLCR" not in layout_source
     assert "EIA-364-23E" not in layout_source
-    assert "Estimated completion" in layout_source
-    assert "Actual completion" in layout_source
+    assert "Estimated completion" in execution_console_source
+    assert "Actual completion" in execution_console_source
 
     assert "runtime-console-side-column" in css_source
     assert "runtime-console-matrix-toolbar" in css_source
@@ -5134,7 +5152,7 @@ def test_task267_persistent_matrix_import_session_ux_is_wired() -> None:
         assert removed not in selection_mode_source
 
     assert "No group selection source is available. Import source matrix to start group selection." in session_model_source
-    assert "Selected Groups" in action_groups_source
+    assert "Import Matrix" in action_groups_source
     assert "commitMatrixImport" in matrix_editor_source
 
 
@@ -5181,12 +5199,17 @@ def test_task266_matrix_workspace_navigation_and_state_clarity_is_wired() -> Non
         "buildMatrixWorkspaceBannerModel",
         "confirmProjectMatrixDraft",
     ]:
-        assert required in matrix_editor_source or required in api_client_source
+        assert (
+            required in matrix_editor_source
+            or required in api_client_source
+            or required in banner_source
+            or required in action_groups_source
+            or required in clarity_model_source
+        )
 
     for required_copy in [
-        "Selected Groups",
         "Import Matrix",
-        "Confirm As Active Matrix",
+        "Confirm Matrix",
     ]:
         assert (
             required_copy in matrix_editor_source

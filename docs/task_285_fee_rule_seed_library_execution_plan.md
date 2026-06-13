@@ -126,4 +126,3 @@ Allowed strategies:
 - All acceptance criteria in `tasks/TASK_285_FEE_RULE_SEED_LIBRARY.md` satisfied.
 - Target tests pass.
 - No touch to Matrix/factory/test-record/GUI/export logic.
-

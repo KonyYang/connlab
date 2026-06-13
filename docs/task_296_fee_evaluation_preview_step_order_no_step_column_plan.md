@@ -182,4 +182,3 @@ git diff --check
 ## Stop Point
 
 After implementation and validation, update `docs/task_board.md` to mark TASK_296 complete and stop. Do not proceed to editable fee cells or backend persistence without a separate approved task.
-

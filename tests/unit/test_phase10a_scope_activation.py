@@ -22,6 +22,7 @@ def test_phase10a_board_closes_after_task065_completion() -> None:
     )
     assert (
         "Current Active Task: None - pending user approval for next phase" in board
+        or "Current Active Task: `TASK_317_SOURCE_BOOK_AND_REQUEST_MATERIAL_COLLECTION` complete" in board
         or "Current Active Task: TASK_125_FULL_TEST_SUITE_HISTORICAL_EXPECTATION_SYNC" in board
         or "Current Active Task: TASK_126_NEW_PROJECT_SETUP_CONFIRMATION_REQUIRED_FIELDS_REWORK" in board
         or "Current Active Task: None - TASK_127 complete, pending user approval for TASK_128" in board

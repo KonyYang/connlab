@@ -95,10 +95,15 @@ def _to_step_response(
 ) -> ConfirmedMatrixTestRecordPreviewStepResponse:
     return ConfirmedMatrixTestRecordPreviewStepResponse(
         sequence=step.sequence,
-        raw_token=step.raw_token,
+        raw_token=_display_step_token(step.raw_token, step.suffix_note),
         test_item=step.test_item,
         section=step.section,
         method=step.method,
         condition=step.condition,
         requirement=step.requirement,
     )
+
+
+def _display_step_token(raw_token: str, suffix_note: str | None) -> str:
+    suffix = suffix_note.strip() if suffix_note else ""
+    return f"{raw_token}{suffix}" if suffix else raw_token

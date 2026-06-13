@@ -69,6 +69,9 @@ class ProjectRegistryRowResponse(BaseModel):
 def create_project(
     request: ProjectCreateRequest,
     service: ProjectService = Depends(get_project_service),
+    registry_service: ProjectRegistrySummaryService = Depends(
+        get_project_registry_summary_service
+    ),
 ) -> ProjectResponse:
     """Create a project."""
     project = service.create_project(
@@ -79,15 +82,21 @@ def create_project(
             business_unit=request.business_unit,
         )
     )
-    return _to_response(project)
+    return _to_response(project, registry_service.get_row(project.project_id))
 
 
 @router.get("", response_model=list[ProjectResponse])
 def list_projects(
     service: ProjectService = Depends(get_project_service),
+    registry_service: ProjectRegistrySummaryService = Depends(
+        get_project_registry_summary_service
+    ),
 ) -> list[ProjectResponse]:
     """List projects."""
-    return [_to_response(project) for project in service.list_projects()]
+    return [
+        _to_response(project, registry_service.get_row(project.project_id))
+        for project in service.list_projects()
+    ]
 
 
 @router.get("/registry", response_model=list[ProjectRegistryRowResponse])

@@ -41,7 +41,10 @@ def test_phase5_task_files_require_impeccable_for_ui_work() -> None:
     ]
 
     for task_name in task_names:
-        source = (ROOT / "tasks" / task_name).read_text(encoding="utf-8")
+        task_path = ROOT / "tasks" / task_name
+        if not task_path.exists():
+            task_path = ROOT / "tasks" / "completed" / "2026" / task_name
+        source = task_path.read_text(encoding="utf-8")
         assert "$impeccable" in source
         assert "PRODUCT.md" in source
         assert "DESIGN.md" in source
