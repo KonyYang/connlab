@@ -38,6 +38,8 @@ export function ProjectWorkbenchLayout({
     useState<MatrixProjectionTokenCell | null>(null);
   const [selectedLifecycleMode, setSelectedLifecycleMode] =
     useState<WorkbenchLifecycleMode | null>(null);
+  const [temporaryPromotionMessage, setTemporaryPromotionMessage] =
+    useState<string | null>(null);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -54,6 +56,10 @@ export function ProjectWorkbenchLayout({
     officialWorkspaceCreating,
     officialWorkspaceError,
     onCreateOfficialWorkspace,
+    officialFolderCheckPreview,
+    officialFolderCheckError,
+    onRefreshOfficialFolderCheck,
+    onRepairOfficialFolderStructure,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -68,7 +74,7 @@ export function ProjectWorkbenchLayout({
   const effectiveFolderReady =
     folderReady || officialWorkspacePreview?.status === "completed";
   const projectIdentity =
-    projectNumber ?? `Temporary project ${project.project_id.slice(0, 8)}`;
+    projectNumber ?? temporaryProjectId(project.project_id);
   const titleParts = [
     projectIdentity,
     project.sample_description?.trim() || project.product_name,
@@ -77,6 +83,7 @@ export function ProjectWorkbenchLayout({
   const lifecycle = deriveProjectWorkbenchLifecycle(
     {
       hasLtr: Boolean(projectNumber),
+      isCancelled: project.status === "cancelled",
       hasActiveMatrix: activeMatrixAuthorityReady,
       hasCandidateMatrix: Boolean(matrixCandidateDraft ?? matrixDraft),
       folderReady: effectiveFolderReady,
@@ -88,6 +95,10 @@ export function ProjectWorkbenchLayout({
       requestMaterialBlockers: requestMaterialPreview?.blockers ?? [],
       requestMaterialWarnings: requestMaterialPreview?.warnings ?? [],
       hasRequestMaterialPreviewError: Boolean(requestMaterialError),
+      officialFolderCheckStatus: officialFolderCheckPreview?.status ?? null,
+      officialFolderCheckBlockers: officialFolderCheckPreview?.blockers ?? [],
+      officialFolderCheckWarnings: officialFolderCheckPreview?.warnings ?? [],
+      hasOfficialFolderCheckError: Boolean(officialFolderCheckError),
       section2Status: section2SyncPreview?.status ?? null,
       hasPackagePreviewError: Boolean(packagePreviewError),
     },
@@ -101,6 +112,7 @@ export function ProjectWorkbenchLayout({
     folderReady: effectiveFolderReady,
     matrixAuthorityReady: activeMatrixAuthorityReady,
     packagePreview,
+    officialFolderCheckPreview,
     requestMaterialPreview,
     section2Status: section2SyncPreview?.status ?? null,
   });
@@ -161,6 +173,8 @@ export function ProjectWorkbenchLayout({
             onOpenFeeEvaluation={onOpenFeeEvaluation}
             onRefreshPackagePreview={onRefreshPackagePreview}
             onCollectRequestMaterial={onCollectRequestMaterial}
+            onRefreshOfficialFolderCheck={onRefreshOfficialFolderCheck}
+            onRepairOfficialFolderStructure={onRepairOfficialFolderStructure}
             onOpenSettings={onOpenSettings}
           />
 
@@ -172,8 +186,15 @@ export function ProjectWorkbenchLayout({
 
       {lifecycle.mode === "temporary_planning" ? (
         <TemporaryPlanningMode
+          feePlanningAvailable={Boolean(matrixCandidateDraft ?? matrixDraft)}
           onOpenMatrixEditor={onOpenMatrixEditor}
           onOpenFeeEvaluation={onOpenFeeEvaluation}
+          onStartPromotion={() => {
+            setTemporaryPromotionMessage(
+              "Same-project LTR registration is not wired yet. This temporary project stays intact; no duplicate project was created."
+            );
+          }}
+          promotionMessage={temporaryPromotionMessage}
         />
       ) : null}
 
@@ -215,12 +236,14 @@ function buildSetupMaterials({
   folderReady,
   matrixAuthorityReady,
   packagePreview,
+  officialFolderCheckPreview,
   requestMaterialPreview,
   section2Status,
 }: {
   folderReady: boolean;
   matrixAuthorityReady: boolean;
   packagePreview: ProjectRuntimeConsoleModel["packagePreview"];
+  officialFolderCheckPreview: ProjectRuntimeConsoleModel["officialFolderCheckPreview"];
   requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
   section2Status: string | null;
 }): SetupMaterialItem[] {
@@ -228,10 +251,13 @@ function buildSetupMaterials({
   const confirmedFeeReady =
     packagePreview?.authority_context.confirmed_fee_status === "current" ||
     packagePreview?.authority_context.confirmed_fee_status === "ready";
-  const customerFeedbackItem = packagePreview?.required_items.find(
-    (item) => item.key === "customer_feedback_form"
+  const folderStructureStatus = officialFolderCheckPreview?.status ?? null;
+  const submittedMaterialItem = officialFolderCheckPreview?.required_files.find(
+    (item) => item.key === "submitted_material"
   );
-  const customerFeedbackStatus = customerFeedbackItem?.status ?? null;
+  const customerFeedbackItem = officialFolderCheckPreview?.required_files.find(
+    (item) => item.key === "customer_feedback"
+  );
   return [
     {
       title: "Project folder",
@@ -249,6 +275,18 @@ function buildSetupMaterials({
       status: normalizeRequestMaterialSetupStatus(requestMaterialPreview?.status ?? null),
     },
     {
+      title: "Folder structure",
+      value: formatOfficialFolderCheckStatus(folderStructureStatus),
+      status: normalizeOfficialFolderSetupStatus(folderStructureStatus),
+    },
+    {
+      title: "Submitted Material",
+      value: submittedMaterialItem
+        ? formatOfficialFolderItemStatus(submittedMaterialItem.status)
+        : "Not checked",
+      status: normalizeSetupStatus(submittedMaterialItem?.status ?? null),
+    },
+    {
       title: "Confirmed Fee",
       value: confirmedFeeReady ? "Ready" : "Blocked",
       status: confirmedFeeReady ? "ready" : "blocked",
@@ -262,20 +300,10 @@ function buildSetupMaterials({
     },
     {
       title: "Customer Feedback form",
-      value: customerFeedbackStatus
-        ? formatPackageItemStatus(customerFeedbackStatus)
+      value: customerFeedbackItem
+        ? formatOfficialFolderItemStatus(customerFeedbackItem.status)
         : "Refresh readiness",
-      status: normalizeSetupStatus(customerFeedbackStatus),
-    },
-    {
-      title: "Submitted Material",
-      value:
-        requestMaterialPreview?.status === "collected"
-          ? "Ready"
-          : packageStatus === "blocked" || requestMaterialPreview?.status === "blocked"
-            ? "Blocked"
-            : "Refresh readiness",
-      status: requestMaterialPreview?.status === "collected" ? "ready" : "blocked",
+      status: normalizeSetupStatus(customerFeedbackItem?.status ?? null),
     },
   ];
 }
@@ -309,6 +337,59 @@ function formatPackageItemStatus(status: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatOfficialFolderCheckStatus(status: string | null): string {
+  if (status === "ready") {
+    return "Ready";
+  }
+  if (status === "missing") {
+    return "Missing folders";
+  }
+  if (status === "conflict") {
+    return "Conflict";
+  }
+  if (status === "warning") {
+    return "Needs review";
+  }
+  if (status === "blocked") {
+    return "Blocked";
+  }
+  return "Not checked";
+}
+
+function normalizeOfficialFolderSetupStatus(
+  status: string | null
+): SetupMaterialItem["status"] {
+  if (status === "ready") {
+    return "ready";
+  }
+  if (status === "missing" || status === "warning") {
+    return "warning";
+  }
+  if (status === "blocked" || status === "conflict") {
+    return "blocked";
+  }
+  return "neutral";
+}
+
+function formatOfficialFolderItemStatus(status: string): string {
+  if (status === "ready") {
+    return "Ready";
+  }
+  if (status === "missing") {
+    return "Missing files";
+  }
+  if (status === "warning") {
+    return "Needs review";
+  }
+  if (status === "deferred" || status === "not_applicable") {
+    return "Deferred";
+  }
+  if (status === "conflict") {
+    return "Conflict";
+  }
+  return formatPackageItemStatus(status);
 }
 
 function formatRequestMaterialChecklistStatus(status: string | null): string {
@@ -355,6 +436,10 @@ function deriveProjectNumber(
   }
   const fromProjectNo = projectNo?.trim();
   return fromProjectNo || null;
+}
+
+function temporaryProjectId(projectId: string): string {
+  return `TMP-${projectId.slice(0, 8).toUpperCase()}`;
 }
 
 function formatSection2Status(status: string): string {

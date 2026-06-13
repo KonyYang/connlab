@@ -18,17 +18,29 @@ class ProjectIdentity:
     sample_description: str | None
     test_item: str | None
     operator_note: str | None
+    display_project_id: str
+    display_project_id_kind: str
+    has_registered_ltr: bool
+    temporary_project_id: str | None
+    registered_ltr_number: str | None
 
 
 def resolve_project_identity(project: Project, ltrs: list[LtrRecord]) -> ProjectIdentity:
     """Resolve display and folder-naming identity from the current registered LTR."""
     ltr = select_registered_ltr(ltrs)
     setup = setup_payload_from_ltr_notes(ltr.notes if ltr else None)
+    ltr_number = _text(ltr.ltr_number) if ltr else None
+    temporary_project_id = _temporary_project_id(project.project_id)
     return ProjectIdentity(
-        ltr_number=_text(ltr.ltr_number) if ltr else _text(project.project_no),
+        ltr_number=ltr_number,
         sample_description=_text(project.product_name) or _text(setup.get("sample_description")),
         test_item=_text(setup.get("test_item")),
         operator_note=operator_note_from_ltr_notes(ltr.notes if ltr else None),
+        display_project_id=ltr_number or temporary_project_id,
+        display_project_id_kind="registered" if ltr_number else "temporary",
+        has_registered_ltr=bool(ltr_number),
+        temporary_project_id=None if ltr_number else temporary_project_id,
+        registered_ltr_number=ltr_number,
     )
 
 
@@ -97,3 +109,7 @@ def _text(value: Any) -> str | None:
         return None
     text = value.strip()
     return text or None
+
+
+def _temporary_project_id(project_id: str) -> str:
+    return f"TMP-{project_id[:8].upper()}"

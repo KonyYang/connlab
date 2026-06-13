@@ -18,6 +18,8 @@ export function WorkbenchStageBanner({
   onOpenFeeEvaluation,
   onRefreshPackagePreview,
   onCollectRequestMaterial,
+  onRefreshOfficialFolderCheck,
+  onRepairOfficialFolderStructure,
   onOpenSettings,
 }: {
   lifecycle: WorkbenchLifecycleViewModel;
@@ -25,6 +27,8 @@ export function WorkbenchStageBanner({
   onOpenFeeEvaluation: () => void;
   onRefreshPackagePreview: () => void;
   onCollectRequestMaterial: () => Promise<void>;
+  onRefreshOfficialFolderCheck: () => Promise<void>;
+  onRepairOfficialFolderStructure: () => Promise<void>;
   onOpenSettings: () => void;
 }): ReactElement {
   const actionHandler = getNextActionHandler(
@@ -33,6 +37,8 @@ export function WorkbenchStageBanner({
     onOpenFeeEvaluation,
     onRefreshPackagePreview,
     onCollectRequestMaterial,
+    onRefreshOfficialFolderCheck,
+    onRepairOfficialFolderStructure,
     onOpenSettings
   );
   return (
@@ -109,8 +115,8 @@ export function ProjectOverviewMode({
       </section>
       <section className="runtime-console-readiness" aria-label="Overview readiness checklist">
         <div className="runtime-console-readiness-title">
-          <p className="eyebrow">Package readiness</p>
-          <strong>Controlled delivery checklist</strong>
+          <p className="eyebrow">Project Folder</p>
+          <strong>Controlled folder checklist</strong>
         </div>
         {setupMaterials.map((item) => (
           <RuntimeSetupItem key={item.title} item={item} />
@@ -133,18 +139,27 @@ export function ProjectOverviewMode({
 }
 
 export function TemporaryPlanningMode({
+  feePlanningAvailable,
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
+  onStartPromotion,
+  promotionMessage,
 }: {
+  feePlanningAvailable: boolean;
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
+  onStartPromotion: () => void;
+  promotionMessage: string | null;
 }): ReactElement {
   return (
     <section className="runtime-console-mode-surface" aria-label="Temporary planning">
       <div className="runtime-console-mode-heading">
-        <p className="eyebrow">Planning mode</p>
+        <p className="eyebrow">Temporary Planning</p>
         <h3>Shape the request before formal registration</h3>
-        <p>Build Matrix and estimate fee before DL registration.</p>
+        <p>
+          This project has no registered LTR Number yet. Matrix and Fee planning tools are
+          available for feasibility, duration, and cost estimation. Official package actions require LTR registration.
+        </p>
       </div>
       <div className="runtime-console-planning-actions">
         <article>
@@ -156,10 +171,30 @@ export function TemporaryPlanningMode({
         </article>
         <article>
           <strong>Fee expectation</strong>
-          <p>Open Fee Evaluation for pre-DL estimation when a Matrix draft is available.</p>
-          <button type="button" onClick={onOpenFeeEvaluation}>
+          <p>
+            {feePlanningAvailable
+              ? "Open Fee Evaluation for pre-DL estimation from the available Matrix draft."
+              : "Create or import a Matrix draft before opening Fee Evaluation for pre-DL estimation."}
+          </p>
+          <button
+            type="button"
+            disabled={!feePlanningAvailable}
+            onClick={onOpenFeeEvaluation}
+          >
             Open Fee Evaluation
           </button>
+        </article>
+        <article>
+          <strong>Formal registration</strong>
+          <p>
+            Keep this temporary project intact when it is ready to enter the LTR workflow.
+          </p>
+          <button type="button" onClick={onStartPromotion}>
+            Convert to Formal Project
+          </button>
+          {promotionMessage ? (
+            <p className="runtime-console-inline-warning">{promotionMessage}</p>
+          ) : null}
         </article>
       </div>
     </section>
@@ -286,6 +321,8 @@ function getNextActionHandler(
   onOpenFeeEvaluation: () => void,
   onRefreshPackagePreview: () => void,
   onCollectRequestMaterial: () => Promise<void>,
+  onRefreshOfficialFolderCheck: () => Promise<void>,
+  onRepairOfficialFolderStructure: () => Promise<void>,
   onOpenSettings: () => void
 ): (() => void) | null {
   if (actionTarget === "matrix") {
@@ -299,6 +336,12 @@ function getNextActionHandler(
   }
   if (actionTarget === "request_material") {
     return () => void onCollectRequestMaterial();
+  }
+  if (actionTarget === "official_folder_refresh") {
+    return () => void onRefreshOfficialFolderCheck();
+  }
+  if (actionTarget === "official_folder_repair") {
+    return () => void onRepairOfficialFolderStructure();
   }
   if (actionTarget === "settings") {
     return onOpenSettings;

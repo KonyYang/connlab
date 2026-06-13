@@ -44,6 +44,7 @@ from backend.domain.models import (
     Project,
     ProjectFolderRecord,
     ProjectOutputRecord,
+    ProjectTemporaryContext,
     ProjectTestPlanDraft,
     SampleInfo,
 )
@@ -105,6 +106,7 @@ __all__ = [
     "ProjectMatrixDraftSnapshot",
     "ProjectMatrixDraftStatus",
     "ProjectStatus",
+    "ProjectTemporaryContext",
     "ProjectTestPlanDraft",
     "ProjectTestPlanDraftStatus",
     "SourceMatrixCellSnapshot",

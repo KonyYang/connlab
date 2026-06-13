@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   ConfirmedMatrixSnapshot,
   Project,
+  OfficialFolderCheckPreview,
   ProjectPackagePreview,
   RequestMaterialPreview,
   ProjectTestPlanDraft,
@@ -40,17 +41,52 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: null,
     }, undefined, { onOpenFeeEvaluation });
 
-    expect(screen.getByText("Temporary planning")).toBeTruthy();
+    expect(screen.getByText("Temporary Planning")).toBeTruthy();
     expect(screen.getByText("Plan Matrix and fee before DL registration")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Fee Evaluation" })).toBeTruthy();
-    expect(screen.getByText("Build Matrix and estimate fee before DL registration.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Fee Evaluation" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(screen.getByText(/This project has no registered LTR Number yet/)).toBeTruthy();
+    expect(screen.getByText(/Official package actions require LTR registration/)).toBeTruthy();
     expect(onOpenFeeEvaluation).not.toHaveBeenCalled();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
+  });
+
+  it("enables temporary Fee planning only when a Matrix draft exists", async () => {
+    const user = userEvent.setup();
+    const onOpenFeeEvaluation = vi.fn();
+    renderWorkbench({
+      latestLtr: null,
+      matrixDraft: testPlanDraft,
+      packagePreview: null,
+    }, undefined, { onOpenFeeEvaluation });
+
+    const feeButton = screen.getByRole("button", { name: "Open Fee Evaluation" });
+    expect(feeButton).toHaveProperty("disabled", false);
+    await user.click(feeButton);
+    expect(onOpenFeeEvaluation).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer temporary planning or promotion for cancelled no-DL projects", () => {
+    renderWorkbench(
+      {
+        latestLtr: null,
+        matrixAuthorityDraft: null,
+        packagePreview: null,
+      },
+      { status: "cancelled" }
+    );
+
+    expect(screen.getByText("Cancelled project")).toBeTruthy();
+    expect(screen.getByText("No action")).toBeTruthy();
+    expect(screen.queryByText("Temporary Planning")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Convert to Formal Project" })).toBeNull();
   });
 
   it("uses project_no as DL fallback when latest LTR lookup is unavailable", () => {
@@ -209,6 +245,44 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Fee summary panel")).toBeNull();
 
     expect(user).toBeTruthy();
+  });
+
+  it("shows folder structure repair as the single next action", async () => {
+    const user = userEvent.setup();
+    const onRepairOfficialFolderStructure = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      officialFolderCheckPreview: missingOfficialFolderCheckPreview,
+      folderReady: true,
+      onRepairOfficialFolderStructure,
+    });
+
+    expect(screen.getByText("Folder structure")).toBeTruthy();
+    expect(screen.getAllByText("Missing folders").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: "Repair folder structure" }));
+
+    expect(onRepairOfficialFolderStructure).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses official folder check as the Customer Feedback source in the Project Folder list", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: customerFeedbackReadyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      officialFolderCheckPreview: customerFeedbackDeferredOfficialFolderCheckPreview,
+      folderReady: true,
+    });
+
+    expect(screen.getByText("Customer Feedback form")).toBeTruthy();
+    expect(screen.getAllByText("Deferred").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Customer Feedback form ready from package preview")).toBeNull();
   });
 
   it("shows one local project folder creation action before package preparation", async () => {
@@ -410,6 +484,11 @@ function buildRuntimeModel(
     officialWorkspaceCreating: false,
     officialWorkspaceError: null,
     officialWorkspaceResult: null,
+    officialFolderCheckPreview: null,
+    officialFolderCheckLoading: false,
+    officialFolderCheckRepairing: false,
+    officialFolderCheckError: null,
+    officialFolderRepairResult: null,
     requestMaterialPreview: null,
     requestMaterialLoading: false,
     requestMaterialCollecting: false,
@@ -419,6 +498,8 @@ function buildRuntimeModel(
     onRefreshPackagePreview: vi.fn(),
     onRefreshOfficialWorkspacePreview: vi.fn(),
     onCreateOfficialWorkspace: vi.fn(),
+    onRefreshOfficialFolderCheck: vi.fn(),
+    onRepairOfficialFolderStructure: vi.fn(),
     onRefreshRequestMaterial: vi.fn(),
     onCollectRequestMaterial: vi.fn(),
     onRefreshSection2Sync: vi.fn(),
@@ -506,6 +587,19 @@ const folderTemplateBlockedPackagePreview: ProjectPackagePreview = {
   blockers: ["Enable project folder template in Settings."],
 };
 
+const customerFeedbackReadyPackagePreview: ProjectPackagePreview = {
+  ...readyPackagePreview,
+  required_items: [
+    {
+      key: "customer_feedback_form",
+      label: "Customer Feedback form",
+      status: "ready",
+      message: "Customer Feedback form ready from package preview",
+      target_path: "D:/Projects/DL-2026-06-001/Customer Feedback.docx",
+    },
+  ],
+};
+
 const readyRequestMaterialPreview: RequestMaterialPreview = {
   project_id: project.project_id,
   local_workspace_path: "D:/Projects/DL-2026-06-001",
@@ -544,6 +638,69 @@ const collectedRequestMaterialPreview: RequestMaterialPreview = {
     status: "copied",
     message: "Copied.",
   })),
+};
+
+const missingOfficialFolderCheckPreview: OfficialFolderCheckPreview = {
+  project_id: project.project_id,
+  status: "missing",
+  local_workspace_path: "D:/Projects/DL-2026-06-001",
+  official_project_folder_path:
+    "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  required_folders: [
+    {
+      key: "photos",
+      label: "Photos",
+      kind: "folder",
+      status: "missing",
+      path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Photos",
+      message: "Folder is missing.",
+      repairable: true,
+    },
+  ],
+  required_files: [
+    {
+      key: "submitted_material",
+      label: "Submitted Material",
+      kind: "file",
+      status: "ready",
+      path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/application.docx",
+      message: "Confirmed collected files are present.",
+      repairable: false,
+    },
+  ],
+  blockers: [],
+  warnings: [],
+  next_action: "repair_folders",
+};
+
+const customerFeedbackDeferredOfficialFolderCheckPreview: OfficialFolderCheckPreview = {
+  ...missingOfficialFolderCheckPreview,
+  status: "ready",
+  required_folders: [],
+  required_files: [
+    {
+      key: "submitted_material",
+      label: "Submitted Material",
+      kind: "file",
+      status: "ready",
+      path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/application.docx",
+      message: "Confirmed collected files are present.",
+      repairable: false,
+    },
+    {
+      key: "customer_feedback",
+      label: "Customer Feedback form",
+      kind: "file",
+      status: "deferred",
+      path: null,
+      message: "Customer Feedback generation is handled by a later task.",
+      repairable: false,
+    },
+  ],
+  next_action: "none",
 };
 
 const confirmedMatrixSnapshot: ConfirmedMatrixSnapshot = {

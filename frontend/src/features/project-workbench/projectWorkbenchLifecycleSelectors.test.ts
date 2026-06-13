@@ -75,6 +75,50 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.actionTarget).toBe("fee");
   });
 
+  it("keeps cancelled no-DL projects out of temporary planning", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: false,
+      isCancelled: true,
+      hasActiveMatrix: false,
+    });
+
+    expect(lifecycle.mode).toBe("overview");
+    expect(lifecycle.stageLabel).toBe("Cancelled project");
+    expect(lifecycle.nextAction.title).toBe("No action");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
+    expect(lifecycle.tabs).toEqual([]);
+  });
+
+  it("routes missing folder structure to repair action", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      officialFolderCheckStatus: "missing",
+    });
+
+    expect(lifecycle.nextAction.title).toBe("Repair folder structure");
+    expect(lifecycle.nextAction.reason).toBe("Required local project folders are missing.");
+    expect(lifecycle.nextAction.actionTarget).toBe("official_folder_repair");
+  });
+
+  it("routes folder check request errors to refresh action", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      hasOfficialFolderCheckError: true,
+    });
+
+    expect(lifecycle.nextAction.title).toBe("Refresh project folder check");
+    expect(lifecycle.nextAction.actionTarget).toBe("official_folder_refresh");
+  });
+
   it("does not show collect again when request material only needs manual review", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
@@ -151,6 +195,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
 
 const baseInput: WorkbenchLifecycleInput = {
   hasLtr: false,
+  isCancelled: false,
   hasActiveMatrix: false,
   hasCandidateMatrix: false,
   folderReady: false,
@@ -162,6 +207,10 @@ const baseInput: WorkbenchLifecycleInput = {
   requestMaterialBlockers: [],
   requestMaterialWarnings: [],
   hasRequestMaterialPreviewError: false,
+  officialFolderCheckStatus: null,
+  officialFolderCheckBlockers: [],
+  officialFolderCheckWarnings: [],
+  hasOfficialFolderCheckError: false,
   section2Status: null,
   hasPackagePreviewError: false,
 };

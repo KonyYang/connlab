@@ -143,6 +143,9 @@ from backend.application.project_package_preview_service import (
 from backend.application.official_project_workspace_service import (
     OfficialProjectWorkspaceService,
 )
+from backend.application.official_project_folder_check_service import (
+    OfficialProjectFolderCheckService,
+)
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
 )
@@ -186,6 +189,9 @@ from backend.infrastructure.files import IntakeStorage
 from backend.infrastructure.files.request_material_copy_gateway import (
     RequestMaterialCopyGateway,
 )
+from backend.infrastructure.files.official_project_folder_repair_gateway import (
+    OfficialProjectFolderRepairGateway,
+)
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
     FeeEvaluationWorkbookGateway,
@@ -220,6 +226,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectOfficialWorkspaceRepository,
     ProjectRepository,
     ProjectOutputRecordRepository,
+    ProjectTemporaryContextRepository,
     ProjectTestPlanDraftRepository,
     ProjectRequestMaterialCollectionRepository,
     SourceMatrixImportRepository,
@@ -265,7 +272,10 @@ def get_session() -> Generator[Session, None, None]:
 
 def get_project_service(session: Session = Depends(get_session)) -> ProjectService:
     """Build a project service for API routes."""
-    return ProjectService(ProjectRepository(session))
+    return ProjectService(
+        ProjectRepository(session),
+        ProjectTemporaryContextRepository(session),
+    )
 
 
 def get_project_registry_summary_service(
@@ -275,6 +285,7 @@ def get_project_registry_summary_service(
     return ProjectRegistrySummaryService(
         project_store=ProjectRepository(session),
         ltr_store=LtrRecordRepository(session),
+        temporary_context_store=ProjectTemporaryContextRepository(session),
     )
 
 
@@ -716,6 +727,19 @@ def get_project_request_material_collection_service(
         file_asset_repository=FileAssetRepository(session),
         collection_repository=ProjectRequestMaterialCollectionRepository(session),
         copy_gateway=RequestMaterialCopyGateway(),
+    )
+
+
+def get_official_project_folder_check_service(
+    session: Session = Depends(get_session),
+) -> OfficialProjectFolderCheckService:
+    """Build the Official project folder check/repair service."""
+    return OfficialProjectFolderCheckService(
+        project_repository=ProjectRepository(session),
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        repair_gateway=OfficialProjectFolderRepairGateway(),
+        request_material_service=get_project_request_material_collection_service(session),
+        output_status_service=get_project_output_record_service(session),
     )
 
 

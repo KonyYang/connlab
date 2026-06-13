@@ -140,9 +140,10 @@ def test_task303_project_registry_summary_ui_is_wired() -> None:
     assert "JSON.parse(row." not in list_page_source
     assert "JSON.parse(row.notes" not in list_page_source
 
-    for required_header in ["Sample Description", "Notes"]:
+    for required_header in ["Sample Description", "Next Step"]:
         assert f"<th>{required_header}</th>" in list_page_source
     assert "Test Item</th>" in list_page_source
+    assert "<th>Notes</th>" not in list_page_source
     for removed_header in [
         "Project Name",
         "Product",
@@ -701,37 +702,76 @@ def test_task150_workbench_folder_uses_configured_resources() -> None:
 
 
 def test_project_dashboard_uses_dense_registry_components() -> None:
-    """TASK_018 turns the project list into a searchable registry dashboard."""
+    """TASK_317B replaces metric cards with a compact Queue Filter Bar."""
     list_page_source = (
         FRONTEND_ROOT / "src" / "pages" / "ProjectListPage.tsx"
     ).read_text(encoding="utf-8")
+    api_client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
     styles_source = (FRONTEND_ROOT / "src" / "project-dashboard.css").read_text(
         encoding="utf-8"
     )
 
     assert "useDeferredValue" in list_page_source
-    assert "ProjectStatusBadge" in list_page_source
+    assert "ProjectStatusBadge" not in list_page_source
     assert "EmptyState" in list_page_source
     assert "ErrorMessage" in list_page_source
     assert "LoadingState" in list_page_source
     assert "listProjectRegistryRows" in list_page_source
     assert "listProjectLtrs" not in list_page_source
-    assert "project-metric-grid" in list_page_source
     assert "UiIcon" in list_page_source
-    assert "Total projects" in list_page_source
-    assert "In progress" in list_page_source
-    assert "Pending review" in list_page_source
+    # TASK_317B: old metric cards removed
+    assert "project-metric-grid" not in list_page_source
+    assert "Total projects" not in list_page_source
+    assert "In progress" not in list_page_source
+    assert "Pending review" not in list_page_source
+    assert "Draft" not in list_page_source
+    assert ".project-metric-card" not in styles_source
+    # TASK_317B: Queue Filter Bar
+    assert "queue-filter-bar" in list_page_source
+    assert "queue-filter-button" in list_page_source
+    assert "queue-filter-button-active" in list_page_source
+    assert "Need Action" not in list_page_source
+    assert "Needs Attention" not in list_page_source
+    assert "Package Blocked" not in list_page_source
+    assert "Planning" in list_page_source
+    assert "Matrix Needed" in list_page_source
+    assert "hasRegisteredLtr" in list_page_source
+    assert 'return "planning";' in list_page_source
+    assert 'return "matrix_needed";' in list_page_source
+    assert "Ready to Test" in list_page_source
+    assert "Folder Blocked" in list_page_source
     assert "Completed" in list_page_source
-    assert "Draft" in list_page_source
+    assert "active-queue-label" not in list_page_source
+    assert "Showing: {QUEUE_LABELS[activeQueue]} Projects" not in list_page_source
+    assert "display_project_id" in api_client_source
+    assert "display_project_id_kind" in api_client_source
+    assert "has_registered_ltr" in api_client_source
+    assert "registered_ltr_number" in api_client_source
+    assert "temporary_project_id" in api_client_source
+    assert "Temporary Planning" in list_page_source
+    assert 'return row.display_project_id;' in list_page_source
     assert "<table" in list_page_source
-    assert "LTR Number" in list_page_source
-    assert "Pending LTR Number" in list_page_source
+    assert "Project ID" in list_page_source
+    assert "Search Project ID, sample, test item, requestor..." in list_page_source
+    assert "Search LTR Number, sample, test item, requestor..." not in list_page_source
+    assert "Pending LTR Number" not in list_page_source
     assert "Sample Description" in list_page_source
     assert "Test Item" in list_page_source
     assert "Status" in list_page_source
-    assert "Progress" in list_page_source
-    assert "Notes" in list_page_source
-    assert "New Project" in list_page_source
+    assert "Next Step" in list_page_source
+    assert "Progress" not in list_page_source
+    assert "Notes" not in list_page_source
+    assert "registryStatusLabel" in list_page_source
+    assert "nextStepLabel" in list_page_source
+    assert "Continue planning" in list_page_source
+    assert "Open Matrix authority" in list_page_source
+    assert "Open Execution map" in list_page_source
+    assert "No action" in list_page_source
+    assert "left navigation New Project entry" in list_page_source
+    assert "onNewProject" not in list_page_source
+    assert '<button className="primary-action" type="button" onClick={onNewProject}>' not in list_page_source
     assert "Filter" in list_page_source
     assert "Columns" in list_page_source
     assert "view-toggle" in list_page_source
@@ -743,13 +783,63 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "No active projects in this view" in list_page_source
     assert 'Enable "Show cancelled" to inspect cancelled projects.' in list_page_source
     assert ".project-table" in styles_source
-    assert ".project-metric-card" in styles_source
-    assert ".progress-cell" in styles_source
+    assert ".progress-cell" not in styles_source
+    assert ".registry-status-badge" in styles_source
+    assert ".registry-next-step" in styles_source
     assert ".registry-tools" in styles_source
     assert ".toolbar-button" in styles_source
     assert ".registry-scope-toggle" in styles_source
     assert ".registry-scope-note" in styles_source
     assert "@media (min-width: 761px) and (max-width: 1366px)" in styles_source
+
+
+def test_task317c_workbench_temporary_planning_copy_is_clear() -> None:
+    """TASK_317C keeps temporary planning identity separate from formal LTR identity."""
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    lifecycle_sections_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "TMP-" in layout_source
+    assert "Temporary Planning" in lifecycle_sections_source
+    assert "This project has no registered LTR Number yet." in lifecycle_sections_source
+    assert "Official package actions require LTR registration." in lifecycle_sections_source
+    assert "Register LTR Number" not in lifecycle_sections_source
+
+
+def test_task317d_temporary_project_entry_and_promotion_gap_are_wired() -> None:
+    """TASK_317D adds a temporary project entry without exposing duplicate promotion."""
+    intake_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "IntakeInboxPage.tsx"
+    ).read_text(encoding="utf-8")
+    api_client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    lifecycle_sections_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "Create Temporary Project" in intake_page_source
+    assert "createTemporaryProject" in intake_page_source
+    assert '"/api/projects/temporary"' in api_client_source
+    assert "CreateTemporaryProjectInput" in api_client_source
+    assert "CreateTemporaryProjectResponse" in api_client_source
+    assert "Convert to Formal Project" in lifecycle_sections_source
+    assert "Same-project LTR registration is not wired yet." in layout_source
+    assert "no duplicate project was created" in layout_source
 
 
 def test_project_workbench_uses_sequential_stepper() -> None:
@@ -1047,7 +1137,7 @@ def test_task067_frontend_uses_new_project_and_ltr_number_language() -> None:
         FRONTEND_ROOT / "src" / "components" / "workflow" / "FolderActionPanel.tsx"
     ).read_text(encoding="utf-8")
 
-    for source in [sidebar_source, top_bar_source, list_page_source, ltr_source, folder_source]:
+    for source in [sidebar_source, top_bar_source, ltr_source, folder_source]:
         assert "LTR/DL" not in source
         assert "DL number" not in source
         assert "DL Number" not in source
@@ -1055,8 +1145,9 @@ def test_task067_frontend_uses_new_project_and_ltr_number_language() -> None:
 
     assert "New Project" in sidebar_source
     assert "New Project" in top_bar_source
-    assert "LTR Number" in list_page_source
-    assert "Pending LTR Number" in list_page_source
+    assert "Project ID" in list_page_source
+    assert "registered LTR/DL identity or a temporary planning ID" in list_page_source
+    assert "Pending LTR Number" not in list_page_source
     assert "LTR Number" in ltr_source
     assert "LTR Number" in folder_source
 
@@ -2729,7 +2820,7 @@ def test_task100_workbench_keeps_post_creation_boundary() -> None:
 
     for term in ["Open", "onOpenProject"]:
         assert term in project_list_source
-    for term in ["Continue", "onContinueDraft"]:
+    for term in ["onContinueDraft"]:
         assert term not in project_list_source
 
     assert (
@@ -5026,6 +5117,70 @@ def test_task317_project_folder_request_material_ui_is_wired() -> None:
     assert '"request_material"' in selector_source
     assert "requestMaterialPreview" in layout_source
     assert ".runtime-console-request-material" in styles_source
+
+
+def test_task318_official_project_folder_check_ui_and_service_boundaries() -> None:
+    """TASK_318 uses Project Folder checks instead of old package preview expansion."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    selector_source = (feature_root / "projectWorkbenchLifecycleSelectors.ts").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    lifecycle_sections_source = (
+        feature_root / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+    model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
+        encoding="utf-8"
+    )
+    runtime_model_source = (
+        feature_root / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    check_service_source = (
+        FRONTEND_ROOT.parent
+        / "backend"
+        / "application"
+        / "official_project_folder_check_service.py"
+    ).read_text(encoding="utf-8")
+
+    for required in [
+        "fetchOfficialFolderCheck",
+        "repairOfficialFolderStructure",
+        "/official-folder/check",
+        "/official-folder/repair-folders",
+    ]:
+        assert required in client_source
+
+    for required in [
+        "officialFolderCheckPreview",
+        "officialFolderCheckError",
+        "officialFolderCheckRepairing",
+        "onRefreshOfficialFolderCheck",
+        "onRepairOfficialFolderStructure",
+    ]:
+        assert required in model_source
+        assert required in runtime_model_source
+
+    for required in [
+        "Folder structure",
+        "Submitted Material",
+        "Repair folder structure",
+        "official_folder_repair",
+        "official_folder_refresh",
+    ]:
+        assert required in selector_source or required in layout_source or required in lifecycle_sections_source
+
+    assert "ProjectPackagePreviewService" not in check_service_source
+    assert "project_package_preview_service" not in check_service_source
+    assert 'key === "customer_feedback_form"' not in layout_source
+    assert 'key === "customer_feedback"' in layout_source
+    assert "Package readiness" not in lifecycle_sections_source
+    assert "Package details" not in lifecycle_sections_source
+    assert "Secondary links" not in lifecycle_sections_source
 
 
 def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:

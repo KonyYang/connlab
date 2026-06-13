@@ -7,6 +7,7 @@ import {
   executeApprovalPackage,
   fetchActiveConfirmedMatrixSnapshot,
   fetchConfirmedMatrixRuntimeProjectionSnapshot,
+  fetchOfficialFolderCheck,
   fetchProjectPackagePreview,
   fetchOfficialWorkspacePreview,
   fetchRequestMaterialPreview,
@@ -26,6 +27,7 @@ import {
   placeEvidence,
   previewApprovalPackage,
   previewEvidencePlacement,
+  repairOfficialFolderStructure,
   syncProjectSection2FromConfirmedMatrix,
   updateProjectTestPlanMatrixDraft,
   validateProjectTestPlanMatrixDraft,
@@ -43,6 +45,8 @@ import {
   type MatrixValidationSummary,
   type Project,
   type ProjectPackagePreview,
+  type OfficialFolderCheckPreview,
+  type OfficialFolderRepairResponse,
   type OfficialWorkspaceCreateResponse,
   type OfficialWorkspacePreview,
   type RequestMaterialPreview,
@@ -96,6 +100,11 @@ export type ProjectWorkbenchModel = {
   officialWorkspaceCreating: boolean;
   officialWorkspaceError: string | null;
   officialWorkspaceResult: OfficialWorkspaceCreateResponse | null;
+  officialFolderCheckPreview: OfficialFolderCheckPreview | null;
+  officialFolderCheckLoading: boolean;
+  officialFolderCheckRepairing: boolean;
+  officialFolderCheckError: string | null;
+  officialFolderRepairResult: OfficialFolderRepairResponse | null;
   requestMaterialPreview: RequestMaterialPreview | null;
   requestMaterialLoading: boolean;
   requestMaterialCollecting: boolean;
@@ -160,6 +169,8 @@ export type ProjectWorkbenchModel = {
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: () => Promise<void>;
+  onRefreshOfficialFolderCheck: () => Promise<void>;
+  onRepairOfficialFolderStructure: () => Promise<void>;
   onRefreshRequestMaterial: () => Promise<void>;
   onCollectRequestMaterial: () => Promise<void>;
   onRefreshSection2Sync: () => Promise<void>;
@@ -261,6 +272,13 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [officialWorkspaceError, setOfficialWorkspaceError] = useState<string | null>(null);
   const [officialWorkspaceResult, setOfficialWorkspaceResult] =
     useState<OfficialWorkspaceCreateResponse | null>(null);
+  const [officialFolderCheckPreview, setOfficialFolderCheckPreview] =
+    useState<OfficialFolderCheckPreview | null>(null);
+  const [officialFolderCheckLoading, setOfficialFolderCheckLoading] = useState(false);
+  const [officialFolderCheckRepairing, setOfficialFolderCheckRepairing] = useState(false);
+  const [officialFolderCheckError, setOfficialFolderCheckError] = useState<string | null>(null);
+  const [officialFolderRepairResult, setOfficialFolderRepairResult] =
+    useState<OfficialFolderRepairResponse | null>(null);
   const [requestMaterialPreview, setRequestMaterialPreview] =
     useState<RequestMaterialPreview | null>(null);
   const [requestMaterialLoading, setRequestMaterialLoading] = useState(false);
@@ -292,6 +310,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshPackagePreview();
     void onRefreshOfficialWorkspacePreview();
     void onRefreshRequestMaterial();
+    void onRefreshOfficialFolderCheck();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -563,10 +582,45 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       await onRefreshOfficialWorkspacePreview();
       await onRefreshPackagePreview();
       await onRefreshRequestMaterial();
+      await onRefreshOfficialFolderCheck();
     } catch (err) {
       setOfficialWorkspaceError((err as Error).message);
     } finally {
       setOfficialWorkspaceCreating(false);
+    }
+  }
+
+  async function onRefreshOfficialFolderCheck(): Promise<void> {
+    setOfficialFolderCheckLoading(true);
+    try {
+      const preview = await fetchOfficialFolderCheck(projectId);
+      setOfficialFolderCheckPreview(preview);
+      setOfficialFolderCheckError(null);
+    } catch (err) {
+      setOfficialFolderCheckPreview(null);
+      setOfficialFolderCheckError((err as Error).message);
+    } finally {
+      setOfficialFolderCheckLoading(false);
+    }
+  }
+
+  async function onRepairOfficialFolderStructure(): Promise<void> {
+    setOfficialFolderCheckRepairing(true);
+    try {
+      const result = await repairOfficialFolderStructure(projectId);
+      setOfficialFolderRepairResult(result);
+      setOfficialFolderCheckPreview(result.preview);
+      setOfficialFolderCheckError(null);
+      setMessage(
+        result.repair_status === "partial"
+          ? "Folder repair partially completed. Review remaining folder issues."
+          : "Folder structure repaired."
+      );
+      await onRefreshPackagePreview();
+    } catch (err) {
+      setOfficialFolderCheckError((err as Error).message);
+    } finally {
+      setOfficialFolderCheckRepairing(false);
     }
   }
 
@@ -598,6 +652,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
           : "Request material collected."
       );
       await onRefreshPackagePreview();
+      await onRefreshOfficialFolderCheck();
     } catch (err) {
       setRequestMaterialError((err as Error).message);
     } finally {
@@ -945,6 +1000,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     officialWorkspaceCreating,
     officialWorkspaceError,
     officialWorkspaceResult,
+    officialFolderCheckPreview,
+    officialFolderCheckLoading,
+    officialFolderCheckRepairing,
+    officialFolderCheckError,
+    officialFolderRepairResult,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -1002,6 +1062,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
+    onRefreshOfficialFolderCheck,
+    onRepairOfficialFolderStructure,
     onRefreshRequestMaterial,
     onCollectRequestMaterial,
     onRefreshSection2Sync,

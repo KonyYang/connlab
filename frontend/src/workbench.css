@@ -1954,6 +1954,14 @@
   padding: 12px;
 }
 
+.runtime-console-inline-warning {
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface-muted));
+  padding: 8px 10px;
+  color: var(--color-ink);
+}
+
 .runtime-console-summary {
   display: grid;
   grid-template-columns: minmax(240px, 1.2fr) repeat(5, minmax(112px, 0.7fr));

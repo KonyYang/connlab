@@ -9,6 +9,7 @@ import {
 import {
   ApiRequestError,
   ensureNewProjectApplicationDraft,
+  createTemporaryProject,
   getIntakeCaseReview,
   getIntakePackageDetail,
   getNewProjectCompletionOptions,
@@ -26,7 +27,8 @@ import {
   type IntakePackageImport,
   type IntakePrecheckLookupOptions,
   type IntakeAsset,
-  type NewProjectCompletionOptions
+  type NewProjectCompletionOptions,
+  type CreateTemporaryProjectInput
 } from "../api/client";
 import { NewProjectApplicationEditor } from "../features/new-project/NewProjectApplicationEditor";
 import {
@@ -126,6 +128,8 @@ export function IntakeInboxPage({
     labPerformingTests: "Dongguan"
   });
   const [completionSetupError, setCompletionSetupError] = useState<string | null>(null);
+  const [temporaryCreating, setTemporaryCreating] = useState(false);
+  const [temporaryError, setTemporaryError] = useState<string | null>(null);
   const fieldValuesRef = useRef<Record<string, string>>({});
   const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
   const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
@@ -736,6 +740,31 @@ export function IntakeInboxPage({
     }
   }
 
+  async function handleCreateTemporaryProject(): Promise<void> {
+    setTemporaryCreating(true);
+    setTemporaryError(null);
+    try {
+      const created = await createTemporaryProject(
+        temporaryProjectPayload({
+          packageImport,
+          directWordName,
+          fieldValues,
+          requestedTestingRows,
+          setupValues,
+          visibleAttachmentAssets
+        })
+      );
+      onSessionChange(EMPTY_INTAKE_SESSION);
+      onProjectCreated(created.project_id);
+    } catch (error) {
+      setTemporaryError(
+        error instanceof Error ? error.message : "Unable to create temporary project."
+      );
+    } finally {
+      setTemporaryCreating(false);
+    }
+  }
+
   return (
     <section className="intake-workflow new-project-single-page">
       <div className="new-project-single-grid">
@@ -833,6 +862,22 @@ export function IntakeInboxPage({
           ) : null}
         </main>
       </div>
+
+      <div className="temporary-project-entry-strip" aria-label="Temporary project entry">
+        <span>
+          Create a planning project before LTR registration when the request needs Matrix or Fee
+          estimation first.
+        </span>
+        <button
+          className="secondary-action"
+          disabled={temporaryCreating || completionLoading || editorLoading}
+          type="button"
+          onClick={() => void handleCreateTemporaryProject()}
+        >
+          {temporaryCreating ? "Creating temporary project..." : "Create Temporary Project"}
+        </button>
+      </div>
+      {temporaryError ? <p className="intake-error">{temporaryError}</p> : null}
 
       {packageImport && activeCase != null ? (
         <NewProjectCompletionDock
@@ -957,6 +1002,62 @@ function projectSetupPayload(
   assignText(payload, "project_leader", values.projectLeader);
   assignText(payload, "lab_performing_tests", values.labPerformingTests);
   return payload;
+}
+
+function temporaryProjectPayload({
+  packageImport,
+  directWordName,
+  fieldValues,
+  requestedTestingRows,
+  setupValues,
+  visibleAttachmentAssets
+}: {
+  packageImport: IntakePackageImport | null;
+  directWordName: string | null;
+  fieldValues: Record<string, string>;
+  requestedTestingRows: PrecheckRequestedTestingRow[];
+  setupValues: NewProjectSetupConfirmationValues;
+  visibleAttachmentAssets: IntakeAsset[];
+}): CreateTemporaryProjectInput {
+  const requestSummary = firstText(
+    packageImport?.subject,
+    packageImport?.source_original_name,
+    directWordName,
+    "Temporary planning project"
+  );
+  const requestor = firstText(
+    fieldValues.requester,
+    fieldValues.requestor,
+    packageImport?.sender_name,
+    packageImport?.sender_email
+  );
+  return {
+    request_summary: requestSummary,
+    sample_description: firstText(setupValues.sampleDescription, requestSummary),
+    test_item: firstText(setupValues.testItem, requestedTestingText(requestedTestingRows)),
+    requestor,
+    source_asset_ids: visibleAttachmentAssets.map((asset) => asset.asset_id),
+    notes: packageImport
+      ? firstText(
+          packageImport.source_original_name,
+          packageImport.subject,
+          packageImport.package_id
+        )
+      : directWordName
+  };
+}
+
+function firstText(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    const text = value.trim();
+    if (text) {
+      return text;
+    }
+  }
+  return null;
 }
 
 function assignText(payload: Record<string, string>, key: string, value: string): void {

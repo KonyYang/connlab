@@ -24,6 +24,25 @@ class ProjectModel(Base):
     created_on: Mapped[date | None] = mapped_column(Date)
 
 
+class ProjectTemporaryContextModel(Base):
+    """Planning context captured for a no-LTR temporary project."""
+
+    __tablename__ = "project_temporary_contexts"
+
+    context_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    request_summary: Mapped[str | None] = mapped_column(Text)
+    sample_description: Mapped[str | None] = mapped_column(Text)
+    test_item: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    source_asset_ids_json: Mapped[str | None] = mapped_column(Text)
+
+
 class ApplicationFormModel(Base):
     """Database row for an application form."""
 

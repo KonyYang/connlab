@@ -26,6 +26,11 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "officialWorkspaceCreating"
   | "officialWorkspaceError"
   | "officialWorkspaceResult"
+  | "officialFolderCheckPreview"
+  | "officialFolderCheckLoading"
+  | "officialFolderCheckRepairing"
+  | "officialFolderCheckError"
+  | "officialFolderRepairResult"
   | "requestMaterialPreview"
   | "requestMaterialLoading"
   | "requestMaterialCollecting"
@@ -46,6 +51,8 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshPackagePreview"
   | "onRefreshOfficialWorkspacePreview"
   | "onCreateOfficialWorkspace"
+  | "onRefreshOfficialFolderCheck"
+  | "onRepairOfficialFolderStructure"
   | "onRefreshRequestMaterial"
   | "onCollectRequestMaterial"
   | "onRefreshSection2Sync"
@@ -78,6 +85,11 @@ export function selectProjectRuntimeConsoleModel(
     officialWorkspaceCreating: model.officialWorkspaceCreating,
     officialWorkspaceError: model.officialWorkspaceError,
     officialWorkspaceResult: model.officialWorkspaceResult,
+    officialFolderCheckPreview: model.officialFolderCheckPreview,
+    officialFolderCheckLoading: model.officialFolderCheckLoading,
+    officialFolderCheckRepairing: model.officialFolderCheckRepairing,
+    officialFolderCheckError: model.officialFolderCheckError,
+    officialFolderRepairResult: model.officialFolderRepairResult,
     requestMaterialPreview: model.requestMaterialPreview,
     requestMaterialLoading: model.requestMaterialLoading,
     requestMaterialCollecting: model.requestMaterialCollecting,
@@ -98,6 +110,8 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,
+    onRefreshOfficialFolderCheck: model.onRefreshOfficialFolderCheck,
+    onRepairOfficialFolderStructure: model.onRepairOfficialFolderStructure,
     onRefreshRequestMaterial: model.onRefreshRequestMaterial,
     onCollectRequestMaterial: model.onCollectRequestMaterial,
     onRefreshSection2Sync: model.onRefreshSection2Sync,

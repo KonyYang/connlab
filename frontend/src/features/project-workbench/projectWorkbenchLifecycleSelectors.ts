@@ -9,6 +9,7 @@ export type WorkbenchLifecycleTone = "ready" | "blocked" | "warning" | "neutral"
 
 export type WorkbenchLifecycleInput = {
   hasLtr: boolean;
+  isCancelled: boolean;
   hasActiveMatrix: boolean;
   hasCandidateMatrix: boolean;
   folderReady: boolean;
@@ -27,6 +28,16 @@ export type WorkbenchLifecycleInput = {
   requestMaterialBlockers: string[];
   requestMaterialWarnings: string[];
   hasRequestMaterialPreviewError: boolean;
+  officialFolderCheckStatus:
+    | "blocked"
+    | "missing"
+    | "warning"
+    | "ready"
+    | "conflict"
+    | null;
+  officialFolderCheckBlockers: string[];
+  officialFolderCheckWarnings: string[];
+  hasOfficialFolderCheckError: boolean;
   section2Status: string | null;
   hasPackagePreviewError: boolean;
 };
@@ -43,7 +54,16 @@ export type WorkbenchNextAction = {
   reason: string;
   tone: WorkbenchLifecycleTone;
   actionLabel?: string;
-  actionTarget?: "matrix" | "fee" | "package" | "folder" | "settings" | "request_material" | null;
+  actionTarget?:
+    | "matrix"
+    | "fee"
+    | "package"
+    | "folder"
+    | "settings"
+    | "request_material"
+    | "official_folder_repair"
+    | "official_folder_refresh"
+    | null;
 };
 
 export type WorkbenchLifecycleViewModel = {
@@ -63,6 +83,20 @@ export function deriveProjectWorkbenchLifecycle(
   input: WorkbenchLifecycleInput,
   requestedMode: WorkbenchLifecycleMode | null = null
 ): WorkbenchLifecycleViewModel {
+  if (input.isCancelled) {
+    return {
+      mode: "overview",
+      stageLabel: "Cancelled project",
+      stageSummary: "This project is cancelled or archived. Planning and promotion actions are not available.",
+      nextAction: {
+        title: "No action",
+        reason: "Cancelled projects are retained for review only.",
+        tone: "neutral",
+      },
+      tabs: [],
+    };
+  }
+
   if (!input.hasLtr) {
     return {
       mode: "temporary_planning",
@@ -170,6 +204,50 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
         input.requestMaterialWarnings[0] ??
         "Available request files are collected. Review undecided attachments before placing them in Submitted Material.",
       tone: "warning",
+    };
+  }
+
+  if (input.hasOfficialFolderCheckError) {
+    return {
+      title: "Refresh project folder check",
+      reason: "Project Folder check could not be loaded.",
+      tone: "blocked",
+      actionLabel: "Refresh project folder check",
+      actionTarget: "official_folder_refresh",
+    };
+  }
+
+  if (input.officialFolderCheckStatus === "conflict") {
+    return {
+      title: "Review folder structure conflict",
+      reason:
+        input.officialFolderCheckBlockers[0] ??
+        "A required project folder path exists with the wrong type.",
+      tone: "blocked",
+    };
+  }
+
+  if (input.officialFolderCheckStatus === "missing") {
+    return {
+      title: "Repair folder structure",
+      reason:
+        input.officialFolderCheckBlockers[0] ??
+        "Required local project folders are missing.",
+      tone: "warning",
+      actionLabel: "Repair folder structure",
+      actionTarget: "official_folder_repair",
+    };
+  }
+
+  if (input.officialFolderCheckStatus === "warning") {
+    return {
+      title: "Review project folder warnings",
+      reason:
+        input.officialFolderCheckWarnings[0] ??
+        "Project Folder check has warnings that should be reviewed.",
+      tone: "warning",
+      actionLabel: "Refresh project folder check",
+      actionTarget: "official_folder_refresh",
     };
   }
 

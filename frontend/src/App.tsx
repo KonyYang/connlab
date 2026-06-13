@@ -135,7 +135,6 @@ export default function App(): ReactElement {
     >
       {route.name === "projects" && (
         <ProjectListPage
-          onNewProject={() => navigate("/intake")}
           onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)}
         />
       )}

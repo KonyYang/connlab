@@ -46,6 +46,12 @@ def test_project_registry_api_returns_summary_rows_and_project_identity_fields(
                 "status": "ltr_registered",
                 "progress": 70,
                 "notes": None,
+                "display_project_id": "DL-2026-05-001",
+                "display_project_id_kind": "registered",
+                "has_registered_ltr": True,
+                "temporary_project_id": None,
+                "registered_ltr_number": "DL-2026-05-001",
+                "temporary_source_asset_ids": [],
             }
         ]
         assert projects.status_code == 200
@@ -53,6 +59,56 @@ def test_project_registry_api_returns_summary_rows_and_project_identity_fields(
         assert project_detail.status_code == 200
         assert project_detail.json()["sample_description"] == "CoolPower connector samples"
         assert project_detail.json()["test_item"] == "Qualification bend testing"
+        assert project_detail.json()["temporary_source_asset_ids"] == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_temporary_project_api_creates_planning_project_with_tmp_identity(
+    tmp_path: Path,
+) -> None:
+    client, engine, _session_factory = _client(tmp_path)
+    try:
+        response = client.post(
+            "/api/projects/temporary",
+            json={
+                "request_summary": "Connector feasibility discussion",
+                "sample_description": "Planning connector sample",
+                "test_item": "Duration estimate",
+                "requestor": "Neo Xu",
+                "source_asset_ids": ["ASSET1"],
+                "notes": "Temporary project from email",
+            },
+        )
+
+        assert response.status_code == 201
+        created = response.json()
+        assert created["project_id"]
+        assert created["display_project_id"].startswith("TMP-")
+        assert created["display_project_id_kind"] == "temporary"
+        assert created["has_registered_ltr"] is False
+        assert created["status"] == "draft"
+        assert created["next_route"] == f"/projects/{created['project_id']}"
+
+        registry = client.get("/api/projects/registry")
+        assert registry.status_code == 200
+        row = registry.json()[0]
+        assert row["project_id"] == created["project_id"]
+        assert row["display_project_id"] == created["display_project_id"]
+        assert row["display_project_id_kind"] == "temporary"
+        assert row["has_registered_ltr"] is False
+        assert row["ltr_number"] is None
+        assert row["sample_description"] == "Planning connector sample"
+        assert row["test_item"] == "Duration estimate"
+        assert row["notes"] == "Temporary project from email"
+        assert row["temporary_source_asset_ids"] == ["ASSET1"]
+
+        detail = client.get(f"/api/projects/{created['project_id']}")
+        assert detail.status_code == 200
+        assert detail.json()["test_item"] == "Duration estimate"
+        assert detail.json()["temporary_notes"] == "Temporary project from email"
+        assert detail.json()["temporary_source_asset_ids"] == ["ASSET1"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

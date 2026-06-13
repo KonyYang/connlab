@@ -6,19 +6,52 @@ import {
 import { EmptyState } from "../components/common/EmptyState";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
-import { UiIcon, type UiIconName } from "../components/common/UiIcon";
-import { ProjectStatusBadge } from "../components/project/ProjectStatusBadge";
+import { UiIcon } from "../components/common/UiIcon";
 import "../project-dashboard.css";
 
 type ProjectListPageProps = {
-  onNewProject: () => void;
   onOpenProject: (projectId: string) => void;
 };
 
 type RegistryRow = ProjectRegistryRow;
 
+type QueueName =
+  | "all"
+  | "planning"
+  | "matrix_needed"
+  | "ready_to_test"
+  | "folder_blocked"
+  | "completed";
+type ClassifiedQueueName = Exclude<QueueName, "all">;
+
+const QUEUE_LABELS: Record<QueueName, string> = {
+  all: "All",
+  planning: "Planning",
+  matrix_needed: "Matrix Needed",
+  ready_to_test: "Ready to Test",
+  folder_blocked: "Folder Blocked",
+  completed: "Completed",
+};
+
+const QUEUE_DESCRIPTIONS: Record<QueueName, string> = {
+  all: "All projects in the current cancelled visibility scope.",
+  planning: "Temporary projects without a formal registered LTR or DL number.",
+  matrix_needed: "Registered projects that need an active Matrix authority map.",
+  ready_to_test: "Projects with active Matrix authority available for Matrix-based testing.",
+  folder_blocked: "Registered projects blocked by formal Project Folder preparation.",
+  completed: "Projects already completed or closed.",
+};
+
+const QUEUE_ORDER: QueueName[] = [
+  "all",
+  "planning",
+  "matrix_needed",
+  "ready_to_test",
+  "folder_blocked",
+  "completed",
+];
+
 export function ProjectListPage({
-  onNewProject,
   onOpenProject
 }: ProjectListPageProps): ReactElement {
   const [rows, setRows] = useState<RegistryRow[]>([]);
@@ -31,6 +64,8 @@ export function ProjectListPage({
   const deferredSearch = useDeferredValue(search);
   const pageSize = 20;
 
+  const [activeQueue, setActiveQueue] = useState<QueueName>("all");
+
   useEffect(() => {
     void refreshProjects();
     setLastLtrApplyResult(readLastLtrApplyResult());
@@ -38,7 +73,7 @@ export function ProjectListPage({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearch, showCancelled]);
+  }, [deferredSearch, showCancelled, activeQueue]);
 
   const scopedRows = useMemo(
     () => visibleRowsForScope(rows, showCancelled),
@@ -50,10 +85,37 @@ export function ProjectListPage({
     }
     return cancelledRowCount(rows);
   }, [rows, showCancelled]);
-  const metrics = useMemo(() => buildMetrics(scopedRows), [scopedRows]);
+  const queueCounts = useMemo(() => {
+    const counts: Record<QueueName, number> = {
+      all: scopedRows.length,
+      planning: 0,
+      matrix_needed: 0,
+      ready_to_test: 0,
+      folder_blocked: 0,
+      completed: 0,
+    };
+    for (const row of scopedRows) {
+      if (row.status === "cancelled") {
+        continue;
+      }
+      const queue = classifyQueue(row);
+      if (queue) {
+        counts[queue] += 1;
+      }
+    }
+    return counts;
+  }, [scopedRows]);
+  const queueFilteredRows = useMemo(() => {
+    if (activeQueue === "all") {
+      return scopedRows;
+    }
+    return scopedRows.filter(
+      (row) => row.status !== "cancelled" && classifyQueue(row) === activeQueue
+    );
+  }, [activeQueue, scopedRows]);
   const filteredRows = useMemo(
-    () => filterRows(scopedRows, deferredSearch),
-    [deferredSearch, scopedRows]
+    () => filterRows(queueFilteredRows, deferredSearch),
+    [deferredSearch, queueFilteredRows]
   );
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const page = Math.min(currentPage, pageCount);
@@ -76,21 +138,6 @@ export function ProjectListPage({
 
   return (
     <section className="project-dashboard">
-      <div className="project-metric-grid" aria-label="Project metrics">
-        {metrics.map((metric) => (
-          <article className="project-metric-card" key={metric.label}>
-            <span className={`metric-icon metric-icon-${metric.tone}`}>
-              <UiIcon name={metric.icon} />
-            </span>
-            <div>
-              <strong>{metric.value}</strong>
-              <span>{metric.label}</span>
-              <small>{metric.caption}</small>
-            </div>
-          </article>
-        ))}
-      </div>
-
       <div className="project-register-panel">
         {lastLtrApplyResult ? (
           <div className="registry-result-banner" role="status" aria-live="polite">
@@ -118,10 +165,27 @@ export function ProjectListPage({
             </button>
           </div>
         ) : null}
+        <div className="queue-filter-bar" role="tablist" aria-label="Project queue filter">
+          {QUEUE_ORDER.map((queue) => (
+            <button
+              key={queue}
+              className={`queue-filter-button${activeQueue === queue ? " queue-filter-button-active" : ""}`}
+              role="tab"
+              aria-selected={activeQueue === queue}
+              aria-label={`${QUEUE_LABELS[queue]}: ${QUEUE_DESCRIPTIONS[queue]}`}
+              title={QUEUE_DESCRIPTIONS[queue]}
+              type="button"
+              onClick={() => setActiveQueue(queue)}
+            >
+              <span className="queue-filter-label">{QUEUE_LABELS[queue]}</span>
+              <span className="queue-filter-count">{queueCounts[queue]}</span>
+            </button>
+          ))}
+        </div>
         <div className="register-toolbar">
           <div>
             <h3>Project registry</h3>
-            <p>Search and open existing projects. LTR Number is the business identifier after registration.</p>
+            <p>Search and open existing projects. Project ID shows either registered LTR/DL identity or a temporary planning ID.</p>
           </div>
           <div className="registry-tools">
             <label className="project-search">
@@ -129,7 +193,7 @@ export function ProjectListPage({
               <span className="project-search-input">
                 <UiIcon name="search" />
                 <input
-                  placeholder="Search LTR Number, sample, test item, requestor..."
+                  placeholder="Search Project ID, sample, test item, requestor..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
@@ -162,9 +226,6 @@ export function ProjectListPage({
             <button className="toolbar-button toolbar-icon-button" type="button" onClick={() => void refreshProjects()}>
               <UiIcon name="refresh" />
             </button>
-            <button className="primary-action" type="button" onClick={onNewProject}>
-              New Project
-            </button>
           </div>
         </div>
         {hiddenCancelledCount > 0 ? (
@@ -178,7 +239,7 @@ export function ProjectListPage({
         {!loading && !error && rows.length === 0 && (
           <EmptyState
             title="No projects yet"
-            message="Use New Project to import a request package or create a manual project request."
+            message="Use the left navigation New Project entry to import a request package or create a manual project request."
           />
         )}
         {!loading && !error && rows.length > 0 && scopedRows.length === 0 && (
@@ -187,10 +248,16 @@ export function ProjectListPage({
             message='Enable "Show cancelled" to inspect cancelled projects.'
           />
         )}
-        {!loading && !error && scopedRows.length > 0 && filteredRows.length === 0 && (
+        {!loading && !error && scopedRows.length > 0 && queueFilteredRows.length === 0 && activeQueue !== "all" && (
+          <EmptyState
+            title="No projects in this queue"
+            message="Select All or another queue to see more projects."
+          />
+        )}
+        {!loading && !error && queueFilteredRows.length > 0 && filteredRows.length === 0 && (
           <EmptyState
             title="No matching projects"
-            message="Adjust the search text to return to the full project registry."
+            message="Adjust the search text to return to the current queue view."
           />
         )}
         {!loading && !error && filteredRows.length > 0 && (
@@ -198,31 +265,29 @@ export function ProjectListPage({
             <table className="project-table">
               <thead>
                 <tr>
-                  <th>LTR Number</th>
+                  <th>Project ID</th>
                   <th>Sample Description</th>
                   <th className="registry-test-item-column">Test Item</th>
                   <th>Status</th>
-                  <th>Progress</th>
-                  <th>Notes</th>
+                  <th>Next Step</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedRows.map((row) => (
                   <tr key={row.project_id}>
-                    <td className="project-no">{businessIdentifier(row)}</td>
+                    <td className="project-no">
+                      {businessIdentifier(row)}
+                      {row.display_project_id_kind === "temporary" ? (
+                        <span className="registry-temp-badge">Temporary Planning</span>
+                      ) : null}
+                    </td>
                     <td>{displayText(row.sample_description, "Not recorded")}</td>
                     <td className="registry-test-item-column">{displayText(row.test_item, "Not recorded")}</td>
-                    <td><ProjectStatusBadge status={row.status} /></td>
                     <td>
-                      <div className="progress-cell">
-                        <span>
-                          <i style={{ width: `${row.progress}%` }} />
-                        </span>
-                        <strong>{row.progress}%</strong>
-                      </div>
+                      <span className="registry-status-badge">{registryStatusLabel(row)}</span>
                     </td>
-                    <td>{displayText(row.notes, "None")}</td>
+                    <td className="registry-next-step">{nextStepLabel(row)}</td>
                     <td>
                       <button
                         className="row-action"
@@ -297,71 +362,66 @@ function cancelledRowCount(rows: RegistryRow[]): number {
   return rows.filter((row) => row.status === "cancelled").length;
 }
 
-function buildMetrics(rows: RegistryRow[]): Array<{
-  caption: string;
-  icon: UiIconName;
-  label: string;
-  tone: string;
-  value: number;
-}> {
-  return [
-    {
-      caption: "All time",
-      icon: "projects",
-      label: "Total projects",
-      tone: "total",
-      value: rows.length
-    },
-    {
-      caption: "Active workflow",
-      icon: "clock",
-      label: "In progress",
-      tone: "progress",
-      value: rows.filter((row) => isInProgress(row.status)).length
-    },
-    {
-      caption: "Awaiting action",
-      icon: "hourglass",
-      label: "Pending review",
-      tone: "review",
-      value: rows.filter((row) => isPendingReview(row.status)).length
-    },
-    {
-      caption: "Closed or folder ready",
-      icon: "new-project",
-      label: "Completed",
-      tone: "completed",
-      value: rows.filter((row) => isCompleted(row.status)).length
-    },
-    {
-      caption: "No LTR Number yet",
-      icon: "package",
-      label: "Draft",
-      tone: "draft",
-      value: rows.filter((row) => !row.ltr_number).length
-    }
-  ];
+function classifyQueue(row: RegistryRow): ClassifiedQueueName | null {
+  if (["closed", "folder_created"].includes(row.status)) {
+    return "completed";
+  }
+  if (row.status === "ltr_registered") {
+    return "matrix_needed";
+  }
+  if (!hasRegisteredLtr(row)) {
+    return "planning";
+  }
+  // TASK_317B follow-up: current registry rows do not expose active Matrix or
+  // formal folder readiness fields. Use the safest registered-project queue
+  // rather than inferring Ready to Test or Folder Blocked from generic status.
+  return "matrix_needed";
+}
+
+function hasRegisteredLtr(row: RegistryRow): boolean {
+  return row.has_registered_ltr || hasDisplayText(row.ltr_number);
 }
 
 function businessIdentifier(row: RegistryRow): string {
-  return row.ltr_number ?? "Pending LTR Number";
+  return row.display_project_id;
 }
 
-function isCompleted(status: string): boolean {
-  return ["closed", "folder_created"].includes(status);
+function registryStatusLabel(row: RegistryRow): string {
+  if (row.status === "cancelled") {
+    return "Cancelled";
+  }
+  const queue = classifyQueue(row);
+  return queue ? QUEUE_LABELS[queue] : "Planning";
 }
 
-function isInProgress(status: string): boolean {
-  return !["cancelled", "closed", "draft", "folder_created"].includes(status);
-}
-
-function isPendingReview(status: string): boolean {
-  return ["draft", "intake_received", "precheck_pending", "precheck_failed"].includes(status);
+function nextStepLabel(row: RegistryRow): string {
+  if (row.status === "cancelled") {
+    return "No action";
+  }
+  const queue = classifyQueue(row);
+  switch (queue) {
+    case "planning":
+      return "Continue planning";
+    case "matrix_needed":
+      return "Open Matrix authority";
+    case "ready_to_test":
+      return "Open Execution map";
+    case "folder_blocked":
+      return "Review request material";
+    case "completed":
+      return "No action";
+    default:
+      return "Continue planning";
+  }
 }
 
 function displayText(value: string | null | undefined, fallback: string): string {
   const text = value?.trim();
   return text || fallback;
+}
+
+function hasDisplayText(value: string | null | undefined): boolean {
+  return Boolean(value?.trim());
 }
 
 type LastLtrApplyResult = {

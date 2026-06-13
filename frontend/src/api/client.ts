@@ -8,6 +8,8 @@ export type Project = {
   status: string;
   business_unit?: string | null;
   created_on?: string | null;
+  temporary_source_asset_ids?: string[];
+  temporary_notes?: string | null;
 };
 
 export type ProjectRegistryRow = {
@@ -20,6 +22,12 @@ export type ProjectRegistryRow = {
   status: string;
   progress: number;
   notes?: string | null;
+  display_project_id: string;
+  display_project_id_kind: "registered" | "temporary";
+  has_registered_ltr: boolean;
+  temporary_project_id?: string | null;
+  registered_ltr_number?: string | null;
+  temporary_source_asset_ids?: string[];
 };
 
 export type ProjectCreateInput = {
@@ -27,6 +35,24 @@ export type ProjectCreateInput = {
   product_name: string;
   requestor: string;
   business_unit?: string;
+};
+
+export type CreateTemporaryProjectInput = {
+  request_summary?: string | null;
+  sample_description?: string | null;
+  test_item?: string | null;
+  requestor?: string | null;
+  source_asset_ids?: string[];
+  notes?: string | null;
+};
+
+export type CreateTemporaryProjectResponse = {
+  project_id: string;
+  display_project_id: string;
+  display_project_id_kind: "temporary";
+  has_registered_ltr: false;
+  status: string;
+  next_route: string;
 };
 
 export type ApplicationForm = {
@@ -212,6 +238,52 @@ export type RequestMaterialCollectResponse = RequestMaterialPreview & {
   skipped_paths: string[];
   missing_source_paths: string[];
   conflict_paths: string[];
+};
+
+export type OfficialFolderCheckStatus =
+  | "blocked"
+  | "missing"
+  | "warning"
+  | "ready"
+  | "conflict";
+
+export type OfficialFolderCheckItemStatus =
+  | "ready"
+  | "missing"
+  | "conflict"
+  | "warning"
+  | "not_applicable"
+  | "deferred";
+
+export type OfficialFolderCheckItem = {
+  key: string;
+  label: string;
+  kind: string;
+  status: OfficialFolderCheckItemStatus;
+  path?: string | null;
+  message: string;
+  repairable: boolean;
+};
+
+export type OfficialFolderCheckPreview = {
+  project_id: string;
+  status: OfficialFolderCheckStatus;
+  local_workspace_path?: string | null;
+  official_project_folder_path?: string | null;
+  required_folders: OfficialFolderCheckItem[];
+  required_files: OfficialFolderCheckItem[];
+  blockers: string[];
+  warnings: string[];
+  next_action: "repair_folders" | "none";
+};
+
+export type OfficialFolderRepairResponse = {
+  project_id: string;
+  repair_status: "completed" | "partial" | "blocked" | "conflict";
+  created_paths: string[];
+  unresolved_conflicts: string[];
+  errors: string[];
+  preview: OfficialFolderCheckPreview;
 };
 
 export type PrecheckIssue = {
@@ -1769,6 +1841,15 @@ export function createProject(input: ProjectCreateInput): Promise<Project> {
   });
 }
 
+export function createTemporaryProject(
+  input: CreateTemporaryProjectInput
+): Promise<CreateTemporaryProjectResponse> {
+  return requestJson<CreateTemporaryProjectResponse>("/api/projects/temporary", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export function getProject(projectId: string): Promise<Project> {
   return requestJson<Project>(`/api/projects/${encodeURIComponent(projectId)}`);
 }
@@ -2519,6 +2600,24 @@ export function collectRequestMaterial(
 ): Promise<RequestMaterialCollectResponse> {
   return requestJson<RequestMaterialCollectResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/request-material/collect`,
+    { method: "POST" }
+  );
+}
+
+export function fetchOfficialFolderCheck(
+  projectId: string
+): Promise<OfficialFolderCheckPreview> {
+  return requestJson<OfficialFolderCheckPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-folder/check`,
+    { cache: "no-store" }
+  );
+}
+
+export function repairOfficialFolderStructure(
+  projectId: string
+): Promise<OfficialFolderRepairResponse> {
+  return requestJson<OfficialFolderRepairResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-folder/repair-folders`,
     { method: "POST" }
   );
 }

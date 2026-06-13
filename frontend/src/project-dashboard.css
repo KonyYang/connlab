@@ -3,98 +3,6 @@
   gap: 18px;
 }
 
-.project-register-panel,
-.project-metric-card {
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: var(--color-surface);
-}
-
-.project-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.project-metric-card {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 13px;
-  align-items: center;
-  min-height: 104px;
-  padding: 16px;
-  box-shadow: 0 8px 22px rgba(36, 54, 84, 0.05);
-}
-
-.project-metric-card strong,
-.project-metric-card span,
-.project-metric-card small,
-.register-toolbar h3,
-.register-toolbar p {
-  margin: 0;
-}
-
-.project-metric-card strong {
-  display: block;
-  color: var(--color-ink);
-  font-size: 25px;
-  line-height: 1;
-}
-
-.project-metric-card span:not(.metric-icon) {
-  display: block;
-  margin-top: 6px;
-  color: var(--color-ink);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.project-metric-card small,
-.register-toolbar p {
-  display: block;
-  margin-top: 5px;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-}
-
-.metric-icon {
-  display: grid;
-  width: 50px;
-  height: 50px;
-  place-items: center;
-  border-radius: 15px;
-}
-
-.metric-icon .ui-icon {
-  width: 25px;
-  height: 25px;
-}
-
-.metric-icon-total {
-  background: #eef6ff;
-  color: var(--color-primary);
-}
-
-.metric-icon-progress {
-  background: #fff3e8;
-  color: #c45c1a;
-}
-
-.metric-icon-review {
-  background: #f4ecff;
-  color: #8b3fe8;
-}
-
-.metric-icon-completed {
-  background: #eaf8f1;
-  color: var(--color-success);
-}
-
-.metric-icon-draft {
-  background: var(--color-surface-muted);
-  color: var(--color-ink-muted);
-}
-
 .project-register-panel {
   padding: 18px;
   box-shadow: 0 8px 22px rgba(36, 54, 84, 0.05);
@@ -122,6 +30,18 @@
 }
 
 .registry-result-banner-text span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.register-toolbar h3,
+.register-toolbar p {
+  margin: 0;
+}
+
+.register-toolbar p {
+  display: block;
+  margin-top: 5px;
   color: var(--color-ink-muted);
   font-size: 12px;
 }
@@ -288,39 +208,22 @@
 
 .project-no {
   font-family: "Cascadia Code", Consolas, monospace;
-  font-weight: 800;
+  font-weight: 400;
   white-space: nowrap;
+}
+
+.registry-temp-badge {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-ink-muted);
+  font-family: Aptos, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .registry-test-item-column {
   width: 34%;
   min-width: 320px;
-}
-
-.progress-cell {
-  display: grid;
-  grid-template-columns: 68px max-content;
-  gap: 8px;
-  align-items: center;
-}
-
-.progress-cell span {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
-}
-
-.progress-cell i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-primary);
-}
-
-.progress-cell strong {
-  font-size: 12px;
 }
 
 .registry-footer {
@@ -351,6 +254,26 @@
 
 .row-action:hover {
   border-color: var(--color-primary);
+}
+
+.registry-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #b8d3ec;
+  border-radius: 6px;
+  background: #eef6ff;
+  color: var(--color-primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.registry-next-step {
+  color: var(--color-ink);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .status-badge {
@@ -408,11 +331,65 @@
   width: 44%;
 }
 
-@media (max-width: 1180px) {
-  .project-metric-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+/* Queue Filter Bar */
+.queue-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
+.queue-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.queue-filter-button:hover {
+  border-color: var(--color-primary);
+}
+
+.queue-filter-button-active {
+  border-color: var(--color-primary);
+  background: #eef6ff;
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.queue-filter-label {
+  white-space: nowrap;
+}
+
+.queue-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.queue-filter-button-active .queue-filter-count {
+  background: #d0e8ff;
+  color: var(--color-primary);
+}
+
+@media (max-width: 1180px) {
   .register-toolbar {
     grid-template-columns: 1fr;
   }
@@ -429,26 +406,6 @@
     gap: 14px;
   }
 
-  .project-metric-grid {
-    gap: 10px;
-  }
-
-  .project-metric-card {
-    min-height: 92px;
-    padding: 13px;
-    grid-template-columns: 46px minmax(0, 1fr);
-  }
-
-  .metric-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-  }
-
-  .project-metric-card strong {
-    font-size: 22px;
-  }
-
   .project-register-panel {
     padding: 14px;
   }
@@ -460,8 +417,7 @@
 }
 
 @media (max-width: 760px) {
-  .register-toolbar,
-  .project-metric-grid {
+  .register-toolbar {
     display: grid;
     grid-template-columns: 1fr;
   }

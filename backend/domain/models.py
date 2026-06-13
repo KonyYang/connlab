@@ -49,6 +49,19 @@ class Project:
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectTemporaryContext:
+    """Planning-only context captured before formal LTR/DL registration."""
+
+    context_id: str
+    project_id: str
+    request_summary: str | None = None
+    sample_description: str | None = None
+    test_item: str | None = None
+    notes: str | None = None
+    source_asset_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ApplicationForm:
     """Structured application form data captured for a project."""
 

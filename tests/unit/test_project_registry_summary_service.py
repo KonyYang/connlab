@@ -99,6 +99,69 @@ def test_registry_summary_surfaces_plain_operator_note_without_json_leak() -> No
     assert "operator_note" not in row.notes
 
 
+def test_temporary_project_has_stable_temporary_identity() -> None:
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore(
+            [
+                _project(
+                    project_id="2cd4b0e7ff6f4df99448c9ffdd78629f",
+                    status=ProjectStatus.DRAFT,
+                )
+            ]
+        ),
+        ltr_store=_LtrStore({}),
+    )
+
+    row = service.list_rows()[0]
+
+    assert row.ltr_number is None
+    assert row.display_project_id == "TMP-2CD4B0E7"
+    assert row.display_project_id_kind == "temporary"
+    assert row.has_registered_ltr is False
+    assert row.temporary_project_id == "TMP-2CD4B0E7"
+    assert row.registered_ltr_number is None
+
+
+def test_project_no_is_not_used_as_registered_display_identity() -> None:
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore(
+            [
+                _project(
+                    project_id="aabbccddeeff00112233445566778899",
+                    project_no="1453402",
+                    status=ProjectStatus.DRAFT,
+                )
+            ]
+        ),
+        ltr_store=_LtrStore({}),
+    )
+
+    row = service.list_rows()[0]
+
+    assert row.ltr_number is None
+    assert row.display_project_id == "TMP-AABBCCDD"
+    assert row.display_project_id_kind == "temporary"
+    assert row.has_registered_ltr is False
+    assert row.registered_ltr_number is None
+
+
+def test_registered_project_has_registered_identity() -> None:
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore([_project(project_id="P1")]),
+        ltr_store=_LtrStore(
+            {"P1": [_ltr(project_id="P1", number="DL-2026-05-009", notes=None)]}
+        ),
+    )
+
+    row = service.list_rows()[0]
+
+    assert row.display_project_id == "DL-2026-05-009"
+    assert row.display_project_id_kind == "registered"
+    assert row.has_registered_ltr is True
+    assert row.temporary_project_id is None
+    assert row.registered_ltr_number == "DL-2026-05-009"
+
+
 class _ProjectStore:
     def __init__(self, projects: list[Project]) -> None:
         self._projects = projects
@@ -118,6 +181,7 @@ class _LtrStore:
 def _project(
     *,
     project_id: str,
+    project_no: str | None = None,
     product_name: str = "Project product",
     requestor: str = "Requester",
     business_unit: str | None = "DG",
@@ -125,7 +189,7 @@ def _project(
 ) -> Project:
     return Project(
         project_id=project_id,
-        project_no=None,
+        project_no=project_no,
         product_name=product_name,
         requestor=requestor,
         business_unit=business_unit,
