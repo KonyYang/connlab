@@ -6,6 +6,7 @@ import type {
   Project,
   OfficialFolderCheckPreview,
   ProjectPackagePreview,
+  PublicDriveUploadPreview,
   RequestMaterialPreview,
   ProjectTestPlanDraft,
 } from "../../api/client";
@@ -308,6 +309,32 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Customer Feedback form ready from package preview")).toBeNull();
   });
 
+  it("shows public-drive upload preview counts and item details before upload", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      officialFolderCheckPreview: customerFeedbackDeferredOfficialFolderCheckPreview,
+      publicDriveUploadPreview: readyPublicDriveUploadPreview,
+      folderReady: true,
+    });
+
+    expect(screen.getByText("Public drive upload preview")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "D:/PublicProjects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test"
+      )
+    ).toBeTruthy();
+    expect(screen.getAllByText("Add").length).toBeGreaterThan(0);
+    expect(screen.getByText("Update")).toBeTruthy();
+    expect(screen.getByText("Already current")).toBeTruthy();
+    expect(screen.getByText("Conflict")).toBeTruthy();
+    expect(screen.getByText("Submitted Material/application.docx")).toBeTruthy();
+    expect(screen.getByText("Photos")).toBeTruthy();
+  });
+
   it("shows one local project folder creation action before package preparation", async () => {
     const user = userEvent.setup();
     const onCreateOfficialWorkspace = vi.fn();
@@ -514,6 +541,11 @@ function buildRuntimeModel(
     officialFolderCheckRepairing: false,
     officialFolderCheckError: null,
     officialFolderRepairResult: null,
+    publicDriveUploadPreview: null,
+    publicDriveUploadLoading: false,
+    publicDriveUploading: false,
+    publicDriveUploadError: null,
+    publicDriveUploadResult: null,
     requestMaterialPreview: null,
     requestMaterialLoading: false,
     requestMaterialCollecting: false,
@@ -525,6 +557,8 @@ function buildRuntimeModel(
     onCreateOfficialWorkspace: vi.fn(),
     onRefreshOfficialFolderCheck: vi.fn(),
     onRepairOfficialFolderStructure: vi.fn(),
+    onRefreshPublicDriveUploadPreview: vi.fn(),
+    onUploadPublicDriveProjectFolder: vi.fn(),
     onRefreshRequestMaterial: vi.fn(),
     onCollectRequestMaterial: vi.fn(),
     onRefreshSection2Sync: vi.fn(),
@@ -726,6 +760,49 @@ const customerFeedbackDeferredOfficialFolderCheckPreview: OfficialFolderCheckPre
     },
   ],
   next_action: "none",
+};
+
+const readyPublicDriveUploadPreview: PublicDriveUploadPreview = {
+  project_id: project.project_id,
+  status: "ready",
+  local_official_folder_path:
+    "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  public_project_folder_path:
+    "D:/PublicProjects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  items: [
+    {
+      kind: "file",
+      relative_path: "Submitted Material/application.docx",
+      local_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/application.docx",
+      public_path:
+        "D:/PublicProjects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/application.docx",
+      action: "add",
+      status: "ready",
+      message: "Ready to add.",
+    },
+    {
+      kind: "directory",
+      relative_path: "Photos",
+      local_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Photos",
+      public_path:
+        "D:/PublicProjects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Photos",
+      action: "skip",
+      status: "current",
+      message: "Already exists.",
+    },
+  ],
+  blockers: [],
+  warnings: [],
+  counts: {
+    add: 1,
+    update: 0,
+    skip: 1,
+    conflict: 0,
+    deferred: 0,
+  },
+  next_action: "upload",
 };
 
 const confirmedMatrixSnapshot: ConfirmedMatrixSnapshot = {

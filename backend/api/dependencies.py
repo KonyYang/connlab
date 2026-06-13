@@ -149,6 +149,7 @@ from backend.application.official_project_workspace_service import (
 from backend.application.official_project_folder_check_service import (
     OfficialProjectFolderCheckService,
 )
+from backend.application.public_drive_upload_service import PublicDriveUploadService
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
 )
@@ -195,6 +196,9 @@ from backend.infrastructure.files.request_material_copy_gateway import (
 from backend.infrastructure.files.official_project_folder_repair_gateway import (
     OfficialProjectFolderRepairGateway,
 )
+from backend.infrastructure.files.public_drive_upload_gateway import (
+    PublicDriveUploadGateway,
+)
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
     FeeEvaluationWorkbookGateway,
@@ -232,6 +236,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectTemporaryContextRepository,
     ProjectTestPlanDraftRepository,
     ProjectRequestMaterialCollectionRepository,
+    PublicDriveUploadRepository,
     SourceMatrixImportRepository,
     SampleInfoRepository,
 )
@@ -763,6 +768,24 @@ def get_official_project_folder_check_service(
         repair_gateway=OfficialProjectFolderRepairGateway(),
         request_material_service=get_project_request_material_collection_service(session),
         output_status_service=get_project_output_record_service(session),
+    )
+
+
+def get_public_drive_upload_service(
+    session: Session = Depends(get_session),
+) -> PublicDriveUploadService:
+    """Build the public-drive Project Folder upload service."""
+    resources = ExternalResourceRepository(session)
+    return PublicDriveUploadService(
+        project_repository=ProjectRepository(session),
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        public_drive_root=_active_resource_path(
+            resources,
+            ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
+        ),
+        folder_check_service=get_official_project_folder_check_service(session),
+        upload_repository=PublicDriveUploadRepository(session),
+        gateway=PublicDriveUploadGateway(),
     )
 
 

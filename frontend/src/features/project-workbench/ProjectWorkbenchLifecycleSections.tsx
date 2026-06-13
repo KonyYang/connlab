@@ -21,6 +21,8 @@ export function WorkbenchStageBanner({
   onCollectRequestMaterial,
   onRefreshOfficialFolderCheck,
   onRepairOfficialFolderStructure,
+  onRefreshPublicDriveUploadPreview,
+  onUploadPublicDriveProjectFolder,
   onOpenSettings,
 }: {
   lifecycle: WorkbenchLifecycleViewModel;
@@ -30,6 +32,8 @@ export function WorkbenchStageBanner({
   onCollectRequestMaterial: () => Promise<void>;
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
+  onRefreshPublicDriveUploadPreview: () => Promise<void>;
+  onUploadPublicDriveProjectFolder: () => Promise<void>;
   onOpenSettings: () => void;
 }): ReactElement {
   const actionHandler = getNextActionHandler(
@@ -40,6 +44,8 @@ export function WorkbenchStageBanner({
     onCollectRequestMaterial,
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
+    onRefreshPublicDriveUploadPreview,
+    onUploadPublicDriveProjectFolder,
     onOpenSettings
   );
   return (
@@ -318,11 +324,17 @@ export function PackagePreparationMode({
   requestMaterialPreview,
   requestMaterialError,
   requestMaterialLoading,
+  publicDriveUploadPreview,
+  publicDriveUploadError,
+  publicDriveUploadLoading,
 }: {
   setupMaterials: SetupMaterialItem[];
   requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
   requestMaterialError: string | null;
   requestMaterialLoading: boolean;
+  publicDriveUploadPreview: ProjectRuntimeConsoleModel["publicDriveUploadPreview"];
+  publicDriveUploadError: string | null;
+  publicDriveUploadLoading: boolean;
 }): ReactElement {
   const copiedCount =
     requestMaterialPreview?.items.filter((item) =>
@@ -377,6 +389,90 @@ export function PackagePreparationMode({
           </ul>
         ) : null}
       </section>
+
+      <PublicDriveUploadPreviewPanel
+        preview={publicDriveUploadPreview}
+        error={publicDriveUploadError}
+        loading={publicDriveUploadLoading}
+      />
+    </section>
+  );
+}
+
+function PublicDriveUploadPreviewPanel({
+  preview,
+  error,
+  loading,
+}: {
+  preview: ProjectRuntimeConsoleModel["publicDriveUploadPreview"];
+  error: string | null;
+  loading: boolean;
+}): ReactElement {
+  const counts = preview?.counts ?? {};
+  const items = preview?.items ?? [];
+  return (
+    <section className="runtime-console-public-drive-preview" aria-label="Public drive upload preview">
+      <div className="runtime-console-public-drive-summary">
+        <div>
+          <p className="eyebrow">Public drive upload preview</p>
+          <strong>{formatPublicDriveUploadPanelStatus(preview?.status ?? null)}</strong>
+          <p>{formatPublicDriveUploadPanelSummary(preview?.status ?? null, loading)}</p>
+        </div>
+        <dl>
+          <div>
+            <dt>Add</dt>
+            <dd>{loading ? "Loading" : counts.add ?? 0}</dd>
+          </div>
+          <div>
+            <dt>Update</dt>
+            <dd>{counts.update ?? 0}</dd>
+          </div>
+          <div>
+            <dt>Already current</dt>
+            <dd>{counts.skip ?? 0}</dd>
+          </div>
+          <div>
+            <dt>Conflict</dt>
+            <dd>{counts.conflict ?? 0}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="runtime-console-public-drive-target">
+        <span>Public folder</span>
+        <strong>{preview?.public_project_folder_path ?? "Not checked"}</strong>
+      </div>
+      {error ? <p className="runtime-console-error">{error}</p> : null}
+      {preview?.blockers.length ? (
+        <ul className="runtime-console-blocker-list">
+          {preview.blockers.map((blocker) => (
+            <li key={blocker}>{blocker}</li>
+          ))}
+        </ul>
+      ) : null}
+      {preview?.warnings.length ? (
+        <ul className="runtime-console-blocker-list">
+          {preview.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      ) : null}
+      <details className="runtime-console-public-drive-items" open={items.length > 0}>
+        <summary>Upload preview items</summary>
+        {items.length > 0 ? (
+          <ul>
+            {items.map((item) => (
+              <li key={`${item.kind}:${item.relative_path}`}>
+                <span>{formatPublicDriveUploadAction(item.action)}</span>
+                <strong>{item.relative_path}</strong>
+                <em>{item.kind === "directory" ? "Folder" : "File"}</em>
+                <p>{item.message}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No upload items are available yet.</p>
+        )}
+      </details>
     </section>
   );
 }
@@ -401,6 +497,8 @@ function getNextActionHandler(
   onCollectRequestMaterial: () => Promise<void>,
   onRefreshOfficialFolderCheck: () => Promise<void>,
   onRepairOfficialFolderStructure: () => Promise<void>,
+  onRefreshPublicDriveUploadPreview: () => Promise<void>,
+  onUploadPublicDriveProjectFolder: () => Promise<void>,
   onOpenSettings: () => void
 ): (() => void) | null {
   if (actionTarget === "matrix") {
@@ -420,6 +518,12 @@ function getNextActionHandler(
   }
   if (actionTarget === "official_folder_repair") {
     return () => void onRepairOfficialFolderStructure();
+  }
+  if (actionTarget === "public_drive_refresh") {
+    return () => void onRefreshPublicDriveUploadPreview();
+  }
+  if (actionTarget === "public_drive_upload") {
+    return () => void onUploadPublicDriveProjectFolder();
   }
   if (actionTarget === "settings") {
     return onOpenSettings;
@@ -469,5 +573,73 @@ function formatRequestMaterialSummary(
   return "Refresh or collect request material after the local project folder is available.";
 }
 
+function formatPublicDriveUploadPanelStatus(
+  status: PublicDriveUploadStatus | null | undefined
+): string {
+  if (status === "ready") {
+    return "Ready to upload";
+  }
+  if (status === "current") {
+    return "Already current";
+  }
+  if (status === "warning") {
+    return "Ready with warnings";
+  }
+  if (status === "conflict") {
+    return "Conflicts need review";
+  }
+  if (status === "blocked") {
+    return "Not ready";
+  }
+  return "Not checked";
+}
+
+function formatPublicDriveUploadPanelSummary(
+  status: PublicDriveUploadStatus | null | undefined,
+  loading: boolean
+): string {
+  if (loading) {
+    return "Loading public-drive upload preview.";
+  }
+  if (status === "ready") {
+    return "Review the add, update, already-current, and conflict items before uploading.";
+  }
+  if (status === "current") {
+    return "The public Project Folder matches the local Project Folder.";
+  }
+  if (status === "warning") {
+    return "Review warnings before uploading to the public location.";
+  }
+  if (status === "conflict") {
+    return "Resolve public-drive conflicts before uploading.";
+  }
+  if (status === "blocked") {
+    return "Resolve the blocker before ConnLab can upload the Project Folder.";
+  }
+  return "Refresh public-drive preview after Project Folder readiness is complete.";
+}
+
+function formatPublicDriveUploadAction(action: string): string {
+  if (action === "add") {
+    return "Add";
+  }
+  if (action === "update") {
+    return "Update";
+  }
+  if (action === "skip") {
+    return "Skip";
+  }
+  if (action === "conflict") {
+    return "Conflict";
+  }
+  if (action === "deferred") {
+    return "Deferred";
+  }
+  return action;
+}
+
 type RequestMaterialStatus =
   NonNullable<ProjectRuntimeConsoleModel["requestMaterialPreview"]>["status"];
+
+type PublicDriveUploadStatus =
+  NonNullable<ProjectRuntimeConsoleModel["publicDriveUploadPreview"]>["status"];

@@ -314,6 +314,61 @@ export type OfficialFolderRepairResponse = {
   preview: OfficialFolderCheckPreview;
 };
 
+export type PublicDriveUploadStatus =
+  | "blocked"
+  | "ready"
+  | "current"
+  | "conflict"
+  | "warning";
+
+export type PublicDriveUploadItemAction =
+  | "add"
+  | "update"
+  | "skip"
+  | "conflict"
+  | "deferred";
+
+export type PublicDriveUploadItemStatus =
+  | "ready"
+  | "current"
+  | "conflict"
+  | "deferred"
+  | "failed";
+
+export type PublicDriveUploadItem = {
+  kind: "file" | "directory";
+  relative_path: string;
+  local_path?: string | null;
+  public_path: string;
+  action: PublicDriveUploadItemAction;
+  status: PublicDriveUploadItemStatus;
+  message: string;
+};
+
+export type PublicDriveUploadPreview = {
+  project_id: string;
+  status: PublicDriveUploadStatus;
+  local_official_folder_path?: string | null;
+  public_project_folder_path?: string | null;
+  items: PublicDriveUploadItem[];
+  blockers: string[];
+  warnings: string[];
+  counts: Record<string, number>;
+  next_action: "preview" | "upload" | "none";
+};
+
+export type PublicDriveUploadResult = {
+  project_id: string;
+  upload_status: "completed" | "partial" | "blocked" | "conflict";
+  copied: PublicDriveUploadItem[];
+  updated: PublicDriveUploadItem[];
+  skipped: PublicDriveUploadItem[];
+  conflicts: PublicDriveUploadItem[];
+  failed: PublicDriveUploadItem[];
+  errors: string[];
+  preview: PublicDriveUploadPreview;
+};
+
 export type PrecheckIssue = {
   issue_id: string;
   category: string;
@@ -2677,6 +2732,24 @@ export function repairOfficialFolderStructure(
 ): Promise<OfficialFolderRepairResponse> {
   return requestJson<OfficialFolderRepairResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/official-folder/repair-folders`,
+    { method: "POST" }
+  );
+}
+
+export function fetchPublicDriveUploadPreview(
+  projectId: string
+): Promise<PublicDriveUploadPreview> {
+  return requestJson<PublicDriveUploadPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/public-drive/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function uploadPublicDriveProjectFolder(
+  projectId: string
+): Promise<PublicDriveUploadResult> {
+  return requestJson<PublicDriveUploadResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/public-drive/upload`,
     { method: "POST" }
   );
 }

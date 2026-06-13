@@ -269,6 +269,23 @@ class ProjectRequestMaterialCollectionItemModel(Base):
     sha256: Mapped[str | None] = mapped_column(String(64))
 
 
+class PublicDriveUploadFileRecordModel(Base):
+    """Database row for one ConnLab-managed public-drive uploaded file."""
+
+    __tablename__ = "public_drive_upload_file_records"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        primary_key=True,
+    )
+    relative_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
+    public_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    local_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    public_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    uploaded_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class IntakePackageModel(Base):
     """Database row for a pre-project intake package."""
 

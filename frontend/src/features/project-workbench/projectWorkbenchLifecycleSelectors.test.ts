@@ -119,6 +119,74 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.actionTarget).toBe("official_folder_refresh");
   });
 
+  it("shows upload to public drive when public-drive preview is ready", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      officialFolderCheckStatus: "ready",
+      packageStatus: "ready",
+      publicDrivePreviewStatus: "ready",
+    });
+
+    expect(lifecycle.nextAction.title).toBe("Upload Project Folder to public drive");
+    expect(lifecycle.nextAction.actionLabel).toBe("Upload to public drive");
+    expect(lifecycle.nextAction.actionTarget).toBe("public_drive_upload");
+  });
+
+  it("does not show public-drive upload before project folder readiness is loaded", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      officialFolderCheckStatus: "ready",
+      packageStatus: null,
+      publicDrivePreviewStatus: "ready",
+    });
+
+    expect(lifecycle.nextAction.title).toBe("Check project folder readiness");
+    expect(lifecycle.nextAction.actionTarget).toBe("package");
+  });
+
+  it("blocks public-drive upload when preview reports conflict", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      officialFolderCheckStatus: "ready",
+      packageStatus: "ready",
+      publicDrivePreviewStatus: "conflict",
+      publicDrivePreviewBlockers: ["Resolve public-drive conflicts before upload."],
+    });
+
+    expect(lifecycle.nextAction.title).toBe("Review public-drive conflict");
+    expect(lifecycle.nextAction.reason).toBe("Resolve public-drive conflicts before upload.");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
+  });
+
+  it("keeps missing Public Project locations as a reminder without a Settings shortcut", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      officialFolderCheckStatus: "ready",
+      packageStatus: "ready",
+      publicDrivePreviewStatus: "blocked",
+      publicDrivePreviewBlockers: ["Public Project locations is not configured."],
+    });
+
+    expect(lifecycle.nextAction.title).toBe("Public-drive upload is not ready");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
+  });
+
   it("does not show collect again when request material only needs manual review", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
@@ -213,4 +281,8 @@ const baseInput: WorkbenchLifecycleInput = {
   hasOfficialFolderCheckError: false,
   section2Status: null,
   hasPackagePreviewError: false,
+  publicDrivePreviewStatus: null,
+  publicDrivePreviewBlockers: [],
+  publicDrivePreviewWarnings: [],
+  hasPublicDrivePreviewError: false,
 };

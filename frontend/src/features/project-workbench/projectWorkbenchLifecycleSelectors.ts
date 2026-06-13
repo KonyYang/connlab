@@ -38,6 +38,16 @@ export type WorkbenchLifecycleInput = {
   officialFolderCheckBlockers: string[];
   officialFolderCheckWarnings: string[];
   hasOfficialFolderCheckError: boolean;
+  publicDrivePreviewStatus:
+    | "blocked"
+    | "ready"
+    | "current"
+    | "conflict"
+    | "warning"
+    | null;
+  publicDrivePreviewBlockers: string[];
+  publicDrivePreviewWarnings: string[];
+  hasPublicDrivePreviewError: boolean;
   section2Status: string | null;
   hasPackagePreviewError: boolean;
 };
@@ -63,6 +73,8 @@ export type WorkbenchNextAction = {
     | "request_material"
     | "official_folder_repair"
     | "official_folder_refresh"
+    | "public_drive_upload"
+    | "public_drive_refresh"
     | null;
 };
 
@@ -300,13 +312,7 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
   }
 
   if (input.packageStatus === "ready") {
-    return {
-      title: "Project Folder is ready for the next preparation step",
-      reason: "Request material is collected. Continue with approved form and fee tasks when available.",
-      tone: "ready",
-      actionLabel: "Refresh checks",
-      actionTarget: "package",
-    };
+    return buildPublicDriveNextAction(input);
   }
 
   return {
@@ -315,6 +321,78 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
     tone: "neutral",
     actionLabel: "Refresh checks",
     actionTarget: "package",
+  };
+}
+
+function buildPublicDriveNextAction(input: WorkbenchLifecycleInput): WorkbenchNextAction {
+  if (input.hasPublicDrivePreviewError) {
+    return {
+      title: "Refresh public-drive preview",
+      reason: "Public-drive upload preview could not be loaded.",
+      tone: "blocked",
+      actionLabel: "Refresh public-drive preview",
+      actionTarget: "public_drive_refresh",
+    };
+  }
+
+  if (input.publicDrivePreviewStatus === "conflict") {
+    return {
+      title: "Review public-drive conflict",
+      reason:
+        input.publicDrivePreviewBlockers[0] ??
+        "Resolve public-drive conflicts before upload.",
+      tone: "blocked",
+    };
+  }
+
+  if (input.publicDrivePreviewStatus === "blocked") {
+    return {
+      title: "Public-drive upload is not ready",
+      reason:
+        input.publicDrivePreviewBlockers[0] ??
+        "Review the public-drive upload blocker before submitting the Project Folder.",
+      tone: "blocked",
+    };
+  }
+
+  if (input.publicDrivePreviewStatus === "ready") {
+    return {
+      title: "Upload Project Folder to public drive",
+      reason: "Preview is ready. Upload the local Project Folder to the configured public location.",
+      tone: "ready",
+      actionLabel: "Upload to public drive",
+      actionTarget: "public_drive_upload",
+    };
+  }
+
+  if (input.publicDrivePreviewStatus === "warning") {
+    return {
+      title: "Review public-drive upload warnings",
+      reason:
+        input.publicDrivePreviewWarnings[0] ??
+        "Public-drive preview has warnings that should be reviewed before upload.",
+      tone: "warning",
+      actionLabel: "Upload to public drive",
+      actionTarget: "public_drive_upload",
+    };
+  }
+
+  if (input.publicDrivePreviewStatus === "current") {
+    return {
+      title: "Public-drive folder is current",
+      reason: "The public Project Folder already matches the local Project Folder.",
+      tone: "ready",
+      actionLabel: "Refresh public-drive preview",
+      actionTarget: "public_drive_refresh",
+    };
+  }
+
+  return {
+    title: "Preview public-drive upload",
+    reason: "Review public-drive add, update, already-current, and conflict items before upload.",
+    tone: "neutral",
+    actionLabel: "Preview public-drive upload",
+    actionTarget: "public_drive_refresh",
   };
 }
 

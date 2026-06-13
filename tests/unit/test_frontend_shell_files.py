@@ -5215,6 +5215,82 @@ def test_task318_official_project_folder_check_ui_and_service_boundaries() -> No
     assert "Secondary links" not in lifecycle_sections_source
 
 
+def test_task319_public_drive_upload_boundaries_are_wired() -> None:
+    """TASK_319 adds preview-first public-drive upload without unsafe package fallback."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    lifecycle_sections_source = (
+        feature_root / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+    selector_source = (
+        feature_root / "projectWorkbenchLifecycleSelectors.ts"
+    ).read_text(encoding="utf-8")
+    model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
+        encoding="utf-8"
+    )
+    runtime_model_source = (
+        feature_root / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    route_source = (
+        FRONTEND_ROOT.parent / "backend" / "api" / "routes_public_drive_upload.py"
+    ).read_text(encoding="utf-8")
+    service_source = (
+        FRONTEND_ROOT.parent / "backend" / "application" / "public_drive_upload_service.py"
+    ).read_text(encoding="utf-8")
+
+    for required in [
+        "fetchPublicDriveUploadPreview",
+        "uploadPublicDriveProjectFolder",
+        "/public-drive/preview",
+        "/public-drive/upload",
+    ]:
+        assert required in client_source
+
+    for required in [
+        "publicDriveUploadPreview",
+        "publicDriveUploadError",
+        "onRefreshPublicDriveUploadPreview",
+        "onUploadPublicDriveProjectFolder",
+    ]:
+        assert required in model_source
+        assert required in runtime_model_source
+
+    for required in [
+        "Public drive upload",
+        "Ready to upload",
+        "Already current",
+    ]:
+        assert required in layout_source or required in lifecycle_sections_source
+
+    for required in [
+        "Public drive upload preview",
+        "Upload preview items",
+        "public_project_folder_path",
+        "counts.add",
+        "preview?.items",
+    ]:
+        assert required in lifecycle_sections_source
+
+    for required in [
+        "Upload to public drive",
+        "public_drive_upload",
+        "public_drive_refresh",
+    ]:
+        assert required in selector_source
+
+    assert "ProjectPackagePreviewService" not in route_source
+    assert "ProjectPackagePreviewService" not in service_source
+    assert "delete" not in route_source.lower()
+    assert "delete" not in service_source.lower()
+    assert "merge" not in route_source.lower()
+    assert "merge" not in service_source.lower()
+
+
 def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:
     """TASK_316 workspace action must stay operator-facing and single-action."""
     feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"

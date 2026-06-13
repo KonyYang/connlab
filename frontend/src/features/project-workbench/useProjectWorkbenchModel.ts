@@ -8,6 +8,7 @@ import {
   fetchActiveConfirmedMatrixSnapshot,
   fetchConfirmedMatrixRuntimeProjectionSnapshot,
   fetchOfficialFolderCheck,
+  fetchPublicDriveUploadPreview,
   fetchProjectPackagePreview,
   fetchOfficialWorkspacePreview,
   fetchRequestMaterialPreview,
@@ -30,6 +31,7 @@ import {
   repairOfficialFolderStructure,
   syncProjectSection2FromConfirmedMatrix,
   updateProjectTestPlanMatrixDraft,
+  uploadPublicDriveProjectFolder,
   validateProjectTestPlanMatrixDraft,
   type ApprovalPackageRequest,
   type ApprovalPackageResponse,
@@ -49,6 +51,8 @@ import {
   type OfficialFolderRepairResponse,
   type OfficialWorkspaceCreateResponse,
   type OfficialWorkspacePreview,
+  type PublicDriveUploadPreview,
+  type PublicDriveUploadResult,
   type RequestMaterialPreview,
   type ProjectSection2SyncRequest,
   type ProjectSection2SyncResponse,
@@ -105,6 +109,11 @@ export type ProjectWorkbenchModel = {
   officialFolderCheckRepairing: boolean;
   officialFolderCheckError: string | null;
   officialFolderRepairResult: OfficialFolderRepairResponse | null;
+  publicDriveUploadPreview: PublicDriveUploadPreview | null;
+  publicDriveUploadLoading: boolean;
+  publicDriveUploading: boolean;
+  publicDriveUploadError: string | null;
+  publicDriveUploadResult: PublicDriveUploadResult | null;
   requestMaterialPreview: RequestMaterialPreview | null;
   requestMaterialLoading: boolean;
   requestMaterialCollecting: boolean;
@@ -171,6 +180,8 @@ export type ProjectWorkbenchModel = {
   onCreateOfficialWorkspace: () => Promise<void>;
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
+  onRefreshPublicDriveUploadPreview: () => Promise<void>;
+  onUploadPublicDriveProjectFolder: () => Promise<void>;
   onRefreshRequestMaterial: () => Promise<void>;
   onCollectRequestMaterial: () => Promise<void>;
   onRefreshSection2Sync: () => Promise<void>;
@@ -279,6 +290,13 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [officialFolderCheckError, setOfficialFolderCheckError] = useState<string | null>(null);
   const [officialFolderRepairResult, setOfficialFolderRepairResult] =
     useState<OfficialFolderRepairResponse | null>(null);
+  const [publicDriveUploadPreview, setPublicDriveUploadPreview] =
+    useState<PublicDriveUploadPreview | null>(null);
+  const [publicDriveUploadLoading, setPublicDriveUploadLoading] = useState(false);
+  const [publicDriveUploading, setPublicDriveUploading] = useState(false);
+  const [publicDriveUploadError, setPublicDriveUploadError] = useState<string | null>(null);
+  const [publicDriveUploadResult, setPublicDriveUploadResult] =
+    useState<PublicDriveUploadResult | null>(null);
   const [requestMaterialPreview, setRequestMaterialPreview] =
     useState<RequestMaterialPreview | null>(null);
   const [requestMaterialLoading, setRequestMaterialLoading] = useState(false);
@@ -311,6 +329,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshOfficialWorkspacePreview();
     void onRefreshRequestMaterial();
     void onRefreshOfficialFolderCheck();
+    void onRefreshPublicDriveUploadPreview();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -583,6 +602,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       await onRefreshPackagePreview();
       await onRefreshRequestMaterial();
       await onRefreshOfficialFolderCheck();
+      await onRefreshPublicDriveUploadPreview();
     } catch (err) {
       setOfficialWorkspaceError((err as Error).message);
     } finally {
@@ -617,6 +637,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
           : "Folder structure repaired."
       );
       await onRefreshPackagePreview();
+      await onRefreshPublicDriveUploadPreview();
     } catch (err) {
       setOfficialFolderCheckError((err as Error).message);
     } finally {
@@ -653,10 +674,44 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       );
       await onRefreshPackagePreview();
       await onRefreshOfficialFolderCheck();
+      await onRefreshPublicDriveUploadPreview();
     } catch (err) {
       setRequestMaterialError((err as Error).message);
     } finally {
       setRequestMaterialCollecting(false);
+    }
+  }
+
+  async function onRefreshPublicDriveUploadPreview(): Promise<void> {
+    setPublicDriveUploadLoading(true);
+    try {
+      const preview = await fetchPublicDriveUploadPreview(projectId);
+      setPublicDriveUploadPreview(preview);
+      setPublicDriveUploadError(null);
+    } catch (err) {
+      setPublicDriveUploadPreview(null);
+      setPublicDriveUploadError((err as Error).message);
+    } finally {
+      setPublicDriveUploadLoading(false);
+    }
+  }
+
+  async function onUploadPublicDriveProjectFolder(): Promise<void> {
+    setPublicDriveUploading(true);
+    try {
+      const result = await uploadPublicDriveProjectFolder(projectId);
+      setPublicDriveUploadResult(result);
+      setPublicDriveUploadPreview(result.preview);
+      setPublicDriveUploadError(null);
+      setMessage(
+        result.upload_status === "partial"
+          ? "Public-drive upload partially completed. Review remaining items."
+          : "Project Folder uploaded to public drive."
+      );
+    } catch (err) {
+      setPublicDriveUploadError((err as Error).message);
+    } finally {
+      setPublicDriveUploading(false);
     }
   }
 
@@ -1005,6 +1060,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     officialFolderCheckRepairing,
     officialFolderCheckError,
     officialFolderRepairResult,
+    publicDriveUploadPreview,
+    publicDriveUploadLoading,
+    publicDriveUploading,
+    publicDriveUploadError,
+    publicDriveUploadResult,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -1064,6 +1124,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onCreateOfficialWorkspace,
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
+    onRefreshPublicDriveUploadPreview,
+    onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial,
     onCollectRequestMaterial,
     onRefreshSection2Sync,

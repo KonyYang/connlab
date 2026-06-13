@@ -71,6 +71,12 @@ export function ProjectWorkbenchLayout({
     officialFolderCheckError,
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
+    publicDriveUploadPreview,
+    publicDriveUploadLoading,
+    publicDriveUploading,
+    publicDriveUploadError,
+    onRefreshPublicDriveUploadPreview,
+    onUploadPublicDriveProjectFolder,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -110,6 +116,10 @@ export function ProjectWorkbenchLayout({
       officialFolderCheckBlockers: officialFolderCheckPreview?.blockers ?? [],
       officialFolderCheckWarnings: officialFolderCheckPreview?.warnings ?? [],
       hasOfficialFolderCheckError: Boolean(officialFolderCheckError),
+      publicDrivePreviewStatus: publicDriveUploadPreview?.status ?? null,
+      publicDrivePreviewBlockers: publicDriveUploadPreview?.blockers ?? [],
+      publicDrivePreviewWarnings: publicDriveUploadPreview?.warnings ?? [],
+      hasPublicDrivePreviewError: Boolean(publicDriveUploadError),
       section2Status: section2SyncPreview?.status ?? null,
       hasPackagePreviewError: Boolean(packagePreviewError),
     },
@@ -125,6 +135,7 @@ export function ProjectWorkbenchLayout({
     packagePreview,
     officialFolderCheckPreview,
     requestMaterialPreview,
+    publicDriveUploadPreview,
     section2Status: section2SyncPreview?.status ?? null,
   });
   const shouldShowWorkspaceCreation =
@@ -271,6 +282,8 @@ export function ProjectWorkbenchLayout({
             onCollectRequestMaterial={onCollectRequestMaterial}
             onRefreshOfficialFolderCheck={onRefreshOfficialFolderCheck}
             onRepairOfficialFolderStructure={onRepairOfficialFolderStructure}
+            onRefreshPublicDriveUploadPreview={onRefreshPublicDriveUploadPreview}
+            onUploadPublicDriveProjectFolder={onUploadPublicDriveProjectFolder}
             onOpenSettings={onOpenSettings}
           />
 
@@ -312,6 +325,9 @@ export function ProjectWorkbenchLayout({
               requestMaterialPreview={requestMaterialPreview}
               requestMaterialError={requestMaterialError}
               requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
+              publicDriveUploadPreview={publicDriveUploadPreview}
+              publicDriveUploadError={publicDriveUploadError}
+              publicDriveUploadLoading={publicDriveUploadLoading || publicDriveUploading}
             />
           ) : null}
 
@@ -350,6 +366,7 @@ function buildSetupMaterials({
   packagePreview,
   officialFolderCheckPreview,
   requestMaterialPreview,
+  publicDriveUploadPreview,
   section2Status,
 }: {
   folderReady: boolean;
@@ -357,6 +374,7 @@ function buildSetupMaterials({
   packagePreview: ProjectRuntimeConsoleModel["packagePreview"];
   officialFolderCheckPreview: ProjectRuntimeConsoleModel["officialFolderCheckPreview"];
   requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
+  publicDriveUploadPreview: ProjectRuntimeConsoleModel["publicDriveUploadPreview"];
   section2Status: string | null;
 }): SetupMaterialItem[] {
   const packageStatus = packagePreview?.status ?? null;
@@ -416,6 +434,11 @@ function buildSetupMaterials({
         ? formatOfficialFolderItemStatus(customerFeedbackItem.status)
         : "Refresh readiness",
       status: normalizeSetupStatus(customerFeedbackItem?.status ?? null),
+    },
+    {
+      title: "Public drive upload",
+      value: formatPublicDriveUploadStatus(publicDriveUploadPreview?.status ?? null),
+      status: normalizePublicDriveUploadSetupStatus(publicDriveUploadPreview?.status ?? null),
     },
   ];
 }
@@ -521,6 +544,40 @@ function formatRequestMaterialChecklistStatus(status: string | null): string {
     return "Needs review";
   }
   return "Not checked";
+}
+
+function formatPublicDriveUploadStatus(status: string | null): string {
+  if (status === "ready") {
+    return "Ready to upload";
+  }
+  if (status === "current") {
+    return "Already current";
+  }
+  if (status === "conflict") {
+    return "Conflict";
+  }
+  if (status === "warning") {
+    return "Warning";
+  }
+  if (status === "blocked") {
+    return "Blocked";
+  }
+  return "Not checked";
+}
+
+function normalizePublicDriveUploadSetupStatus(
+  status: string | null
+): SetupMaterialItem["status"] {
+  if (status === "ready" || status === "current") {
+    return "ready";
+  }
+  if (status === "warning") {
+    return "warning";
+  }
+  if (status === "blocked" || status === "conflict") {
+    return "blocked";
+  }
+  return "neutral";
 }
 
 function normalizeRequestMaterialSetupStatus(
