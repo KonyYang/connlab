@@ -3216,13 +3216,20 @@ def test_task312_package_preview_is_read_only_workbench_entry() -> None:
     panel_source = (
         FRONTEND_ROOT / "src" / "features" / "project-workbench" / "ProjectPackagePreviewPanel.tsx"
     ).read_text(encoding="utf-8")
+    lifecycle_sections_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
     client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
         encoding="utf-8"
     )
 
-    assert "ProjectPackagePreviewPanel" in layout_source
-    assert "preview={packagePreview}" in layout_source
-    assert "onRefresh={onRefreshPackagePreview}" in layout_source
+    assert "ProjectPackagePreviewPanel" in lifecycle_sections_source
+    assert "preview={packagePreview}" in lifecycle_sections_source
+    assert "onRefresh={onRefreshPackagePreview}" in lifecycle_sections_source
     assert '"packagePreview"' in runtime_model_source
     assert '"onRefreshPackagePreview"' in runtime_model_source
     assert "fetchProjectPackagePreview" in client_source
@@ -4927,6 +4934,7 @@ def test_task313a_project_workbench_lifecycle_mode_redesign_is_wired() -> None:
     assert ".runtime-console-mode-tabs" in styles_source
     assert "deriveProjectNumber" in layout_source
     assert "sanitizePackageMessage" in package_panel_source
+    assert '{ mode: "overview", label: "Overview" }' not in selector_source
 
     forbidden_operator_copy = [
         "TASK_313",
@@ -4938,6 +4946,43 @@ def test_task313a_project_workbench_lifecycle_mode_redesign_is_wired() -> None:
         assert forbidden not in combined_workbench_source
 
     assert "/project-package/execute" not in client_source
+
+
+def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:
+    """TASK_316 workspace action must stay operator-facing and single-action."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    action_source = (feature_root / "OfficialWorkspaceActionPanel.tsx").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    runtime_model_source = (
+        feature_root / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "OfficialWorkspaceActionPanel" in layout_source
+    assert "officialWorkspacePreview" in runtime_model_source
+    assert "fetchOfficialWorkspacePreview" in client_source
+    assert "createOfficialWorkspace" in client_source
+    assert "Create local project folder" in action_source
+    assert "The official project folder has not been created locally." in action_source
+    assert "Planned project folder paths" in action_source
+    assert "Created project folder paths" in action_source
+    assert "Workspace details" not in action_source
+    assert "workspace paths" not in action_source.lower()
+
+    for forbidden in [
+        ".connlab",
+        "manifest",
+        "TASK_316",
+        "/official-workspace/",
+        "SQLite",
+    ]:
+        assert forbidden not in action_source
 
 
 def test_task192_matrix_source_candidates_and_browse_fallback_are_feature_wired() -> None:

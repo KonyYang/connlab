@@ -29,6 +29,7 @@ class LocalPathPickerService:
         if resource_type in {
             ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
             ExternalResourceType.PROJECT_OUTPUT_ROOT,
+            ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
         }:
             return self._picker.pick_directory(resource_type)
         return self._picker.pick_file(resource_type)

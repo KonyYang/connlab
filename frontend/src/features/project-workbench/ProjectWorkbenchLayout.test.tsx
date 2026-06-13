@@ -62,12 +62,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       },
       {
         project_no: "DL-2026-06-777",
+        sample_description: "Coolpower HDF 3.40mm pin",
+        test_item: "Qualification Testing",
       }
     );
 
     expect(screen.getByText("Package preparation")).toBeTruthy();
     expect(
-      screen.getByText(/DL-2026-06-777 \| Connector Sample \| spec.docx/)
+      screen.getByText("DL-2026-06-777 Coolpower HDF 3.40mm pin Qualification Testing")
     ).toBeTruthy();
     expect(screen.queryByText("Temporary planning")).toBeNull();
   });
@@ -110,8 +112,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Project package panel")).toBeNull();
   });
 
-  it("shows overview as a lifecycle summary without package or execution work surfaces", async () => {
-    const user = userEvent.setup();
+  it("does not show a redundant overview tab when package preparation is the main task", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -119,14 +120,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: blockedPackagePreview,
     });
 
-    await user.click(screen.getByRole("tab", { name: "Overview" }));
-
-    expect(screen.getByText("Lifecycle summary")).toBeTruthy();
-    expect(screen.getByText("Current blockers")).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Overview" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Package" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Execution" })).toBeTruthy();
+    expect(screen.getByText("Package preparation")).toBeTruthy();
     expect(
       screen.getAllByText("Project folder template is inactive in Settings.").length
     ).toBeGreaterThan(0);
-    expect(screen.queryByText("Project package panel")).toBeNull();
+    expect(screen.getByText("Project package panel")).toBeTruthy();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
   });
@@ -198,6 +199,133 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByText("Folder setup panel")).toBeTruthy();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
     expect(screen.queryByText("Fee summary panel")).toBeNull();
+  });
+
+  it("shows one local project folder creation action before package preparation", async () => {
+    const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      officialWorkspacePreview: {
+        project_id: "project-1",
+        dl_number: "DL-2026-06-001",
+        status: "ready",
+        local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-2026-06-001",
+        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
+        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
+        official_project_folder_path:
+          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
+        template_root_mode: "template_root",
+        blockers: [],
+        warnings: [],
+        planned_paths: [],
+      },
+      officialWorkspaceCreating: false,
+      onCreateOfficialWorkspace,
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Create local project folder" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText("The official project folder has not been created locally.")
+    ).toBeTruthy();
+    expect(screen.queryByText("Project package panel")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: "Create local project folder" })
+    );
+
+    expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows missing workspace settings as a blocker without a create shortcut", () => {
+    const onCreateOfficialWorkspace = vi.fn();
+    renderWorkbench(
+      {
+        latestLtr: "DL-2026-06-001",
+        activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+        matrixAuthorityDraft: testPlanDraft,
+        officialWorkspacePreview: {
+          project_id: "project-1",
+          dl_number: "DL-2026-06-001",
+          status: "blocked",
+          local_workspace_root: null,
+          local_workspace_path: null,
+          source_book_path: null,
+          template_path: null,
+          official_project_folder_path: null,
+          manifest_path: null,
+          template_root_mode: null,
+          blockers: [
+            "Project default save location is not configured.",
+            "Template folder is not configured.",
+          ],
+          warnings: [],
+          planned_paths: [],
+        },
+        officialWorkspaceCreating: false,
+        onCreateOfficialWorkspace,
+      }
+    );
+
+    expect(
+      screen.getByText("Project folder template is not ready")
+    ).toBeTruthy();
+    expect(
+      screen.getByText("ConnLab project folder template is not ready.")
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Creation is unavailable until the ConnLab project template is ready."
+      )
+    ).toBeTruthy();
+    expect(screen.queryByText("Configure workspace paths")).toBeNull();
+    expect(screen.queryByText("Project default save location is not configured.")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Create local project folder" })
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("treats completed official workspace preview as project folder ready", async () => {
+    const user = userEvent.setup();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      folderReady: false,
+      officialWorkspacePreview: {
+        project_id: "project-1",
+        dl_number: "DL-2026-06-001",
+        status: "completed",
+        local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-2026-06-001",
+        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
+        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
+        official_project_folder_path:
+          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
+        template_root_mode: "template_root",
+        blockers: [],
+        warnings: [],
+        planned_paths: [],
+      },
+      packagePreview: readyPackagePreview,
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Create local project folder" })
+    ).toBeNull();
+
+    expect(screen.getAllByText("Project folder").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Created").length).toBeGreaterThan(0);
   });
 });
 

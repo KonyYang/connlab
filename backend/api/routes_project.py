@@ -47,6 +47,8 @@ class ProjectResponse(BaseModel):
     status: str
     business_unit: str | None = None
     created_on: date | None = None
+    sample_description: str | None = None
+    test_item: str | None = None
 
 
 class ProjectRegistryRowResponse(BaseModel):
@@ -102,15 +104,22 @@ def list_project_registry_rows(
 def get_project(
     project_id: str,
     service: ProjectService = Depends(get_project_service),
+    registry_service: ProjectRegistrySummaryService = Depends(
+        get_project_registry_summary_service
+    ),
 ) -> ProjectResponse:
     """Get one project by ID."""
     try:
-        return _to_response(service.get_project(project_id))
+        project = service.get_project(project_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_response(project, registry_service.get_row(project_id))
 
 
-def _to_response(project: Project) -> ProjectResponse:
+def _to_response(
+    project: Project,
+    registry_row: ProjectRegistryRow | None = None,
+) -> ProjectResponse:
     """Convert a project domain object to an API response DTO."""
     return ProjectResponse(
         project_id=project.project_id,
@@ -120,6 +129,8 @@ def _to_response(project: Project) -> ProjectResponse:
         status=project.status.value,
         business_unit=project.business_unit,
         created_on=project.created_on,
+        sample_description=registry_row.sample_description if registry_row else None,
+        test_item=registry_row.test_item if registry_row else None,
     )
 
 

@@ -15,7 +15,7 @@ def test_registry_summary_uses_new_project_setup_fields_from_backend_notes() -> 
             [
                 _project(
                     project_id="P1",
-                    product_name="Legacy Product Name",
+                    product_name="CoolPower connector samples",
                     requestor="Neo Xu",
                     business_unit="Power Solutions",
                 )
@@ -53,14 +53,14 @@ def test_registry_summary_uses_new_project_setup_fields_from_backend_notes() -> 
     assert rows[0].progress == 70
 
 
-def test_registry_summary_does_not_fallback_to_product_name_or_raw_json() -> None:
+def test_registry_summary_uses_project_product_name_without_raw_json_leak() -> None:
     raw_audit = json.dumps({"commit_mode": "external_ltr_workbook", "row_number": 7})
     service = ProjectRegistrySummaryService(
         project_store=_ProjectStore(
             [
                 _project(
                     project_id="P1",
-                    product_name="Do Not Show As Sample Description",
+                    product_name="Show As Sample Description",
                     status=ProjectStatus.LTR_REGISTERED,
                 )
             ]
@@ -72,7 +72,7 @@ def test_registry_summary_does_not_fallback_to_product_name_or_raw_json() -> Non
 
     row = service.list_rows()[0]
 
-    assert row.sample_description is None
+    assert row.sample_description == "Show As Sample Description"
     assert row.test_item is None
     assert row.notes is None
 

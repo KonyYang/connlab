@@ -84,6 +84,10 @@ export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
   const [intakeSession, setIntakeSession] =
     useState<IntakeSessionState>(loadIntakeSession);
+  const [lastProjectRoute, setLastProjectRoute] = useState<string | null>(() => {
+    const initialRoute = parseRoute(window.location.pathname);
+    return isProjectWorkspaceRoute(initialRoute) ? window.location.pathname : null;
+  });
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(window.location.pathname));
@@ -94,6 +98,20 @@ export default function App(): ReactElement {
   useEffect(() => {
     saveIntakeSession(intakeSession);
   }, [intakeSession]);
+
+  useEffect(() => {
+    if (isProjectWorkspaceRoute(route)) {
+      setLastProjectRoute(window.location.pathname);
+    }
+  }, [route]);
+
+  function handleShellNavigate(path: string): void {
+    if (path === "/projects" && route.name !== "projects" && lastProjectRoute) {
+      navigate(lastProjectRoute);
+      return;
+    }
+    navigate(path);
+  }
 
   const activeRoute =
     route.name === "projectDetail"
@@ -110,7 +128,11 @@ export default function App(): ReactElement {
   const topBarTitle = route.name === "projectMatrixEditor" ? "Matrix Editor" : undefined;
 
   return (
-    <AppShell activeRoute={activeRoute} topBarTitle={topBarTitle}>
+    <AppShell
+      activeRoute={activeRoute}
+      topBarTitle={topBarTitle}
+      onNavigate={handleShellNavigate}
+    >
       {route.name === "projects" && (
         <ProjectListPage
           onNewProject={() => navigate("/intake")}
@@ -158,7 +180,10 @@ export default function App(): ReactElement {
       {route.name === "projectDetail" && (
         <ProjectWorkbenchPage
           projectId={route.projectId}
-          onBack={() => navigate("/projects")}
+          onBack={() => {
+            setLastProjectRoute(null);
+            navigate("/projects");
+          }}
           onOpenMatrixEditor={() =>
             navigate(`/projects/${encodeURIComponent(route.projectId)}/matrix-editor`)
           }
@@ -192,5 +217,13 @@ export default function App(): ReactElement {
         </section>
       )}
     </AppShell>
+  );
+}
+
+function isProjectWorkspaceRoute(route: Route): boolean {
+  return (
+    route.name === "projectDetail" ||
+    route.name === "projectMatrixEditor" ||
+    route.name === "projectFeeEvaluation"
   );
 }

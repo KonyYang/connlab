@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from "react";
 import type { Project } from "../../api/client";
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
+import { OfficialWorkspaceActionPanel } from "./OfficialWorkspaceActionPanel";
 import {
   PackagePreparationMode,
   ProjectOverviewMode,
@@ -44,7 +45,6 @@ export function ProjectWorkbenchLayout({
     folderReady,
     folderResources,
     latestLtr,
-    matrixAuthorityDraft,
     matrixCandidateDraft,
     matrixDraft,
     onFolderCreated,
@@ -54,6 +54,11 @@ export function ProjectWorkbenchLayout({
     packagePreview,
     packagePreviewError,
     packagePreviewLoading,
+    officialWorkspacePreview,
+    officialWorkspaceLoading,
+    officialWorkspaceCreating,
+    officialWorkspaceError,
+    onCreateOfficialWorkspace,
     runtimeProjectionSnapshot,
     section2SyncError,
     section2SyncLoading,
@@ -63,17 +68,21 @@ export function ProjectWorkbenchLayout({
 
   const projectNumber = deriveProjectNumber(latestLtr, project.project_no);
   const activeMatrixAuthorityReady = Boolean(activeConfirmedMatrixSnapshot);
+  const effectiveFolderReady =
+    folderReady || officialWorkspacePreview?.status === "completed";
   const projectIdentity =
     projectNumber ?? `Temporary project ${project.project_id.slice(0, 8)}`;
-  const testDescription = deriveWorkbenchTestDescription(
-    matrixAuthorityDraft?.source_document_name ?? null
-  );
+  const titleParts = [
+    projectIdentity,
+    project.sample_description?.trim() || project.product_name,
+    project.test_item,
+  ].filter(Boolean);
   const lifecycle = deriveProjectWorkbenchLifecycle(
     {
       hasLtr: Boolean(projectNumber),
       hasActiveMatrix: activeMatrixAuthorityReady,
       hasCandidateMatrix: Boolean(matrixCandidateDraft ?? matrixDraft),
-      folderReady,
+      folderReady: effectiveFolderReady,
       folderTemplateReady: deriveFolderTemplateReady(folderResources.template),
       packageStatus: packagePreview?.status ?? null,
       packageBlockers: packagePreview?.blockers ?? [],
@@ -88,11 +97,19 @@ export function ProjectWorkbenchLayout({
       (item) => item.key === "fee_evaluation"
     ) ?? null;
   const setupMaterials = buildSetupMaterials({
-    folderReady,
+    folderReady: effectiveFolderReady,
     matrixAuthorityReady: activeMatrixAuthorityReady,
     packagePreview,
     section2Status: section2SyncPreview?.status ?? null,
   });
+  const shouldShowWorkspaceCreation =
+    Boolean(projectNumber) &&
+    activeMatrixAuthorityReady &&
+    !effectiveFolderReady &&
+    (officialWorkspacePreview?.status === "ready" ||
+      officialWorkspacePreview?.status === "adoptable" ||
+      officialWorkspacePreview?.status === "blocked" ||
+      officialWorkspacePreview?.status === "inconsistent");
 
   return (
     <section className="runtime-console-shell" aria-label="Project runtime console">
@@ -112,7 +129,7 @@ export function ProjectWorkbenchLayout({
         </div>
         <div className="runtime-console-project-title">
           <h2 className="runtime-console-project-identity">
-            {projectIdentity} | {project.product_name} | {testDescription}
+            {titleParts.join(" ")}
           </h2>
         </div>
         <div className="runtime-console-last-update">
@@ -126,19 +143,29 @@ export function ProjectWorkbenchLayout({
         </div>
       </header>
 
-      <WorkbenchStageBanner
-        lifecycle={lifecycle}
-        onOpenMatrixEditor={onOpenMatrixEditor}
-        onOpenFeeEvaluation={onOpenFeeEvaluation}
-        onRefreshPackagePreview={onRefreshPackagePreview}
-        onOpenSettings={onOpenSettings}
-      />
+      {shouldShowWorkspaceCreation ? (
+        <OfficialWorkspaceActionPanel
+          preview={officialWorkspacePreview}
+          loading={officialWorkspaceLoading}
+          creating={officialWorkspaceCreating}
+          error={officialWorkspaceError}
+          onCreate={onCreateOfficialWorkspace}
+        />
+      ) : (
+        <>
+          <WorkbenchStageBanner
+            lifecycle={lifecycle}
+            onOpenMatrixEditor={onOpenMatrixEditor}
+            onOpenFeeEvaluation={onOpenFeeEvaluation}
+            onRefreshPackagePreview={onRefreshPackagePreview}
+            onOpenSettings={onOpenSettings}
+          />
 
-      <WorkbenchModeTabs
-        activeMode={lifecycle.mode}
-        tabs={lifecycle.tabs}
-        onSelect={setSelectedLifecycleMode}
-      />
+          <WorkbenchModeTabs
+            activeMode={lifecycle.mode}
+            tabs={lifecycle.tabs}
+            onSelect={setSelectedLifecycleMode}
+          />
 
       {lifecycle.mode === "temporary_planning" ? (
         <TemporaryPlanningMode
@@ -162,7 +189,7 @@ export function ProjectWorkbenchLayout({
         <PackagePreparationMode
           setupMaterials={setupMaterials}
           folderResources={folderResources}
-          folderReady={folderReady}
+          folderReady={effectiveFolderReady}
           projectNumber={projectNumber}
           onFolderCreated={onFolderCreated}
           onOpenMatrixEditor={onOpenMatrixEditor}
@@ -194,6 +221,8 @@ export function ProjectWorkbenchLayout({
           setSelectedProjectionToken={setSelectedProjectionToken}
         />
       ) : null}
+        </>
+      )}
     </section>
   );
 }
@@ -301,14 +330,6 @@ function deriveProjectNumber(
   }
   const fromProjectNo = projectNo?.trim();
   return fromProjectNo || null;
-}
-
-function deriveWorkbenchTestDescription(sourceDocumentName: string | null): string {
-  const normalized = sourceDocumentName?.trim() ?? "";
-  if (normalized.length > 0) {
-    return normalized;
-  }
-  return "Test description unavailable";
 }
 
 function formatSection2Status(status: string): string {

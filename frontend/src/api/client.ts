@@ -2,6 +2,8 @@ export type Project = {
   project_id: string;
   project_no?: string | null;
   product_name: string;
+  sample_description?: string | null;
+  test_item?: string | null;
   requestor: string;
   status: string;
   business_unit?: string | null;
@@ -118,6 +120,44 @@ export type ProjectPackagePreview = {
   optional_items: ProjectPackagePreviewItem[];
   blockers: string[];
   warnings: string[];
+};
+
+export type OfficialWorkspacePreviewStatus =
+  | "ready"
+  | "completed"
+  | "blocked"
+  | "adoptable"
+  | "exists"
+  | "inconsistent";
+
+export type OfficialWorkspacePreview = {
+  project_id: string;
+  dl_number?: string | null;
+  local_workspace_root?: string | null;
+  local_workspace_path?: string | null;
+  source_book_path?: string | null;
+  template_path?: string | null;
+  official_project_folder_path?: string | null;
+  manifest_path?: string | null;
+  template_root_mode?: string | null;
+  status: OfficialWorkspacePreviewStatus;
+  blockers: string[];
+  warnings: string[];
+  planned_paths: string[];
+};
+
+export type OfficialWorkspaceCreateResponse = {
+  workspace_id: string;
+  project_id: string;
+  dl_number: string;
+  local_workspace_path: string;
+  source_book_path: string;
+  official_project_folder_path: string;
+  manifest_path: string;
+  template_source_path: string;
+  created_paths: string[];
+  warnings: string[];
+  created_at: string;
 };
 
 export type PrecheckIssue = {
@@ -447,6 +487,7 @@ export type ExternalResourceType =
   | "application_form_template"
   | "project_folder_template"
   | "project_output_root"
+  | "official_public_drive_root"
   | "standard_record_excel"
   | "equipment_calibration_excel";
 
@@ -2389,6 +2430,24 @@ export function fetchProjectPackagePreview(projectId: string): Promise<ProjectPa
   return requestJson<ProjectPackagePreview>(
     `/api/projects/${encodeURIComponent(projectId)}/project-package/preview`,
     { cache: "no-store" }
+  );
+}
+
+export function fetchOfficialWorkspacePreview(
+  projectId: string
+): Promise<OfficialWorkspacePreview> {
+  return requestJson<OfficialWorkspacePreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-workspace/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function createOfficialWorkspace(
+  projectId: string
+): Promise<OfficialWorkspaceCreateResponse> {
+  return requestJson<OfficialWorkspaceCreateResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-workspace/create`,
+    { method: "POST" }
   );
 }
 

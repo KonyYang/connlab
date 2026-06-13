@@ -6,6 +6,7 @@ type AppShellProps = {
   activeRoute: string;
   topBarTitle?: string;
   children: ReactNode;
+  onNavigate?: (path: string) => void;
 };
 
 function navigate(path: string): void {
@@ -13,7 +14,12 @@ function navigate(path: string): void {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-export function AppShell({ activeRoute, topBarTitle, children }: AppShellProps): ReactElement {
+export function AppShell({
+  activeRoute,
+  topBarTitle,
+  children,
+  onNavigate = navigate
+}: AppShellProps): ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     const raw = window.localStorage.getItem("connlab.sidebar.collapsed");
     return raw !== "0";
@@ -28,7 +34,7 @@ export function AppShell({ activeRoute, topBarTitle, children }: AppShellProps):
       <Sidebar
         activeRoute={activeRoute}
         collapsed={sidebarCollapsed}
-        onNavigate={navigate}
+        onNavigate={onNavigate}
         onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
       />
       <div className="app-workspace">

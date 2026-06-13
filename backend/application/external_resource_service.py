@@ -100,6 +100,8 @@ class ExternalResourceService:
             return _folder_template_failure(path)
         if resource.resource_type is ExternalResourceType.PROJECT_OUTPUT_ROOT:
             return _directory_failure(path, "Project output root")
+        if resource.resource_type is ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT:
+            return _directory_failure(path, "Public Project locations")
         if not path.is_file():
             return f"Expected an existing file: {path}"
         if resource.resource_type is ExternalResourceType.APPLICATION_FORM_TEMPLATE:

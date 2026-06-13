@@ -64,6 +64,8 @@ def _directory_dialog_title(resource_type: ExternalResourceType) -> str:
         return "Select Project default save location"
     if resource_type is ExternalResourceType.PROJECT_FOLDER_TEMPLATE:
         return "Select Template folder"
+    if resource_type is ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT:
+        return "Select Public Project locations"
     return "Select folder"
 
 

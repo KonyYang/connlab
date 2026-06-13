@@ -140,6 +140,9 @@ from backend.application.customer_feedback_form_generation_service import (
 from backend.application.project_package_preview_service import (
     ProjectPackagePreviewService,
 )
+from backend.application.official_project_workspace_service import (
+    OfficialProjectWorkspaceService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -208,6 +211,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectFolderRecordRepository,
     ProjectMatrixDraftRepository,
     ProjectFolderRecordRepository,
+    ProjectOfficialWorkspaceRepository,
     ProjectRepository,
     ProjectOutputRecordRepository,
     ProjectTestPlanDraftRepository,
@@ -223,7 +227,8 @@ from backend.infrastructure.storage.repositories.intake_package import (
     IntakeDraftRepository,
     IntakePackageRepository,
 )
-from backend.shared.config import Settings
+from backend.domain import ExternalResourceType
+from backend.shared.config import OfficialWorkspaceSettings, Settings
 
 
 @lru_cache(maxsize=1)
@@ -616,6 +621,56 @@ def get_settings() -> Settings:
     return Settings.load()
 
 
+def get_official_project_workspace_service(
+    session: Session = Depends(get_session),
+) -> OfficialProjectWorkspaceService:
+    """Build the official project workspace service for API routes."""
+    external_resources = ExternalResourceRepository(session)
+    return OfficialProjectWorkspaceService(
+        project_repository=ProjectRepository(session),
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        ltr_repository=LtrRecordRepository(session),
+        application_form_repository=ApplicationFormRepository(session),
+        settings=_official_workspace_settings_from_registry(
+            external_resources,
+        ),
+    )
+
+
+def _official_workspace_settings_from_registry(
+    resources: ExternalResourceRepository,
+) -> OfficialWorkspaceSettings:
+    """Return official workspace settings from ordinary Settings locations only."""
+    local_workspace_root = _active_resource_path(
+        resources,
+        ExternalResourceType.PROJECT_OUTPUT_ROOT,
+    )
+    template_path = _active_resource_path(
+        resources,
+        ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
+    )
+    public_drive_root = _active_resource_path(
+        resources,
+        ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
+    )
+    return OfficialWorkspaceSettings(
+        local_workspace_root=local_workspace_root,
+        template_path=template_path,
+        public_drive_root=public_drive_root,
+    )
+
+
+def _active_resource_path(
+    resources: ExternalResourceRepository,
+    resource_type: ExternalResourceType,
+):
+    """Return an active Settings-page resource path when configured."""
+    resource = resources.get_by_type(resource_type)
+    if resource is None or not resource.active:
+        return None
+    return resource.path
+
+
 def get_customer_feedback_form_generation_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -640,6 +695,7 @@ def get_project_package_preview_service(
         confirmed_fee_reader=get_confirmed_fee_version_service(session),
         section2_previewer=get_project_section2_sync_service(session),
         external_resource_store=ExternalResourceRepository(session),
+        official_workspace_store=ProjectOfficialWorkspaceRepository(session),
     )
 
 

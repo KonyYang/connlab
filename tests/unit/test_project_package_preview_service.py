@@ -19,6 +19,9 @@ from backend.application.project_package_preview_service import (
     ProjectPackagePreviewProjectNotFoundError,
     ProjectPackagePreviewService,
 )
+from backend.application.official_project_workspace_service import (
+    OfficialWorkspaceRecord,
+)
 from backend.application.project_section2_sync_service import (
     ProjectSection2FieldSync,
     ProjectSection2SyncReadinessError,
@@ -79,6 +82,41 @@ def test_project_package_preview_blocks_missing_folder(tmp_path: Path) -> None:
 
     assert result.status == "blocked"
     assert "Create the project folder" in result.blockers[0]
+
+
+def test_project_package_preview_uses_official_workspace_record_when_legacy_folder_missing(
+    tmp_path: Path,
+) -> None:
+    official_folder = tmp_path / "DL-2026-05-003" / "DL-2026-05-003 Product Qualification test"
+    official_folder.mkdir(parents=True)
+    service = _service(
+        folder_path=None,
+        official_workspace_folder=official_folder,
+        template_folder=_template_folder(tmp_path),
+    )
+
+    result = service.preview("P1")
+
+    assert result.status == "ready"
+    assert result.project_folder.status == "ready"
+    assert result.project_folder.path == str(official_folder)
+    assert "Create the project folder before previewing package targets." not in result.blockers
+
+
+def test_project_package_preview_blocks_missing_official_workspace_folder(
+    tmp_path: Path,
+) -> None:
+    official_folder = tmp_path / "missing-official-folder"
+    service = _service(
+        folder_path=None,
+        official_workspace_folder=official_folder,
+        template_folder=_template_folder(tmp_path),
+    )
+
+    result = service.preview("P1")
+
+    assert result.status == "blocked"
+    assert "Local official project folder path is not available" in result.blockers[0]
 
 
 def test_project_package_preview_blocks_non_directory_folder(tmp_path: Path) -> None:
@@ -363,9 +401,31 @@ class FakeExternalResourceStore:
         )
 
 
+class FakeOfficialWorkspaceStore:
+    def __init__(self, official_folder_path: Path | None) -> None:
+        self.official_folder_path = official_folder_path
+
+    def get_by_project(self, project_id: str) -> OfficialWorkspaceRecord | None:
+        if self.official_folder_path is None:
+            return None
+        workspace_path = self.official_folder_path.parent
+        return OfficialWorkspaceRecord(
+            workspace_id="W1",
+            project_id=project_id,
+            dl_number="DL-2026-05-003",
+            local_workspace_path=workspace_path,
+            source_book_path=workspace_path / "Source Book",
+            official_folder_path=self.official_folder_path,
+            manifest_path=workspace_path / ".connlab" / "manifest.json",
+            template_source_path=Path("D:/Source/Template/DL-XXXX-YY-ZZZ Title"),
+            created_at="2026-06-13T00:00:00+00:00",
+        )
+
+
 def _service(
     *,
     folder_path: Path | None,
+    official_workspace_folder: Path | None = None,
     template_folder: Path | None = None,
     project: Project | None = Project(
         project_id="P1",
@@ -386,6 +446,7 @@ def _service(
         confirmed_fee_reader=FakeConfirmedFeeReader(fee_status),
         section2_previewer=FakeSection2Previewer(section2_status),
         external_resource_store=FakeExternalResourceStore(template_folder),
+        official_workspace_store=FakeOfficialWorkspaceStore(official_workspace_folder),
     )
 
 

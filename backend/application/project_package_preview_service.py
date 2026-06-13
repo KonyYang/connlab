@@ -22,6 +22,9 @@ from backend.application.project_section2_sync_service import (
     ProjectSection2SyncError,
     ProjectSection2SyncResult,
 )
+from backend.application.official_project_workspace_service import (
+    OfficialWorkspaceRecord,
+)
 from backend.domain import (
     ConfirmedMatrixSnapshot,
     ExternalResource,
@@ -51,6 +54,13 @@ class ProjectPackageFolderStore(Protocol):
 
     def list_by_project(self, project_id: str) -> list[ProjectFolderRecord]:
         """Return folder records for a project."""
+
+
+class ProjectPackageOfficialWorkspaceStore(Protocol):
+    """Local official workspace read port."""
+
+    def get_by_project(self, project_id: str) -> OfficialWorkspaceRecord | None:
+        """Return the local official workspace record for a project."""
 
 
 class ProjectPackageConfirmedMatrixStore(Protocol):
@@ -139,6 +149,7 @@ class ProjectPackagePreviewService:
         confirmed_fee_reader: ProjectPackageConfirmedFeeReader,
         section2_previewer: ProjectPackageSection2Previewer,
         external_resource_store: ProjectPackageExternalResourceStore,
+        official_workspace_store: ProjectPackageOfficialWorkspaceStore | None = None,
     ) -> None:
         """Create the preview service with explicit read-only dependencies."""
         self._project_store = project_store
@@ -147,6 +158,7 @@ class ProjectPackagePreviewService:
         self._confirmed_fee_reader = confirmed_fee_reader
         self._section2_previewer = section2_previewer
         self._external_resource_store = external_resource_store
+        self._official_workspace_store = official_workspace_store
 
     def preview(self, project_id: str) -> ProjectPackagePreview:
         """Return project package readiness without mutating files or records."""
@@ -214,6 +226,9 @@ class ProjectPackagePreviewService:
     ) -> tuple[ProjectPackageFolderPreview, Path | None]:
         folders = self._folder_store.list_by_project(project_id)
         if not folders:
+            official_folder = self._official_workspace_folder(project_id, blockers)
+            if official_folder is not None:
+                return official_folder
             message = "Create the project folder before previewing package targets."
             blockers.append(message)
             return ProjectPackageFolderPreview("blocked", None, message), None
@@ -228,6 +243,30 @@ class ProjectPackagePreviewService:
                 "ready",
                 str(path),
                 "Latest project folder is available for package targets.",
+            ),
+            path,
+        )
+
+    def _official_workspace_folder(
+        self,
+        project_id: str,
+        blockers: list[str],
+    ) -> tuple[ProjectPackageFolderPreview, Path | None] | None:
+        if self._official_workspace_store is None:
+            return None
+        workspace = self._official_workspace_store.get_by_project(project_id)
+        if workspace is None:
+            return None
+        path = workspace.official_folder_path
+        if not path.is_dir():
+            message = f"Local official project folder path is not available: {path}"
+            blockers.append(message)
+            return ProjectPackageFolderPreview("blocked", str(path), message), None
+        return (
+            ProjectPackageFolderPreview(
+                "ready",
+                str(path),
+                "Official project folder is available for package targets.",
             ),
             path,
         )

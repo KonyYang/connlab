@@ -7,6 +7,7 @@ import {
   fetchActiveConfirmedMatrixSnapshot,
   fetchConfirmedMatrixRuntimeProjectionSnapshot,
   fetchProjectPackagePreview,
+  fetchOfficialWorkspacePreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
   fetchProjectSection2SyncPreview,
@@ -15,6 +16,7 @@ import {
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
   previewProjectTestPlanMatrixFromSourceCandidate,
+  createOfficialWorkspace,
   previewProjectTestPlanMatrixFromPath,
   listProjectTestPlanDrafts,
   listExternalResources,
@@ -39,6 +41,8 @@ import {
   type MatrixValidationSummary,
   type Project,
   type ProjectPackagePreview,
+  type OfficialWorkspaceCreateResponse,
+  type OfficialWorkspacePreview,
   type ProjectSection2SyncRequest,
   type ProjectSection2SyncResponse,
   type ProjectTestPlanDraftGroup,
@@ -84,6 +88,11 @@ export type ProjectWorkbenchModel = {
   packagePreview: ProjectPackagePreview | null;
   packagePreviewLoading: boolean;
   packagePreviewError: string | null;
+  officialWorkspacePreview: OfficialWorkspacePreview | null;
+  officialWorkspaceLoading: boolean;
+  officialWorkspaceCreating: boolean;
+  officialWorkspaceError: string | null;
+  officialWorkspaceResult: OfficialWorkspaceCreateResponse | null;
   section2SyncPreview: ProjectSection2SyncResponse | null;
   section2SyncLoading: boolean;
   section2SyncSyncing: boolean;
@@ -142,6 +151,8 @@ export type ProjectWorkbenchModel = {
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
   onRefreshPackagePreview: () => Promise<void>;
+  onRefreshOfficialWorkspacePreview: () => Promise<void>;
+  onCreateOfficialWorkspace: () => Promise<void>;
   onRefreshSection2Sync: () => Promise<void>;
   onSyncSection2: (input: ProjectSection2SyncRequest) => Promise<void>;
   onExecuteApprovalPackage: () => Promise<void>;
@@ -234,6 +245,13 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [packagePreview, setPackagePreview] = useState<ProjectPackagePreview | null>(null);
   const [packagePreviewLoading, setPackagePreviewLoading] = useState(false);
   const [packagePreviewError, setPackagePreviewError] = useState<string | null>(null);
+  const [officialWorkspacePreview, setOfficialWorkspacePreview] =
+    useState<OfficialWorkspacePreview | null>(null);
+  const [officialWorkspaceLoading, setOfficialWorkspaceLoading] = useState(false);
+  const [officialWorkspaceCreating, setOfficialWorkspaceCreating] = useState(false);
+  const [officialWorkspaceError, setOfficialWorkspaceError] = useState<string | null>(null);
+  const [officialWorkspaceResult, setOfficialWorkspaceResult] =
+    useState<OfficialWorkspaceCreateResponse | null>(null);
   const [section2SyncPreview, setSection2SyncPreview] =
     useState<ProjectSection2SyncResponse | null>(null);
   const [section2SyncLoading, setSection2SyncLoading] = useState(false);
@@ -258,6 +276,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     );
     void onRefreshSection2Sync();
     void onRefreshPackagePreview();
+    void onRefreshOfficialWorkspacePreview();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -423,7 +442,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     };
   }, [matrixAuthorityDraft, matrixCandidateDraft, runtimeProjectionSnapshot, runtimeSelectedTokenCleared]);
 
-  const folderReady = project?.status === "folder_created";
+  const hasCompletedOfficialWorkspace = officialWorkspacePreview?.status === "completed";
+  const folderReady = project?.status === "folder_created" || hasCompletedOfficialWorkspace;
   const latestLtr = ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null;
   const folderResources = configuredFolderResources(resources);
   const baselineItems = useMemo(
@@ -500,6 +520,37 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setPackagePreviewError((err as Error).message);
     } finally {
       setPackagePreviewLoading(false);
+    }
+  }
+
+  async function onRefreshOfficialWorkspacePreview(): Promise<void> {
+    setOfficialWorkspaceLoading(true);
+    try {
+      const preview = await fetchOfficialWorkspacePreview(projectId);
+      setOfficialWorkspacePreview(preview);
+      setOfficialWorkspaceError(null);
+    } catch (err) {
+      setOfficialWorkspacePreview(null);
+      setOfficialWorkspaceError((err as Error).message);
+    } finally {
+      setOfficialWorkspaceLoading(false);
+    }
+  }
+
+  async function onCreateOfficialWorkspace(): Promise<void> {
+    setOfficialWorkspaceCreating(true);
+    try {
+      const result = await createOfficialWorkspace(projectId);
+      setOfficialWorkspaceResult(result);
+      setMessage("Local project workspace created.");
+      setError(null);
+      setOfficialWorkspaceError(null);
+      await onRefreshOfficialWorkspacePreview();
+      await onRefreshPackagePreview();
+    } catch (err) {
+      setOfficialWorkspaceError((err as Error).message);
+    } finally {
+      setOfficialWorkspaceCreating(false);
     }
   }
 
@@ -838,6 +889,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     packagePreview,
     packagePreviewLoading,
     packagePreviewError,
+    officialWorkspacePreview,
+    officialWorkspaceLoading,
+    officialWorkspaceCreating,
+    officialWorkspaceError,
+    officialWorkspaceResult,
     section2SyncPreview,
     section2SyncLoading,
     section2SyncSyncing,
@@ -889,6 +945,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onConfirmMatrixDraft,
     onFolderCreated,
     onRefreshPackagePreview,
+    onRefreshOfficialWorkspacePreview,
+    onCreateOfficialWorkspace,
     onRefreshSection2Sync,
     onSyncSection2,
     onExecuteApprovalPackage,

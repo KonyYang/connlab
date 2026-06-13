@@ -157,6 +157,27 @@ class ProjectFolderRecordModel(Base):
     created_on: Mapped[date | None] = mapped_column(Date)
 
 
+class ProjectOfficialWorkspaceRecordModel(Base):
+    """Database row for a local official project workspace."""
+
+    __tablename__ = "project_official_workspace_records"
+
+    workspace_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    dl_number: Mapped[str] = mapped_column(String(128), nullable=False)
+    local_workspace_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    source_book_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    official_folder_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    manifest_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    template_source_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class FileAssetModel(Base):
     """Database row for a project file asset."""
 

@@ -10,6 +10,7 @@ FOLDER_RESOURCE_TYPES = frozenset(
     {
         "project_folder_template",
         "project_output_root",
+        "official_public_drive_root",
     }
 )
 

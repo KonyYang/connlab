@@ -23,7 +23,7 @@ from backend.infrastructure.storage.repositories import (
 from backend.shared.config import Settings
 
 
-def test_project_registry_api_returns_summary_rows_without_extending_project_dto(
+def test_project_registry_api_returns_summary_rows_and_project_identity_fields(
     tmp_path: Path,
 ) -> None:
     client, engine, session_factory = _client(tmp_path)
@@ -32,6 +32,7 @@ def test_project_registry_api_returns_summary_rows_without_extending_project_dto
 
         registry = client.get("/api/projects/registry")
         projects = client.get("/api/projects")
+        project_detail = client.get("/api/projects/P1")
 
         assert registry.status_code == 200
         assert registry.json() == [
@@ -48,9 +49,10 @@ def test_project_registry_api_returns_summary_rows_without_extending_project_dto
             }
         ]
         assert projects.status_code == 200
-        assert "sample_description" not in projects.json()[0]
-        assert "test_item" not in projects.json()[0]
         assert "notes" not in projects.json()[0]
+        assert project_detail.status_code == 200
+        assert project_detail.json()["sample_description"] == "CoolPower connector samples"
+        assert project_detail.json()["test_item"] == "Qualification bend testing"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -89,7 +91,7 @@ def _seed_registry_project(session_factory) -> None:
             Project(
                 project_id="P1",
                 project_no=None,
-                product_name="Legacy Product Name",
+                product_name="CoolPower connector samples",
                 requestor="Neo Xu",
                 business_unit="Power Solutions",
                 status=ProjectStatus.LTR_REGISTERED,

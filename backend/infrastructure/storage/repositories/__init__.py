@@ -40,6 +40,9 @@ from backend.infrastructure.storage.repositories.source_matrix_import import (
 from backend.infrastructure.storage.repositories.project_output_record import (
     ProjectOutputRecordRepository,
 )
+from backend.infrastructure.storage.repositories.official_workspace import (
+    ProjectOfficialWorkspaceRepository,
+)
 from backend.infrastructure.storage.repositories.fee_evaluation_pricing_draft_edit import (
     FeeEvaluationPricingDraftEditRepository,
 )
@@ -69,6 +72,7 @@ __all__ = [
     "ProjectMatrixDraftRepository",
     "ProjectRepository",
     "ProjectOutputRecordRepository",
+    "ProjectOfficialWorkspaceRepository",
     "ProjectTestPlanDraftRepository",
     "SourceMatrixImportRepository",
     "SampleInfoRepository",

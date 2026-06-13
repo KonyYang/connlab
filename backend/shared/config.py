@@ -57,6 +57,15 @@ class TestRecordSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class OfficialWorkspaceSettings:
+    """Runtime settings for official project workspace creation."""
+
+    local_workspace_root: Path | None = None
+    template_path: Path | None = None
+    public_drive_root: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Settings:
     """Runtime settings loaded from environment variables."""
 

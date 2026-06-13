@@ -44,7 +44,6 @@ export type WorkbenchLifecycleViewModel = {
 };
 
 const ACTIVE_MATRIX_TABS: WorkbenchLifecycleTab[] = [
-  { mode: "overview", label: "Overview" },
   { mode: "package_preparation", label: "Package" },
   { mode: "execution_console", label: "Execution" },
 ];
@@ -88,21 +87,10 @@ export function deriveProjectWorkbenchLifecycle(
   }
 
   const mode =
-    requestedMode === "overview" ||
     requestedMode === "execution_console" ||
     requestedMode === "package_preparation"
       ? requestedMode
       : "package_preparation";
-
-  if (mode === "overview") {
-    return {
-      mode,
-      stageLabel: "Project overview",
-      stageSummary: "Review lifecycle state, current blockers, and the next controlled action before opening a work surface.",
-      nextAction: buildPackageNextAction(input),
-      tabs: ACTIVE_MATRIX_TABS,
-    };
-  }
 
   if (mode === "execution_console") {
     return {

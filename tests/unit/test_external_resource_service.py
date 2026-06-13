@@ -57,6 +57,25 @@ def test_external_resource_service_validates_empty_project_output_root(
     assert validated.validation_failure_reason is None
 
 
+def test_external_resource_service_validates_public_project_location(
+    tmp_path: Path,
+) -> None:
+    public_root = tmp_path / "public"
+    public_root.mkdir()
+    store = _Store()
+    service = ExternalResourceService(store, office=_FakeOffice())
+
+    service.upsert_resource(
+        ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
+        public_root,
+        active=True,
+    )
+
+    public = service.validate_resource(ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT)
+
+    assert public.validation_status is ExternalResourceValidationStatus.VALID
+
+
 def test_external_resource_service_records_invalid_excel_reason(tmp_path: Path) -> None:
     missing = tmp_path / "missing.xlsx"
     store = _Store()

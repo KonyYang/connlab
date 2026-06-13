@@ -21,6 +21,11 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "packagePreview"
   | "packagePreviewError"
   | "packagePreviewLoading"
+  | "officialWorkspacePreview"
+  | "officialWorkspaceLoading"
+  | "officialWorkspaceCreating"
+  | "officialWorkspaceError"
+  | "officialWorkspaceResult"
   | "project"
   | "projectId"
   | "runtimeAuthoritySync"
@@ -35,6 +40,8 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "setRuntimeSelectedTokenReference"
   | "onFolderCreated"
   | "onRefreshPackagePreview"
+  | "onRefreshOfficialWorkspacePreview"
+  | "onCreateOfficialWorkspace"
   | "onRefreshSection2Sync"
   | "onSyncSection2"
   | "versionStatus"
@@ -60,6 +67,11 @@ export function selectProjectRuntimeConsoleModel(
     packagePreview: model.packagePreview,
     packagePreviewError: model.packagePreviewError,
     packagePreviewLoading: model.packagePreviewLoading,
+    officialWorkspacePreview: model.officialWorkspacePreview,
+    officialWorkspaceLoading: model.officialWorkspaceLoading,
+    officialWorkspaceCreating: model.officialWorkspaceCreating,
+    officialWorkspaceError: model.officialWorkspaceError,
+    officialWorkspaceResult: model.officialWorkspaceResult,
     project: model.project,
     projectId: model.projectId,
     runtimeAuthoritySync: model.runtimeAuthoritySync,
@@ -74,6 +86,8 @@ export function selectProjectRuntimeConsoleModel(
     setRuntimeSelectedTokenReference: model.setRuntimeSelectedTokenReference,
     onFolderCreated: model.onFolderCreated,
     onRefreshPackagePreview: model.onRefreshPackagePreview,
+    onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
+    onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,
     onRefreshSection2Sync: model.onRefreshSection2Sync,
     onSyncSection2: model.onSyncSection2,
     versionStatus: model.versionStatus

@@ -1,6 +1,8 @@
 import type { ExternalResourceType } from "../../api/client";
 
-export type SettingsResourceCategory = "Public registration and record files" | "Default locations";
+export type SettingsResourceCategory =
+  | "Public registration and record files"
+  | "Default locations";
 
 export type SettingsResourceConfig = {
   resourceType: ExternalResourceType;
@@ -42,6 +44,13 @@ export const SHARED_RESOURCE_CONFIGS: SettingsResourceConfig[] = [
   {
     resourceType: "project_folder_template",
     label: "Template folder",
+    category: "Default locations",
+    expectedKind: "Folder",
+    registryBacked: true
+  },
+  {
+    resourceType: "official_public_drive_root",
+    label: "Public Project locations",
     category: "Default locations",
     expectedKind: "Folder",
     registryBacked: true

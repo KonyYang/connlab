@@ -87,7 +87,7 @@ export function SettingsExternalResourcesPanel({
                   onSave={(nextPath) =>
                     onSave(row.resourceType, {
                       path: nextPath,
-                      active: row.active
+                      active: true
                     })
                   }
                   onBrowse={() => onBrowse(row.resourceType)}

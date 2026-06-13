@@ -1813,6 +1813,24 @@
   padding: 7px 10px;
 }
 
+.runtime-console-next-action button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
+}
+
+.runtime-console-action-unavailable {
+  justify-self: start;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
 .runtime-console-mode-tabs {
   display: inline-flex;
   align-items: center;
