@@ -143,18 +143,18 @@ const PATHS: Record<UiIconName, ReactElement> = {
     <>
       <path d="M7 17V5" />
       <path d="M4 8l3-3 3 3" />
-      <path d="M13 8h7" />
+      <path d="M13 8h3" />
       <path d="M13 12h5" />
-      <path d="M13 16h3" />
+      <path d="M13 16h7" />
     </>
   ),
   "sort-descending": (
     <>
       <path d="M7 7v12" />
       <path d="M4 16l3 3 3-3" />
-      <path d="M13 8h3" />
+      <path d="M13 8h7" />
       <path d="M13 12h5" />
-      <path d="M13 16h7" />
+      <path d="M13 16h3" />
     </>
   ),
   reports: (

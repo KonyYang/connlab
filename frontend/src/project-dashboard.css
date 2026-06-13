@@ -178,8 +178,8 @@
 }
 
 .project-id-sort-button .ui-icon {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   color: var(--color-primary);
 }
 
@@ -243,20 +243,7 @@
   border-color: var(--color-primary);
 }
 
-.registry-status-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 4px 9px;
-  border: 1px solid #b8d3ec;
-  border-radius: 6px;
-  background: #eef6ff;
-  color: var(--color-primary-strong);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
+.registry-status-text,
 .registry-next-step {
   color: var(--color-ink);
   font-weight: 500;

@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-06-13
-Status: TASK_319 complete after TASK_318. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. TASK_318 implements Official project folder check/repair in the Project Folder model and replaces TASK_312's user-facing readiness/check role without enhancing the old package-preview surface.
+Last Updated: 2026-06-14
+Status: TASK_320 complete after explicit user approval. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Do not enter a later task without separate user approval.
 
 ## Decision
 
@@ -62,25 +62,25 @@ docs/task_313b_official_project_workspace_execution_guide.md
 Latest completed task file:
 
 ```text
-tasks/TASK_317E_TEMPORARY_PROJECT_STOP_AND_SAFE_DELETE.md
+tasks/TASK_320_FINAL_SINGLE_TASK_WORKBENCH_UI.md
 ```
 
 Latest completed executable plan:
 
 ```text
-docs/task_317e_temporary_project_stop_and_safe_delete_plan.md
+docs/task_320_final_single_task_workbench_ui_plan.md
 ```
 
 Latest proposed task file:
 
 ```text
-tasks/TASK_319_PUBLIC_DRIVE_UPLOAD_UPDATE_PREVIEW.md
+None.
 ```
 
 Latest proposed executable plan:
 
 ```text
-docs/task_319_public_drive_upload_update_preview_plan.md
+None.
 ```
 
 Latest accepted planning prerequisite:

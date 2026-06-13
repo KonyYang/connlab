@@ -2362,6 +2362,162 @@
   font-size: 12px;
 }
 
+.runtime-console-project-folder-flow {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.runtime-console-project-folder-tasks,
+.runtime-console-current-folder-task {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.runtime-console-project-folder-tasks {
+  display: grid;
+  overflow: hidden;
+}
+
+.runtime-console-folder-task-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  padding: 10px;
+  text-align: left;
+}
+
+.runtime-console-folder-task-row:last-child {
+  border-bottom: 0;
+}
+
+.runtime-console-folder-task-row:hover,
+.runtime-console-folder-task-row.is-selected {
+  background: var(--color-sidebar-hover);
+}
+
+.runtime-console-folder-task-row span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.runtime-console-folder-task-row strong,
+.runtime-console-folder-task-row small,
+.runtime-console-folder-task-row em {
+  overflow-wrap: anywhere;
+}
+
+.runtime-console-folder-task-row strong {
+  font-size: 12px;
+}
+
+.runtime-console-folder-task-row small,
+.runtime-console-folder-task-row em {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.runtime-console-current-folder-task {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.runtime-console-folder-task-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.runtime-console-folder-task-heading h3,
+.runtime-console-folder-task-heading p,
+.runtime-console-folder-task-detail p {
+  margin: 0;
+}
+
+.runtime-console-folder-task-heading h3 {
+  color: var(--color-ink);
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.runtime-console-folder-task-heading > p:not(.eyebrow),
+.runtime-console-folder-task-detail p,
+.runtime-console-muted-action {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.runtime-console-folder-task-heading button {
+  justify-self: start;
+  border: 1px solid var(--color-primary-strong);
+  border-radius: 7px;
+  background: var(--color-primary-strong);
+  color: var(--color-surface);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.runtime-console-folder-task-detail {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.runtime-console-compact-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.runtime-console-compact-metrics div,
+.runtime-console-path-line {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  padding: 8px;
+}
+
+.runtime-console-compact-metrics dt,
+.runtime-console-path-line span {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.runtime-console-compact-metrics dd {
+  margin: 3px 0 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.runtime-console-path-line {
+  display: grid;
+  gap: 3px;
+}
+
+.runtime-console-path-line strong {
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
 .runtime-console-section2-sync {
   display: grid;
   gap: 8px;
@@ -6321,6 +6477,7 @@
   .project-summary-grid,
   .runtime-console-topbar,
   .runtime-console-stage-banner,
+  .runtime-console-project-folder-flow,
   .runtime-console-summary,
   .runtime-console-readiness,
   .runtime-console-filterbar,
@@ -6355,6 +6512,10 @@
   .matrix-step-editor,
   .readiness-list li {
     grid-template-columns: 1fr;
+  }
+
+  .runtime-console-compact-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .lookup-panel-heading,

@@ -712,6 +712,9 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     styles_source = (FRONTEND_ROOT / "src" / "project-dashboard.css").read_text(
         encoding="utf-8"
     )
+    icon_source = (
+        FRONTEND_ROOT / "src" / "components" / "common" / "UiIcon.tsx"
+    ).read_text(encoding="utf-8")
 
     assert "useDeferredValue" in list_page_source
     assert "ProjectStatusBadge" not in list_page_source
@@ -747,9 +750,14 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "Ready to Test" in list_page_source
     assert "Folder Blocked" in list_page_source
     assert "Completed" in list_page_source
-    assert "Ongoing" in list_page_source
+    assert "On-going" in list_page_source
     assert "Stopped" in list_page_source
     assert "Project view" in list_page_source
+    assert "STATUS_LABELS" in list_page_source
+    assert '"ongoing",\n  "planning",\n  "completed",\n  "all"' in list_page_source
+    assert 'value === "stopped"' in list_page_source
+    assert 'return "completed";' in list_page_source
+    assert 'value === "matrix_needed" || value === "ready_to_test" || value === "folder_blocked"' in list_page_source
     assert "Lifecycle" not in list_page_source
     assert "active-queue-label" not in list_page_source
     assert "Showing: {QUEUE_LABELS[activeQueue]} Projects" not in list_page_source
@@ -784,6 +792,11 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "Columns" not in list_page_source
     assert "view-toggle" not in list_page_source
     assert "selectedView" in list_page_source
+    assert "PROJECT_REGISTRY_STATE_STORAGE_KEY" in list_page_source
+    assert "loadProjectRegistryViewState" in list_page_source
+    assert "saveProjectRegistryViewState" in list_page_source
+    assert "window.sessionStorage" in list_page_source
+    assert "didHydrateViewState" in list_page_source
     assert "projectIdSort" in list_page_source
     assert "sortRowsByProjectId" in list_page_source
     assert "projectIdSortKey" in list_page_source
@@ -791,6 +804,8 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "Sort Project ID ascending" in list_page_source
     assert "sort-ascending" in list_page_source
     assert "sort-descending" in list_page_source
+    assert '"sort-ascending": (\n    <>\n      <path d="M7 17V5" />\n      <path d="M4 8l3-3 3 3" />\n      <path d="M13 8h3" />\n      <path d="M13 12h5" />\n      <path d="M13 16h7" />' in icon_source
+    assert '"sort-descending": (\n    <>\n      <path d="M7 7v12" />\n      <path d="M4 16l3 3 3-3" />\n      <path d="M13 8h7" />\n      <path d="M13 12h5" />\n      <path d="M13 16h3" />' in icon_source
     assert "buildViewCounts" not in list_page_source
     assert "rowsForView" in list_page_source
     assert "refreshProjects" in list_page_source
@@ -806,7 +821,10 @@ def test_project_dashboard_uses_dense_registry_components() -> None:
     assert "No projects in this view" in list_page_source
     assert ".project-table" in styles_source
     assert ".progress-cell" not in styles_source
-    assert ".registry-status-badge" in styles_source
+    assert "registry-status-badge" not in list_page_source
+    assert ".registry-status-badge" not in styles_source
+    assert "registry-status-text" in list_page_source
+    assert ".registry-status-text" in styles_source
     assert ".registry-next-step" in styles_source
     assert ".registry-tools" in styles_source
     assert ".toolbar-button" in styles_source
@@ -5101,6 +5119,12 @@ def test_task317_project_folder_request_material_ui_is_wired() -> None:
     lifecycle_sections_source = (
         feature_root / "ProjectWorkbenchLifecycleSections.tsx"
     ).read_text(encoding="utf-8")
+    task_list_source = (feature_root / "ProjectFolderTaskList.tsx").read_text(
+        encoding="utf-8"
+    )
+    task_selector_source = (feature_root / "projectFolderTaskSelectors.ts").read_text(
+        encoding="utf-8"
+    )
     model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
         encoding="utf-8"
     )
@@ -5135,12 +5159,15 @@ def test_task317_project_folder_request_material_ui_is_wired() -> None:
 
     for required in [
         "Project Folder preparation",
-        "Prepare local project files before public-drive submission.",
         "Request material",
         "Collect request material",
-        "runtime-console-request-material",
+        "runtime-console-project-folder-tasks",
     ]:
-        assert required in lifecycle_sections_source or required in selector_source
+        assert (
+            required in lifecycle_sections_source
+            or required in selector_source
+            or required in task_list_source
+        )
 
     assert '{ mode: "package_preparation", label: "Project Folder" }' in selector_source
     assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
@@ -5148,7 +5175,7 @@ def test_task317_project_folder_request_material_ui_is_wired() -> None:
     assert "Package details" not in lifecycle_sections_source
     assert '"request_material"' in selector_source
     assert "requestMaterialPreview" in layout_source
-    assert ".runtime-console-request-material" in styles_source
+    assert ".runtime-console-project-folder-tasks" in styles_source
 
 
 def test_task318_official_project_folder_check_ui_and_service_boundaries() -> None:
@@ -5163,6 +5190,9 @@ def test_task318_official_project_folder_check_ui_and_service_boundaries() -> No
     lifecycle_sections_source = (
         feature_root / "ProjectWorkbenchLifecycleSections.tsx"
     ).read_text(encoding="utf-8")
+    task_list_source = (feature_root / "ProjectFolderTaskList.tsx").read_text(
+        encoding="utf-8"
+    )
     model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
         encoding="utf-8"
     )
@@ -5198,18 +5228,24 @@ def test_task318_official_project_folder_check_ui_and_service_boundaries() -> No
         assert required in runtime_model_source
 
     for required in [
-        "Folder structure",
+        "Local project folder",
         "Submitted Material",
         "Repair folder structure",
         "official_folder_repair",
         "official_folder_refresh",
     ]:
-        assert required in selector_source or required in layout_source or required in lifecycle_sections_source
+        assert (
+            required in selector_source
+            or required in layout_source
+            or required in lifecycle_sections_source
+            or required in task_selector_source
+            or required in task_list_source
+        )
 
     assert "ProjectPackagePreviewService" not in check_service_source
     assert "project_package_preview_service" not in check_service_source
     assert 'key === "customer_feedback_form"' not in layout_source
-    assert 'key === "customer_feedback"' in layout_source
+    assert 'key === "customer_feedback"' not in layout_source
     assert "Package readiness" not in lifecycle_sections_source
     assert "Package details" not in lifecycle_sections_source
     assert "Secondary links" not in lifecycle_sections_source
@@ -5230,6 +5266,12 @@ def test_task319_public_drive_upload_boundaries_are_wired() -> None:
     selector_source = (
         feature_root / "projectWorkbenchLifecycleSelectors.ts"
     ).read_text(encoding="utf-8")
+    task_selector_source = (feature_root / "projectFolderTaskSelectors.ts").read_text(
+        encoding="utf-8"
+    )
+    task_list_source = (feature_root / "ProjectFolderTaskList.tsx").read_text(
+        encoding="utf-8"
+    )
     model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
         encoding="utf-8"
     )
@@ -5265,16 +5307,20 @@ def test_task319_public_drive_upload_boundaries_are_wired() -> None:
         "Ready to upload",
         "Already current",
     ]:
-        assert required in layout_source or required in lifecycle_sections_source
+        assert (
+            required in layout_source
+            or required in lifecycle_sections_source
+            or required in task_selector_source
+            or required in task_list_source
+        )
 
     for required in [
-        "Public drive upload preview",
         "Upload preview items",
         "public_project_folder_path",
         "counts.add",
         "preview?.items",
     ]:
-        assert required in lifecycle_sections_source
+        assert required in task_list_source
 
     for required in [
         "Upload to public drive",
@@ -5289,6 +5335,59 @@ def test_task319_public_drive_upload_boundaries_are_wired() -> None:
     assert "delete" not in service_source.lower()
     assert "merge" not in route_source.lower()
     assert "merge" not in service_source.lower()
+
+
+def test_task320_project_folder_single_task_ui_boundaries_are_wired() -> None:
+    """TASK_320 keeps Project Folder as a selectable task console, not a broad panel stack."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    task_selector_source = (feature_root / "projectFolderTaskSelectors.ts").read_text(
+        encoding="utf-8"
+    )
+    task_list_source = (feature_root / "ProjectFolderTaskList.tsx").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    lifecycle_sections_source = (
+        feature_root / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required in [
+        "Local project folder",
+        "Request material",
+        "Confirmed Fee authority",
+        "Required forms",
+        "Application Form Section 2",
+        "Submitted Material",
+        "Public drive upload",
+        "selectedTaskKey",
+        "onSelectTask",
+        "onTaskAction",
+    ]:
+        assert required in task_selector_source or required in task_list_source
+
+    combined_task_ui_source = "\n".join([task_selector_source, task_list_source])
+    for forbidden_copy in [
+        "Workspace",
+        ".connlab",
+        "manifest",
+        "SQLite",
+        "Project package",
+        "Package preview",
+    ]:
+        assert forbidden_copy not in combined_task_ui_source
+
+    assert "deriveProjectFolderTasks" in layout_source
+    assert "selectCurrentProjectFolderTaskKey" in layout_source
+    assert "confirmedFeeLatest" in layout_source
+    assert "Project Folder preparation checklist" not in lifecycle_sections_source
+    assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
+    assert ".runtime-console-project-folder-tasks" in styles_source
+    assert ".runtime-console-current-folder-task" in styles_source
 
 
 def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:

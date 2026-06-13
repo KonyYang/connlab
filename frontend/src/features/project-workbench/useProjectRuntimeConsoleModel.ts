@@ -12,6 +12,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "latestLtr"
   | "activeConfirmedMatrixSnapshot"
   | "activeConfirmedMatrixLoading"
+  | "confirmedFeeLatest"
   | "matrixAuthorityDraft"
   | "matrixCandidateDraft"
   | "matrixDraft"
@@ -78,6 +79,7 @@ export function selectProjectRuntimeConsoleModel(
     latestLtr: model.latestLtr,
     activeConfirmedMatrixSnapshot: model.activeConfirmedMatrixSnapshot,
     activeConfirmedMatrixLoading: model.activeConfirmedMatrixLoading,
+    confirmedFeeLatest: model.confirmedFeeLatest,
     matrixAuthorityDraft: model.matrixAuthorityDraft,
     matrixCandidateDraft: model.matrixCandidateDraft,
     matrixDraft: model.matrixDraft,

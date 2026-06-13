@@ -14,6 +14,7 @@ import {
   fetchRequestMaterialPreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
+  getConfirmedFeeLatest,
   fetchProjectSection2SyncPreview,
   getProjectTestPlanDraft,
   getProject,
@@ -36,6 +37,7 @@ import {
   type ApprovalPackageRequest,
   type ApprovalPackageResponse,
   type ConfirmedMatrixSnapshot,
+  type ConfirmedFeeLatestResponse,
   type EvidencePlacementPlan,
   type EvidencePlacementResult,
   type ExternalResource,
@@ -96,6 +98,7 @@ export type ProjectWorkbenchModel = {
   message: string | null;
   activeConfirmedMatrixSnapshot: ConfirmedMatrixSnapshot | null;
   activeConfirmedMatrixLoading: boolean;
+  confirmedFeeLatest: ConfirmedFeeLatestResponse | null;
   packagePreview: ProjectPackagePreview | null;
   packagePreviewLoading: boolean;
   packagePreviewError: string | null;
@@ -273,6 +276,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [activeConfirmedMatrixSnapshot, setActiveConfirmedMatrixSnapshot] =
     useState<ConfirmedMatrixSnapshot | null>(null);
   const [activeConfirmedMatrixLoading, setActiveConfirmedMatrixLoading] = useState(true);
+  const [confirmedFeeLatest, setConfirmedFeeLatest] =
+    useState<ConfirmedFeeLatestResponse | null>(null);
   const [packagePreview, setPackagePreview] = useState<ProjectPackagePreview | null>(null);
   const [packagePreviewLoading, setPackagePreviewLoading] = useState(false);
   const [packagePreviewError, setPackagePreviewError] = useState<string | null>(null);
@@ -316,6 +321,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setResources,
       setLatestProjectFolderPath,
       setOutputStatusSummary,
+      setConfirmedFeeLatest,
       setError
     );
     void reloadMatrixDraft();
@@ -557,6 +563,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setResources,
       setLatestProjectFolderPath,
       setOutputStatusSummary,
+      setConfirmedFeeLatest,
       setError
     );
     await onRefreshPackagePreview();
@@ -1047,6 +1054,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     message,
     activeConfirmedMatrixSnapshot,
     activeConfirmedMatrixLoading,
+    confirmedFeeLatest,
     packagePreview,
     packagePreviewLoading,
     packagePreviewError,
@@ -1157,6 +1165,7 @@ async function loadWorkbench(
   setResources: (resources: ExternalResource[]) => void,
   setLatestProjectFolderPath: (path: string | null) => void,
   setOutputStatusSummary: (summary: ProjectOutputStatusSummary | null) => void,
+  setConfirmedFeeLatest: (summary: ConfirmedFeeLatestResponse | null) => void,
   setError: (message: string | null) => void
 ): Promise<void> {
   try {
@@ -1174,6 +1183,12 @@ async function loadWorkbench(
       setOutputStatusSummary(outputStatus);
     } catch {
       setOutputStatusSummary(null);
+    }
+    try {
+      const confirmedFee = await getConfirmedFeeLatest(projectId);
+      setConfirmedFeeLatest(confirmedFee);
+    } catch {
+      setConfirmedFeeLatest(null);
     }
     setError(null);
   } catch (err) {

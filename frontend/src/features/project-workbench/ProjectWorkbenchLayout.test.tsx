@@ -257,7 +257,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       screen.getAllByText("Prepare local project files before public-drive submission.").length
     ).toBeGreaterThan(0);
     expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Collect request material" })).toBeTruthy();
+    expect(screen.getByLabelText("Project Folder tasks")).toBeTruthy();
+    expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
+      "Request material"
+    );
+    expect(
+      screen.getAllByRole("button", { name: "Collect request material" }).length
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Secondary links")).toBeNull();
     expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
@@ -285,15 +291,15 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onRepairOfficialFolderStructure,
     });
 
-    expect(screen.getByText("Folder structure")).toBeTruthy();
-    expect(screen.getAllByText("Missing folders").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Local project folder").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Needs repair").length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole("button", { name: "Repair folder structure" }));
+    await user.click(screen.getAllByRole("button", { name: "Repair folder structure" })[0]);
 
     expect(onRepairOfficialFolderStructure).toHaveBeenCalledTimes(1);
   });
 
-  it("uses official folder check as the Customer Feedback source in the Project Folder list", () => {
+  it("does not use package preview Customer Feedback as the Project Folder source", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -304,12 +310,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Customer Feedback form")).toBeTruthy();
+    expect(screen.getAllByText("Required forms").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Deferred").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Customer Feedback form")).toBeNull();
     expect(screen.queryByText("Customer Feedback form ready from package preview")).toBeNull();
   });
 
-  it("shows public-drive upload preview counts and item details before upload", () => {
+  it("shows public-drive upload preview counts and item details after selecting that task", async () => {
+    const user = userEvent.setup();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -321,7 +329,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Public drive upload preview")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Public drive upload/ }));
+
+    expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
+      "Public drive upload"
+    );
     expect(
       screen.getByText(
         "D:/PublicProjects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test"
@@ -460,7 +472,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       screen.queryByRole("button", { name: "Create local project folder" })
     ).toBeNull();
 
-    expect(screen.getAllByText("Project folder").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Local project folder").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Created").length).toBeGreaterThan(0);
   });
 });
@@ -504,6 +516,13 @@ function buildRuntimeModel(
     latestLtr: "DL-2026-06-001",
     activeConfirmedMatrixSnapshot: null,
     activeConfirmedMatrixLoading: false,
+    confirmedFeeLatest: {
+      status: "current",
+      current_confirmed_matrix_id: "CM1",
+      current_confirmed_revision: 1,
+      current_fee_rule_version_id: "fee-rule-1",
+      confirmed_fee: null,
+    },
     matrixAuthorityDraft: null,
     matrixCandidateDraft: null,
     matrixDraft: null,

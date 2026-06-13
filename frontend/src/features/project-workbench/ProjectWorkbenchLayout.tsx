@@ -15,9 +15,14 @@ import {
   TemporaryPlanningMode,
   WorkbenchModeTabs,
   WorkbenchStageBanner,
-  type SetupMaterialItem,
 } from "./ProjectWorkbenchLifecycleSections";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
+import {
+  deriveProjectFolderTasks,
+  selectCurrentProjectFolderTaskKey,
+  type ProjectFolderTaskActionTarget,
+  type ProjectFolderTaskKey,
+} from "./projectFolderTaskSelectors";
 import {
   deriveProjectWorkbenchLifecycle,
   type WorkbenchLifecycleMode,
@@ -51,6 +56,8 @@ export function ProjectWorkbenchLayout({
     useState<TemporaryProjectDeletePreview | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [selectedProjectFolderTaskKey, setSelectedProjectFolderTaskKey] =
+    useState<ProjectFolderTaskKey | null>(null);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -84,6 +91,7 @@ export function ProjectWorkbenchLayout({
     onCollectRequestMaterial,
     runtimeProjectionSnapshot,
     section2SyncPreview,
+    confirmedFeeLatest,
   } = runtimeModel;
 
   const projectNumber = deriveProjectNumber(latestLtr, project.project_no);
@@ -129,15 +137,24 @@ export function ProjectWorkbenchLayout({
     runtimeModel.versionStatus.downstream.find(
       (item) => item.key === "fee_evaluation"
     ) ?? null;
-  const setupMaterials = buildSetupMaterials({
+  const projectFolderTasks = deriveProjectFolderTasks({
     folderReady: effectiveFolderReady,
     matrixAuthorityReady: activeMatrixAuthorityReady,
-    packagePreview,
     officialFolderCheckPreview,
     requestMaterialPreview,
+    requestMaterialError,
     publicDriveUploadPreview,
-    section2Status: section2SyncPreview?.status ?? null,
+    publicDriveUploadError,
+    section2SyncPreview,
+    versionStatus: runtimeModel.versionStatus,
+    confirmedFeeAuthorityStatus: deriveConfirmedFeeAuthorityStatus(confirmedFeeLatest),
   });
+  const currentProjectFolderTaskKey = selectCurrentProjectFolderTaskKey(projectFolderTasks);
+  const effectiveSelectedProjectFolderTaskKey =
+    selectedProjectFolderTaskKey &&
+    projectFolderTasks.some((task) => task.key === selectedProjectFolderTaskKey)
+      ? selectedProjectFolderTaskKey
+      : currentProjectFolderTaskKey;
   const shouldShowWorkspaceCreation =
     Boolean(projectNumber) &&
     activeMatrixAuthorityReady &&
@@ -217,6 +234,38 @@ export function ProjectWorkbenchLayout({
       setLifecycleError((err as Error).message);
     } finally {
       setLifecycleBusy(false);
+    }
+  }
+
+  function handleProjectFolderTaskAction(
+    actionTarget: ProjectFolderTaskActionTarget
+  ): void {
+    if (actionTarget === "folder") {
+      void onCreateOfficialWorkspace();
+      return;
+    }
+    if (actionTarget === "request_material") {
+      void onCollectRequestMaterial();
+      return;
+    }
+    if (actionTarget === "fee") {
+      onOpenFeeEvaluation();
+      return;
+    }
+    if (actionTarget === "official_folder_repair") {
+      void onRepairOfficialFolderStructure();
+      return;
+    }
+    if (actionTarget === "official_folder_refresh") {
+      void onRefreshOfficialFolderCheck();
+      return;
+    }
+    if (actionTarget === "public_drive_refresh") {
+      void onRefreshPublicDriveUploadPreview();
+      return;
+    }
+    if (actionTarget === "public_drive_upload") {
+      void onUploadPublicDriveProjectFolder();
     }
   }
 
@@ -321,7 +370,11 @@ export function ProjectWorkbenchLayout({
 
           {lifecycle.mode === "package_preparation" ? (
             <PackagePreparationMode
-              setupMaterials={setupMaterials}
+              projectFolderTasks={projectFolderTasks}
+              currentProjectFolderTaskKey={currentProjectFolderTaskKey}
+              selectedProjectFolderTaskKey={effectiveSelectedProjectFolderTaskKey}
+              onSelectProjectFolderTask={setSelectedProjectFolderTaskKey}
+              onProjectFolderTaskAction={handleProjectFolderTaskAction}
               requestMaterialPreview={requestMaterialPreview}
               requestMaterialError={requestMaterialError}
               requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
@@ -360,89 +413,6 @@ export function ProjectWorkbenchLayout({
   );
 }
 
-function buildSetupMaterials({
-  folderReady,
-  matrixAuthorityReady,
-  packagePreview,
-  officialFolderCheckPreview,
-  requestMaterialPreview,
-  publicDriveUploadPreview,
-  section2Status,
-}: {
-  folderReady: boolean;
-  matrixAuthorityReady: boolean;
-  packagePreview: ProjectRuntimeConsoleModel["packagePreview"];
-  officialFolderCheckPreview: ProjectRuntimeConsoleModel["officialFolderCheckPreview"];
-  requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
-  publicDriveUploadPreview: ProjectRuntimeConsoleModel["publicDriveUploadPreview"];
-  section2Status: string | null;
-}): SetupMaterialItem[] {
-  const packageStatus = packagePreview?.status ?? null;
-  const confirmedFeeReady =
-    packagePreview?.authority_context.confirmed_fee_status === "current" ||
-    packagePreview?.authority_context.confirmed_fee_status === "ready";
-  const folderStructureStatus = officialFolderCheckPreview?.status ?? null;
-  const submittedMaterialItem = officialFolderCheckPreview?.required_files.find(
-    (item) => item.key === "submitted_material"
-  );
-  const customerFeedbackItem = officialFolderCheckPreview?.required_files.find(
-    (item) => item.key === "customer_feedback"
-  );
-  return [
-    {
-      title: "Project folder",
-      value: folderReady ? "Created" : "Not recorded",
-      status: folderReady ? "ready" : "blocked",
-    },
-    {
-      title: "Matrix authority",
-      value: matrixAuthorityReady ? "Ready" : "Missing",
-      status: matrixAuthorityReady ? "ready" : "blocked",
-    },
-    {
-      title: "Request material",
-      value: formatRequestMaterialChecklistStatus(requestMaterialPreview?.status ?? null),
-      status: normalizeRequestMaterialSetupStatus(requestMaterialPreview?.status ?? null),
-    },
-    {
-      title: "Folder structure",
-      value: formatOfficialFolderCheckStatus(folderStructureStatus),
-      status: normalizeOfficialFolderSetupStatus(folderStructureStatus),
-    },
-    {
-      title: "Submitted Material",
-      value: submittedMaterialItem
-        ? formatOfficialFolderItemStatus(submittedMaterialItem.status)
-        : "Not checked",
-      status: normalizeSetupStatus(submittedMaterialItem?.status ?? null),
-    },
-    {
-      title: "Confirmed Fee",
-      value: confirmedFeeReady ? "Ready" : "Blocked",
-      status: confirmedFeeReady ? "ready" : "blocked",
-    },
-    {
-      title: "Section 2 dates",
-      value: section2Status
-        ? formatSection2Status(section2Status)
-        : "Refresh readiness before sync",
-      status: section2Status === "blocked" ? "blocked" : "neutral",
-    },
-    {
-      title: "Customer Feedback form",
-      value: customerFeedbackItem
-        ? formatOfficialFolderItemStatus(customerFeedbackItem.status)
-        : "Refresh readiness",
-      status: normalizeSetupStatus(customerFeedbackItem?.status ?? null),
-    },
-    {
-      title: "Public drive upload",
-      value: formatPublicDriveUploadStatus(publicDriveUploadPreview?.status ?? null),
-      status: normalizePublicDriveUploadSetupStatus(publicDriveUploadPreview?.status ?? null),
-    },
-  ];
-}
-
 function deriveFolderTemplateReady(
   template: ProjectRuntimeConsoleModel["folderResources"]["template"]
 ): boolean {
@@ -450,149 +420,6 @@ function deriveFolderTemplateReady(
     return false;
   }
   return template.active && template.validation_status === "valid";
-}
-
-function normalizeSetupStatus(
-  status: string | null
-): SetupMaterialItem["status"] {
-  if (status === "ready") {
-    return "ready";
-  }
-  if (status === "warning" || status === "deferred") {
-    return "warning";
-  }
-  if (status === "blocked") {
-    return "blocked";
-  }
-  return "neutral";
-}
-
-function formatPackageItemStatus(status: string): string {
-  return status
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function formatOfficialFolderCheckStatus(status: string | null): string {
-  if (status === "ready") {
-    return "Ready";
-  }
-  if (status === "missing") {
-    return "Missing folders";
-  }
-  if (status === "conflict") {
-    return "Conflict";
-  }
-  if (status === "warning") {
-    return "Needs review";
-  }
-  if (status === "blocked") {
-    return "Blocked";
-  }
-  return "Not checked";
-}
-
-function normalizeOfficialFolderSetupStatus(
-  status: string | null
-): SetupMaterialItem["status"] {
-  if (status === "ready") {
-    return "ready";
-  }
-  if (status === "missing" || status === "warning") {
-    return "warning";
-  }
-  if (status === "blocked" || status === "conflict") {
-    return "blocked";
-  }
-  return "neutral";
-}
-
-function formatOfficialFolderItemStatus(status: string): string {
-  if (status === "ready") {
-    return "Ready";
-  }
-  if (status === "missing") {
-    return "Missing files";
-  }
-  if (status === "warning") {
-    return "Needs review";
-  }
-  if (status === "deferred" || status === "not_applicable") {
-    return "Deferred";
-  }
-  if (status === "conflict") {
-    return "Conflict";
-  }
-  return formatPackageItemStatus(status);
-}
-
-function formatRequestMaterialChecklistStatus(status: string | null): string {
-  if (status === "collected") {
-    return "Collected";
-  }
-  if (status === "ready") {
-    return "Ready to collect";
-  }
-  if (status === "partial") {
-    return "Partial";
-  }
-  if (status === "review_required") {
-    return "Needs review";
-  }
-  if (status === "blocked" || status === "conflict") {
-    return "Needs review";
-  }
-  return "Not checked";
-}
-
-function formatPublicDriveUploadStatus(status: string | null): string {
-  if (status === "ready") {
-    return "Ready to upload";
-  }
-  if (status === "current") {
-    return "Already current";
-  }
-  if (status === "conflict") {
-    return "Conflict";
-  }
-  if (status === "warning") {
-    return "Warning";
-  }
-  if (status === "blocked") {
-    return "Blocked";
-  }
-  return "Not checked";
-}
-
-function normalizePublicDriveUploadSetupStatus(
-  status: string | null
-): SetupMaterialItem["status"] {
-  if (status === "ready" || status === "current") {
-    return "ready";
-  }
-  if (status === "warning") {
-    return "warning";
-  }
-  if (status === "blocked" || status === "conflict") {
-    return "blocked";
-  }
-  return "neutral";
-}
-
-function normalizeRequestMaterialSetupStatus(
-  status: string | null
-): SetupMaterialItem["status"] {
-  if (status === "collected") {
-    return "ready";
-  }
-  if (status === "partial" || status === "ready" || status === "review_required") {
-    return "warning";
-  }
-  if (status === "blocked" || status === "conflict") {
-    return "blocked";
-  }
-  return "neutral";
 }
 
 function deriveProjectNumber(
@@ -611,9 +438,17 @@ function temporaryProjectId(projectId: string): string {
   return `TMP-${projectId.slice(0, 8).toUpperCase()}`;
 }
 
-function formatSection2Status(status: string): string {
-  return status
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function deriveConfirmedFeeAuthorityStatus(
+  confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"]
+): "missing" | "confirmed" | "stale" | "unknown" {
+  if (!confirmedFeeLatest) {
+    return "unknown";
+  }
+  if (confirmedFeeLatest.status === "current") {
+    return "confirmed";
+  }
+  if (confirmedFeeLatest.status === "stale") {
+    return "stale";
+  }
+  return "missing";
 }

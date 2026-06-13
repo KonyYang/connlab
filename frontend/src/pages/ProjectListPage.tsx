@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
   listProjectRegistryRows,
   type ProjectRegistryRow
@@ -22,41 +22,50 @@ type QueueName =
   | "folder_blocked"
   | "completed";
 type ClassifiedQueueName = QueueName;
-type RegistryView = "ongoing" | QueueName | "stopped" | "all";
+type RegistryView = "ongoing" | "planning" | "completed" | "all";
 type ProjectIdSortDirection = "asc" | "desc";
+type ProjectRegistryViewState = {
+  search: string;
+  selectedView: RegistryView;
+  projectIdSort: ProjectIdSortDirection;
+  currentPage: number;
+};
 
 const VIEW_LABELS: Record<RegistryView, string> = {
-  ongoing: "Ongoing",
   all: "All",
+  planning: "Planning",
+  completed: "Completed",
+  ongoing: "On-going",
+};
+
+const STATUS_LABELS: Record<ClassifiedQueueName, string> = {
   planning: "Planning",
   matrix_needed: "Matrix Needed",
   ready_to_test: "Ready to Test",
   folder_blocked: "Folder Blocked",
   completed: "Completed",
-  stopped: "Stopped",
 };
 
 const VIEW_ORDER: RegistryView[] = [
   "ongoing",
   "planning",
-  "matrix_needed",
-  "ready_to_test",
-  "folder_blocked",
   "completed",
-  "stopped",
   "all",
 ];
+const PROJECT_REGISTRY_STATE_STORAGE_KEY = "connlab.projectRegistry.viewState";
 
 export function ProjectListPage({
   onOpenProject
 }: ProjectListPageProps): ReactElement {
+  const initialViewState = useMemo(loadProjectRegistryViewState, []);
+  const didHydrateViewState = useRef(false);
   const [rows, setRows] = useState<RegistryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedView, setSelectedView] = useState<RegistryView>("ongoing");
-  const [projectIdSort, setProjectIdSort] = useState<ProjectIdSortDirection>("asc");
+  const [search, setSearch] = useState(initialViewState.search);
+  const [currentPage, setCurrentPage] = useState(initialViewState.currentPage);
+  const [selectedView, setSelectedView] = useState<RegistryView>(initialViewState.selectedView);
+  const [projectIdSort, setProjectIdSort] = useState<ProjectIdSortDirection>(initialViewState.projectIdSort);
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
   const deferredSearch = useDeferredValue(search);
   const pageSize = 20;
@@ -67,8 +76,21 @@ export function ProjectListPage({
   }, []);
 
   useEffect(() => {
+    if (!didHydrateViewState.current) {
+      didHydrateViewState.current = true;
+      return;
+    }
     setCurrentPage(1);
   }, [deferredSearch, selectedView, projectIdSort]);
+
+  useEffect(() => {
+    saveProjectRegistryViewState({
+      search,
+      selectedView,
+      projectIdSort,
+      currentPage,
+    });
+  }, [search, selectedView, projectIdSort, currentPage]);
 
   const viewRows = useMemo(
     () => rowsForView(rows, selectedView),
@@ -153,7 +175,7 @@ export function ProjectListPage({
               <select
                 aria-label="Project view"
                 value={selectedView}
-                onChange={(event) => setSelectedView(event.target.value as RegistryView)}
+                onChange={(event) => setSelectedView(normalizeRegistryView(event.target.value) ?? "ongoing")}
               >
                 {VIEW_ORDER.map((view) => (
                   <option key={view} value={view}>
@@ -227,9 +249,7 @@ export function ProjectListPage({
                     </td>
                     <td>{displayText(row.sample_description, "Not recorded")}</td>
                     <td className="registry-test-item-column">{displayText(row.test_item, "Not recorded")}</td>
-                    <td>
-                      <span className="registry-status-badge">{registryStatusLabel(row)}</span>
-                    </td>
+                    <td className="registry-status-text">{registryStatusLabel(row)}</td>
                     <td className="registry-next-step">{nextStepLabel(row)}</td>
                     <td>
                       <button
@@ -274,6 +294,65 @@ export function ProjectListPage({
       </div>
     </section>
   );
+}
+
+function loadProjectRegistryViewState(): ProjectRegistryViewState {
+  const fallback: ProjectRegistryViewState = {
+    search: "",
+    selectedView: "ongoing",
+    projectIdSort: "asc",
+    currentPage: 1,
+  };
+  try {
+    const raw = window.sessionStorage.getItem(PROJECT_REGISTRY_STATE_STORAGE_KEY);
+    if (!raw) {
+      return fallback;
+    }
+    const stored = JSON.parse(raw) as Partial<ProjectRegistryViewState>;
+    return {
+      search: typeof stored.search === "string" ? stored.search : fallback.search,
+      selectedView: normalizeRegistryView(stored.selectedView) ?? fallback.selectedView,
+      projectIdSort: isProjectIdSortDirection(stored.projectIdSort)
+        ? stored.projectIdSort
+        : fallback.projectIdSort,
+      currentPage: isPositiveInteger(stored.currentPage) ? stored.currentPage : fallback.currentPage,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveProjectRegistryViewState(state: ProjectRegistryViewState): void {
+  try {
+    window.sessionStorage.setItem(PROJECT_REGISTRY_STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // View-state persistence is a convenience only; the table still works if storage is unavailable.
+  }
+}
+
+function isRegistryView(value: unknown): value is RegistryView {
+  return typeof value === "string" && (VIEW_ORDER as string[]).includes(value);
+}
+
+function normalizeRegistryView(value: unknown): RegistryView | null {
+  if (isRegistryView(value)) {
+    return value;
+  }
+  if (value === "stopped") {
+    return "completed";
+  }
+  if (value === "matrix_needed" || value === "ready_to_test" || value === "folder_blocked") {
+    return "ongoing";
+  }
+  return null;
+}
+
+function isProjectIdSortDirection(value: unknown): value is ProjectIdSortDirection {
+  return value === "asc" || value === "desc";
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
@@ -377,17 +456,20 @@ function rowsForView(rows: RegistryRow[], view: RegistryView): RegistryRow[] {
   if (view === "all") {
     return rows;
   }
-  if (view === "ongoing") {
+  if (view === "completed") {
+    return rows.filter((row) => row.status === "cancelled" || classifyQueue(row) === "completed");
+  }
+  if (view === "planning") {
     return rows.filter(
-      (row) => row.status !== "cancelled" && classifyQueue(row) !== "completed"
+      (row) => row.status !== "cancelled" && classifyQueue(row) !== "completed" && !hasRegisteredLtr(row)
     );
   }
-  if (view === "stopped") {
-    return rows.filter((row) => row.status === "cancelled");
+  if (view === "ongoing") {
+    return rows.filter(
+      (row) => row.status !== "cancelled" && classifyQueue(row) !== "completed" && hasRegisteredLtr(row)
+    );
   }
-  return rows.filter(
-    (row) => row.status !== "cancelled" && classifyQueue(row) === view
-  );
+  return rows;
 }
 
 function classifyQueue(row: RegistryRow): ClassifiedQueueName | null {
@@ -426,7 +508,7 @@ function registryStatusLabel(row: RegistryRow): string {
     return "Stopped";
   }
   const queue = classifyQueue(row);
-  return queue ? VIEW_LABELS[queue] : "Planning";
+  return queue ? STATUS_LABELS[queue] : "Planning";
 }
 
 function nextStepLabel(row: RegistryRow): string {

@@ -42,8 +42,12 @@ All / Planning / Matrix Needed / Ready to Test / Folder Blocked / Completed
 
 - `/projects` no longer shows `Show cancelled`.
 - User-facing stopped lifecycle copy uses `Stopped`.
-- Default registry view is `Ongoing`, meaning not completed and not stopped.
-- Project Registry uses one compact Project view selector: `Ongoing`, `Planning`, `Matrix Needed`, `Ready to Test`, `Folder Blocked`, `Completed`, `Stopped`, and `All`; the `Project ID` header exposes a compact ascending/descending sort for DL/LTR year-month-sequence and TMP suffix order; the table footer shows the current view count.
+- Default registry view is `On-going`, meaning active registered DL/LTR work.
+- Project Registry uses one compact macro Project view selector: `On-going`, `Planning`, `Completed`, and `All`; the `Project ID` header exposes a compact ascending/descending sort for DL/LTR year-month-sequence and TMP suffix order; the table footer shows the current view count.
+- `Planning` is active temporary no-LTR work, and `On-going` is active registered DL/LTR work. They do not overlap.
+- `Completed` includes completed, closed, failed, and stopped lookup/history records; `Stopped` remains a row `Status` value rather than a Project view option.
+- `Matrix Needed`, `Ready to Test`, and `Folder Blocked` remain row `Status` values, not Project view options.
+- Project Registry restores the same browser session's selected Project view, search text, Project ID sort direction, and page number when users open Workbench and return to `/projects`.
 - Temporary Workbench exposes controlled `Stop project` and `Delete temporary project` paths.
 - Backend delete preview and delete execution enforce server-side safety guards.
 - Formal or artifact-bearing projects cannot be deleted; they can only be stopped.
@@ -95,29 +99,29 @@ Reason:
 - The operational states users care about should remain available as business-readable views:
 
 ```text
-Ongoing / Planning / Matrix Needed / Ready to Test / Folder Blocked / Completed / Stopped / All
+On-going / Planning / Completed / All
 ```
 
-- `Stopped` projects are mostly lookup/history. They are not a daily work queue.
+- `Stopped` projects are mostly lookup/history. They are not a daily work queue and should sit under the broader `Completed` lookup view.
 - A primary `Show cancelled` checkbox visually over-emphasizes historical cleanup and makes stopped records look like a normal work-scope toggle.
 
-### Should `Stopped` be a seventh top queue?
+### Should `Stopped` be a Project view option?
 
 No.
 
-`Stopped` is not an operational queue. It should be available in the same selector for lookup, but not as a prominent top pill beside daily work queues.
+`Stopped` is not an operational queue. It is one terminal/completed outcome, similar to future `Passed` or `Failed` result states, so it should be visible in the row `Status` column under `Completed` and `All`, not as a separate macro view.
 
 ### How should users find stopped projects?
 
-V1 should use one compact Project view selector, not a broad advanced filter system and not a second lifecycle filter.
+V1 should use one compact Project view selector, not a broad advanced filter system and not a second lifecycle filter. Stopped records are found through `Completed` or `All`, with `Status` showing `Stopped`.
 
 Preferred UI:
 
 ```text
-[Ongoing ▼]
+[On-going ▼]
 
 Footer:
-Showing 1-20 of 20 Ongoing projects
+Showing 1-20 of 20 On-going projects
 ```
 
 Placement:
@@ -127,14 +131,17 @@ Placement:
 - no counts inside the dropdown options,
 - Project ID sorting stays scoped to the table result set and does not become a broad filter builder,
 - result counts appear in the table footer,
-- no persistent hidden-count note.
+- no persistent hidden-count note,
+- same-session return from Workbench restores the user's current Project view state.
+
+Specific business readiness facts such as `Matrix Needed`, `Ready to Test`, and `Folder Blocked` remain visible in the table `Status` column.
 
 The existing disabled advanced `Filter` button should not be implemented as part of TASK_317E. It may remain disabled or be handled by a future dedicated filter task. TASK_317E must replace `Show cancelled`, not create a generic column/value filter builder.
 
 Default:
 
 ```text
-Ongoing
+On-going
 ```
 
 Completed:
@@ -264,26 +271,18 @@ Add a single Project view state:
 
 ```ts
 type RegistryView =
-  | "ongoing"
+  | "all"
   | "planning"
-  | "matrix_needed"
-  | "ready_to_test"
-  | "folder_blocked"
   | "completed"
-  | "stopped"
-  | "all";
+  | "ongoing";
 ```
 
 Recommended labels:
 
 ```text
-Ongoing
+On-going
 Planning
-Matrix Needed
-Ready to Test
-Folder Blocked
 Completed
-Stopped
 All
 ```
 
@@ -297,14 +296,11 @@ ongoing
 
 Filtering:
 
-- `ongoing`: exclude `status === "cancelled"` and completed/closed rows.
-- `planning`: temporary planning rows.
-- `matrix_needed`: registered rows without active Matrix authority where current data allows.
-- `ready_to_test`: active-Matrix rows where current data allows.
-- `folder_blocked`: formal folder/material blockers where current data allows.
-- `completed`: completed/closed rows.
-- `stopped`: internal `status === "cancelled"`, displayed as `Stopped`.
 - `all`: all registry rows.
+- `planning`: active temporary no-LTR rows.
+- `completed`: completed/closed/failed/stopped rows.
+- `ongoing`: active registered DL/LTR rows that are not completed or stopped.
+- `Matrix Needed`, `Ready to Test`, `Folder Blocked`, and `Stopped` are status labels inside rows, not Project view filters.
 
 View behavior:
 
@@ -313,7 +309,8 @@ View behavior:
 - Selector options show view names only.
 - Project ID sort toggles ascending/descending order for registered DL/LTR IDs and temporary TMP IDs.
 - The table footer shows the current selected view count.
-- Stopped rows never classify into Planning, Matrix Needed, Ready to Test, or Folder Blocked.
+- Returning from Workbench restores the user's selected Project view, search text, sort direction, and page number within the same browser session.
+- Stopped rows never classify into Planning or On-going views. They appear under Completed/All with Status `Stopped`, and detailed readiness labels stay in the Status column.
 
 ### 4.2 Status Copy
 
@@ -393,7 +390,7 @@ Add or update:
 - Projects page contains the compact Project view selector, Project ID sort, and footer count,
 - stopped user-facing copy appears instead of Cancelled,
 - stopped rows are hidden by default,
-- stopped scope can show stopped rows,
+- Completed view can show stopped rows with Status `Stopped`,
 - Workbench temporary delete lifecycle area appears for temporary projects,
 - stopped no-LTR Workbench remains review-only.
 
@@ -414,7 +411,7 @@ Risk: confusing stopped vs completed.
 
 Control:
 
-- keep `Completed` and `Stopped` in the compact Project view selector,
+- keep stopped visible as a Status value inside `Completed` and `All`,
 - use copy that explains stopped means work will not continue.
 
 Risk: scope creep into full advanced filters.
@@ -447,12 +444,12 @@ Manual smoke:
 
 1. Open `/projects`.
 2. Confirm `Show cancelled` is gone.
-3. Confirm stopped projects are not shown in the default `Ongoing` view.
-4. Use the Project view selector to show `Stopped`.
+3. Confirm stopped projects are not shown in the default `On-going` view.
+4. Use the Project view selector to show `Completed`, then confirm stopped rows appear with Status `Stopped`.
 5. Open active temporary project and inspect lifecycle actions.
 6. Delete a safe mistaken temporary project.
 7. Confirm formal/artifact-bearing project delete is blocked.
-8. Stop a project and confirm it leaves the `Ongoing` view.
+8. Stop a project and confirm it leaves the `On-going` view and appears under `Completed`/`All` with Status `Stopped`.
 
 ---
 

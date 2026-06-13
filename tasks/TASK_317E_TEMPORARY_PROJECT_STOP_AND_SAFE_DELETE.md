@@ -71,13 +71,9 @@ Completed and stopped projects are lookup/history cases, not the default daily v
 The Projects overview should use one compact Project view selector instead of combining a top queue bar with a separate lifecycle scope:
 
 ```text
-Ongoing
+On-going
 Planning
-Matrix Needed
-Ready to Test
-Folder Blocked
 Completed
-Stopped
 All
 ```
 
@@ -97,15 +93,17 @@ V1 should not keep `Stopped` as a seventh top queue beside another lifecycle fil
 
 Recommended V1 behavior:
 
-- Default view: `Ongoing`, meaning all non-completed, non-stopped work.
-- `Planning`, `Matrix Needed`, `Ready to Test`, and `Folder Blocked` remain business-specific work views.
-- `Completed` and `Stopped` remain lookup/history views.
+- Default view: `On-going`, meaning active registered DL/LTR work only.
+- `Planning` means active temporary no-LTR work only.
+- `Completed` remains the lookup/history view for completed, closed, failed, and stopped work.
 - `All` means all registry records.
+- `Matrix Needed`, `Ready to Test`, `Folder Blocked`, and `Stopped` are row status values, not Project view options.
 - Stopped projects are hidden by default.
 - Selector options should show view names only.
 - `Project ID` column header may expose a compact two-state sort control. Registered DL/LTR IDs sort by year, month, and sequence; temporary IDs sort by the `TMP-` suffix.
-- The table footer should show the current view count, e.g. `Showing 1-20 of 20 Ongoing projects`.
+- The table footer should show the current view count, e.g. `Showing 1-20 of 20 On-going projects`.
 - Search composes with the selected Project view.
+- Returning from a Workbench to `/projects` should restore the user's current Project view, search text, Project ID sort direction, and page number within the same browser session.
 
 V1 should use this lightweight Project view selector rather than implementing the disabled advanced `Filter` button. The existing broad `Filter` affordance may remain disabled or be handled by a future task, but TASK_317E must not keep the old `Show cancelled` checkbox wording or show a separate `Lifecycle` label.
 
@@ -117,9 +115,9 @@ A stopped project:
 
 - is a real business record,
 - remains traceable,
-- is hidden from the default `Ongoing` view,
+- is hidden from the default `On-going` view,
 - can be opened in a read-only or review-only Workbench state,
-- does not appear as `Planning`, `Matrix Needed`, `Ready to Test`, or `Folder Blocked`,
+- does not appear as `Planning` or `On-going`,
 - must not show temporary planning promotion actions.
 
 Examples:
@@ -183,7 +181,7 @@ Stopping a project:
 - preserves the project record,
 - preserves context/material references,
 - removes the project from active work views,
-- keeps it available through the `Stopped` or `All` Project view,
+- keeps it available through the `Completed` or `All` Project view,
 - prevents formal temporary promotion from stopped no-LTR records.
 
 Stop requests should accept at least an optional operator-facing reason. If the current data model cannot persist a full lifecycle audit event, TASK_317E must keep the implementation honest: store the reason only where an existing safe field supports it, or return/display the stop result without claiming full audit coverage. A complete lifecycle event/audit trail can be deferred to a later task.
@@ -299,18 +297,21 @@ Do not implement in TASK_317E:
 1. `/projects` no longer shows the primary `Show cancelled` checkbox.
 2. `/projects` no longer shows the persistent `N cancelled projects hidden` note.
 3. User-facing lifecycle copy uses `Stopped`, not `Cancelled`, for stopped/cancelled projects.
-4. Default Projects view is `Ongoing`, focusing on unfinished non-stopped work; stopped projects are hidden by default.
-5. Stopped projects are reachable through the compact Project view selector, not a separate lifecycle filter.
-6. The table footer shows the current selected Project view count.
-7. Project ID sort toggles ascending/descending order for registered DL/LTR IDs and temporary TMP IDs.
-8. Search composes with the selected Project view.
-9. Temporary Planning Workbench exposes lifecycle management, not Projects overview row actions.
-10. Safe temporary delete preview returns `can_delete`, blockers, warnings, and recommended action.
-11. Safe delete succeeds only for temporary no-LTR projects with no formal LTR/DL, Confirmed Matrix, official folder/workspace, file assets, output records, package/submitted-material/public-drive records, formal generated outputs, or V1 temporary workspace/folder/file-backed temporary draft blockers.
-12. Formal projects and temporary projects with formal artifacts or project-scoped file assets cannot be deleted; they can only be stopped.
-13. Stopped no-LTR projects do not show Temporary Planning or `Convert to Formal Project`.
-14. Stop accepts an optional reason and does not claim full audit coverage unless the current model safely persists it.
-15. Backend, frontend, and static tests cover Project view filtering, stopped copy, delete guards, stop reason handling, and Workbench gating.
+4. Default Projects view is `On-going`, focusing on active registered DL/LTR work; stopped projects are hidden by default.
+5. `On-going` contains active registered DL/LTR projects and does not overlap with temporary `Planning` projects.
+6. Stopped projects are reachable through the `Completed` Project view and show `Stopped` in the Status column.
+7. `Matrix Needed`, `Ready to Test`, `Folder Blocked`, and `Stopped` remain row status values rather than Project view options.
+8. The table footer shows the current selected Project view count.
+9. Project ID sort toggles ascending/descending order for registered DL/LTR IDs and temporary TMP IDs.
+10. Search composes with the selected Project view.
+11. Returning from Workbench to `/projects` preserves the current Project view state in the same browser session.
+12. Temporary Planning Workbench exposes lifecycle management, not Projects overview row actions.
+13. Safe temporary delete preview returns `can_delete`, blockers, warnings, and recommended action.
+14. Safe delete succeeds only for temporary no-LTR projects with no formal LTR/DL, Confirmed Matrix, official folder/workspace, file assets, output records, package/submitted-material/public-drive records, formal generated outputs, or V1 temporary workspace/folder/file-backed temporary draft blockers.
+15. Formal projects and temporary projects with formal artifacts or project-scoped file assets cannot be deleted; they can only be stopped.
+16. Stopped no-LTR projects do not show Temporary Planning or `Convert to Formal Project`.
+17. Stop accepts an optional reason and does not claim full audit coverage unless the current model safely persists it.
+18. Backend, frontend, and static tests cover Project view filtering, stopped copy, delete guards, stop reason handling, and Workbench gating.
 
 ---
 
@@ -321,7 +322,7 @@ Do not implement in TASK_317E:
 3. Confirm the hidden cancelled note is gone.
 4. Confirm active temporary projects remain in `Planning`.
 5. Confirm stopped projects are not visible in the default view.
-6. Use the Project view selector to view stopped projects.
+6. Use the `Completed` Project view to view stopped projects and confirm the Status column shows `Stopped`.
 7. Toggle Project ID sort and confirm DL/LTR rows sort by year, month, and sequence while TMP rows sort by suffix.
 8. Search while a Project view is active and confirm both filters compose.
 9. Open an active temporary project.
