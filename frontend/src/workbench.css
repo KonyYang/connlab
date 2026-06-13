@@ -2106,6 +2106,69 @@
   font-size: 12px;
 }
 
+.runtime-console-request-material {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(280px, 1.4fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  padding: 12px;
+}
+
+.runtime-console-request-material > div {
+  display: grid;
+  gap: 4px;
+}
+
+.runtime-console-request-material strong,
+.runtime-console-request-material p {
+  margin: 0;
+}
+
+.runtime-console-request-material strong {
+  color: var(--color-ink);
+  font-size: 14px;
+}
+
+.runtime-console-request-material p {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.runtime-console-request-material dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.runtime-console-request-material dl div {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  padding: 8px;
+}
+
+.runtime-console-request-material dt {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.runtime-console-request-material dd {
+  margin: 3px 0 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.runtime-console-request-material .runtime-console-error,
+.runtime-console-request-material .runtime-console-blocker-list {
+  grid-column: 1 / -1;
+}
+
 .runtime-console-section2-sync {
   display: grid;
   gap: 8px;

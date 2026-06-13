@@ -160,6 +160,59 @@ export type OfficialWorkspaceCreateResponse = {
   created_at: string;
 };
 
+export type RequestMaterialPreviewStatus =
+  | "blocked"
+  | "ready"
+  | "collected"
+  | "partial"
+  | "conflict";
+
+export type RequestMaterialItemStatus =
+  | "planned"
+  | "already_present"
+  | "copied"
+  | "missing_source"
+  | "conflict"
+  | "skipped"
+  | "needs_review";
+
+export type RequestMaterialPreviewItem = {
+  source_asset_id: string;
+  source_asset_type: string;
+  source_role?: string | null;
+  source_name: string;
+  source_path: string;
+  dedupe_key: string;
+  target_area: string;
+  target_path: string;
+  action: string;
+  status: RequestMaterialItemStatus;
+  message: string;
+  review_required: boolean;
+  size_bytes?: number | null;
+  sha256?: string | null;
+};
+
+export type RequestMaterialPreview = {
+  project_id: string;
+  local_workspace_path?: string | null;
+  source_book_path?: string | null;
+  official_project_folder_path?: string | null;
+  status: RequestMaterialPreviewStatus;
+  items: RequestMaterialPreviewItem[];
+  blockers: string[];
+  warnings: string[];
+};
+
+export type RequestMaterialCollectResponse = RequestMaterialPreview & {
+  collection_id: string;
+  copied_paths: string[];
+  already_present_paths: string[];
+  skipped_paths: string[];
+  missing_source_paths: string[];
+  conflict_paths: string[];
+};
+
 export type PrecheckIssue = {
   issue_id: string;
   category: string;
@@ -2447,6 +2500,24 @@ export function createOfficialWorkspace(
 ): Promise<OfficialWorkspaceCreateResponse> {
   return requestJson<OfficialWorkspaceCreateResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/official-workspace/create`,
+    { method: "POST" }
+  );
+}
+
+export function fetchRequestMaterialPreview(
+  projectId: string
+): Promise<RequestMaterialPreview> {
+  return requestJson<RequestMaterialPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/request-material/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function collectRequestMaterial(
+  projectId: string
+): Promise<RequestMaterialCollectResponse> {
+  return requestJson<RequestMaterialCollectResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/request-material/collect`,
     { method: "POST" }
   );
 }

@@ -3227,9 +3227,9 @@ def test_task312_package_preview_is_read_only_workbench_entry() -> None:
         encoding="utf-8"
     )
 
-    assert "ProjectPackagePreviewPanel" in lifecycle_sections_source
-    assert "preview={packagePreview}" in lifecycle_sections_source
-    assert "onRefresh={onRefreshPackagePreview}" in lifecycle_sections_source
+    assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
+    assert "preview={packagePreview}" not in lifecycle_sections_source
+    assert "onRefresh={onRefreshPackagePreview}" not in lifecycle_sections_source
     assert '"packagePreview"' in runtime_model_source
     assert '"onRefreshPackagePreview"' in runtime_model_source
     assert "fetchProjectPackagePreview" in client_source
@@ -4923,13 +4923,13 @@ def test_task313a_project_workbench_lifecycle_mode_redesign_is_wired() -> None:
         "ProjectWorkbenchExecutionConsole",
         "Current stage",
         "Next action",
-        "Package preparation",
+        "Project Folder preparation",
         "Execution console",
     ]:
         assert required_layout_symbol in combined_workbench_source
 
     assert "ProjectWorkbenchMatrixProjectionPanel" in execution_console_source
-    assert "ProjectPackagePreviewPanel" in lifecycle_sections_source
+    assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
     assert ".runtime-console-stage-banner" in styles_source
     assert ".runtime-console-mode-tabs" in styles_source
     assert "deriveProjectNumber" in layout_source
@@ -4946,6 +4946,68 @@ def test_task313a_project_workbench_lifecycle_mode_redesign_is_wired() -> None:
         assert forbidden not in combined_workbench_source
 
     assert "/project-package/execute" not in client_source
+
+
+def test_task317_project_folder_request_material_ui_is_wired() -> None:
+    """TASK_317 adds request-material collection inside the Project Folder workbench frame."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    selector_source = (feature_root / "projectWorkbenchLifecycleSelectors.ts").read_text(
+        encoding="utf-8"
+    )
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    lifecycle_sections_source = (
+        feature_root / "ProjectWorkbenchLifecycleSections.tsx"
+    ).read_text(encoding="utf-8")
+    model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
+        encoding="utf-8"
+    )
+    runtime_model_source = (
+        feature_root / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    for required in [
+        "fetchRequestMaterialPreview",
+        "collectRequestMaterial",
+        "/request-material/preview",
+        "/request-material/collect",
+    ]:
+        assert required in client_source
+
+    for required in [
+        "requestMaterialPreview",
+        "requestMaterialLoading",
+        "requestMaterialCollecting",
+        "requestMaterialError",
+        "onRefreshRequestMaterial",
+        "onCollectRequestMaterial",
+    ]:
+        assert required in model_source
+        assert required in runtime_model_source
+
+    for required in [
+        "Project Folder preparation",
+        "Prepare local project files before public-drive submission.",
+        "Request material",
+        "Collect request material",
+        "runtime-console-request-material",
+    ]:
+        assert required in lifecycle_sections_source or required in selector_source
+
+    assert '{ mode: "package_preparation", label: "Project Folder" }' in selector_source
+    assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
+    assert "Secondary links" not in lifecycle_sections_source
+    assert "Package details" not in lifecycle_sections_source
+    assert '"request_material"' in selector_source
+    assert "requestMaterialPreview" in layout_source
+    assert ".runtime-console-request-material" in styles_source
 
 
 def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:

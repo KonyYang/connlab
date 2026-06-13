@@ -1,9 +1,4 @@
-import { useState, type ReactElement } from "react";
-import type { Project } from "../../api/client";
-import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
-import { ProjectFolderCreationPanel } from "./ProjectFolderCreationPanel";
-import { ProjectPackagePreviewPanel } from "./ProjectPackagePreviewPanel";
-import { ProjectSection2SyncPanel } from "./ProjectSection2SyncPanel";
+import type { ReactElement } from "react";
 import type {
   WorkbenchLifecycleMode,
   WorkbenchLifecycleTab,
@@ -22,12 +17,14 @@ export function WorkbenchStageBanner({
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
   onRefreshPackagePreview,
+  onCollectRequestMaterial,
   onOpenSettings,
 }: {
   lifecycle: WorkbenchLifecycleViewModel;
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
   onRefreshPackagePreview: () => void;
+  onCollectRequestMaterial: () => Promise<void>;
   onOpenSettings: () => void;
 }): ReactElement {
   const actionHandler = getNextActionHandler(
@@ -35,6 +32,7 @@ export function WorkbenchStageBanner({
     onOpenMatrixEditor,
     onOpenFeeEvaluation,
     onRefreshPackagePreview,
+    onCollectRequestMaterial,
     onOpenSettings
   );
   return (
@@ -204,156 +202,69 @@ export function RegisteredSetupMode({
 
 export function PackagePreparationMode({
   setupMaterials,
-  folderResources,
-  folderReady,
-  projectNumber,
-  onFolderCreated,
-  onOpenMatrixEditor,
-  onOpenFeeEvaluation,
-  onRefreshPackagePreview,
-  onRefreshSection2Sync,
-  onSyncSection2,
-  packagePreview,
-  packagePreviewError,
-  packagePreviewLoading,
-  project,
-  section2SyncError,
-  section2SyncLoading,
-  section2SyncPreview,
-  section2SyncSyncing,
-  feeEvaluationOutputStatus,
+  requestMaterialPreview,
+  requestMaterialError,
+  requestMaterialLoading,
 }: {
   setupMaterials: SetupMaterialItem[];
-  folderResources: ProjectRuntimeConsoleModel["folderResources"];
-  folderReady: boolean;
-  projectNumber: string | null;
-  onFolderCreated: ProjectRuntimeConsoleModel["onFolderCreated"];
-  onOpenMatrixEditor: () => void;
-  onOpenFeeEvaluation: () => void;
-  onRefreshPackagePreview: () => void;
-  onRefreshSection2Sync: () => void;
-  onSyncSection2: ProjectRuntimeConsoleModel["onSyncSection2"];
-  packagePreview: ProjectRuntimeConsoleModel["packagePreview"];
-  packagePreviewError: string | null;
-  packagePreviewLoading: boolean;
-  project: Project;
-  section2SyncError: string | null;
-  section2SyncLoading: boolean;
-  section2SyncPreview: ProjectRuntimeConsoleModel["section2SyncPreview"];
-  section2SyncSyncing: boolean;
-  feeEvaluationOutputStatus: ProjectRuntimeConsoleModel["versionStatus"]["downstream"][number] | null;
+  requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
+  requestMaterialError: string | null;
+  requestMaterialLoading: boolean;
 }): ReactElement {
-  const [activeDetail, setActiveDetail] = useState<PackageDetailKey | null>(null);
+  const copiedCount =
+    requestMaterialPreview?.items.filter((item) =>
+      item.status === "copied" || item.status === "already_present"
+    ).length ?? 0;
+  const plannedCount = requestMaterialPreview?.items.length ?? 0;
+  const reviewCount =
+    requestMaterialPreview?.items.filter((item) => item.review_required).length ?? 0;
   return (
-    <section className="runtime-console-mode-stack" aria-label="Package preparation">
+    <section className="runtime-console-mode-stack" aria-label="Project Folder preparation">
       <section
         className="runtime-console-readiness"
-        aria-label="Project setup and output materials"
+        aria-label="Project Folder preparation checklist"
       >
         <div className="runtime-console-readiness-title">
-          <p className="eyebrow">Package readiness</p>
-          <strong>Prepare controlled package files before placing them in Submitted Material.</strong>
+          <p className="eyebrow">Project Folder</p>
+          <strong>Prepare local project files before public-drive submission.</strong>
         </div>
         {setupMaterials.map((item) => (
           <RuntimeSetupItem key={item.title} item={item} />
         ))}
       </section>
 
-      <ProjectPackagePreviewPanel
-        preview={packagePreview}
-        loading={packagePreviewLoading}
-        error={packagePreviewError}
-        onRefresh={onRefreshPackagePreview}
-      />
-
-      <section className="runtime-console-package-secondary" aria-label="Secondary package links">
-        <p className="eyebrow">Secondary links</p>
+      <section className="runtime-console-request-material" aria-label="Request material status">
         <div>
-          <button type="button" onClick={onOpenMatrixEditor}>
-            Matrix Editor
-          </button>
-          <button type="button" onClick={onOpenFeeEvaluation}>
-            Fee Evaluation
-          </button>
+          <p className="eyebrow">Request material</p>
+          <strong>{formatRequestMaterialStatus(requestMaterialPreview?.status ?? null)}</strong>
+          <p>{formatRequestMaterialSummary(requestMaterialPreview?.status ?? null)}</p>
         </div>
+        <dl>
+          <div>
+            <dt>Files checked</dt>
+            <dd>{requestMaterialLoading ? "Loading" : plannedCount}</dd>
+          </div>
+          <div>
+            <dt>Already collected</dt>
+            <dd>{copiedCount}</dd>
+          </div>
+          <div>
+            <dt>Needs review</dt>
+            <dd>{reviewCount}</dd>
+          </div>
+        </dl>
+        {requestMaterialError ? (
+          <p className="runtime-console-error">{requestMaterialError}</p>
+        ) : null}
+        {requestMaterialPreview?.warnings.length ? (
+          <ul className="runtime-console-blocker-list">
+            {requestMaterialPreview.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        ) : null}
       </section>
-
-      <section className="runtime-console-package-detail-selector" aria-label="Package detail panels">
-        <p className="eyebrow">Package details</p>
-        <div>
-          <PackageDetailButton
-            active={activeDetail === "folder"}
-            label="Folder setup details"
-            onClick={() => setActiveDetail(activeDetail === "folder" ? null : "folder")}
-          />
-          <PackageDetailButton
-            active={activeDetail === "section2"}
-            label="Section 2 details"
-            onClick={() => setActiveDetail(activeDetail === "section2" ? null : "section2")}
-          />
-          <PackageDetailButton
-            active={activeDetail === "fee"}
-            label="Fee details"
-            onClick={() => setActiveDetail(activeDetail === "fee" ? null : "fee")}
-          />
-        </div>
-      </section>
-
-      {activeDetail === "folder" ? (
-        <ProjectFolderCreationPanel
-          configuredOutputRoot={folderResources.outputRoot}
-          configuredTemplate={folderResources.template}
-          folderReady={folderReady}
-          latestLtrNumber={projectNumber}
-          onFolderCreated={onFolderCreated}
-          projectId={project.project_id}
-          projectStatus={project.status}
-        />
-      ) : null}
-
-      {activeDetail === "section2" ? (
-        <ProjectSection2SyncPanel
-          preview={section2SyncPreview}
-          loading={section2SyncLoading}
-          syncing={section2SyncSyncing}
-          error={section2SyncError}
-          onRefresh={onRefreshSection2Sync}
-          onSync={onSyncSection2}
-        />
-      ) : null}
-
-      {activeDetail === "fee" ? (
-        <FeeEvaluationStatusSummary
-          projectId={project.project_id}
-          outputStatus={feeEvaluationOutputStatus}
-          canOpen
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-        />
-      ) : null}
     </section>
-  );
-}
-
-type PackageDetailKey = "folder" | "section2" | "fee";
-
-function PackageDetailButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      className={active ? "is-active" : ""}
-      aria-pressed={active}
-      onClick={onClick}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -374,6 +285,7 @@ function getNextActionHandler(
   onOpenMatrixEditor: () => void,
   onOpenFeeEvaluation: () => void,
   onRefreshPackagePreview: () => void,
+  onCollectRequestMaterial: () => Promise<void>,
   onOpenSettings: () => void
 ): (() => void) | null {
   if (actionTarget === "matrix") {
@@ -385,8 +297,50 @@ function getNextActionHandler(
   if (actionTarget === "package") {
     return onRefreshPackagePreview;
   }
+  if (actionTarget === "request_material") {
+    return () => void onCollectRequestMaterial();
+  }
   if (actionTarget === "settings") {
     return onOpenSettings;
   }
   return null;
 }
+
+function formatRequestMaterialStatus(
+  status: RequestMaterialStatus | null | undefined
+): string {
+  if (status === "collected") {
+    return "Collected";
+  }
+  if (status === "ready") {
+    return "Ready to collect";
+  }
+  if (status === "partial") {
+    return "Partial collection available";
+  }
+  if (status === "blocked" || status === "conflict") {
+    return "Needs review";
+  }
+  return "Not checked";
+}
+
+function formatRequestMaterialSummary(
+  status: RequestMaterialStatus | null | undefined
+): string {
+  if (status === "collected") {
+    return "Original files and controlled copies are recorded for this project.";
+  }
+  if (status === "ready") {
+    return "ConnLab can copy original request files and controlled Submitted Material copies.";
+  }
+  if (status === "partial") {
+    return "Some request material can be collected, but the missing source is still visible.";
+  }
+  if (status === "blocked" || status === "conflict") {
+    return "Review the request material source or target conflict before collecting.";
+  }
+  return "Refresh or collect request material after the local project folder is available.";
+}
+
+type RequestMaterialStatus =
+  NonNullable<ProjectRuntimeConsoleModel["requestMaterialPreview"]>["status"];

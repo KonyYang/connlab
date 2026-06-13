@@ -16,6 +16,10 @@ export type WorkbenchLifecycleInput = {
   packageStatus: "ready" | "blocked" | null;
   packageBlockers: string[];
   packageWarnings: string[];
+  requestMaterialStatus: "blocked" | "ready" | "collected" | "partial" | "conflict" | null;
+  requestMaterialBlockers: string[];
+  requestMaterialWarnings: string[];
+  hasRequestMaterialPreviewError: boolean;
   section2Status: string | null;
   hasPackagePreviewError: boolean;
 };
@@ -32,7 +36,7 @@ export type WorkbenchNextAction = {
   reason: string;
   tone: WorkbenchLifecycleTone;
   actionLabel?: string;
-  actionTarget?: "matrix" | "fee" | "package" | "folder" | "settings" | null;
+  actionTarget?: "matrix" | "fee" | "package" | "folder" | "settings" | "request_material" | null;
 };
 
 export type WorkbenchLifecycleViewModel = {
@@ -44,7 +48,7 @@ export type WorkbenchLifecycleViewModel = {
 };
 
 const ACTIVE_MATRIX_TABS: WorkbenchLifecycleTab[] = [
-  { mode: "package_preparation", label: "Package" },
+  { mode: "package_preparation", label: "Project Folder" },
   { mode: "execution_console", label: "Execution" },
 ];
 
@@ -104,24 +108,14 @@ export function deriveProjectWorkbenchLifecycle(
 
   return {
     mode: "package_preparation",
-    stageLabel: "Package preparation",
-    stageSummary: "Prepare the folder, Section 2 dates, confirmed fee, Customer Feedback template, and package readiness from the active Matrix.",
-    nextAction: buildPackageNextAction(input),
+    stageLabel: "Project Folder preparation",
+    stageSummary: "Prepare local project files before public-drive submission.",
+    nextAction: buildProjectFolderNextAction(input),
     tabs: ACTIVE_MATRIX_TABS,
   };
 }
 
-function buildPackageNextAction(input: WorkbenchLifecycleInput): WorkbenchNextAction {
-  if (input.hasPackagePreviewError) {
-    return {
-      title: "Refresh package readiness",
-      reason: "Package readiness could not be loaded. Refresh the preview before preparing outputs.",
-      tone: "blocked",
-      actionLabel: "Refresh preview",
-      actionTarget: "package",
-    };
-  }
-
+function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): WorkbenchNextAction {
   if (!input.folderReady && input.folderTemplateReady === false) {
     return {
       title: "Enable project folder template",
@@ -132,53 +126,99 @@ function buildPackageNextAction(input: WorkbenchLifecycleInput): WorkbenchNextAc
     };
   }
 
-  if (input.packageStatus === "blocked") {
-    return {
-      title: "Resolve package blockers",
-      reason:
-        input.packageBlockers[0] ??
-        "Package readiness has blockers that must be resolved before execution.",
-      tone: "blocked",
-      actionLabel: selectPackageBlockerAction(input),
-      actionTarget: selectPackageBlockerTarget(input),
-    };
-  }
-
   if (!input.folderReady) {
     return {
-      title: "Create project folder",
-      reason: "The latest project folder is required before final package files can be placed.",
+      title: "Create local project folder",
+      reason: "The official project folder is required before request material can be collected.",
       tone: "warning",
       actionLabel: "Review folder setup",
       actionTarget: "folder",
     };
   }
 
+  if (input.hasRequestMaterialPreviewError) {
+    return {
+      title: "Refresh request material",
+      reason: "Request material could not be loaded. Refresh before copying source files.",
+      tone: "blocked",
+      actionLabel: "Refresh request material",
+      actionTarget: "request_material",
+    };
+  }
+
+  if (input.requestMaterialStatus === "blocked" || input.requestMaterialStatus === "conflict") {
+    return {
+      title: "Review request material",
+      reason:
+        input.requestMaterialBlockers[0] ??
+        "Request material needs review before ConnLab can copy source files.",
+      tone: "blocked",
+    };
+  }
+
+  if (
+    input.requestMaterialStatus === null ||
+    input.requestMaterialStatus === "ready" ||
+    input.requestMaterialStatus === "partial"
+  ) {
+    return {
+      title: "Collect request material",
+      reason:
+        input.requestMaterialWarnings[0] ??
+        "Copy original request files into Source Book and controlled copies into the official project folder.",
+      tone: input.requestMaterialStatus === "partial" ? "warning" : "neutral",
+      actionLabel: "Collect request material",
+      actionTarget: "request_material",
+    };
+  }
+
+  if (input.hasPackagePreviewError) {
+    return {
+      title: "Refresh project folder checks",
+      reason: "Project folder output checks could not be loaded.",
+      tone: "blocked",
+      actionLabel: "Refresh checks",
+      actionTarget: "package",
+    };
+  }
+
+  if (input.packageStatus === "blocked") {
+    return {
+      title: "Resolve project folder blockers",
+      reason:
+        input.packageBlockers[0] ??
+        "Project folder checks have blockers that must be resolved before continuing.",
+      tone: "blocked",
+      actionLabel: selectPackageBlockerAction(input),
+      actionTarget: selectPackageBlockerTarget(input),
+    };
+  }
+
   if (input.packageWarnings.length > 0) {
     return {
-      title: "Review package warnings",
+      title: "Review project folder warnings",
       reason: input.packageWarnings[0],
       tone: "warning",
-      actionLabel: "Refresh preview",
+      actionLabel: "Refresh checks",
       actionTarget: "package",
     };
   }
 
   if (input.packageStatus === "ready") {
     return {
-      title: "Review package readiness",
-      reason: "Required package inputs are ready. Package execution remains a separate approved task.",
+      title: "Project Folder is ready for the next preparation step",
+      reason: "Request material is collected. Continue with approved form and fee tasks when available.",
       tone: "ready",
-      actionLabel: "Refresh preview",
+      actionLabel: "Refresh checks",
       actionTarget: "package",
     };
   }
 
   return {
-    title: "Check package readiness",
-    reason: "Refresh readiness before preparing Test Record, Fee Form, and Customer Feedback outputs.",
+    title: "Check project folder readiness",
+    reason: "Refresh checks before preparing generated forms and submitted material.",
     tone: "neutral",
-    actionLabel: "Refresh preview",
+    actionLabel: "Refresh checks",
     actionTarget: "package",
   };
 }
@@ -187,7 +227,7 @@ function buildExecutionNextAction(input: WorkbenchLifecycleInput): WorkbenchNext
   if (input.packageStatus === "blocked" && input.packageBlockers.length > 0) {
     return {
       title: "Use Matrix as the execution map",
-      reason: `Execution view is available, but package preparation still has a blocker: ${input.packageBlockers[0]}`,
+      reason: `Execution view is available, but Project Folder preparation still has a blocker: ${input.packageBlockers[0]}`,
       tone: "warning",
       actionLabel: "Open Matrix",
       actionTarget: "matrix",

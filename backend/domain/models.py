@@ -161,6 +161,10 @@ class FileAsset:
     path: Path
     original_name: str | None = None
     registered_on: date | None = None
+    source_package_id: str | None = None
+    source_intake_asset_id: str | None = None
+    source_role: str | None = None
+    sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

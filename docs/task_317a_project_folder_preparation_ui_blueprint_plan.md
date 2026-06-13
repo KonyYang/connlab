@@ -43,6 +43,14 @@ Use the user's supplied decisions:
 - TASK_317 must not add request-material controls to the old Package UI. It must start from a minimum `Project Folder` single-task frame.
 - `Confirmed Fee authority` and generated `Fee form` are separate states.
 - Public-drive upload is not an enabled user action before TASK_319.
+- `TASK_312_PROJECT_PACKAGE_ORCHESTRATOR_PREVIEW` is historical context only and must not be used as the execution reference for TASK_317-TASK_321.
+
+Historical boundary:
+
+- TASK_312's old `Project package` preview UI, panel placement, expected-output grouping, and TASK_313 package-execute assumptions are superseded for this series.
+- Any readiness checks that remain useful must be restated in the `Project Folder` row model defined here.
+- Later task files and plans should reference TASK_317A directly, not TASK_312, when defining the Workbench flow for TASK_318-TASK_321.
+- TASK_318 is the replacement for TASK_312's user-facing readiness/check role in the new `Project Folder` model, not an enhancement of the old package preview. It must not extend the old `/project-package/preview` surface as the main product path or show a duplicate package-readiness panel beside `Project Folder` readiness.
 
 ## Fixed Folder Vocabulary
 
@@ -169,6 +177,18 @@ Add local official project folder checks and repair into:
 - `Required forms`.
 
 It should turn missing folders/files into repairable row states instead of adding another broad panel.
+
+TASK_318 supersedes the user-facing readiness responsibilities of TASK_312 for the Project Folder flow. TASK_312 may remain as historical compatibility, but TASK_318 must not depend on TASK_313 package execution assumptions and must not reuse TASK_312's old `Project package` panel placement, labels, or expected-output grouping as the operator experience.
+
+The overlapping readiness checks must be restated this way:
+
+- project folder check -> `Local project folder` and `Official project folder` health,
+- Matrix check -> Project Folder prerequisite / authority signal,
+- fee check -> `Confirmed Fee authority`, separate from generated Fee form,
+- Section 2 check -> `Application Form Section 2` controlled preview/write-back row,
+- Customer Feedback check -> `Required forms` readiness item,
+- Submitted Material check -> `Submitted Material` completeness/check/repair row,
+- public-drive state -> hidden or read-only until TASK_319.
 
 It must keep Confirmed Fee authority separate from generated Fee form readiness. Missing authority routes to Fee Evaluation; missing or stale Fee form routes to generation only after authority exists.
 

@@ -5,6 +5,7 @@ import type {
   ConfirmedMatrixSnapshot,
   Project,
   ProjectPackagePreview,
+  RequestMaterialPreview,
   ProjectTestPlanDraft,
 } from "../../api/client";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
@@ -67,7 +68,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
-    expect(screen.getByText("Package preparation")).toBeTruthy();
+    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
     expect(
       screen.getByText("DL-2026-06-777 Coolpower HDF 3.40mm pin Qualification Testing")
     ).toBeTruthy();
@@ -96,10 +97,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
       matrixAuthorityDraft: testPlanDraft,
       packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: true,
     });
 
-    expect(screen.getByText("Package preparation")).toBeTruthy();
-    expect(screen.getByText("Project package panel")).toBeTruthy();
+    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
+    expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
@@ -117,17 +121,19 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
       matrixAuthorityDraft: testPlanDraft,
-      packagePreview: blockedPackagePreview,
+      folderReady: true,
+      packagePreview: feeBlockedPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
     });
 
     expect(screen.queryByRole("tab", { name: "Overview" })).toBeNull();
-    expect(screen.getByRole("tab", { name: "Package" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Project Folder" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Execution" })).toBeTruthy();
-    expect(screen.getByText("Package preparation")).toBeTruthy();
+    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
     expect(
-      screen.getAllByText("Project folder template is inactive in Settings.").length
+      screen.getAllByText("Confirm Fee before preparing the project folder.").length
     ).toBeGreaterThan(0);
-    expect(screen.getByText("Project package panel")).toBeTruthy();
+    expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
   });
@@ -160,10 +166,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       matrixAuthorityDraft: null,
       matrixCandidateDraft: testPlanDraft,
       packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: true,
     });
 
-    expect(screen.getByText("Package preparation")).toBeTruthy();
-    expect(screen.getByText("Project package panel")).toBeTruthy();
+    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
+    expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix authority setup")).toBeNull();
 
     await user.click(screen.getByRole("tab", { name: "Execution" }));
@@ -173,32 +181,34 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
   });
 
-  it("keeps package mode checklist-first with secondary links and collapsed detail panels", async () => {
+  it("shows the Project Folder task list without secondary package links", async () => {
     const user = userEvent.setup();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
       matrixAuthorityDraft: testPlanDraft,
       packagePreview: blockedPackagePreview,
+      requestMaterialPreview: readyRequestMaterialPreview,
+      folderReady: true,
     });
 
-    expect(screen.getByText("Package preparation")).toBeTruthy();
-    expect(screen.getByText("Prepare controlled package files before placing them in Submitted Material.")).toBeTruthy();
-    expect(screen.getByText("Project package panel")).toBeTruthy();
-    expect(screen.getByText("Secondary links")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Fee Evaluation" })).toBeTruthy();
+    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
+    expect(
+      screen.getAllByText("Prepare local project files before public-drive submission.").length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Collect request material" })).toBeTruthy();
+    expect(screen.queryByText("Project package panel")).toBeNull();
+    expect(screen.queryByText("Secondary links")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Fee Evaluation" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Matrix" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Fee Evaluation" })).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
     expect(screen.queryByText("Fee summary panel")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Folder setup details" }));
-
-    expect(screen.getByText("Folder setup panel")).toBeTruthy();
-    expect(screen.queryByText("Section 2 dates panel")).toBeNull();
-    expect(screen.queryByText("Fee summary panel")).toBeNull();
+    expect(user).toBeTruthy();
   });
 
   it("shows one local project folder creation action before package preparation", async () => {
@@ -395,9 +405,22 @@ function buildRuntimeModel(
     section2SyncLoading: false,
     section2SyncPreview: null,
     section2SyncSyncing: false,
+    officialWorkspacePreview: null,
+    officialWorkspaceLoading: false,
+    officialWorkspaceCreating: false,
+    officialWorkspaceError: null,
+    officialWorkspaceResult: null,
+    requestMaterialPreview: null,
+    requestMaterialLoading: false,
+    requestMaterialCollecting: false,
+    requestMaterialError: null,
     setRuntimeSelectedTokenReference: vi.fn(),
     onFolderCreated: vi.fn(),
     onRefreshPackagePreview: vi.fn(),
+    onRefreshOfficialWorkspacePreview: vi.fn(),
+    onCreateOfficialWorkspace: vi.fn(),
+    onRefreshRequestMaterial: vi.fn(),
+    onCollectRequestMaterial: vi.fn(),
     onRefreshSection2Sync: vi.fn(),
     onSyncSection2: vi.fn(),
     versionStatus: {
@@ -472,9 +495,55 @@ const blockedPackagePreview: ProjectPackagePreview = {
   warnings: ["One Section 2 source date is missing."],
 };
 
+const feeBlockedPackagePreview: ProjectPackagePreview = {
+  ...readyPackagePreview,
+  status: "blocked",
+  blockers: ["Confirm Fee before preparing the project folder."],
+};
+
 const folderTemplateBlockedPackagePreview: ProjectPackagePreview = {
   ...blockedPackagePreview,
   blockers: ["Enable project folder template in Settings."],
+};
+
+const readyRequestMaterialPreview: RequestMaterialPreview = {
+  project_id: project.project_id,
+  local_workspace_path: "D:/Projects/DL-2026-06-001",
+  source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
+  official_project_folder_path:
+    "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  status: "ready",
+  items: [
+    {
+      source_asset_id: "asset-1",
+      source_asset_type: "application_form",
+      source_role: "selected_application_form",
+      source_name: "application.docx",
+      source_path: "D:/Intake/application.docx",
+      dedupe_key: "path:d:/intake/application.docx",
+      target_area: "submitted_material",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/application.docx",
+      action: "copy",
+      status: "planned",
+      message: "Ready to copy.",
+      review_required: false,
+      size_bytes: 100,
+      sha256: "a".repeat(64),
+    },
+  ],
+  blockers: [],
+  warnings: [],
+};
+
+const collectedRequestMaterialPreview: RequestMaterialPreview = {
+  ...readyRequestMaterialPreview,
+  status: "collected",
+  items: readyRequestMaterialPreview.items.map((item) => ({
+    ...item,
+    status: "copied",
+    message: "Copied.",
+  })),
 };
 
 const confirmedMatrixSnapshot: ConfirmedMatrixSnapshot = {

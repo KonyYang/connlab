@@ -46,6 +46,14 @@ Minimum frame required before TASK_317 request-material UI lands:
 
 `TASK_320` is reserved for final polish and cleanup, not the first UI contraction.
 
+## Historical TASK_312 Boundary
+
+`TASK_312_PROJECT_PACKAGE_ORCHESTRATOR_PREVIEW` is a completed historical read-only package-preview slice. It must not be used as the execution reference for `TASK_317` through `TASK_321`.
+
+For this series, use this task (`TASK_317A`) as the information-architecture and Workbench UI authority. If a later task needs readiness checks similar to old TASK_312 behavior, it must restate them in the new `Project Folder` vocabulary and row model instead of reusing the old `Project package` preview structure, labels, placement, or `TASK_313` package-execute assumptions.
+
+`TASK_318_OFFICIAL_PROJECT_FOLDER_CHECK_AND_REPAIR` must be treated as the replacement for TASK_312's user-facing readiness role inside the new `Project Folder` flow, not as an enhancement of TASK_312. TASK_312 may remain in code or documentation as historical compatibility, but TASK_318 must not extend the old `/project-package/preview` surface, show a second package-readiness panel, or depend on TASK_313 package-execute assumptions.
+
 ## User-Facing Naming Contract
 
 Use these names in user-facing UI:
@@ -252,6 +260,8 @@ Do not let `Generate missing files` silently:
 - missing required folder/file checks,
 - repairable inconsistency actions.
 - `Required forms` derived-file readiness only where TASK_318 explicitly approves checks.
+
+TASK_318 replaces the user-facing completeness/readiness responsibility formerly represented by TASK_312's `Project package` preview. It should not add another package preview panel or enhance the old package-preview endpoint as its main product surface. Any checks for project folder, Matrix authority, Confirmed Fee authority, Section 2, Customer Feedback form, Test Record, Fee form, and Submitted Material must be expressed through the `Project Folder` task rows. Reuse of lower-level helper logic is allowed only if the new API/UI contract remains `Project Folder`-first.
 
 `TASK_319_PUBLIC_DRIVE_UPLOAD_UPDATE` should land in:
 

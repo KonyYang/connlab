@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ApiRequestError,
+  collectRequestMaterial,
   confirmProjectTestPlanMatrixDraft,
   createProjectTestPlanDraft,
   executeApprovalPackage,
@@ -8,6 +9,7 @@ import {
   fetchConfirmedMatrixRuntimeProjectionSnapshot,
   fetchProjectPackagePreview,
   fetchOfficialWorkspacePreview,
+  fetchRequestMaterialPreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
   fetchProjectSection2SyncPreview,
@@ -43,6 +45,7 @@ import {
   type ProjectPackagePreview,
   type OfficialWorkspaceCreateResponse,
   type OfficialWorkspacePreview,
+  type RequestMaterialPreview,
   type ProjectSection2SyncRequest,
   type ProjectSection2SyncResponse,
   type ProjectTestPlanDraftGroup,
@@ -93,6 +96,10 @@ export type ProjectWorkbenchModel = {
   officialWorkspaceCreating: boolean;
   officialWorkspaceError: string | null;
   officialWorkspaceResult: OfficialWorkspaceCreateResponse | null;
+  requestMaterialPreview: RequestMaterialPreview | null;
+  requestMaterialLoading: boolean;
+  requestMaterialCollecting: boolean;
+  requestMaterialError: string | null;
   section2SyncPreview: ProjectSection2SyncResponse | null;
   section2SyncLoading: boolean;
   section2SyncSyncing: boolean;
@@ -153,6 +160,8 @@ export type ProjectWorkbenchModel = {
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: () => Promise<void>;
+  onRefreshRequestMaterial: () => Promise<void>;
+  onCollectRequestMaterial: () => Promise<void>;
   onRefreshSection2Sync: () => Promise<void>;
   onSyncSection2: (input: ProjectSection2SyncRequest) => Promise<void>;
   onExecuteApprovalPackage: () => Promise<void>;
@@ -252,6 +261,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [officialWorkspaceError, setOfficialWorkspaceError] = useState<string | null>(null);
   const [officialWorkspaceResult, setOfficialWorkspaceResult] =
     useState<OfficialWorkspaceCreateResponse | null>(null);
+  const [requestMaterialPreview, setRequestMaterialPreview] =
+    useState<RequestMaterialPreview | null>(null);
+  const [requestMaterialLoading, setRequestMaterialLoading] = useState(false);
+  const [requestMaterialCollecting, setRequestMaterialCollecting] = useState(false);
+  const [requestMaterialError, setRequestMaterialError] = useState<string | null>(null);
   const [section2SyncPreview, setSection2SyncPreview] =
     useState<ProjectSection2SyncResponse | null>(null);
   const [section2SyncLoading, setSection2SyncLoading] = useState(false);
@@ -277,6 +291,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshSection2Sync();
     void onRefreshPackagePreview();
     void onRefreshOfficialWorkspacePreview();
+    void onRefreshRequestMaterial();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -542,15 +557,49 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     try {
       const result = await createOfficialWorkspace(projectId);
       setOfficialWorkspaceResult(result);
-      setMessage("Local project workspace created.");
+      setMessage("Local project folder created.");
       setError(null);
       setOfficialWorkspaceError(null);
       await onRefreshOfficialWorkspacePreview();
       await onRefreshPackagePreview();
+      await onRefreshRequestMaterial();
     } catch (err) {
       setOfficialWorkspaceError((err as Error).message);
     } finally {
       setOfficialWorkspaceCreating(false);
+    }
+  }
+
+  async function onRefreshRequestMaterial(): Promise<void> {
+    setRequestMaterialLoading(true);
+    try {
+      const preview = await fetchRequestMaterialPreview(projectId);
+      setRequestMaterialPreview(preview);
+      setRequestMaterialError(null);
+    } catch (err) {
+      setRequestMaterialPreview(null);
+      setRequestMaterialError((err as Error).message);
+    } finally {
+      setRequestMaterialLoading(false);
+    }
+  }
+
+  async function onCollectRequestMaterial(): Promise<void> {
+    setRequestMaterialCollecting(true);
+    try {
+      const result = await collectRequestMaterial(projectId);
+      setRequestMaterialPreview(result);
+      setRequestMaterialError(null);
+      setMessage(
+        result.status === "partial"
+          ? "Request material partially collected. Review missing request material."
+          : "Request material collected."
+      );
+      await onRefreshPackagePreview();
+    } catch (err) {
+      setRequestMaterialError((err as Error).message);
+    } finally {
+      setRequestMaterialCollecting(false);
     }
   }
 
@@ -894,6 +943,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     officialWorkspaceCreating,
     officialWorkspaceError,
     officialWorkspaceResult,
+    requestMaterialPreview,
+    requestMaterialLoading,
+    requestMaterialCollecting,
+    requestMaterialError,
     section2SyncPreview,
     section2SyncLoading,
     section2SyncSyncing,
@@ -947,6 +1000,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
+    onRefreshRequestMaterial,
+    onCollectRequestMaterial,
     onRefreshSection2Sync,
     onSyncSection2,
     onExecuteApprovalPackage,

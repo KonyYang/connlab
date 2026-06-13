@@ -281,6 +281,10 @@ class IntakeConfirmationService:
                 asset_type=FileAssetType.APPLICATION_FORM,
                 path=selected_asset.stored_path,
                 original_name=selected_asset.original_name,
+                source_package_id=package.package_id,
+                source_intake_asset_id=selected_asset.asset_id,
+                source_role="selected_application_form",
+                sha256=selected_asset.sha256,
             ),
             FileAsset(
                 asset_id=uuid4().hex,
@@ -288,6 +292,8 @@ class IntakeConfirmationService:
                 asset_type=FileAssetType.ATTACHMENT,
                 path=package.source_stored_path,
                 original_name=package.source_original_name,
+                source_package_id=package.package_id,
+                source_role="email_source",
             ),
         ]
         for asset in self._intake_asset_store.list_by_package(package.package_id):
@@ -300,9 +306,13 @@ class IntakeConfirmationService:
                     asset_type=FileAssetType.ATTACHMENT,
                     path=asset.stored_path,
                     original_name=asset.original_name,
+                    source_package_id=package.package_id,
+                    source_intake_asset_id=asset.asset_id,
+                    source_role=asset.asset_role.value,
+                    sha256=asset.sha256,
                 )
             )
-        return tuple(assets)
+        return _dedupe_file_assets(assets)
 
     def _text(self, data: dict[str, Any], key: str) -> str:
         value = self._optional_text(data, key)
@@ -340,3 +350,29 @@ class IntakeConfirmationService:
         if lowered in {"no", "n", "false", "0", "not allowed"}:
             return False
         return None
+
+
+def _dedupe_file_assets(assets: list[FileAsset]) -> tuple[FileAsset, ...]:
+    """Return one project file asset per source path/hash with best provenance."""
+    best_by_key: dict[tuple[str, str | None], FileAsset] = {}
+    for asset in assets:
+        key = (_canonical_path_key(asset.path), None)
+        current = best_by_key.get(key)
+        if current is None or _role_priority(asset.source_role) < _role_priority(current.source_role):
+            best_by_key[key] = asset
+    return tuple(best_by_key.values())
+
+
+def _canonical_path_key(path: Path) -> str:
+    """Return a stable, case-insensitive source path key."""
+    return str(path).replace("/", "\\").casefold()
+
+
+def _role_priority(role: str | None) -> int:
+    """Return lower numbers for higher-confidence source roles."""
+    return {
+        "selected_application_form": 0,
+        "email_source": 1,
+        "supporting_attachment": 2,
+        "specification": 3,
+    }.get(role or "", 10)

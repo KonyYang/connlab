@@ -52,6 +52,7 @@ def init_db(engine: Engine) -> None:
 
     Base.metadata.create_all(bind=engine)
     _migrate_project_no_optional(engine)
+    _migrate_file_asset_provenance_columns(engine)
     _migrate_confirmed_matrix_supersession_columns(engine)
     _migrate_project_matrix_draft_record_revision_columns(engine)
     _migrate_project_matrix_draft_lineage_columns_optional(engine)
@@ -137,6 +138,36 @@ def _has_single_column_unique_index(connection: Any, table: str, column: str) ->
         if indexed_columns == [column]:
             return True
     return False
+
+
+def _migrate_file_asset_provenance_columns(engine: Engine) -> None:
+    """Add optional TASK_317 file-asset provenance columns to existing SQLite DBs."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "file_assets" not in table_names:
+            return
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql("PRAGMA table_info(file_assets)").all()
+        }
+        for column in (
+            "source_package_id",
+            "source_intake_asset_id",
+            "source_role",
+            "sha256",
+        ):
+            if column in columns:
+                continue
+            connection.exec_driver_sql(
+                f"ALTER TABLE file_assets ADD COLUMN {column} VARCHAR(64)"
+            )
 
 
 def _migrate_project_matrix_draft_lineage_columns_optional(engine: Engine) -> None:

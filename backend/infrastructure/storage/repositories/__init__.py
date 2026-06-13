@@ -43,6 +43,9 @@ from backend.infrastructure.storage.repositories.project_output_record import (
 from backend.infrastructure.storage.repositories.official_workspace import (
     ProjectOfficialWorkspaceRepository,
 )
+from backend.infrastructure.storage.repositories.request_material_collection import (
+    ProjectRequestMaterialCollectionRepository,
+)
 from backend.infrastructure.storage.repositories.fee_evaluation_pricing_draft_edit import (
     FeeEvaluationPricingDraftEditRepository,
 )
@@ -73,6 +76,7 @@ __all__ = [
     "ProjectRepository",
     "ProjectOutputRecordRepository",
     "ProjectOfficialWorkspaceRepository",
+    "ProjectRequestMaterialCollectionRepository",
     "ProjectTestPlanDraftRepository",
     "SourceMatrixImportRepository",
     "SampleInfoRepository",

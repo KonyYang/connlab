@@ -34,27 +34,45 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual(["registered_setup"]);
   });
 
-  it("defaults active Matrix projects with package blockers to package preparation", () => {
+  it("defaults active Matrix projects to Project Folder request-material collection", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
       hasLtr: true,
       hasActiveMatrix: true,
+      folderReady: true,
       packageStatus: "blocked",
       packageBlockers: ["Confirm Fee before preparing the project package."],
+      requestMaterialStatus: "ready",
     });
 
     expect(lifecycle.mode).toBe("package_preparation");
-    expect(lifecycle.stageLabel).toBe("Package preparation");
-    expect(lifecycle.nextAction.tone).toBe("blocked");
-    expect(lifecycle.nextAction.title).toBe("Resolve package blockers");
-    expect(lifecycle.nextAction.reason).toBe(
-      "Confirm Fee before preparing the project package."
-    );
-    expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual([
-      "overview",
-      "package_preparation",
-      "execution_console",
+    expect(lifecycle.stageLabel).toBe("Project Folder preparation");
+    expect(lifecycle.nextAction.tone).toBe("neutral");
+    expect(lifecycle.nextAction.title).toBe("Collect request material");
+    expect(lifecycle.nextAction.actionTarget).toBe("request_material");
+    expect(lifecycle.tabs.map((tab) => tab.label)).toEqual([
+      "Project Folder",
+      "Execution",
     ]);
+  });
+
+  it("routes project folder blockers after request material is collected", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "collected",
+      packageStatus: "blocked",
+      packageBlockers: ["Confirm Fee before preparing the project folder."],
+    });
+
+    expect(lifecycle.nextAction.tone).toBe("blocked");
+    expect(lifecycle.nextAction.title).toBe("Resolve project folder blockers");
+    expect(lifecycle.nextAction.reason).toBe(
+      "Confirm Fee before preparing the project folder."
+    );
+    expect(lifecycle.nextAction.actionTarget).toBe("fee");
   });
 
   it("routes inactive folder template blockers to Settings", () => {
@@ -62,19 +80,17 @@ describe("deriveProjectWorkbenchLifecycle", () => {
       ...baseInput,
       hasLtr: true,
       hasActiveMatrix: true,
+      folderTemplateReady: false,
       packageStatus: "blocked",
       packageBlockers: ["Enable project folder template in Settings."],
     });
 
-    expect(lifecycle.nextAction.title).toBe("Resolve package blockers");
-    expect(lifecycle.nextAction.reason).toBe(
-      "Enable project folder template in Settings."
-    );
+    expect(lifecycle.nextAction.title).toBe("Enable project folder template");
     expect(lifecycle.nextAction.actionLabel).toBe("Open Settings");
     expect(lifecycle.nextAction.actionTarget).toBe("settings");
   });
 
-  it("shows an overview mode for active Matrix projects", () => {
+  it("does not return an overview mode for active Matrix projects", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle(
       {
         ...baseInput,
@@ -85,10 +101,9 @@ describe("deriveProjectWorkbenchLifecycle", () => {
       "overview"
     );
 
-    expect(lifecycle.mode).toBe("overview");
-    expect(lifecycle.stageLabel).toBe("Project overview");
+    expect(lifecycle.mode).toBe("package_preparation");
+    expect(lifecycle.stageLabel).toBe("Project Folder preparation");
     expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual([
-      "overview",
       "package_preparation",
       "execution_console",
     ]);
@@ -98,10 +113,11 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle(
       {
         ...baseInput,
-        hasLtr: true,
-        hasActiveMatrix: true,
-        packageStatus: "ready",
-      },
+      hasLtr: true,
+      hasActiveMatrix: true,
+      packageStatus: "ready",
+      requestMaterialStatus: "collected",
+    },
       "execution_console"
     );
 
@@ -110,7 +126,6 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.tone).toBe("ready");
     expect(lifecycle.nextAction.title).toBe("Use Matrix as the execution map");
     expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual([
-      "overview",
       "package_preparation",
       "execution_console",
     ]);
@@ -126,6 +141,10 @@ const baseInput: WorkbenchLifecycleInput = {
   packageStatus: null,
   packageBlockers: [],
   packageWarnings: [],
+  requestMaterialStatus: null,
+  requestMaterialBlockers: [],
+  requestMaterialWarnings: [],
+  hasRequestMaterialPreviewError: false,
   section2Status: null,
   hasPackagePreviewError: false,
 };

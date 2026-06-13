@@ -270,6 +270,35 @@ Execution priority:
 - Current stage, active task, and completion state: `docs/task_board.md`
 - Concrete implementation details: current `tasks/TASK_XXX_*.md`
 
+### 14.1 Controlled Batch Planning
+
+To improve planning efficiency without weakening task boundaries, ConnLab allows controlled batch planning but does not allow uncontrolled batch implementation.
+
+When multiple tasks are marked `ready`, `proposed for review`, or otherwise explicitly allowed by `docs/task_board.md`, Codex may create a Task Batch only if all of the following are true:
+
+- The tasks belong to the current phase and do not skip ahead of the board.
+- The tasks do not depend on each other unless the dependency order is explicitly documented.
+- The tasks do not modify the same core file, lifecycle state flow, persistence model, UI workflow, or external authority path in conflicting ways.
+- Each task keeps its own scope, risks, validation standard, and completion notes.
+- The user explicitly approves the Task Batch before any implementation starts.
+
+Allowed batch work before approval:
+
+- Read and compare the relevant task files.
+- Analyze shared constraints, dependencies, and conflicts.
+- Produce one batch planning document, or multiple task-specific plan documents, for user review.
+- Recommend an implementation order and identify tasks that must be split out of the batch.
+
+After batch approval:
+
+- Implement tasks sequentially in the approved order, not concurrently in the same working tree.
+- Before starting each task's implementation, restate the current phase, active task ID, and why that task is allowed.
+- Complete validation and update `docs/task_board.md` for the current task before moving to the next task in the approved batch.
+- Do not add new tasks to the batch without a new user approval.
+- If implementation reveals a conflict, stop the batch and report the mismatch instead of silently continuing.
+
+Parallel execution is allowed only for read-only analysis, independent verification commands, or separate isolated worktrees/branches approved by the user. Even with isolated worktrees, final integration must still happen task by task.
+
 ## 15. Anti-Skip Protocol
 
 To prevent AI from jumping stages, every execution turn must state:

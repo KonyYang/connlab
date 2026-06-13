@@ -189,6 +189,65 @@ class FileAssetModel(Base):
     path: Mapped[str] = mapped_column(String(1024), nullable=False)
     original_name: Mapped[str | None] = mapped_column(String(255))
     registered_on: Mapped[date | None] = mapped_column(Date)
+    source_package_id: Mapped[str | None] = mapped_column(String(64))
+    source_intake_asset_id: Mapped[str | None] = mapped_column(String(64))
+    source_role: Mapped[str | None] = mapped_column(String(64))
+    sha256: Mapped[str | None] = mapped_column(String(64))
+
+
+class ProjectRequestMaterialCollectionModel(Base):
+    """Database row for one request-material collection run."""
+
+    __tablename__ = "project_request_material_collections"
+
+    collection_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    copied_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    already_present_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    conflict_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    missing_source_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    warnings_json: Mapped[str | None] = mapped_column(Text)
+
+
+class ProjectRequestMaterialCollectionItemModel(Base):
+    """Database row for one planned or executed request-material copy target."""
+
+    __tablename__ = "project_request_material_collection_items"
+
+    item_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    collection_id: Mapped[str] = mapped_column(
+        ForeignKey("project_request_material_collections.collection_id"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    source_asset_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    source_asset_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_role: Mapped[str | None] = mapped_column(String(64))
+    dedupe_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    original_name: Mapped[str | None] = mapped_column(String(255))
+    target_area: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    status: Mapped[str] = mapped_column(String(64), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
+    sha256: Mapped[str | None] = mapped_column(String(64))
 
 
 class IntakePackageModel(Base):

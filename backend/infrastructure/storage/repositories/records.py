@@ -151,6 +151,10 @@ class FileAssetRepository:
         row.path = str(asset.path)
         row.original_name = asset.original_name
         row.registered_on = asset.registered_on
+        row.source_package_id = asset.source_package_id
+        row.source_intake_asset_id = asset.source_intake_asset_id
+        row.source_role = asset.source_role
+        row.sha256 = asset.sha256
         self._session.flush()
         return asset
 
@@ -226,6 +230,10 @@ def _asset_to_model(asset: FileAsset) -> FileAssetModel:
         path=str(asset.path),
         original_name=asset.original_name,
         registered_on=asset.registered_on,
+        source_package_id=asset.source_package_id,
+        source_intake_asset_id=asset.source_intake_asset_id,
+        source_role=asset.source_role,
+        sha256=asset.sha256,
     )
 
 
@@ -238,4 +246,8 @@ def _asset_to_domain(row: FileAssetModel) -> FileAsset:
         path=Path(row.path),
         original_name=row.original_name,
         registered_on=row.registered_on,
+        source_package_id=row.source_package_id,
+        source_intake_asset_id=row.source_intake_asset_id,
+        source_role=row.source_role,
+        sha256=row.sha256,
     )

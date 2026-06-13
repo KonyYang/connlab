@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-13
-Status: TASK_316 complete. Next controlled step should be TASK_317A UI blueprint review before TASK_317 task-file/plan review. TASK_317A review corrections are incorporated, but implementation is not approved.
+Status: TASK_317 complete. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Next controlled step is to create and review TASK_318 official project folder check/repair task file and executable plan before implementation.
 
 ## Decision
 
@@ -62,24 +62,31 @@ docs/task_313b_official_project_workspace_execution_guide.md
 Latest completed task file:
 
 ```text
-tasks/TASK_316_LOCAL_PROJECT_WORKSPACE_CREATION_FROM_TEMPLATE.md
+tasks/TASK_317_SOURCE_BOOK_AND_REQUEST_MATERIAL_COLLECTION.md
 ```
 
 Latest completed executable plan:
 
 ```text
-docs/task_316_local_project_workspace_creation_from_template_plan.md
+docs/task_317_source_book_and_request_material_collection_plan.md
 ```
 
 Latest proposed task file:
 
 ```text
-tasks/TASK_317A_PROJECT_FOLDER_PREPARATION_UI_BLUEPRINT.md
+TASK_318_OFFICIAL_PROJECT_FOLDER_CHECK_AND_REPAIR (not yet created)
 ```
 
 Latest proposed executable plan:
 
 ```text
+TASK_318 executable plan (not yet created)
+```
+
+Latest accepted planning prerequisite:
+
+```text
+tasks/TASK_317A_PROJECT_FOLDER_PREPARATION_UI_BLUEPRINT.md
 docs/task_317a_project_folder_preparation_ui_blueprint_plan.md
 ```
 

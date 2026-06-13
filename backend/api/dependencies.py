@@ -143,6 +143,9 @@ from backend.application.project_package_preview_service import (
 from backend.application.official_project_workspace_service import (
     OfficialProjectWorkspaceService,
 )
+from backend.application.project_request_material_collection_service import (
+    ProjectRequestMaterialCollectionService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -180,6 +183,9 @@ from backend.application.runtime_projection_read_only_service import (
     RuntimeProjectionReadOnlyService,
 )
 from backend.infrastructure.files import IntakeStorage
+from backend.infrastructure.files.request_material_copy_gateway import (
+    RequestMaterialCopyGateway,
+)
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
     FeeEvaluationWorkbookGateway,
@@ -215,6 +221,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectRepository,
     ProjectOutputRecordRepository,
     ProjectTestPlanDraftRepository,
+    ProjectRequestMaterialCollectionRepository,
     SourceMatrixImportRepository,
     SampleInfoRepository,
 )
@@ -696,6 +703,19 @@ def get_project_package_preview_service(
         section2_previewer=get_project_section2_sync_service(session),
         external_resource_store=ExternalResourceRepository(session),
         official_workspace_store=ProjectOfficialWorkspaceRepository(session),
+    )
+
+
+def get_project_request_material_collection_service(
+    session: Session = Depends(get_session),
+) -> ProjectRequestMaterialCollectionService:
+    """Build the request-material collection service for Project Folder routes."""
+    return ProjectRequestMaterialCollectionService(
+        project_repository=ProjectRepository(session),
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        file_asset_repository=FileAssetRepository(session),
+        collection_repository=ProjectRequestMaterialCollectionRepository(session),
+        copy_gateway=RequestMaterialCopyGateway(),
     )
 
 

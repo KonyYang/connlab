@@ -4,7 +4,6 @@ import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionCon
 import { OfficialWorkspaceActionPanel } from "./OfficialWorkspaceActionPanel";
 import {
   PackagePreparationMode,
-  ProjectOverviewMode,
   RegisteredSetupMode,
   TemporaryPlanningMode,
   WorkbenchModeTabs,
@@ -47,23 +46,21 @@ export function ProjectWorkbenchLayout({
     latestLtr,
     matrixCandidateDraft,
     matrixDraft,
-    onFolderCreated,
     onRefreshPackagePreview,
-    onRefreshSection2Sync,
-    onSyncSection2,
     packagePreview,
     packagePreviewError,
-    packagePreviewLoading,
     officialWorkspacePreview,
     officialWorkspaceLoading,
     officialWorkspaceCreating,
     officialWorkspaceError,
     onCreateOfficialWorkspace,
+    requestMaterialPreview,
+    requestMaterialLoading,
+    requestMaterialCollecting,
+    requestMaterialError,
+    onCollectRequestMaterial,
     runtimeProjectionSnapshot,
-    section2SyncError,
-    section2SyncLoading,
     section2SyncPreview,
-    section2SyncSyncing,
   } = runtimeModel;
 
   const projectNumber = deriveProjectNumber(latestLtr, project.project_no);
@@ -87,6 +84,10 @@ export function ProjectWorkbenchLayout({
       packageStatus: packagePreview?.status ?? null,
       packageBlockers: packagePreview?.blockers ?? [],
       packageWarnings: packagePreview?.warnings ?? [],
+      requestMaterialStatus: requestMaterialPreview?.status ?? null,
+      requestMaterialBlockers: requestMaterialPreview?.blockers ?? [],
+      requestMaterialWarnings: requestMaterialPreview?.warnings ?? [],
+      hasRequestMaterialPreviewError: Boolean(requestMaterialError),
       section2Status: section2SyncPreview?.status ?? null,
       hasPackagePreviewError: Boolean(packagePreviewError),
     },
@@ -100,6 +101,7 @@ export function ProjectWorkbenchLayout({
     folderReady: effectiveFolderReady,
     matrixAuthorityReady: activeMatrixAuthorityReady,
     packagePreview,
+    requestMaterialPreview,
     section2Status: section2SyncPreview?.status ?? null,
   });
   const shouldShowWorkspaceCreation =
@@ -158,6 +160,7 @@ export function ProjectWorkbenchLayout({
             onOpenMatrixEditor={onOpenMatrixEditor}
             onOpenFeeEvaluation={onOpenFeeEvaluation}
             onRefreshPackagePreview={onRefreshPackagePreview}
+            onCollectRequestMaterial={onCollectRequestMaterial}
             onOpenSettings={onOpenSettings}
           />
 
@@ -174,10 +177,6 @@ export function ProjectWorkbenchLayout({
         />
       ) : null}
 
-      {lifecycle.mode === "overview" ? (
-        <ProjectOverviewMode setupMaterials={setupMaterials} lifecycle={lifecycle} />
-      ) : null}
-
       {lifecycle.mode === "registered_setup" ? (
         <RegisteredSetupMode
           hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
@@ -188,24 +187,9 @@ export function ProjectWorkbenchLayout({
       {lifecycle.mode === "package_preparation" ? (
         <PackagePreparationMode
           setupMaterials={setupMaterials}
-          folderResources={folderResources}
-          folderReady={effectiveFolderReady}
-          projectNumber={projectNumber}
-          onFolderCreated={onFolderCreated}
-          onOpenMatrixEditor={onOpenMatrixEditor}
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-          onRefreshPackagePreview={onRefreshPackagePreview}
-          onRefreshSection2Sync={onRefreshSection2Sync}
-          onSyncSection2={onSyncSection2}
-          packagePreview={packagePreview}
-          packagePreviewError={packagePreviewError}
-          packagePreviewLoading={packagePreviewLoading}
-          project={project}
-          section2SyncError={section2SyncError}
-          section2SyncLoading={section2SyncLoading}
-          section2SyncPreview={section2SyncPreview}
-          section2SyncSyncing={section2SyncSyncing}
-          feeEvaluationOutputStatus={feeEvaluationOutputStatus}
+          requestMaterialPreview={requestMaterialPreview}
+          requestMaterialError={requestMaterialError}
+          requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
         />
       ) : null}
 
@@ -231,11 +215,13 @@ function buildSetupMaterials({
   folderReady,
   matrixAuthorityReady,
   packagePreview,
+  requestMaterialPreview,
   section2Status,
 }: {
   folderReady: boolean;
   matrixAuthorityReady: boolean;
   packagePreview: ProjectRuntimeConsoleModel["packagePreview"];
+  requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
   section2Status: string | null;
 }): SetupMaterialItem[] {
   const packageStatus = packagePreview?.status ?? null;
@@ -256,6 +242,11 @@ function buildSetupMaterials({
       title: "Matrix authority",
       value: matrixAuthorityReady ? "Ready" : "Missing",
       status: matrixAuthorityReady ? "ready" : "blocked",
+    },
+    {
+      title: "Request material",
+      value: formatRequestMaterialChecklistStatus(requestMaterialPreview?.status ?? null),
+      status: normalizeRequestMaterialSetupStatus(requestMaterialPreview?.status ?? null),
     },
     {
       title: "Confirmed Fee",
@@ -279,12 +270,12 @@ function buildSetupMaterials({
     {
       title: "Submitted Material",
       value:
-        packageStatus === "ready" && folderReady
+        requestMaterialPreview?.status === "collected"
           ? "Ready"
-          : packageStatus === "blocked"
+          : packageStatus === "blocked" || requestMaterialPreview?.status === "blocked"
             ? "Blocked"
             : "Refresh readiness",
-      status: packageStatus === "ready" && folderReady ? "ready" : "blocked",
+      status: requestMaterialPreview?.status === "collected" ? "ready" : "blocked",
     },
   ];
 }
@@ -318,6 +309,37 @@ function formatPackageItemStatus(status: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatRequestMaterialChecklistStatus(status: string | null): string {
+  if (status === "collected") {
+    return "Collected";
+  }
+  if (status === "ready") {
+    return "Ready to collect";
+  }
+  if (status === "partial") {
+    return "Partial";
+  }
+  if (status === "blocked" || status === "conflict") {
+    return "Needs review";
+  }
+  return "Not checked";
+}
+
+function normalizeRequestMaterialSetupStatus(
+  status: string | null
+): SetupMaterialItem["status"] {
+  if (status === "collected") {
+    return "ready";
+  }
+  if (status === "partial" || status === "ready") {
+    return "warning";
+  }
+  if (status === "blocked" || status === "conflict") {
+    return "blocked";
+  }
+  return "neutral";
 }
 
 function deriveProjectNumber(

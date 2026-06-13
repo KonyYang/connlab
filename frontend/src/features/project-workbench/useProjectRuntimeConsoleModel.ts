@@ -26,6 +26,10 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "officialWorkspaceCreating"
   | "officialWorkspaceError"
   | "officialWorkspaceResult"
+  | "requestMaterialPreview"
+  | "requestMaterialLoading"
+  | "requestMaterialCollecting"
+  | "requestMaterialError"
   | "project"
   | "projectId"
   | "runtimeAuthoritySync"
@@ -42,6 +46,8 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshPackagePreview"
   | "onRefreshOfficialWorkspacePreview"
   | "onCreateOfficialWorkspace"
+  | "onRefreshRequestMaterial"
+  | "onCollectRequestMaterial"
   | "onRefreshSection2Sync"
   | "onSyncSection2"
   | "versionStatus"
@@ -72,6 +78,10 @@ export function selectProjectRuntimeConsoleModel(
     officialWorkspaceCreating: model.officialWorkspaceCreating,
     officialWorkspaceError: model.officialWorkspaceError,
     officialWorkspaceResult: model.officialWorkspaceResult,
+    requestMaterialPreview: model.requestMaterialPreview,
+    requestMaterialLoading: model.requestMaterialLoading,
+    requestMaterialCollecting: model.requestMaterialCollecting,
+    requestMaterialError: model.requestMaterialError,
     project: model.project,
     projectId: model.projectId,
     runtimeAuthoritySync: model.runtimeAuthoritySync,
@@ -88,6 +98,8 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,
+    onRefreshRequestMaterial: model.onRefreshRequestMaterial,
+    onCollectRequestMaterial: model.onCollectRequestMaterial,
     onRefreshSection2Sync: model.onRefreshSection2Sync,
     onSyncSection2: model.onSyncSection2,
     versionStatus: model.versionStatus

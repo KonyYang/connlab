@@ -57,11 +57,12 @@ def _package() -> IntakePackage:
 
 
 def _asset(asset_id: str = "asset-1") -> IntakeAsset:
+    filename = "application.docx" if asset_id == "asset-1" else f"{asset_id}.docx"
     return IntakeAsset(
         asset_id=asset_id,
         package_id="pkg-1",
         original_name="application.docx",
-        stored_path=Path("data/intake/pkg-1/attachments/application.docx"),
+        stored_path=Path("data/intake/pkg-1/attachments") / filename,
         extension=".docx",
         mime_type="application/octet-stream",
         size_bytes=100,
@@ -129,6 +130,78 @@ def test_confirm_case_creates_project_records_and_marks_case_confirmed() -> None
     assert len(stores["projects"].items) == 1
     assert len(stores["forms"].items) == 1
     assert len(stores["samples"].items) == 1
+
+
+def test_confirm_case_preserves_file_asset_provenance_and_dedupes_email_source() -> None:
+    package = _package()
+    selected_asset = _asset()
+    duplicate_email_asset = IntakeAsset(
+        asset_id="email-asset",
+        package_id=package.package_id,
+        original_name=package.source_original_name,
+        stored_path=package.source_stored_path,
+        extension=".msg",
+        mime_type="application/vnd.ms-outlook",
+        size_bytes=100,
+        sha256="b" * 64,
+        asset_role=IntakeAssetRole.EMAIL_SOURCE,
+    )
+    supporting_asset = IntakeAsset(
+        asset_id="supporting-pdf",
+        package_id=package.package_id,
+        original_name="drawing.pdf",
+        stored_path=Path("data/intake/pkg-1/attachments/drawing.pdf"),
+        extension=".pdf",
+        mime_type="application/pdf",
+        size_bytes=100,
+        sha256="c" * 64,
+        asset_role=IntakeAssetRole.SUPPORTING_ATTACHMENT,
+    )
+    stores = {
+        "packages": Store([package], "package_id"),
+        "intake_assets": Store(
+            [selected_asset, duplicate_email_asset, supporting_asset],
+            "asset_id",
+        ),
+        "cases": Store([_case()], "case_id"),
+        "drafts": Store(
+            [
+                _draft(
+                    _complete_section1_json(
+                        project_no="P-1",
+                        product_name="Connector",
+                    )
+                )
+            ],
+            "draft_id",
+        ),
+        "projects": Store([], "project_id"),
+        "forms": Store([], "form_id"),
+        "samples": Store([], "sample_id"),
+        "file_assets": Store([], "asset_id"),
+    }
+    service = IntakeConfirmationService(
+        stores["packages"],
+        stores["intake_assets"],
+        stores["cases"],
+        stores["drafts"],
+        stores["projects"],
+        stores["forms"],
+        stores["samples"],
+        stores["file_assets"],
+    )
+
+    result = service.confirm_case("case-1")
+
+    assert len(result.file_assets) == 3
+    assets_by_name = {asset.original_name: asset for asset in result.file_assets}
+    assert assets_by_name["application.docx"].source_role == "selected_application_form"
+    assert assets_by_name["application.docx"].source_intake_asset_id == "asset-1"
+    assert assets_by_name["application.docx"].sha256 == "a" * 64
+    assert assets_by_name["request.msg"].source_role == "email_source"
+    assert assets_by_name["request.msg"].source_package_id == "pkg-1"
+    assert assets_by_name["drawing.pdf"].source_role == "supporting_attachment"
+    assert assets_by_name["drawing.pdf"].source_intake_asset_id == "supporting-pdf"
 
 
 def test_confirm_case_rejects_missing_required_project_fields() -> None:
