@@ -158,10 +158,12 @@ def preview_status(
         return "blocked"
     if any(item.status == "conflict" for item in items):
         return "conflict"
-    if warnings or any(
-        item.status in {"missing_source", "needs_review", "skipped"} for item in items
-    ):
+    if warnings or any(item.status in {"missing_source", "skipped"} for item in items):
         return "partial"
+    if any(item.status == "needs_review" for item in items):
+        if any(item.action == "copy" for item in items):
+            return "partial"
+        return "review_required"
     if items and all(item.action == "already_present" for item in items):
         return "collected"
     return "ready"

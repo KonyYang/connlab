@@ -167,7 +167,7 @@ def test_collect_copies_request_material_without_deleting_sources(tmp_path: Path
 
     result = service.collect("P1")
 
-    assert result.status == "partial"
+    assert result.status == "review_required"
     assert request_email.is_file()
     assert app_form.is_file()
     assert support.is_file()
@@ -182,6 +182,45 @@ def test_collect_copies_request_material_without_deleting_sources(tmp_path: Path
     assert (source_book / "Attachments" / "inline.png").read_bytes() == b"image"
     assert not (official / "Submitted Material" / "inline.png").exists()
     assert result.skipped_paths
+
+
+def test_collect_returns_partial_result_after_file_copy_failure(tmp_path: Path) -> None:
+    app_form = _write(tmp_path / "source" / "application.docx", b"form")
+    request_email = _write(tmp_path / "source" / "request.msg", b"mail")
+    collection_store = _CollectionStore()
+    service = _service(
+        tmp_path,
+        [
+            _asset(
+                "form-1",
+                FileAssetType.APPLICATION_FORM,
+                app_form,
+                "application.docx",
+                role="selected_application_form",
+                sha256=_sha("form"),
+            ),
+            _asset(
+                "mail-1",
+                FileAssetType.ATTACHMENT,
+                request_email,
+                "request.msg",
+                role="email_source",
+                sha256=_sha("mail"),
+            ),
+        ],
+        collection_store=collection_store,
+        copy_gateway=_FailAfterFirstCopyGateway(),
+    )
+
+    result = service.collect("P1")
+
+    source_book = tmp_path / "DL-001" / "Source Book" / "Request Material"
+    copied_target = source_book / "E-mail" / "request.msg"
+    assert result.status == "partial"
+    assert copied_target in result.copied_paths
+    assert copied_target.is_file()
+    assert any("file copy failure" in warning for warning in result.warnings)
+    assert collection_store.saved
 
 
 def test_collect_blocks_existing_target_with_different_content(tmp_path: Path) -> None:
@@ -247,7 +286,13 @@ def _asset(
     )
 
 
-def _service(tmp_path: Path, assets: list[FileAsset]) -> ProjectRequestMaterialCollectionService:
+def _service(
+    tmp_path: Path,
+    assets: list[FileAsset],
+    *,
+    collection_store: "_CollectionStore | None" = None,
+    copy_gateway=None,
+) -> ProjectRequestMaterialCollectionService:
     local_folder = tmp_path / "DL-001"
     source_book = local_folder / "Source Book"
     official = local_folder / "DL-001 Connector Qualification test"
@@ -270,8 +315,8 @@ def _service(tmp_path: Path, assets: list[FileAsset]) -> ProjectRequestMaterialC
             )
         ),
         file_asset_repository=_FileAssetStore(assets),
-        collection_repository=_CollectionStore(),
-        copy_gateway=RequestMaterialCopyGateway(),
+        collection_repository=collection_store or _CollectionStore(),
+        copy_gateway=copy_gateway or RequestMaterialCopyGateway(),
     )
 
 
@@ -318,3 +363,16 @@ class _CollectionStore:
             if collection.collection_id == collection_id:
                 return items
         return tuple()
+
+
+class _FailAfterFirstCopyGateway:
+    def copy_items(self, *, items, staging_root: Path):
+        copied = []
+        for index, item in enumerate(items):
+            if index == 0:
+                item.target_path.parent.mkdir(parents=True, exist_ok=True)
+                item.target_path.write_bytes(item.source_path.read_bytes())
+                copied.append(item.target_path)
+                continue
+            raise OSError("target locked")
+        return tuple(copied)

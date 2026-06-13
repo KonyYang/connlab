@@ -27,7 +27,7 @@ Predecessors:
 
 ## Required Preconditions Before Coding
 
-Implementation worker must read:
+Pre-implementation gate was satisfied before coding. Implementation worker read:
 
 1. `AGENTS.md`
 2. `docs/task_board.md`
@@ -39,9 +39,9 @@ Implementation worker must read:
 8. `docs/02_ARCHITECTURE_RULES.md`
 9. `docs/frontend_architecture_rules.md`
 
-Because TASK_317 changes Workbench UI and UX copy, implementation must load `$impeccable` product context before UI work.
+Because TASK_317 changes Workbench UI and UX copy, implementation loaded `$impeccable` product context before UI work.
 
-No code may be written until the user explicitly approves this plan for implementation.
+The user approved this plan before implementation. This section is retained as the historical implementation gate, not as a current blocker.
 
 ## Step 1 - Task Understanding
 
@@ -97,7 +97,7 @@ First, extend project file provenance so new project confirmations do not lose t
 
 - `FileAsset` / `FileAssetModel` should gain nullable fields for `source_package_id`, `source_intake_asset_id`, `source_role`, and `sha256` where compatible with the current repository style.
 - `IntakeConfirmationService` should populate these fields from `IntakePackage` and `IntakeAsset` records.
-- When confirmation would create duplicate project file assets pointing to the same physical source, it should dedupe by canonical path and hash where available, preserving the highest-confidence source role.
+- When confirmation would create duplicate project file assets pointing to the same physical source, it should dedupe by canonical path, preserving the highest-confidence source role. Hash remains diagnostic data for same-content and conflict checks.
 - Historical `FileAsset` rows without provenance must remain readable. TASK_317 preview handles them with conservative fallback rules.
 
 Recommended model additions in `backend/infrastructure/storage/models.py`:
@@ -206,7 +206,7 @@ class RequestMaterialCollectResult:
 
 Status vocabulary:
 
-- preview status: `blocked`, `ready`, `collected`, `partial`, `conflict`
+- preview status: `blocked`, `ready`, `collected`, `review_required`, `partial`, `conflict`
 - item status: `planned`, `already_present`, `copied`, `missing_source`, `conflict`, `skipped`, `needs_review`
 - action: `copy`, `already_present`, `block`, `skip`, `review`
 - target area: `source_book_email`, `source_book_application_form`, `source_book_attachment`, `official_email`, `submitted_material`
@@ -219,11 +219,12 @@ Rules:
 
 - `FileAssetType.APPLICATION_FORM` is the selected Application Form source.
 - New `FileAsset` rows should preserve original intake source role where available.
-- Preview must dedupe source candidates by canonical path and hash before role classification.
+- Preview must dedupe source candidates by canonical path before role classification. Hash is used only for same-content checks and conflict diagnostics.
 - If duplicate rows point to the same source file, preview shows one candidate and chooses the highest-confidence role.
 - Role priority for duplicates: selected application form, request email, confirmed request attachment, needs-review candidate, ignored/skipped.
 - A source role of `email_source`, or a unique `.msg` fallback candidate, is the request email.
 - If no request email candidate exists, preview may return `partial`; collect may copy the selected Application Form and confirmed request attachments while explicitly returning `Request email missing`.
+- If all copyable request material is collected and only manual attachment review remains, preview returns `review_required`; Workbench must not show another `Collect request material` primary action for that state.
 - If multiple different `.msg` candidates remain after dedupe, preview status is `blocked` with `Multiple request email candidates need review`; collect must not run.
 - `FileAssetType.ATTACHMENT` rows with known request-attachment roles are request attachments.
 - `FileAssetType.ATTACHMENT` rows with unknown, ignored, inline-image, application-form-candidate, or ambiguous roles are needs-review candidates. They may be preserved in Source Book but must not be placed in `Submitted Material` in TASK_317.
@@ -416,6 +417,7 @@ export type RequestMaterialPreviewStatus =
   | "blocked"
   | "ready"
   | "collected"
+  | "review_required"
   | "partial"
   | "conflict";
 
@@ -515,7 +517,7 @@ Recommended display rows for TASK_317:
 
 ```text
 Local project folder        Created / Needs repair / Missing
-Request material            Missing / Partial / Collected / Conflict
+Request material            Missing / Partial / Review required / Collected / Conflict
 Confirmed Fee authority     Missing / Confirmed / Stale
 Required forms              Not started / Blocked by authority / Ready later
 Application Form Section 2  Not updated / Preview later / Synced
@@ -524,9 +526,11 @@ Submitted Material          Pending TASK_318 check
 
 Do not show `Package`, `Project package`, `Workspace`, `.connlab`, `manifest`, `SQLite`, or task ids in user-facing copy.
 
-When request email is missing but partial collection is allowed, the row must state `Request email missing` and the primary action copy should make clear that ConnLab will collect the available request material only. When multiple email candidates exist, the row must be blocked with `Multiple request email candidates need review`.
+When request email is missing but partial collection is allowed, the row must state `Request email missing` and the primary action copy should make clear that ConnLab will collect the available request material only. When multiple email candidates exist, the row must be blocked with `Multiple request email candidates need review`. When only manual attachment review remains, the row must show review-required copy and must not present the primary collect action again.
 
 ## Implementation Tasks
+
+The checklist below is retained as the historical execution plan that guided the implementation. TASK_317 implementation and review corrections are complete; current completion status, validation evidence, and next-step guidance are recorded in the `Status`, `Validation`, and task-board sections rather than by converting every historical checklist item to a checked box.
 
 ### Task 1: FileAsset Provenance And Dedupe Baseline
 
@@ -543,7 +547,7 @@ When request email is missing but partial collection is allowed, the row must st
 - [ ] Populate selected Application Form assets with source role `selected_application_form`.
 - [ ] Populate imported request email/package source assets with source role `email_source`.
 - [ ] Populate other intake assets with their original intake asset role.
-- [ ] Deduplicate FileAsset creation by canonical path and hash during confirmation so the same `.msg` source is not registered twice for new confirmations.
+- [ ] Deduplicate FileAsset creation by canonical path during confirmation so the same `.msg` source is not registered twice for new confirmations; keep hash for diagnostics.
 - [ ] Keep historical FileAsset rows with missing provenance readable.
 
 Run:
@@ -594,7 +598,7 @@ passed
 - [ ] Define preview/result dataclasses.
 - [ ] Add repository ports for Project, OfficialWorkspace, FileAsset, and collection records.
 - [ ] Implement `preview(project_id)`.
-- [ ] Deduplicate source candidates by canonical path and hash before classification.
+- [ ] Deduplicate source candidates by canonical path before classification.
 - [ ] Classify source assets deterministically using source roles first and conservative fallback second.
 - [ ] Build Source Book and Official project folder target items.
 - [ ] Compute file size/hash for existing sources and targets.
@@ -604,6 +608,7 @@ passed
 - [ ] Mark unknown or ambiguous attachment candidates as `needs_review` and plan Source Book only.
 - [ ] Return `conflict` when target exists with different content.
 - [ ] Return `collected` when every required item is already present.
+- [ ] Return `review_required` when all copyable items are present and only needs-review attachments remain.
 
 Run:
 
@@ -633,6 +638,7 @@ passed
 - [ ] Preserve needs-review attachment candidates in Source Book only and return skipped Submitted Material placement.
 - [ ] Persist collection summary and item records after copy attempt.
 - [ ] Return copied, already-present, skipped, missing-source, conflict paths, blockers, and warnings.
+- [ ] Return and persist explicit partial result when final placement partially succeeds and a later copy fails.
 - [ ] Confirm source files remain in place.
 
 Run:
@@ -662,6 +668,7 @@ passed
 - [ ] Wire service dependencies using existing repositories.
 - [ ] Return 409 for conflicts and blocked collection state.
 - [ ] Return 200 for partial collection when only non-required request email or needs-review candidates are skipped.
+- [ ] Return `review_required` when all copyable request material is present and only manual attachment review remains.
 - [ ] Add integration tests for preview and collect using temporary files.
 
 Run:
@@ -690,6 +697,7 @@ passed
 - [ ] Refresh request-material preview after official workspace preview and after collection.
 - [ ] Keep errors local to request-material state.
 - [ ] Surface skipped, missing-source, conflict, and needs-review states in typed model data.
+- [ ] Include `review_required` in typed status data.
 
 Run:
 
@@ -724,6 +732,7 @@ passed
 - [ ] Render the preparation task list.
 - [ ] Add `Request material` row/detail panel.
 - [ ] Show top `Collect request material` action when request material is missing and prerequisites are met.
+- [ ] Do not show `Collect request material` when status is `review_required`; show manual review copy instead.
 - [ ] Show `Request email missing` when partial collection is allowed without an email source.
 - [ ] Show `Multiple request email candidates need review` as a blocker with no collect action.
 - [ ] Show needs-review attachment candidates without claiming they are supporting attachments or placing them into Submitted Material.
@@ -791,7 +800,7 @@ Use the in-app Browser after implementation approval:
 3. Confirm there is no `Overview` tab for the active-Matrix flow.
 4. Confirm the top action is `Collect request material` when request material is missing.
 5. Click `Collect request material`.
-6. Confirm the UI reports copied/already collected/partial state.
+6. Confirm the UI reports copied/already collected/review-required/partial state.
 7. Refresh the page and confirm the state persists.
 8. Inspect disk:
    - request email copy under `Source Book/Request Material/E-mail`
@@ -807,10 +816,11 @@ Use the in-app Browser after implementation approval:
 
 - The task uses existing project `FileAsset` records and does not add a new email import workflow.
 - New project FileAsset provenance/source role is preserved or collection source role is persisted before classification.
-- Duplicate FileAsset rows for the same source path/hash are deduped before request email classification.
+- Duplicate FileAsset rows for the same canonical source path are deduped before request email classification; hash is retained for conflict diagnostics.
 - Multiple different `.msg` candidates block collection instead of copying multiple request emails.
 - Missing request email policy is explicit: partial collect is allowed only with visible `Request email missing` state and skipped/missing response data.
 - Unknown or ambiguous attachments are needs-review candidates, not automatically `Submitted Material` attachments.
+- Review-required state does not loop back to the `Collect request material` primary action.
 - The task copies only and never deletes or moves source files.
 - Source Book and Official project folder targets are clearly separated.
 - Missing source email/application form behavior is explicit.
@@ -826,4 +836,6 @@ Use the in-app Browser after implementation approval:
 
 TASK_317 implementation is complete. The next allowed action is to create and review
 `TASK_318_OFFICIAL_PROJECT_FOLDER_CHECK_AND_REPAIR` task file and executable plan before
-any new implementation code.
+any new implementation code. TASK_318 must be planned as the replacement for TASK_312's
+user-facing readiness/check role inside the `Project Folder` model, not as an
+enhancement of the old package-preview endpoint, panel, or TASK_313 package-execute path.

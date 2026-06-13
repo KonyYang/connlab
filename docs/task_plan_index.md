@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-13
-Status: TASK_317 complete. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Next controlled step is to create and review TASK_318 official project folder check/repair task file and executable plan before implementation.
+Status: TASK_317 complete. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Next controlled step is to create and review TASK_318 official project folder check/repair task file and executable plan before implementation. TASK_318 must replace TASK_312's user-facing readiness/check role in the Project Folder model rather than enhancing the old package-preview surface.
 
 ## Decision
 

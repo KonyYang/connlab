@@ -225,6 +225,7 @@ Out of scope:
 Purpose:
 
 - Replace `Package readiness` with `Official project folder check`.
+- Replace TASK_312's user-facing readiness/check role inside the new `Project Folder` flow, not enhance the old package preview.
 - Check required folders and files:
   - official project folder root
   - `E-mail`
@@ -240,6 +241,14 @@ Purpose:
   - Section 2 sync state
 - Show missing/outdated/ready states.
 - Provide one current repair action at a time.
+
+Boundary against TASK_312:
+
+- `TASK_312_PROJECT_PACKAGE_ORCHESTRATOR_PREVIEW` remains historical compatibility only.
+- TASK_318 must not extend the old `/project-package/preview` surface as its main product path.
+- TASK_318 must not show a second package-readiness panel beside the `Project Folder` readiness rows.
+- Any overlapping checks from TASK_312 must be restated in the `Project Folder` row model: `Local project folder`, `Request material`, `Confirmed Fee authority`, `Required forms`, `Application Form Section 2`, `Submitted Material`, and read-only future `Public drive upload`.
+- Reusing lower-level check helpers is allowed only if the operator-facing API/UI contract is not the old package preview contract.
 
 Primary user actions may include:
 

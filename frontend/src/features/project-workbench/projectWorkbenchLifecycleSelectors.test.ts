@@ -75,6 +75,23 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.actionTarget).toBe("fee");
   });
 
+  it("does not show collect again when request material only needs manual review", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      hasActiveMatrix: true,
+      folderReady: true,
+      requestMaterialStatus: "review_required",
+      requestMaterialWarnings: [],
+      packageStatus: "blocked",
+      packageBlockers: ["Confirm Fee before preparing the project folder."],
+    });
+
+    expect(lifecycle.nextAction.tone).toBe("warning");
+    expect(lifecycle.nextAction.title).toBe("Review request material");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
+  });
+
   it("routes inactive folder template blockers to Settings", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,

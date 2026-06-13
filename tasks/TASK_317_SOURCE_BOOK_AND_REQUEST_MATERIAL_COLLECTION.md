@@ -81,7 +81,7 @@ Expected current `FileAsset` behavior:
 TASK_317 must therefore define a source-role contract:
 
 - New project confirmations should preserve project file provenance when creating `FileAsset` records or request-material source candidates. Minimum useful fields are source package id, source intake asset id where available, source role, and source hash where available.
-- Preview must deduplicate source candidates by canonical path and hash before classifying them.
+- Preview must deduplicate source candidates by canonical path before classifying them; file hash is used for same-content checks and conflict diagnostics, not as a second state authority.
 - When duplicate rows point to the same file, the preview must show one source candidate and merge/choose the highest-confidence source role.
 - When multiple different `.msg` candidates remain after dedupe, preview status is `blocked` with a business-readable `Multiple request email candidates need review` blocker.
 - When exactly one request email candidate remains, it is the request email.
@@ -124,7 +124,7 @@ Preview response must include:
 - local DL folder path
 - Source Book path
 - official project folder path
-- status: `blocked`, `ready`, `collected`, `partial`, or `conflict`
+- status: `blocked`, `ready`, `collected`, `review_required`, `partial`, or `conflict`
 - item list with source asset id, source name, source path, target area, target path, action, and status
 - blockers
 - warnings
@@ -274,10 +274,11 @@ UI rules:
 ## Acceptance Criteria
 
 - Preview blocks when no completed local project folder / official workspace record exists.
-- Preview deduplicates duplicate project FileAsset rows by canonical path and hash before classification.
+- Preview deduplicates duplicate project FileAsset rows by canonical path before classification and uses hash only for same-content/conflict checks.
 - Preview blocks when multiple different request email candidates remain after dedupe.
 - Preview lists available request email, selected Application Form, confirmed request attachments, and needs-review attachment candidates from existing project `FileAsset` records.
 - Preview marks unknown or ambiguous attachment candidates as `needs_review` and does not plan `Submitted Material` placement for them.
+- Preview reports `review_required` when all copyable request material has been collected and only manual attachment review remains.
 - Preview reports missing source files as blockers or partial warnings with business-readable messages.
 - Preview may report missing request email as partial rather than fully blocked, but the response and UI must explicitly show `Request email missing`.
 - Preview reports existing same-content target files as already collected.
@@ -287,9 +288,10 @@ UI rules:
 - Collect may preserve needs-review attachment candidates in `Source Book` only, but must mark their `Submitted Material` placement as skipped.
 - Collect never deletes source files and never overwrites different target files.
 - Collect response includes blockers, warnings, skipped paths, missing source paths, and conflict paths/items consistently.
-- Collect records enough state for later preview to show `collected`, `partial`, or `conflict` accurately.
+- Collect records enough state for later preview to show `collected`, `review_required`, `partial`, or `conflict` accurately.
 - Workbench active Matrix flow uses `Project Folder | Execution`, not `Overview | Package | Execution`.
-- Workbench exposes one primary `Collect request material` action when this is the next blocker.
+- Workbench exposes one primary `Collect request material` action only when copyable request material remains.
+- Workbench shows review-only request material as manual review and does not loop back to `Collect request material`.
 - Workbench does not expose public-drive upload as an enabled action.
 - UI and API responses contain no user-facing task ids, `.connlab`, manifest, SQLite, or raw route names.
 
@@ -316,4 +318,4 @@ Browser smoke after implementation approval:
 
 ## Model Fit Assessment
 
-`GPT-5.3-codex` is suitable for this task because it requires disciplined cross-layer planning, safe file-operation boundaries, and frontend information-architecture control. The main risk is scope creep into public-drive upload, generated forms, Section 2 write-back, or execution evidence. This task explicitly forbids those areas and requires a reviewed executable plan before implementation.
+`GPT-5.3-codex` is suitable for this task because it requires disciplined cross-layer planning, safe file-operation boundaries, and frontend information-architecture control. The main risk is scope creep into public-drive upload, generated forms, Section 2 write-back, or execution evidence. This task explicitly forbids those areas. The required executable plan was reviewed before implementation and is now retained as the completion record for the implemented TASK_317 scope.

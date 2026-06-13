@@ -353,10 +353,10 @@ class IntakeConfirmationService:
 
 
 def _dedupe_file_assets(assets: list[FileAsset]) -> tuple[FileAsset, ...]:
-    """Return one project file asset per source path/hash with best provenance."""
-    best_by_key: dict[tuple[str, str | None], FileAsset] = {}
+    """Return one project file asset per canonical source path with best provenance."""
+    best_by_key: dict[str, FileAsset] = {}
     for asset in assets:
-        key = (_canonical_path_key(asset.path), None)
+        key = _canonical_path_key(asset.path)
         current = best_by_key.get(key)
         if current is None or _role_priority(asset.source_role) < _role_priority(current.source_role):
             best_by_key[key] = asset

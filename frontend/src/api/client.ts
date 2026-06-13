@@ -164,6 +164,7 @@ export type RequestMaterialPreviewStatus =
   | "blocked"
   | "ready"
   | "collected"
+  | "review_required"
   | "partial"
   | "conflict";
 

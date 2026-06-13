@@ -25,6 +25,7 @@ from backend.application.project_request_material_collection_types import (
     PlannedTarget,
     ProjectRepositoryPort,
     ProjectRequestMaterialCollectionConflictError,
+    ProjectRequestMaterialCollectionCopyFailureError,
     ProjectRequestMaterialCollectionError,
     ProjectRequestMaterialCollectionItemRecord,
     ProjectRequestMaterialCollectionNotFoundError,
@@ -107,7 +108,9 @@ class ProjectRequestMaterialCollectionService:
             ],
         )
         items = self._materialize_items(planned, blockers)
-        if any(item.status == "needs_review" for item in items):
+        if any(
+            item.status == "needs_review" and item.action == "copy" for item in items
+        ):
             warnings.append(
                 "Attachment candidates need review before Submitted Material placement"
             )
@@ -142,29 +145,60 @@ class ProjectRequestMaterialCollectionService:
             for item in preview.items
             if item.action == "copy" and item.status in {"planned", "needs_review"}
         ]
-        copied_paths = self._copy_gateway.copy_items(
-            items=copy_items,
-            staging_root=staging_root,
-        )
+        try:
+            copied_paths = self._copy_gateway.copy_items(
+                items=copy_items,
+                staging_root=staging_root,
+            )
+        except ProjectRequestMaterialCollectionCopyFailureError as exc:
+            after = self.preview(project_id)
+            copied_paths = _copied_paths_after_partial_failure(
+                before=copy_items,
+                after=after.items,
+                explicit_copied=exc.copied_paths,
+            )
+            result = _collect_result_from_preview(
+                project_id=project_id,
+                collection_id=collection_id,
+                before=preview,
+                after=after,
+                copied_paths=copied_paths,
+                status="partial",
+                warnings=(
+                    *after.warnings,
+                    f"Request material collection stopped after a file copy failure: {exc}",
+                ),
+            )
+            self._persist_result(result)
+            return result
+        except OSError as exc:
+            after = self.preview(project_id)
+            copied_paths = _copied_paths_after_partial_failure(
+                before=copy_items,
+                after=after.items,
+                explicit_copied=tuple(),
+            )
+            result = _collect_result_from_preview(
+                project_id=project_id,
+                collection_id=collection_id,
+                before=preview,
+                after=after,
+                copied_paths=copied_paths,
+                status="partial",
+                warnings=(
+                    *after.warnings,
+                    f"Request material collection stopped after a file copy failure: {exc}",
+                ),
+            )
+            self._persist_result(result)
+            return result
         after = self.preview(project_id)
-        result = RequestMaterialCollectResult(
+        result = _collect_result_from_preview(
             project_id=project_id,
             collection_id=collection_id,
-            status=after.status,
-            items=after.items,
+            before=preview,
+            after=after,
             copied_paths=tuple(copied_paths),
-            already_present_paths=tuple(
-                item.target_path for item in after.items if item.action == "already_present"
-            ),
-            skipped_paths=_review_required_source_paths(preview.items),
-            missing_source_paths=tuple(
-                item.source_path for item in after.items if item.status == "missing_source"
-            ),
-            conflict_paths=tuple(
-                item.target_path for item in after.items if item.status == "conflict"
-            ),
-            blockers=after.blockers,
-            warnings=after.warnings,
         )
         self._persist_result(result)
         return result
@@ -356,3 +390,55 @@ def _review_required_source_paths(
         for item in items
         if item.review_required and item.target_area == "source_book_attachment"
     )
+
+
+def _collect_result_from_preview(
+    *,
+    project_id: str,
+    collection_id: str,
+    before: RequestMaterialPreview,
+    after: RequestMaterialPreview,
+    copied_paths: tuple,
+    status: str | None = None,
+    warnings: tuple[str, ...] | None = None,
+) -> RequestMaterialCollectResult:
+    """Build a collect result from the post-copy preview state."""
+    return RequestMaterialCollectResult(
+        project_id=project_id,
+        collection_id=collection_id,
+        status=status or after.status,
+        items=after.items,
+        copied_paths=tuple(copied_paths),
+        already_present_paths=tuple(
+            item.target_path for item in after.items if item.action == "already_present"
+        ),
+        skipped_paths=_review_required_source_paths(before.items),
+        missing_source_paths=tuple(
+            item.source_path for item in after.items if item.status == "missing_source"
+        ),
+        conflict_paths=tuple(
+            item.target_path for item in after.items if item.status == "conflict"
+        ),
+        blockers=after.blockers,
+        warnings=warnings or after.warnings,
+    )
+
+
+def _copied_paths_after_partial_failure(
+    *,
+    before: Sequence[RequestMaterialPreviewItem],
+    after: tuple[RequestMaterialPreviewItem, ...],
+    explicit_copied: tuple,
+) -> tuple:
+    """Infer placed target paths after a partial copy failure."""
+    copied = list(explicit_copied)
+    copied_set = {path for path in copied}
+    after_by_target = {item.target_path: item for item in after}
+    for item in before:
+        if item.target_path in copied_set:
+            continue
+        after_item = after_by_target.get(item.target_path)
+        if after_item and after_item.action == "already_present":
+            copied.append(item.target_path)
+            copied_set.add(item.target_path)
+    return tuple(copied)

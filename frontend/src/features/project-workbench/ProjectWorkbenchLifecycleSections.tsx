@@ -318,6 +318,9 @@ function formatRequestMaterialStatus(
   if (status === "partial") {
     return "Partial collection available";
   }
+  if (status === "review_required") {
+    return "Needs attachment review";
+  }
   if (status === "blocked" || status === "conflict") {
     return "Needs review";
   }
@@ -335,6 +338,9 @@ function formatRequestMaterialSummary(
   }
   if (status === "partial") {
     return "Some request material can be collected, but the missing source is still visible.";
+  }
+  if (status === "review_required") {
+    return "Available request files are collected. Review undecided attachments before placing them in Submitted Material.";
   }
   if (status === "blocked" || status === "conflict") {
     return "Review the request material source or target conflict before collecting.";

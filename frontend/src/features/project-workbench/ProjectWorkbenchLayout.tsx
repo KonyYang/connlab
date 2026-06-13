@@ -321,6 +321,9 @@ function formatRequestMaterialChecklistStatus(status: string | null): string {
   if (status === "partial") {
     return "Partial";
   }
+  if (status === "review_required") {
+    return "Needs review";
+  }
   if (status === "blocked" || status === "conflict") {
     return "Needs review";
   }
@@ -333,7 +336,7 @@ function normalizeRequestMaterialSetupStatus(
   if (status === "collected") {
     return "ready";
   }
-  if (status === "partial" || status === "ready") {
+  if (status === "partial" || status === "ready" || status === "review_required") {
     return "warning";
   }
   if (status === "blocked" || status === "conflict") {

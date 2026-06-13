@@ -22,6 +22,21 @@ class ProjectRequestMaterialCollectionConflictError(ProjectRequestMaterialCollec
     """Raised when request material cannot be safely copied."""
 
 
+class ProjectRequestMaterialCollectionCopyFailureError(ProjectRequestMaterialCollectionError):
+    """Raised when final placement fails after one or more files may have copied."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        copied_paths: tuple[Path, ...] = tuple(),
+        failed_path: Path | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.copied_paths = copied_paths
+        self.failed_path = failed_path
+
+
 class ProjectRepositoryPort(Protocol):
     """Project lookup required for request-material collection."""
 

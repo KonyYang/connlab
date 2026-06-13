@@ -591,7 +591,9 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setRequestMaterialPreview(result);
       setRequestMaterialError(null);
       setMessage(
-        result.status === "partial"
+        result.status === "review_required"
+          ? "Request material collected. Review undecided attachments before Submitted Material placement."
+          : result.status === "partial"
           ? "Request material partially collected. Review missing request material."
           : "Request material collected."
       );

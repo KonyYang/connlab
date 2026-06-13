@@ -16,7 +16,14 @@ export type WorkbenchLifecycleInput = {
   packageStatus: "ready" | "blocked" | null;
   packageBlockers: string[];
   packageWarnings: string[];
-  requestMaterialStatus: "blocked" | "ready" | "collected" | "partial" | "conflict" | null;
+  requestMaterialStatus:
+    | "blocked"
+    | "ready"
+    | "collected"
+    | "review_required"
+    | "partial"
+    | "conflict"
+    | null;
   requestMaterialBlockers: string[];
   requestMaterialWarnings: string[];
   hasRequestMaterialPreviewError: boolean;
@@ -153,6 +160,16 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
         input.requestMaterialBlockers[0] ??
         "Request material needs review before ConnLab can copy source files.",
       tone: "blocked",
+    };
+  }
+
+  if (input.requestMaterialStatus === "review_required") {
+    return {
+      title: "Review request material",
+      reason:
+        input.requestMaterialWarnings[0] ??
+        "Available request files are collected. Review undecided attachments before placing them in Submitted Material.",
+      tone: "warning",
     };
   }
 
