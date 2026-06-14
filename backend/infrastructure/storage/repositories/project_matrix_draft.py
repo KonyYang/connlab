@@ -103,6 +103,30 @@ class ProjectMatrixDraftRepository:
             cells=tuple(_to_cell_domain(row) for row in cell_rows),
         )
 
+    def delete(self, project_matrix_draft_id: str) -> bool:
+        """Delete one draft aggregate by draft id."""
+        record_row = self._session.get(ProjectMatrixDraftRecordModel, project_matrix_draft_id)
+        if record_row is None:
+            return False
+        self._session.execute(
+            delete(ProjectMatrixDraftCellModel).where(
+                ProjectMatrixDraftCellModel.project_matrix_draft_id == project_matrix_draft_id
+            )
+        )
+        self._session.execute(
+            delete(ProjectMatrixDraftGroupModel).where(
+                ProjectMatrixDraftGroupModel.project_matrix_draft_id == project_matrix_draft_id
+            )
+        )
+        self._session.execute(
+            delete(ProjectMatrixDraftRowModel).where(
+                ProjectMatrixDraftRowModel.project_matrix_draft_id == project_matrix_draft_id
+            )
+        )
+        self._session.delete(record_row)
+        self._session.flush()
+        return True
+
     def list_by_project(self, project_id: str) -> list[ProjectMatrixDraftRecord]:
         """List draft records by project, newest first."""
         rows = self._session.scalars(

@@ -5,6 +5,8 @@ import { ApiRequestError } from "../../api/client";
 
 const apiMocks = vi.hoisted(() => ({
   fetchMatrixEditorSession: vi.fn(),
+  saveMatrixEditorSessionDraft: vi.fn(),
+  discardMatrixEditorSessionDraft: vi.fn(),
   confirmMatrixEditorSession: vi.fn(),
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
@@ -26,6 +28,8 @@ vi.mock("../../api/client", () => {
   return {
     ApiRequestError: MockApiRequestError,
     fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
+    saveMatrixEditorSessionDraft: apiMocks.saveMatrixEditorSessionDraft,
+    discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
@@ -54,6 +58,12 @@ function buildSessionSeed() {
     active_confirmed_revision: 3,
     active_source_import_id: "source-a",
     active_source_snapshot_id: "snapshot-a",
+    editor_draft_id: null,
+    draft_status: "missing",
+    loaded_source: "authority",
+    stale_draft_present: false,
+    draft_updated_at: null,
+    saved_payload_signature: null,
     source_status: "available",
     source_unavailable_message: null,
     pre_test_buffer_days: null,
@@ -134,6 +144,19 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.fetchMatrixEditorSession.mockResolvedValue(buildSessionSeed());
+    apiMocks.saveMatrixEditorSessionDraft.mockResolvedValue({
+      editor_draft_id: "editor-draft-1",
+      draft_status: "current",
+      draft_updated_at: "2026-06-14T00:00:00Z",
+      saved_payload_signature: "saved-signature-1",
+      active_confirmed_matrix_id: "confirmed-1",
+      active_confirmed_revision: 3,
+    });
+    apiMocks.discardMatrixEditorSessionDraft.mockResolvedValue({
+      discarded: true,
+      active_confirmed_matrix_id: "confirmed-1",
+      active_confirmed_revision: 3,
+    });
     apiMocks.confirmMatrixEditorSession.mockResolvedValue({
       publish_status: "published",
       message: "Matrix confirmed (v4).",
@@ -727,6 +750,11 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.getByLabelText("Row 2 requirement").className).not.toContain("is-empty-required");
     fireEvent.contextMenu(sampleRowButton);
     expect(screen.getByRole("button", { name: "Mark as Test Item" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText("Only digits, commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
   });
@@ -809,10 +837,19 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     fireEvent.change(screen.getByLabelText("Planned start"), { target: { value: "2026-06-02" } });
     fireEvent.change(screen.getByLabelText("Test complete"), { target: { value: "2026-06-03" } });
     fireEvent.change(screen.getByLabelText("Estimated completion"), { target: { value: "2026-06-04" } });
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
     fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
 
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1));
+    const saveRequest = apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1];
+    expect(saveRequest.rows[0].day_expression).toBe("0.5x");
     const request = apiMocks.confirmMatrixEditorSession.mock.calls[0][1];
+    expect(request.expected_editor_draft_id).toBe("editor-draft-1");
+    expect(request.expected_saved_payload_signature).toBe("saved-signature-1");
     expect(request.pre_test_buffer_days).toBeNull();
     expect(request.post_test_buffer_days).toBe("1");
     expect(request.sample_received_date).toBe("2026-06-01");
@@ -820,6 +857,83 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(request.planned_test_complete_date).toBe("2026-06-03");
     expect(request.estimated_completion_date).toBe("2026-06-04");
     expect(request.rows[0].day_expression).toBe("0.5x");
+  });
+
+  it("waits for in-flight autosave before discarding on Cancel", async () => {
+    const resolveSaveRef: {
+      current:
+        | ((value: {
+            editor_draft_id: string;
+            draft_status: "current";
+            draft_updated_at: string;
+            saved_payload_signature: string;
+            active_confirmed_matrix_id: string;
+            active_confirmed_revision: number;
+          }) => void)
+        | null;
+    } = { current: null };
+    apiMocks.saveMatrixEditorSessionDraft.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSaveRef.current = resolve;
+        })
+    );
+    const onBackToWorkbench = vi.fn();
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Updated method before cancel" },
+    });
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(0);
+
+    resolveSaveRef.current?.({
+      editor_draft_id: "editor-draft-cancel",
+      draft_status: "current",
+      draft_updated_at: "2026-06-14T00:00:00Z",
+      saved_payload_signature: "cancel-signature",
+      active_confirmed_matrix_id: "confirmed-1",
+      active_confirmed_revision: 3,
+    });
+
+    await waitFor(() => {
+      expect(apiMocks.discardMatrixEditorSessionDraft).toHaveBeenCalledWith("P1", {
+        expected_editor_draft_id: "editor-draft-cancel",
+        expected_saved_payload_signature: "cancel-signature",
+      });
+      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("stays in Matrix Editor and surfaces an error when Cancel discard fails", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "editor-draft-existing",
+      draft_status: "current",
+      loaded_source: "draft",
+      draft_updated_at: "2026-06-14T00:00:00Z",
+      saved_payload_signature: "existing-signature",
+    });
+    apiMocks.discardMatrixEditorSessionDraft.mockRejectedValueOnce(
+      new Error("Matrix draft changed before cancel.")
+    );
+    const onBackToWorkbench = vi.fn();
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(apiMocks.discardMatrixEditorSessionDraft).toHaveBeenCalledWith("P1", {
+        expected_editor_draft_id: "editor-draft-existing",
+        expected_saved_payload_signature: "existing-signature",
+      });
+      expect(onBackToWorkbench).toHaveBeenCalledTimes(0);
+    });
+    expect(screen.getByText("Matrix draft changed before cancel.")).toBeTruthy();
   });
 
   it("blocks confirm when schedule planning dates are insufficient", async () => {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_matrix_editor_session_service
@@ -14,6 +14,9 @@ from backend.application.matrix_editor_session_service import (
     MatrixEditorSessionActiveChangedError,
     MatrixEditorSessionConfirmCommand,
     MatrixEditorSessionCell,
+    MatrixEditorSessionDraftConflictError,
+    MatrixEditorSessionDraftDiscardCommand,
+    MatrixEditorSessionDraftSaveCommand,
     MatrixEditorSessionError,
     MatrixEditorSessionGroup,
     MatrixEditorSessionNotFoundError,
@@ -87,6 +90,12 @@ class MatrixEditorSessionSeedResponse(BaseModel):
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
+    editor_draft_id: str | None = None
+    draft_status: str = "missing"
+    loaded_source: str = "authority"
+    stale_draft_present: bool = False
+    draft_updated_at: str | None = None
+    saved_payload_signature: str | None = None
 
 
 class MatrixEditorSessionGroupRequest(BaseModel):
@@ -145,6 +154,55 @@ class MatrixEditorSessionConfirmRequest(BaseModel):
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
+    expected_editor_draft_id: str | None = None
+    expected_saved_payload_signature: str | None = None
+
+
+class MatrixEditorSessionDraftSaveRequest(BaseModel):
+    """Session draft autosave request model."""
+
+    expected_active_confirmed_matrix_id: str | None = None
+    expected_active_confirmed_revision: int | None = None
+    source_document_path: str | None = None
+    source_document_name: str | None = None
+    source_format: str | None = None
+    source_import_id: str | None = None
+    source_snapshot_id: str | None = None
+    groups: list[MatrixEditorSessionGroupRequest]
+    rows: list[MatrixEditorSessionRowRequest]
+    cells: list[MatrixEditorSessionCellRequest]
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
+
+
+class MatrixEditorSessionDraftSaveResponse(BaseModel):
+    """Session draft autosave response model."""
+
+    editor_draft_id: str
+    draft_status: str
+    draft_updated_at: str
+    saved_payload_signature: str
+    active_confirmed_matrix_id: str
+    active_confirmed_revision: int
+
+
+class MatrixEditorSessionDraftDiscardRequest(BaseModel):
+    """Session draft discard request model."""
+
+    expected_editor_draft_id: str | None = None
+    expected_saved_payload_signature: str | None = None
+
+
+class MatrixEditorSessionDraftDiscardResponse(BaseModel):
+    """Session draft discard response model."""
+
+    discarded: bool
+    active_confirmed_matrix_id: str | None
+    active_confirmed_revision: int | None
 
 
 class MatrixEditorSessionConfirmResponse(BaseModel):
@@ -225,6 +283,97 @@ def get_matrix_editor_session_seed(
         planned_test_start_date=seed.planned_test_start_date,
         planned_test_complete_date=seed.planned_test_complete_date,
         estimated_completion_date=seed.estimated_completion_date,
+        editor_draft_id=seed.editor_draft_id,
+        draft_status=seed.draft_status,
+        loaded_source=seed.loaded_source,
+        stale_draft_present=seed.stale_draft_present,
+        draft_updated_at=seed.draft_updated_at,
+        saved_payload_signature=seed.saved_payload_signature,
+    )
+
+
+@router.put(
+    "/api/projects/{project_id}/matrix-editor/session/draft",
+    response_model=MatrixEditorSessionDraftSaveResponse,
+)
+def save_matrix_editor_session_draft(
+    project_id: str,
+    request: MatrixEditorSessionDraftSaveRequest,
+    service: MatrixEditorSessionService = Depends(get_matrix_editor_session_service),
+) -> MatrixEditorSessionDraftSaveResponse:
+    """Autosave one Matrix Editor session draft in project scope."""
+    try:
+        result = service.save_editor_draft(
+            MatrixEditorSessionDraftSaveCommand(
+                project_id=project_id,
+                expected_active_confirmed_matrix_id=request.expected_active_confirmed_matrix_id,
+                expected_active_confirmed_revision=request.expected_active_confirmed_revision,
+                source_document_path=request.source_document_path,
+                source_document_name=request.source_document_name,
+                source_format=request.source_format,
+                source_import_id=request.source_import_id,
+                source_snapshot_id=request.source_snapshot_id,
+                groups=_to_session_groups(request.groups),
+                rows=_to_session_rows(request.rows),
+                cells=_to_session_cells(request.cells),
+                pre_test_buffer_days=request.pre_test_buffer_days,
+                post_test_buffer_days=request.post_test_buffer_days,
+                sample_received_date=request.sample_received_date,
+                planned_test_start_date=request.planned_test_start_date,
+                planned_test_complete_date=request.planned_test_complete_date,
+                estimated_completion_date=request.estimated_completion_date,
+            )
+        )
+    except MatrixEditorSessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except MatrixEditorSessionActiveChangedError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "active_matrix_changed", "message": str(exc)},
+        ) from exc
+    except MatrixEditorSessionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return MatrixEditorSessionDraftSaveResponse(
+        editor_draft_id=result.editor_draft_id,
+        draft_status=result.draft_status,
+        draft_updated_at=result.draft_updated_at,
+        saved_payload_signature=result.saved_payload_signature,
+        active_confirmed_matrix_id=result.active_confirmed_matrix_id,
+        active_confirmed_revision=result.active_confirmed_revision,
+    )
+
+
+@router.delete(
+    "/api/projects/{project_id}/matrix-editor/session/draft",
+    response_model=MatrixEditorSessionDraftDiscardResponse,
+)
+def discard_matrix_editor_session_draft(
+    project_id: str,
+    request: MatrixEditorSessionDraftDiscardRequest = Body(
+        default_factory=MatrixEditorSessionDraftDiscardRequest
+    ),
+    service: MatrixEditorSessionService = Depends(get_matrix_editor_session_service),
+) -> MatrixEditorSessionDraftDiscardResponse:
+    """Discard the current Matrix Editor session draft in project scope."""
+    try:
+        result = service.discard_editor_draft(
+            MatrixEditorSessionDraftDiscardCommand(
+                project_id=project_id,
+                expected_editor_draft_id=request.expected_editor_draft_id,
+                expected_saved_payload_signature=request.expected_saved_payload_signature,
+            )
+        )
+    except MatrixEditorSessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except MatrixEditorSessionDraftConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "matrix_editor_draft_conflict", "message": str(exc)},
+        ) from exc
+    return MatrixEditorSessionDraftDiscardResponse(
+        discarded=result.discarded,
+        active_confirmed_matrix_id=result.active_confirmed_matrix_id,
+        active_confirmed_revision=result.active_confirmed_revision,
     )
 
 
@@ -250,48 +399,17 @@ def confirm_matrix_editor_session(
                 source_import_id=request.source_import_id,
                 source_snapshot_id=request.source_snapshot_id,
                 confirmed_by=request.confirmed_by,
-                groups=tuple(
-                    MatrixEditorSessionGroup(
-                        draft_group_id=item.draft_group_id,
-                        source_group_snapshot_id=item.source_group_snapshot_id,
-                        group_order=item.group_order,
-                        group_key=item.group_key,
-                        group_label=item.group_label,
-                        is_selected=item.is_selected,
-                        sample_quantity_expression=item.sample_quantity_expression,
-                        sample_note=item.sample_note,
-                    )
-                    for item in request.groups
-                ),
-                rows=tuple(
-                    MatrixEditorSessionRow(
-                        draft_row_id=item.draft_row_id,
-                        source_row_snapshot_id=item.source_row_snapshot_id,
-                        row_order=item.row_order,
-                        test_item=item.test_item,
-                        source_section=item.source_section,
-                        method=item.method,
-                        condition=item.condition,
-                        requirement=item.requirement,
-                        day_expression=item.day_expression,
-                        is_sample_row=item.is_sample_row,
-                    )
-                    for item in request.rows
-                ),
-                cells=tuple(
-                    MatrixEditorSessionCell(
-                        draft_row_id=item.draft_row_id,
-                        draft_group_id=item.draft_group_id,
-                        cell_value=item.cell_value,
-                    )
-                    for item in request.cells
-                ),
+                groups=_to_session_groups(request.groups),
+                rows=_to_session_rows(request.rows),
+                cells=_to_session_cells(request.cells),
                 pre_test_buffer_days=request.pre_test_buffer_days,
                 post_test_buffer_days=request.post_test_buffer_days,
                 sample_received_date=request.sample_received_date,
                 planned_test_start_date=request.planned_test_start_date,
                 planned_test_complete_date=request.planned_test_complete_date,
                 estimated_completion_date=request.estimated_completion_date,
+                expected_editor_draft_id=request.expected_editor_draft_id,
+                expected_saved_payload_signature=request.expected_saved_payload_signature,
             )
         )
     except MatrixEditorSessionNotFoundError as exc:
@@ -300,6 +418,11 @@ def confirm_matrix_editor_session(
         raise HTTPException(
             status_code=409,
             detail={"code": "active_matrix_changed", "message": str(exc)},
+        ) from exc
+    except MatrixEditorSessionDraftConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "matrix_editor_draft_conflict", "message": str(exc)},
         ) from exc
     except MatrixEditorSessionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -311,4 +434,55 @@ def confirm_matrix_editor_session(
             if result.confirmed_snapshot is not None
             else None
         ),
+    )
+
+
+def _to_session_groups(
+    groups: list[MatrixEditorSessionGroupRequest],
+) -> tuple[MatrixEditorSessionGroup, ...]:
+    return tuple(
+        MatrixEditorSessionGroup(
+            draft_group_id=item.draft_group_id,
+            source_group_snapshot_id=item.source_group_snapshot_id,
+            group_order=item.group_order,
+            group_key=item.group_key,
+            group_label=item.group_label,
+            is_selected=item.is_selected,
+            sample_quantity_expression=item.sample_quantity_expression,
+            sample_note=item.sample_note,
+        )
+        for item in groups
+    )
+
+
+def _to_session_rows(
+    rows: list[MatrixEditorSessionRowRequest],
+) -> tuple[MatrixEditorSessionRow, ...]:
+    return tuple(
+        MatrixEditorSessionRow(
+            draft_row_id=item.draft_row_id,
+            source_row_snapshot_id=item.source_row_snapshot_id,
+            row_order=item.row_order,
+            test_item=item.test_item,
+            source_section=item.source_section,
+            method=item.method,
+            condition=item.condition,
+            requirement=item.requirement,
+            day_expression=item.day_expression,
+            is_sample_row=item.is_sample_row,
+        )
+        for item in rows
+    )
+
+
+def _to_session_cells(
+    cells: list[MatrixEditorSessionCellRequest],
+) -> tuple[MatrixEditorSessionCell, ...]:
+    return tuple(
+        MatrixEditorSessionCell(
+            draft_row_id=item.draft_row_id,
+            draft_group_id=item.draft_group_id,
+            cell_value=item.cell_value,
+        )
+        for item in cells
     )

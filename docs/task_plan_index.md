@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-14
-Status: TASK_321 complete after explicit user approval. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Do not enter a later task without separate user approval.
+Status: TASK_321 complete after explicit user approval. TASK_314 split accepted; TASK_314A Matrix Editor draft persistence plan is ready and awaiting explicit implementation approval. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. Do not enter a later task without separate user approval.
 
 ## Decision
 
@@ -70,6 +70,24 @@ Latest completed executable plan:
 ```text
 docs/task_321_project_folder_required_forms_generation_plan.md
 ```
+
+Current proposed/follow-up task plans:
+
+```text
+tasks/TASK_314_MATRIX_AND_FEE_BACKGROUND_DRAFT_PERSISTENCE.md
+docs/task_314_matrix_and_fee_background_draft_persistence_plan.md
+tasks/TASK_314A_MATRIX_EDITOR_DRAFT_PERSISTENCE.md
+docs/task_314a_matrix_editor_draft_persistence_plan.md
+tasks/TASK_315_MATRIX_DRAFT_TO_FEE_DRAFT_INCREMENTAL_REBASE.md
+docs/task_315_matrix_draft_to_fee_draft_incremental_rebase_plan.md
+```
+
+Status note:
+
+- `TASK_314` is now an umbrella/historical split rationale and must not be implemented as one combined task.
+- `TASK_314A` must be completed in code before `TASK_315` can be implemented.
+- `TASK_314B` Fee Evaluation background draft persistence and `TASK_314C` linkage regression remain deferred future slices.
+- `TASK_315` remains planned/deferred until `TASK_314A` is complete and `docs/task_board.md` explicitly marks TASK_315 approved/active.
 
 Latest accepted planning prerequisite:
 

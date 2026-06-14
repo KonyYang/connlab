@@ -1171,11 +1171,19 @@ export type MatrixEditorSessionSeed = {
   planned_test_start_date?: string | null;
   planned_test_complete_date?: string | null;
   estimated_completion_date?: string | null;
+  editor_draft_id?: string | null;
+  draft_status?: "missing" | "current" | "stale";
+  loaded_source?: "authority" | "draft";
+  stale_draft_present?: boolean;
+  draft_updated_at?: string | null;
+  saved_payload_signature?: string | null;
 };
 
 export type MatrixEditorSessionConfirmRequest = {
   expected_active_confirmed_matrix_id?: string | null;
   expected_active_confirmed_revision?: number | null;
+  expected_editor_draft_id?: string | null;
+  expected_saved_payload_signature?: string | null;
   source_document_path?: string | null;
   source_document_name?: string | null;
   source_format?: string | null;
@@ -1191,6 +1199,31 @@ export type MatrixEditorSessionConfirmRequest = {
   planned_test_start_date?: string | null;
   planned_test_complete_date?: string | null;
   estimated_completion_date?: string | null;
+};
+
+export type MatrixEditorSessionDraftSaveRequest = Omit<
+  MatrixEditorSessionConfirmRequest,
+  "confirmed_by" | "expected_editor_draft_id" | "expected_saved_payload_signature"
+>;
+
+export type MatrixEditorSessionDraftSaveResponse = {
+  editor_draft_id: string;
+  draft_status: "current";
+  draft_updated_at: string;
+  saved_payload_signature: string;
+  active_confirmed_matrix_id: string;
+  active_confirmed_revision: number;
+};
+
+export type MatrixEditorSessionDraftDiscardRequest = {
+  expected_editor_draft_id?: string | null;
+  expected_saved_payload_signature?: string | null;
+};
+
+export type MatrixEditorSessionDraftDiscardResponse = {
+  discarded: boolean;
+  active_confirmed_matrix_id?: string | null;
+  active_confirmed_revision?: number | null;
 };
 
 export type MatrixEditorSessionConfirmResponse = {
@@ -2583,6 +2616,32 @@ export function fetchMatrixEditorSession(
 ): Promise<MatrixEditorSessionSeed> {
   return requestJson<MatrixEditorSessionSeed>(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/session`
+  );
+}
+
+export function saveMatrixEditorSessionDraft(
+  projectId: string,
+  input: MatrixEditorSessionDraftSaveRequest
+): Promise<MatrixEditorSessionDraftSaveResponse> {
+  return requestJson<MatrixEditorSessionDraftSaveResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/session/draft`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function discardMatrixEditorSessionDraft(
+  projectId: string,
+  input: MatrixEditorSessionDraftDiscardRequest = {}
+): Promise<MatrixEditorSessionDraftDiscardResponse> {
+  return requestJson<MatrixEditorSessionDraftDiscardResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/session/draft`,
+    {
+      method: "DELETE",
+      body: JSON.stringify(input),
+    }
   );
 }
 

@@ -6,7 +6,9 @@ Executable plan: `docs/task_315_matrix_draft_to_fee_draft_incremental_rebase_pla
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-TASK_315 is a follow-up after TASK_314. It requires TASK_314 background Matrix draft persistence, Matrix draft discard, and Confirm Matrix gating to exist first.
+TASK_315 is a follow-up after TASK_314A. It requires TASK_314A Matrix Editor background draft persistence, Matrix draft discard, and Confirm Matrix saved-draft gating to exist first.
+
+TASK_315 must not be implemented while TASK_314A is incomplete or while `docs/task_board.md` still marks TASK_315 as deferred. The task board must be corrected before implementation so there is one unambiguous active task status.
 
 ## Model Fit Assessment
 
@@ -21,6 +23,7 @@ Operator intent:
 - Added Matrix groups/steps create default Fee Evaluation rows.
 - Removed Matrix groups/steps are soft-removed from Fee Evaluation so previous manual values remain reviewable but are excluded from active totals/export.
 - Unchanged Matrix groups/steps keep their previously edited Fee values.
+- Existing Fee manual rows are preserved by their own rules: report preparation is global; sample preparation is rebased by group identity rather than regenerated confirmed group id.
 - Canceling Matrix edits discards the pending Fee rebase.
 - Confirming Matrix promotes the pending Fee rebase into the latest current Fee pricing draft for the new Confirmed Matrix revision.
 
@@ -31,20 +34,20 @@ Test Record generation remains derived from Matrix and does not need this rebase
 - Fee Evaluation edited rows are currently keyed by `source_line_id`, `confirmed_group_id`, `confirmed_row_id`, `step_token`, and `step_index`.
 - Confirming a new Matrix revision can generate new confirmed group/row ids, so current confirmed ids are not stable enough for cross-version Fee edit preservation.
 - Fee pricing drafts are currently bound to active Confirmed Matrix id/revision and fee rule version.
-- TASK_314 will add Matrix background draft persistence and discard semantics. TASK_315 uses that Matrix draft lifecycle as the parent lifecycle for pending Fee rebase state.
+- TASK_314A will add Matrix background draft persistence and discard semantics. TASK_315 uses that Matrix draft lifecycle as the parent lifecycle for pending Fee rebase state.
 
 ## V1 Contract
 
 ### Rebase Trigger
 
-After TASK_314 Matrix autosave succeeds for an existing active Confirmed Matrix, TASK_315 runs a Matrix Draft -> Fee Draft rebase.
+After TASK_314A Matrix autosave succeeds for an existing active Confirmed Matrix, TASK_315 runs a Matrix Draft -> Fee Draft rebase.
 
 Inputs:
 
 - Base active Confirmed Matrix authority.
 - Current Matrix draft working copy.
 - Current Fee pricing draft for the base Confirmed Matrix context, if present.
-- Fee rule version used by current Fee Evaluation.
+- Fee rule version resolved by the existing backend Fee Evaluation/default draft construction path.
 
 Output:
 
@@ -52,6 +55,10 @@ Output:
 - Matrix autosave response includes Fee rebase status and preserved/added/removed counts.
 
 If there is no current Fee pricing draft, the source values are the default Fee Evaluation values from the base Confirmed Matrix.
+
+The Fee rule version must be resolved on the backend by reusing the same current Fee Evaluation/basic-fill/default-draft logic that Fee Evaluation already uses. It must not be supplied by the frontend and must not be guessed from stale saved payloads. If the current Fee rule version cannot be resolved, Fee rebase returns a failed/not-ready status with an actionable message, while Matrix autosave and Confirm Matrix still follow the non-blocking rebase failure policy.
+
+Each `project_matrix_draft_id + fee_rule_version_id` has at most one pending Fee rebase draft in V1. Matrix autosave updates that pending record instead of creating a new one for each save. Matrix Cancel deletes it. Matrix Confirm consumes it once when promotion succeeds.
 
 ### Rebase Matching
 
@@ -78,16 +85,19 @@ Behavior:
 - Matching target row found: copy previous edited Fee values into the target row and update target lineage fields.
 - Target row has no source match: create a new active Fee row with default rule-derived values.
 - Source row has no target match: keep it as an inactive removed Fee row with previous edited values and `removed_from_matrix` reason.
+- Report preparation manual rows are global Fee rows and are preserved across rebase.
+- Sample preparation manual rows are matched by normalized group key/label. When the group is preserved, keep edited values and update target group lineage. When the group is removed, keep the row in a removed/review bucket or exclude it from active totals/export with an explicit removed-group reason; do not rely on regenerated `confirmed_group_id` as the cross-version identity.
 
 ### Pending Rebase Lifecycle
 
 - Matrix autosave creates or updates one pending Fee rebase draft for the current Matrix draft id.
 - Fee rebase failure does not make Matrix autosave fail and does not block `Confirm Matrix`; Matrix remains the execution authority map, while Fee remains a derived output.
-- When Fee rebase fails, the Matrix autosave response returns `fee_rebase_status="failed"` and an actionable error message. Fee/Package readiness and `Confirm Fee` remain blocked or warning-gated until a current Fee pricing draft exists for the latest Confirmed Matrix/rule context.
-- Matrix Cancel physically deletes the Matrix draft through TASK_314 and must also delete the pending Fee rebase draft for that Matrix draft id.
+- When Fee rebase fails, the Matrix autosave response returns `fee_rebase_status="failed"` and an actionable error message. Fee Evaluation readiness, Confirm Fee readiness, and Project Folder Required forms readiness remain blocked or warning-gated until a current Fee pricing draft exists for the latest Confirmed Matrix/rule context.
+- Matrix Cancel physically deletes the Matrix draft through TASK_314A and must also delete the pending Fee rebase draft for that Matrix draft id.
 - Matrix Confirm promotes the pending Fee rebase draft to the new Confirmed Matrix revision as the current Fee pricing draft.
 - If Matrix Confirm finds no pending Fee rebase draft, it attempts one synchronous rebase from the latest base-context Fee pricing draft.
 - If that confirm-time rebase also fails, Matrix Confirm still publishes the new Confirmed Matrix revision, returns `fee_rebase_status="failed"`, and does not create or promote a current Fee pricing draft for the new revision.
+- V1 recovery after failed rebase: Fee Evaluation must still open for the new Confirmed Matrix using default rule-derived rows and show an explicit needs-review state. The user can save/reconfirm Fee from that default draft path. TASK_315 does not require a separate retry-rebase button unless the implementation adds it as a non-primary recovery action within the approved scope.
 
 ### Fee Evaluation Page Behavior
 
@@ -98,6 +108,7 @@ After Matrix Confirm:
 - Added rows show default rule-derived values.
 - Removed rows appear in a separate inactive `Removed from Matrix` review section.
 - Removed rows are excluded from active totals, Fee Form export, and Confirm Fee totals.
+- Removed rows are stored outside the active `rows` collection, for example as `inactive_removed_rows`. They must not be mixed into active edited rows because active edited rows are validated against current Matrix basic-fill lines.
 
 ## In Scope
 
@@ -108,7 +119,7 @@ After Matrix Confirm:
 - Cleanup of pending Fee rebase on Matrix Cancel.
 - Extension of pricing draft payload to preserve inactive removed rows.
 - Fee Evaluation UI display for inactive removed rows.
-- Fee/Package readiness guard when Fee rebase failed or no current pricing draft exists for the latest Confirmed Matrix/rule context.
+- Fee Evaluation readiness, Confirm Fee readiness, and Project Folder Required forms readiness guards when Fee rebase failed or no current pricing draft exists for the latest Confirmed Matrix/rule context.
 - Tests covering preserved, added, removed, cancel, and confirm promotion scenarios.
 
 ## Out Of Scope
@@ -128,11 +139,15 @@ After Matrix Confirm:
 - Unchanged Matrix rows keep edited Fee values after rebase, even when the new Confirmed Matrix revision uses new confirmed ids.
 - Text-only Matrix row edits preserve edited Fee values when stable source row or draft row lineage is available.
 - Fee rebase failure returns `fee_rebase_status="failed"` without marking Matrix autosave or Matrix Confirm as failed.
-- Confirming Matrix can still publish Matrix authority when Fee rebase fails; Fee/Package readiness and Confirm Fee remain blocked or warning-gated until a current Fee pricing draft exists for the new Matrix/rule context.
+- Confirming Matrix can still publish Matrix authority when Fee rebase fails; Fee Evaluation readiness, Confirm Fee readiness, and Project Folder Required forms readiness remain blocked or warning-gated until a current Fee pricing draft exists for the new Matrix/rule context.
+- When Fee rebase fails, Fee Evaluation opens the new Matrix default draft path with clear recovery guidance instead of leaving the operator without a next step.
 - Canceling Matrix edits deletes the pending Fee rebase and leaves the current Confirmed Matrix pricing draft unchanged.
 - Confirming Matrix promotes the pending Fee rebase to a current Fee pricing draft bound to the new Confirmed Matrix id/revision.
 - Fee Evaluation after Matrix Confirm shows preserved active rows, new default rows, and removed inactive rows separately.
 - Removed inactive rows do not contribute to totals, Fee Form export, or Confirm Fee summary values.
+- Removed inactive rows are not serialized into the active `rows` collection and are not accepted by active basic-fill validation.
+- Sample preparation manual rows keep edited values when their group key/label is preserved and do not match by regenerated `confirmed_group_id` alone.
+- Project Folder Required forms remains blocked until the user explicitly confirms Fee for the new Matrix/rule context; a promoted pricing draft alone is not a Confirmed Fee authority.
 - Confirm Fee still requires explicit user confirmation and does not happen as a side effect of Confirm Matrix.
 
 ## Required Validation

@@ -57,6 +57,7 @@ from backend.domain import (
     ProjectMatrixDraftGroup,
     ProjectMatrixDraftSnapshot,
     ProjectMatrixDraftRow,
+    ProjectMatrixDraftStatus,
     SourceMatrixImportRecord,
     SourceMatrixSnapshot,
 )
@@ -77,6 +78,10 @@ class MatrixEditorSessionNotFoundError(LookupError):
 
 class MatrixEditorSessionActiveChangedError(MatrixEditorSessionError):
     """Raised when active matrix changed while a session was open."""
+
+
+class MatrixEditorSessionDraftConflictError(MatrixEditorSessionError):
+    """Raised when saved editor draft tokens are missing or stale."""
 
 
 class ProjectStore(Protocol):
@@ -101,6 +106,9 @@ class ConfirmedStore(Protocol):
     ) -> ConfirmedMatrixSnapshot:
         """Supersede active authority and persist new active snapshot atomically."""
 
+    def list_by_project(self, project_id: str) -> tuple[ConfirmedMatrixSnapshot, ...]:
+        """Return confirmed authority snapshots by project."""
+
 
 class SourceStore(Protocol):
     """Source matrix lookup operations required by this service."""
@@ -114,6 +122,15 @@ class SourceStore(Protocol):
 
 class DraftStore(Protocol):
     """Draft lookup operations required by this service."""
+
+    def get(self, project_matrix_draft_id: str) -> ProjectMatrixDraftSnapshot | None:
+        """Return one draft aggregate by id."""
+
+    def list_by_project(self, project_id: str) -> list[ProjectMatrixDraftRecord]:
+        """Return draft records by project."""
+
+    def delete(self, project_matrix_draft_id: str) -> bool:
+        """Delete one draft aggregate by id."""
 
     def get_by_project_and_base_confirmed_matrix(
         self,
@@ -197,6 +214,12 @@ class MatrixEditorSessionSeed:
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
+    editor_draft_id: str | None = None
+    draft_status: Literal["missing", "current", "stale"] = "missing"
+    loaded_source: Literal["authority", "draft"] = "authority"
+    stale_draft_present: bool = False
+    draft_updated_at: str | None = None
+    saved_payload_signature: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,6 +244,61 @@ class MatrixEditorSessionConfirmCommand:
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
+    expected_editor_draft_id: str | None = None
+    expected_saved_payload_signature: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixEditorSessionDraftSaveCommand:
+    """Input payload for Matrix Editor background draft autosave."""
+
+    project_id: str
+    expected_active_confirmed_matrix_id: str | None
+    expected_active_confirmed_revision: int | None
+    source_document_path: str | None
+    source_document_name: str | None
+    source_format: str | None
+    source_import_id: str | None
+    source_snapshot_id: str | None
+    groups: tuple[MatrixEditorSessionGroup, ...]
+    rows: tuple[MatrixEditorSessionRow, ...]
+    cells: tuple[MatrixEditorSessionCell, ...]
+    pre_test_buffer_days: str | None = None
+    post_test_buffer_days: str | None = None
+    sample_received_date: str | None = None
+    planned_test_start_date: str | None = None
+    planned_test_complete_date: str | None = None
+    estimated_completion_date: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixEditorSessionDraftSaveResult:
+    """Result payload for Matrix Editor background draft autosave."""
+
+    editor_draft_id: str
+    draft_status: Literal["current"]
+    draft_updated_at: str
+    saved_payload_signature: str
+    active_confirmed_matrix_id: str
+    active_confirmed_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixEditorSessionDraftDiscardCommand:
+    """Input payload for Matrix Editor draft discard."""
+
+    project_id: str
+    expected_editor_draft_id: str | None = None
+    expected_saved_payload_signature: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixEditorSessionDraftDiscardResult:
+    """Result payload for Matrix Editor draft discard."""
+
+    discarded: bool
+    active_confirmed_matrix_id: str | None
+    active_confirmed_revision: int | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,6 +338,7 @@ class MatrixEditorSessionService:
         """Build one Matrix Editor seed from active authority and source snapshot lineage."""
         self._require_project(project_id)
         active = self._confirmed.get_active_by_project(project_id)
+        stale_draft_present = self._has_stale_draft(project_id, active)
         if active is None:
             return MatrixEditorSessionSeed(
                 project_id=project_id,
@@ -271,8 +350,25 @@ class MatrixEditorSessionService:
                 source_preview_payload=None,
                 source_status="not_required",
                 source_unavailable_message=None,
+                stale_draft_present=stale_draft_present,
             )
-        editor_draft = _build_editor_draft_from_active(active)
+        current_draft = self._get_current_editor_draft(active)
+        if current_draft is not None:
+            editor_draft = _build_editor_draft_from_project_draft(current_draft)
+            editor_draft_id = current_draft.record.project_matrix_draft_id
+            draft_status: Literal["missing", "current", "stale"] = "current"
+            loaded_source: Literal["authority", "draft"] = "draft"
+            draft_updated_at = current_draft.record.updated_at
+            saved_payload_signature = _build_signature_from_project_draft(current_draft)
+            schedule_source = current_draft.record
+        else:
+            editor_draft = _build_editor_draft_from_active(active)
+            editor_draft_id = None
+            draft_status = "missing"
+            loaded_source = "authority"
+            draft_updated_at = None
+            saved_payload_signature = None
+            schedule_source = active.version
         source_snapshot = self._sources.get_snapshot(active.version.source_snapshot_id)
         if source_snapshot is None:
             return MatrixEditorSessionSeed(
@@ -285,12 +381,18 @@ class MatrixEditorSessionService:
                 source_preview_payload=None,
                 source_status="unavailable",
                 source_unavailable_message=SOURCE_UNAVAILABLE_MESSAGE,
-                pre_test_buffer_days=active.version.pre_test_buffer_days,
-                post_test_buffer_days=active.version.post_test_buffer_days,
-                sample_received_date=active.version.sample_received_date,
-                planned_test_start_date=active.version.planned_test_start_date,
-                planned_test_complete_date=active.version.planned_test_complete_date,
-                estimated_completion_date=active.version.estimated_completion_date,
+                pre_test_buffer_days=schedule_source.pre_test_buffer_days,
+                post_test_buffer_days=schedule_source.post_test_buffer_days,
+                sample_received_date=schedule_source.sample_received_date,
+                planned_test_start_date=schedule_source.planned_test_start_date,
+                planned_test_complete_date=schedule_source.planned_test_complete_date,
+                estimated_completion_date=schedule_source.estimated_completion_date,
+                editor_draft_id=editor_draft_id,
+                draft_status=draft_status,
+                loaded_source=loaded_source,
+                stale_draft_present=stale_draft_present,
+                draft_updated_at=draft_updated_at,
+                saved_payload_signature=saved_payload_signature,
             )
         import_record = self._sources.get_import(active.version.source_import_id)
         source_preview_payload = _resolve_source_preview_payload(
@@ -307,12 +409,95 @@ class MatrixEditorSessionService:
             source_preview_payload=source_preview_payload,
             source_status="available",
             source_unavailable_message=None,
-            pre_test_buffer_days=active.version.pre_test_buffer_days,
-            post_test_buffer_days=active.version.post_test_buffer_days,
-            sample_received_date=active.version.sample_received_date,
-            planned_test_start_date=active.version.planned_test_start_date,
-            planned_test_complete_date=active.version.planned_test_complete_date,
-            estimated_completion_date=active.version.estimated_completion_date,
+            pre_test_buffer_days=schedule_source.pre_test_buffer_days,
+            post_test_buffer_days=schedule_source.post_test_buffer_days,
+            sample_received_date=schedule_source.sample_received_date,
+            planned_test_start_date=schedule_source.planned_test_start_date,
+            planned_test_complete_date=schedule_source.planned_test_complete_date,
+            estimated_completion_date=schedule_source.estimated_completion_date,
+            editor_draft_id=editor_draft_id,
+            draft_status=draft_status,
+            loaded_source=loaded_source,
+            stale_draft_present=stale_draft_present,
+            draft_updated_at=draft_updated_at,
+            saved_payload_signature=saved_payload_signature,
+        )
+
+    def save_editor_draft(
+        self,
+        command: MatrixEditorSessionDraftSaveCommand,
+    ) -> MatrixEditorSessionDraftSaveResult:
+        """Autosave one Matrix Editor payload into the current non-authority draft."""
+        self._require_project(command.project_id)
+        active = self._confirmed.get_active_by_project(command.project_id)
+        if active is None:
+            raise MatrixEditorSessionError(
+                "Active confirmed matrix is required before Matrix autosave."
+            )
+        expected_command = _confirm_command_from_save_command(command, confirmed_by="autosave")
+        self._validate_expected_active(expected_command, active)
+        draft_record = self._get_current_editor_draft_record(active)
+        if draft_record is None:
+            try:
+                created = self._matrix_revision.create_revision_draft(
+                    CreateMatrixRevisionDraftCommand(project_id=command.project_id)
+                )
+            except MatrixRevisionFlowConflictError:
+                draft_record = self._get_current_editor_draft_record(active)
+                if draft_record is None:
+                    raise
+            else:
+                draft_record = created.record
+        saved = self._save_payload_to_draft(
+            expected_command,
+            draft_record.project_matrix_draft_id,
+        )
+        return MatrixEditorSessionDraftSaveResult(
+            editor_draft_id=saved.record.project_matrix_draft_id,
+            draft_status="current",
+            draft_updated_at=saved.record.updated_at,
+            saved_payload_signature=_build_signature_from_project_draft(saved),
+            active_confirmed_matrix_id=active.version.confirmed_matrix_id,
+            active_confirmed_revision=active.version.confirmed_revision,
+        )
+
+    def discard_editor_draft(
+        self,
+        command: MatrixEditorSessionDraftDiscardCommand,
+    ) -> MatrixEditorSessionDraftDiscardResult:
+        """Discard the current Matrix Editor non-authority draft."""
+        self._require_project(command.project_id)
+        active = self._confirmed.get_active_by_project(command.project_id)
+        if active is None:
+            return MatrixEditorSessionDraftDiscardResult(
+                discarded=False,
+                active_confirmed_matrix_id=None,
+                active_confirmed_revision=None,
+            )
+        draft = self._get_current_editor_draft(active)
+        if draft is None:
+            return MatrixEditorSessionDraftDiscardResult(
+                discarded=False,
+                active_confirmed_matrix_id=active.version.confirmed_matrix_id,
+                active_confirmed_revision=active.version.confirmed_revision,
+            )
+        self._validate_expected_draft_tokens(
+            draft=draft,
+            expected_editor_draft_id=command.expected_editor_draft_id,
+            expected_saved_payload_signature=command.expected_saved_payload_signature,
+        )
+        if self._is_draft_referenced_by_confirmed_authority(
+            command.project_id,
+            draft.record.project_matrix_draft_id,
+        ):
+            raise MatrixEditorSessionDraftConflictError(
+                "Matrix draft is referenced by confirmed authority and cannot be discarded."
+            )
+        discarded = self._drafts.delete(draft.record.project_matrix_draft_id)
+        return MatrixEditorSessionDraftDiscardResult(
+            discarded=discarded,
+            active_confirmed_matrix_id=active.version.confirmed_matrix_id,
+            active_confirmed_revision=active.version.confirmed_revision,
         )
 
     def confirm_session(
@@ -365,7 +550,17 @@ class MatrixEditorSessionService:
                     message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
                     confirmed_snapshot=confirmed,
                 )
-            confirmed = self._publish_as_revision(command, active, confirmed_by)
+            saved_draft = self._load_expected_saved_draft(command, active)
+            if payload_signature != (command.expected_saved_payload_signature or "").strip():
+                raise MatrixEditorSessionDraftConflictError(
+                    "Confirm payload differs from the saved Matrix draft. Save again before confirming."
+                )
+            confirmed = self._publish_saved_revision(
+                draft=saved_draft,
+                command=command,
+                active=active,
+                confirmed_by=confirmed_by,
+            )
             return MatrixEditorSessionConfirmResult(
                 publish_status="published",
                 message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
@@ -377,6 +572,32 @@ class MatrixEditorSessionService:
             message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
             confirmed_snapshot=confirmed,
         )
+
+    def _publish_saved_revision(
+        self,
+        *,
+        draft: ProjectMatrixDraftSnapshot,
+        command: MatrixEditorSessionConfirmCommand,
+        active: ConfirmedMatrixSnapshot,
+        confirmed_by: str,
+    ) -> ConfirmedMatrixSnapshot:
+        revision_snapshot = _build_confirmed_snapshot_from_session_draft(
+            draft=draft,
+            confirmed_by=confirmed_by,
+            confirmed_revision=active.version.confirmed_revision + 1,
+            source_import_id=active.version.source_import_id,
+            source_snapshot_id=active.version.source_snapshot_id,
+        )
+        try:
+            return self._confirmed.supersede_active_and_create_snapshot(
+                previous_active_confirmed_matrix_id=active.version.confirmed_matrix_id,
+                snapshot=revision_snapshot,
+                superseded_reason="Matrix Editor saved draft confirm.",
+            )
+        except LookupError as exc:
+            raise MatrixEditorSessionActiveChangedError(
+                "Matrix was updated. Reload the latest Matrix to continue."
+            ) from exc
 
     def _publish_as_revision(
         self,
@@ -418,6 +639,107 @@ class MatrixEditorSessionService:
             raise MatrixEditorSessionActiveChangedError(
                 "Matrix was updated. Reload the latest Matrix to continue."
             ) from exc
+
+    def _get_current_editor_draft_record(
+        self,
+        active: ConfirmedMatrixSnapshot,
+    ) -> ProjectMatrixDraftRecord | None:
+        records = [
+            record
+            for record in self._drafts.list_by_project(active.version.project_id)
+            if record.base_confirmed_matrix_id == active.version.confirmed_matrix_id
+            and record.status == ProjectMatrixDraftStatus.DRAFT
+        ]
+        if not records:
+            return None
+        return sorted(
+            records,
+            key=lambda record: (record.updated_at, record.project_matrix_draft_id),
+            reverse=True,
+        )[0]
+
+    def _get_current_editor_draft(
+        self,
+        active: ConfirmedMatrixSnapshot,
+    ) -> ProjectMatrixDraftSnapshot | None:
+        record = self._get_current_editor_draft_record(active)
+        if record is None:
+            return None
+        draft = self._drafts.get(record.project_matrix_draft_id)
+        if draft is None or draft.record.project_id != active.version.project_id:
+            return None
+        return draft
+
+    def _has_stale_draft(
+        self,
+        project_id: str,
+        active: ConfirmedMatrixSnapshot | None,
+    ) -> bool:
+        active_id = active.version.confirmed_matrix_id if active is not None else None
+        return any(
+            record.base_confirmed_matrix_id is not None
+            and record.base_confirmed_matrix_id != active_id
+            and record.status == ProjectMatrixDraftStatus.DRAFT
+            for record in self._drafts.list_by_project(project_id)
+        )
+
+    def _load_expected_saved_draft(
+        self,
+        command: MatrixEditorSessionConfirmCommand,
+        active: ConfirmedMatrixSnapshot,
+    ) -> ProjectMatrixDraftSnapshot:
+        expected_id = (command.expected_editor_draft_id or "").strip()
+        expected_signature = (command.expected_saved_payload_signature or "").strip()
+        if not expected_id or not expected_signature:
+            raise MatrixEditorSessionDraftConflictError(
+                "Save Matrix changes before confirming."
+            )
+        draft = self._drafts.get(expected_id)
+        if draft is None:
+            raise MatrixEditorSessionDraftConflictError(
+                "Saved Matrix draft is no longer available. Reload the latest Matrix."
+            )
+        if draft.record.project_id != command.project_id:
+            raise MatrixEditorSessionDraftConflictError(
+                "Saved Matrix draft project lineage mismatch."
+            )
+        if draft.record.base_confirmed_matrix_id != active.version.confirmed_matrix_id:
+            raise MatrixEditorSessionDraftConflictError(
+                "Saved Matrix draft is stale relative to current active Matrix."
+            )
+        if _build_signature_from_project_draft(draft) != expected_signature:
+            raise MatrixEditorSessionDraftConflictError(
+                "Saved Matrix draft changed. Reload or save again before confirming."
+            )
+        return draft
+
+    def _validate_expected_draft_tokens(
+        self,
+        *,
+        draft: ProjectMatrixDraftSnapshot,
+        expected_editor_draft_id: str | None,
+        expected_saved_payload_signature: str | None,
+    ) -> None:
+        expected_id = (expected_editor_draft_id or "").strip()
+        expected_signature = (expected_saved_payload_signature or "").strip()
+        if expected_id and expected_id != draft.record.project_matrix_draft_id:
+            raise MatrixEditorSessionDraftConflictError(
+                "Matrix draft changed before cancel. Reload the latest Matrix."
+            )
+        if expected_signature and _build_signature_from_project_draft(draft) != expected_signature:
+            raise MatrixEditorSessionDraftConflictError(
+                "Matrix draft changed before cancel. Reload the latest Matrix."
+            )
+
+    def _is_draft_referenced_by_confirmed_authority(
+        self,
+        project_id: str,
+        project_matrix_draft_id: str,
+    ) -> bool:
+        return any(
+            snapshot.version.project_matrix_draft_id == project_matrix_draft_id
+            for snapshot in self._confirmed.list_by_project(project_id)
+        )
 
     def _publish_with_source_replacement(
         self,
@@ -650,6 +972,75 @@ def _build_editor_draft_from_active(
         for cell in active.cells
     )
     return MatrixEditorSessionDraft(groups=groups, rows=rows, cells=cells)
+
+
+def _build_editor_draft_from_project_draft(
+    draft: ProjectMatrixDraftSnapshot,
+) -> MatrixEditorSessionDraft:
+    groups = tuple(
+        MatrixEditorSessionGroup(
+            draft_group_id=group.draft_group_id,
+            source_group_snapshot_id=group.source_group_snapshot_id,
+            group_order=group.group_order,
+            group_key=group.group_key,
+            group_label=_normalize_group_label(group.group_label, fallback=str(group.group_order)),
+            is_selected=group.is_selected,
+            sample_quantity_expression=group.sample_quantity_expression,
+            sample_note=group.sample_note,
+        )
+        for group in sorted(draft.groups, key=lambda item: item.group_order)
+    )
+    rows = tuple(
+        MatrixEditorSessionRow(
+            draft_row_id=row.draft_row_id,
+            source_row_snapshot_id=row.source_row_snapshot_id,
+            row_order=row.row_order,
+            test_item=row.test_item,
+            source_section=row.source_section,
+            method=row.method,
+            condition=row.condition,
+            requirement=row.requirement,
+            day_expression=row.day_expression,
+            is_sample_row=row.is_sample_row,
+        )
+        for row in sorted(draft.rows, key=lambda item: item.row_order)
+    )
+    cells = tuple(
+        MatrixEditorSessionCell(
+            draft_row_id=cell.draft_row_id,
+            draft_group_id=cell.draft_group_id,
+            cell_value=cell.cell_value,
+        )
+        for cell in draft.cells
+    )
+    return MatrixEditorSessionDraft(groups=groups, rows=rows, cells=cells)
+
+
+def _confirm_command_from_save_command(
+    command: MatrixEditorSessionDraftSaveCommand,
+    *,
+    confirmed_by: str,
+) -> MatrixEditorSessionConfirmCommand:
+    return MatrixEditorSessionConfirmCommand(
+        project_id=command.project_id,
+        expected_active_confirmed_matrix_id=command.expected_active_confirmed_matrix_id,
+        expected_active_confirmed_revision=command.expected_active_confirmed_revision,
+        source_document_path=command.source_document_path,
+        source_document_name=command.source_document_name,
+        source_format=command.source_format,
+        source_import_id=command.source_import_id,
+        source_snapshot_id=command.source_snapshot_id,
+        confirmed_by=confirmed_by,
+        groups=command.groups,
+        rows=command.rows,
+        cells=command.cells,
+        pre_test_buffer_days=command.pre_test_buffer_days,
+        post_test_buffer_days=command.post_test_buffer_days,
+        sample_received_date=command.sample_received_date,
+        planned_test_start_date=command.planned_test_start_date,
+        planned_test_complete_date=command.planned_test_complete_date,
+        estimated_completion_date=command.estimated_completion_date,
+    )
 
 
 def _build_source_preview_payload(
@@ -931,6 +1322,63 @@ def _build_signature_from_confirmed(snapshot: ConfirmedMatrixSnapshot) -> str:
         "schedule": _schedule_signature_from_confirmed(snapshot),
     }
     return repr(payload)
+
+
+def _build_signature_from_project_draft(draft: ProjectMatrixDraftSnapshot) -> str:
+    command = MatrixEditorSessionConfirmCommand(
+        project_id=draft.record.project_id,
+        expected_active_confirmed_matrix_id=draft.record.base_confirmed_matrix_id,
+        expected_active_confirmed_revision=None,
+        source_document_path=None,
+        source_document_name=None,
+        source_format=None,
+        source_import_id=draft.record.source_import_id,
+        source_snapshot_id=draft.record.source_snapshot_id,
+        confirmed_by="signature",
+        groups=tuple(
+            MatrixEditorSessionGroup(
+                draft_group_id=group.draft_group_id,
+                source_group_snapshot_id=group.source_group_snapshot_id,
+                group_order=group.group_order,
+                group_key=group.group_key,
+                group_label=group.group_label,
+                is_selected=group.is_selected,
+                sample_quantity_expression=group.sample_quantity_expression,
+                sample_note=group.sample_note,
+            )
+            for group in draft.groups
+        ),
+        rows=tuple(
+            MatrixEditorSessionRow(
+                draft_row_id=row.draft_row_id,
+                source_row_snapshot_id=row.source_row_snapshot_id,
+                row_order=row.row_order,
+                test_item=row.test_item,
+                source_section=row.source_section,
+                method=row.method,
+                condition=row.condition,
+                requirement=row.requirement,
+                day_expression=row.day_expression,
+                is_sample_row=row.is_sample_row,
+            )
+            for row in draft.rows
+        ),
+        cells=tuple(
+            MatrixEditorSessionCell(
+                draft_row_id=cell.draft_row_id,
+                draft_group_id=cell.draft_group_id,
+                cell_value=cell.cell_value,
+            )
+            for cell in draft.cells
+        ),
+        pre_test_buffer_days=draft.record.pre_test_buffer_days,
+        post_test_buffer_days=draft.record.post_test_buffer_days,
+        sample_received_date=draft.record.sample_received_date,
+        planned_test_start_date=draft.record.planned_test_start_date,
+        planned_test_complete_date=draft.record.planned_test_complete_date,
+        estimated_completion_date=draft.record.estimated_completion_date,
+    )
+    return _build_signature_from_session_payload(command)
 
 
 def _build_manual_preview_payload(

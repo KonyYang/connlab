@@ -392,6 +392,9 @@ class _ConfirmedStore:
     def get_active_by_project(self, project_id: str):
         return self._active if project_id == "P1" else None
 
+    def list_by_project(self, project_id: str):
+        return (self._active,) if project_id == "P1" and self._active is not None else ()
+
     def supersede_active_and_create_snapshot(self, *, previous_active_confirmed_matrix_id: str, snapshot, superseded_reason=None):
         self._active = snapshot
         return snapshot
@@ -431,6 +434,15 @@ class _SourceStore:
 
 
 class _DraftStore:
+    def get(self, project_matrix_draft_id: str):
+        return None
+
+    def list_by_project(self, project_id: str):
+        return ()
+
+    def delete(self, project_matrix_draft_id: str):
+        return None
+
     def get_by_project_and_base_confirmed_matrix(self, project_id: str, base_confirmed_matrix_id: str):
         return None
 

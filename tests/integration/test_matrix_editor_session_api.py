@@ -121,6 +121,180 @@ def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
         engine.dispose()
 
 
+def test_matrix_editor_session_autosave_restore_confirm_and_discard(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]},
+        )
+        assert created.status_code == 201
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+        confirmed = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirmed.status_code == 201
+
+        seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert seed.status_code == 200
+        seed_payload = seed.json()
+        assert seed_payload["loaded_source"] == "authority"
+        assert seed_payload["draft_status"] == "missing"
+        editor_draft = seed_payload["editor_draft"]
+        assert editor_draft is not None
+        edited_rows = [
+            {**row, "method": "Updated autosaved method"}
+            if row["draft_row_id"] == editor_draft["rows"][0]["draft_row_id"]
+            else row
+            for row in editor_draft["rows"]
+        ]
+
+        saved = client.put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "groups": editor_draft["groups"],
+                "rows": edited_rows,
+                "cells": editor_draft["cells"],
+            },
+        )
+        assert saved.status_code == 200
+        saved_payload = saved.json()
+        assert saved_payload["draft_status"] == "current"
+        assert saved_payload["editor_draft_id"]
+        assert saved_payload["saved_payload_signature"]
+
+        restored = client.get("/api/projects/P1/matrix-editor/session")
+        assert restored.status_code == 200
+        restored_payload = restored.json()
+        assert restored_payload["loaded_source"] == "draft"
+        assert restored_payload["editor_draft_id"] == saved_payload["editor_draft_id"]
+        assert restored_payload["editor_draft"]["rows"][0]["method"] == "Updated autosaved method"
+
+        stale_confirm = client.post(
+            "/api/projects/P1/matrix-editor/session/confirm",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "expected_editor_draft_id": saved_payload["editor_draft_id"],
+                "expected_saved_payload_signature": "wrong-signature",
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "confirmed_by": "operator",
+                "groups": editor_draft["groups"],
+                "rows": edited_rows,
+                "cells": editor_draft["cells"],
+            },
+        )
+        assert stale_confirm.status_code == 409
+
+        mismatched_confirm = client.post(
+            "/api/projects/P1/matrix-editor/session/confirm",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "expected_editor_draft_id": saved_payload["editor_draft_id"],
+                "expected_saved_payload_signature": saved_payload["saved_payload_signature"],
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "confirmed_by": "operator",
+                "groups": editor_draft["groups"],
+                "rows": [
+                    {**edited_rows[0], "method": "Unsaved method that must not publish"}
+                ],
+                "cells": editor_draft["cells"],
+            },
+        )
+        assert mismatched_confirm.status_code == 409
+
+        confirmed_saved = client.post(
+            "/api/projects/P1/matrix-editor/session/confirm",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "expected_editor_draft_id": saved_payload["editor_draft_id"],
+                "expected_saved_payload_signature": saved_payload["saved_payload_signature"],
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "confirmed_by": "operator",
+                "groups": editor_draft["groups"],
+                "rows": edited_rows,
+                "cells": editor_draft["cells"],
+            },
+        )
+        assert confirmed_saved.status_code == 200
+        confirmed_payload = confirmed_saved.json()
+        assert confirmed_payload["publish_status"] == "published"
+        assert (
+            confirmed_payload["confirmed_snapshot"]["rows"][0]["method"]
+            == "Updated autosaved method"
+        )
+
+        latest_seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert latest_seed.status_code == 200
+        latest_payload = latest_seed.json()
+        latest_editor_draft = latest_payload["editor_draft"]
+        assert latest_editor_draft is not None
+        saved_again = client.put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={
+                "expected_active_confirmed_matrix_id": latest_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": latest_payload["active_confirmed_revision"],
+                "source_document_path": latest_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": latest_payload["source_preview_payload"]["source_document_name"],
+                "source_format": latest_payload["source_preview_payload"]["source_format"],
+                "source_import_id": latest_payload["active_source_import_id"],
+                "source_snapshot_id": latest_payload["active_source_snapshot_id"],
+                "groups": latest_editor_draft["groups"],
+                "rows": [
+                    {**latest_editor_draft["rows"][0], "method": "Discard me"}
+                ],
+                "cells": latest_editor_draft["cells"],
+            },
+        )
+        assert saved_again.status_code == 200
+        discard = client.request(
+            "DELETE",
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={
+                "expected_editor_draft_id": saved_again.json()["editor_draft_id"],
+                "expected_saved_payload_signature": saved_again.json()["saved_payload_signature"],
+            },
+        )
+        assert discard.status_code == 200
+        assert discard.json()["discarded"] is True
+
+        after_discard = client.get("/api/projects/P1/matrix-editor/session")
+        assert after_discard.status_code == 200
+        after_payload = after_discard.json()
+        assert after_payload["loaded_source"] == "authority"
+        assert after_payload["draft_status"] == "missing"
+        assert after_payload["editor_draft"]["rows"][0]["method"] == "Updated autosaved method"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
     tmp_path: Path,
 ) -> None:
@@ -151,12 +325,37 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
             else row
             for row in editor_draft["rows"]
         ]
+        saved = client.put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
+                "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "pre_test_buffer_days": "1",
+                "post_test_buffer_days": "1",
+                "sample_received_date": "2026-06-01",
+                "planned_test_start_date": "2026-06-02",
+                "planned_test_complete_date": "2026-06-03",
+                "estimated_completion_date": "2026-06-04",
+                "groups": editor_draft["groups"],
+                "rows": rows,
+                "cells": editor_draft["cells"],
+            },
+        )
+        assert saved.status_code == 200
+        saved_payload = saved.json()
 
         response = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+                "expected_editor_draft_id": saved_payload["editor_draft_id"],
+                "expected_saved_payload_signature": saved_payload["saved_payload_signature"],
                 "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
                 "source_document_name": seed_payload["source_preview_payload"]["source_document_name"],
                 "source_format": seed_payload["source_preview_payload"]["source_format"],
@@ -381,9 +580,19 @@ def test_matrix_editor_session_confirm_allows_stale_expected_when_source_is_unch
                 for index, cell in enumerate(editor_draft["cells"])
             ],
         }
+        first_saved = client.put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={key: value for key, value in first_session_payload.items() if key != "confirmed_by"},
+        )
+        assert first_saved.status_code == 200
+        first_saved_payload = first_saved.json()
         first_confirm = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
-            json=first_session_payload,
+            json={
+                **first_session_payload,
+                "expected_editor_draft_id": first_saved_payload["editor_draft_id"],
+                "expected_saved_payload_signature": first_saved_payload["saved_payload_signature"],
+            },
         )
         assert first_confirm.status_code == 200
         assert first_confirm.json()["publish_status"] == "published"
@@ -397,9 +606,19 @@ def test_matrix_editor_session_confirm_allows_stale_expected_when_source_is_unch
                 for index, cell in enumerate(editor_draft["cells"])
             ],
         }
+        stale_saved = client.put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={key: value for key, value in stale_expected_payload.items() if key != "confirmed_by"},
+        )
+        assert stale_saved.status_code == 200
+        stale_saved_payload = stale_saved.json()
         response = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
-            json=stale_expected_payload,
+            json={
+                **stale_expected_payload,
+                "expected_editor_draft_id": stale_saved_payload["editor_draft_id"],
+                "expected_saved_payload_signature": stale_saved_payload["saved_payload_signature"],
+            },
         )
         assert response.status_code == 200
         payload = response.json()
