@@ -9,12 +9,14 @@ import {
   fetchConfirmedMatrixRuntimeProjectionSnapshot,
   fetchOfficialFolderCheck,
   fetchPublicDriveUploadPreview,
+  fetchProjectFolderRequiredFormsPreview,
   fetchProjectPackagePreview,
   fetchOfficialWorkspacePreview,
   fetchRequestMaterialPreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
   getConfirmedFeeLatest,
+  generateProjectFolderRequiredForms,
   fetchProjectSection2SyncPreview,
   getProjectTestPlanDraft,
   getProject,
@@ -49,6 +51,9 @@ import {
   type MatrixValidationSummary,
   type Project,
   type ProjectPackagePreview,
+  type ProjectFolderRequiredFormsGenerateRequest,
+  type ProjectFolderRequiredFormsGenerateResponse,
+  type ProjectFolderRequiredFormsPreview,
   type OfficialFolderCheckPreview,
   type OfficialFolderRepairResponse,
   type OfficialWorkspaceCreateResponse,
@@ -121,6 +126,11 @@ export type ProjectWorkbenchModel = {
   requestMaterialLoading: boolean;
   requestMaterialCollecting: boolean;
   requestMaterialError: string | null;
+  requiredFormsPreview: ProjectFolderRequiredFormsPreview | null;
+  requiredFormsLoading: boolean;
+  requiredFormsGenerating: boolean;
+  requiredFormsError: string | null;
+  requiredFormsResult: ProjectFolderRequiredFormsGenerateResponse | null;
   section2SyncPreview: ProjectSection2SyncResponse | null;
   section2SyncLoading: boolean;
   section2SyncSyncing: boolean;
@@ -187,6 +197,8 @@ export type ProjectWorkbenchModel = {
   onUploadPublicDriveProjectFolder: () => Promise<void>;
   onRefreshRequestMaterial: () => Promise<void>;
   onCollectRequestMaterial: () => Promise<void>;
+  onRefreshRequiredForms: () => Promise<void>;
+  onGenerateRequiredForms: () => Promise<void>;
   onRefreshSection2Sync: () => Promise<void>;
   onSyncSection2: (input: ProjectSection2SyncRequest) => Promise<void>;
   onExecuteApprovalPackage: () => Promise<void>;
@@ -307,6 +319,13 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [requestMaterialLoading, setRequestMaterialLoading] = useState(false);
   const [requestMaterialCollecting, setRequestMaterialCollecting] = useState(false);
   const [requestMaterialError, setRequestMaterialError] = useState<string | null>(null);
+  const [requiredFormsPreview, setRequiredFormsPreview] =
+    useState<ProjectFolderRequiredFormsPreview | null>(null);
+  const [requiredFormsLoading, setRequiredFormsLoading] = useState(false);
+  const [requiredFormsGenerating, setRequiredFormsGenerating] = useState(false);
+  const [requiredFormsError, setRequiredFormsError] = useState<string | null>(null);
+  const [requiredFormsResult, setRequiredFormsResult] =
+    useState<ProjectFolderRequiredFormsGenerateResponse | null>(null);
   const [section2SyncPreview, setSection2SyncPreview] =
     useState<ProjectSection2SyncResponse | null>(null);
   const [section2SyncLoading, setSection2SyncLoading] = useState(false);
@@ -334,6 +353,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshPackagePreview();
     void onRefreshOfficialWorkspacePreview();
     void onRefreshRequestMaterial();
+    void onRefreshRequiredForms();
     void onRefreshOfficialFolderCheck();
     void onRefreshPublicDriveUploadPreview();
     void loadMatrixSourceCandidates(
@@ -681,11 +701,56 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       );
       await onRefreshPackagePreview();
       await onRefreshOfficialFolderCheck();
+      await onRefreshRequiredForms();
       await onRefreshPublicDriveUploadPreview();
     } catch (err) {
       setRequestMaterialError((err as Error).message);
     } finally {
       setRequestMaterialCollecting(false);
+    }
+  }
+
+  async function onRefreshRequiredForms(): Promise<void> {
+    setRequiredFormsLoading(true);
+    try {
+      const preview = await fetchProjectFolderRequiredFormsPreview(projectId);
+      setRequiredFormsPreview(preview);
+      setRequiredFormsError(null);
+    } catch (err) {
+      setRequiredFormsPreview(null);
+      setRequiredFormsError((err as Error).message);
+    } finally {
+      setRequiredFormsLoading(false);
+    }
+  }
+
+  async function onGenerateRequiredForms(): Promise<void> {
+    if (!requiredFormsPreview) {
+      setRequiredFormsError("Refresh Required forms before generating controlled files.");
+      return;
+    }
+    setRequiredFormsGenerating(true);
+    try {
+      const result = await generateProjectFolderRequiredForms(
+        projectId,
+        buildRequiredFormsGenerateRequest(requiredFormsPreview)
+      );
+      setRequiredFormsResult(result);
+      setRequiredFormsError(null);
+      setRequiredFormsPreview(await fetchProjectFolderRequiredFormsPreview(projectId));
+      setMessage(
+        result.status === "partial"
+          ? "Required forms partially generated. Review remaining items."
+          : "Required forms generated in the Project Folder."
+      );
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      await onRefreshOfficialFolderCheck();
+      await onRefreshPublicDriveUploadPreview();
+      await onRefreshPackagePreview();
+    } catch (err) {
+      setRequiredFormsError((err as Error).message);
+    } finally {
+      setRequiredFormsGenerating(false);
     }
   }
 
@@ -1077,6 +1142,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     requestMaterialLoading,
     requestMaterialCollecting,
     requestMaterialError,
+    requiredFormsPreview,
+    requiredFormsLoading,
+    requiredFormsGenerating,
+    requiredFormsError,
+    requiredFormsResult,
     section2SyncPreview,
     section2SyncLoading,
     section2SyncSyncing,
@@ -1136,6 +1206,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial,
     onCollectRequestMaterial,
+    onRefreshRequiredForms,
+    onGenerateRequiredForms,
     onRefreshSection2Sync,
     onSyncSection2,
     onExecuteApprovalPackage,
@@ -1307,6 +1379,53 @@ async function refreshOutputStatus(
   } catch {
     setOutputStatusSummary(null);
   }
+}
+
+function buildRequiredFormsGenerateRequest(
+  preview: ProjectFolderRequiredFormsPreview
+): ProjectFolderRequiredFormsGenerateRequest {
+  const officialProjectFolderPath = preview.official_project_folder_path;
+  const confirmedMatrixId = preview.confirmed_matrix_id;
+  const confirmedRevision = preview.confirmed_revision;
+  const confirmedFeeId = preview.confirmed_fee_id;
+  const confirmedFeeRevision = preview.confirmed_fee_revision;
+  const confirmedFeePricingDraftEditId = preview.confirmed_fee_pricing_draft_edit_id;
+  const customerFeedbackTemplatePath = preview.customer_feedback_template_path;
+  if (
+    !officialProjectFolderPath ||
+    !confirmedMatrixId ||
+    confirmedRevision === null ||
+    !confirmedFeeId ||
+    confirmedFeeRevision === null ||
+    !confirmedFeePricingDraftEditId ||
+    !customerFeedbackTemplatePath
+  ) {
+    throw new Error("Required forms preview is missing generation context.");
+  }
+  const expectedTargets = preview.items
+    .filter((item) => item.action === "generate" || item.action === "update")
+    .map((item) => {
+      if (!item.target_path) {
+        throw new Error(`${item.label} target path is missing.`);
+      }
+      return {
+        key: item.key,
+        target_path: item.target_path
+      };
+    });
+  if (expectedTargets.length === 0) {
+    throw new Error("No Required forms need generation.");
+  }
+  return {
+    expected_official_project_folder_path: officialProjectFolderPath,
+    expected_confirmed_matrix_id: confirmedMatrixId,
+    expected_confirmed_revision: confirmedRevision,
+    expected_confirmed_fee_id: confirmedFeeId,
+    expected_confirmed_fee_revision: confirmedFeeRevision,
+    expected_confirmed_fee_pricing_draft_edit_id: confirmedFeePricingDraftEditId,
+    expected_customer_feedback_template_path: customerFeedbackTemplatePath,
+    expected_targets: expectedTargets
+  };
 }
 
 function deriveApprovalInputAutofill(input: {

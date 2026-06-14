@@ -369,6 +369,82 @@ export type PublicDriveUploadResult = {
   preview: PublicDriveUploadPreview;
 };
 
+export type ProjectFolderRequiredFormsStatus =
+  | "blocked"
+  | "ready"
+  | "current"
+  | "conflict";
+
+export type ProjectFolderRequiredFormKey =
+  | "test_record"
+  | "fee_form"
+  | "customer_feedback_form";
+
+export type ProjectFolderRequiredFormAction =
+  | "generate"
+  | "update"
+  | "skip"
+  | "conflict"
+  | "blocked";
+
+export type ProjectFolderRequiredFormPreviewItem = {
+  key: ProjectFolderRequiredFormKey;
+  label: string;
+  target_path: string | null;
+  status: "ready" | "current" | "blocked" | "conflict";
+  action: ProjectFolderRequiredFormAction;
+  message: string;
+};
+
+export type ProjectFolderRequiredFormsPreview = {
+  project_id: string;
+  status: ProjectFolderRequiredFormsStatus;
+  official_project_folder_path: string | null;
+  confirmed_matrix_id: string | null;
+  confirmed_revision: number | null;
+  confirmed_fee_id: string | null;
+  confirmed_fee_revision: number | null;
+  confirmed_fee_pricing_draft_edit_id: string | null;
+  customer_feedback_template_path: string | null;
+  items: ProjectFolderRequiredFormPreviewItem[];
+  blockers: string[];
+  warnings: string[];
+};
+
+export type ProjectFolderRequiredFormsGenerateTarget = {
+  key: ProjectFolderRequiredFormKey;
+  target_path: string;
+};
+
+export type ProjectFolderRequiredFormsGenerateRequest = {
+  expected_official_project_folder_path: string;
+  expected_confirmed_matrix_id: string;
+  expected_confirmed_revision: number;
+  expected_confirmed_fee_id: string;
+  expected_confirmed_fee_revision: number;
+  expected_confirmed_fee_pricing_draft_edit_id: string;
+  expected_customer_feedback_template_path: string;
+  expected_targets: ProjectFolderRequiredFormsGenerateTarget[];
+};
+
+export type ProjectFolderRequiredFormsGenerateItem = {
+  key: ProjectFolderRequiredFormKey;
+  label: string;
+  target_path: string;
+  status: "generated" | "updated" | "skipped" | "failed" | "conflict";
+  source_path: string | null;
+  output_record_id: string | null;
+  message: string;
+};
+
+export type ProjectFolderRequiredFormsGenerateResponse = {
+  project_id: string;
+  status: "generated" | "partial" | "blocked" | "conflict";
+  official_project_folder_path: string;
+  items: ProjectFolderRequiredFormsGenerateItem[];
+  warnings: string[];
+};
+
 export type PrecheckIssue = {
   issue_id: string;
   category: string;
@@ -1345,6 +1421,7 @@ export type ProjectOutputKind =
   | "section2_write_back"
   | "test_record_form"
   | "fee_evaluation"
+  | "customer_feedback_form"
   | "approval_package";
 
 export type ProjectOutputStatus = "missing" | "current" | "stale" | "manual" | "failed";
@@ -1360,6 +1437,9 @@ export type ProjectOutputStatusItem = {
   draft_version: number | null;
   reason: string;
   updated_at: string | null;
+  output_sha256?: string | null;
+  output_size_bytes?: number | null;
+  source_context_signature?: string | null;
 };
 
 export type ProjectOutputStatusSummary = {
@@ -2751,6 +2831,28 @@ export function uploadPublicDriveProjectFolder(
   return requestJson<PublicDriveUploadResult>(
     `/api/projects/${encodeURIComponent(projectId)}/public-drive/upload`,
     { method: "POST" }
+  );
+}
+
+export function fetchProjectFolderRequiredFormsPreview(
+  projectId: string
+): Promise<ProjectFolderRequiredFormsPreview> {
+  return requestJson<ProjectFolderRequiredFormsPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/project-folder/required-forms/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function generateProjectFolderRequiredForms(
+  projectId: string,
+  input: ProjectFolderRequiredFormsGenerateRequest
+): Promise<ProjectFolderRequiredFormsGenerateResponse> {
+  return requestJson<ProjectFolderRequiredFormsGenerateResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/project-folder/required-forms/generate`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
   );
 }
 

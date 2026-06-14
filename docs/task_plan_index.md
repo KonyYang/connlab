@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-14
-Status: TASK_320 complete after explicit user approval. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Do not enter a later task without separate user approval.
+Status: TASK_321 complete after explicit user approval. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. TASK_317A UI blueprint remains the accepted planning prerequisite for the Project Folder direction. Do not enter a later task without separate user approval.
 
 ## Decision
 
@@ -44,7 +44,7 @@ docs/task_XXX_*_plan.md
 Latest completed task plan:
 
 ```text
-docs/task_313a_project_workbench_lifecycle_mode_redesign_plan.md
+docs/task_321_project_folder_required_forms_generation_plan.md
 ```
 
 Latest task plan accepted for planning:
@@ -62,25 +62,13 @@ docs/task_313b_official_project_workspace_execution_guide.md
 Latest completed task file:
 
 ```text
-tasks/TASK_320_FINAL_SINGLE_TASK_WORKBENCH_UI.md
+tasks/TASK_321_PROJECT_FOLDER_REQUIRED_FORMS_GENERATION.md
 ```
 
 Latest completed executable plan:
 
 ```text
-docs/task_320_final_single_task_workbench_ui_plan.md
-```
-
-Latest proposed task file:
-
-```text
-None.
-```
-
-Latest proposed executable plan:
-
-```text
-None.
+docs/task_321_project_folder_required_forms_generation_plan.md
 ```
 
 Latest accepted planning prerequisite:

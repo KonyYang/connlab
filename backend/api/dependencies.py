@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from functools import lru_cache
+from pathlib import Path
 
 from fastapi import Depends
 from sqlalchemy.engine import Engine
@@ -111,6 +112,7 @@ from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftService,
 )
 from backend.application.confirmed_matrix_fee_evaluation_export_service import (
+    ExportConfirmedMatrixFeeEvaluationCommand,
     ConfirmedMatrixFeeEvaluationExportService,
 )
 from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service import (
@@ -129,6 +131,7 @@ from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
 from backend.application.confirmed_matrix_test_record_document_generation_service import (
+    GenerateConfirmedMatrixTestRecordDocumentCommand,
     ConfirmedMatrixTestRecordDocumentGenerationService,
 )
 from backend.application.matrix_editor_test_record_document_generation_service import (
@@ -138,7 +141,14 @@ from backend.application.project_section2_sync_service import (
     ProjectSection2SyncService,
 )
 from backend.application.customer_feedback_form_generation_service import (
+    CustomerFeedbackFormGenerationCommand,
     CustomerFeedbackFormGenerationService,
+)
+from backend.application.customer_feedback_template_discovery import (
+    discover_customer_feedback_template,
+)
+from backend.application.project_folder_required_forms_service import (
+    ProjectFolderRequiredFormsService,
 )
 from backend.application.project_package_preview_service import (
     ProjectPackagePreviewService,
@@ -198,6 +208,9 @@ from backend.infrastructure.files.official_project_folder_repair_gateway import 
 )
 from backend.infrastructure.files.public_drive_upload_gateway import (
     PublicDriveUploadGateway,
+)
+from backend.infrastructure.files.project_folder_required_forms_gateway import (
+    ProjectFolderRequiredFormsFileGateway,
 )
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
@@ -786,6 +799,171 @@ def get_public_drive_upload_service(
         folder_check_service=get_official_project_folder_check_service(session),
         upload_repository=PublicDriveUploadRepository(session),
         gateway=PublicDriveUploadGateway(),
+    )
+
+
+class _ConfirmedMatrixReader:
+    """Adapter exposing active Confirmed Matrix snapshots to Required forms."""
+
+    def __init__(self, store: ConfirmedMatrixAuthorityRepository) -> None:
+        self._store = store
+
+    def get_active_snapshot(self, project_id: str):
+        """Return active Confirmed Matrix snapshot for one project."""
+        return self._store.get_active_by_project(project_id)
+
+
+class _CustomerFeedbackTemplateReader:
+    """Adapter for Customer Feedback template discovery."""
+
+    def __init__(self, resources: ExternalResourceRepository) -> None:
+        self._resources = resources
+
+    def preview_template(self, project_id: str) -> Path:
+        """Return the unique Customer Feedback template path."""
+        resource = self._resources.get_by_type(ExternalResourceType.PROJECT_FOLDER_TEMPLATE)
+        if resource is None:
+            raise ValueError("Template folder is not configured.")
+        return discover_customer_feedback_template(Path(resource.path))
+
+
+class _NoopProjectOutputService:
+    """Output service used by staging generators to avoid final output side effects."""
+
+    def __init__(self, real_service: ProjectOutputRecordService) -> None:
+        self._real_service = real_service
+
+    def get_status_summary(self, project_id: str):
+        """Return the real active draft context."""
+        return self._real_service.get_status_summary(project_id)
+
+    def register_output(self, command):
+        """Return a no-op record-like object instead of persisting staging output."""
+        class _Record:
+            output_record_id = None
+
+        return _Record()
+
+
+class _RequiredFormsStagingGenerator:
+    """Generate Required forms into controlled staging without final output records."""
+
+    _FEE_TEMPLATE_PATH = Path("D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls")
+
+    def __init__(
+        self,
+        *,
+        project_id: str | None = None,
+        settings: Settings,
+        test_record_service: ConfirmedMatrixTestRecordDocumentGenerationService,
+        fee_export_service: ConfirmedMatrixFeeEvaluationExportService,
+        customer_feedback_service: CustomerFeedbackFormGenerationService,
+    ) -> None:
+        self._project_id = project_id
+        self._settings = settings
+        self._test_record_service = test_record_service
+        self._fee_export_service = fee_export_service
+        self._customer_feedback_service = customer_feedback_service
+
+    def generate(self, *, project_id: str, key: str, target_name: str) -> Path:
+        """Generate one Required form into staging and return the staged file path."""
+        output_dir = self._settings.data_dir / "staged_required_forms" / project_id
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if key == "test_record":
+            if self._settings.test_record.template_path is None:
+                raise ValueError("Test Record template path is not configured.")
+            result = self._test_record_service.generate(
+                GenerateConfirmedMatrixTestRecordDocumentCommand(
+                    project_id=project_id,
+                    output_dir=output_dir,
+                    template_path=self._settings.test_record.template_path,
+                )
+            )
+            return _rename_staged_file(result.output_path, target_name)
+        if key == "fee_form":
+            result = self._fee_export_service.export(
+                ExportConfirmedMatrixFeeEvaluationCommand(
+                    project_id=project_id,
+                    template_path=self._FEE_TEMPLATE_PATH,
+                    output_dir=output_dir,
+                    output_file_name=target_name,
+                    overwrite=True,
+                    allow_review_required=True,
+                    fill_mode="matrix_basic",
+                )
+            )
+            return result.output_path
+        if key == "customer_feedback_form":
+            result = self._customer_feedback_service.generate(
+                CustomerFeedbackFormGenerationCommand(
+                    project_id=project_id,
+                    output_dir=output_dir,
+                )
+            )
+            return _rename_staged_file(result.output_path, target_name)
+        raise ValueError(f"Unsupported Required form key: {key}")
+
+
+def _rename_staged_file(path: Path, target_name: str) -> Path:
+    """Rename a staged file to the deterministic target name when needed."""
+    target = path.with_name(target_name)
+    if path == target:
+        return path
+    target.unlink(missing_ok=True)
+    path.replace(target)
+    return target
+
+
+def get_project_folder_required_forms_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> ProjectFolderRequiredFormsService:
+    """Build the Project Folder Required forms service."""
+    confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+    output_service = ProjectOutputRecordService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+        output_store=ProjectOutputRecordRepository(session),
+    )
+    test_record_service = ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=ConfirmedMatrixTestRecordPreviewService(
+            confirmed_store=confirmed_store,
+        ),
+        project_store=ProjectRepository(session),
+        writer=TestRecordDocumentGateway(),
+        folder_store=None,
+        ltr_store=LtrRecordRepository(session),
+        intake_case_store=IntakeCaseRepository(session),
+        intake_draft_store=IntakeDraftRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+    )
+    fee_service = ConfirmedMatrixFeeEvaluationExportService(
+        fee_draft_service=ConfirmedMatrixFeeDraftService(
+            confirmed_store=confirmed_store,
+        ),
+        confirmed_store=confirmed_store,
+        project_output_service=_NoopProjectOutputService(output_service),
+        workbook_writer=FeeEvaluationWorkbookGateway(),
+    )
+    return ProjectFolderRequiredFormsService(
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        folder_check_service=get_official_project_folder_check_service(session),
+        confirmed_matrix_reader=_ConfirmedMatrixReader(confirmed_store),
+        confirmed_fee_reader=get_confirmed_fee_version_service(session),
+        customer_feedback_template_reader=_CustomerFeedbackTemplateReader(
+            ExternalResourceRepository(session)
+        ),
+        generator=_RequiredFormsStagingGenerator(
+            settings=settings,
+            test_record_service=test_record_service,
+            fee_export_service=fee_service,
+            customer_feedback_service=get_customer_feedback_form_generation_service(
+                session,
+                settings,
+            ),
+        ),
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
+        output_status_service=output_service,
     )
 
 

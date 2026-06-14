@@ -314,4 +314,7 @@ class ProjectOutputRecord:
     draft_id: str | None = None
     draft_version: int | None = None
     output_path: str | None = None
+    output_sha256: str | None = None
+    output_size_bytes: int | None = None
+    source_context_signature: str | None = None
     note: str | None = None

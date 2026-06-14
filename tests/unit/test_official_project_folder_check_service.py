@@ -198,16 +198,47 @@ def test_preview_defers_generated_forms_without_existing_output_records(tmp_path
     generated = {
         item.key: item.status
         for item in preview.required_files
-        if item.key in {"test_record", "fee_form", "customer_feedback"}
+        if item.key in {"test_record", "fee_form", "customer_feedback_form"}
     }
     assert generated == {
         "test_record": "deferred",
         "fee_form": "deferred",
-        "customer_feedback": "deferred",
+        "customer_feedback_form": "deferred",
     }
 
 
-def test_preview_maps_current_output_records_but_leaves_customer_feedback_deferred(
+def test_preview_maps_current_output_records_and_keeps_customer_feedback_deferred_without_output(
+    tmp_path: Path,
+) -> None:
+    official = _official_with_required_folders(tmp_path)
+    test_record_path = official / "Submitted Material" / "Test Record.docx"
+    test_record_path.write_text("test record", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path, official),
+        output_service=_OutputStatusService(
+            _output_summary(
+                ProjectOutputStatusItem(
+                    output_kind=ProjectOutputKind.TEST_RECORD_FORM,
+                    status=ProjectOutputStatus.CURRENT,
+                    output_path=str(test_record_path),
+                    source=ProjectOutputSource.SYSTEM_GENERATED,
+                    draft_id="draft-1",
+                    draft_version=1,
+                    reason="current",
+                    updated_at="2026-06-13T00:00:00+00:00",
+                )
+            )
+        ),
+    )
+
+    preview = service.preview("P1")
+
+    assert _item(preview.required_files, "test_record").status == "ready"
+    assert _item(preview.required_files, "customer_feedback_form").status == "deferred"
+
+
+def test_current_test_record_and_fee_outputs_are_missing_when_files_are_absent(
     tmp_path: Path,
 ) -> None:
     official = _official_with_required_folders(tmp_path)
@@ -225,6 +256,45 @@ def test_preview_maps_current_output_records_but_leaves_customer_feedback_deferr
                     draft_version=1,
                     reason="current",
                     updated_at="2026-06-13T00:00:00+00:00",
+                ),
+                ProjectOutputStatusItem(
+                    output_kind=ProjectOutputKind.FEE_EVALUATION,
+                    status=ProjectOutputStatus.CURRENT,
+                    output_path=str(official / "DL-001_Fee_Form.xls"),
+                    source=ProjectOutputSource.SYSTEM_GENERATED,
+                    draft_id="draft-1",
+                    draft_version=1,
+                    reason="current",
+                    updated_at="2026-06-13T00:00:00+00:00",
+                ),
+            )
+        ),
+    )
+
+    preview = service.preview("P1")
+
+    assert _item(preview.required_files, "test_record").status == "missing"
+    assert _item(preview.required_files, "fee_form").status == "missing"
+
+
+def test_customer_feedback_ready_when_current_output_exists(tmp_path: Path) -> None:
+    official = _official_with_required_folders(tmp_path)
+    feedback_path = official / "DL-001_Customer_Feedback_Form.xlsx"
+    feedback_path.write_text("feedback", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path, official),
+        output_service=_OutputStatusService(
+            _output_summary(
+                ProjectOutputStatusItem(
+                    output_kind=ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
+                    status=ProjectOutputStatus.CURRENT,
+                    output_path=str(feedback_path),
+                    source=ProjectOutputSource.SYSTEM_GENERATED,
+                    draft_id="draft-1",
+                    draft_version=1,
+                    reason="current",
+                    updated_at="2026-06-13T00:00:00+00:00",
                 )
             )
         ),
@@ -232,8 +302,33 @@ def test_preview_maps_current_output_records_but_leaves_customer_feedback_deferr
 
     preview = service.preview("P1")
 
-    assert _item(preview.required_files, "test_record").status == "ready"
-    assert _item(preview.required_files, "customer_feedback").status == "deferred"
+    assert _item(preview.required_files, "customer_feedback_form").status == "ready"
+
+
+def test_customer_feedback_missing_when_current_output_missing_on_disk(tmp_path: Path) -> None:
+    official = _official_with_required_folders(tmp_path)
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path, official),
+        output_service=_OutputStatusService(
+            _output_summary(
+                ProjectOutputStatusItem(
+                    output_kind=ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
+                    status=ProjectOutputStatus.CURRENT,
+                    output_path=str(official / "DL-001_Customer_Feedback_Form.xlsx"),
+                    source=ProjectOutputSource.SYSTEM_GENERATED,
+                    draft_id="draft-1",
+                    draft_version=1,
+                    reason="current",
+                    updated_at="2026-06-13T00:00:00+00:00",
+                )
+            )
+        ),
+    )
+
+    preview = service.preview("P1")
+
+    assert _item(preview.required_files, "customer_feedback_form").status == "missing"
 
 
 @dataclass

@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { PublicDriveUploadPreview, RequestMaterialPreview } from "../../api/client";
+import type {
+  ProjectFolderRequiredFormsPreview,
+  PublicDriveUploadPreview,
+  RequestMaterialPreview,
+} from "../../api/client";
 import { ProjectFolderTaskList } from "./ProjectFolderTaskList";
 import type {
   ProjectFolderTaskActionTarget,
@@ -17,6 +21,7 @@ describe("ProjectFolderTaskList", () => {
       <ProjectFolderTaskListHarness
         currentTaskKey="request_material"
         requestMaterialPreview={requestMaterialPreview}
+        requiredFormsPreview={requiredFormsPreview}
         publicDriveUploadPreview={publicDrivePreview}
       />
     );
@@ -44,6 +49,7 @@ describe("ProjectFolderTaskList", () => {
       <ProjectFolderTaskListHarness
         currentTaskKey="public_drive_upload"
         requestMaterialPreview={requestMaterialPreview}
+        requiredFormsPreview={requiredFormsPreview}
         publicDriveUploadPreview={publicDrivePreview}
         onTaskAction={onTaskAction}
       />
@@ -53,16 +59,44 @@ describe("ProjectFolderTaskList", () => {
 
     expect(onTaskAction).toHaveBeenCalledWith("public_drive_upload");
   });
+
+  it("shows Required forms preview details and routes generation action", async () => {
+    const user = userEvent.setup();
+    const onTaskAction = vi.fn();
+    render(
+      <ProjectFolderTaskListHarness
+        currentTaskKey="required_forms"
+        requestMaterialPreview={requestMaterialPreview}
+        requiredFormsPreview={requiredFormsPreview}
+        publicDriveUploadPreview={publicDrivePreview}
+        onTaskAction={onTaskAction}
+      />
+    );
+
+    expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
+      "Required forms"
+    );
+    expect(screen.getByText("Forms ready to generate")).toBeTruthy();
+    expect(screen.getByText("Test Record")).toBeTruthy();
+    expect(screen.getByText("Submitted Material/DL-2026-06-001_Test_Record.docx")).toBeTruthy();
+    expect(screen.getByText("Customer Feedback Form")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Generate required forms" }));
+
+    expect(onTaskAction).toHaveBeenCalledWith("required_forms_generate");
+  });
 });
 
 function ProjectFolderTaskListHarness({
   currentTaskKey,
   requestMaterialPreview,
+  requiredFormsPreview,
   publicDriveUploadPreview,
   onTaskAction = vi.fn(),
 }: {
   currentTaskKey: ProjectFolderTaskKey;
   requestMaterialPreview: RequestMaterialPreview;
+  requiredFormsPreview: ProjectFolderRequiredFormsPreview;
   publicDriveUploadPreview: PublicDriveUploadPreview;
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
 }): ReactElement {
@@ -79,6 +113,9 @@ function ProjectFolderTaskListHarness({
       requestMaterialPreview={requestMaterialPreview}
       requestMaterialError={null}
       requestMaterialLoading={false}
+      requiredFormsPreview={requiredFormsPreview}
+      requiredFormsError={null}
+      requiredFormsLoading={false}
       publicDriveUploadPreview={publicDriveUploadPreview}
       publicDriveUploadError={null}
       publicDriveUploadLoading={false}
@@ -95,6 +132,18 @@ const tasks: ProjectFolderTaskRow[] = [
     summary: "Original request files and controlled copies are recorded.",
     actionTarget: null,
     detailKind: "request_material",
+    blockers: [],
+    warnings: [],
+  },
+  {
+    key: "required_forms",
+    title: "Required forms",
+    statusLabel: "Ready to generate",
+    status: "warning",
+    summary: "Test Record, Fee Form, Customer Feedback Form need controlled generation.",
+    actionLabel: "Generate required forms",
+    actionTarget: "required_forms_generate",
+    detailKind: "required_forms",
     blockers: [],
     warnings: [],
   },
@@ -147,6 +196,50 @@ const requestMaterialPreview: RequestMaterialPreview = {
       review_required: false,
       size_bytes: 100,
       sha256: "a".repeat(64),
+    },
+  ],
+  blockers: [],
+  warnings: [],
+};
+
+const requiredFormsPreview: ProjectFolderRequiredFormsPreview = {
+  project_id: "project-1",
+  status: "ready",
+  official_project_folder_path:
+    "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  confirmed_matrix_id: "matrix-1",
+  confirmed_revision: 1,
+  confirmed_fee_id: "fee-1",
+  confirmed_fee_revision: 1,
+  confirmed_fee_pricing_draft_edit_id: "pricing-1",
+  customer_feedback_template_path: "D:/Source/Template/Customer Feedback.xlsx",
+  items: [
+    {
+      key: "test_record",
+      label: "Test Record",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/DL-2026-06-001_Test_Record.docx",
+      status: "ready",
+      action: "generate",
+      message: "Test Record can be generated.",
+    },
+    {
+      key: "fee_form",
+      label: "Fee Form",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/DL-2026-06-001_Fee_Form.xls",
+      status: "ready",
+      action: "generate",
+      message: "Fee Form can be generated.",
+    },
+    {
+      key: "customer_feedback_form",
+      label: "Customer Feedback Form",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/DL-2026-06-001_Customer_Feedback_Form.xlsx",
+      status: "ready",
+      action: "generate",
+      message: "Customer Feedback Form can be generated.",
     },
   ],
   blockers: [],

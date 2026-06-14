@@ -1,5 +1,6 @@
 import type {
   OfficialFolderCheckPreview,
+  ProjectFolderRequiredFormsPreview,
   PublicDriveUploadPreview,
   RequestMaterialPreview,
 } from "../../api/client";
@@ -21,6 +22,8 @@ export type ProjectFolderTaskActionTarget =
   | "folder"
   | "request_material"
   | "fee"
+  | "required_forms_generate"
+  | "required_forms_refresh"
   | "official_folder_repair"
   | "official_folder_refresh"
   | "public_drive_upload"
@@ -55,6 +58,8 @@ export type ProjectFolderTaskSelectorInput = {
   requestMaterialError: string | null;
   publicDriveUploadPreview: PublicDriveUploadPreview | null;
   publicDriveUploadError: string | null;
+  requiredFormsPreview: ProjectFolderRequiredFormsPreview | null;
+  requiredFormsError: string | null;
   section2SyncPreview: ProjectRuntimeConsoleModel["section2SyncPreview"];
   versionStatus: WorkbenchVersionStatus;
   confirmedFeeAuthorityStatus: "missing" | "confirmed" | "stale" | "unknown";
@@ -243,6 +248,67 @@ function deriveConfirmedFeeAuthorityTask(
 function deriveRequiredFormsTask(
   input: ProjectFolderTaskSelectorInput
 ): ProjectFolderTaskRow {
+  const preview = input.requiredFormsPreview;
+  const blockers = [
+    ...(preview?.blockers ?? []),
+    ...(input.requiredFormsError ? [input.requiredFormsError] : []),
+  ];
+  const warnings = preview?.warnings ?? [];
+
+  if (preview?.status === "conflict" || preview?.status === "blocked") {
+    return baseTask(
+      "required_forms",
+      "Required forms",
+      preview.status === "conflict" ? "Conflict" : "Blocked",
+      "blocked",
+      {
+        summary:
+          preview.items.find((item) => item.status === "conflict" || item.status === "blocked")
+            ?.message ?? "Resolve Required forms blockers before generating controlled files.",
+        detailKind: "required_forms",
+        blockers,
+        warnings,
+      }
+    );
+  }
+
+  if (preview?.status === "current") {
+    return baseTask("required_forms", "Required forms", "Current", "ready", {
+      summary: `${formatRequiredFormsList(preview)} are current.`,
+      detailKind: "required_forms",
+      blockers,
+      warnings,
+    });
+  }
+
+  if (preview?.status === "ready") {
+    const readyItems = preview.items.filter((item) =>
+      item.action === "generate" || item.action === "update"
+    );
+    return baseTask("required_forms", "Required forms", "Ready to generate", "warning", {
+      summary:
+        readyItems.length > 0
+          ? `${formatRequiredFormsList({ ...preview, items: readyItems })} need controlled generation.`
+          : "Required forms preview is ready for review.",
+      actionLabel: "Generate required forms",
+      actionTarget: "required_forms_generate",
+      detailKind: "required_forms",
+      blockers,
+      warnings,
+    });
+  }
+
+  if (input.requiredFormsError) {
+    return baseTask("required_forms", "Required forms", "Not checked", "neutral", {
+      summary: "Refresh Required forms before generating controlled output files.",
+      actionLabel: "Refresh required forms",
+      actionTarget: "required_forms_refresh",
+      detailKind: "required_forms",
+      blockers,
+      warnings,
+    });
+  }
+
   const outputs = input.versionStatus.downstream.filter((item) =>
     item.key === "test_record" || item.key === "fee_evaluation"
   );
@@ -266,6 +332,10 @@ function deriveRequiredFormsTask(
     summary: "Required generated form outputs are current.",
     detailKind: "required_forms",
   });
+}
+
+function formatRequiredFormsList(preview: Pick<ProjectFolderRequiredFormsPreview, "items">): string {
+  return preview.items.map((item) => item.label).join(", ");
 }
 
 function deriveSection2Task(input: ProjectFolderTaskSelectorInput): ProjectFolderTaskRow {

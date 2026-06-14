@@ -1,5 +1,9 @@
 import type { ReactElement } from "react";
-import type { PublicDriveUploadPreview, RequestMaterialPreview } from "../../api/client";
+import type {
+  ProjectFolderRequiredFormsPreview,
+  PublicDriveUploadPreview,
+  RequestMaterialPreview,
+} from "../../api/client";
 import type {
   ProjectFolderTaskActionTarget,
   ProjectFolderTaskKey,
@@ -15,6 +19,9 @@ export function ProjectFolderTaskList({
   requestMaterialPreview,
   requestMaterialError,
   requestMaterialLoading,
+  requiredFormsPreview,
+  requiredFormsError,
+  requiredFormsLoading,
   publicDriveUploadPreview,
   publicDriveUploadError,
   publicDriveUploadLoading,
@@ -27,6 +34,9 @@ export function ProjectFolderTaskList({
   requestMaterialPreview: RequestMaterialPreview | null;
   requestMaterialError: string | null;
   requestMaterialLoading: boolean;
+  requiredFormsPreview: ProjectFolderRequiredFormsPreview | null;
+  requiredFormsError: string | null;
+  requiredFormsLoading: boolean;
   publicDriveUploadPreview: PublicDriveUploadPreview | null;
   publicDriveUploadError: string | null;
   publicDriveUploadLoading: boolean;
@@ -102,8 +112,17 @@ export function ProjectFolderTaskList({
           />
         ) : null}
 
+        {selectedTask.detailKind === "required_forms" ? (
+          <RequiredFormsDetail
+            preview={requiredFormsPreview}
+            error={requiredFormsError}
+            loading={requiredFormsLoading}
+          />
+        ) : null}
+
         {selectedTask.detailKind !== "request_material" &&
-        selectedTask.detailKind !== "public_drive" ? (
+        selectedTask.detailKind !== "public_drive" &&
+        selectedTask.detailKind !== "required_forms" ? (
           <GenericTaskDetail task={selectedTask} />
         ) : null}
       </section>
@@ -162,6 +181,60 @@ function RequestMaterialDetail({
   );
 }
 
+function RequiredFormsDetail({
+  preview,
+  error,
+  loading,
+}: {
+  preview: ProjectFolderRequiredFormsPreview | null;
+  error: string | null;
+  loading: boolean;
+}): ReactElement {
+  const items = preview?.items ?? [];
+  const readyCount = items.filter((item) =>
+    item.action === "generate" || item.action === "update"
+  ).length;
+  const currentCount = items.filter((item) => item.action === "skip").length;
+  const conflictCount = items.filter((item) => item.action === "conflict").length;
+  return (
+    <div className="runtime-console-folder-task-detail">
+      <dl className="runtime-console-compact-metrics">
+        <div>
+          <dt>Forms ready to generate</dt>
+          <dd>{loading ? "Loading" : readyCount}</dd>
+        </div>
+        <div>
+          <dt>Already current</dt>
+          <dd>{currentCount}</dd>
+        </div>
+        <div>
+          <dt>Conflict</dt>
+          <dd>{conflictCount}</dd>
+        </div>
+      </dl>
+      <PathLine label="Official project folder" value={preview?.official_project_folder_path} />
+      {error ? <p className="runtime-console-error">{error}</p> : null}
+      <details className="runtime-console-public-drive-items" open={items.length > 0}>
+        <summary>Required form targets</summary>
+        {items.length > 0 ? (
+          <ul>
+            {items.map((item) => (
+              <li key={item.key}>
+                <span>{formatRequiredFormAction(item.action)}</span>
+                <strong>{item.label}</strong>
+                <em>{displayProjectFolderRelativePath(preview, item.target_path)}</em>
+                <p>{item.message}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No Required forms preview is available yet.</p>
+        )}
+      </details>
+    </div>
+  );
+}
+
 function PublicDriveUploadDetail({
   preview,
   error,
@@ -214,6 +287,44 @@ function PublicDriveUploadDetail({
       </details>
     </div>
   );
+}
+
+function formatRequiredFormAction(action: string): string {
+  if (action === "generate") {
+    return "Generate";
+  }
+  if (action === "update") {
+    return "Update";
+  }
+  if (action === "skip") {
+    return "Current";
+  }
+  if (action === "conflict") {
+    return "Conflict";
+  }
+  if (action === "blocked") {
+    return "Blocked";
+  }
+  return action;
+}
+
+function displayProjectFolderRelativePath(
+  preview: ProjectFolderRequiredFormsPreview | null,
+  targetPath: string | null
+): string {
+  if (!targetPath) {
+    return "Target not available";
+  }
+  const root = preview?.official_project_folder_path;
+  const normalizedTarget = targetPath.replaceAll("\\", "/");
+  if (!root) {
+    return normalizedTarget;
+  }
+  const normalizedRoot = root.replaceAll("\\", "/").replace(/\/+$/, "");
+  if (normalizedTarget.startsWith(`${normalizedRoot}/`)) {
+    return normalizedTarget.slice(normalizedRoot.length + 1);
+  }
+  return normalizedTarget;
 }
 
 function GenericTaskDetail({ task }: { task: ProjectFolderTaskRow }): ReactElement {

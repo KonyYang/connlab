@@ -41,6 +41,11 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "requestMaterialLoading"
   | "requestMaterialCollecting"
   | "requestMaterialError"
+  | "requiredFormsPreview"
+  | "requiredFormsLoading"
+  | "requiredFormsGenerating"
+  | "requiredFormsError"
+  | "requiredFormsResult"
   | "project"
   | "projectId"
   | "runtimeAuthoritySync"
@@ -63,6 +68,8 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onUploadPublicDriveProjectFolder"
   | "onRefreshRequestMaterial"
   | "onCollectRequestMaterial"
+  | "onRefreshRequiredForms"
+  | "onGenerateRequiredForms"
   | "onRefreshSection2Sync"
   | "onSyncSection2"
   | "versionStatus"
@@ -108,6 +115,11 @@ export function selectProjectRuntimeConsoleModel(
     requestMaterialLoading: model.requestMaterialLoading,
     requestMaterialCollecting: model.requestMaterialCollecting,
     requestMaterialError: model.requestMaterialError,
+    requiredFormsPreview: model.requiredFormsPreview,
+    requiredFormsLoading: model.requiredFormsLoading,
+    requiredFormsGenerating: model.requiredFormsGenerating,
+    requiredFormsError: model.requiredFormsError,
+    requiredFormsResult: model.requiredFormsResult,
     project: model.project,
     projectId: model.projectId,
     runtimeAuthoritySync: model.runtimeAuthoritySync,
@@ -130,6 +142,8 @@ export function selectProjectRuntimeConsoleModel(
     onUploadPublicDriveProjectFolder: model.onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial: model.onRefreshRequestMaterial,
     onCollectRequestMaterial: model.onCollectRequestMaterial,
+    onRefreshRequiredForms: model.onRefreshRequiredForms,
+    onGenerateRequiredForms: model.onGenerateRequiredForms,
     onRefreshSection2Sync: model.onRefreshSection2Sync,
     onSyncSection2: model.onSyncSection2,
     versionStatus: model.versionStatus

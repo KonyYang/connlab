@@ -5193,6 +5193,9 @@ def test_task318_official_project_folder_check_ui_and_service_boundaries() -> No
     task_list_source = (feature_root / "ProjectFolderTaskList.tsx").read_text(
         encoding="utf-8"
     )
+    task_selector_source = (feature_root / "projectFolderTaskSelectors.ts").read_text(
+        encoding="utf-8"
+    )
     model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
         encoding="utf-8"
     )
@@ -5388,6 +5391,87 @@ def test_task320_project_folder_single_task_ui_boundaries_are_wired() -> None:
     assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
     assert ".runtime-console-project-folder-tasks" in styles_source
     assert ".runtime-console-current-folder-task" in styles_source
+
+
+def test_task321_required_forms_generation_is_project_folder_wired() -> None:
+    """TASK_321 generates Required forms through Project Folder, not old package execute."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+    model_source = (feature_root / "useProjectWorkbenchModel.ts").read_text(
+        encoding="utf-8"
+    )
+    runtime_model_source = (
+        feature_root / "useProjectRuntimeConsoleModel.ts"
+    ).read_text(encoding="utf-8")
+    layout_source = (feature_root / "ProjectWorkbenchLayout.tsx").read_text(
+        encoding="utf-8"
+    )
+    task_selector_source = (feature_root / "projectFolderTaskSelectors.ts").read_text(
+        encoding="utf-8"
+    )
+    task_list_source = (feature_root / "ProjectFolderTaskList.tsx").read_text(
+        encoding="utf-8"
+    )
+    route_source = (
+        FRONTEND_ROOT.parent
+        / "backend"
+        / "api"
+        / "routes_project_folder_required_forms.py"
+    ).read_text(encoding="utf-8")
+    service_source = (
+        FRONTEND_ROOT.parent
+        / "backend"
+        / "application"
+        / "project_folder_required_forms_service.py"
+    ).read_text(encoding="utf-8")
+    check_service_source = (
+        FRONTEND_ROOT.parent
+        / "backend"
+        / "application"
+        / "official_project_folder_check_service.py"
+    ).read_text(encoding="utf-8")
+
+    for required in [
+        "fetchProjectFolderRequiredFormsPreview",
+        "generateProjectFolderRequiredForms",
+        "/project-folder/required-forms/preview",
+        "/project-folder/required-forms/generate",
+    ]:
+        assert required in client_source
+
+    for required in [
+        "requiredFormsPreview",
+        "requiredFormsLoading",
+        "requiredFormsGenerating",
+        "requiredFormsError",
+        "onRefreshRequiredForms",
+        "onGenerateRequiredForms",
+    ]:
+        assert required in model_source
+        assert required in runtime_model_source
+
+    for required in [
+        "Required forms",
+        "Generate required forms",
+        "required_forms_generate",
+        "item.label",
+        "item.target_path",
+        "formatRequiredFormAction",
+    ]:
+        assert required in task_selector_source or required in task_list_source
+
+    assert "requiredFormsPreview" in layout_source
+    assert "CUSTOMER_FEEDBACK_FORM" in check_service_source
+    assert "TEST_RECORD_FORM" in service_source
+    assert "FEE_EVALUATION" in service_source
+    assert "CUSTOMER_FEEDBACK_FORM" in service_source
+    assert "ProjectPackagePreviewService" not in route_source
+    assert "ProjectPackagePreviewService" not in service_source
+    assert "/project-package/execute" not in client_source
+    assert "Execute package" not in task_selector_source
+    assert "Execute package" not in task_list_source
 
 
 def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:

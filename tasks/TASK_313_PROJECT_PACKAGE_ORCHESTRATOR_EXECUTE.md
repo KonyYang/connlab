@@ -1,10 +1,15 @@
 # TASK_313_PROJECT_PACKAGE_ORCHESTRATOR_EXECUTE
 
-Status: Planned; awaiting explicit approval.
+Status: Deferred historical reference. Do not implement as written. Superseded for execution planning by `TASK_321_PROJECT_FOLDER_REQUIRED_FORMS_GENERATION`.
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-TASK_313 has a task definition and requires an executable plan review plus explicit approval before implementation. Do not implement package execution until this task is approved.
+TASK_313 has a historical task definition, but its executable shape has been superseded by the Project Folder model completed in TASK_316-TASK_320. Do not implement the old package execution route, Package UI, or Submitted Material placement assumptions from this file.
+
+Replacement task for review:
+
+- `tasks/TASK_321_PROJECT_FOLDER_REQUIRED_FORMS_GENERATION.md`
+- `docs/task_321_project_folder_required_forms_generation_plan.md`
 
 ## Model Fit Assessment
 

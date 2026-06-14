@@ -58,6 +58,9 @@ class RegisterProjectOutputCommand:
     output_path: str | None = None
     draft_id: str | None = None
     note: str | None = None
+    output_sha256: str | None = None
+    output_size_bytes: int | None = None
+    source_context_signature: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +75,9 @@ class ProjectOutputStatusItem:
     draft_version: int | None
     reason: str
     updated_at: str | None
+    output_sha256: str | None = None
+    output_size_bytes: int | None = None
+    source_context_signature: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +97,7 @@ class ProjectOutputRecordService:
         ProjectOutputKind.SECTION2_WRITE_BACK,
         ProjectOutputKind.TEST_RECORD_FORM,
         ProjectOutputKind.FEE_EVALUATION,
+        ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
         ProjectOutputKind.APPROVAL_PACKAGE,
     )
 
@@ -128,6 +135,11 @@ class ProjectOutputRecordService:
             draft_version=draft_version,
             output_kind=command.output_kind,
             output_path=_normalize_optional_text(command.output_path),
+            output_sha256=_normalize_optional_text(command.output_sha256),
+            output_size_bytes=command.output_size_bytes,
+            source_context_signature=_normalize_optional_text(
+                command.source_context_signature
+            ),
             status=command.status,
             source=command.source,
             created_at=now,
@@ -205,6 +217,9 @@ def _status_item(
             draft_version=None,
             reason="No persisted output record exists.",
             updated_at=None,
+            output_sha256=None,
+            output_size_bytes=None,
+            source_context_signature=None,
         )
     if record.status in {ProjectOutputStatus.MANUAL, ProjectOutputStatus.FAILED}:
         reason = (
@@ -220,6 +235,9 @@ def _status_item(
             draft_version=record.draft_version,
             reason=reason,
             updated_at=record.updated_at,
+            output_sha256=record.output_sha256,
+            output_size_bytes=record.output_size_bytes,
+            source_context_signature=record.source_context_signature,
         )
     if (
         active_draft_id is not None
@@ -238,6 +256,9 @@ def _status_item(
                 f"active draft is v{active_draft_version}."
             ),
             updated_at=record.updated_at,
+            output_sha256=record.output_sha256,
+            output_size_bytes=record.output_size_bytes,
+            source_context_signature=record.source_context_signature,
         )
     return ProjectOutputStatusItem(
         output_kind=kind,
@@ -248,6 +269,9 @@ def _status_item(
         draft_version=record.draft_version,
         reason="Persisted output is aligned with active draft context.",
         updated_at=record.updated_at,
+        output_sha256=record.output_sha256,
+        output_size_bytes=record.output_size_bytes,
+        source_context_signature=record.source_context_signature,
     )
 
 

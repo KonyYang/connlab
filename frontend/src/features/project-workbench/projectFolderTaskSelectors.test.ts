@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   OfficialFolderCheckPreview,
+  ProjectFolderRequiredFormsPreview,
   PublicDriveUploadPreview,
   RequestMaterialPreview,
 } from "../../api/client";
@@ -20,6 +21,8 @@ describe("deriveProjectFolderTasks", () => {
       requestMaterialError: null,
       publicDriveUploadPreview: currentPublicDriveUploadPreview,
       publicDriveUploadError: null,
+      requiredFormsPreview: currentRequiredFormsPreview,
+      requiredFormsError: null,
       section2SyncPreview: syncedSection2Preview,
       versionStatus: readyVersionStatus,
       confirmedFeeAuthorityStatus: "confirmed",
@@ -71,11 +74,84 @@ describe("deriveProjectFolderTasks", () => {
           },
         ],
       },
+      requiredFormsPreview: {
+        ...currentRequiredFormsPreview,
+        status: "ready",
+        items: [
+          {
+            key: "test_record",
+            label: "Test Record",
+            target_path: "D:/Projects/Submitted Material/test-record.docx",
+            status: "current",
+            action: "skip",
+            message: "Test Record is current.",
+          },
+          {
+            key: "fee_form",
+            label: "Fee Form",
+            target_path: "D:/Projects/fee.xls",
+            status: "ready",
+            action: "generate",
+            message: "Fee Form can be generated.",
+          },
+          {
+            key: "customer_feedback_form",
+            label: "Customer Feedback Form",
+            target_path: "D:/Projects/customer-feedback.xlsx",
+            status: "current",
+            action: "skip",
+            message: "Customer Feedback Form is current.",
+          },
+        ],
+      },
     });
 
     expect(taskByTitle(tasks, "Confirmed Fee authority").statusLabel).toBe("Confirmed");
-    expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Fee form/);
+    expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Fee Form/);
     expect(taskByTitle(tasks, "Required forms").status).not.toBe("ready");
+    expect(taskByTitle(tasks, "Required forms").actionTarget).toBe(
+      "required_forms_generate"
+    );
+  });
+
+  it("uses Required forms preview to show current controlled forms", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      requiredFormsPreview: currentRequiredFormsPreview,
+    });
+
+    expect(taskByTitle(tasks, "Required forms").statusLabel).toBe("Current");
+    expect(taskByTitle(tasks, "Required forms").status).toBe("ready");
+    expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Test Record/);
+    expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Fee Form/);
+    expect(taskByTitle(tasks, "Required forms").summary).toMatch(
+      /Customer Feedback Form/
+    );
+  });
+
+  it("blocks Required forms when the generation preview has a conflict", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      requiredFormsPreview: {
+        ...currentRequiredFormsPreview,
+        status: "conflict",
+        blockers: ["Fee Form target was changed manually."],
+        items: [
+          {
+            key: "fee_form",
+            label: "Fee Form",
+            target_path: "D:/Projects/fee.xls",
+            status: "conflict",
+            action: "conflict",
+            message: "Fee Form target was changed manually.",
+          },
+        ],
+      },
+    });
+
+    expect(selectCurrentProjectFolderTaskKey(tasks)).toBe("required_forms");
+    expect(taskByTitle(tasks, "Required forms").status).toBe("blocked");
+    expect(taskByTitle(tasks, "Required forms").actionTarget).toBeNull();
   });
 
   it("selects Public drive upload only after prior Project Folder tasks are ready", () => {
@@ -93,17 +169,17 @@ describe("deriveProjectFolderTasks", () => {
   it("keeps Required forms current when forms are missing even if public drive upload is ready", () => {
     const tasks = deriveProjectFolderTasks({
       ...readyInput(),
-      versionStatus: {
-        activeDraftVersion: 1,
-        trackedDraftVersion: 1,
-        hasStaleOutputs: false,
-        downstream: [
+      requiredFormsPreview: {
+        ...currentRequiredFormsPreview,
+        status: "ready",
+        items: [
           {
-            key: "fee_evaluation",
-            label: "Fee form",
-            freshness: "missing",
-            path: null,
-            reason: "Fee form has not been generated.",
+            key: "fee_form",
+            label: "Fee Form",
+            target_path: "D:/Projects/fee.xls",
+            status: "ready",
+            action: "generate",
+            message: "Fee Form can be generated.",
           },
         ],
       },
@@ -147,6 +223,8 @@ function readyInput() {
     requestMaterialError: null,
     publicDriveUploadPreview: currentPublicDriveUploadPreview,
     publicDriveUploadError: null,
+    requiredFormsPreview: currentRequiredFormsPreview,
+    requiredFormsError: null,
     section2SyncPreview: syncedSection2Preview,
     versionStatus: readyVersionStatus,
     confirmedFeeAuthorityStatus: "confirmed" as const,
@@ -173,6 +251,50 @@ const readyVersionStatus: WorkbenchVersionStatus = {
       reason: "Fee form is current.",
     },
   ],
+};
+
+const currentRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
+  project_id: "project-1",
+  status: "current",
+  official_project_folder_path:
+    "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  confirmed_matrix_id: "matrix-1",
+  confirmed_revision: 1,
+  confirmed_fee_id: "fee-1",
+  confirmed_fee_revision: 1,
+  confirmed_fee_pricing_draft_edit_id: "pricing-1",
+  customer_feedback_template_path: "D:/Source/Template/Customer Feedback.xlsx",
+  items: [
+    {
+      key: "test_record",
+      label: "Test Record",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/Submitted Material/DL-2026-06-001_Test_Record.docx",
+      status: "current",
+      action: "skip",
+      message: "Test Record is current.",
+    },
+    {
+      key: "fee_form",
+      label: "Fee Form",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/DL-2026-06-001_Fee_Form.xls",
+      status: "current",
+      action: "skip",
+      message: "Fee Form is current.",
+    },
+    {
+      key: "customer_feedback_form",
+      label: "Customer Feedback Form",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/DL-2026-06-001_Customer_Feedback_Form.xlsx",
+      status: "current",
+      action: "skip",
+      message: "Customer Feedback Form is current.",
+    },
+  ],
+  blockers: [],
+  warnings: [],
 };
 
 const syncedSection2Preview = {

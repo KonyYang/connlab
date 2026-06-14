@@ -309,14 +309,6 @@ class OfficialProjectFolderCheckService:
             self._request_material_item(project_id),
             self._submitted_material_item(project_id),
             *self._output_items(project_id),
-            OfficialFolderCheckItem(
-                key="customer_feedback",
-                label="Customer Feedback form",
-                kind="file",
-                status="deferred",
-                path=None,
-                message="Customer Feedback generation is handled by a later task.",
-            ),
         ]
         return tuple(items)
 
@@ -440,6 +432,9 @@ class OfficialProjectFolderCheckService:
         return (
             _output_item("test_record", "Test Record", by_kind.get(ProjectOutputKind.TEST_RECORD_FORM)),
             _output_item("fee_form", "Fee Form", by_kind.get(ProjectOutputKind.FEE_EVALUATION)),
+            _customer_feedback_item(
+                by_kind.get(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM),
+            ),
             _output_item(
                 "section2",
                 "Application Form Section 2",
@@ -486,6 +481,15 @@ def _output_item(key: str, label: str, item: object | None) -> OfficialFolderChe
     output_path = getattr(item, "output_path")
     path = Path(output_path) if output_path else None
     if status in {ProjectOutputStatus.CURRENT, ProjectOutputStatus.MANUAL}:
+        if path is None or not path.is_file():
+            return OfficialFolderCheckItem(
+                key=key,
+                label=label,
+                kind="file",
+                status="missing",
+                path=path,
+                message=f"{label} output record exists, but the file is missing.",
+            )
         return OfficialFolderCheckItem(
             key=key,
             label=label,
@@ -520,3 +524,17 @@ def _output_item(key: str, label: str, item: object | None) -> OfficialFolderChe
         path=path,
         message=f"{label} has not been generated in the current approved workflow.",
     )
+
+
+def _customer_feedback_item(item: object | None) -> OfficialFolderCheckItem:
+    """Map Customer Feedback output status into a folder check item."""
+    if item is None:
+        return OfficialFolderCheckItem(
+            key="customer_feedback_form",
+            label="Customer Feedback Form",
+            kind="file",
+            status="deferred",
+            path=None,
+            message="Customer Feedback Form has not been generated for this Project Folder.",
+        )
+    return _output_item("customer_feedback_form", "Customer Feedback Form", item)

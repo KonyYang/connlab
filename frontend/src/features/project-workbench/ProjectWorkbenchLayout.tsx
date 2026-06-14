@@ -89,6 +89,12 @@ export function ProjectWorkbenchLayout({
     requestMaterialCollecting,
     requestMaterialError,
     onCollectRequestMaterial,
+    requiredFormsPreview,
+    requiredFormsLoading,
+    requiredFormsGenerating,
+    requiredFormsError,
+    onRefreshRequiredForms,
+    onGenerateRequiredForms,
     runtimeProjectionSnapshot,
     section2SyncPreview,
     confirmedFeeLatest,
@@ -145,6 +151,8 @@ export function ProjectWorkbenchLayout({
     requestMaterialError,
     publicDriveUploadPreview,
     publicDriveUploadError,
+    requiredFormsPreview,
+    requiredFormsError,
     section2SyncPreview,
     versionStatus: runtimeModel.versionStatus,
     confirmedFeeAuthorityStatus: deriveConfirmedFeeAuthorityStatus(confirmedFeeLatest),
@@ -250,6 +258,14 @@ export function ProjectWorkbenchLayout({
     }
     if (actionTarget === "fee") {
       onOpenFeeEvaluation();
+      return;
+    }
+    if (actionTarget === "required_forms_generate") {
+      void onGenerateRequiredForms();
+      return;
+    }
+    if (actionTarget === "required_forms_refresh") {
+      void onRefreshRequiredForms();
       return;
     }
     if (actionTarget === "official_folder_repair") {
@@ -378,6 +394,9 @@ export function ProjectWorkbenchLayout({
               requestMaterialPreview={requestMaterialPreview}
               requestMaterialError={requestMaterialError}
               requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
+              requiredFormsPreview={requiredFormsPreview}
+              requiredFormsError={requiredFormsError}
+              requiredFormsLoading={requiredFormsLoading || requiredFormsGenerating}
               publicDriveUploadPreview={publicDriveUploadPreview}
               publicDriveUploadError={publicDriveUploadError}
               publicDriveUploadLoading={publicDriveUploadLoading || publicDriveUploading}

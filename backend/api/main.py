@@ -104,6 +104,9 @@ from backend.api.routes_official_project_folder_check import (
 from backend.api.routes_public_drive_upload import (
     router as public_drive_upload_router,
 )
+from backend.api.routes_project_folder_required_forms import (
+    router as project_folder_required_forms_router,
+)
 from backend.api.routes_test_record_fee_dataset_preview import (
     router as test_record_fee_dataset_preview_router,
 )
@@ -157,6 +160,7 @@ app.include_router(official_project_workspace_router)
 app.include_router(project_request_material_router)
 app.include_router(official_project_folder_check_router)
 app.include_router(public_drive_upload_router)
+app.include_router(project_folder_required_forms_router)
 app.include_router(test_record_fee_dataset_preview_router)
 app.include_router(test_record_fee_document_generation_router)
 

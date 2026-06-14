@@ -334,6 +334,9 @@ export function PackagePreparationMode({
   requestMaterialPreview,
   requestMaterialError,
   requestMaterialLoading,
+  requiredFormsPreview,
+  requiredFormsError,
+  requiredFormsLoading,
   publicDriveUploadPreview,
   publicDriveUploadError,
   publicDriveUploadLoading,
@@ -346,6 +349,9 @@ export function PackagePreparationMode({
   requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
   requestMaterialError: string | null;
   requestMaterialLoading: boolean;
+  requiredFormsPreview: ProjectRuntimeConsoleModel["requiredFormsPreview"];
+  requiredFormsError: string | null;
+  requiredFormsLoading: boolean;
   publicDriveUploadPreview: ProjectRuntimeConsoleModel["publicDriveUploadPreview"];
   publicDriveUploadError: string | null;
   publicDriveUploadLoading: boolean;
@@ -361,6 +367,9 @@ export function PackagePreparationMode({
         requestMaterialPreview={requestMaterialPreview}
         requestMaterialError={requestMaterialError}
         requestMaterialLoading={requestMaterialLoading}
+        requiredFormsPreview={requiredFormsPreview}
+        requiredFormsError={requiredFormsError}
+        requiredFormsLoading={requiredFormsLoading}
         publicDriveUploadPreview={publicDriveUploadPreview}
         publicDriveUploadError={publicDriveUploadError}
         publicDriveUploadLoading={publicDriveUploadLoading}

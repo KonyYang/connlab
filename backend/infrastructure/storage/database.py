@@ -53,6 +53,7 @@ def init_db(engine: Engine) -> None:
     Base.metadata.create_all(bind=engine)
     _migrate_project_no_optional(engine)
     _migrate_file_asset_provenance_columns(engine)
+    _migrate_project_output_record_file_metadata(engine)
     _migrate_confirmed_matrix_supersession_columns(engine)
     _migrate_project_matrix_draft_record_revision_columns(engine)
     _migrate_project_matrix_draft_lineage_columns_optional(engine)
@@ -167,6 +168,38 @@ def _migrate_file_asset_provenance_columns(engine: Engine) -> None:
                 continue
             connection.exec_driver_sql(
                 f"ALTER TABLE file_assets ADD COLUMN {column} VARCHAR(64)"
+            )
+
+
+def _migrate_project_output_record_file_metadata(engine: Engine) -> None:
+    """Add optional TASK_321 managed-output metadata columns to output records."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "project_output_records" not in table_names:
+            return
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(project_output_records)"
+            ).all()
+        }
+        column_defs = {
+            "output_sha256": "VARCHAR(128)",
+            "output_size_bytes": "INTEGER",
+            "source_context_signature": "VARCHAR(512)",
+        }
+        for column, definition in column_defs.items():
+            if column in columns:
+                continue
+            connection.exec_driver_sql(
+                f"ALTER TABLE project_output_records ADD COLUMN {column} {definition}"
             )
 
 
