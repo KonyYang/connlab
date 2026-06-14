@@ -69,6 +69,54 @@ class FeeEvaluationPricingDraftEditRepository:
         )
         return _to_snapshot(row) if row is not None else None
 
+    def get_by_context(
+        self,
+        *,
+        project_id: str,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+        fee_rule_version_id: str,
+    ) -> FeeEvaluationPricingDraftSnapshot | None:
+        """Return the saved pricing draft for one exact project/Matrix/rule context."""
+        row = self._session.scalar(
+            select(FeeEvaluationPricingDraftEditModel).where(
+                FeeEvaluationPricingDraftEditModel.project_id == project_id,
+                FeeEvaluationPricingDraftEditModel.confirmed_matrix_id
+                == confirmed_matrix_id,
+                FeeEvaluationPricingDraftEditModel.confirmed_revision
+                == confirmed_revision,
+                FeeEvaluationPricingDraftEditModel.fee_rule_version_id
+                == fee_rule_version_id,
+            )
+        )
+        return _to_snapshot(row) if row is not None else None
+
+    def delete_current(
+        self,
+        *,
+        project_id: str,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+        fee_rule_version_id: str,
+    ) -> bool:
+        """Delete the saved pricing draft for one exact project/Matrix/rule context."""
+        row = self._session.scalar(
+            select(FeeEvaluationPricingDraftEditModel).where(
+                FeeEvaluationPricingDraftEditModel.project_id == project_id,
+                FeeEvaluationPricingDraftEditModel.confirmed_matrix_id
+                == confirmed_matrix_id,
+                FeeEvaluationPricingDraftEditModel.confirmed_revision
+                == confirmed_revision,
+                FeeEvaluationPricingDraftEditModel.fee_rule_version_id
+                == fee_rule_version_id,
+            )
+        )
+        if row is None:
+            return False
+        self._session.delete(row)
+        self._session.flush()
+        return True
+
 
 def _to_snapshot(
     row: FeeEvaluationPricingDraftEditModel,

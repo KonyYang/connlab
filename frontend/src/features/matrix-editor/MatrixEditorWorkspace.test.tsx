@@ -909,6 +909,43 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     });
   });
 
+  it("does not hang Cancel when the in-flight autosave never finishes", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "editor-draft-existing",
+      draft_status: "current",
+      loaded_source: "draft",
+      draft_updated_at: "2026-06-14T00:00:00Z",
+      saved_payload_signature: "existing-signature",
+    });
+    apiMocks.saveMatrixEditorSessionDraft.mockImplementationOnce(
+      () => new Promise(() => {})
+    );
+    const onBackToWorkbench = vi.fn();
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Updated method before hanging cancel" },
+    });
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(
+      () => {
+        expect(apiMocks.discardMatrixEditorSessionDraft).toHaveBeenCalledWith("P1", {
+          expected_editor_draft_id: "editor-draft-existing",
+          expected_saved_payload_signature: "existing-signature",
+        });
+        expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 2500 }
+    );
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][2]?.signal.aborted).toBe(true);
+  });
+
   it("stays in Matrix Editor and surfaces an error when Cancel discard fails", async () => {
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
       ...buildSessionSeed(),

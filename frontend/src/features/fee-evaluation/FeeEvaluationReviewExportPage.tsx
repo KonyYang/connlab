@@ -1,12 +1,14 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
 } from "react";
 import {
   ApiRequestError,
   confirmFeeVersion,
+  discardFeeEvaluationPricingDraft,
   fetchConfirmedMatrixFeeDraft,
   generateConfirmedMatrixFeeFileDownload,
   getConfirmedFeeLatest,
@@ -18,6 +20,7 @@ import {
   type FeeEvaluationDraft,
   type FeeEvaluationEditedFileExportRequest,
   type FeeEvaluationLineItem,
+  type FeeEvaluationPricingDraftResponse,
   type Project,
 } from "../../api/client";
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
@@ -68,6 +71,12 @@ type FeePricingDraftSaveState =
   | { kind: "error"; message: string };
 
 type PricingDraftLoadStatus = "loading" | "missing" | "current" | "stale" | "error";
+
+type PricingDraftContext = {
+  confirmedMatrixId: string;
+  confirmedRevision: number;
+  feeRuleVersionId: string;
+};
 
 type ConfirmedFeeLoadState =
   | { kind: "loading" }
@@ -130,6 +139,26 @@ export function FeeEvaluationReviewExportPage({
     useState<PricingDraftLoadStatus>("loading");
   const [pricingDraftDirtySinceConfirm, setPricingDraftDirtySinceConfirm] =
     useState(false);
+  const [savedLocalPricingSignature, setSavedLocalPricingSignature] = useState<
+    string | null
+  >(null);
+  const [baselinePricingSignature, setBaselinePricingSignature] = useState<
+    string | null
+  >(null);
+  const [hasUserEditedPricingDraft, setHasUserEditedPricingDraft] = useState(false);
+  const [needsInitialSeedSave, setNeedsInitialSeedSave] = useState(false);
+  const [isDiscardingPricingDraft, setIsDiscardingPricingDraft] = useState(false);
+  const [activePricingContext, setActivePricingContext] =
+    useState<PricingDraftContext | null>(null);
+  const autosaveTimeoutRef = useRef<number | null>(null);
+  const autosaveGenerationRef = useRef(0);
+  const autosaveInFlightRef =
+    useRef<Promise<FeeEvaluationPricingDraftResponse | null> | null>(null);
+  const autosaveAbortControllerRef = useRef<AbortController | null>(null);
+  const latestAutosaveResultRef = useRef<FeeEvaluationPricingDraftResponse | null>(
+    null
+  );
+  const discardingRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -166,6 +195,12 @@ export function FeeEvaluationReviewExportPage({
     setLatestSavedPricingDraftId(null);
     setPricingDraftLoadStatus("loading");
     setPricingDraftDirtySinceConfirm(false);
+    setSavedLocalPricingSignature(null);
+    setBaselinePricingSignature(null);
+    setHasUserEditedPricingDraft(false);
+    setNeedsInitialSeedSave(false);
+    setActivePricingContext(null);
+    latestAutosaveResultRef.current = null;
     setConfirmFeeActionState({ kind: "idle" });
     void fetchConfirmedMatrixFeeDraft(projectId)
       .then((draft) => {
@@ -185,6 +220,10 @@ export function FeeEvaluationReviewExportPage({
           setSaveState({ kind: "idle", message: null });
           setLatestSavedPricingDraftId(null);
           setPricingDraftLoadStatus("missing");
+          setSavedLocalPricingSignature(null);
+          setBaselinePricingSignature(null);
+          setHasUserEditedPricingDraft(false);
+          setNeedsInitialSeedSave(false);
           return;
         }
         setDraftState({
@@ -242,10 +281,20 @@ export function FeeEvaluationReviewExportPage({
           return;
         }
         if (result.status === "current") {
+          setActivePricingContext(contextFromPricingDraftResponse(result));
           setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
           setPricingDraftLoadStatus("current");
           setPricingDraftDirtySinceConfirm(false);
+          setHasUserEditedPricingDraft(false);
+          setNeedsInitialSeedSave(false);
           if (!result.payload) {
+            const currentSignature = pricingDraftSignature(
+              buildEditedExportPayload(sourcePreviewRows, costPreviewValues)
+            );
+            setSavedLocalPricingSignature(
+              result.saved_draft_edit_id ? currentSignature : null
+            );
+            setBaselinePricingSignature(currentSignature);
             setSaveState(
               result.saved_draft_edit_id
                 ? { kind: "saved", message: "Loaded saved pricing draft." }
@@ -259,6 +308,13 @@ export function FeeEvaluationReviewExportPage({
           );
           setPreviewEdits(hydrated.edits);
           setCostPreviewValues(hydrated.costPreviewValues);
+          const hydratedPayload = buildEditedExportPayload(
+            applyFeeEvaluationPreviewEdits(sourcePreviewRows, hydrated.edits),
+            hydrated.costPreviewValues
+          );
+          const hydratedSignature = pricingDraftSignature(hydratedPayload);
+          setSavedLocalPricingSignature(hydratedSignature);
+          setBaselinePricingSignature(hydratedSignature);
           if (hydrated.unmatchedRowCount > 0) {
             setSaveState({
               kind: "stale",
@@ -274,9 +330,18 @@ export function FeeEvaluationReviewExportPage({
           return;
         }
         if (result.status === "stale") {
+          setActivePricingContext(contextFromPricingDraftResponse(result));
           setLatestSavedPricingDraftId(null);
           setPricingDraftLoadStatus("stale");
           setPricingDraftDirtySinceConfirm(false);
+          setSavedLocalPricingSignature(null);
+          setBaselinePricingSignature(
+            pricingDraftSignature(
+              buildEditedExportPayload(sourcePreviewRows, costPreviewValues)
+            )
+          );
+          setHasUserEditedPricingDraft(false);
+          setNeedsInitialSeedSave(false);
           setSaveState({
             kind: "stale",
             message:
@@ -284,9 +349,18 @@ export function FeeEvaluationReviewExportPage({
           });
           return;
         }
+        setActivePricingContext(contextFromPricingDraftResponse(result));
         setLatestSavedPricingDraftId(null);
         setPricingDraftLoadStatus("missing");
         setPricingDraftDirtySinceConfirm(false);
+        setSavedLocalPricingSignature(null);
+        setBaselinePricingSignature(
+          pricingDraftSignature(
+            buildEditedExportPayload(sourcePreviewRows, costPreviewValues)
+          )
+        );
+        setHasUserEditedPricingDraft(false);
+        setNeedsInitialSeedSave(true);
         setSaveState({ kind: "idle", message: null });
       })
       .catch((error: unknown) => {
@@ -301,6 +375,8 @@ export function FeeEvaluationReviewExportPage({
               : "Unable to load saved pricing draft.",
         });
         setPricingDraftLoadStatus("error");
+        setSavedLocalPricingSignature(null);
+        setNeedsInitialSeedSave(false);
       });
     return () => {
       active = false;
@@ -413,6 +489,17 @@ export function FeeEvaluationReviewExportPage({
       ),
     [allPreviewRows, costPreviewValues.externalCost, previewTotals.grandCost]
   );
+  const currentPricingDraftPayload = useMemo(
+    () => buildEditedExportPayload(previewRows, costPreviewValues),
+    [costPreviewValues, previewRows]
+  );
+  const currentPricingDraftSignature = useMemo(
+    () => pricingDraftSignature(currentPricingDraftPayload),
+    [currentPricingDraftPayload]
+  );
+  const hasPricingDraftLocalChanges =
+    hasUserEditedPricingDraft &&
+    savedLocalPricingSignature !== currentPricingDraftSignature;
   const costRisk = useMemo(
     () =>
       buildFeeEvaluationCostRisk({
@@ -444,8 +531,126 @@ export function FeeEvaluationReviewExportPage({
     draftState,
     confirmedBy,
     confirmedFeeState,
+    isDiscardingPricingDraft,
+    latestSavedPricingDraftId,
+    pricingDraftLoadStatus,
+    saveState,
+    savedLocalPricingSignature,
+    currentPricingDraftSignature,
   });
   const generateDisabledReason = feeFileDownloadBlocker(draftState);
+
+  function applySavedPricingDraftResult(
+    result: FeeEvaluationPricingDraftResponse,
+    signature: string
+  ): void {
+    setActivePricingContext(contextFromPricingDraftResponse(result));
+    if (result.status === "current") {
+      const savedDraftId = result.saved_draft_edit_id ?? null;
+      setLatestSavedPricingDraftId(savedDraftId);
+      setPricingDraftLoadStatus("current");
+      setSavedLocalPricingSignature(savedDraftId ? signature : null);
+      setBaselinePricingSignature(signature);
+      setHasUserEditedPricingDraft(false);
+      setNeedsInitialSeedSave(false);
+      setPricingDraftDirtySinceConfirm(false);
+      setSaveState(
+        savedDraftId
+          ? { kind: "saved", message: "Saved pricing draft." }
+          : {
+              kind: "error",
+              message: "Save returned no pricing draft id. Retry before confirming.",
+            }
+      );
+      return;
+    }
+    setLatestSavedPricingDraftId(null);
+    setPricingDraftLoadStatus("stale");
+    setSavedLocalPricingSignature(null);
+    setNeedsInitialSeedSave(false);
+    setSaveState({
+      kind: "stale",
+      message: "Saved draft is not current for this Matrix or fee rule version.",
+    });
+  }
+
+  useEffect(() => {
+    if (autosaveTimeoutRef.current !== null) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
+    }
+    if (
+      draftState.kind !== "ready" ||
+      (!hasPricingDraftLocalChanges && !needsInitialSeedSave) ||
+      discardingRef.current ||
+      isDiscardingPricingDraft
+    ) {
+      return;
+    }
+    const generation = autosaveGenerationRef.current + 1;
+    autosaveGenerationRef.current = generation;
+    const payload = currentPricingDraftPayload;
+    const signature = currentPricingDraftSignature;
+    if (!needsInitialSeedSave) {
+      setSaveState({ kind: "dirty" });
+    }
+    autosaveTimeoutRef.current = window.setTimeout(() => {
+      if (discardingRef.current) {
+        return;
+      }
+      setSaveState({ kind: "saving" });
+      const abortController = new AbortController();
+      autosaveAbortControllerRef.current = abortController;
+      const saveRequest = saveFeeEvaluationPricingDraft(projectId, payload, {
+        signal: abortController.signal,
+      })
+        .then((result) => {
+          latestAutosaveResultRef.current = result;
+          if (autosaveGenerationRef.current === generation && !discardingRef.current) {
+            applySavedPricingDraftResult(result, signature);
+          }
+          return result;
+        })
+        .catch((error: unknown) => {
+          if (autosaveGenerationRef.current === generation && !discardingRef.current) {
+            if (isAbortError(error)) {
+              return null;
+            }
+            setSaveState({
+              kind: "error",
+              message:
+                error instanceof ApiRequestError
+                  ? error.message
+                  : "Unable to save pricing draft.",
+            });
+          }
+          return null;
+        })
+        .finally(() => {
+          if (autosaveInFlightRef.current === saveRequest) {
+            autosaveInFlightRef.current = null;
+          }
+          if (autosaveAbortControllerRef.current === abortController) {
+            autosaveAbortControllerRef.current = null;
+          }
+        });
+      autosaveInFlightRef.current = saveRequest;
+    }, 800);
+    return () => {
+      if (autosaveTimeoutRef.current !== null) {
+        window.clearTimeout(autosaveTimeoutRef.current);
+        autosaveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    currentPricingDraftPayload,
+    currentPricingDraftSignature,
+    draftState.kind,
+    hasPricingDraftLocalChanges,
+    isDiscardingPricingDraft,
+    needsInitialSeedSave,
+    projectId,
+  ]);
 
   async function handleGenerateFeeFile(): Promise<void> {
     if (generateDisabledReason || downloadState.kind === "running") {
@@ -475,40 +680,6 @@ export function FeeEvaluationReviewExportPage({
     }
   }
 
-  async function handleSavePricingDraft(): Promise<void> {
-    if (draftState.kind !== "ready" || saveState.kind === "saving") {
-      return;
-    }
-    setSaveState({ kind: "saving" });
-    try {
-      const result = await saveFeeEvaluationPricingDraft(
-        projectId,
-        buildEditedExportPayload(previewRows, costPreviewValues)
-      );
-      if (result.status === "current") {
-        setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
-        setPricingDraftLoadStatus("current");
-        setPricingDraftDirtySinceConfirm(false);
-        setSaveState({ kind: "saved", message: "Saved pricing draft." });
-        return;
-      }
-      setLatestSavedPricingDraftId(null);
-      setPricingDraftLoadStatus("stale");
-      setSaveState({
-        kind: "stale",
-        message: "Saved draft is not current for this Matrix or fee rule version.",
-      });
-    } catch (error: unknown) {
-      setSaveState({
-        kind: "error",
-        message:
-          error instanceof ApiRequestError
-            ? error.message
-            : "Unable to save pricing draft.",
-      });
-    }
-  }
-
   async function handleConfirmFee(): Promise<void> {
     if (
       draftState.kind !== "ready" ||
@@ -524,35 +695,12 @@ export function FeeEvaluationReviewExportPage({
       return;
     }
     setConfirmFeeActionState({ kind: "confirming" });
-    setSaveState({ kind: "saving" });
     try {
-      const saveResult = await saveFeeEvaluationPricingDraft(
-        projectId,
-        buildEditedExportPayload(previewRows, costPreviewValues)
-      );
-      if (saveResult.status !== "current") {
-        setLatestSavedPricingDraftId(null);
-        setPricingDraftLoadStatus("stale");
-        setSaveState({
-          kind: "stale",
-          message: "Saved draft is not current for this Matrix or fee rule version.",
-        });
-        setConfirmFeeActionState({
-          kind: "error",
-          message: "Saved draft is not current for this Matrix or fee rule version.",
-        });
-        return;
-      }
-
-      const savedDraftId = saveResult.saved_draft_edit_id ?? null;
-      setLatestSavedPricingDraftId(savedDraftId);
-      setPricingDraftLoadStatus("current");
-      setSaveState({ kind: "saved", message: "Saved pricing draft." });
+      const savedDraftId = latestSavedPricingDraftId;
       if (!savedDraftId) {
         setConfirmFeeActionState({
           kind: "error",
-          message:
-            "Save returned no pricing draft id. Refresh and save again before confirming.",
+          message: "Save pricing draft before confirming Fee.",
         });
         return;
       }
@@ -603,6 +751,8 @@ export function FeeEvaluationReviewExportPage({
   }
 
   function markPricingDraftDirty(): void {
+    setHasUserEditedPricingDraft(true);
+    setNeedsInitialSeedSave(false);
     setPricingDraftDirtySinceConfirm(true);
     setConfirmFeeActionState((current) =>
       current.kind === "confirming" ? current : { kind: "idle" }
@@ -612,6 +762,53 @@ export function FeeEvaluationReviewExportPage({
         ? current
         : { kind: "dirty" }
     );
+  }
+
+  async function handleBackToWorkbench(): Promise<void> {
+    const latestResult = latestAutosaveResultRef.current;
+    const hasDraftToDiscard =
+      Boolean(latestResult?.saved_draft_edit_id ?? latestSavedPricingDraftId) ||
+      hasUserEditedPricingDraft ||
+      Boolean(savedLocalPricingSignature) ||
+      saveState.kind === "dirty" ||
+      saveState.kind === "saving" ||
+      saveState.kind === "error";
+    if (!hasDraftToDiscard) {
+      onBackToWorkbench();
+      return;
+    }
+    if (!window.confirm("Discard Fee Evaluation pricing edits and return to Workbench?")) {
+      return;
+    }
+    discardingRef.current = true;
+    autosaveGenerationRef.current += 1;
+    if (autosaveTimeoutRef.current !== null) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
+    }
+    autosaveAbortControllerRef.current?.abort();
+    setIsDiscardingPricingDraft(true);
+    const inFlightResult = await waitForAutosaveOrTimeout(autosaveInFlightRef.current);
+    const savedResult = inFlightResult ?? latestAutosaveResultRef.current;
+    const context = contextFromMaybeResponse(savedResult) ?? activePricingContext;
+    try {
+      await discardFeeEvaluationPricingDraft(projectId, {
+        expected_pricing_draft_edit_id:
+          savedResult?.saved_draft_edit_id ?? latestSavedPricingDraftId,
+        expected_confirmed_matrix_id: context?.confirmedMatrixId ?? null,
+        expected_confirmed_revision: context?.confirmedRevision ?? null,
+        expected_fee_rule_version_id: context?.feeRuleVersionId ?? null,
+      });
+      onBackToWorkbench();
+    } catch (error: unknown) {
+      discardingRef.current = false;
+      setIsDiscardingPricingDraft(false);
+      setSaveState({
+        kind: "error",
+        message:
+          error instanceof Error ? error.message : "Unable to discard pricing draft.",
+      });
+    }
   }
 
   return (
@@ -630,14 +827,13 @@ export function FeeEvaluationReviewExportPage({
         header={previewHeader}
         downloadState={downloadState}
         generateDisabledReason={generateDisabledReason}
-        onBackToWorkbench={onBackToWorkbench}
+        onBackToWorkbench={() => void handleBackToWorkbench()}
         onCostPreviewChange={handleCostPreviewChange}
         onConfirmFee={handleConfirmFee}
         onConfirmedByChange={setConfirmedBy}
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
-        onSavePricingDraft={handleSavePricingDraft}
         saveState={saveState}
         scopeFeeLabel={selectedPreviewTotal}
         rows={visiblePreviewRows}
@@ -734,6 +930,12 @@ function confirmFeeBlocker(input: {
   draftState: DraftLoadState;
   confirmedBy: string;
   confirmedFeeState: ConfirmedFeeLoadState;
+  isDiscardingPricingDraft: boolean;
+  latestSavedPricingDraftId: string | null;
+  pricingDraftLoadStatus: PricingDraftLoadStatus;
+  saveState: FeePricingDraftSaveState;
+  savedLocalPricingSignature: string | null;
+  currentPricingDraftSignature: string;
 }): string | null {
   if (input.draftState.kind === "loading") {
     return "Waiting for Fee Evaluation draft.";
@@ -749,6 +951,30 @@ function confirmFeeBlocker(input: {
   }
   if (!input.confirmedBy.trim()) {
     return "Enter confirmed by before confirming.";
+  }
+  if (input.isDiscardingPricingDraft) {
+    return "Discarding pricing draft.";
+  }
+  if (input.pricingDraftLoadStatus === "loading") {
+    return "Waiting for saved pricing draft.";
+  }
+  if (input.pricingDraftLoadStatus === "stale") {
+    return "Saved pricing draft belongs to an older Matrix or fee rule version.";
+  }
+  if (input.pricingDraftLoadStatus === "error") {
+    return "Reload saved pricing draft before confirming Fee.";
+  }
+  if (input.saveState.kind === "dirty" || input.saveState.kind === "saving") {
+    return "Saving pricing draft before confirm.";
+  }
+  if (input.saveState.kind === "error") {
+    return input.saveState.message;
+  }
+  if (!input.latestSavedPricingDraftId) {
+    return "Save pricing draft before confirming Fee.";
+  }
+  if (input.savedLocalPricingSignature !== input.currentPricingDraftSignature) {
+    return "Saving pricing draft before confirm.";
   }
   return null;
 }
@@ -769,6 +995,43 @@ async function loadPageContext(projectId: string): Promise<{
 
 function flattenDraftLines(draft: FeeEvaluationDraft | null): FeeEvaluationLineItem[] {
   return draft?.groups.flatMap((group) => group.line_items) ?? [];
+}
+
+function contextFromPricingDraftResponse(
+  response: FeeEvaluationPricingDraftResponse
+): PricingDraftContext {
+  return {
+    confirmedMatrixId: response.current_confirmed_matrix_id,
+    confirmedRevision: response.current_confirmed_revision,
+    feeRuleVersionId: response.current_fee_rule_version_id,
+  };
+}
+
+function contextFromMaybeResponse(
+  response: FeeEvaluationPricingDraftResponse | null
+): PricingDraftContext | null {
+  return response ? contextFromPricingDraftResponse(response) : null;
+}
+
+function pricingDraftSignature(payload: FeeEvaluationEditedFileExportRequest): string {
+  return JSON.stringify(payload);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function waitForAutosaveOrTimeout(
+  promise: Promise<FeeEvaluationPricingDraftResponse | null> | null,
+  timeoutMs = 1500
+): Promise<FeeEvaluationPricingDraftResponse | null> {
+  if (!promise) {
+    return Promise.resolve(null);
+  }
+  return Promise.race([
+    promise.catch(() => null),
+    new Promise<null>((resolve) => window.setTimeout(() => resolve(null), timeoutMs)),
+  ]);
 }
 
 function feeFileDownloadBlocker(draftState: DraftLoadState): string | null {

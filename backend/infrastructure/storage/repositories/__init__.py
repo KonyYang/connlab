@@ -55,6 +55,9 @@ from backend.infrastructure.storage.repositories.public_drive_upload import (
 from backend.infrastructure.storage.repositories.fee_evaluation_pricing_draft_edit import (
     FeeEvaluationPricingDraftEditRepository,
 )
+from backend.infrastructure.storage.repositories.matrix_fee_pending_rebase import (
+    MatrixFeePendingRebaseRepository,
+)
 from backend.infrastructure.storage.repositories.records import (
     FileAssetRepository,
     LtrRecordRepository,
@@ -75,6 +78,7 @@ __all__ = [
     "IntakePackageRepository",
     "LtrRecordRepository",
     "LookupOptionRepository",
+    "MatrixFeePendingRebaseRepository",
     "PrecheckResultRepository",
     "ProjectCleanupAuditRecordRepository",
     "ProjectFolderRecordRepository",

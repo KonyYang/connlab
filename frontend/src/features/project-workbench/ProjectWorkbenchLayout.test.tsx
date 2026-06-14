@@ -51,6 +51,18 @@ vi.mock("../../api/client", () => ({
 }));
 
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
+  it("labels the topbar back button as the Projects overview navigation", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    renderWorkbench({}, undefined, { onBack });
+
+    const backButton = screen.getByRole("button", { name: "Back to projects" });
+    expect(backButton.getAttribute("title")).toBe("Back to Projects overview");
+
+    await user.click(backButton);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it("shows temporary planning without formal package or execution surfaces", () => {
     const onOpenFeeEvaluation = vi.fn();
     renderWorkbench({

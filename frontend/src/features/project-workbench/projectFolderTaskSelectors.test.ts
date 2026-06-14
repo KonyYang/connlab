@@ -129,6 +129,32 @@ describe("deriveProjectFolderTasks", () => {
     );
   });
 
+  it("blocks Required forms when Matrix authority is not current", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      matrixAuthorityReady: false,
+      requiredFormsPreview: currentRequiredFormsPreview,
+    });
+
+    expect(taskByTitle(tasks, "Required forms").status).toBe("blocked");
+    expect(taskByTitle(tasks, "Required forms").actionTarget).toBeNull();
+    expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Matrix/);
+  });
+
+  it("blocks Required forms when Confirmed Fee authority is missing or stale", () => {
+    for (const confirmedFeeAuthorityStatus of ["missing", "stale"] as const) {
+      const tasks = deriveProjectFolderTasks({
+        ...readyInput(),
+        confirmedFeeAuthorityStatus,
+        requiredFormsPreview: currentRequiredFormsPreview,
+      });
+
+      expect(taskByTitle(tasks, "Required forms").status).toBe("blocked");
+      expect(taskByTitle(tasks, "Required forms").actionTarget).toBeNull();
+      expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Fee/);
+    }
+  });
+
   it("blocks Required forms when the generation preview has a conflict", () => {
     const tasks = deriveProjectFolderTasks({
       ...readyInput(),

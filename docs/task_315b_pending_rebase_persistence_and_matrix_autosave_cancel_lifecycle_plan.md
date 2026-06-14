@@ -1,0 +1,616 @@
+# TASK_315B Pending Rebase Persistence And Matrix Autosave Cancel Lifecycle Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Persist pending Matrix-to-Fee rebase output after Matrix Editor autosave, return non-fatal best-effort rebase status, and delete pending rebase when Matrix edits are canceled.
+
+**Architecture:** Keep TASK_315B as an application/storage lifecycle slice. Reuse TASK_315A's pure rebase core, add a small pending rebase persistence boundary, and integrate it only into Matrix Editor autosave/discard. Matrix Confirm promotion, Fee UI, and Project Folder behavior remain later tasks.
+
+**Tech Stack:** Python 3.11+, FastAPI, SQLAlchemy 2.x, SQLite, Pydantic v2, pytest.
+
+---
+
+## Current Phase And Permission Gate
+
+Current phase:
+
+```text
+Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
+```
+
+Current task status:
+
+```text
+TASK_315B_PENDING_REBASE_PERSISTENCE_AND_MATRIX_AUTOSAVE_CANCEL_LIFECYCLE is complete.
+```
+
+TASK_315B was implemented only after the user explicitly approved this specific subtask.
+
+## Anti-Skip Statement
+
+- Current completed baseline: TASK_314A, TASK_314B, TASK_314C, and TASK_315A are complete.
+- TASK_315 remains an umbrella and must not be implemented as one combined task.
+- TASK_315B is allowed to plan because TASK_315A is complete and the user requested the pending rebase persistence + Matrix autosave/cancel lifecycle plan.
+- Not allowed in TASK_315B: Matrix Confirm promotion, confirm-time fallback, Fee Evaluation UI, Project Folder behavior, StepInstance, report generation, AI, permissions, LAN/server, or multi-user scope.
+
+## Task Understanding
+
+### Goal
+
+When Matrix Editor autosave saves a current editor draft, run Matrix-to-Fee rebase in the backend and persist a pending rebase snapshot. Matrix autosave must remain successful even if Fee rebase fails. Matrix Cancel must delete the pending rebase for the discarded Matrix draft and must guard against rebase races.
+
+### Inputs
+
+- `ProjectMatrixDraftSnapshot` saved by Matrix autosave.
+- Active `ConfirmedMatrixSnapshot` used as the base authority.
+- Current/base `FeeEvaluationPricingDraftSnapshot` when available.
+- Default Fee values generated from existing Fee Evaluation/basic-fill logic when no current base pricing draft exists.
+- `MatrixFeeDraftRebaseService` output from TASK_315A.
+
+### Outputs
+
+- `MatrixFeePendingRebaseSnapshot` persisted in SQLite.
+- `fee_rebase_status`, `fee_rebase_summary`, and `fee_rebase_error` on Matrix autosave response.
+- Deleted pending rebase rows when Matrix draft discard succeeds.
+
+### Explicit Non-Goals
+
+- Do not create or update current Fee pricing drafts.
+- Do not create Confirmed Fee versions.
+- Do not change Matrix Confirm behavior.
+- Do not add Fee Evaluation UI for removed rows.
+- Do not change Project Folder Required forms behavior.
+- Do not add a frontend retry/status UI.
+
+## Design Summary
+
+### Pending Storage
+
+Add a pending rebase model with one row per Matrix draft / fee rule context.
+
+Proposed domain/application snapshot:
+
+```python
+@dataclass(frozen=True, slots=True)
+class MatrixFeePendingRebaseSnapshot:
+    pending_rebase_id: str
+    project_id: str
+    project_matrix_draft_id: str
+    base_confirmed_matrix_id: str
+    base_confirmed_revision: int
+    fee_rule_version_id: str
+    matrix_draft_payload_signature: str
+    generation: int
+    payload_json: str
+    created_at: str
+    updated_at: str
+```
+
+Storage uniqueness:
+
+```text
+project_matrix_draft_id + fee_rule_version_id
+```
+
+`generation` is monotonic per pending record and is used to avoid stale autosave/rebase overwrites. V1 must not rely only on `existing.generation + 1`, because concurrent autosaves can read the same existing row and produce equal incoming generations. Repository upsert must use strict compare-and-swap semantics and must refuse or no-op when the incoming write is not newer than the stored pending record.
+
+The stale-write token must include at least:
+
+- the saved Matrix draft id;
+- the saved Matrix draft payload signature;
+- a monotonic generation or equivalent saved-draft write token;
+- the fee rule version id.
+
+The application service must also re-read the Matrix draft immediately before pending upsert and verify:
+
+- the Matrix draft still exists;
+- the Matrix draft payload signature still equals the autosave signature being rebased;
+- the Matrix draft `base_confirmed_matrix_id` still equals the active Confirmed Matrix id used for this rebase.
+
+If any check fails, no pending rebase may be saved. Return `not_required` or `failed` according to the failure type, but do not recreate pending storage.
+
+### Pending Payload
+
+Pending `payload_json` should be self-contained and generated by the application service from TASK_315A output:
+
+```json
+{
+  "active_rows": [],
+  "inactive_removed_rows": [],
+  "manual_rows": [],
+  "summary": {
+    "preserved_count": 0,
+    "added_count": 0,
+    "removed_count": 0,
+    "preserved_manual_count": 0,
+    "removed_manual_count": 0
+  },
+  "warnings": []
+}
+```
+
+TASK_315B should serialize enough information for TASK_315C to promote it later, but TASK_315B must not promote it.
+
+### Application Service
+
+Add `MatrixFeePendingRebaseService`.
+
+Proposed public methods:
+
+```python
+def rebase_after_matrix_autosave(
+    self,
+    command: RebaseAfterMatrixAutosaveCommand,
+) -> MatrixFeePendingRebaseResult:
+    ...
+
+def delete_for_matrix_draft(
+    self,
+    command: DeletePendingRebaseForMatrixDraftCommand,
+) -> MatrixFeePendingRebaseDeleteResult:
+    ...
+```
+
+Proposed result status:
+
+```python
+MatrixFeePendingRebaseStatus = Literal["not_required", "current", "failed"]
+```
+
+`rebase_after_matrix_autosave` must catch expected rebase/default Fee construction/storage failures and return `failed` rather than raising into Matrix autosave. It may still let programmer errors surface in unit tests if the implementation treats them as coding defects, but route/service integration should convert operational failures into failed status.
+
+This is a non-fatal best-effort operation, not a background queue. The autosave request may wait for the rebase result so it can return `current` or `failed`, but a Fee rebase failure must not turn the Matrix autosave HTTP response into a failure.
+
+### Matrix Autosave Integration
+
+Integration point:
+
+- `MatrixEditorSessionService.save_editor_draft` after `_save_payload_to_draft(...)` returns `saved`.
+
+Behavior:
+
+1. Save Matrix draft exactly as TASK_314A already does.
+2. Call pending rebase service with:
+   - project id
+   - active confirmed Matrix id/revision
+   - saved Matrix draft snapshot
+   - saved payload signature
+   - a stale-write token/generation derived from the saved Matrix draft write, not only from the existing pending row
+3. Attach returned status/summary/error to `MatrixEditorSessionDraftSaveResult`.
+4. If rebase service fails or returns failed, do not fail Matrix autosave.
+
+### Matrix Cancel Integration
+
+Integration point:
+
+- `MatrixEditorSessionService.discard_editor_draft` after expected draft token validation and before or immediately after `self._drafts.delete(...)`.
+
+Required rule:
+
+- If Matrix draft deletion succeeds, pending rebase for that `project_matrix_draft_id` must be deleted.
+- If pending delete fails due to expected operational error, return a conflict/actionable Matrix discard error rather than navigating away with a stale pending rebase. This mirrors TASK_314A's "Cancel must not silently fail" operator contract.
+
+Race guard:
+
+- Pending upsert must verify the Matrix draft still exists, the saved signature still matches, the draft base Confirmed Matrix still matches, and the stale-write token/generation is strictly newer before writing.
+- If Cancel deleted the Matrix draft first, rebase returns `not_required` or `failed` internally and must not recreate pending storage.
+
+### API Response Extension
+
+Extend `MatrixEditorSessionDraftSaveResponse`:
+
+```python
+fee_rebase_status: str = "not_required"
+fee_rebase_summary: MatrixFeeRebaseSummaryResponse | None = None
+fee_rebase_error: str | None = None
+```
+
+Response summary fields:
+
+```python
+preserved_count: int
+added_count: int
+removed_count: int
+preserved_manual_count: int = 0
+removed_manual_count: int = 0
+```
+
+Do not add a new rebase endpoint in TASK_315B.
+
+## File-Level Plan
+
+### Create
+
+- `backend/application/matrix_fee_pending_rebase_service.py`
+  - pending rebase commands/results/snapshot
+  - payload serialization helpers
+  - service orchestration
+  - race guards
+
+- `backend/infrastructure/storage/repositories/matrix_fee_pending_rebase.py`
+  - upsert/get/delete repository
+  - stale generation guard
+
+- `tests/unit/test_matrix_fee_pending_rebase_service.py`
+  - service-level tests with fake stores and fake rebase/default builders
+
+- `tests/unit/test_matrix_fee_pending_rebase_repository.py`
+  - SQLite repository roundtrip/upsert/delete/generation tests
+
+### Modify
+
+- `backend/infrastructure/storage/models.py`
+  - add `MatrixFeePendingRebaseModel`
+
+- `backend/infrastructure/storage/database.py`
+  - import/create registered model and add lightweight SQLite migration for existing DBs if needed
+
+- `backend/infrastructure/storage/repositories/__init__.py`
+  - export `MatrixFeePendingRebaseRepository`
+
+- `backend/api/dependencies.py`
+  - inject `MatrixFeePendingRebaseService` into `MatrixEditorSessionService`
+
+- `backend/application/matrix_editor_session_service.py`
+  - add optional dependency for pending rebase service
+  - extend `MatrixEditorSessionDraftSaveResult`
+  - call pending rebase after autosave save
+  - delete pending rebase during discard
+
+- `backend/api/routes_matrix_editor_session.py`
+  - add rebase summary response model
+  - include rebase fields in autosave response
+
+- `tests/unit/test_matrix_editor_session_service.py`
+  - autosave current status test
+  - autosave failed rebase still succeeds test
+  - cancel deletes pending test
+  - stale generation/cancel race guard test at service fake boundary
+
+- `tests/integration/test_matrix_editor_session_api.py`
+  - response includes rebase status/summary/error fields
+  - discard cleans pending storage
+
+### Avoid
+
+- no frontend files
+- no Confirm Fee files
+- no Project Folder files
+- no Matrix Confirm promotion logic
+- no current Fee pricing draft writes
+
+## Implementation Tasks
+
+### Task 1: Pending Rebase Value Model And Repository
+
+**Files:**
+
+- Create: `backend/application/matrix_fee_pending_rebase_service.py`
+- Create: `backend/infrastructure/storage/repositories/matrix_fee_pending_rebase.py`
+- Modify: `backend/infrastructure/storage/models.py`
+- Modify: `backend/infrastructure/storage/database.py`
+- Modify: `backend/infrastructure/storage/repositories/__init__.py`
+- Test: `tests/unit/test_matrix_fee_pending_rebase_repository.py`
+
+- [x] **Step 1: Write failing repository tests**
+
+Test behaviors:
+
+- create/get roundtrip by `project_matrix_draft_id + fee_rule_version_id`
+- second upsert for same context updates same row
+- older generation cannot overwrite newer generation
+- equal generation with a different payload/signature cannot overwrite the stored row
+- delete by Matrix draft id removes all pending rows for that draft
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_repository.py -q
+```
+
+Expected: fails because repository/model do not exist.
+
+- [x] **Step 2: Add SQLAlchemy model**
+
+Add table:
+
+```python
+class MatrixFeePendingRebaseModel(Base):
+    """Pending Fee rebase payload produced by Matrix Editor autosave."""
+
+    __tablename__ = "matrix_fee_pending_rebases"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_matrix_draft_id",
+            "fee_rule_version_id",
+            name="uq_matrix_fee_pending_rebase_draft_rule",
+        ),
+    )
+
+    pending_rebase_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False, index=True)
+    project_matrix_draft_id: Mapped[str] = mapped_column(ForeignKey("project_matrix_draft_records.project_matrix_draft_id"), nullable=False, index=True)
+    base_confirmed_matrix_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    base_confirmed_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    fee_rule_version_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    matrix_draft_payload_signature: Mapped[str] = mapped_column(String(128), nullable=False)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+```
+
+- [x] **Step 3: Add repository**
+
+Required methods:
+
+```python
+def upsert_current(self, snapshot: MatrixFeePendingRebaseSnapshot) -> MatrixFeePendingRebaseSnapshot: ...
+def get_by_context(self, *, project_matrix_draft_id: str, fee_rule_version_id: str) -> MatrixFeePendingRebaseSnapshot | None: ...
+def get_latest_by_matrix_draft(self, project_matrix_draft_id: str) -> MatrixFeePendingRebaseSnapshot | None: ...
+def delete_by_matrix_draft(self, project_matrix_draft_id: str) -> int: ...
+```
+
+Generation guard:
+
+```python
+if existing is not None and snapshot.generation <= existing.generation:
+    return _to_snapshot(existing)
+```
+
+If the final implementation uses a richer stale-write token instead of a plain
+integer generation, the same rule applies: only a strictly newer token may
+replace the stored row. Equal tokens must be treated as stale/no-op unless the
+incoming payload is byte-for-byte identical.
+
+- [x] **Step 4: Run repository tests**
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_repository.py -q
+```
+
+Expected: all repository tests pass.
+
+### Task 2: Pending Rebase Application Service
+
+**Files:**
+
+- Modify: `backend/application/matrix_fee_pending_rebase_service.py`
+- Test: `tests/unit/test_matrix_fee_pending_rebase_service.py`
+
+- [x] **Step 1: Write failing service tests**
+
+Cover:
+
+- successful rebase stores pending payload and returns `current`
+- rebase/storage/default-builder failure returns `failed`
+- missing current/base inputs returns `not_required`
+- saved draft base Confirmed Matrix mismatch returns `not_required` or `failed` and does not save pending rebase
+- deleted draft before write does not create pending row
+- stale generation cannot overwrite a newer pending row
+- equal-generation stale completion cannot overwrite a newer payload
+- delete command deletes pending rows by Matrix draft id
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_service.py -q
+```
+
+Expected: fails until service is implemented.
+
+- [x] **Step 2: Implement commands and results**
+
+Required dataclasses:
+
+```python
+@dataclass(frozen=True, slots=True)
+class RebaseAfterMatrixAutosaveCommand:
+    project_id: str
+    active_confirmed_matrix_id: str
+    active_confirmed_revision: int
+    saved_matrix_draft: ProjectMatrixDraftSnapshot
+    saved_payload_signature: str
+
+@dataclass(frozen=True, slots=True)
+class MatrixFeePendingRebaseResult:
+    status: MatrixFeePendingRebaseStatus
+    summary: MatrixFeeRebaseSummary | None = None
+    error: str | None = None
+```
+
+- [x] **Step 3: Implement orchestration**
+
+The service should:
+
+1. resolve current fee rule version through the same library/context path used by Fee draft persistence;
+2. load source/base pricing draft if present;
+3. otherwise build default Fee rows;
+4. build source/target inputs for `MatrixFeeDraftRebaseService`;
+5. serialize result payload;
+6. verify the Matrix draft still exists, saved signature still matches, and saved draft `base_confirmed_matrix_id` still matches the active Confirmed Matrix used for this rebase;
+7. upsert pending snapshot;
+8. return `current` with summary.
+
+For TASK_315B, if full source/target adapter construction is too large, keep the adapter functions narrow and covered by tests. Do not move adapter gaps into TASK_315C.
+
+- [x] **Step 4: Run service tests**
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_service.py -q
+```
+
+Expected: all service tests pass.
+
+### Task 3: Matrix Editor Autosave/Discard Integration
+
+**Files:**
+
+- Modify: `backend/application/matrix_editor_session_service.py`
+- Modify: `backend/api/dependencies.py`
+- Modify: `backend/api/routes_matrix_editor_session.py`
+- Test: `tests/unit/test_matrix_editor_session_service.py`
+- Test: `tests/integration/test_matrix_editor_session_api.py`
+
+- [x] **Step 1: Write failing Matrix autosave service tests**
+
+Add tests for:
+
+- autosave returns `fee_rebase_status="current"` when pending service succeeds
+- autosave returns `fee_rebase_status="failed"` and keeps Matrix save success when pending service fails
+- discard calls pending delete for the discarded Matrix draft
+- discard fails/actionably if pending delete raises an operational conflict
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_editor_session_service.py -q
+```
+
+Expected: fails before integration.
+
+- [x] **Step 2: Extend Matrix result dataclasses**
+
+Add fields to `MatrixEditorSessionDraftSaveResult`:
+
+```python
+fee_rebase_status: Literal["not_required", "current", "failed"] = "not_required"
+fee_rebase_summary: MatrixFeeRebaseSummary | None = None
+fee_rebase_error: str | None = None
+```
+
+- [x] **Step 3: Wire autosave non-blocking call**
+
+After Matrix draft save:
+
+```python
+rebase_result = self._pending_fee_rebase.rebase_after_matrix_autosave(...)
+```
+
+If the pending service dependency is absent in unit tests, use a null adapter returning `not_required`; prefer explicit injection in production dependencies.
+
+- [x] **Step 4: Wire discard cleanup**
+
+After successful draft validation and deletion:
+
+```python
+if discarded:
+    self._pending_fee_rebase.delete_for_matrix_draft(...)
+```
+
+If cleanup raises the approved conflict error, surface `MatrixEditorSessionDraftConflictError` with an actionable message.
+
+- [x] **Step 5: Extend API DTO**
+
+Add:
+
+```python
+class MatrixFeeRebaseSummaryResponse(BaseModel):
+    preserved_count: int
+    added_count: int
+    removed_count: int
+    preserved_manual_count: int = 0
+    removed_manual_count: int = 0
+```
+
+and fields on `MatrixEditorSessionDraftSaveResponse`.
+
+- [x] **Step 6: Run Matrix tests**
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_editor_session_service.py tests/integration/test_matrix_editor_session_api.py -q
+```
+
+Expected: all Matrix session tests pass.
+
+### Task 4: Final Validation And Board Sync
+
+**Files:**
+
+- Modify: `docs/task_board.md`
+- Modify: `tasks/TASK_315B_PENDING_REBASE_PERSISTENCE_AND_MATRIX_AUTOSAVE_CANCEL_LIFECYCLE.md`
+- Modify: `docs/task_315b_pending_rebase_persistence_and_matrix_autosave_cancel_lifecycle_plan.md`
+- Optionally modify: `docs/task_plan_index.md`
+
+- [x] **Step 1: Run required validation**
+
+Run:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_service.py tests/unit/test_matrix_fee_pending_rebase_repository.py -q
+py -m pytest tests/unit/test_matrix_editor_session_service.py tests/integration/test_matrix_editor_session_api.py -q
+py -m pytest tests/unit/test_matrix_fee_draft_rebase_service.py -q
+py -m pytest tests/unit/test_database.py -q
+```
+
+Expected: all pass.
+
+- [x] **Step 2: Confirm no out-of-scope files changed**
+
+Run:
+
+```powershell
+git diff --name-only
+```
+
+Expected for TASK_315B work: backend application/storage/API Matrix session files, pending rebase tests, task/plan docs. No frontend files, no Project Folder files, no Confirm Fee authority changes.
+
+- [x] **Step 3: Update task board**
+
+Mark TASK_315B complete only after validation. The board must say TASK_315C requires separate task file, plan, review, and explicit approval.
+
+## Race Test Requirements
+
+The implementation must include at least these race-focused tests:
+
+- stale generation write after newer generation does not overwrite pending payload;
+- equal-generation out-of-order write does not overwrite pending payload;
+- saved draft base Confirmed Matrix mismatch does not save pending payload;
+- autosave rebase checks Matrix draft still exists before pending upsert;
+- discard deletes pending rebase and a later stale upsert cannot recreate it;
+- autosave rebase failure returns failed status without making Matrix autosave fail.
+
+## Review Checklist
+
+- [x] Does Matrix autosave still succeed when Fee rebase fails?
+- [x] Does Cancel delete pending rebase and surface cleanup failure?
+- [x] Is one pending row enforced per Matrix draft/rule context?
+- [x] Is stale generation overwrite prevented?
+- [x] Are pending rows separate from current Fee pricing drafts?
+- [x] Are Confirm Matrix and Confirm Fee untouched?
+- [x] Are frontend and Project Folder untouched?
+
+## Stop Point
+
+TASK_315B implementation, validation, and task board sync are complete. Stop here. Do not implement TASK_315C, TASK_315D, Matrix Confirm promotion, Fee UI, Project Folder behavior, StepInstance, report, AI, permissions, LAN/server, or multi-user scope without separate explicit approval.
+
+## Review Follow-Up - 2026-06-15
+
+Applied the TASK_315B review corrections:
+
+- Target Matrix draft rows now use the same 0-based token `step_index` as source basic-fill rows, so existing pricing edits are preserved when Matrix rows/tokens are unchanged.
+- Matrix Editor Cancel deletes pending rebase rows before and after Matrix draft deletion, covering the interleaving where a slow autosave rebase recreates pending state between the first cleanup and draft deletion.
+- Pending rebase repository upsert now uses SQLite `INSERT ... ON CONFLICT DO UPDATE ... WHERE existing.generation < incoming.generation`, so stale generation protection is enforced at the database write boundary.
+- Added regression tests for pricing edit preservation, post-delete Cancel cleanup, and cross-session stale overwrite.
+
+Validation:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_service.py tests/unit/test_matrix_fee_pending_rebase_repository.py -q
+# 13 passed
+
+py -m pytest tests/unit/test_matrix_editor_session_service.py tests/integration/test_matrix_editor_session_api.py -q
+# 20 passed
+
+py -m pytest tests/unit/test_matrix_fee_draft_rebase_service.py -q
+# 15 passed
+
+py -m pytest tests/unit/test_database.py -q
+# 5 passed
+```

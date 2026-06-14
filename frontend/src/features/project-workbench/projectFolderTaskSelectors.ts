@@ -255,6 +255,24 @@ function deriveRequiredFormsTask(
   ];
   const warnings = preview?.warnings ?? [];
 
+  if (!input.matrixAuthorityReady) {
+    return baseTask("required_forms", "Required forms", "Blocked", "blocked", {
+      summary: "Confirm Matrix authority before generating Required forms.",
+      detailKind: "required_forms",
+      blockers: ["Confirmed Matrix authority is required before Required forms."],
+      warnings,
+    });
+  }
+
+  if (input.confirmedFeeAuthorityStatus !== "confirmed") {
+    return baseTask("required_forms", "Required forms", "Blocked", "blocked", {
+      summary: "Confirm Fee authority before generating Required forms.",
+      detailKind: "required_forms",
+      blockers: ["Current Confirmed Fee authority is required before Required forms."],
+      warnings,
+    });
+  }
+
   if (preview?.status === "conflict" || preview?.status === "blocked") {
     return baseTask(
       "required_forms",

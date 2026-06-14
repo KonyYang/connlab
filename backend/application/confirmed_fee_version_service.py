@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Callable, Protocol
 from uuid import uuid4
 
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftContext,
     FeeEvaluationPricingDraftLoadResult,
+    FeeEvaluationPricingDraftSnapshot,
     edited_values_to_json,
 )
 from backend.domain.confirmed_fee import (
@@ -103,6 +104,7 @@ class ConfirmedFeeVersionService:
                 "Reload and confirm again."
             )
         _validate_summary(command.summary)
+        _validate_summary_matches_saved_pricing_snapshot(command.summary, snapshot)
         versions = self._confirmed_fee_store.list_by_project(command.project_id)
         next_revision = (versions[-1].confirmed_fee_revision + 1) if versions else 1
         version = ConfirmedFeeVersion(
@@ -175,6 +177,75 @@ def _validate_summary(summary: ConfirmedFeeSummary) -> None:
             raise ConfirmedFeeSummaryValidationError(
                 f"{field_name} must be numeric."
             ) from exc
+
+
+def _validate_summary_matches_saved_pricing_snapshot(
+    summary: ConfirmedFeeSummary,
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+) -> None:
+    expected = _summary_from_saved_pricing_snapshot(snapshot)
+    mismatches = [
+        field_name
+        for field_name in (
+            "testing_fee_total",
+            "working_hours",
+            "lab_manpower_cost",
+            "external_cost",
+            "grand_cost",
+        )
+        if _decimal_value(getattr(summary, field_name))
+        != _decimal_value(getattr(expected, field_name))
+    ]
+    if mismatches:
+        raise ConfirmedFeePricingDraftChangedError(
+            "Fee Evaluation summary does not match the saved pricing draft. "
+            "Reload and confirm again."
+        )
+
+
+def _summary_from_saved_pricing_snapshot(
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+) -> ConfirmedFeeSummary:
+    rows = (*snapshot.edited_values.rows, *snapshot.edited_values.manual_rows)
+    testing_fee_total = sum((_decimal_value(row.testing_fee) for row in rows), Decimal("0"))
+    working_hours = sum((_decimal_value(row.spend_time) for row in rows), Decimal("0"))
+    condition_hours = _decimal_value(
+        snapshot.edited_values.summary.condition_confirmation_spend_time or "0"
+    )
+    working_hours += condition_hours
+    hourly_rate = _decimal_value(snapshot.edited_values.summary.lab_manpower_hourly_rate)
+    lab_manpower_cost = working_hours * hourly_rate
+    external_cost = _decimal_value(snapshot.edited_values.summary.external_cost or "0")
+    grand_cost = testing_fee_total + external_cost
+    return ConfirmedFeeSummary(
+        testing_fee_total=_format_decimal(testing_fee_total, Decimal("0.01")),
+        working_hours=_format_decimal(working_hours, Decimal("0.1")),
+        lab_manpower_cost=_format_decimal(
+            lab_manpower_cost,
+            Decimal("1"),
+            rounding=ROUND_HALF_UP,
+        ),
+        external_cost=_format_decimal(external_cost, Decimal("0.01")),
+        grand_cost=_format_decimal(grand_cost, Decimal("0.01")),
+    )
+
+
+def _decimal_value(value: str) -> Decimal:
+    normalized = str(value).strip().replace("$", "").replace(",", "")
+    if not normalized:
+        return Decimal("0")
+    try:
+        return Decimal(normalized)
+    except InvalidOperation as exc:
+        raise ConfirmedFeeSummaryValidationError(
+            "Saved Fee Evaluation pricing draft totals are incomplete."
+        ) from exc
+
+
+def _format_decimal(value: Decimal, quantum: Decimal, *, rounding=None) -> str:
+    if rounding is not None:
+        return str(value.quantize(quantum, rounding=rounding))
+    return str(value.quantize(quantum))
 
 
 def _validate_confirmed_by(value: str) -> str:

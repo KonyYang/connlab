@@ -13,7 +13,10 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    DiscardFeeEvaluationPricingDraftCommand,
+    FeeEvaluationPricingDraftConflictError,
     FeeEvaluationPricingDraftContext,
+    FeeEvaluationPricingDraftDiscardResult,
     FeeEvaluationPricingDraftLoadResult,
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
@@ -110,6 +113,63 @@ def test_pricing_draft_get_stale_does_not_return_payload() -> None:
     assert body["current_confirmed_revision"] == 2
     assert body["saved_confirmed_revision"] == 1
     assert body["payload"] is None
+
+
+def test_pricing_draft_delete_discards_current_payload() -> None:
+    service = _Service(_current_result(_edited_values()))
+    app.dependency_overrides[get_fee_evaluation_pricing_draft_service] = lambda: service
+    try:
+        response = TestClient(app).request(
+            "DELETE",
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json={
+                "expected_pricing_draft_edit_id": "fed-1",
+                "expected_confirmed_matrix_id": "cmv-1",
+                "expected_confirmed_revision": 1,
+                "expected_fee_rule_version_id": "fee_rules_v2026_06_03",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "discarded": True,
+        "current_confirmed_matrix_id": "cmv-1",
+        "current_confirmed_revision": 1,
+        "current_fee_rule_version_id": "fee_rules_v2026_06_03",
+    }
+    assert service.discard_commands == [
+        DiscardFeeEvaluationPricingDraftCommand(
+            project_id="P1",
+            expected_pricing_draft_edit_id="fed-1",
+            expected_confirmed_matrix_id="cmv-1",
+            expected_confirmed_revision=1,
+            expected_fee_rule_version_id="fee_rules_v2026_06_03",
+        )
+    ]
+
+
+def test_pricing_draft_delete_maps_conflict_to_409() -> None:
+    app.dependency_overrides[
+        get_fee_evaluation_pricing_draft_service
+    ] = lambda: _FailingService(
+        FeeEvaluationPricingDraftConflictError("Pricing draft changed before discard.")
+    )
+    try:
+        response = TestClient(app).request(
+            "DELETE",
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json={"expected_pricing_draft_edit_id": "fed-other"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "fee_pricing_draft_conflict",
+        "message": "Pricing draft changed before discard.",
+    }
 
 
 def test_pricing_draft_put_rejects_duplicate_row_identity() -> None:
@@ -273,6 +333,7 @@ class _Service:
     def __init__(self, result: FeeEvaluationPricingDraftLoadResult) -> None:
         self.result = result
         self.commands: list[SaveFeeEvaluationPricingDraftCommand] = []
+        self.discard_commands: list[DiscardFeeEvaluationPricingDraftCommand] = []
 
     def load(self, project_id: str) -> FeeEvaluationPricingDraftLoadResult:
         return self.result
@@ -283,6 +344,16 @@ class _Service:
         self.commands.append(command)
         self.result = _current_result(command.edited_values)
         return self.result
+
+    def discard(
+        self, command: DiscardFeeEvaluationPricingDraftCommand
+    ) -> FeeEvaluationPricingDraftDiscardResult:
+        self.discard_commands.append(command)
+        self.result = _missing_result()
+        return FeeEvaluationPricingDraftDiscardResult(
+            discarded=True,
+            current_context=_context(),
+        )
 
 
 class _FailingService:
@@ -295,4 +366,9 @@ class _FailingService:
     def save(
         self, command: SaveFeeEvaluationPricingDraftCommand
     ) -> FeeEvaluationPricingDraftLoadResult:
+        raise self.exc
+
+    def discard(
+        self, command: DiscardFeeEvaluationPricingDraftCommand
+    ) -> FeeEvaluationPricingDraftDiscardResult:
         raise self.exc

@@ -168,6 +168,11 @@ from backend.application.matrix_revision_flow_service import (
 )
 from backend.application.matrix_editor_session_service import (
     MatrixEditorSessionService,
+    _build_signature_from_project_draft,
+)
+from backend.application.matrix_fee_pending_rebase_service import (
+    DefaultMatrixFeePendingRebaseBuilder,
+    MatrixFeePendingRebaseService,
 )
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
@@ -242,6 +247,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectCleanupAuditRecordRepository,
     ProjectFolderRecordRepository,
     ProjectMatrixDraftRepository,
+    MatrixFeePendingRebaseRepository,
     ProjectFolderRecordRepository,
     ProjectOfficialWorkspaceRepository,
     ProjectRepository,
@@ -524,33 +530,46 @@ def get_matrix_editor_session_service(
     session: Session = Depends(get_session),
 ) -> MatrixEditorSessionService:
     """Build Matrix Editor temporary session service."""
+    confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+    matrix_draft_store = ProjectMatrixDraftRepository(session)
     return MatrixEditorSessionService(
         project_store=ProjectRepository(session),
-        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        confirmed_store=confirmed_store,
         source_store=SourceMatrixImportRepository(session),
-        draft_store=ProjectMatrixDraftRepository(session),
+        draft_store=matrix_draft_store,
         draft_persistence_service=ProjectMatrixDraftPersistenceService(
             project_store=ProjectRepository(session),
             source_store=SourceMatrixImportRepository(session),
-            draft_store=ProjectMatrixDraftRepository(session),
+            draft_store=matrix_draft_store,
         ),
         matrix_import_commit_service=MatrixImportCommitService(
             project_store=ProjectRepository(session),
             source_store=SourceMatrixImportRepository(session),
-            draft_store=ProjectMatrixDraftRepository(session),
+            draft_store=matrix_draft_store,
             source_persistence_service=SourceMatrixImportPersistenceService(
                 store=SourceMatrixImportRepository(session)
             ),
         ),
         matrix_revision_flow_service=MatrixRevisionFlowService(
             project_store=ProjectRepository(session),
-            draft_store=ProjectMatrixDraftRepository(session),
-            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+            draft_store=matrix_draft_store,
+            confirmed_store=confirmed_store,
         ),
         confirmed_matrix_authority_service=ConfirmedMatrixAuthorityService(
             project_store=ProjectRepository(session),
-            draft_store=ProjectMatrixDraftRepository(session),
-            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+            draft_store=matrix_draft_store,
+            confirmed_store=confirmed_store,
+        ),
+        pending_fee_rebase_service=MatrixFeePendingRebaseService(
+            draft_store=matrix_draft_store,
+            pending_store=MatrixFeePendingRebaseRepository(session),
+            rebase_builder=DefaultMatrixFeePendingRebaseBuilder(
+                basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
+                    confirmed_store=confirmed_store,
+                ),
+                pricing_draft_store=FeeEvaluationPricingDraftEditRepository(session),
+            ),
+            draft_signature_builder=_build_signature_from_project_draft,
         ),
     )
 

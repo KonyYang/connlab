@@ -1633,21 +1633,30 @@
 
 .runtime-console-menu-button {
   display: grid;
-  gap: 3px;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   place-content: center;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-primary);
   padding: 0;
+  cursor: pointer;
 }
 
-.runtime-console-menu-button span {
-  display: block;
-  width: 14px;
-  height: 2px;
-  border-radius: 99px;
-  background: var(--color-ink);
+.runtime-console-menu-button:hover {
+  border-color: var(--color-primary);
+  background: var(--color-sidebar-hover);
+}
+
+.runtime-console-menu-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.runtime-console-menu-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .runtime-console-project-title {

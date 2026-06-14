@@ -500,6 +500,50 @@ class FeeEvaluationPricingDraftEditModel(Base):
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class MatrixFeePendingRebaseModel(Base):
+    """Pending Fee rebase payload produced by Matrix Editor autosave."""
+
+    __tablename__ = "matrix_fee_pending_rebases"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_matrix_draft_id",
+            "fee_rule_version_id",
+            name="uq_matrix_fee_pending_rebase_draft_rule",
+        ),
+    )
+
+    pending_rebase_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    project_matrix_draft_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_records.project_matrix_draft_id"),
+        nullable=False,
+        index=True,
+    )
+    base_confirmed_matrix_id: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    base_confirmed_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    fee_rule_version_id: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        index=True,
+    )
+    matrix_draft_payload_signature: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+    )
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class ConfirmedFeeVersionModel(Base):
     """Database row for one immutable Confirmed Fee authority version."""
 

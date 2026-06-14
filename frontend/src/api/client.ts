@@ -1835,6 +1835,20 @@ export type FeeEvaluationPricingDraftResponse = {
   payload?: FeeEvaluationEditedFileExportRequest | null;
 };
 
+export type FeeEvaluationPricingDraftDiscardRequest = {
+  expected_pricing_draft_edit_id?: string | null;
+  expected_confirmed_matrix_id?: string | null;
+  expected_confirmed_revision?: number | null;
+  expected_fee_rule_version_id?: string | null;
+};
+
+export type FeeEvaluationPricingDraftDiscardResponse = {
+  discarded: boolean;
+  current_confirmed_matrix_id: string;
+  current_confirmed_revision: number;
+  current_fee_rule_version_id: string;
+};
+
 export type ConfirmedFeeStatus = "missing" | "current" | "stale";
 
 export type ConfirmedFeeSummary = {
@@ -2621,13 +2635,15 @@ export function fetchMatrixEditorSession(
 
 export function saveMatrixEditorSessionDraft(
   projectId: string,
-  input: MatrixEditorSessionDraftSaveRequest
+  input: MatrixEditorSessionDraftSaveRequest,
+  options: Pick<RequestInit, "signal"> = {}
 ): Promise<MatrixEditorSessionDraftSaveResponse> {
   return requestJson<MatrixEditorSessionDraftSaveResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/session/draft`,
     {
       method: "PUT",
       body: JSON.stringify(input),
+      signal: options.signal,
     }
   );
 }
@@ -2997,12 +3013,27 @@ export function getFeeEvaluationPricingDraft(
 
 export function saveFeeEvaluationPricingDraft(
   projectId: string,
-  input: FeeEvaluationEditedFileExportRequest
+  input: FeeEvaluationEditedFileExportRequest,
+  options: Pick<RequestInit, "signal"> = {}
 ): Promise<FeeEvaluationPricingDraftResponse> {
   return requestJson<FeeEvaluationPricingDraftResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/pricing-draft`,
     {
       method: "PUT",
+      body: JSON.stringify(input),
+      signal: options.signal,
+    }
+  );
+}
+
+export function discardFeeEvaluationPricingDraft(
+  projectId: string,
+  input: FeeEvaluationPricingDraftDiscardRequest = {}
+): Promise<FeeEvaluationPricingDraftDiscardResponse> {
+  return requestJson<FeeEvaluationPricingDraftDiscardResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/pricing-draft`,
+    {
+      method: "DELETE",
       body: JSON.stringify(input),
     }
   );

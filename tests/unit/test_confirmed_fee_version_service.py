@@ -55,7 +55,7 @@ def test_confirm_fee_creates_ordered_revision_history() -> None:
     service = _service(store=store)
 
     first = service.confirm(_command(testing_fee_total="41"))
-    second = service.confirm(_command(testing_fee_total="52"))
+    second = service.confirm(_command(testing_fee_total="41"))
 
     assert first.confirmed_fee_revision == 1
     assert second.confirmed_fee_revision == 2
@@ -100,6 +100,37 @@ def test_confirm_fee_rejects_changed_pricing_draft_id() -> None:
                 summary=_summary(),
             )
         )
+
+
+def test_confirm_fee_rejects_summary_that_differs_from_saved_pricing_snapshot() -> None:
+    service = _service()
+
+    with pytest.raises(ConfirmedFeePricingDraftChangedError, match="summary"):
+        service.confirm(_command(testing_fee_total="999"))
+
+
+def test_confirm_fee_accepts_frontend_half_up_lab_manpower_rounding() -> None:
+    service = _service(
+        load_result=FeeEvaluationPricingDraftLoadResult(
+            status="current",
+            current_context=_context(),
+            saved_snapshot=_pricing_snapshot(
+                spend_time="1.0",
+                lab_manpower_hourly_rate="22.5",
+            ),
+        )
+    )
+
+    created = service.confirm(
+        _command(
+            testing_fee_total="41",
+            working_hours="1.0",
+            lab_manpower_cost="23",
+            grand_cost="191",
+        )
+    )
+
+    assert created.summary.lab_manpower_cost == "23"
 
 
 def test_confirm_fee_rejects_non_numeric_summary() -> None:
@@ -163,25 +194,34 @@ def _service(
 def _command(
     *,
     testing_fee_total: str = "41",
+    working_hours: str = "1.5",
+    lab_manpower_cost: str = "300",
     grand_cost: str = "191",
 ) -> ConfirmFeeVersionCommand:
     return ConfirmFeeVersionCommand(
         project_id="P1",
         confirmed_by="Lab User",
         expected_pricing_draft_edit_id="fed-1",
-        summary=_summary(testing_fee_total=testing_fee_total, grand_cost=grand_cost),
+        summary=_summary(
+            testing_fee_total=testing_fee_total,
+            working_hours=working_hours,
+            lab_manpower_cost=lab_manpower_cost,
+            grand_cost=grand_cost,
+        ),
     )
 
 
 def _summary(
     *,
     testing_fee_total: str = "41",
+    working_hours: str = "1.5",
+    lab_manpower_cost: str = "300",
     grand_cost: str = "191",
 ) -> ConfirmedFeeSummary:
     return ConfirmedFeeSummary(
         testing_fee_total=testing_fee_total,
-        working_hours="1.5",
-        lab_manpower_cost="300",
+        working_hours=working_hours,
+        lab_manpower_cost=lab_manpower_cost,
         external_cost="150",
         grand_cost=grand_cost,
     )
@@ -211,6 +251,8 @@ def _context(
 def _pricing_snapshot(
     *,
     fee_rule_version_id: str = "fee_rules_v2026_06_03",
+    spend_time: str = "1.5",
+    lab_manpower_hourly_rate: str = "200",
 ) -> FeeEvaluationPricingDraftSnapshot:
     return FeeEvaluationPricingDraftSnapshot(
         draft_edit_id="fed-1",
@@ -226,7 +268,7 @@ def _pricing_snapshot(
                     confirmed_row_id="row-1",
                     step_token="1",
                     step_index=0,
-                    spend_time="1.5",
+                    spend_time=spend_time,
                     unit_price="20",
                     unit_type="per sample",
                     units="2",
@@ -240,7 +282,7 @@ def _pricing_snapshot(
                 condition_confirmation_spend_time="0",
                 external_cost="150",
                 external_cost_note="tooling",
-                lab_manpower_hourly_rate="200",
+                lab_manpower_hourly_rate=lab_manpower_hourly_rate,
             ),
         ),
         created_at="2026-06-09T09:00:00+00:00",

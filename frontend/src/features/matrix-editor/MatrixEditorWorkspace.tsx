@@ -78,6 +78,8 @@ type MatrixPublishState = "idle" | "loading" | "success" | "error";
 type MatrixTestRecordState = "idle" | "loading" | "success" | "error";
 type MatrixPublishMode = "first_authority" | "revision_authority";
 
+const AUTOSAVE_CANCEL_WAIT_TIMEOUT_MS = 1500;
+
 const AUTO_SAVE_STATUS_COPY: Record<MatrixSaveState, string> = {
   idle: "Editing",
   dirty: "Saving Matrix draft...",
@@ -1610,6 +1612,7 @@ export function MatrixEditorWorkspace({
   const autosaveTimeoutRef = useRef<number | null>(null);
   const autosaveGenerationRef = useRef(0);
   const autosaveInFlightRef = useRef<Promise<MatrixEditorSessionDraftSaveResponse | null> | null>(null);
+  const autosaveAbortControllerRef = useRef<AbortController | null>(null);
   const latestAutosaveResultRef = useRef<MatrixEditorSessionDraftSaveResponse | null>(null);
   const cancellingRef = useRef(false);
 
@@ -1985,7 +1988,12 @@ export function MatrixEditorWorkspace({
         return;
       }
       setSaveState("saving");
-      const saveRequest = saveMatrixEditorSessionDraft(projectId, request)
+      autosaveAbortControllerRef.current?.abort();
+      const autosaveAbortController = new AbortController();
+      autosaveAbortControllerRef.current = autosaveAbortController;
+      const saveRequest = saveMatrixEditorSessionDraft(projectId, request, {
+        signal: autosaveAbortController.signal,
+      })
         .then((response) => {
           latestAutosaveResultRef.current = response;
           if (
@@ -2003,6 +2011,9 @@ export function MatrixEditorWorkspace({
           return response;
         })
         .catch((error) => {
+          if (autosaveAbortController.signal.aborted) {
+            return null;
+          }
           if (
             autosaveGenerationRef.current === generation &&
             !cancellingRef.current
@@ -2015,6 +2026,9 @@ export function MatrixEditorWorkspace({
         .finally(() => {
           if (autosaveInFlightRef.current === saveRequest) {
             autosaveInFlightRef.current = null;
+          }
+          if (autosaveAbortControllerRef.current === autosaveAbortController) {
+            autosaveAbortControllerRef.current = null;
           }
         });
       autosaveInFlightRef.current = saveRequest;
@@ -2660,6 +2674,25 @@ export function MatrixEditorWorkspace({
     setContextMenu(null);
   };
 
+  const waitForAutosaveBeforeCancel =
+    async (): Promise<MatrixEditorSessionDraftSaveResponse | null> => {
+      const inFlightAutosave = autosaveInFlightRef.current;
+      if (!inFlightAutosave) {
+        return null;
+      }
+      let timeoutId: number | null = null;
+      const cancelWaitTimeout = new Promise<null>((resolve) => {
+        timeoutId = window.setTimeout(() => resolve(null), AUTOSAVE_CANCEL_WAIT_TIMEOUT_MS);
+      });
+      try {
+        return await Promise.race([inFlightAutosave.catch(() => null), cancelWaitTimeout]);
+      } finally {
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+      }
+    };
+
   const onCancelEditing = async (): Promise<void> => {
     if (hasUnsavedChanges || savedEditorDraftId) {
       const shouldDiscard = window.confirm(
@@ -2671,13 +2704,15 @@ export function MatrixEditorWorkspace({
     }
     cancellingRef.current = true;
     autosaveGenerationRef.current += 1;
+    autosaveAbortControllerRef.current?.abort();
+    autosaveAbortControllerRef.current = null;
     if (autosaveTimeoutRef.current !== null) {
       window.clearTimeout(autosaveTimeoutRef.current);
       autosaveTimeoutRef.current = null;
     }
     setIsCancelling(true);
     setSaveState("saving");
-    const inFlightResult = await autosaveInFlightRef.current?.catch(() => null);
+    const inFlightResult = await waitForAutosaveBeforeCancel();
     const discardTokens = inFlightResult ?? latestAutosaveResultRef.current;
     try {
       await discardMatrixEditorSessionDraft(projectId, {

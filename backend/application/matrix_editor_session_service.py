@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
-from typing import Any, Literal, Protocol
+from typing import Any, Callable, Literal, Protocol
 from uuid import uuid4
 
 from backend.application.confirmed_matrix_authority_service import (
@@ -36,6 +36,12 @@ from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowConflictError,
     MatrixRevisionFlowService,
 )
+from backend.application.matrix_fee_draft_rebase_service import MatrixFeeRebaseSummary
+from backend.application.matrix_fee_pending_rebase_service import (
+    DeletePendingRebaseForMatrixDraftCommand,
+    MatrixFeePendingRebaseResult,
+    RebaseAfterMatrixAutosaveCommand,
+)
 from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftCellInput,
     ProjectMatrixDraftGroupInput,
@@ -61,6 +67,7 @@ from backend.domain import (
     SourceMatrixImportRecord,
     SourceMatrixSnapshot,
 )
+from backend.modules.fee_evaluation import load_active_fee_rule_library
 
 
 SOURCE_UNAVAILABLE_MESSAGE = (
@@ -145,6 +152,20 @@ class DraftStore(Protocol):
         source_import_id: str,
     ) -> ProjectMatrixDraftRecord | None:
         """Return one draft record by project/source import lineage."""
+
+
+class PendingFeeRebaseService(Protocol):
+    """Pending Matrix-to-Fee rebase lifecycle hooks used by Matrix Editor."""
+
+    def rebase_after_matrix_autosave(
+        self, command: RebaseAfterMatrixAutosaveCommand
+    ) -> MatrixFeePendingRebaseResult:
+        """Persist pending Fee rebase output after Matrix autosave."""
+
+    def delete_for_matrix_draft(
+        self, command: DeletePendingRebaseForMatrixDraftCommand
+    ) -> object:
+        """Delete pending Fee rebase output for a discarded Matrix draft."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,6 +302,9 @@ class MatrixEditorSessionDraftSaveResult:
     saved_payload_signature: str
     active_confirmed_matrix_id: str
     active_confirmed_revision: int
+    fee_rebase_status: Literal["not_required", "current", "failed"] = "not_required"
+    fee_rebase_summary: MatrixFeeRebaseSummary | None = None
+    fee_rebase_error: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -324,6 +348,8 @@ class MatrixEditorSessionService:
         matrix_import_commit_service: MatrixImportCommitService,
         matrix_revision_flow_service: MatrixRevisionFlowService,
         confirmed_matrix_authority_service: ConfirmedMatrixAuthorityService,
+        pending_fee_rebase_service: PendingFeeRebaseService | None = None,
+        fee_rule_version_provider: Callable[[], str] | None = None,
     ) -> None:
         self._projects = project_store
         self._confirmed = confirmed_store
@@ -333,6 +359,10 @@ class MatrixEditorSessionService:
         self._matrix_import_commit = matrix_import_commit_service
         self._matrix_revision = matrix_revision_flow_service
         self._confirmed_authority = confirmed_matrix_authority_service
+        self._pending_fee_rebase = pending_fee_rebase_service or _NullPendingFeeRebaseService()
+        self._fee_rule_version_provider = (
+            fee_rule_version_provider or _active_fee_rule_version_id
+        )
 
     def get_seed(self, *, project_id: str) -> MatrixEditorSessionSeed:
         """Build one Matrix Editor seed from active authority and source snapshot lineage."""
@@ -452,13 +482,28 @@ class MatrixEditorSessionService:
             expected_command,
             draft_record.project_matrix_draft_id,
         )
+        saved_payload_signature = _build_signature_from_project_draft(saved)
+        fee_rebase_result = self._pending_fee_rebase.rebase_after_matrix_autosave(
+            RebaseAfterMatrixAutosaveCommand(
+                project_id=command.project_id,
+                active_confirmed_matrix_id=active.version.confirmed_matrix_id,
+                active_confirmed_revision=active.version.confirmed_revision,
+                saved_matrix_draft=saved,
+                saved_payload_signature=saved_payload_signature,
+                fee_rule_version_id=self._fee_rule_version_provider(),
+                generation=_generation_from_updated_at(saved.record.updated_at),
+            )
+        )
         return MatrixEditorSessionDraftSaveResult(
             editor_draft_id=saved.record.project_matrix_draft_id,
             draft_status="current",
             draft_updated_at=saved.record.updated_at,
-            saved_payload_signature=_build_signature_from_project_draft(saved),
+            saved_payload_signature=saved_payload_signature,
             active_confirmed_matrix_id=active.version.confirmed_matrix_id,
             active_confirmed_revision=active.version.confirmed_revision,
+            fee_rebase_status=fee_rebase_result.status,
+            fee_rebase_summary=fee_rebase_result.summary,
+            fee_rebase_error=fee_rebase_result.error,
         )
 
     def discard_editor_draft(
@@ -493,7 +538,30 @@ class MatrixEditorSessionService:
             raise MatrixEditorSessionDraftConflictError(
                 "Matrix draft is referenced by confirmed authority and cannot be discarded."
             )
+        try:
+            self._pending_fee_rebase.delete_for_matrix_draft(
+                DeletePendingRebaseForMatrixDraftCommand(
+                    project_matrix_draft_id=draft.record.project_matrix_draft_id
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - operator-facing cancel failure.
+            raise MatrixEditorSessionDraftConflictError(
+                "Matrix draft pending Fee rebase cleanup failed. "
+                "Reload Matrix Editor before continuing."
+            ) from exc
         discarded = self._drafts.delete(draft.record.project_matrix_draft_id)
+        if discarded:
+            try:
+                self._pending_fee_rebase.delete_for_matrix_draft(
+                    DeletePendingRebaseForMatrixDraftCommand(
+                        project_matrix_draft_id=draft.record.project_matrix_draft_id
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 - post-delete race cleanup.
+                raise MatrixEditorSessionDraftConflictError(
+                    "Matrix draft pending Fee rebase cleanup failed after discard. "
+                    "Reload Matrix Editor before continuing."
+                ) from exc
         return MatrixEditorSessionDraftDiscardResult(
             discarded=discarded,
             active_confirmed_matrix_id=active.version.confirmed_matrix_id,
@@ -928,6 +996,20 @@ class MatrixEditorSessionService:
         project = self._projects.get(project_id)
         if project is None:
             raise MatrixEditorSessionNotFoundError(f"Project not found: {project_id}")
+
+
+class _NullPendingFeeRebaseService:
+    """Default no-op pending rebase hook for tests and narrow callers."""
+
+    def rebase_after_matrix_autosave(
+        self, command: RebaseAfterMatrixAutosaveCommand
+    ) -> MatrixFeePendingRebaseResult:
+        return MatrixFeePendingRebaseResult(status="not_required")
+
+    def delete_for_matrix_draft(
+        self, command: DeletePendingRebaseForMatrixDraftCommand
+    ) -> object:
+        return None
 
 
 def _build_editor_draft_from_active(
@@ -1604,6 +1686,24 @@ def _normalize_group_label(value: str | None, *, fallback: str) -> str:
         normalized = text[5:].lstrip(" _-")
     normalized = normalized.strip()
     return normalized or fallback
+
+
+def _active_fee_rule_version_id() -> str:
+    library = load_active_fee_rule_library()
+    return library.version.version_id
+
+
+def _generation_from_updated_at(updated_at: str) -> int:
+    text = updated_at.strip()
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return int(datetime.now(UTC).timestamp() * 1_000_000)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return int(parsed.timestamp() * 1_000_000)
 
 
 def _utc_now() -> str:

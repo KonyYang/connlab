@@ -5474,6 +5474,37 @@ def test_task321_required_forms_generation_is_project_folder_wired() -> None:
     assert "Execute package" not in task_list_source
 
 
+def test_task314c_matrix_fee_project_folder_regression_contract_is_guarded() -> None:
+    """TASK_314C keeps Matrix/Fee draft work linked to Project Folder readiness."""
+    fee_page_source = (
+        FRONTEND_ROOT / "src" / "features" / "fee-evaluation" / "FeeEvaluationReviewExportPage.tsx"
+    ).read_text(encoding="utf-8")
+    task_selector_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "projectFolderTaskSelectors.ts"
+    ).read_text(encoding="utf-8")
+    task_list_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectFolderTaskList.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "Save changes" not in fee_page_source
+    assert "discardFeeEvaluationPricingDraft" in fee_page_source
+    assert "saveFeeEvaluationPricingDraft" in fee_page_source
+    assert "!input.matrixAuthorityReady" in task_selector_source
+    assert 'input.confirmedFeeAuthorityStatus !== "confirmed"' in task_selector_source
+    assert "Required forms" in task_selector_source
+    assert "Project Folder" in task_list_source
+    assert "Execute package" not in task_selector_source
+    assert "Execute package" not in task_list_source
+
+
 def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> None:
     """TASK_316 workspace action must stay operator-facing and single-action."""
     feature_root = FRONTEND_ROOT / "src" / "features" / "project-workbench"

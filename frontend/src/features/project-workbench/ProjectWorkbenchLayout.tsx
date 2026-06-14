@@ -6,6 +6,7 @@ import {
   type Project,
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
+import { UiIcon } from "../../components/common/UiIcon";
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
 import { OfficialWorkspaceActionPanel } from "./OfficialWorkspaceActionPanel";
 import {
@@ -292,12 +293,11 @@ export function ProjectWorkbenchLayout({
           <button
             aria-label="Back to projects"
             className="runtime-console-menu-button"
+            title="Back to Projects overview"
             type="button"
             onClick={onBack}
           >
-            <span />
-            <span />
-            <span />
+            <UiIcon name="project-overview" />
           </button>
           <strong>Project Workbench</strong>
         </div>

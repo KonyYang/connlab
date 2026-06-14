@@ -35,6 +35,17 @@ class SaveFeeEvaluationPricingDraftCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class DiscardFeeEvaluationPricingDraftCommand:
+    """Input for discarding one project's current Fee Evaluation pricing draft."""
+
+    project_id: str
+    expected_pricing_draft_edit_id: str | None = None
+    expected_confirmed_matrix_id: str | None = None
+    expected_confirmed_revision: int | None = None
+    expected_fee_rule_version_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class FeeEvaluationPricingDraftContext:
     """Current authority context used to bind a saved pricing draft."""
 
@@ -67,6 +78,18 @@ class FeeEvaluationPricingDraftLoadResult:
     saved_snapshot: FeeEvaluationPricingDraftSnapshot | None
 
 
+@dataclass(frozen=True, slots=True)
+class FeeEvaluationPricingDraftDiscardResult:
+    """Discard result for the current project's saved pricing draft."""
+
+    discarded: bool
+    current_context: FeeEvaluationPricingDraftContext
+
+
+class FeeEvaluationPricingDraftConflictError(ValueError):
+    """Raised when pricing draft discard tokens do not match current context."""
+
+
 class FeeEvaluationPricingDraftStore(Protocol):
     """Persistence operations required by the pricing draft service."""
 
@@ -79,6 +102,26 @@ class FeeEvaluationPricingDraftStore(Protocol):
         self, project_id: str
     ) -> FeeEvaluationPricingDraftSnapshot | None:
         """Return the latest saved draft for one project, if any."""
+
+    def get_by_context(
+        self,
+        *,
+        project_id: str,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+        fee_rule_version_id: str,
+    ) -> FeeEvaluationPricingDraftSnapshot | None:
+        """Return the saved draft for an exact project/Matrix/rule context."""
+
+    def delete_current(
+        self,
+        *,
+        project_id: str,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+        fee_rule_version_id: str,
+    ) -> bool:
+        """Delete the saved draft for an exact project/Matrix/rule context."""
 
 
 class FeeEvaluationPricingDraftPersistenceService:
@@ -101,17 +144,14 @@ class FeeEvaluationPricingDraftPersistenceService:
         _validate_edited_values(command.edited_values, basic_fill)
         context = _context_from_basic_fill(basic_fill)
         now = datetime.now(timezone.utc).isoformat()
-        existing = self._draft_store.get_latest_by_project(command.project_id)
-        draft_edit_id = (
-            existing.draft_edit_id
-            if existing is not None and _snapshot_matches_context(existing, context)
-            else uuid4().hex
+        existing = self._draft_store.get_by_context(
+            project_id=context.project_id,
+            confirmed_matrix_id=context.confirmed_matrix_id,
+            confirmed_revision=context.confirmed_revision,
+            fee_rule_version_id=context.fee_rule_version_id,
         )
-        created_at = (
-            existing.created_at
-            if existing is not None and _snapshot_matches_context(existing, context)
-            else now
-        )
+        draft_edit_id = existing.draft_edit_id if existing is not None else uuid4().hex
+        created_at = existing.created_at if existing is not None else now
         snapshot = FeeEvaluationPricingDraftSnapshot(
             draft_edit_id=draft_edit_id,
             project_id=context.project_id,
@@ -130,10 +170,15 @@ class FeeEvaluationPricingDraftPersistenceService:
         )
 
     def load(self, project_id: str) -> FeeEvaluationPricingDraftLoadResult:
-        """Load the latest saved pricing draft and classify it against current context."""
+        """Load the saved pricing draft for the current authority context."""
         basic_fill = self._build_basic_fill(project_id)
         context = _context_from_basic_fill(basic_fill)
-        snapshot = self._draft_store.get_latest_by_project(project_id)
+        snapshot = self._draft_store.get_by_context(
+            project_id=context.project_id,
+            confirmed_matrix_id=context.confirmed_matrix_id,
+            confirmed_revision=context.confirmed_revision,
+            fee_rule_version_id=context.fee_rule_version_id,
+        )
         if snapshot is None:
             return FeeEvaluationPricingDraftLoadResult(
                 status="missing",
@@ -141,9 +186,38 @@ class FeeEvaluationPricingDraftPersistenceService:
                 saved_snapshot=None,
             )
         return FeeEvaluationPricingDraftLoadResult(
-            status="current" if _snapshot_matches_context(snapshot, context) else "stale",
+            status="current",
             current_context=context,
             saved_snapshot=snapshot,
+        )
+
+    def discard(
+        self, command: DiscardFeeEvaluationPricingDraftCommand
+    ) -> FeeEvaluationPricingDraftDiscardResult:
+        """Discard the saved pricing draft for the current authority context."""
+        basic_fill = self._build_basic_fill(command.project_id)
+        context = _context_from_basic_fill(basic_fill)
+        snapshot = self._draft_store.get_by_context(
+            project_id=context.project_id,
+            confirmed_matrix_id=context.confirmed_matrix_id,
+            confirmed_revision=context.confirmed_revision,
+            fee_rule_version_id=context.fee_rule_version_id,
+        )
+        if snapshot is None:
+            return FeeEvaluationPricingDraftDiscardResult(
+                discarded=False,
+                current_context=context,
+            )
+        _validate_discard_expectations(command, snapshot, context)
+        discarded = self._draft_store.delete_current(
+            project_id=context.project_id,
+            confirmed_matrix_id=context.confirmed_matrix_id,
+            confirmed_revision=context.confirmed_revision,
+            fee_rule_version_id=context.fee_rule_version_id,
+        )
+        return FeeEvaluationPricingDraftDiscardResult(
+            discarded=discarded,
+            current_context=context,
         )
 
     def _build_basic_fill(self, project_id: str) -> MatrixBasicFillWorkbook:
@@ -284,3 +358,39 @@ def _snapshot_matches_context(
         and snapshot.confirmed_revision == context.confirmed_revision
         and snapshot.fee_rule_version_id == context.fee_rule_version_id
     )
+
+
+def _validate_discard_expectations(
+    command: DiscardFeeEvaluationPricingDraftCommand,
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+    context: FeeEvaluationPricingDraftContext,
+) -> None:
+    """Validate optimistic discard tokens against the current saved draft."""
+    if (
+        command.expected_pricing_draft_edit_id
+        and command.expected_pricing_draft_edit_id != snapshot.draft_edit_id
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft changed before discard. Reload Fee Evaluation."
+        )
+    if (
+        command.expected_confirmed_matrix_id
+        and command.expected_confirmed_matrix_id != context.confirmed_matrix_id
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft Matrix context changed before discard."
+        )
+    if (
+        command.expected_confirmed_revision is not None
+        and command.expected_confirmed_revision != context.confirmed_revision
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft Matrix revision changed before discard."
+        )
+    if (
+        command.expected_fee_rule_version_id
+        and command.expected_fee_rule_version_id != context.fee_rule_version_id
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft fee rule version changed before discard."
+        )

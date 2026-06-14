@@ -16,6 +16,7 @@ export type UiIconName =
   | "list"
   | "new-project"
   | "package"
+  | "project-overview"
   | "projects"
   | "refresh"
   | "search"
@@ -112,6 +113,17 @@ const PATHS: Record<UiIconName, ReactElement> = {
     <>
       <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
       <path d="M4 7.5 12 12l8-4.5M12 12v9" />
+    </>
+  ),
+  "project-overview": (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M4 9h16" />
+      <path d="M9 5v14" />
+      <path d="M12 12h5" />
+      <path d="M12 16h5" />
+      <path d="M6.5 12h.01" />
+      <path d="M6.5 16h.01" />
     </>
   ),
   projects: (

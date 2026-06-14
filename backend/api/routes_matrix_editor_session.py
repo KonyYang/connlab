@@ -188,6 +188,19 @@ class MatrixEditorSessionDraftSaveResponse(BaseModel):
     saved_payload_signature: str
     active_confirmed_matrix_id: str
     active_confirmed_revision: int
+    fee_rebase_status: str = "not_required"
+    fee_rebase_summary: "MatrixFeeRebaseSummaryResponse | None" = None
+    fee_rebase_error: str | None = None
+
+
+class MatrixFeeRebaseSummaryResponse(BaseModel):
+    """Pending Matrix-to-Fee rebase summary returned by autosave."""
+
+    preserved_count: int
+    added_count: int
+    removed_count: int
+    preserved_manual_count: int = 0
+    removed_manual_count: int = 0
 
 
 class MatrixEditorSessionDraftDiscardRequest(BaseModel):
@@ -340,6 +353,21 @@ def save_matrix_editor_session_draft(
         saved_payload_signature=result.saved_payload_signature,
         active_confirmed_matrix_id=result.active_confirmed_matrix_id,
         active_confirmed_revision=result.active_confirmed_revision,
+        fee_rebase_status=result.fee_rebase_status,
+        fee_rebase_summary=(
+            MatrixFeeRebaseSummaryResponse(
+                preserved_count=result.fee_rebase_summary.preserved_count,
+                added_count=result.fee_rebase_summary.added_count,
+                removed_count=result.fee_rebase_summary.removed_count,
+                preserved_manual_count=(
+                    result.fee_rebase_summary.preserved_manual_count
+                ),
+                removed_manual_count=result.fee_rebase_summary.removed_manual_count,
+            )
+            if result.fee_rebase_summary is not None
+            else None
+        ),
+        fee_rebase_error=result.fee_rebase_error,
     )
 
 

@@ -8,11 +8,18 @@ from backend.application.matrix_editor_session_service import (
     MatrixEditorSessionActiveChangedError,
     MatrixEditorSessionCell,
     MatrixEditorSessionConfirmCommand,
+    MatrixEditorSessionDraftDiscardCommand,
+    MatrixEditorSessionDraftConflictError,
+    MatrixEditorSessionDraftSaveCommand,
     MatrixEditorSessionError,
     MatrixEditorSessionGroup,
     MatrixEditorSessionRow,
     MatrixEditorSessionService,
     SOURCE_UNAVAILABLE_MESSAGE,
+)
+from backend.application.matrix_fee_draft_rebase_service import MatrixFeeRebaseSummary
+from backend.application.matrix_fee_pending_rebase_service import (
+    MatrixFeePendingRebaseResult,
 )
 from backend.domain import (
     ConfirmedMatrixCell,
@@ -148,6 +155,112 @@ def test_confirm_session_no_change_returns_http200_semantics() -> None:
     assert result.publish_status == "no_change"
     assert result.message == "No Matrix changes to confirm."
     assert result.confirmed_snapshot is None
+
+
+def test_save_editor_draft_attaches_current_fee_rebase_status() -> None:
+    active = _build_active_snapshot()
+    pending = _RecordingPendingFeeRebaseService(
+        MatrixFeePendingRebaseResult(
+            status="current",
+            summary=MatrixFeeRebaseSummary(
+                preserved_count=1,
+                added_count=2,
+                removed_count=0,
+            ),
+        )
+    )
+    service = _service(
+        active=active,
+        source_snapshot=None,
+        draft_persistence_service=_RecordingDraftPersistenceService(),
+        matrix_revision_flow_service=_RecordingMatrixRevisionFlowService(),
+        pending_fee_rebase_service=pending,
+    )
+
+    result = service.save_editor_draft(_save_command())
+
+    assert result.editor_draft_id == "pmd-rev"
+    assert result.fee_rebase_status == "current"
+    assert result.fee_rebase_summary == MatrixFeeRebaseSummary(
+        preserved_count=1,
+        added_count=2,
+        removed_count=0,
+    )
+    assert pending.rebase_command is not None
+    assert pending.rebase_command.saved_matrix_draft.record.project_matrix_draft_id == "pmd-rev"
+
+
+def test_save_editor_draft_keeps_matrix_success_when_fee_rebase_failed() -> None:
+    pending = _RecordingPendingFeeRebaseService(
+        MatrixFeePendingRebaseResult(
+            status="failed",
+            error="Fee rebase failed after Matrix autosave: pricing context exploded",
+        )
+    )
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_persistence_service=_RecordingDraftPersistenceService(),
+        matrix_revision_flow_service=_RecordingMatrixRevisionFlowService(),
+        pending_fee_rebase_service=pending,
+    )
+
+    result = service.save_editor_draft(_save_command())
+
+    assert result.draft_status == "current"
+    assert result.fee_rebase_status == "failed"
+    assert "pricing context exploded" in (result.fee_rebase_error or "")
+
+
+def test_discard_editor_draft_deletes_pending_fee_rebase() -> None:
+    draft_store = _DiscardDraftStore(_active_editor_draft())
+    pending = _RecordingPendingFeeRebaseService(MatrixFeePendingRebaseResult(status="not_required"))
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_store=draft_store,
+        pending_fee_rebase_service=pending,
+    )
+
+    result = service.discard_editor_draft(
+        MatrixEditorSessionDraftDiscardCommand(project_id="P1")
+    )
+
+    assert result.discarded is True
+    assert pending.deleted_matrix_draft_id == "pmd-edit"
+
+
+def test_discard_editor_draft_surfaces_pending_delete_failure() -> None:
+    pending = _FailingPendingFeeRebaseService()
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_store=_DiscardDraftStore(_active_editor_draft()),
+        pending_fee_rebase_service=pending,
+    )
+
+    with pytest.raises(MatrixEditorSessionDraftConflictError, match="pending Fee rebase"):
+        service.discard_editor_draft(
+            MatrixEditorSessionDraftDiscardCommand(project_id="P1")
+        )
+
+
+def test_discard_editor_draft_deletes_pending_again_after_matrix_delete_race() -> None:
+    pending = _RacePendingFeeRebaseService()
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_store=_DiscardDraftStore(_active_editor_draft()),
+        pending_fee_rebase_service=pending,
+    )
+
+    result = service.discard_editor_draft(
+        MatrixEditorSessionDraftDiscardCommand(project_id="P1")
+    )
+
+    assert result.discarded is True
+    assert pending.delete_calls == 2
+    assert pending.pending_exists is False
 
 
 def test_confirm_session_no_change_ignores_unselected_source_groups() -> None:
@@ -450,6 +563,25 @@ class _DraftStore:
         return None
 
 
+class _DiscardDraftStore(_DraftStore):
+    def __init__(self, draft: ProjectMatrixDraftSnapshot | None) -> None:
+        self._draft = draft
+        self.deleted: str | None = None
+
+    def get(self, project_matrix_draft_id: str):
+        if self._draft is None:
+            return None
+        return self._draft if project_matrix_draft_id == self._draft.record.project_matrix_draft_id else None
+
+    def list_by_project(self, project_id: str):
+        return [self._draft.record] if self._draft is not None else []
+
+    def delete(self, project_matrix_draft_id: str):
+        self.deleted = project_matrix_draft_id
+        self._draft = None
+        return True
+
+
 class _DraftPersistenceService:
     def update_draft(self, command):
         raise AssertionError("update_draft should not be called in no-change tests")
@@ -558,16 +690,129 @@ class _ConfirmedAuthorityService:
         raise AssertionError("confirm_draft should not be called in no-change tests")
 
 
-def _service(*, active: ConfirmedMatrixSnapshot | None, source_snapshot):
+class _RecordingPendingFeeRebaseService:
+    def __init__(self, result: MatrixFeePendingRebaseResult) -> None:
+        self._result = result
+        self.rebase_command = None
+        self.deleted_matrix_draft_id: str | None = None
+
+    def rebase_after_matrix_autosave(self, command):
+        self.rebase_command = command
+        return self._result
+
+    def delete_for_matrix_draft(self, command):
+        self.deleted_matrix_draft_id = command.project_matrix_draft_id
+        return None
+
+
+class _FailingPendingFeeRebaseService:
+    def rebase_after_matrix_autosave(self, command):
+        return MatrixFeePendingRebaseResult(status="not_required")
+
+    def delete_for_matrix_draft(self, command):
+        raise RuntimeError("storage busy")
+
+
+class _RacePendingFeeRebaseService:
+    def __init__(self) -> None:
+        self.delete_calls = 0
+        self.pending_exists = True
+
+    def rebase_after_matrix_autosave(self, command):
+        return MatrixFeePendingRebaseResult(status="not_required")
+
+    def delete_for_matrix_draft(self, command):
+        self.delete_calls += 1
+        self.pending_exists = False
+        if self.delete_calls == 1:
+            self.pending_exists = True
+        return None
+
+
+def _service(
+    *,
+    active: ConfirmedMatrixSnapshot | None,
+    source_snapshot,
+    draft_store=None,
+    draft_persistence_service=None,
+    matrix_revision_flow_service=None,
+    pending_fee_rebase_service=None,
+):
     return MatrixEditorSessionService(
         project_store=_ProjectStore(),
         confirmed_store=_ConfirmedStore(active),
         source_store=_SourceStore(source_snapshot=source_snapshot),
-        draft_store=_DraftStore(),
-        draft_persistence_service=_DraftPersistenceService(),
+        draft_store=draft_store or _DraftStore(),
+        draft_persistence_service=draft_persistence_service or _DraftPersistenceService(),
         matrix_import_commit_service=_MatrixImportCommitService(),
-        matrix_revision_flow_service=_MatrixRevisionFlowService(),
+        matrix_revision_flow_service=matrix_revision_flow_service
+        or _MatrixRevisionFlowService(),
         confirmed_matrix_authority_service=_ConfirmedAuthorityService(),
+        pending_fee_rebase_service=pending_fee_rebase_service,
+    )
+
+
+def _save_command() -> MatrixEditorSessionDraftSaveCommand:
+    return MatrixEditorSessionDraftSaveCommand(
+        project_id="P1",
+        expected_active_confirmed_matrix_id="cmv-1",
+        expected_active_confirmed_revision=1,
+        source_document_path=None,
+        source_document_name=None,
+        source_format=None,
+        source_import_id=None,
+        source_snapshot_id="sms-1",
+        groups=(
+            MatrixEditorSessionGroup(
+                draft_group_id="dg-1",
+                source_group_snapshot_id="sg-1",
+                group_order=1,
+                group_key="g1",
+                group_label="1",
+                is_selected=True,
+                sample_quantity_expression="5",
+                sample_note=None,
+            ),
+        ),
+        rows=(
+            MatrixEditorSessionRow(
+                draft_row_id="dr-1",
+                source_row_snapshot_id="sr-1",
+                row_order=1,
+                test_item="Contact Resistance",
+                source_section="6.1",
+                method="EIA-364-23D",
+                condition="Initial",
+                requirement="< 10 mohm",
+                day_expression=None,
+                is_sample_row=False,
+            ),
+        ),
+        cells=(
+            MatrixEditorSessionCell(
+                draft_row_id="dr-1",
+                draft_group_id="dg-1",
+                cell_value="1",
+            ),
+        ),
+    )
+
+
+def _active_editor_draft() -> ProjectMatrixDraftSnapshot:
+    return ProjectMatrixDraftSnapshot(
+        record=ProjectMatrixDraftRecord(
+            project_matrix_draft_id="pmd-edit",
+            project_id="P1",
+            source_import_id=None,
+            source_snapshot_id="sms-1",
+            status=ProjectMatrixDraftStatus.DRAFT,
+            created_at="2026-05-27T00:00:00Z",
+            updated_at="2026-05-27T00:00:01Z",
+            base_confirmed_matrix_id="cmv-1",
+        ),
+        groups=(),
+        rows=(),
+        cells=(),
     )
 
 

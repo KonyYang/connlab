@@ -50,9 +50,13 @@ TASK_314A is the true prerequisite for TASK_315.
 
 ### TASK_314B
 
-Deferred. Task file not created yet.
+Complete. Implemented after separate explicit approval.
 
-Expected future scope:
+Task file: `tasks/TASK_314B_FEE_EVALUATION_BACKGROUND_DRAFT_PERSISTENCE.md`
+
+Plan: `docs/task_314b_fee_evaluation_background_draft_persistence_plan.md`
+
+Completed scope:
 
 - Fee Evaluation pricing draft autosave
 - pricing draft discard endpoint
@@ -61,9 +65,13 @@ Expected future scope:
 
 ### TASK_314C
 
-Deferred. Task file not created yet.
+Complete. Implemented after separate explicit approval.
 
-Expected future scope:
+Task file: `tasks/TASK_314C_MATRIX_FEE_PROJECT_FOLDER_REGRESSION.md`
+
+Plan: `docs/task_314c_matrix_fee_project_folder_regression_plan.md`
+
+Completed scope:
 
 - regression verification for Confirmed Matrix/Fee authority behavior
 - TASK_318 Official project folder check
@@ -74,11 +82,11 @@ Expected future scope:
 
 - Do not implement the combined TASK_314 as a single task.
 - Do not treat Fee Evaluation autosave as required for TASK_315.
-- Do not proceed to TASK_314B, TASK_314C, or TASK_315 without separate explicit approval.
+- Do not implement TASK_315 without separate explicit approval.
 - If existing worktree changes include combined TASK_314 implementation, review and narrow them against TASK_314A before continuing.
 
 ## Stop Point
 
 This umbrella plan is retained only as split rationale and historical context.
 
-Use `docs/task_314a_matrix_editor_draft_persistence_plan.md` for the next reviewable implementation plan.
+Use `docs/task_314a_matrix_editor_draft_persistence_plan.md`, `docs/task_314b_fee_evaluation_background_draft_persistence_plan.md`, and `docs/task_314c_matrix_fee_project_folder_regression_plan.md` as completed split-slice history.

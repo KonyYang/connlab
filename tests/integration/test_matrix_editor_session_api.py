@@ -22,6 +22,7 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.models_matrix_source import SourceMatrixSnapshotModel
 from backend.infrastructure.storage.repositories import (
+    MatrixFeePendingRebaseRepository,
     ProjectRepository,
     SourceMatrixImportRepository,
 )
@@ -68,7 +69,7 @@ def test_matrix_editor_session_seed_handles_missing_source_snapshot(
 def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
     tmp_path: Path,
 ) -> None:
-    client, engine, _ = _client(tmp_path)
+    client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
         source_import_id = _seed_source_import("P1", tmp_path)
@@ -124,7 +125,7 @@ def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
 def test_matrix_editor_session_autosave_restore_confirm_and_discard(
     tmp_path: Path,
 ) -> None:
-    client, engine, _ = _client(tmp_path)
+    client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
         source_import_id = _seed_source_import("P1", tmp_path)
@@ -174,6 +175,15 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         assert saved_payload["draft_status"] == "current"
         assert saved_payload["editor_draft_id"]
         assert saved_payload["saved_payload_signature"]
+        assert saved_payload["fee_rebase_status"] == "current"
+        assert saved_payload["fee_rebase_summary"]["added_count"] >= 1
+        with session_factory() as session:
+            pending = MatrixFeePendingRebaseRepository(
+                session
+            ).get_latest_by_matrix_draft(saved_payload["editor_draft_id"])
+        assert pending is not None
+        assert pending.project_matrix_draft_id == saved_payload["editor_draft_id"]
+        assert pending.matrix_draft_payload_signature == saved_payload["saved_payload_signature"]
 
         restored = client.get("/api/projects/P1/matrix-editor/session")
         assert restored.status_code == 200
@@ -273,16 +283,23 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
             },
         )
         assert saved_again.status_code == 200
+        saved_again_payload = saved_again.json()
+        assert saved_again_payload["fee_rebase_status"] == "current"
         discard = client.request(
             "DELETE",
             "/api/projects/P1/matrix-editor/session/draft",
             json={
-                "expected_editor_draft_id": saved_again.json()["editor_draft_id"],
-                "expected_saved_payload_signature": saved_again.json()["saved_payload_signature"],
+                "expected_editor_draft_id": saved_again_payload["editor_draft_id"],
+                "expected_saved_payload_signature": saved_again_payload["saved_payload_signature"],
             },
         )
         assert discard.status_code == 200
         assert discard.json()["discarded"] is True
+        with session_factory() as session:
+            pending_after_discard = MatrixFeePendingRebaseRepository(
+                session
+            ).get_latest_by_matrix_draft(saved_again_payload["editor_draft_id"])
+        assert pending_after_discard is None
 
         after_discard = client.get("/api/projects/P1/matrix-editor/session")
         assert after_discard.status_code == 200

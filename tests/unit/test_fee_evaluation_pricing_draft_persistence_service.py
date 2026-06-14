@@ -13,6 +13,8 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedManualRow,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    DiscardFeeEvaluationPricingDraftCommand,
+    FeeEvaluationPricingDraftConflictError,
     FeeEvaluationPricingDraftPersistenceService,
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
@@ -59,7 +61,7 @@ def test_load_missing_pricing_draft_returns_missing() -> None:
     assert result.saved_snapshot is None
 
 
-def test_load_reports_stale_when_confirmed_matrix_revision_differs() -> None:
+def test_load_returns_missing_when_only_old_confirmed_matrix_revision_draft_exists() -> None:
     store = _DraftStore()
     current = _service(store=store)
     current.save(
@@ -72,13 +74,12 @@ def test_load_reports_stale_when_confirmed_matrix_revision_differs() -> None:
 
     result = revised.load("P1")
 
-    assert result.status == "stale"
+    assert result.status == "missing"
     assert result.current_context.confirmed_revision == 2
-    assert result.saved_snapshot is not None
-    assert result.saved_snapshot.confirmed_revision == 1
+    assert result.saved_snapshot is None
 
 
-def test_load_reports_stale_when_fee_rule_version_differs() -> None:
+def test_load_returns_missing_when_only_old_fee_rule_version_draft_exists() -> None:
     store = _DraftStore()
     current = _service(store=store)
     current.save(
@@ -92,11 +93,77 @@ def test_load_reports_stale_when_fee_rule_version_differs() -> None:
 
     result = current.load("P1")
 
-    assert result.status == "stale"
+    assert result.status == "missing"
     assert result.current_context.fee_rule_version_id == "fee_rules_v2026_06_03"
+    assert result.saved_snapshot is None
+
+
+def test_load_uses_current_context_when_newer_stale_row_exists() -> None:
+    current_snapshot = _pricing_snapshot(updated_at="2026-06-14T09:00:00+00:00")
+    stale_snapshot = _pricing_snapshot(
+        draft_edit_id="fed-stale",
+        confirmed_matrix_id="old-cmv",
+        updated_at="2026-06-14T10:00:00+00:00",
+    )
+    store = _DraftStore(snapshots=(current_snapshot, stale_snapshot))
+    service = _service(store=store)
+
+    result = service.load("P1")
+
+    assert result.status == "current"
     assert result.saved_snapshot is not None
-    assert result.saved_snapshot.fee_rule_version_id == "old_fee_rules"
-    assert result.saved_snapshot.edited_values.rows[0].unit_price == "20"
+    assert result.saved_snapshot.draft_edit_id == "fed-1"
+
+
+def test_discard_current_pricing_draft_deletes_matching_context() -> None:
+    store = _DraftStore(snapshots=(_pricing_snapshot(),))
+    service = _service(store=store)
+
+    result = service.discard(
+        DiscardFeeEvaluationPricingDraftCommand(
+            project_id="P1",
+            expected_pricing_draft_edit_id="fed-1",
+            expected_confirmed_matrix_id="cmv-1",
+            expected_confirmed_revision=1,
+            expected_fee_rule_version_id="fee_rules_v2026_06_03",
+        )
+    )
+
+    assert result.discarded is True
+    assert store.deleted_context == (
+        "P1",
+        "cmv-1",
+        1,
+        "fee_rules_v2026_06_03",
+    )
+
+
+def test_discard_rejects_mismatched_pricing_draft_id() -> None:
+    service = _service(store=_DraftStore(snapshots=(_pricing_snapshot(),)))
+
+    with pytest.raises(FeeEvaluationPricingDraftConflictError):
+        service.discard(
+            DiscardFeeEvaluationPricingDraftCommand(
+                project_id="P1",
+                expected_pricing_draft_edit_id="fed-other",
+            )
+        )
+
+
+def test_discard_uses_current_context_when_newer_stale_row_exists() -> None:
+    current_snapshot = _pricing_snapshot(updated_at="2026-06-14T09:00:00+00:00")
+    stale_snapshot = _pricing_snapshot(
+        draft_edit_id="fed-stale",
+        confirmed_matrix_id="old-cmv",
+        updated_at="2026-06-14T10:00:00+00:00",
+    )
+    store = _DraftStore(snapshots=(current_snapshot, stale_snapshot))
+    service = _service(store=store)
+
+    result = service.discard(DiscardFeeEvaluationPricingDraftCommand(project_id="P1"))
+
+    assert result.discarded is True
+    assert store.deleted_context == ("P1", "cmv-1", 1, "fee_rules_v2026_06_03")
 
 
 def test_save_rejects_unknown_row_identity() -> None:
@@ -198,6 +265,27 @@ def _summary() -> FeeEvaluationEditedExportSummary:
     )
 
 
+def _pricing_snapshot(
+    *,
+    draft_edit_id: str = "fed-1",
+    project_id: str = "P1",
+    confirmed_matrix_id: str = "cmv-1",
+    confirmed_revision: int = 1,
+    fee_rule_version_id: str = "fee_rules_v2026_06_03",
+    updated_at: str = "2026-06-09T09:10:00+00:00",
+) -> FeeEvaluationPricingDraftSnapshot:
+    return FeeEvaluationPricingDraftSnapshot(
+        draft_edit_id=draft_edit_id,
+        project_id=project_id,
+        confirmed_matrix_id=confirmed_matrix_id,
+        confirmed_revision=confirmed_revision,
+        fee_rule_version_id=fee_rule_version_id,
+        edited_values=_edited_values(),
+        created_at="2026-06-09T09:00:00+00:00",
+        updated_at=updated_at,
+    )
+
+
 def _snapshot(*, confirmed_revision: int = 1) -> ConfirmedMatrixSnapshot:
     row = ConfirmedMatrixRow(
         confirmed_row_id="cmr-visual",
@@ -256,16 +344,83 @@ class _ConfirmedStore:
 
 
 class _DraftStore:
-    def __init__(self) -> None:
-        self.snapshot: FeeEvaluationPricingDraftSnapshot | None = None
+    def __init__(
+        self, snapshots: tuple[FeeEvaluationPricingDraftSnapshot, ...] = ()
+    ) -> None:
+        self.snapshots = {
+            (
+                snapshot.project_id,
+                snapshot.confirmed_matrix_id,
+                snapshot.confirmed_revision,
+                snapshot.fee_rule_version_id,
+            ): snapshot
+            for snapshot in snapshots
+        }
+        self.deleted_context: tuple[str, str, int, str] | None = None
+
+    @property
+    def snapshot(self) -> FeeEvaluationPricingDraftSnapshot | None:
+        return self.get_latest_by_project("P1")
+
+    @snapshot.setter
+    def snapshot(self, value: FeeEvaluationPricingDraftSnapshot | None) -> None:
+        self.snapshots.clear()
+        if value is not None:
+            self.upsert_current(value)
 
     def upsert_current(
         self, snapshot: FeeEvaluationPricingDraftSnapshot
     ) -> FeeEvaluationPricingDraftSnapshot:
-        self.snapshot = snapshot
+        self.snapshots[
+            (
+                snapshot.project_id,
+                snapshot.confirmed_matrix_id,
+                snapshot.confirmed_revision,
+                snapshot.fee_rule_version_id,
+            )
+        ] = snapshot
         return snapshot
 
     def get_latest_by_project(
         self, project_id: str
     ) -> FeeEvaluationPricingDraftSnapshot | None:
-        return self.snapshot if self.snapshot and self.snapshot.project_id == project_id else None
+        matching = [
+            snapshot
+            for snapshot in self.snapshots.values()
+            if snapshot.project_id == project_id
+        ]
+        return max(matching, key=lambda snapshot: snapshot.updated_at, default=None)
+
+    def get_by_context(
+        self,
+        *,
+        project_id: str,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+        fee_rule_version_id: str,
+    ) -> FeeEvaluationPricingDraftSnapshot | None:
+        return self.snapshots.get(
+            (
+                project_id,
+                confirmed_matrix_id,
+                confirmed_revision,
+                fee_rule_version_id,
+            )
+        )
+
+    def delete_current(
+        self,
+        *,
+        project_id: str,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+        fee_rule_version_id: str,
+    ) -> bool:
+        key = (
+            project_id,
+            confirmed_matrix_id,
+            confirmed_revision,
+            fee_rule_version_id,
+        )
+        self.deleted_context = key
+        return self.snapshots.pop(key, None) is not None

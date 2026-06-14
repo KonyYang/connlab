@@ -7,8 +7,8 @@ Historical executable plan: `docs/task_314_matrix_and_fee_background_draft_persi
 Current replacement tasks:
 
 - `TASK_314A_MATRIX_EDITOR_DRAFT_PERSISTENCE`
-- `TASK_314B_FEE_EVALUATION_BACKGROUND_DRAFT_PERSISTENCE` (deferred; task file not created yet)
-- `TASK_314C_MATRIX_FEE_PROJECT_FOLDER_REGRESSION` (deferred; task file not created yet)
+- `TASK_314B_FEE_EVALUATION_BACKGROUND_DRAFT_PERSISTENCE` (complete after separate explicit approval)
+- `TASK_314C_MATRIX_FEE_PROJECT_FOLDER_REGRESSION` (complete after separate explicit approval)
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
@@ -43,9 +43,13 @@ TASK_314A is the immediate controlled task. It is the true prerequisite for `TAS
 
 ### TASK_314B: Fee Evaluation background draft persistence
 
-Deferred.
+Complete. Implemented after separate explicit approval.
 
-Expected future scope:
+Task file: `tasks/TASK_314B_FEE_EVALUATION_BACKGROUND_DRAFT_PERSISTENCE.md`
+
+Plan: `docs/task_314b_fee_evaluation_background_draft_persistence_plan.md`
+
+Completed scope:
 
 - pricing draft autosave
 - pricing draft discard endpoint
@@ -56,9 +60,13 @@ TASK_314B is useful for workflow consistency, but it is not required before TASK
 
 ### TASK_314C: Linkage regression
 
-Deferred.
+Complete. Implemented after separate explicit approval.
 
-Expected future scope:
+Task file: `tasks/TASK_314C_MATRIX_FEE_PROJECT_FOLDER_REGRESSION.md`
+
+Plan: `docs/task_314c_matrix_fee_project_folder_regression_plan.md`
+
+Completed scope:
 
 - verify TASK_318 Official project folder check remains intact
 - verify TASK_320 single-task Workbench UI remains intact
@@ -69,8 +77,8 @@ Expected future scope:
 
 Do not implement this umbrella TASK_314 directly.
 
-If existing worktree changes attempted the original combined TASK_314, review them against TASK_314A first. Keep Matrix-only changes that match TASK_314A after validation, and defer or remove Fee Evaluation autosave changes unless a later TASK_314B is explicitly approved.
+If existing worktree changes attempted the original combined TASK_314, review them against TASK_314A and TASK_314B separately. Keep only changes that match the approved split slices after validation; defer linkage regression, TASK_315 rebase, and later execution scope unless separately approved.
 
 ## Stop Point
 
-Stop after creating/reviewing the TASK_314A task file and executable plan unless the user explicitly approves TASK_314A implementation.
+TASK_314 split implementation is complete through TASK_314A, TASK_314B, and TASK_314C. Do not proceed to TASK_315 without separate explicit approval.

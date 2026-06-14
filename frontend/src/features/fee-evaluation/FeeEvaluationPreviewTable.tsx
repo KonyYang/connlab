@@ -32,7 +32,6 @@ type FeeEvaluationPreviewTableProps = {
     field: FeeEvaluationEditableField,
     value: string
   ) => void;
-  onSavePricingDraft: () => void;
   saveState: FeePricingDraftSaveState;
   scopeFeeLabel: string;
   groupOptions: string[];
@@ -94,7 +93,6 @@ export function FeeEvaluationPreviewTable({
   onGenerateFeeFile,
   onGroupFilterChange,
   onRowEditChange,
-  onSavePricingDraft,
   saveState,
   scopeFeeLabel,
   groupOptions,
@@ -135,14 +133,6 @@ export function FeeEvaluationPreviewTable({
               <strong>{scopeFeeLabel}</strong>
             </div>
           </div>
-          <button
-            className="fee-evaluation-save-button"
-            type="button"
-            onClick={onSavePricingDraft}
-            disabled={saveState.kind === "loading" || saveState.kind === "saving"}
-          >
-            {saveState.kind === "saving" ? "Saving..." : "Save changes"}
-          </button>
           <button
             className="fee-evaluation-file-button"
             type="button"

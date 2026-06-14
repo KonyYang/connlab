@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -18,6 +19,7 @@ const apiMocks = vi.hoisted(() => ({
   getFeeEvaluationPricingDraft: vi.fn(),
   getProject: vi.fn(),
   listProjectLtrs: vi.fn(),
+  discardFeeEvaluationPricingDraft: vi.fn(),
   saveFeeEvaluationPricingDraft: vi.fn(),
 }));
 
@@ -33,6 +35,7 @@ vi.mock("../../api/client", async (importOriginal) => {
     getFeeEvaluationPricingDraft: apiMocks.getFeeEvaluationPricingDraft,
     getProject: apiMocks.getProject,
     listProjectLtrs: apiMocks.listProjectLtrs,
+    discardFeeEvaluationPricingDraft: apiMocks.discardFeeEvaluationPricingDraft,
     saveFeeEvaluationPricingDraft: apiMocks.saveFeeEvaluationPricingDraft,
   };
 });
@@ -42,6 +45,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     cleanup();
     vi.clearAllMocks();
     vi.restoreAllMocks();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -312,50 +316,83 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
   });
 
-  it("saves current pricing draft edits through the pricing draft endpoint", async () => {
+  it("autosaves current pricing draft edits through the pricing draft endpoint", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
-    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
-      status: "current",
-      current_confirmed_matrix_id: "cmv-1",
-      current_confirmed_revision: 1,
-      current_fee_rule_version_id: "fee_rules_v2026_06_03",
-      saved_draft_edit_id: "fed-1",
-      payload: null,
-    });
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(currentPricingDraftResponse());
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
+    expect(await screen.findByRole("table", { name: "Testing Prices preview rows" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
     expect(await screen.findByText("Unsaved changes.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
         "P1",
-        expect.any(Object)
+        expect.objectContaining({
+          rows: expect.arrayContaining([
+            expect.objectContaining({
+              source_line_id: "cmv-1:g1:row-1:1:0",
+              unit_price: "12",
+            }),
+          ]),
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
-    });
-    const payload = apiMocks.saveFeeEvaluationPricingDraft.mock.calls[0][1];
-    expect(payload.rows[0]).toMatchObject({
-      source_line_id: "cmv-1:g1:row-1:1:0",
-      unit_price: "12",
-    });
+    }, { timeout: 1600 });
     expect(await screen.findByText("Saved pricing draft.")).toBeTruthy();
   });
 
-  it("confirms Fee Evaluation by saving the current page values first", async () => {
+  it("seeds a missing pricing draft from defaults and confirms without an extra save", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithTwoCalculatedGroups());
     apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
-      status: "current",
-      current_confirmed_matrix_id: "cmv-1",
-      current_confirmed_revision: 1,
-      current_fee_rule_version_id: "fee_rules_v2026_06_03",
+      ...currentPricingDraftResponse(),
+      saved_draft_edit_id: "fed-seeded",
+    });
+    apiMocks.confirmFeeVersion.mockResolvedValue(
+      createConfirmedFeeLatest({
+        status: "current",
+        pricingDraftEditId: "fed-seeded",
+        testingFeeTotal: "125.00",
+      })
+    );
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    }, { timeout: 1600 });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
+
+    await waitFor(() => {
+      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
+        confirmed_by: "Lab User",
+        expected_pricing_draft_edit_id: "fed-seeded",
+        summary: {
+          testing_fee_total: "125.00",
+          working_hours: "0.0",
+          lab_manpower_cost: "0",
+          external_cost: "0",
+          grand_cost: "125.00",
+        },
+      });
+    });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("confirms Fee Evaluation with the latest autosaved draft id without saving again", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithTwoCalculatedGroups());
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
+      ...currentPricingDraftResponse(),
       saved_draft_edit_id: "fed-current",
-      payload: null,
     });
     apiMocks.confirmFeeVersion.mockResolvedValue(
       createConfirmedFeeLatest({
@@ -377,14 +414,15 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.change(screen.getByLabelText("External Cost preview"), {
       target: { value: "5" },
     });
+    expect(
+      (screen.getByRole("button", { name: "Confirm Fee" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    }, { timeout: 1600 });
     fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
 
-    await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
-        "P1",
-        expect.any(Object)
-      );
-    });
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
         confirmed_by: "Lab User",
@@ -398,6 +436,7 @@ describe("FeeEvaluationReviewExportPage", () => {
         },
       });
     });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Confirmed")).toBeTruthy();
   });
 
@@ -471,7 +510,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(await screen.findByText("Unconfirmed local changes")).toBeTruthy();
   });
 
-  it("does not confirm when saving succeeds without a pricing draft id", async () => {
+  it("does not confirm when autosave succeeds without a pricing draft id", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
@@ -485,12 +524,110 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm Fee" }));
+    fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
+      target: { value: "12" },
+    });
 
     expect(
-      await screen.findByText("Save returned no pricing draft id. Refresh and save again before confirming.")
+      await screen.findByText("Save returned no pricing draft id. Retry before confirming.")
     ).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Confirm Fee" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+  });
+
+  it("discards the current pricing draft before returning to Workbench", async () => {
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.discardFeeEvaluationPricingDraft.mockResolvedValue({
+      discarded: true,
+      current_confirmed_matrix_id: "cmv-1",
+      current_confirmed_revision: 1,
+      current_fee_rule_version_id: "fee_rules_v2026_06_03",
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+    );
+
+    await screen.findByText("Loaded saved pricing draft.");
+    fireEvent.click(await screen.findByRole("button", { name: "Back to Workbench" }));
+
+    await waitFor(() => {
+      expect(apiMocks.discardFeeEvaluationPricingDraft).toHaveBeenCalledWith("P1", {
+        expected_pricing_draft_edit_id: "fed-1",
+        expected_confirmed_matrix_id: "cmv-1",
+        expected_confirmed_revision: 1,
+        expected_fee_rule_version_id: "fee_rules_v2026_06_03",
+      });
+      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("stays on Fee Evaluation when pricing draft discard fails", async () => {
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.discardFeeEvaluationPricingDraft.mockRejectedValue(
+      new Error("Pricing draft changed before discard.")
+    );
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+    );
+
+    await screen.findByText("Loaded saved pricing draft.");
+    fireEvent.click(await screen.findByRole("button", { name: "Back to Workbench" }));
+
+    await waitFor(() => {
+      expect(apiMocks.discardFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    });
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(screen.getByText("Pricing draft changed before discard.")).toBeTruthy();
+  });
+
+  it("does not hang Back to Workbench when in-flight autosave never settles", async () => {
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.saveFeeEvaluationPricingDraft.mockReturnValue(new Promise(() => undefined));
+    apiMocks.discardFeeEvaluationPricingDraft.mockResolvedValue({
+      discarded: true,
+      current_confirmed_matrix_id: "cmv-1",
+      current_confirmed_revision: 1,
+      current_fee_rule_version_id: "fee_rules_v2026_06_03",
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+    );
+
+    await screen.findByText("Loaded saved pricing draft.");
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
+      target: { value: "12" },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to Workbench" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    vi.useRealTimers();
+
+    await waitFor(() => {
+      expect(apiMocks.discardFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("keeps the Fee file action enabled when the project folder path is missing", async () => {
@@ -585,6 +722,24 @@ function arrangeSuccessfulContext(
   apiMocks.getConfirmedFeeLatest.mockResolvedValue(
     input.confirmedFee ?? createConfirmedFeeLatest({ status: "missing" })
   );
+}
+
+function currentPricingDraftResponse(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    status: "current",
+    current_confirmed_matrix_id: "cmv-1",
+    current_confirmed_revision: 1,
+    current_fee_rule_version_id: "fee_rules_v2026_06_03",
+    saved_confirmed_matrix_id: "cmv-1",
+    saved_confirmed_revision: 1,
+    saved_fee_rule_version_id: "fee_rules_v2026_06_03",
+    saved_draft_edit_id: "fed-1",
+    saved_updated_at: "2026-06-14T09:00:00+00:00",
+    payload: null,
+    ...overrides,
+  };
 }
 
 function createConfirmedFeeLatest(input: {

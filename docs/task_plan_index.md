@@ -1,7 +1,7 @@
 # Task Plan Index
 
-Last Updated: 2026-06-14
-Status: TASK_321 complete after explicit user approval. TASK_314 split accepted; TASK_314A Matrix Editor draft persistence plan is ready and awaiting explicit implementation approval. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. Do not enter a later task without separate user approval.
+Last Updated: 2026-06-15
+Status: TASK_321 complete after explicit user approval. TASK_314 split accepted; TASK_314A Matrix Editor draft persistence is complete. TASK_314B Fee Evaluation background draft persistence is complete after separate explicit user approval. TASK_314C Matrix/Fee/Project Folder regression is complete after separate explicit user approval. TASK_315 split accepted; TASK_315 is an umbrella, TASK_315A Matrix-to-Fee rebase core is complete after separate explicit user approval, TASK_315B pending rebase persistence/autosave/cancel lifecycle plus review follow-up is complete after separate explicit user approval, and TASK_315C Matrix Confirm promotion is planned only. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. Do not enter a later task without separate user approval.
 
 ## Decision
 
@@ -78,16 +78,30 @@ tasks/TASK_314_MATRIX_AND_FEE_BACKGROUND_DRAFT_PERSISTENCE.md
 docs/task_314_matrix_and_fee_background_draft_persistence_plan.md
 tasks/TASK_314A_MATRIX_EDITOR_DRAFT_PERSISTENCE.md
 docs/task_314a_matrix_editor_draft_persistence_plan.md
+tasks/TASK_314B_FEE_EVALUATION_BACKGROUND_DRAFT_PERSISTENCE.md
+docs/task_314b_fee_evaluation_background_draft_persistence_plan.md
+tasks/TASK_314C_MATRIX_FEE_PROJECT_FOLDER_REGRESSION.md
+docs/task_314c_matrix_fee_project_folder_regression_plan.md
 tasks/TASK_315_MATRIX_DRAFT_TO_FEE_DRAFT_INCREMENTAL_REBASE.md
 docs/task_315_matrix_draft_to_fee_draft_incremental_rebase_plan.md
+tasks/TASK_315A_MATRIX_TO_FEE_REBASE_CORE.md
+docs/task_315a_matrix_to_fee_rebase_core_plan.md
+tasks/TASK_315B_PENDING_REBASE_PERSISTENCE_AND_MATRIX_AUTOSAVE_CANCEL_LIFECYCLE.md
+docs/task_315b_pending_rebase_persistence_and_matrix_autosave_cancel_lifecycle_plan.md
+tasks/TASK_315C_MATRIX_CONFIRM_PROMOTION.md
+docs/task_315c_matrix_confirm_promotion_plan.md
 ```
 
 Status note:
 
 - `TASK_314` is now an umbrella/historical split rationale and must not be implemented as one combined task.
-- `TASK_314A` must be completed in code before `TASK_315` can be implemented.
-- `TASK_314B` Fee Evaluation background draft persistence and `TASK_314C` linkage regression remain deferred future slices.
-- `TASK_315` remains planned/deferred until `TASK_314A` is complete and `docs/task_board.md` explicitly marks TASK_315 approved/active.
+- `TASK_314A` is complete and is the Matrix prerequisite for `TASK_315`.
+- `TASK_314B` Fee Evaluation background draft persistence is complete after separate explicit user approval.
+- `TASK_314C` Matrix/Fee/Project Folder linkage regression is complete after separate explicit user approval.
+- `TASK_315` is now an umbrella/split rationale and must not be implemented as one combined task.
+- `TASK_315A` Matrix-to-Fee rebase core is complete after separate explicit user approval.
+- `TASK_315B` pending rebase persistence and Matrix autosave/cancel lifecycle, including review follow-up for step index preservation, Cancel race cleanup, and database-level generation CAS, is complete after separate explicit user approval.
+- `TASK_315C` Matrix Confirm promotion now has a reviewable task file and plan, but remains unapproved for implementation.
 
 Latest accepted planning prerequisite:
 

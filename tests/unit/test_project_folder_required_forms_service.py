@@ -37,6 +37,41 @@ def test_preview_blocks_without_completed_official_folder(tmp_path: Path) -> Non
     assert "Official project folder" in preview.blockers[0]
 
 
+def test_preview_blocks_when_confirmed_matrix_authority_is_missing(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path, matrix_snapshot=None)
+
+    preview = service.preview("P1")
+
+    assert preview.status == "blocked"
+    assert any("Matrix" in blocker for blocker in preview.blockers)
+
+
+def test_preview_blocks_when_confirmed_fee_authority_is_missing(tmp_path: Path) -> None:
+    service = _service(
+        tmp_path,
+        fee_result=_FeeResult(status="missing", latest_confirmed_fee=None),
+    )
+
+    preview = service.preview("P1")
+
+    assert preview.status == "blocked"
+    assert any("Fee" in blocker for blocker in preview.blockers)
+
+
+def test_preview_blocks_when_confirmed_fee_authority_is_stale(tmp_path: Path) -> None:
+    service = _service(
+        tmp_path,
+        fee_result=_FeeResult(status="stale", latest_confirmed_fee=_FeeVersion()),
+    )
+
+    preview = service.preview("P1")
+
+    assert preview.status == "blocked"
+    assert any("Fee" in blocker for blocker in preview.blockers)
+
+
 def test_preview_places_test_record_under_submitted_material(tmp_path: Path) -> None:
     service = _service(tmp_path)
 
@@ -305,13 +340,22 @@ class _FolderCheck:
 
 
 class _MatrixReader:
+    def __init__(self, snapshot: _Matrix | None = _Matrix()) -> None:
+        self.snapshot = snapshot
+
     def get_active_snapshot(self, project_id: str) -> _Matrix | None:
-        return _Matrix()
+        return self.snapshot
 
 
 class _FeeReader:
+    def __init__(
+        self,
+        result: _FeeResult = _FeeResult(status="current", latest_confirmed_fee=_FeeVersion()),
+    ) -> None:
+        self.result = result
+
     def get_latest(self, project_id: str) -> _FeeResult:
-        return _FeeResult(status="current", latest_confirmed_fee=_FeeVersion())
+        return self.result
 
 
 class _TemplateReader:
@@ -437,6 +481,11 @@ def _service(
     managed_targets: dict[str, str] | None = None,
     output_service: _OutputStatusService | None = None,
     file_gateway: _FileGateway | None = None,
+    matrix_snapshot: _Matrix | None = _Matrix(),
+    fee_result: _FeeResult = _FeeResult(
+        status="current",
+        latest_confirmed_fee=_FeeVersion(),
+    ),
 ) -> ProjectFolderRequiredFormsService:
     _prepare_official_folder(tmp_path)
     output_service = output_service or _OutputStatusService()
@@ -481,8 +530,8 @@ def _service(
     return ProjectFolderRequiredFormsService(
         workspace_repository=_WorkspaceRepo(workspace),
         folder_check_service=_FolderCheck(tmp_path),
-        confirmed_matrix_reader=_MatrixReader(),
-        confirmed_fee_reader=_FeeReader(),
+        confirmed_matrix_reader=_MatrixReader(matrix_snapshot),
+        confirmed_fee_reader=_FeeReader(fee_result),
         customer_feedback_template_reader=_TemplateReader(tmp_path),
         generator=_Generator(tmp_path),
         file_gateway=file_gateway or _FileGateway(),
