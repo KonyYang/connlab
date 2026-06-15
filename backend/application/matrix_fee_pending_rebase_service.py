@@ -351,13 +351,13 @@ def _default_row_from_basic_fill_line(line: MatrixBasicFillLine) -> FeeEvaluatio
         confirmed_row_id=line.confirmed_row_id,
         step_token=line.step_tokens[0] if line.step_tokens else "",
         step_index=line.step_index,
-        spend_time="",
-        unit_price="",
-        unit_type="",
-        units="",
-        base_fee="",
-        discount="",
-        testing_fee="",
+        spend_time="0",
+        unit_price="0",
+        unit_type="Pending",
+        units="1",
+        base_fee="0",
+        discount="0%",
+        testing_fee="0",
         notes="",
     )
 
@@ -374,13 +374,13 @@ def _default_row_from_target_lineage(
         confirmed_row_id=lineage.confirmed_row_id,
         step_token=lineage.step_token,
         step_index=lineage.step_index,
-        spend_time="",
-        unit_price="",
-        unit_type="",
-        units="",
-        base_fee="",
-        discount="",
-        testing_fee="",
+        spend_time="0",
+        unit_price="0",
+        unit_type="Pending",
+        units="1",
+        base_fee="0",
+        discount="0%",
+        testing_fee="0",
         notes="",
     )
 
@@ -404,6 +404,30 @@ def pending_rebase_payload_to_json(result: MatrixFeeRebaseResult) -> str:
         "warnings": list(result.warnings),
     }
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def pending_rebase_payload_from_json(payload_json: str) -> MatrixFeeRebaseResult:
+    """Deserialize one persisted pending Matrix-to-Fee rebase payload."""
+    payload = json.loads(payload_json)
+    summary = payload.get("summary") or {}
+    return MatrixFeeRebaseResult(
+        active_rows=tuple(_row_from_dict(row) for row in payload.get("active_rows", [])),
+        inactive_removed_rows=tuple(
+            _inactive_removed_row_from_dict(row)
+            for row in payload.get("inactive_removed_rows", [])
+        ),
+        manual_rows=tuple(
+            _manual_row_from_dict(row) for row in payload.get("manual_rows", [])
+        ),
+        summary=MatrixFeeRebaseSummary(
+            preserved_count=int(summary.get("preserved_count", 0)),
+            added_count=int(summary.get("added_count", 0)),
+            removed_count=int(summary.get("removed_count", 0)),
+            preserved_manual_count=int(summary.get("preserved_manual_count", 0)),
+            removed_manual_count=int(summary.get("removed_manual_count", 0)),
+        ),
+        warnings=tuple(str(item) for item in payload.get("warnings", [])),
+    )
 
 
 def _has_required_context(command: RebaseAfterMatrixAutosaveCommand) -> bool:
@@ -472,3 +496,53 @@ def _inactive_removed_row_to_dict(
         "previous_row_signature": row.previous_row_signature,
         "inactive_reason": row.inactive_reason,
     }
+
+
+def _row_from_dict(payload: dict[str, object]) -> FeeEvaluationEditedExportRow:
+    return FeeEvaluationEditedExportRow(
+        source_line_id=str(payload.get("source_line_id", "")),
+        confirmed_group_id=str(payload.get("confirmed_group_id", "")),
+        confirmed_row_id=str(payload.get("confirmed_row_id", "")),
+        step_token=str(payload.get("step_token", "")),
+        step_index=int(payload.get("step_index", 0)),
+        spend_time=str(payload.get("spend_time", "")),
+        unit_price=str(payload.get("unit_price", "")),
+        unit_type=str(payload.get("unit_type", "")),
+        units=str(payload.get("units", "")),
+        base_fee=str(payload.get("base_fee", "")),
+        discount=str(payload.get("discount", "")),
+        testing_fee=str(payload.get("testing_fee", "")),
+        notes=str(payload.get("notes", "")),
+    )
+
+
+def _manual_row_from_dict(payload: dict[str, object]) -> FeeEvaluationEditedManualRow:
+    return FeeEvaluationEditedManualRow(
+        row_kind=str(payload.get("row_kind", "")),
+        spend_time=str(payload.get("spend_time", "")),
+        unit_price=str(payload.get("unit_price", "")),
+        unit_type=str(payload.get("unit_type", "")),
+        units=str(payload.get("units", "")),
+        base_fee=str(payload.get("base_fee", "")),
+        discount=str(payload.get("discount", "")),
+        testing_fee=str(payload.get("testing_fee", "")),
+        notes=str(payload.get("notes", "")),
+        confirmed_group_id=str(payload.get("confirmed_group_id", "")),
+        group_key=str(payload.get("group_key", "")),
+        group_label=str(payload.get("group_label", "")),
+    )
+
+
+def _inactive_removed_row_from_dict(
+    payload: dict[str, object],
+) -> MatrixFeeInactiveRemovedRow:
+    previous = payload.get("previous_row")
+    if not isinstance(previous, dict):
+        previous = {}
+    return MatrixFeeInactiveRemovedRow(
+        previous_row=_row_from_dict(previous),
+        previous_group_key=str(payload.get("previous_group_key", "")),
+        previous_group_label=str(payload.get("previous_group_label", "")),
+        previous_row_signature=str(payload.get("previous_row_signature", "")),
+        inactive_reason=str(payload.get("inactive_reason", "removed_from_matrix")),
+    )

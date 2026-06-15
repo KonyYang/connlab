@@ -1,6 +1,6 @@
 # TASK_315C_MATRIX_CONFIRM_PROMOTION
 
-Status: Planned. Awaiting user review and explicit approval before implementation.
+Status: Complete.
 
 Executable plan: `docs/task_315c_matrix_confirm_promotion_plan.md`
 
@@ -19,7 +19,7 @@ TASK_315C is the third executable slice of TASK_315. It promotes pending Matrix-
 
 TASK_315B now persists pending rebase output for Matrix Editor autosaves and deletes it on Cancel. The next controlled lifecycle step is to consume that pending output after Matrix Confirm succeeds, so the new Confirmed Matrix context has a current Fee pricing draft.
 
-Implementation still requires separate explicit user approval.
+Implementation was completed after separate explicit user approval.
 
 ## Goal
 
@@ -38,7 +38,7 @@ After Matrix Confirm publishes a new active Confirmed Matrix revision:
 - Pending rebase payload persisted by TASK_315B, bound to `project_matrix_draft_id + fee_rule_version_id`.
 - Current active Fee rule version.
 - Existing Fee Evaluation pricing draft store and validation rules.
-- TASK_315A rebase core / TASK_315B default fallback builder when pending rebase is missing or unusable.
+- TASK_315A rebase core with explicit previous-context source rows when pending rebase is missing or unusable.
 
 ## Outputs
 
@@ -72,8 +72,9 @@ Fee promotion failure must never change Matrix Confirm HTTP success into a failu
 
 - Pending rebase payload deserialization for promotion.
 - Application service to promote pending/fallback rebase into current Fee pricing draft.
-- Mapping promoted rows from Matrix draft ids to newly generated Confirmed Matrix row/group ids.
-- Confirm-time fallback rebase when pending rebase is missing/stale/unusable.
+- Mapping promoted rows from Matrix draft ids to newly generated Confirmed Matrix row/group ids and newly generated Fee basic-fill identities.
+- Confirm-time fallback rebase when pending rebase is missing/stale/unusable, using explicit previous active Matrix context as source and saved Matrix draft as target.
+- Preservation of previous Fee pricing draft summary values during both pending promotion and fallback promotion.
 - Matrix Confirm integration after confirmed snapshot publish succeeds.
 - API response extension for Matrix Confirm promotion metadata.
 - Backend unit/integration tests for pending promotion, fallback promotion, skipped and failed promotion, id remapping, and non-blocking Confirm behavior.
@@ -95,11 +96,13 @@ If implementation needs any out-of-scope behavior, stop and split it into TASK_3
 ## Acceptance Criteria
 
 - Confirming a saved Matrix revision with a current pending rebase promotes it into a current Fee pricing draft for the newly confirmed Matrix id/revision.
-- Promoted active rows use the new Confirmed Matrix `confirmed_group_id` and `confirmed_row_id`, not stale draft ids or previous Confirmed Matrix ids.
-- Promoted row identity still preserves `source_line_id`, `step_token`, `step_index`, and editable pricing fields.
+- Promoted active rows use the new Confirmed Matrix `source_line_id`, `confirmed_group_id`, and `confirmed_row_id` identities, not stale Matrix draft ids, draft-shaped source line ids, or previous Confirmed Matrix ids.
+- Promoted row content preserves editable pricing fields plus stable row matching intent (`step_token`, `step_index`, and lineage metadata where available), while regenerated identity fields must match the new Confirmed Matrix basic-fill output.
+- Promotion output is validated against the new Confirmed Matrix basic-fill identity contract before save; a promoted draft must be loadable/savable by `FeeEvaluationPricingDraftPersistenceService`.
+- Pending promotion and fallback promotion both preserve previous pricing draft summary values (`condition_confirmation_spend_time`, `external_cost`, `external_cost_note`, `lab_manpower_hourly_rate`). Blank/default summary is allowed only when no previous pricing draft exists.
 - Promoted manual rows are saved into the new context and sample-preparation manual rows use the new Confirmed Matrix group id when applicable.
 - Pending payload is consumed/deleted only after successful pricing draft save.
-- If no usable pending rebase exists but a base Fee pricing draft exists, synchronous fallback rebase attempts to produce and save the new current pricing draft.
+- If no usable pending rebase exists but a base Fee pricing draft exists, synchronous fallback rebase uses previous active Matrix context as source, saved Matrix draft as target, and attempts to produce/save the new current pricing draft after Matrix Confirm succeeds.
 - If no pending rebase and no base Fee pricing draft exists, promotion returns `skipped` and Matrix Confirm succeeds.
 - If promotion/fallback save fails, Matrix Confirm still returns `publish_status="published"` with `fee_rebase_promotion_status="failed"` and an actionable error.
 - Matrix Confirm no-change returns `fee_rebase_promotion_status="not_required"`.
@@ -131,4 +134,28 @@ No frontend test/build is required unless frontend files are changed, which shou
 
 ## Stop Point
 
-Stop after TASK_315C task file and plan are reviewed. Do not implement TASK_315C until the user explicitly approves this specific task. Do not proceed to TASK_315D, Fee UI, Project Folder regression, Confirm Fee changes, StepInstance, report, AI, permissions, LAN/server, or multi-user scope without separate explicit approval.
+TASK_315C stops here. Do not proceed to TASK_315D, Fee UI, Project Folder regression, Confirm Fee changes, StepInstance, report, AI, permissions, LAN/server, or multi-user scope without separate explicit approval.
+
+## Completion Notes
+
+Implemented Matrix Confirm promotion of pending Matrix-to-Fee rebase output into a current Fee Evaluation pricing draft for the newly confirmed Matrix context. Confirm now reports non-fatal promotion status metadata. Pending promotion uses new Confirmed Matrix basic-fill identities, preserves previous pricing draft summary fields, and deletes pending only after successful save. Missing/unusable pending falls back to explicit previous active Matrix source rows plus saved Matrix draft target rows; missing previous pricing draft returns `skipped`.
+
+Review follow-up: pending promotion now requires the pending rebase `matrix_draft_payload_signature` to match the exact saved Matrix draft signature being confirmed. Stale pending output from an older autosave of the same Matrix draft is treated as unusable and goes through fallback/skipped handling. Added coverage for stale-signature fallback and sample-preparation manual row remapping to the new Confirmed Matrix group identity.
+
+Validation:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_rebase_promotion_service.py -q
+py -m pytest tests/unit/test_matrix_editor_session_service.py tests/integration/test_matrix_editor_session_api.py -q
+py -m pytest tests/unit/test_matrix_fee_pending_rebase_service.py tests/unit/test_matrix_fee_pending_rebase_repository.py tests/unit/test_matrix_fee_draft_rebase_service.py -q
+py -m pytest tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py tests/integration/test_fee_evaluation_pricing_draft_api.py -q
+```
+
+Review follow-up validation:
+
+```powershell
+py -m pytest tests/unit/test_matrix_fee_rebase_promotion_service.py -q
+py -m pytest tests/unit/test_matrix_editor_session_service.py tests/integration/test_matrix_editor_session_api.py -q
+```
+
+All required validation passed.

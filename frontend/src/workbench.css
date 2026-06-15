@@ -3889,7 +3889,7 @@
 .fee-evaluation-page {
   display: grid;
   gap: 10px;
-  padding: 10px;
+  padding: 10px 10px 0;
 }
 
 .fee-evaluation-export-panel,
@@ -3918,7 +3918,7 @@
 .fee-evaluation-export-actions button,
 .fee-evaluation-save-button,
 .fee-evaluation-file-button,
-.fee-evaluation-confirm-button {
+.fee-evaluation-completion-dock button {
   border: 1px solid var(--color-border);
   border-radius: 7px;
   background: var(--color-surface);
@@ -3974,7 +3974,7 @@
 
 .fee-evaluation-preview-controls {
   display: grid;
-  grid-template-columns: max-content minmax(260px, 1fr) max-content max-content;
+  grid-template-columns: minmax(260px, 1fr) max-content;
   gap: 8px;
   align-items: center;
   min-width: min(620px, 100%);
@@ -4074,79 +4074,51 @@
   cursor: not-allowed;
 }
 
-.fee-evaluation-confirm-strip {
+.fee-evaluation-completion-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) max-content;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
+  justify-items: end;
+  margin-top: 8px;
+  padding: 12px 0 10px;
+  background: linear-gradient(180deg, rgba(244, 247, 251, 0), var(--color-canvas) 34%);
 }
 
-.fee-evaluation-confirm-status,
-.fee-evaluation-confirm-by {
-  display: flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: #f8fbff;
+.fee-evaluation-completion-dock > span {
+  min-width: 0;
+  justify-self: start;
+  overflow: hidden;
   color: var(--color-ink-muted);
   font-size: 12px;
-}
-
-.fee-evaluation-confirm-status strong,
-.fee-evaluation-confirm-by span {
-  color: var(--color-ink);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.fee-evaluation-confirm-status span {
-  overflow: hidden;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fee-evaluation-confirm-status-current {
-  border-color: #b7dfcd;
-  background: #f1fbf6;
+.fee-evaluation-completion-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.fee-evaluation-confirm-status-dirty,
-.fee-evaluation-confirm-status-stale {
-  border-color: #f1cf8f;
-  background: #fff8e8;
+.fee-evaluation-completion-dock button {
+  min-height: 34px;
+  padding: 6px 12px;
 }
 
-.fee-evaluation-confirm-status-error {
-  border-color: #e8b8b5;
-  background: #fff1f0;
-}
-
-.fee-evaluation-confirm-by input {
-  min-width: 0;
-  width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-size: 12px;
-  padding: 6px 8px;
-}
-
-.fee-evaluation-confirm-button {
-  min-height: 36px;
-  padding: 0 12px;
-  background: var(--color-primary);
-  color: var(--color-surface);
-  white-space: nowrap;
-}
-
-.fee-evaluation-confirm-button:disabled {
+.fee-evaluation-completion-dock button:disabled {
   background: var(--color-surface-muted);
   color: var(--color-ink-muted);
   cursor: not-allowed;
+}
+
+.fee-evaluation-completion-dock .fee-evaluation-primary-action {
+  background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .fee-evaluation-confirm-error,
@@ -4192,16 +4164,6 @@
 
 .fee-evaluation-download-error p {
   margin: 0;
-}
-
-@media (max-width: 1180px) {
-  .fee-evaluation-confirm-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .fee-evaluation-confirm-button {
-    justify-self: start;
-  }
 }
 
 .fee-evaluation-preview-table-wrap {

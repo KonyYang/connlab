@@ -1,7 +1,7 @@
 # Task Plan Index
 
 Last Updated: 2026-06-15
-Status: TASK_321 complete after explicit user approval. TASK_314 split accepted; TASK_314A Matrix Editor draft persistence is complete. TASK_314B Fee Evaluation background draft persistence is complete after separate explicit user approval. TASK_314C Matrix/Fee/Project Folder regression is complete after separate explicit user approval. TASK_315 split accepted; TASK_315 is an umbrella, TASK_315A Matrix-to-Fee rebase core is complete after separate explicit user approval, TASK_315B pending rebase persistence/autosave/cancel lifecycle plus review follow-up is complete after separate explicit user approval, and TASK_315C Matrix Confirm promotion is planned only. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. Do not enter a later task without separate user approval.
+Status: TASK_321 complete after explicit user approval. TASK_314 split accepted; TASK_314A Matrix Editor draft persistence is complete. TASK_314B Fee Evaluation background draft persistence is complete after separate explicit user approval. TASK_314C Matrix/Fee/Project Folder regression is complete after separate explicit user approval. TASK_315 split accepted; TASK_315 is an umbrella, TASK_315A Matrix-to-Fee rebase core is complete after separate explicit user approval, TASK_315B pending rebase persistence/autosave/cancel lifecycle plus review follow-up is complete after separate explicit user approval, TASK_315C Matrix Confirm promotion plus review follow-up is complete after separate explicit user approval, TASK_315D Fee UI + Project Folder regression is complete after separate explicit user approval, TASK_315D Fee Confirm action dock follow-up is complete after separate explicit user approval, TASK_315D remove Fee Confirmed-by UI follow-up is complete after separate explicit user approval, TASK_315D remove Fee Confirm status card follow-up is complete after separate explicit user approval, and TASK_315D Fee rebase saveable defaults follow-up is complete after user-reproduced regression feedback. Old TASK_313 package execution shape remains historical/deferred and is superseded by Project Folder Required forms generation. Do not enter a later task without separate user approval.
 
 ## Decision
 
@@ -62,13 +62,13 @@ docs/task_313b_official_project_workspace_execution_guide.md
 Latest completed task file:
 
 ```text
-tasks/TASK_321_PROJECT_FOLDER_REQUIRED_FORMS_GENERATION.md
+tasks/TASK_315D_FOLLOWUP_FEE_REBASE_SAVEABLE_DEFAULTS.md
 ```
 
 Latest completed executable plan:
 
 ```text
-docs/task_321_project_folder_required_forms_generation_plan.md
+docs/task_315d_followup_fee_rebase_saveable_defaults_plan.md
 ```
 
 Current proposed/follow-up task plans:
@@ -90,6 +90,16 @@ tasks/TASK_315B_PENDING_REBASE_PERSISTENCE_AND_MATRIX_AUTOSAVE_CANCEL_LIFECYCLE.
 docs/task_315b_pending_rebase_persistence_and_matrix_autosave_cancel_lifecycle_plan.md
 tasks/TASK_315C_MATRIX_CONFIRM_PROMOTION.md
 docs/task_315c_matrix_confirm_promotion_plan.md
+tasks/TASK_315D_FEE_UI_PROJECT_FOLDER_REGRESSION.md
+docs/task_315d_fee_ui_project_folder_regression_plan.md
+tasks/TASK_315D_FOLLOWUP_FEE_CONFIRM_ACTION_DOCK.md
+docs/task_315d_followup_fee_confirm_action_dock_plan.md
+tasks/TASK_315D_FOLLOWUP_REMOVE_FEE_CONFIRMED_BY_UI.md
+docs/task_315d_followup_remove_fee_confirmed_by_ui_plan.md
+tasks/TASK_315D_FOLLOWUP_REMOVE_FEE_CONFIRM_STATUS_CARD.md
+docs/task_315d_followup_remove_fee_confirm_status_card_plan.md
+tasks/TASK_315D_FOLLOWUP_FEE_REBASE_SAVEABLE_DEFAULTS.md
+docs/task_315d_followup_fee_rebase_saveable_defaults_plan.md
 ```
 
 Status note:
@@ -101,7 +111,12 @@ Status note:
 - `TASK_315` is now an umbrella/split rationale and must not be implemented as one combined task.
 - `TASK_315A` Matrix-to-Fee rebase core is complete after separate explicit user approval.
 - `TASK_315B` pending rebase persistence and Matrix autosave/cancel lifecycle, including review follow-up for step index preservation, Cancel race cleanup, and database-level generation CAS, is complete after separate explicit user approval.
-- `TASK_315C` Matrix Confirm promotion now has a reviewable task file and plan, but remains unapproved for implementation.
+- `TASK_315C` Matrix Confirm promotion plus review follow-up is complete after separate explicit user approval.
+- `TASK_315D` Fee UI + Project Folder regression is complete after separate explicit user approval.
+- `TASK_315D_FOLLOWUP` Fee Confirm action dock is complete after separate explicit user approval.
+- `TASK_315D_FOLLOWUP` remove Fee Confirmed-by UI is complete after separate explicit user approval.
+- `TASK_315D_FOLLOWUP` remove Fee Confirm status card is complete after separate explicit user approval.
+- `TASK_315D_FOLLOWUP` Fee rebase saveable defaults is complete after user-reproduced regression feedback.
 
 Latest accepted planning prerequisite:
 

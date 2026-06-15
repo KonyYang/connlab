@@ -89,12 +89,6 @@ type ConfirmFeeActionState =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
-type ConfirmedFeeViewState = {
-  label: string;
-  detail: string | null;
-  tone: "loading" | "missing" | "current" | "stale" | "dirty" | "error";
-};
-
 type FeeEvaluationReviewExportPageProps = {
   projectId: string;
   onBackToWorkbench: () => void;
@@ -106,6 +100,7 @@ const EMPTY_COST_PREVIEW_VALUES = {
   externalCostNote: "",
   labManpowerHourlyRate: "200",
 };
+const FEE_CONFIRM_INTERNAL_ACTOR = "Lab User";
 
 export function FeeEvaluationReviewExportPage({
   projectId,
@@ -131,14 +126,11 @@ export function FeeEvaluationReviewExportPage({
   });
   const [confirmFeeActionState, setConfirmFeeActionState] =
     useState<ConfirmFeeActionState>({ kind: "idle" });
-  const [confirmedBy, setConfirmedBy] = useState("Lab User");
   const [latestSavedPricingDraftId, setLatestSavedPricingDraftId] = useState<
     string | null
   >(null);
   const [pricingDraftLoadStatus, setPricingDraftLoadStatus] =
     useState<PricingDraftLoadStatus>("loading");
-  const [pricingDraftDirtySinceConfirm, setPricingDraftDirtySinceConfirm] =
-    useState(false);
   const [savedLocalPricingSignature, setSavedLocalPricingSignature] = useState<
     string | null
   >(null);
@@ -163,7 +155,6 @@ export function FeeEvaluationReviewExportPage({
   useEffect(() => {
     let active = true;
     setContextState({ kind: "loading" });
-    setConfirmedBy("Lab User");
     void loadPageContext(projectId)
       .then((context) => {
         if (active) {
@@ -194,7 +185,6 @@ export function FeeEvaluationReviewExportPage({
     setSaveState({ kind: "loading" });
     setLatestSavedPricingDraftId(null);
     setPricingDraftLoadStatus("loading");
-    setPricingDraftDirtySinceConfirm(false);
     setSavedLocalPricingSignature(null);
     setBaselinePricingSignature(null);
     setHasUserEditedPricingDraft(false);
@@ -284,7 +274,6 @@ export function FeeEvaluationReviewExportPage({
           setActivePricingContext(contextFromPricingDraftResponse(result));
           setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
           setPricingDraftLoadStatus("current");
-          setPricingDraftDirtySinceConfirm(false);
           setHasUserEditedPricingDraft(false);
           setNeedsInitialSeedSave(false);
           if (!result.payload) {
@@ -333,7 +322,6 @@ export function FeeEvaluationReviewExportPage({
           setActivePricingContext(contextFromPricingDraftResponse(result));
           setLatestSavedPricingDraftId(null);
           setPricingDraftLoadStatus("stale");
-          setPricingDraftDirtySinceConfirm(false);
           setSavedLocalPricingSignature(null);
           setBaselinePricingSignature(
             pricingDraftSignature(
@@ -352,7 +340,6 @@ export function FeeEvaluationReviewExportPage({
         setActivePricingContext(contextFromPricingDraftResponse(result));
         setLatestSavedPricingDraftId(null);
         setPricingDraftLoadStatus("missing");
-        setPricingDraftDirtySinceConfirm(false);
         setSavedLocalPricingSignature(null);
         setBaselinePricingSignature(
           pricingDraftSignature(
@@ -512,24 +499,8 @@ export function FeeEvaluationReviewExportPage({
     () => Array.from(new Set(lines.map((line) => line.group_label))).sort(),
     [lines]
   );
-  const confirmedFeeViewState = useMemo(
-    () =>
-      buildConfirmedFeeViewState({
-        confirmedFeeState,
-        latestSavedPricingDraftId,
-        pricingDraftLoadStatus,
-        pricingDraftDirtySinceConfirm,
-      }),
-    [
-      confirmedFeeState,
-      latestSavedPricingDraftId,
-      pricingDraftDirtySinceConfirm,
-      pricingDraftLoadStatus,
-    ]
-  );
   const confirmFeeDisabledReason = confirmFeeBlocker({
     draftState,
-    confirmedBy,
     confirmedFeeState,
     isDiscardingPricingDraft,
     latestSavedPricingDraftId,
@@ -553,7 +524,6 @@ export function FeeEvaluationReviewExportPage({
       setBaselinePricingSignature(signature);
       setHasUserEditedPricingDraft(false);
       setNeedsInitialSeedSave(false);
-      setPricingDraftDirtySinceConfirm(false);
       setSaveState(
         savedDraftId
           ? { kind: "saved", message: "Saved pricing draft." }
@@ -686,12 +656,6 @@ export function FeeEvaluationReviewExportPage({
       confirmFeeActionState.kind === "confirming" ||
       confirmFeeDisabledReason
     ) {
-      if (!confirmedBy.trim()) {
-        setConfirmFeeActionState({
-          kind: "error",
-          message: "Enter confirmed by before confirming.",
-        });
-      }
       return;
     }
     setConfirmFeeActionState({ kind: "confirming" });
@@ -706,7 +670,7 @@ export function FeeEvaluationReviewExportPage({
       }
 
       const result = await confirmFeeVersion(projectId, {
-        confirmed_by: confirmedBy.trim(),
+        confirmed_by: FEE_CONFIRM_INTERNAL_ACTOR,
         expected_pricing_draft_edit_id: savedDraftId,
         summary: {
           testing_fee_total: allPreviewTotal,
@@ -717,8 +681,8 @@ export function FeeEvaluationReviewExportPage({
         },
       });
       setConfirmedFeeState({ kind: "ready", data: result });
-      setPricingDraftDirtySinceConfirm(false);
       setConfirmFeeActionState({ kind: "success", message: "Fee confirmed." });
+      onBackToWorkbench();
     } catch (error: unknown) {
       const message =
         error instanceof ApiRequestError ? error.message : "Unable to confirm Fee.";
@@ -753,7 +717,6 @@ export function FeeEvaluationReviewExportPage({
   function markPricingDraftDirty(): void {
     setHasUserEditedPricingDraft(true);
     setNeedsInitialSeedSave(false);
-    setPricingDraftDirtySinceConfirm(true);
     setConfirmFeeActionState((current) =>
       current.kind === "confirming" ? current : { kind: "idle" }
     );
@@ -817,9 +780,6 @@ export function FeeEvaluationReviewExportPage({
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
         confirmFeeActionState={confirmFeeActionState}
-        confirmFeeDisabledReason={confirmFeeDisabledReason}
-        confirmedBy={confirmedBy}
-        confirmedFeeViewState={confirmedFeeViewState}
         grandCostLabel={grandCostLabel}
         labManpowerCostLabel={labManpowerCostLabel}
         groupFilter={previewGroupFilter}
@@ -827,10 +787,7 @@ export function FeeEvaluationReviewExportPage({
         header={previewHeader}
         downloadState={downloadState}
         generateDisabledReason={generateDisabledReason}
-        onBackToWorkbench={() => void handleBackToWorkbench()}
         onCostPreviewChange={handleCostPreviewChange}
-        onConfirmFee={handleConfirmFee}
-        onConfirmedByChange={setConfirmedBy}
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
@@ -839,96 +796,44 @@ export function FeeEvaluationReviewExportPage({
         rows={visiblePreviewRows}
         totals={previewTotals}
       />
+      <footer
+        aria-label="Fee Evaluation completion actions"
+        className="fee-evaluation-completion-dock"
+      >
+        <span>
+          {confirmFeeDisabledReason ??
+            "Confirm Fee returns to Workbench after authority is updated."}
+        </span>
+        <div className="fee-evaluation-completion-actions">
+          <button
+            type="button"
+            onClick={() => void handleBackToWorkbench()}
+            disabled={
+              confirmFeeActionState.kind === "confirming" || isDiscardingPricingDraft
+            }
+          >
+            {isDiscardingPricingDraft ? "Cancelling..." : "Cancel"}
+          </button>
+          <button
+            className="fee-evaluation-primary-action"
+            type="button"
+            onClick={() => void handleConfirmFee()}
+            disabled={
+              Boolean(confirmFeeDisabledReason) ||
+              confirmFeeActionState.kind === "confirming"
+            }
+            title={confirmFeeDisabledReason ?? undefined}
+          >
+            {confirmFeeActionState.kind === "confirming" ? "Confirming..." : "Confirm Fee"}
+          </button>
+        </div>
+      </footer>
     </section>
   );
 }
 
-function buildConfirmedFeeViewState(input: {
-  confirmedFeeState: ConfirmedFeeLoadState;
-  latestSavedPricingDraftId: string | null;
-  pricingDraftLoadStatus: PricingDraftLoadStatus;
-  pricingDraftDirtySinceConfirm: boolean;
-}): ConfirmedFeeViewState {
-  if (input.confirmedFeeState.kind === "loading") {
-    return {
-      label: "Checking Confirmed Fee",
-      detail: null,
-      tone: "loading",
-    };
-  }
-  if (input.confirmedFeeState.kind === "error") {
-    return {
-      label: "Confirmed Fee status unavailable",
-      detail: input.confirmedFeeState.message,
-      tone: "error",
-    };
-  }
-  const confirmedFee = input.confirmedFeeState.data.confirmed_fee ?? null;
-  if (!confirmedFee) {
-    return {
-      label: "Not confirmed",
-      detail: "Save the current pricing draft, then confirm.",
-      tone: "missing",
-    };
-  }
-  if (input.confirmedFeeState.data.status === "stale") {
-    return {
-      label: "Confirmed Fee stale",
-      detail: "Matrix or fee rule version changed after confirmation.",
-      tone: "stale",
-    };
-  }
-  if (input.pricingDraftDirtySinceConfirm) {
-    return {
-      label: "Unconfirmed local changes",
-      detail: "Save and confirm again after reviewing the local pricing changes.",
-      tone: "dirty",
-    };
-  }
-  if (
-    input.latestSavedPricingDraftId &&
-    confirmedFee.pricing_draft_edit_id !== input.latestSavedPricingDraftId
-  ) {
-    return {
-      label: "Unconfirmed saved changes",
-      detail: "Confirm again after reviewing the latest saved pricing draft.",
-      tone: "dirty",
-    };
-  }
-  if (input.pricingDraftLoadStatus === "loading") {
-    return {
-      label: "Checking pricing draft",
-      detail: null,
-      tone: "loading",
-    };
-  }
-  if (
-    input.pricingDraftLoadStatus === "missing" ||
-    input.pricingDraftLoadStatus === "stale"
-  ) {
-    return {
-      label: "Unconfirmed pricing draft",
-      detail: "Save the current pricing draft before relying on this confirmation.",
-      tone: "dirty",
-    };
-  }
-  if (input.pricingDraftLoadStatus === "error") {
-    return {
-      label: "Pricing draft status unavailable",
-      detail: "Reload the saved pricing draft before relying on this confirmation.",
-      tone: "error",
-    };
-  }
-  return {
-    label: "Confirmed",
-    detail: `Confirmed by ${confirmedFee.confirmed_by}.`,
-    tone: "current",
-  };
-}
-
 function confirmFeeBlocker(input: {
   draftState: DraftLoadState;
-  confirmedBy: string;
   confirmedFeeState: ConfirmedFeeLoadState;
   isDiscardingPricingDraft: boolean;
   latestSavedPricingDraftId: string | null;
@@ -948,9 +853,6 @@ function confirmFeeBlocker(input: {
   }
   if (input.confirmedFeeState.kind === "loading") {
     return "Waiting for Confirmed Fee status.";
-  }
-  if (!input.confirmedBy.trim()) {
-    return "Enter confirmed by before confirming.";
   }
   if (input.isDiscardingPricingDraft) {
     return "Discarding pricing draft.";

@@ -3,10 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ConfirmedMatrixSnapshot,
+  ConfirmedFeeLatestResponse,
   Project,
   OfficialFolderCheckPreview,
   ProjectPackagePreview,
   PublicDriveUploadPreview,
+  ProjectFolderRequiredFormsPreview,
   RequestMaterialPreview,
   ProjectTestPlanDraft,
 } from "../../api/client";
@@ -289,6 +291,55 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(user).toBeTruthy();
   });
 
+  it("maps Confirmed Fee latest status into Project Folder authority readiness", async () => {
+    const cases: Array<{
+      confirmedFeeLatest: ConfirmedFeeLatestResponse;
+      selectedTask: string;
+      expectedStatus: string;
+    }> = [
+      {
+        confirmedFeeLatest: confirmedFeeLatest("missing"),
+        selectedTask: "Confirmed Fee authority",
+        expectedStatus: "Missing",
+      },
+      {
+        confirmedFeeLatest: confirmedFeeLatest("stale"),
+        selectedTask: "Confirmed Fee authority",
+        expectedStatus: "Stale",
+      },
+      {
+        confirmedFeeLatest: confirmedFeeLatest("current"),
+        selectedTask: "Required forms",
+        expectedStatus: "Ready to generate",
+      },
+    ];
+
+    for (const item of cases) {
+      const { unmount } = renderWorkbench({
+        latestLtr: "DL-2026-06-001",
+        activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+        matrixAuthorityDraft: testPlanDraft,
+        folderReady: true,
+        packagePreview: readyPackagePreview,
+        requestMaterialPreview: collectedRequestMaterialPreview,
+        officialFolderCheckPreview: customerFeedbackDeferredOfficialFolderCheckPreview,
+        requiredFormsPreview: readyRequiredFormsPreview,
+        confirmedFeeLatest: item.confirmedFeeLatest,
+      });
+
+      expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
+        item.selectedTask
+      );
+      expect(screen.getAllByText(item.expectedStatus).length).toBeGreaterThan(0);
+      if (item.confirmedFeeLatest.status !== "current") {
+        expect(screen.queryByRole("button", { name: "Generate required forms" })).toBeNull();
+      } else {
+        expect(screen.getByRole("button", { name: "Generate required forms" })).toBeTruthy();
+      }
+      unmount();
+    }
+  });
+
   it("shows folder structure repair as the single next action", async () => {
     const user = userEvent.setup();
     const onRepairOfficialFolderStructure = vi.fn();
@@ -497,9 +548,9 @@ function renderWorkbench(
     "onBack" | "onOpenMatrixEditor" | "onOpenFeeEvaluation"
     | "onOpenSettings"
   >> = {}
-): void {
+): ReturnType<typeof render> {
   const currentProject = { ...project, ...projectOverrides };
-  render(
+  return render(
     <ProjectWorkbenchLayout
       runtimeModel={buildRuntimeModel(overrides, currentProject)}
       project={currentProject}
@@ -792,6 +843,67 @@ const customerFeedbackDeferredOfficialFolderCheckPreview: OfficialFolderCheckPre
   ],
   next_action: "none",
 };
+
+const readyRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
+  project_id: project.project_id,
+  status: "ready",
+  official_project_folder_path:
+    "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+  confirmed_matrix_id: "CM1",
+  confirmed_revision: 1,
+  confirmed_fee_id: "CF1",
+  confirmed_fee_revision: 1,
+  confirmed_fee_pricing_draft_edit_id: "fed-current",
+  customer_feedback_template_path: "D:/Template/Customer Feedback.xlsx",
+  items: [
+    {
+      key: "fee_form",
+      label: "Fee Form",
+      target_path:
+        "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test/DL-2026-06-001_Fee_Form.xls",
+      status: "ready",
+      action: "generate",
+      message: "Fee Form can be generated.",
+    },
+  ],
+  blockers: [],
+  warnings: [],
+};
+
+function confirmedFeeLatest(
+  status: ConfirmedFeeLatestResponse["status"]
+): ConfirmedFeeLatestResponse {
+  return {
+    status,
+    current_confirmed_matrix_id: "CM1",
+    current_confirmed_revision: 1,
+    current_fee_rule_version_id: "fee-rule-1",
+    confirmed_fee:
+      status === "missing"
+        ? null
+        : {
+            confirmed_fee_id: "CF1",
+            project_id: project.project_id,
+            confirmed_fee_revision: 1,
+            confirmed_matrix_id: "CM1",
+            confirmed_revision: 1,
+            fee_rule_version_id: "fee-rule-1",
+            pricing_draft_edit_id:
+              status === "current" ? "fed-current" : "fed-old",
+            pricing_effective_from: null,
+            summary: {
+              testing_fee_total: "100.00",
+              working_hours: "1.0",
+              lab_manpower_cost: "50",
+              external_cost: "0",
+              grand_cost: "150.00",
+            },
+            confirmed_by: "Lab User",
+            confirmed_at: "2026-06-15T00:00:00+00:00",
+            confirmation_note: null,
+          },
+  };
+}
 
 const readyPublicDriveUploadPreview: PublicDriveUploadPreview = {
   project_id: project.project_id,

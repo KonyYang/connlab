@@ -14,6 +14,17 @@ from backend.application.source_matrix_import_persistence_service import (
     PersistSourceMatrixImportCommand,
     SourceMatrixImportPersistenceService,
 )
+from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    build_basic_fill_from_confirmed_snapshot,
+)
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+)
+from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    FeeEvaluationPricingDraftSnapshot,
+)
 from backend.domain import Project, ProjectStatus
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -22,6 +33,8 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.models_matrix_source import SourceMatrixSnapshotModel
 from backend.infrastructure.storage.repositories import (
+    ConfirmedMatrixAuthorityRepository,
+    FeeEvaluationPricingDraftEditRepository,
     MatrixFeePendingRebaseRepository,
     ProjectRepository,
     SourceMatrixImportRepository,
@@ -140,6 +153,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
             json={"confirmed_by": "operator"},
         )
         assert confirmed.status_code == 201
+        _seed_previous_pricing_draft(session_factory, "P1")
 
         seed = client.get("/api/projects/P1/matrix-editor/session")
         assert seed.status_code == 200
@@ -176,7 +190,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         assert saved_payload["editor_draft_id"]
         assert saved_payload["saved_payload_signature"]
         assert saved_payload["fee_rebase_status"] == "current"
-        assert saved_payload["fee_rebase_summary"]["added_count"] >= 1
+        assert saved_payload["fee_rebase_summary"]["preserved_count"] >= 1
         with session_factory() as session:
             pending = MatrixFeePendingRebaseRepository(
                 session
@@ -255,10 +269,29 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         assert confirmed_saved.status_code == 200
         confirmed_payload = confirmed_saved.json()
         assert confirmed_payload["publish_status"] == "published"
+        assert confirmed_payload["fee_rebase_promotion_status"] == "promoted"
+        assert confirmed_payload["fee_rebase_promotion_summary"]["preserved_count"] >= 1
         assert (
             confirmed_payload["confirmed_snapshot"]["rows"][0]["method"]
             == "Updated autosaved method"
         )
+        with session_factory() as session:
+            promoted = FeeEvaluationPricingDraftEditRepository(session).get_by_context(
+                project_id="P1",
+                confirmed_matrix_id=confirmed_payload["confirmed_snapshot"]["version"][
+                    "confirmed_matrix_id"
+                ],
+                confirmed_revision=confirmed_payload["confirmed_snapshot"]["version"][
+                    "confirmed_revision"
+                ],
+                fee_rule_version_id="fee_rules_v2026_06_03",
+            )
+        assert promoted is not None
+        assert promoted.edited_values.rows[0].source_line_id.startswith(
+            confirmed_payload["confirmed_snapshot"]["version"]["confirmed_matrix_id"]
+        )
+        assert promoted.edited_values.rows[0].notes == "previous pricing note"
+        assert promoted.edited_values.summary.external_cost_note == "previous summary"
 
         latest_seed = client.get("/api/projects/P1/matrix-editor/session")
         assert latest_seed.status_code == 200
@@ -856,3 +889,48 @@ def _seed_source_import(
         session.commit()
     engine.dispose()
     return import_id
+
+
+def _seed_previous_pricing_draft(session_factory, project_id: str) -> None:
+    with session_factory() as session:
+        active = ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
+        assert active is not None
+        basic_fill = build_basic_fill_from_confirmed_snapshot(active)
+        first_line = basic_fill.groups[0].lines[0]
+        FeeEvaluationPricingDraftEditRepository(session).upsert_current(
+            FeeEvaluationPricingDraftSnapshot(
+                draft_edit_id="pricing-before-matrix-edit",
+                project_id=project_id,
+                confirmed_matrix_id=active.version.confirmed_matrix_id,
+                confirmed_revision=active.version.confirmed_revision,
+                fee_rule_version_id="fee_rules_v2026_06_03",
+                edited_values=FeeEvaluationEditedExportValues(
+                    rows=(
+                        FeeEvaluationEditedExportRow(
+                            source_line_id=first_line.line_id,
+                            confirmed_group_id=first_line.confirmed_group_id,
+                            confirmed_row_id=first_line.confirmed_row_id,
+                            step_token=first_line.step_tokens[0],
+                            step_index=first_line.step_index,
+                            spend_time="1",
+                            unit_price="100",
+                            unit_type="hour",
+                            units="1",
+                            base_fee="100",
+                            discount="0",
+                            testing_fee="100",
+                            notes="previous pricing note",
+                        ),
+                    ),
+                    summary=FeeEvaluationEditedExportSummary(
+                        condition_confirmation_spend_time="0.5",
+                        external_cost="20",
+                        external_cost_note="previous summary",
+                        lab_manpower_hourly_rate="80",
+                    ),
+                ),
+                created_at="2026-06-15T00:00:00+00:00",
+                updated_at="2026-06-15T00:01:00+00:00",
+            )
+        )
+        session.commit()

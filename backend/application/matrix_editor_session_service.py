@@ -42,6 +42,11 @@ from backend.application.matrix_fee_pending_rebase_service import (
     MatrixFeePendingRebaseResult,
     RebaseAfterMatrixAutosaveCommand,
 )
+from backend.application.matrix_fee_rebase_promotion_service import (
+    MatrixFeeRebasePromotionResult,
+    MatrixFeeRebasePromotionStatus,
+    PromoteMatrixFeeRebaseCommand,
+)
 from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftCellInput,
     ProjectMatrixDraftGroupInput,
@@ -166,6 +171,15 @@ class PendingFeeRebaseService(Protocol):
         self, command: DeletePendingRebaseForMatrixDraftCommand
     ) -> object:
         """Delete pending Fee rebase output for a discarded Matrix draft."""
+
+
+class FeeRebasePromotionService(Protocol):
+    """Matrix Confirm hook for promoting pending Fee rebase output."""
+
+    def promote_after_matrix_confirm(
+        self, command: PromoteMatrixFeeRebaseCommand
+    ) -> MatrixFeeRebasePromotionResult:
+        """Promote pending/fallback Fee rebase output after Matrix Confirm."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -332,6 +346,9 @@ class MatrixEditorSessionConfirmResult:
     publish_status: Literal["published", "no_change"]
     message: str
     confirmed_snapshot: ConfirmedMatrixSnapshot | None
+    fee_rebase_promotion_status: MatrixFeeRebasePromotionStatus = "not_required"
+    fee_rebase_promotion_summary: MatrixFeeRebaseSummary | None = None
+    fee_rebase_promotion_error: str | None = None
 
 
 class MatrixEditorSessionService:
@@ -349,6 +366,7 @@ class MatrixEditorSessionService:
         matrix_revision_flow_service: MatrixRevisionFlowService,
         confirmed_matrix_authority_service: ConfirmedMatrixAuthorityService,
         pending_fee_rebase_service: PendingFeeRebaseService | None = None,
+        fee_rebase_promotion_service: FeeRebasePromotionService | None = None,
         fee_rule_version_provider: Callable[[], str] | None = None,
     ) -> None:
         self._projects = project_store
@@ -360,6 +378,9 @@ class MatrixEditorSessionService:
         self._matrix_revision = matrix_revision_flow_service
         self._confirmed_authority = confirmed_matrix_authority_service
         self._pending_fee_rebase = pending_fee_rebase_service or _NullPendingFeeRebaseService()
+        self._fee_rebase_promotion = (
+            fee_rebase_promotion_service or _NullFeeRebasePromotionService()
+        )
         self._fee_rule_version_provider = (
             fee_rule_version_provider or _active_fee_rule_version_id
         )
@@ -629,10 +650,19 @@ class MatrixEditorSessionService:
                 active=active,
                 confirmed_by=confirmed_by,
             )
+            promotion = self._promote_fee_rebase_after_matrix_confirm(
+                project_id=command.project_id,
+                saved_draft=saved_draft,
+                previous_active=active,
+                confirmed=confirmed,
+            )
             return MatrixEditorSessionConfirmResult(
                 publish_status="published",
                 message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
                 confirmed_snapshot=confirmed,
+                fee_rebase_promotion_status=promotion.status,
+                fee_rebase_promotion_summary=promotion.summary,
+                fee_rebase_promotion_error=promotion.error,
             )
         confirmed = self._publish_as_first_authority(command, selected_group_keys, confirmed_by)
         return MatrixEditorSessionConfirmResult(
@@ -640,6 +670,33 @@ class MatrixEditorSessionService:
             message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
             confirmed_snapshot=confirmed,
         )
+
+    def _promote_fee_rebase_after_matrix_confirm(
+        self,
+        *,
+        project_id: str,
+        saved_draft: ProjectMatrixDraftSnapshot,
+        previous_active: ConfirmedMatrixSnapshot,
+        confirmed: ConfirmedMatrixSnapshot,
+    ) -> MatrixFeeRebasePromotionResult:
+        try:
+            return self._fee_rebase_promotion.promote_after_matrix_confirm(
+                PromoteMatrixFeeRebaseCommand(
+                    project_id=project_id,
+                    saved_matrix_draft=saved_draft,
+                    saved_matrix_draft_payload_signature=(
+                        _build_signature_from_project_draft(saved_draft)
+                    ),
+                    previous_confirmed_matrix=previous_active,
+                    new_confirmed_matrix=confirmed,
+                    fee_rule_version_id=self._fee_rule_version_provider(),
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - non-fatal Matrix Confirm hook.
+            return MatrixFeeRebasePromotionResult(
+                status="failed",
+                error=f"Fee rebase promotion failed: {exc}",
+            )
 
     def _publish_saved_revision(
         self,
@@ -1010,6 +1067,15 @@ class _NullPendingFeeRebaseService:
         self, command: DeletePendingRebaseForMatrixDraftCommand
     ) -> object:
         return None
+
+
+class _NullFeeRebasePromotionService:
+    """Default no-op Matrix Confirm promotion hook for narrow callers."""
+
+    def promote_after_matrix_confirm(
+        self, command: PromoteMatrixFeeRebaseCommand
+    ) -> MatrixFeeRebasePromotionResult:
+        return MatrixFeeRebasePromotionResult(status="not_required")
 
 
 def _build_editor_draft_from_active(

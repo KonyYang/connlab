@@ -189,24 +189,28 @@ def _to_payload(
                 confirmed_row_id=row.confirmed_row_id,
                 step_token=row.step_token,
                 step_index=row.step_index,
-                spend_time=row.spend_time,
-                unit_price=row.unit_price,
-                unit_type=row.unit_type,
-                units=row.units,
-                base_fee=row.base_fee,
-                discount=row.discount,
-                testing_fee=row.testing_fee,
+                spend_time=_saveable_numeric_text(row.spend_time, "0"),
+                unit_price=_saveable_numeric_text(row.unit_price, "0"),
+                unit_type=_saveable_unit_type(row.unit_type),
+                units=_saveable_numeric_text(row.units, "1"),
+                base_fee=_saveable_numeric_text(row.base_fee, "0"),
+                discount=_saveable_discount(row.discount),
+                testing_fee=_saveable_numeric_text(row.testing_fee, "0"),
                 notes=row.notes,
             )
             for row in values.rows
         ],
         summary=FeeEvaluationEditedSummaryExportRequest(
             condition_confirmation_spend_time=(
-                values.summary.condition_confirmation_spend_time
+                _saveable_numeric_text(
+                    values.summary.condition_confirmation_spend_time, "0"
+                )
             ),
-            external_cost=values.summary.external_cost,
+            external_cost=_saveable_numeric_text(values.summary.external_cost, "0"),
             external_cost_note=values.summary.external_cost_note,
-            lab_manpower_hourly_rate=values.summary.lab_manpower_hourly_rate,
+            lab_manpower_hourly_rate=_saveable_numeric_text(
+                values.summary.lab_manpower_hourly_rate, "200"
+            ),
         ),
         manual_rows=[
             FeeEvaluationEditedManualRowExportRequest(
@@ -214,15 +218,34 @@ def _to_payload(
                 confirmed_group_id=row.confirmed_group_id,
                 group_key=row.group_key,
                 group_label=row.group_label,
-                spend_time=row.spend_time,
-                unit_price=row.unit_price,
-                unit_type=row.unit_type,
-                units=row.units,
-                base_fee=row.base_fee,
-                discount=row.discount,
-                testing_fee=row.testing_fee,
+                spend_time=_saveable_numeric_text(row.spend_time, "0"),
+                unit_price=_saveable_numeric_text(row.unit_price, "0"),
+                unit_type=_saveable_unit_type(row.unit_type),
+                units=_saveable_numeric_text(row.units, "1"),
+                base_fee=_saveable_numeric_text(row.base_fee, "0"),
+                discount=_saveable_discount(row.discount),
+                testing_fee=_saveable_numeric_text(row.testing_fee, "0"),
                 notes=row.notes,
             )
             for row in values.manual_rows
         ],
     )
+
+
+def _saveable_unit_type(value: str) -> str:
+    normalized = value.strip()
+    return normalized if normalized else "Pending"
+
+
+def _saveable_numeric_text(value: str, fallback: str) -> str:
+    normalized = value.strip()
+    if not normalized or normalized.lower() == "pending":
+        return fallback
+    return normalized
+
+
+def _saveable_discount(value: str) -> str:
+    normalized = value.strip()
+    if not normalized or normalized.lower() == "pending":
+        return "0%"
+    return normalized

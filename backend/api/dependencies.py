@@ -174,6 +174,10 @@ from backend.application.matrix_fee_pending_rebase_service import (
     DefaultMatrixFeePendingRebaseBuilder,
     MatrixFeePendingRebaseService,
 )
+from backend.application.matrix_fee_draft_rebase_service import MatrixFeeDraftRebaseService
+from backend.application.matrix_fee_rebase_promotion_service import (
+    MatrixFeeRebasePromotionService,
+)
 from backend.application.project_test_plan_draft_service import (
     ProjectTestPlanDraftService,
 )
@@ -570,6 +574,11 @@ def get_matrix_editor_session_service(
                 pricing_draft_store=FeeEvaluationPricingDraftEditRepository(session),
             ),
             draft_signature_builder=_build_signature_from_project_draft,
+        ),
+        fee_rebase_promotion_service=MatrixFeeRebasePromotionService(
+            pending_store=MatrixFeePendingRebaseRepository(session),
+            pricing_draft_store=FeeEvaluationPricingDraftEditRepository(session),
+            rebase_service=MatrixFeeDraftRebaseService(),
         ),
     )
 

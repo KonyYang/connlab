@@ -42,6 +42,53 @@ def matrix_editor_feature_source() -> str:
     )
 
 
+def test_task315d_fee_ui_project_folder_regression_wiring_is_present() -> None:
+    """TASK_315D keeps Fee UI and Project Folder readiness on approved boundaries."""
+    fee_page = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "fee-evaluation"
+        / "FeeEvaluationReviewExportPage.tsx"
+    ).read_text(encoding="utf-8")
+    preview_table = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "fee-evaluation"
+        / "FeeEvaluationPreviewTable.tsx"
+    ).read_text(encoding="utf-8")
+    selector = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "projectFolderTaskSelectors.ts"
+    ).read_text(encoding="utf-8")
+    workbench = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "getFeeEvaluationPricingDraft" in fee_page
+    assert "saveFeeEvaluationPricingDraft" in fee_page
+    assert "confirmFeeVersion" in fee_page
+    assert "fee-evaluation-completion-dock" in fee_page
+    assert "Fee Evaluation completion actions" in fee_page
+    assert "Confirmed by" not in fee_page
+    assert "confirmedFeeViewState" not in fee_page
+    assert "fee-evaluation-confirm-strip" not in preview_table
+    assert 'confirmedFeeAuthorityStatus !== "confirmed"' in selector
+    assert 'confirmedFeeLatest.status === "current"' in workbench
+    assert 'return "confirmed"' in workbench
+    assert "fee_rebase" not in fee_page
+    assert "payload_signature" not in fee_page
+    assert "/api/projects" not in fee_page
+
+
 def test_frontend_shell_core_files_exist() -> None:
     """Minimal React shell files are present."""
     expected_files = [
@@ -264,7 +311,6 @@ def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
         "All Group",
         "Fee Evaluation",
         "Fee Form",
-        "Back to Workbench",
         "LTR Number",
         "Test description",
         "Requestor",
@@ -279,6 +325,9 @@ def test_task293_fee_evaluation_excel_preview_ui_is_wired() -> None:
     assert "Fee Evaluation review rows" in review_details_source
     assert "FeeEvaluationReviewDetails" not in fee_page_source
     assert "generateConfirmedMatrixFeeFileDownload" in fee_page_source
+    assert "Cancel" in fee_page_source
+    assert "Confirmed by" not in fee_page_source + preview_table_source
+    assert "Confirmed Fee status" not in preview_table_source
     assert "Generate Matrix basic fill" not in fee_page_source
     assert "fee-evaluation-topbar" not in fee_page_source
     assert "fee-evaluation-summary-strip" not in fee_page_source

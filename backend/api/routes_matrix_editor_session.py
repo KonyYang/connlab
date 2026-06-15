@@ -224,6 +224,9 @@ class MatrixEditorSessionConfirmResponse(BaseModel):
     publish_status: str
     message: str
     confirmed_snapshot: ConfirmedMatrixSnapshotResponse | None
+    fee_rebase_promotion_status: str = "not_required"
+    fee_rebase_promotion_summary: MatrixFeeRebaseSummaryResponse | None = None
+    fee_rebase_promotion_error: str | None = None
 
 
 @router.get(
@@ -462,6 +465,23 @@ def confirm_matrix_editor_session(
             if result.confirmed_snapshot is not None
             else None
         ),
+        fee_rebase_promotion_status=result.fee_rebase_promotion_status,
+        fee_rebase_promotion_summary=(
+            MatrixFeeRebaseSummaryResponse(
+                preserved_count=result.fee_rebase_promotion_summary.preserved_count,
+                added_count=result.fee_rebase_promotion_summary.added_count,
+                removed_count=result.fee_rebase_promotion_summary.removed_count,
+                preserved_manual_count=(
+                    result.fee_rebase_promotion_summary.preserved_manual_count
+                ),
+                removed_manual_count=(
+                    result.fee_rebase_promotion_summary.removed_manual_count
+                ),
+            )
+            if result.fee_rebase_promotion_summary is not None
+            else None
+        ),
+        fee_rebase_promotion_error=result.fee_rebase_promotion_error,
     )
 
 

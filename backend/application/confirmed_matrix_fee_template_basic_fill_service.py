@@ -96,17 +96,24 @@ class ConfirmedMatrixFeeTemplateBasicFillService:
             raise ConfirmedMatrixFeeTemplateBasicFillNotFoundError(
                 "Active confirmed matrix not found."
             )
-        groups = _build_groups(snapshot)
-        return MatrixBasicFillWorkbook(
-            header=MatrixBasicFillHeader(
-                project_id=snapshot.version.project_id,
-                confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
-                confirmed_revision=snapshot.version.confirmed_revision,
-                generated_at=datetime.now(timezone.utc).isoformat(),
-            ),
-            status="ready" if groups else "empty",
-            groups=groups,
-        )
+        return build_basic_fill_from_confirmed_snapshot(snapshot)
+
+
+def build_basic_fill_from_confirmed_snapshot(
+    snapshot: ConfirmedMatrixSnapshot,
+) -> MatrixBasicFillWorkbook:
+    """Build Matrix basic-fill rows from an explicit Confirmed Matrix snapshot."""
+    groups = _build_groups(snapshot)
+    return MatrixBasicFillWorkbook(
+        header=MatrixBasicFillHeader(
+            project_id=snapshot.version.project_id,
+            confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
+            confirmed_revision=snapshot.version.confirmed_revision,
+            generated_at=datetime.now(timezone.utc).isoformat(),
+        ),
+        status="ready" if groups else "empty",
+        groups=groups,
+    )
 
 
 def _build_groups(

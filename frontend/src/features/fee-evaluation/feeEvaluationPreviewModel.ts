@@ -260,7 +260,7 @@ export function applyFeeEvaluationPreviewEdits(
       ...row,
       spendTime: rowEdits.spendTime ?? editableDefault(row.spendTime, "0"),
       unitPrice,
-      unitType: rowEdits.unitType ?? formatUnitTypeForPreview(row.unitType),
+      unitType: editableUnitType(rowEdits.unitType, row.unitType),
       units,
       baseFee,
       discount,
@@ -317,12 +317,12 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
       continue;
     }
     edits[previewRow.lineId] = {
-      spendTime: row.spend_time,
-      unitPrice: row.unit_price,
-      unitType: row.unit_type,
-      units: row.units,
-      baseFee: row.base_fee,
-      discount: row.discount,
+      spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
+      unitPrice: hydratedEditableNumber(row.unit_price, previewRow.unitPrice, "0"),
+      unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
+      units: hydratedEditableNumber(row.units, previewRow.units, "1"),
+      baseFee: hydratedEditableNumber(row.base_fee, previewRow.baseFee, "0"),
+      discount: hydratedEditableDiscount(row.discount, previewRow.discount),
       notes: row.notes,
     };
     appliedRowCount += 1;
@@ -338,12 +338,12 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
         continue;
       }
       edits[previewRow.lineId] = {
-        spendTime: row.spend_time,
-        unitPrice: row.unit_price,
-        unitType: row.unit_type,
-        units: row.units,
-        baseFee: row.base_fee,
-        discount: row.discount,
+        spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
+        unitPrice: hydratedEditableNumber(row.unit_price, previewRow.unitPrice, "0"),
+        unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
+        units: hydratedEditableNumber(row.units, previewRow.units, "1"),
+        baseFee: hydratedEditableNumber(row.base_fee, previewRow.baseFee, "0"),
+        discount: hydratedEditableDiscount(row.discount, previewRow.discount),
         notes: row.notes,
       };
       appliedRowCount += 1;
@@ -363,12 +363,12 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
       continue;
     }
     edits[previewRow.lineId] = {
-      spendTime: row.spend_time,
-      unitPrice: row.unit_price,
-      unitType: row.unit_type,
-      units: row.units,
-      baseFee: row.base_fee,
-      discount: row.discount,
+      spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
+      unitPrice: hydratedEditableNumber(row.unit_price, previewRow.unitPrice, "0"),
+      unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
+      units: hydratedEditableNumber(row.units, previewRow.units, "1"),
+      baseFee: hydratedEditableNumber(row.base_fee, previewRow.baseFee, "0"),
+      discount: hydratedEditableDiscount(row.discount, previewRow.discount),
       notes: row.notes,
     };
     appliedRowCount += 1;
@@ -378,10 +378,16 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
     edits,
     costPreviewValues: {
       conditionConfirmationSpendTime:
-        savedDraft.summary.condition_confirmation_spend_time,
-      externalCost: savedDraft.summary.external_cost,
+        hydratedSummaryNumber(
+          savedDraft.summary.condition_confirmation_spend_time,
+          "0"
+        ),
+      externalCost: hydratedSummaryNumber(savedDraft.summary.external_cost, "0"),
       externalCostNote: savedDraft.summary.external_cost_note,
-      labManpowerHourlyRate: savedDraft.summary.lab_manpower_hourly_rate,
+      labManpowerHourlyRate: hydratedSummaryNumber(
+        savedDraft.summary.lab_manpower_hourly_rate,
+        "200"
+      ),
     },
     appliedRowCount,
     unmatchedRowCount,
@@ -630,6 +636,42 @@ function formatUnitTypeForPreview(value: string): string {
     "per report": "per report",
   };
   return map[normalized] ?? value.trim();
+}
+
+function hydratedUnitType(value: string, fallback: string): string {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : formatUnitTypeForPreview(fallback);
+}
+
+function hydratedEditableNumber(
+  value: string,
+  fallback: string,
+  defaultValue: string
+): string {
+  const normalized = editableDefault(value, "");
+  if (normalized.length > 0) {
+    return normalized;
+  }
+  return editableDefault(fallback, defaultValue);
+}
+
+function hydratedEditableDiscount(value: string, fallback: string): string {
+  const normalized = editableDefault(value, "");
+  if (normalized.length > 0) {
+    return normalized;
+  }
+  return editableDefault(fallback, "0%");
+}
+
+function hydratedSummaryNumber(value: string, defaultValue: string): string {
+  return editableDefault(value, defaultValue);
+}
+
+function editableUnitType(value: string | undefined, fallback: string): string {
+  if (value === undefined) {
+    return formatUnitTypeForPreview(fallback);
+  }
+  return hydratedUnitType(value, fallback);
 }
 
 function parseRequiredEditableNumber(value: string): number | null {

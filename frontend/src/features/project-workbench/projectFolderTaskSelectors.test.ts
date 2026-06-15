@@ -149,10 +149,39 @@ describe("deriveProjectFolderTasks", () => {
         requiredFormsPreview: currentRequiredFormsPreview,
       });
 
+      expect(taskByTitle(tasks, "Confirmed Fee authority").status).toBe("blocked");
+      expect(taskByTitle(tasks, "Confirmed Fee authority").actionTarget).toBe("fee");
       expect(taskByTitle(tasks, "Required forms").status).toBe("blocked");
       expect(taskByTitle(tasks, "Required forms").actionTarget).toBeNull();
       expect(taskByTitle(tasks, "Required forms").summary).toMatch(/Fee/);
     }
+  });
+
+  it("allows Required forms readiness only after Confirmed Fee authority is current", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      confirmedFeeAuthorityStatus: "confirmed",
+      requiredFormsPreview: {
+        ...currentRequiredFormsPreview,
+        status: "ready",
+        items: [
+          {
+            key: "fee_form",
+            label: "Fee Form",
+            target_path: "D:/Projects/fee.xls",
+            status: "ready",
+            action: "generate",
+            message: "Fee Form can be generated.",
+          },
+        ],
+      },
+    });
+
+    expect(taskByTitle(tasks, "Confirmed Fee authority").status).toBe("ready");
+    expect(taskByTitle(tasks, "Required forms").status).toBe("warning");
+    expect(taskByTitle(tasks, "Required forms").actionTarget).toBe(
+      "required_forms_generate"
+    );
   });
 
   it("blocks Required forms when the generation preview has a conflict", () => {
