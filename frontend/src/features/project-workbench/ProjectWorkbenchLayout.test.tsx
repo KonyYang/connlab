@@ -140,7 +140,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
-    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
+    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Project commands")).toBeTruthy();
     expect(
       screen.getByText("DL-2026-06-777 Coolpower HDF 3.40mm pin Qualification Testing")
     ).toBeTruthy();
@@ -164,8 +165,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
   });
 
-  it("separates package preparation from execution once active Matrix exists", async () => {
-    const user = userEvent.setup();
+  it("uses a command bar and Matrix workspace once active Matrix exists", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -175,22 +175,22 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
-    expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Project package panel")).toBeNull();
-    expect(screen.queryByText("Folder setup panel")).toBeNull();
-    expect(screen.queryByText("Matrix projection panel")).toBeNull();
-    expect(screen.queryByLabelText("Step workspace")).toBeNull();
-
-    await user.click(screen.getByRole("tab", { name: "Execution" }));
-
-    expect(screen.getByText("Execution console")).toBeTruthy();
+    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Project commands")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Fee" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Folder ready" })).toBeTruthy();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByText("Project folder details")).toBeTruthy();
     expect(screen.queryByText("Project package panel")).toBeNull();
+    expect(screen.queryByText("Folder setup panel")).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Project Folder" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
   });
 
-  it("does not show a redundant overview tab when package preparation is the main task", () => {
+  it("does not show mode tabs when the active Matrix workspace is the main task", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -201,15 +201,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     expect(screen.queryByRole("tab", { name: "Overview" })).toBeNull();
-    expect(screen.getByRole("tab", { name: "Project Folder" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Execution" })).toBeTruthy();
-    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
-    expect(
-      screen.getAllByText("Confirm Fee before preparing the project folder.").length
-    ).toBeGreaterThan(0);
+    expect(screen.queryByRole("tab", { name: "Project Folder" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
+    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Action").textContent).toContain("Required forms");
     expect(screen.queryByText("Project package panel")).toBeNull();
-    expect(screen.queryByText("Matrix projection panel")).toBeNull();
-    expect(screen.queryByLabelText("Step workspace")).toBeNull();
+    expect(screen.getByText("Matrix projection panel")).toBeTruthy();
+    expect(screen.getByLabelText("Step workspace")).toBeTruthy();
   });
 
   it("opens Settings from the next action when the folder template blocks package readiness", async () => {
@@ -226,10 +224,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { onOpenSettings }
     );
 
-    const settingsButton = screen.getByRole("button", { name: "Open Settings" });
-    expect(settingsButton).toBeTruthy();
-    await user.click(settingsButton);
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Generate folder" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+    expect(onOpenSettings).not.toHaveBeenCalled();
+    expect(user).toBeTruthy();
   });
 
   it("uses active confirmed Matrix authority even when legacy test-plan drafts are absent", async () => {
@@ -244,19 +245,15 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
+    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix authority setup")).toBeNull();
-
-    await user.click(screen.getByRole("tab", { name: "Execution" }));
-
-    expect(screen.getByText("Execution console")).toBeTruthy();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
+    expect(user).toBeTruthy();
   });
 
-  it("shows the Project Folder task list without secondary package links", async () => {
-    const user = userEvent.setup();
+  it("keeps Project Folder details collapsed below the Matrix workspace", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -266,15 +263,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Project Folder preparation")).toBeTruthy();
-    expect(
-      screen.getAllByText("Prepare local project files before public-drive submission.").length
-    ).toBeGreaterThan(0);
+    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Project Folder tasks")).toBeTruthy();
-    expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
-      "Request material"
-    );
+    expect(screen.getByLabelText("Project Folder progress")).toBeTruthy();
     expect(
       screen.getAllByRole("button", { name: "Collect request material" }).length
     ).toBeGreaterThan(0);
@@ -282,13 +274,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Secondary links")).toBeNull();
     expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Fee Evaluation" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Open Matrix" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Open Fee Evaluation" })).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
-    expect(screen.queryByText("Fee summary panel")).toBeNull();
-
-    expect(user).toBeTruthy();
+    expect(screen.getByText("Fee summary panel")).toBeTruthy();
   });
 
   it("maps Confirmed Fee latest status into Project Folder authority readiness", async () => {
@@ -334,7 +324,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       if (item.confirmedFeeLatest.status !== "current") {
         expect(screen.queryByRole("button", { name: "Generate required forms" })).toBeNull();
       } else {
-        expect(screen.getByRole("button", { name: "Generate required forms" })).toBeTruthy();
+        expect(
+          screen.getAllByRole("button", { name: "Generate required forms" }).length
+        ).toBeGreaterThan(0);
       }
       unmount();
     }
@@ -437,20 +429,16 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onCreateOfficialWorkspace,
     });
 
+    expect(screen.getByRole("button", { name: "Generate folder" })).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Create local project folder" })
+      screen.getAllByText("Create the official project folder from the standard template.").length
     ).toBeTruthy();
-    expect(
-      screen.getByText("The official project folder has not been created locally.")
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
-    await user.click(
-      screen.getByRole("button", { name: "Create local project folder" })
-    );
+    await user.click(screen.getByRole("button", { name: "Generate folder" }));
 
     expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
@@ -485,22 +473,19 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
+    expect(screen.getByRole("button", { name: "Generate folder" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(screen.getByText("Folder not generated")).toBeTruthy();
     expect(
-      screen.getByText("Project folder template is not ready")
-    ).toBeTruthy();
-    expect(
-      screen.getByText("ConnLab project folder template is not ready.")
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Creation is unavailable until the ConnLab project template is ready."
-      )
-    ).toBeTruthy();
+      screen.getAllByText(
+        "Project folder generation is unavailable until the template and target path are ready."
+      ).length
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("Configure workspace paths")).toBeNull();
     expect(screen.queryByText("Project default save location is not configured.")).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Create local project folder" })
-    ).toBeNull();
+    expect(screen.queryAllByRole("button", { name: "Create project folder" })).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
     expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
   });
@@ -531,9 +516,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: readyPackagePreview,
     });
 
-    expect(
-      screen.queryByRole("button", { name: "Create local project folder" })
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
 
     expect(screen.getAllByText("Local project folder").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Created").length).toBeGreaterThan(0);

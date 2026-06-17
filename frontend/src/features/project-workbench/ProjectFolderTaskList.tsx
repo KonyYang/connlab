@@ -42,15 +42,33 @@ export function ProjectFolderTaskList({
   publicDriveUploadLoading: boolean;
 }): ReactElement {
   const selectedTask = tasks.find((task) => task.key === selectedTaskKey) ?? tasks[0];
+  const currentTask = tasks.find((task) => task.key === currentTaskKey) ?? selectedTask;
+  const detailTask = selectedTask.key === currentTask.key ? currentTask : selectedTask;
 
   return (
     <section className="runtime-console-project-folder-flow">
-      <section
-        className="runtime-console-project-folder-tasks"
-        aria-label="Project Folder tasks"
-      >
+      <section className="runtime-console-folder-primary" aria-label="Current Project Folder action">
+        <div className="runtime-console-folder-task-heading">
+          <p className="eyebrow">Next step</p>
+          <h3>{currentTask.title}</h3>
+          <p>{currentTask.summary}</p>
+          {currentTask.actionLabel && currentTask.actionTarget ? (
+            <button
+              type="button"
+              onClick={() => onTaskAction(currentTask.actionTarget ?? null)}
+            >
+              {currentTask.actionLabel}
+            </button>
+          ) : (
+            <p className="runtime-console-muted-action">{currentTask.statusLabel}</p>
+          )}
+        </div>
+        <TaskMessages task={currentTask} />
+      </section>
+
+      <section className="runtime-console-project-folder-steps" aria-label="Project Folder progress">
         {tasks.map((task) => {
-          const isSelected = task.key === selectedTask.key;
+          const isSelected = task.key === detailTask.key;
           const isCurrent = task.key === currentTaskKey;
           return (
             <button
@@ -68,35 +86,36 @@ export function ProjectFolderTaskList({
                 <strong>{task.title}</strong>
                 <small>{task.statusLabel}</small>
               </span>
-              {isCurrent ? <em>Current task</em> : null}
+              {isCurrent ? <em>Now</em> : null}
             </button>
           );
         })}
       </section>
 
-      <section
-        className="runtime-console-current-folder-task"
-        aria-label="Selected Project Folder task"
-      >
-        <div className="runtime-console-folder-task-heading">
-          <p className="eyebrow">{selectedTask.statusLabel}</p>
-          <h3>{selectedTask.title}</h3>
-          <p>{selectedTask.summary}</p>
-          {selectedTask.actionLabel && selectedTask.actionTarget ? (
-            <button
-              type="button"
-              onClick={() => onTaskAction(selectedTask.actionTarget ?? null)}
-            >
-              {selectedTask.actionLabel}
-            </button>
-          ) : (
-            <p className="runtime-console-muted-action">No direct action is available for this step.</p>
-          )}
-        </div>
+      <details className="runtime-console-folder-detail-panel">
+        <summary>{detailTask.key === currentTask.key ? "Show details" : `Show ${detailTask.title} details`}</summary>
 
-        <TaskMessages task={selectedTask} />
+        <div
+          className="runtime-console-current-folder-task"
+          aria-label="Selected Project Folder task"
+        >
+          <div className="runtime-console-folder-task-heading">
+            <p className="eyebrow">{detailTask.statusLabel}</p>
+            <h3>{detailTask.title}</h3>
+            <p>{detailTask.summary}</p>
+            {detailTask.actionLabel && detailTask.actionTarget && detailTask.key !== currentTask.key ? (
+              <button
+                type="button"
+                onClick={() => onTaskAction(detailTask.actionTarget ?? null)}
+              >
+                {detailTask.actionLabel}
+              </button>
+            ) : null}
+          </div>
 
-        {selectedTask.detailKind === "request_material" ? (
+          <TaskMessages task={detailTask} />
+
+        {detailTask.detailKind === "request_material" ? (
           <RequestMaterialDetail
             preview={requestMaterialPreview}
             error={requestMaterialError}
@@ -104,7 +123,7 @@ export function ProjectFolderTaskList({
           />
         ) : null}
 
-        {selectedTask.detailKind === "public_drive" ? (
+        {detailTask.detailKind === "public_drive" ? (
           <PublicDriveUploadDetail
             preview={publicDriveUploadPreview}
             error={publicDriveUploadError}
@@ -112,7 +131,7 @@ export function ProjectFolderTaskList({
           />
         ) : null}
 
-        {selectedTask.detailKind === "required_forms" ? (
+        {detailTask.detailKind === "required_forms" ? (
           <RequiredFormsDetail
             preview={requiredFormsPreview}
             error={requiredFormsError}
@@ -120,12 +139,13 @@ export function ProjectFolderTaskList({
           />
         ) : null}
 
-        {selectedTask.detailKind !== "request_material" &&
-        selectedTask.detailKind !== "public_drive" &&
-        selectedTask.detailKind !== "required_forms" ? (
-          <GenericTaskDetail task={selectedTask} />
+        {detailTask.detailKind !== "request_material" &&
+        detailTask.detailKind !== "public_drive" &&
+        detailTask.detailKind !== "required_forms" ? (
+          <GenericTaskDetail task={detailTask} />
         ) : null}
-      </section>
+        </div>
+      </details>
     </section>
   );
 }

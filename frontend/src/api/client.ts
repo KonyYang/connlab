@@ -1820,6 +1820,13 @@ export type FeeEvaluationEditedFileExportRequest = {
   manual_rows?: FeeEvaluationEditedManualRowExportInput[];
 };
 
+export type FeeEvaluationPricingDraftSaveRequest =
+  FeeEvaluationEditedFileExportRequest & {
+    expected_confirmed_matrix_id?: string | null;
+    expected_confirmed_revision?: number | null;
+    expected_fee_rule_version_id?: string | null;
+  };
+
 export type FeeEvaluationPricingDraftStatus = "missing" | "current" | "stale";
 
 export type FeeEvaluationPricingDraftResponse = {
@@ -3013,7 +3020,7 @@ export function getFeeEvaluationPricingDraft(
 
 export function saveFeeEvaluationPricingDraft(
   projectId: string,
-  input: FeeEvaluationEditedFileExportRequest,
+  input: FeeEvaluationPricingDraftSaveRequest,
   options: Pick<RequestInit, "signal"> = {}
 ): Promise<FeeEvaluationPricingDraftResponse> {
   return requestJson<FeeEvaluationPricingDraftResponse>(

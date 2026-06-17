@@ -183,6 +183,33 @@ def test_removed_group_or_step_becomes_inactive_removed_row() -> None:
     assert result.summary.removed_count == 1
 
 
+def test_inactive_removed_row_retains_full_rebase_key_for_restoration() -> None:
+    source = _source_row(
+        _lineage(
+            group_key="Group-A",
+            group_label="Group A",
+            source_row_snapshot_id="source-row-1",
+            draft_row_id="draft-row-1",
+            step_token="review_details",
+            step_index=2,
+        ),
+        notes="recover me",
+    )
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,),
+        target_rows=(),
+        source_manual_rows=(),
+        target_groups=(),
+    )
+
+    removed = result.inactive_removed_rows[0]
+    assert removed.rebase_key.group_identity == "key:group-a"
+    assert removed.rebase_key.row_identity == "source:source-row-1"
+    assert removed.rebase_key.step_token == "review_details"
+    assert removed.rebase_key.step_index == 2
+
+
 def test_report_preparation_manual_row_is_preserved_globally() -> None:
     manual = _manual_row(row_kind="report_preparation", notes="report edit")
 

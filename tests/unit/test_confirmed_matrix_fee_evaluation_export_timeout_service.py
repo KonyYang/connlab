@@ -24,6 +24,7 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
+    FeeEvaluationEditedManualRow,
 )
 from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
@@ -79,6 +80,22 @@ def test_command_payload_round_trip_preserves_edited_values(tmp_path: Path) -> N
                 external_cost_note="tooling",
                 lab_manpower_hourly_rate="200",
             ),
+            manual_rows=(
+                FeeEvaluationEditedManualRow(
+                    row_kind="sample_preparation",
+                    confirmed_group_id="cmg-1",
+                    group_key="g1",
+                    group_label="Group 1",
+                    spend_time="0",
+                    unit_price="8",
+                    unit_type="per sample",
+                    units="2",
+                    base_fee="0",
+                    discount="0%",
+                    testing_fee="16",
+                    notes="sample prep note",
+                ),
+            ),
         ),
     )
 
@@ -87,6 +104,9 @@ def test_command_payload_round_trip_preserves_edited_values(tmp_path: Path) -> N
     assert restored == command
     assert restored.edited_values is not None
     assert restored.edited_values.rows[0].notes == "operator note"
+    assert restored.edited_values.manual_rows[0].confirmed_group_id == "cmg-1"
+    assert restored.edited_values.manual_rows[0].group_key == "g1"
+    assert restored.edited_values.manual_rows[0].group_label == "Group 1"
 
 
 def test_result_payload_round_trip_preserves_traceability() -> None:

@@ -162,7 +162,7 @@ export function deriveProjectWorkbenchLifecycle(
   return {
     mode: "package_preparation",
     stageLabel: "Project Folder preparation",
-    stageSummary: "Prepare local project files before public-drive submission.",
+    stageSummary: "Finish the project folder files.",
     nextAction: buildProjectFolderNextAction(input),
     tabs: ACTIVE_MATRIX_TABS,
   };
@@ -181,8 +181,8 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
 
   if (!input.folderReady) {
     return {
-      title: "Create local project folder",
-      reason: "The official project folder is required before request material can be collected.",
+      title: "Create project folder",
+      reason: "Create the official project folder before collecting request material.",
       tone: "warning",
       actionLabel: "Review folder setup",
       actionTarget: "folder",

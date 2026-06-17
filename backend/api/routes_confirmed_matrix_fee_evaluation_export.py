@@ -30,6 +30,10 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
     FeeEvaluationEditedManualRow,
 )
+from backend.application.fee_evaluation_template_discovery import (
+    FeeEvaluationTemplateDiscoveryError,
+    discover_fee_evaluation_template,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
     ProjectOutputRecordNotFoundError,
@@ -40,9 +44,6 @@ from backend.shared.config import Settings
 
 router = APIRouter(tags=["confirmed-matrix-fee-evaluation-export"])
 
-FEE_FILE_TEMPLATE_PATH = Path(
-    "D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls"
-)
 FEE_FILE_DOWNLOAD_DIR_NAME = "generated_fee_files"
 FEE_FILE_MEDIA_TYPE = "application/vnd.ms-excel"
 FEE_EDITED_UNIT_TYPES = {
@@ -401,10 +402,11 @@ def generate_confirmed_matrix_fee_file(
     output_dir = settings.data_dir / FEE_FILE_DOWNLOAD_DIR_NAME
     output_dir.mkdir(parents=True, exist_ok=True)
     try:
+        template_path = discover_fee_evaluation_template(settings.templates_dir)
         result = service.export(
             ExportConfirmedMatrixFeeEvaluationCommand(
                 project_id=project_id,
-                template_path=FEE_FILE_TEMPLATE_PATH,
+                template_path=template_path,
                 output_dir=output_dir,
                 output_file_name=None,
                 overwrite=True,
@@ -417,6 +419,7 @@ def generate_confirmed_matrix_fee_file(
         ConfirmedMatrixFeeEvaluationExportNotFoundError,
         ConfirmedMatrixFeeDraftNotFoundError,
         ProjectOutputRecordNotFoundError,
+        FeeEvaluationTemplateDiscoveryError,
     ) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (

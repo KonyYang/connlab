@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 
 from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedInactiveRow,
+    FeeEvaluationEditedInactiveRowKey,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
     FeeEvaluationEditedExportRow,
@@ -200,6 +202,150 @@ def test_default_builder_uses_saveable_defaults_for_new_matrix_rows() -> None:
     assert added.discount == "0%"
 
 
+def test_default_builder_restores_pricing_edits_from_hidden_inactive_rows() -> None:
+    builder = DefaultMatrixFeePendingRebaseBuilder(
+        basic_fill_service=_BasicFillService(),
+        pricing_draft_store=_PricingDraftStore(
+            FeeEvaluationPricingDraftSnapshot(
+                draft_edit_id="pricing-draft-1",
+                project_id="P1",
+                confirmed_matrix_id="cmv-1",
+                confirmed_revision=2,
+                fee_rule_version_id="fee-rules-v1",
+                edited_values=FeeEvaluationEditedExportValues(
+                    rows=(),
+                    summary=FeeEvaluationEditedExportSummary(
+                        condition_confirmation_spend_time="",
+                        external_cost="",
+                        external_cost_note="",
+                        lab_manpower_hourly_rate="",
+                    ),
+                    inactive_rows=(
+                        FeeEvaluationEditedInactiveRow(
+                            previous_row=FeeEvaluationEditedExportRow(
+                                source_line_id="old-line",
+                                confirmed_group_id="old-group",
+                                confirmed_row_id="old-row",
+                                step_token="1",
+                                step_index=0,
+                                spend_time="4",
+                                unit_price="888",
+                                unit_type="hour",
+                                units="2",
+                                base_fee="1776",
+                                discount="5%",
+                                testing_fee="1687.2",
+                                notes="restore hidden edit",
+                            ),
+                            rebase_key=FeeEvaluationEditedInactiveRowKey(
+                                group_identity="key:g1",
+                                row_identity="source:src-row-1",
+                                step_token="1",
+                                step_index=0,
+                            ),
+                            group_key="G1",
+                            group_label="Group 1",
+                            group_signature="visual inspection",
+                        ),
+                    ),
+                ),
+                created_at="2026-06-14T09:00:00+00:00",
+                updated_at="2026-06-14T09:01:00+00:00",
+            )
+        ),
+    )
+
+    result = builder.build_and_rebase(
+        RebaseAfterMatrixAutosaveCommand(
+            project_id="P1",
+            active_confirmed_matrix_id="cmv-1",
+            active_confirmed_revision=2,
+            saved_matrix_draft=_draft(),
+            saved_payload_signature="sig-current",
+            fee_rule_version_id="fee-rules-v1",
+            generation=10,
+        )
+    )
+
+    assert result.summary.preserved_count == 1
+    assert result.summary.added_count == 0
+    assert result.active_rows[0].unit_price == "888"
+    assert result.active_rows[0].testing_fee == "1687.2"
+    assert result.active_rows[0].notes == "restore hidden edit"
+    assert result.inactive_removed_rows == ()
+
+
+def test_default_builder_restores_hidden_rows_not_present_in_current_basic_fill() -> None:
+    builder = DefaultMatrixFeePendingRebaseBuilder(
+        basic_fill_service=_BasicFillService(groups=()),
+        pricing_draft_store=_PricingDraftStore(_pricing_draft_with_hidden_row()),
+    )
+
+    result = builder.build_and_rebase(
+        RebaseAfterMatrixAutosaveCommand(
+            project_id="P1",
+            active_confirmed_matrix_id="cmv-1",
+            active_confirmed_revision=2,
+            saved_matrix_draft=_draft(),
+            saved_payload_signature="sig-current",
+            fee_rule_version_id="fee-rules-v1",
+            generation=10,
+        )
+    )
+
+    assert result.summary.preserved_count == 1
+    assert result.summary.added_count == 0
+    assert result.active_rows[0].unit_price == "888"
+    assert result.active_rows[0].notes == "restore after confirmed soft remove"
+    assert result.inactive_removed_rows == ()
+
+
+def test_default_builder_preserves_soft_removed_rows_when_matrix_structure_remains() -> None:
+    builder = DefaultMatrixFeePendingRebaseBuilder(
+        basic_fill_service=_BasicFillService(),
+        pricing_draft_store=_PricingDraftStore(_pricing_draft_with_active_row()),
+    )
+
+    result = builder.build_and_rebase(
+        RebaseAfterMatrixAutosaveCommand(
+            project_id="P1",
+            active_confirmed_matrix_id="cmv-1",
+            active_confirmed_revision=2,
+            saved_matrix_draft=_draft(group_is_selected=False),
+            saved_payload_signature="sig-current",
+            fee_rule_version_id="fee-rules-v1",
+            generation=10,
+        )
+    )
+
+    assert result.active_rows == ()
+    assert len(result.inactive_removed_rows) == 1
+    assert result.inactive_removed_rows[0].previous_row.notes == "preserve me"
+
+
+def test_default_builder_drops_hard_deleted_rows_when_matrix_structure_is_gone() -> None:
+    builder = DefaultMatrixFeePendingRebaseBuilder(
+        basic_fill_service=_BasicFillService(),
+        pricing_draft_store=_PricingDraftStore(_pricing_draft_with_active_row()),
+    )
+
+    result = builder.build_and_rebase(
+        RebaseAfterMatrixAutosaveCommand(
+            project_id="P1",
+            active_confirmed_matrix_id="cmv-1",
+            active_confirmed_revision=2,
+            saved_matrix_draft=_draft_without_group_structure(),
+            saved_payload_signature="sig-current",
+            fee_rule_version_id="fee-rules-v1",
+            generation=10,
+        )
+    )
+
+    assert result.active_rows == ()
+    assert result.inactive_removed_rows == ()
+    assert result.summary.removed_count == 0
+
+
 def test_pending_rebase_service_returns_failed_when_builder_fails() -> None:
     draft = _draft()
     pending_store = _PendingStore()
@@ -374,6 +520,12 @@ class _DraftStore:
 
 
 class _BasicFillService:
+    def __init__(
+        self,
+        groups: tuple[MatrixBasicFillGroup, ...] | None = None,
+    ) -> None:
+        self._groups = groups
+
     def build(self, command) -> MatrixBasicFillWorkbook:
         return MatrixBasicFillWorkbook(
             header=MatrixBasicFillHeader(
@@ -383,7 +535,7 @@ class _BasicFillService:
                 generated_at="2026-06-14T09:00:00+00:00",
             ),
             status="ready",
-            groups=(
+            groups=self._groups if self._groups is not None else (
                 MatrixBasicFillGroup(
                     group_key="G1",
                     group_label="Group 1",
@@ -456,7 +608,97 @@ class _FailingRebaseBuilder:
         raise RuntimeError("pricing context exploded")
 
 
-def _draft(base_confirmed_matrix_id: str = "cmv-1") -> ProjectMatrixDraftSnapshot:
+def _pricing_draft_with_active_row() -> FeeEvaluationPricingDraftSnapshot:
+    return FeeEvaluationPricingDraftSnapshot(
+        draft_edit_id="pricing-draft-1",
+        project_id="P1",
+        confirmed_matrix_id="cmv-1",
+        confirmed_revision=2,
+        fee_rule_version_id="fee-rules-v1",
+        edited_values=FeeEvaluationEditedExportValues(
+            rows=(
+                FeeEvaluationEditedExportRow(
+                    source_line_id="line-source",
+                    confirmed_group_id="dg-1",
+                    confirmed_row_id="dr-1",
+                    step_token="1",
+                    step_index=0,
+                    spend_time="3.5",
+                    unit_price="120",
+                    unit_type="hour",
+                    units="1",
+                    base_fee="420",
+                    discount="10%",
+                    testing_fee="378",
+                    notes="preserve me",
+                ),
+            ),
+            summary=FeeEvaluationEditedExportSummary(
+                condition_confirmation_spend_time="",
+                external_cost="",
+                external_cost_note="",
+                lab_manpower_hourly_rate="",
+            ),
+        ),
+        created_at="2026-06-14T09:00:00+00:00",
+        updated_at="2026-06-14T09:01:00+00:00",
+    )
+
+
+def _pricing_draft_with_hidden_row() -> FeeEvaluationPricingDraftSnapshot:
+    return FeeEvaluationPricingDraftSnapshot(
+        draft_edit_id="pricing-draft-1",
+        project_id="P1",
+        confirmed_matrix_id="cmv-1",
+        confirmed_revision=2,
+        fee_rule_version_id="fee-rules-v1",
+        edited_values=FeeEvaluationEditedExportValues(
+            rows=(),
+            summary=FeeEvaluationEditedExportSummary(
+                condition_confirmation_spend_time="",
+                external_cost="",
+                external_cost_note="",
+                lab_manpower_hourly_rate="",
+            ),
+            inactive_rows=(
+                FeeEvaluationEditedInactiveRow(
+                    previous_row=FeeEvaluationEditedExportRow(
+                        source_line_id="old-line",
+                        confirmed_group_id="old-group",
+                        confirmed_row_id="old-row",
+                        step_token="1",
+                        step_index=0,
+                        spend_time="4",
+                        unit_price="888",
+                        unit_type="hour",
+                        units="2",
+                        base_fee="1776",
+                        discount="5%",
+                        testing_fee="1687.2",
+                        notes="restore after confirmed soft remove",
+                    ),
+                    rebase_key=FeeEvaluationEditedInactiveRowKey(
+                        group_identity="key:g1",
+                        row_identity="source:src-row-1",
+                        step_token="1",
+                        step_index=0,
+                    ),
+                    group_key="G1",
+                    group_label="Group 1",
+                    group_signature="visual inspection",
+                ),
+            ),
+        ),
+        created_at="2026-06-14T09:00:00+00:00",
+        updated_at="2026-06-14T09:01:00+00:00",
+    )
+
+
+def _draft(
+    base_confirmed_matrix_id: str = "cmv-1",
+    *,
+    group_is_selected: bool = True,
+) -> ProjectMatrixDraftSnapshot:
     return ProjectMatrixDraftSnapshot(
         record=ProjectMatrixDraftRecord(
             project_matrix_draft_id="pmd-1",
@@ -476,7 +718,7 @@ def _draft(base_confirmed_matrix_id: str = "cmv-1") -> ProjectMatrixDraftSnapsho
                 group_order=1,
                 group_key="G1",
                 group_label="Group 1",
-                is_selected=True,
+                is_selected=group_is_selected,
             ),
         ),
         rows=(
@@ -497,6 +739,16 @@ def _draft(base_confirmed_matrix_id: str = "cmv-1") -> ProjectMatrixDraftSnapsho
                 cell_value="1",
             ),
         ),
+    )
+
+
+def _draft_without_group_structure() -> ProjectMatrixDraftSnapshot:
+    draft = _draft()
+    return ProjectMatrixDraftSnapshot(
+        record=draft.record,
+        groups=(),
+        rows=(),
+        cells=(),
     )
 
 

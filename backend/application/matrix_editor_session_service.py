@@ -176,6 +176,15 @@ class PendingFeeRebaseService(Protocol):
 class FeeRebasePromotionService(Protocol):
     """Matrix Confirm hook for promoting pending Fee rebase output."""
 
+    def initialize_after_first_matrix_confirm(
+        self,
+        *,
+        project_id: str,
+        new_confirmed_matrix: ConfirmedMatrixSnapshot,
+        fee_rule_version_id: str,
+    ) -> MatrixFeeRebasePromotionResult:
+        """Create the initial Fee draft/authority after first Matrix Confirm."""
+
     def promote_after_matrix_confirm(
         self, command: PromoteMatrixFeeRebaseCommand
     ) -> MatrixFeeRebasePromotionResult:
@@ -665,11 +674,36 @@ class MatrixEditorSessionService:
                 fee_rebase_promotion_error=promotion.error,
             )
         confirmed = self._publish_as_first_authority(command, selected_group_keys, confirmed_by)
+        promotion = self._initialize_fee_after_first_matrix_confirm(
+            project_id=command.project_id,
+            confirmed=confirmed,
+        )
         return MatrixEditorSessionConfirmResult(
             publish_status="published",
             message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
             confirmed_snapshot=confirmed,
+            fee_rebase_promotion_status=promotion.status,
+            fee_rebase_promotion_summary=promotion.summary,
+            fee_rebase_promotion_error=promotion.error,
         )
+
+    def _initialize_fee_after_first_matrix_confirm(
+        self,
+        *,
+        project_id: str,
+        confirmed: ConfirmedMatrixSnapshot,
+    ) -> MatrixFeeRebasePromotionResult:
+        try:
+            return self._fee_rebase_promotion.initialize_after_first_matrix_confirm(
+                project_id=project_id,
+                new_confirmed_matrix=confirmed,
+                fee_rule_version_id=self._fee_rule_version_provider(),
+            )
+        except Exception as exc:  # noqa: BLE001 - non-fatal Matrix Confirm hook.
+            return MatrixFeeRebasePromotionResult(
+                status="failed",
+                error=f"Fee default promotion failed: {exc}",
+            )
 
     def _promote_fee_rebase_after_matrix_confirm(
         self,
@@ -1071,6 +1105,15 @@ class _NullPendingFeeRebaseService:
 
 class _NullFeeRebasePromotionService:
     """Default no-op Matrix Confirm promotion hook for narrow callers."""
+
+    def initialize_after_first_matrix_confirm(
+        self,
+        *,
+        project_id: str,
+        new_confirmed_matrix: ConfirmedMatrixSnapshot,
+        fee_rule_version_id: str,
+    ) -> MatrixFeeRebasePromotionResult:
+        return MatrixFeeRebasePromotionResult(status="not_required")
 
     def promote_after_matrix_confirm(
         self, command: PromoteMatrixFeeRebaseCommand

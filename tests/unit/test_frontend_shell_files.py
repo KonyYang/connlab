@@ -76,6 +76,12 @@ def test_task315d_fee_ui_project_folder_regression_wiring_is_present() -> None:
     assert "getFeeEvaluationPricingDraft" in fee_page
     assert "saveFeeEvaluationPricingDraft" in fee_page
     assert "confirmFeeVersion" in fee_page
+    assert "discardFeeEvaluationPricingDraft" not in fee_page
+    assert "baselinePricingPayloadRef" in fee_page
+    assert "baselinePricingContextRef" in fee_page
+    assert "waitForAutosaveSettlement" in fee_page
+    assert "expected_confirmed_matrix_id" in fee_page
+    assert "Update Fee" in fee_page
     assert "fee-evaluation-completion-dock" in fee_page
     assert "Fee Evaluation completion actions" in fee_page
     assert "Confirmed by" not in fee_page
@@ -5544,8 +5550,10 @@ def test_task314c_matrix_fee_project_folder_regression_contract_is_guarded() -> 
     ).read_text(encoding="utf-8")
 
     assert "Save changes" not in fee_page_source
-    assert "discardFeeEvaluationPricingDraft" in fee_page_source
+    assert "discardFeeEvaluationPricingDraft" not in fee_page_source
+    assert "baselinePricingPayloadRef" in fee_page_source
     assert "saveFeeEvaluationPricingDraft" in fee_page_source
+    assert "expected_confirmed_matrix_id" in fee_page_source
     assert "!input.matrixAuthorityReady" in task_selector_source
     assert 'input.confirmedFeeAuthorityStatus !== "confirmed"' in task_selector_source
     assert "Required forms" in task_selector_source

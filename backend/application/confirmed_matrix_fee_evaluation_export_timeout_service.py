@@ -256,6 +256,9 @@ def _edited_values_to_payload(
         "manual_rows": [
             {
                 "row_kind": row.row_kind,
+                "confirmed_group_id": row.confirmed_group_id,
+                "group_key": row.group_key,
+                "group_label": row.group_label,
                 "spend_time": row.spend_time,
                 "unit_price": row.unit_price,
                 "unit_type": row.unit_type,
@@ -306,6 +309,9 @@ def _edited_values_from_payload(payload: Any) -> FeeEvaluationEditedExportValues
         manual_rows=tuple(
             FeeEvaluationEditedManualRow(
                 row_kind=str(row.get("row_kind") or ""),
+                confirmed_group_id=str(row.get("confirmed_group_id") or ""),
+                group_key=str(row.get("group_key") or ""),
+                group_label=str(row.get("group_label") or ""),
                 spend_time=str(row.get("spend_time") or ""),
                 unit_price=str(row.get("unit_price") or ""),
                 unit_type=str(row.get("unit_type") or ""),

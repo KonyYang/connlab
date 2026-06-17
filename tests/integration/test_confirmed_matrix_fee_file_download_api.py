@@ -53,8 +53,8 @@ def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fil
     assert command.overwrite is True
     assert command.output_file_name is None
     assert command.output_dir == settings.data_dir / "generated_fee_files"
-    assert command.template_path == Path(
-        "D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls"
+    assert command.template_path == (
+        settings.templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     )
 
 
@@ -268,6 +268,25 @@ def test_fee_file_download_route_maps_missing_authority_to_404(tmp_path: Path) -
     assert "No active Confirmed Matrix" in response.json()["detail"]
 
 
+def test_fee_file_download_route_maps_missing_fee_template_to_404(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, with_fee_template=False)
+    service = _FakeDownloadExportService()
+    app.dependency_overrides[
+        get_confirmed_matrix_fee_evaluation_export_service
+    ] = lambda: service
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert "FDQF-E-176" in response.json()["detail"]
+    assert service.commands == []
+
+
 def test_fee_file_download_route_maps_timeout_to_structured_503(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     app.dependency_overrides[
@@ -294,11 +313,17 @@ def test_fee_file_download_route_maps_timeout_to_structured_503(tmp_path: Path) 
     assert "Close Excel" in detail["manual_cleanup_warning"]
 
 
-def _settings(tmp_path: Path) -> Settings:
+def _settings(tmp_path: Path, *, with_fee_template: bool = True) -> Settings:
+    templates_dir = tmp_path / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    if with_fee_template:
+        (templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls").write_bytes(
+            b"template"
+        )
     return Settings(
         data_dir=tmp_path / "data",
         projects_dir=tmp_path / "projects",
-        templates_dir=tmp_path / "templates",
+        templates_dir=templates_dir,
         database_path=tmp_path / "data" / "connlab.sqlite3",
     )
 

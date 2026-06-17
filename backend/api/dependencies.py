@@ -127,6 +127,9 @@ from backend.application.confirmed_fee_version_service import (
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftPersistenceService,
 )
+from backend.application.fee_evaluation_template_discovery import (
+    discover_fee_evaluation_template,
+)
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
@@ -578,6 +581,7 @@ def get_matrix_editor_session_service(
         fee_rebase_promotion_service=MatrixFeeRebasePromotionService(
             pending_store=MatrixFeePendingRebaseRepository(session),
             pricing_draft_store=FeeEvaluationPricingDraftEditRepository(session),
+            confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
             rebase_service=MatrixFeeDraftRebaseService(),
         ),
     )
@@ -876,8 +880,6 @@ class _NoopProjectOutputService:
 class _RequiredFormsStagingGenerator:
     """Generate Required forms into controlled staging without final output records."""
 
-    _FEE_TEMPLATE_PATH = Path("D:/Source/Template/Testing Fee Evaluation-Even.optimized-v1.xls")
-
     def __init__(
         self,
         *,
@@ -912,7 +914,9 @@ class _RequiredFormsStagingGenerator:
             result = self._fee_export_service.export(
                 ExportConfirmedMatrixFeeEvaluationCommand(
                     project_id=project_id,
-                    template_path=self._FEE_TEMPLATE_PATH,
+                    template_path=discover_fee_evaluation_template(
+                        self._settings.templates_dir
+                    ),
                     output_dir=output_dir,
                     output_file_name=target_name,
                     overwrite=True,

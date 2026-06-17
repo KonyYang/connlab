@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    MatrixBasicFillHeader,
+    MatrixBasicFillWorkbook,
     build_basic_fill_from_confirmed_snapshot,
 )
 from backend.application.fee_evaluation_edited_export_values import (
@@ -13,15 +15,20 @@ from backend.application.fee_evaluation_edited_export_values import (
     edited_row_lookup,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    FeeEvaluationPricingDraftPersistenceService,
+    SaveFeeEvaluationPricingDraftCommand,
     FeeEvaluationPricingDraftSnapshot,
 )
 from backend.application.matrix_fee_draft_rebase_service import (
     MatrixFeeInactiveRemovedRow,
+    MatrixFeeRebaseKey,
     MatrixFeeRebaseResult,
     MatrixFeeRebaseSummary,
 )
 from backend.application.matrix_fee_pending_rebase_service import (
+    DefaultMatrixFeePendingRebaseBuilder,
     MatrixFeePendingRebaseSnapshot,
+    RebaseAfterMatrixAutosaveCommand,
     pending_rebase_payload_from_json,
     pending_rebase_payload_to_json,
 )
@@ -44,13 +51,14 @@ from backend.domain import (
     ProjectMatrixDraftSnapshot,
     ProjectMatrixDraftStatus,
 )
+from backend.domain.confirmed_fee import ConfirmedFeeVersion
 
 
 def test_pending_rebase_payload_roundtrips_rows_manual_rows_summary_and_warnings() -> None:
     result = _rebase_result(
         active_rows=(_draft_shaped_row(notes="kept"),),
         inactive_removed_rows=(
-            MatrixFeeInactiveRemovedRow(
+            _inactive_removed_row(
                 previous_row=_previous_context_row(notes="removed"),
                 previous_group_key="G1",
                 previous_group_label="Group 1",
@@ -121,6 +129,35 @@ def test_remap_projects_pending_rows_to_new_basic_fill_identity_and_preserves_su
     edited_row_lookup(values, build_basic_fill_from_confirmed_snapshot(
         _confirmed_snapshot("cmv-new", 2, "cmg-new", "cmr-new")
     ))
+
+
+def test_remap_preserves_inactive_removed_rows_as_hidden_pricing_rows() -> None:
+    values = remap_rebase_result_to_confirmed_matrix(
+        rebase_result=_rebase_result(
+            active_rows=(_draft_shaped_row(notes="active"),),
+            inactive_removed_rows=(
+                _inactive_removed_row(
+                    previous_row=_previous_context_row(notes="hidden edit"),
+                    previous_group_key="G1",
+                    previous_group_label="Group 1",
+                    previous_row_signature="visual inspection",
+                ),
+            ),
+        ),
+        previous_pricing_draft=_previous_pricing_draft(),
+        new_confirmed_matrix=_confirmed_snapshot("cmv-new", 2, "cmg-new", "cmr-new"),
+    )
+
+    assert len(values.inactive_rows) == 1
+    hidden = values.inactive_rows[0]
+    assert hidden.previous_row.notes == "hidden edit"
+    assert hidden.rebase_key.group_identity == "key:g1"
+    assert hidden.rebase_key.row_identity == "source:sr-1"
+    assert hidden.rebase_key.step_token == "1"
+    assert hidden.rebase_key.step_index == 0
+    assert hidden.group_key == "G1"
+    assert hidden.group_label == "Group 1"
+    assert hidden.group_signature == "visual inspection"
 
 
 def test_remap_converts_blank_added_row_unit_type_to_saveable_pending() -> None:
@@ -262,6 +299,80 @@ def test_service_promotes_sample_preparation_manual_row_to_new_group_identity() 
     assert manual_row.notes == "manual prep"
 
 
+def test_soft_removed_hidden_rows_survive_autosave_and_restore_when_reselected() -> None:
+    soft_removed_values = remap_rebase_result_to_confirmed_matrix(
+        rebase_result=_rebase_result(
+            active_rows=(),
+            inactive_removed_rows=(
+                _inactive_removed_row(
+                    previous_row=_previous_context_row(notes="recover after autosave"),
+                    previous_group_key="G1",
+                    previous_group_label="Group 1",
+                    previous_row_signature="visual inspection",
+                ),
+            ),
+        ),
+        previous_pricing_draft=_previous_pricing_draft(),
+        new_confirmed_matrix=_empty_confirmed_snapshot("cmv-soft", 2),
+    )
+    pricing_store = _PricingStore(
+        previous=FeeEvaluationPricingDraftSnapshot(
+            draft_edit_id="pricing-soft",
+            project_id="P1",
+            confirmed_matrix_id="cmv-soft",
+            confirmed_revision=2,
+            fee_rule_version_id="fee_rules_v2026_06_03",
+            edited_values=soft_removed_values,
+            created_at="2026-06-15T00:00:00+00:00",
+            updated_at="2026-06-15T00:01:00+00:00",
+        )
+    )
+    pricing_service = FeeEvaluationPricingDraftPersistenceService(
+        basic_fill_service=_BasicFillService(
+            confirmed_matrix_id="cmv-soft",
+            confirmed_revision=2,
+        ),
+        draft_store=pricing_store,
+    )
+
+    autosaved = pricing_service.save(
+        SaveFeeEvaluationPricingDraftCommand(
+            project_id="P1",
+            edited_values=FeeEvaluationEditedExportValues(
+                rows=(),
+                summary=soft_removed_values.summary,
+            ),
+        )
+    )
+
+    assert autosaved.saved_snapshot is not None
+    assert autosaved.saved_snapshot.edited_values.inactive_rows == (
+        soft_removed_values.inactive_rows
+    )
+
+    restored = DefaultMatrixFeePendingRebaseBuilder(
+        basic_fill_service=_BasicFillService(
+            confirmed_matrix_id="cmv-soft",
+            confirmed_revision=2,
+        ),
+        pricing_draft_store=pricing_store,
+    ).build_and_rebase(
+        RebaseAfterMatrixAutosaveCommand(
+            project_id="P1",
+            active_confirmed_matrix_id="cmv-soft",
+            active_confirmed_revision=2,
+            saved_matrix_draft=_draft(base_confirmed_matrix_id="cmv-soft"),
+            saved_payload_signature="sig",
+            fee_rule_version_id="fee_rules_v2026_06_03",
+            generation=11,
+        )
+    )
+
+    assert restored.summary.preserved_count == 1
+    assert restored.active_rows[0].notes == "recover after autosave"
+    assert restored.active_rows[0].unit_price == "50"
+
+
 def test_service_does_not_delete_pending_when_save_fails() -> None:
     pending_store = _PendingStore(
         _pending_snapshot(
@@ -303,16 +414,55 @@ def test_service_fallback_uses_previous_context_rows_and_preserves_summary() -> 
     )
 
 
-def test_service_skips_when_no_pending_and_no_previous_pricing_draft() -> None:
+def test_service_creates_default_fee_authority_when_no_previous_pricing_draft() -> None:
+    pricing_store = _PricingStore(previous=None)
+    fee_store = _ConfirmedFeeStore()
     service = MatrixFeeRebasePromotionService(
         pending_store=_PendingStore(None),
-        pricing_draft_store=_PricingStore(previous=None),
+        pricing_draft_store=pricing_store,
+        confirmed_fee_store=fee_store,
     )
 
     result = service.promote_after_matrix_confirm(_promotion_command())
 
-    assert result.status == "skipped"
+    assert result.status == "default_promoted"
     assert result.summary is None
+    assert pricing_store.saved is not None
+    assert pricing_store.saved.confirmed_matrix_id == "cmv-new"
+    assert pricing_store.saved.confirmed_revision == 2
+    assert pricing_store.saved.edited_values.rows[0].source_line_id == (
+        "cmv-new:G1:cmr-new:1:0"
+    )
+    assert pricing_store.saved.edited_values.manual_rows[0].row_kind == (
+        "sample_preparation"
+    )
+    assert fee_store.versions
+    assert fee_store.versions[0].confirmed_matrix_id == "cmv-new"
+    assert fee_store.versions[0].pricing_draft_edit_id == pricing_store.saved.draft_edit_id
+    assert fee_store.versions[0].summary.testing_fee_total == "0.00"
+
+
+def test_service_initializes_default_fee_authority_after_first_matrix_confirm() -> None:
+    pricing_store = _PricingStore(previous=None)
+    fee_store = _ConfirmedFeeStore()
+    service = MatrixFeeRebasePromotionService(
+        pending_store=_PendingStore(None),
+        pricing_draft_store=pricing_store,
+        confirmed_fee_store=fee_store,
+    )
+
+    result = service.initialize_after_first_matrix_confirm(
+        project_id="P1",
+        new_confirmed_matrix=_confirmed_snapshot("cmv-first", 1, "cmg-first", "cmr-first"),
+        fee_rule_version_id="fee-rules-v1",
+    )
+
+    assert result.status == "default_promoted"
+    assert pricing_store.saved is not None
+    assert pricing_store.saved.confirmed_matrix_id == "cmv-first"
+    assert pricing_store.saved.confirmed_revision == 1
+    assert fee_store.versions[0].confirmed_matrix_id == "cmv-first"
+    assert fee_store.versions[0].confirmed_fee_revision == 1
 
 
 def _promotion_command(
@@ -393,6 +543,27 @@ def _previous_context_row(*, notes: str = "") -> FeeEvaluationEditedExportRow:
     )
 
 
+def _inactive_removed_row(
+    *,
+    previous_row: FeeEvaluationEditedExportRow,
+    previous_group_key: str,
+    previous_group_label: str,
+    previous_row_signature: str,
+) -> MatrixFeeInactiveRemovedRow:
+    return MatrixFeeInactiveRemovedRow(
+        previous_row=previous_row,
+        rebase_key=MatrixFeeRebaseKey(
+            group_identity="key:g1",
+            row_identity="source:sr-1",
+            step_token="1",
+            step_index=0,
+        ),
+        previous_group_key=previous_group_key,
+        previous_group_label=previous_group_label,
+        previous_row_signature=previous_row_signature,
+    )
+
+
 def _previous_pricing_draft(
     *,
     notes: str = "previous edit",
@@ -438,7 +609,10 @@ def _pending_snapshot(
     )
 
 
-def _draft() -> ProjectMatrixDraftSnapshot:
+def _draft(
+    *,
+    base_confirmed_matrix_id: str = "cmv-old",
+) -> ProjectMatrixDraftSnapshot:
     return ProjectMatrixDraftSnapshot(
         record=ProjectMatrixDraftRecord(
             project_matrix_draft_id="pmd-1",
@@ -448,7 +622,7 @@ def _draft() -> ProjectMatrixDraftSnapshot:
             status=ProjectMatrixDraftStatus.DRAFT,
             created_at="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:01:00+00:00",
-            base_confirmed_matrix_id="cmv-old",
+            base_confirmed_matrix_id=base_confirmed_matrix_id,
         ),
         groups=(
             ProjectMatrixDraftGroup(
@@ -569,6 +743,49 @@ def _confirmed_snapshot_with_added_row() -> ConfirmedMatrixSnapshot:
     )
 
 
+def _empty_confirmed_snapshot(matrix_id: str, revision: int) -> ConfirmedMatrixSnapshot:
+    return ConfirmedMatrixSnapshot(
+        version=ConfirmedMatrixVersion(
+            confirmed_matrix_id=matrix_id,
+            project_id="P1",
+            project_matrix_draft_id="pmd-1",
+            source_import_id="smi-1",
+            source_snapshot_id="sms-1",
+            confirmed_revision=revision,
+            is_active_authority=True,
+            status=ConfirmedMatrixStatus.CONFIRMED,
+            confirmed_by="operator",
+            confirmed_at="2026-06-15T00:02:00+00:00",
+        ),
+        groups=(),
+        rows=(),
+        cells=(),
+    )
+
+
+class _BasicFillService:
+    def __init__(
+        self,
+        *,
+        confirmed_matrix_id: str,
+        confirmed_revision: int,
+    ) -> None:
+        self._confirmed_matrix_id = confirmed_matrix_id
+        self._confirmed_revision = confirmed_revision
+
+    def build(self, command) -> MatrixBasicFillWorkbook:
+        return MatrixBasicFillWorkbook(
+            header=MatrixBasicFillHeader(
+                project_id="P1",
+                confirmed_matrix_id=self._confirmed_matrix_id,
+                confirmed_revision=self._confirmed_revision,
+                generated_at="2026-06-15T00:03:00+00:00",
+            ),
+            status="ready",
+            groups=(),
+        )
+
+
 class _PendingStore:
     def __init__(self, snapshot: MatrixFeePendingRebaseSnapshot | None) -> None:
         self.snapshot = snapshot
@@ -614,18 +831,19 @@ class _PricingStore:
         confirmed_revision: int,
         fee_rule_version_id: str,
     ) -> FeeEvaluationPricingDraftSnapshot | None:
-        if self.previous is not None and (
-            project_id,
-            confirmed_matrix_id,
-            confirmed_revision,
-            fee_rule_version_id,
-        ) == (
-            self.previous.project_id,
-            self.previous.confirmed_matrix_id,
-            self.previous.confirmed_revision,
-            self.previous.fee_rule_version_id,
-        ):
-            return self.previous
+        for candidate in (self.saved, self.previous):
+            if candidate is not None and (
+                project_id,
+                confirmed_matrix_id,
+                confirmed_revision,
+                fee_rule_version_id,
+            ) == (
+                candidate.project_id,
+                candidate.confirmed_matrix_id,
+                candidate.confirmed_revision,
+                candidate.fee_rule_version_id,
+            ):
+                return candidate
         return None
 
     def upsert_current(
@@ -635,3 +853,19 @@ class _PricingStore:
             raise RuntimeError("database unavailable")
         self.saved = snapshot
         return snapshot
+
+
+class _ConfirmedFeeStore:
+    def __init__(self) -> None:
+        self.versions: list[ConfirmedFeeVersion] = []
+
+    def create(self, version: ConfirmedFeeVersion) -> ConfirmedFeeVersion:
+        self.versions.append(version)
+        return version
+
+    def get_latest_by_project(self, project_id: str) -> ConfirmedFeeVersion | None:
+        versions = [version for version in self.versions if version.project_id == project_id]
+        return versions[-1] if versions else None
+
+    def list_by_project(self, project_id: str) -> tuple[ConfirmedFeeVersion, ...]:
+        return tuple(version for version in self.versions if version.project_id == project_id)

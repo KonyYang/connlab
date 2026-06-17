@@ -6,6 +6,7 @@ import pytest
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     ConfirmedMatrixFeeTemplateBasicFillService,
 )
+from backend.application import fee_evaluation_edited_export_values as edited_values_module
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
@@ -18,6 +19,8 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftPersistenceService,
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
+    edited_values_from_json,
+    edited_values_to_json,
 )
 from backend.domain import (
     ConfirmedMatrixCell,
@@ -115,6 +118,27 @@ def test_load_uses_current_context_when_newer_stale_row_exists() -> None:
     assert result.saved_snapshot.draft_edit_id == "fed-1"
 
 
+def test_save_rejects_mismatched_expected_context_before_upsert() -> None:
+    store = _DraftStore()
+    service = _service(store=store)
+
+    with pytest.raises(
+        FeeEvaluationPricingDraftConflictError,
+        match="Matrix context changed before save",
+    ):
+        service.save(
+            SaveFeeEvaluationPricingDraftCommand(
+                project_id="P1",
+                edited_values=_edited_values(),
+                expected_confirmed_matrix_id="cmv-old",
+                expected_confirmed_revision=1,
+                expected_fee_rule_version_id="fee_rules_v2026_06_03",
+            )
+        )
+
+    assert store.snapshot is None
+
+
 def test_discard_current_pricing_draft_deletes_matching_context() -> None:
     store = _DraftStore(snapshots=(_pricing_snapshot(),))
     service = _service(store=store)
@@ -194,6 +218,96 @@ def test_save_rejects_duplicate_row_identity() -> None:
         )
 
 
+def test_save_preserves_existing_hidden_inactive_rows_when_request_has_active_rows_only() -> None:
+    existing_values = FeeEvaluationEditedExportValues(
+        rows=(_edited_row(notes="existing active"),),
+        summary=_summary(),
+        inactive_rows=(
+            _inactive_row(notes="hidden from matrix soft remove"),
+        ),
+    )
+    store = _DraftStore(
+        snapshots=(
+            _pricing_snapshot_with_values(
+                draft_edit_id="fed-existing",
+                edited_values=existing_values,
+            ),
+        )
+    )
+    service = _service(store=store)
+    incoming_values = FeeEvaluationEditedExportValues(
+        rows=(_edited_row(notes="autosaved active"),),
+        summary=_summary(),
+        manual_rows=(),
+    )
+
+    saved = service.save(
+        SaveFeeEvaluationPricingDraftCommand(
+            project_id="P1",
+            edited_values=incoming_values,
+        )
+    )
+
+    assert saved.saved_snapshot is not None
+    assert saved.saved_snapshot.draft_edit_id == "fed-existing"
+    assert saved.saved_snapshot.edited_values.rows[0].notes == "autosaved active"
+    assert saved.saved_snapshot.edited_values.inactive_rows == (
+        _inactive_row(notes="hidden from matrix soft remove"),
+    )
+
+
+def test_edited_values_json_round_trips_hidden_inactive_rows() -> None:
+    inactive_row_type = getattr(
+        edited_values_module,
+        "FeeEvaluationEditedInactiveRow",
+        None,
+    )
+    inactive_key_type = getattr(
+        edited_values_module,
+        "FeeEvaluationEditedInactiveRowKey",
+        None,
+    )
+    assert inactive_row_type is not None
+    assert inactive_key_type is not None
+    values = FeeEvaluationEditedExportValues(
+        rows=(_edited_row(notes="active"),),
+        summary=_summary(),
+        inactive_rows=(
+            inactive_row_type(
+                previous_row=_edited_row(confirmed_row_id="old-row", notes="hidden"),
+                rebase_key=inactive_key_type(
+                    group_identity="key:g1",
+                    row_identity="source:smr-1",
+                    step_token="1",
+                    step_index=0,
+                ),
+                group_key="g1",
+                group_label="Group 1",
+                group_signature="group 1",
+            ),
+        ),
+    )
+
+    loaded = edited_values_from_json(edited_values_to_json(values))
+
+    assert loaded.rows == values.rows
+    assert loaded.summary == values.summary
+    assert loaded.manual_rows == values.manual_rows
+    assert loaded.inactive_rows == values.inactive_rows
+
+
+def test_edited_values_json_defaults_legacy_payload_to_no_inactive_rows() -> None:
+    values = FeeEvaluationEditedExportValues(
+        rows=(_edited_row(),),
+        summary=_summary(),
+        manual_rows=(),
+    )
+
+    loaded = edited_values_from_json(edited_values_to_json(values))
+
+    assert loaded.inactive_rows == ()
+
+
 def _service(
     *,
     store: "_DraftStore",
@@ -256,6 +370,23 @@ def _edited_row(
     )
 
 
+def _inactive_row(*, notes: str = "hidden") -> edited_values_module.FeeEvaluationEditedInactiveRow:
+    inactive_row_type = getattr(edited_values_module, "FeeEvaluationEditedInactiveRow")
+    inactive_key_type = getattr(edited_values_module, "FeeEvaluationEditedInactiveRowKey")
+    return inactive_row_type(
+        previous_row=_edited_row(confirmed_row_id="old-row", notes=notes),
+        rebase_key=inactive_key_type(
+            group_identity="key:g1",
+            row_identity="source:smr-1",
+            step_token="1",
+            step_index=0,
+        ),
+        group_key="g1",
+        group_label="Group 1",
+        group_signature="group 1",
+    )
+
+
 def _summary() -> FeeEvaluationEditedExportSummary:
     return FeeEvaluationEditedExportSummary(
         condition_confirmation_spend_time="0.5",
@@ -283,6 +414,23 @@ def _pricing_snapshot(
         edited_values=_edited_values(),
         created_at="2026-06-09T09:00:00+00:00",
         updated_at=updated_at,
+    )
+
+
+def _pricing_snapshot_with_values(
+    *,
+    draft_edit_id: str,
+    edited_values: FeeEvaluationEditedExportValues,
+) -> FeeEvaluationPricingDraftSnapshot:
+    return FeeEvaluationPricingDraftSnapshot(
+        draft_edit_id=draft_edit_id,
+        project_id="P1",
+        confirmed_matrix_id="cmv-1",
+        confirmed_revision=1,
+        fee_rule_version_id="fee_rules_v2026_06_03",
+        edited_values=edited_values,
+        created_at="2026-06-09T09:00:00+00:00",
+        updated_at="2026-06-09T09:10:00+00:00",
     )
 
 

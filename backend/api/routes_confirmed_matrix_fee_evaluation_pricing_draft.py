@@ -67,6 +67,14 @@ class FeeEvaluationPricingDraftDiscardRequest(BaseModel):
     expected_fee_rule_version_id: str | None = None
 
 
+class FeeEvaluationPricingDraftSaveRequest(
+    ConfirmedMatrixFeeEvaluationEditedFileRequest
+):
+    expected_confirmed_matrix_id: str | None = None
+    expected_confirmed_revision: int | None = None
+    expected_fee_rule_version_id: str | None = None
+
+
 class FeeEvaluationPricingDraftDiscardResponse(BaseModel):
     discarded: bool
     current_confirmed_matrix_id: str
@@ -99,7 +107,7 @@ def get_fee_evaluation_pricing_draft(
 )
 def save_fee_evaluation_pricing_draft(
     project_id: str,
-    request: ConfirmedMatrixFeeEvaluationEditedFileRequest,
+    request: FeeEvaluationPricingDraftSaveRequest,
     service: FeeEvaluationPricingDraftServicePort = Depends(
         get_fee_evaluation_pricing_draft_service
     ),
@@ -111,9 +119,19 @@ def save_fee_evaluation_pricing_draft(
                 SaveFeeEvaluationPricingDraftCommand(
                     project_id=project_id,
                     edited_values=request.to_application(),
+                    expected_confirmed_matrix_id=(
+                        request.expected_confirmed_matrix_id
+                    ),
+                    expected_confirmed_revision=request.expected_confirmed_revision,
+                    expected_fee_rule_version_id=request.expected_fee_rule_version_id,
                 )
             )
         )
+    except FeeEvaluationPricingDraftConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "fee_pricing_draft_conflict", "message": str(exc)},
+        ) from exc
     except ConfirmedMatrixFeeTemplateBasicFillNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

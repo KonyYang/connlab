@@ -60,12 +60,35 @@ class FeeEvaluationEditedExportSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class FeeEvaluationEditedInactiveRowKey:
+    """Serializable rebase identity for one hidden inactive Fee row."""
+
+    group_identity: str
+    row_identity: str
+    step_token: str
+    step_index: int
+
+
+@dataclass(frozen=True, slots=True)
+class FeeEvaluationEditedInactiveRow:
+    """Hidden Fee row preserved for Matrix soft-remove restoration."""
+
+    previous_row: FeeEvaluationEditedExportRow
+    rebase_key: FeeEvaluationEditedInactiveRowKey
+    group_key: str
+    group_label: str
+    group_signature: str
+    inactive_reason: str = "removed_from_matrix"
+
+
+@dataclass(frozen=True, slots=True)
 class FeeEvaluationEditedExportValues:
     """Complete edited export payload for one Fee Form generation."""
 
     rows: tuple[FeeEvaluationEditedExportRow, ...]
     summary: FeeEvaluationEditedExportSummary
     manual_rows: tuple[FeeEvaluationEditedManualRow, ...] = ()
+    inactive_rows: tuple[FeeEvaluationEditedInactiveRow, ...] = ()
 
 
 FeeEvaluationEditedRowIdentity = tuple[str, str, str, str, int]

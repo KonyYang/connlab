@@ -11,6 +11,8 @@ from backend.application.confirmed_fee_version_service import (
     ConfirmedFeeVersionService,
 )
 from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedInactiveRow,
+    FeeEvaluationEditedInactiveRowKey,
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
@@ -107,6 +109,22 @@ def test_confirm_fee_rejects_summary_that_differs_from_saved_pricing_snapshot() 
 
     with pytest.raises(ConfirmedFeePricingDraftChangedError, match="summary"):
         service.confirm(_command(testing_fee_total="999"))
+
+
+def test_confirm_fee_ignores_hidden_inactive_rows_for_summary_and_snapshot() -> None:
+    service = _service(
+        load_result=FeeEvaluationPricingDraftLoadResult(
+            status="current",
+            current_context=_context(),
+            saved_snapshot=_pricing_snapshot(include_hidden_inactive_row=True),
+        )
+    )
+
+    created = service.confirm(_command(testing_fee_total="41"))
+
+    assert created.summary.testing_fee_total == "41"
+    assert "999999" not in created.pricing_snapshot_json
+    assert "hidden inactive note" not in created.pricing_snapshot_json
 
 
 def test_confirm_fee_accepts_frontend_half_up_lab_manpower_rounding() -> None:
@@ -253,6 +271,7 @@ def _pricing_snapshot(
     fee_rule_version_id: str = "fee_rules_v2026_06_03",
     spend_time: str = "1.5",
     lab_manpower_hourly_rate: str = "200",
+    include_hidden_inactive_row: bool = False,
 ) -> FeeEvaluationPricingDraftSnapshot:
     return FeeEvaluationPricingDraftSnapshot(
         draft_edit_id="fed-1",
@@ -283,6 +302,38 @@ def _pricing_snapshot(
                 external_cost="150",
                 external_cost_note="tooling",
                 lab_manpower_hourly_rate=lab_manpower_hourly_rate,
+            ),
+            inactive_rows=(
+                (
+                    FeeEvaluationEditedInactiveRow(
+                        previous_row=FeeEvaluationEditedExportRow(
+                            source_line_id="old-line",
+                            confirmed_group_id="old-group",
+                            confirmed_row_id="old-row",
+                            step_token="1",
+                            step_index=0,
+                            spend_time="1",
+                            unit_price="999999",
+                            unit_type="hour",
+                            units="1",
+                            base_fee="999999",
+                            discount="0",
+                            testing_fee="999999",
+                            notes="hidden inactive note",
+                        ),
+                        rebase_key=FeeEvaluationEditedInactiveRowKey(
+                            group_identity="key:g1",
+                            row_identity="source:old-row",
+                            step_token="1",
+                            step_index=0,
+                        ),
+                        group_key="G1",
+                        group_label="Group 1",
+                        group_signature="old row",
+                    ),
+                )
+                if include_hidden_inactive_row
+                else ()
             ),
         ),
         created_at="2026-06-09T09:00:00+00:00",

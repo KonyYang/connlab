@@ -50,6 +50,7 @@ class MatrixFeeRebaseSourceRow:
 
     lineage: MatrixFeeRebaseLineage
     edited_row: FeeEvaluationEditedExportRow
+    rebase_key: MatrixFeeRebaseKey | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +75,7 @@ class MatrixFeeInactiveRemovedRow:
     """Review-only previous Fee row whose Matrix source no longer exists."""
 
     previous_row: FeeEvaluationEditedExportRow
+    rebase_key: MatrixFeeRebaseKey
     previous_group_key: str
     previous_group_label: str
     previous_row_signature: str
@@ -140,12 +142,13 @@ class MatrixFeeDraftRebaseService:
         inactive_removed_rows = tuple(
             MatrixFeeInactiveRemovedRow(
                 previous_row=row.edited_row,
+                rebase_key=_source_key(row),
                 previous_group_key=row.lineage.group_key,
                 previous_group_label=row.lineage.group_label,
                 previous_row_signature=_row_signature(row.lineage),
             )
             for row in source_rows
-            if _key_for(row.lineage) not in used_source_keys
+            if _source_key(row) not in used_source_keys
         )
         manual_rows, preserved_manual_count, removed_manual_count = _rebase_manual_rows(
             source_manual_rows=source_manual_rows,
@@ -167,6 +170,13 @@ class MatrixFeeDraftRebaseService:
 
 def _key_for(lineage: MatrixFeeRebaseLineage) -> MatrixFeeRebaseKey:
     """Build the V1 Matrix-to-Fee rebase key for one row lineage."""
+    return matrix_fee_rebase_key_for_lineage(lineage)
+
+
+def matrix_fee_rebase_key_for_lineage(
+    lineage: MatrixFeeRebaseLineage,
+) -> MatrixFeeRebaseKey:
+    """Build the stable Matrix-to-Fee rebase key for one row lineage."""
     return MatrixFeeRebaseKey(
         group_identity=_group_identity(lineage.group_key, lineage.group_label),
         row_identity=_row_identity(lineage),
@@ -260,13 +270,18 @@ def _index_source_rows(
 ) -> dict[MatrixFeeRebaseKey, MatrixFeeRebaseSourceRow]:
     lookup: dict[MatrixFeeRebaseKey, MatrixFeeRebaseSourceRow] = {}
     for row in source_rows:
-        key = _key_for(row.lineage)
+        key = _source_key(row)
         if key in lookup:
             raise MatrixFeeRebaseKeyConflictError(
                 "Duplicate source Matrix-to-Fee rebase key."
             )
         lookup[key] = row
     return lookup
+
+
+def _source_key(row: MatrixFeeRebaseSourceRow) -> MatrixFeeRebaseKey:
+    """Return explicit or lineage-derived source rebase key."""
+    return row.rebase_key or _key_for(row.lineage)
 
 
 def _assert_unique_target_rows(

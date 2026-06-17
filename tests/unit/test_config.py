@@ -59,6 +59,28 @@ modify_password = "placeholder-secret"
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 
 
+def test_settings_load_templates_dir_from_local_paths_config(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    config_path = workspace_tmp / "connlab.local.toml"
+    config_path.write_text(
+        """[paths]
+templates_dir = "operator-templates"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(config_path))
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.templates_dir == (
+            workspace_tmp / "operator-templates"
+        ).resolve()
+        assert settings.templates_dir.is_dir()
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
 def test_ltr_workbook_safe_summary_redacts_password(monkeypatch) -> None:
     workspace_tmp = _make_workspace_temp_dir()
     config_path = workspace_tmp / "connlab.local.toml"

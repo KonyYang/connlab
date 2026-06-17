@@ -92,6 +92,58 @@ def test_pricing_draft_put_saves_payload_and_get_can_return_current_payload() ->
     assert get_response.json()["payload"]["summary"]["external_cost_note"] == "tooling"
 
 
+def test_pricing_draft_put_forwards_expected_context_tokens() -> None:
+    service = _Service(_missing_result())
+    app.dependency_overrides[get_fee_evaluation_pricing_draft_service] = lambda: service
+    payload = {
+        **_payload(),
+        "expected_confirmed_matrix_id": "cmv-1",
+        "expected_confirmed_revision": 1,
+        "expected_fee_rule_version_id": "fee_rules_v2026_06_03",
+    }
+    try:
+        response = TestClient(app).put(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json=payload,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert service.commands[0].expected_confirmed_matrix_id == "cmv-1"
+    assert service.commands[0].expected_confirmed_revision == 1
+    assert (
+        service.commands[0].expected_fee_rule_version_id
+        == "fee_rules_v2026_06_03"
+    )
+
+
+def test_pricing_draft_put_maps_conflict_to_409() -> None:
+    app.dependency_overrides[
+        get_fee_evaluation_pricing_draft_service
+    ] = lambda: _FailingService(
+        FeeEvaluationPricingDraftConflictError(
+            "Pricing draft Matrix context changed before save."
+        )
+    )
+    try:
+        response = TestClient(app).put(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json={
+                **_payload(),
+                "expected_confirmed_matrix_id": "cmv-old",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "fee_pricing_draft_conflict",
+        "message": "Pricing draft Matrix context changed before save.",
+    }
+
+
 def test_pricing_draft_get_normalizes_historical_blank_unit_type() -> None:
     values = _edited_values()
     bad_values = FeeEvaluationEditedExportValues(

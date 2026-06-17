@@ -356,19 +356,8 @@ function FeePricingDraftSaveStatus({
 }: {
   state: FeePricingDraftSaveState;
 }): ReactElement | null {
-  if (state.kind === "loading" || state.kind === "idle") {
-    return state.kind === "idle" && state.message ? (
-      <p className="fee-evaluation-save-status">{state.message}</p>
-    ) : null;
-  }
-  if (state.kind === "dirty") {
-    return <p className="fee-evaluation-save-status">Unsaved changes.</p>;
-  }
-  if (state.kind === "saving") {
-    return <p className="fee-evaluation-save-status">Saving pricing draft...</p>;
-  }
-  if (state.kind === "saved") {
-    return <p className="fee-evaluation-save-status" role="status">{state.message}</p>;
+  if (state.kind !== "stale" && state.kind !== "error") {
+    return null;
   }
   return (
     <p className="fee-evaluation-save-error" role="alert">

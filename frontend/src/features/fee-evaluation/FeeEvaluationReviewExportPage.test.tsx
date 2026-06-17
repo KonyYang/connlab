@@ -96,7 +96,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     const cancelButton = within(completionDock).getByRole("button", {
       name: "Cancel",
     });
-    expect(within(completionDock).getByRole("button", { name: "Confirm Fee" })).toBeTruthy();
+    expect(within(completionDock).getByRole("button", { name: "Update Fee" })).toBeTruthy();
     fireEvent.click(cancelButton);
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
     const headerBand = screen.getByLabelText("Testing Prices header");
@@ -325,6 +325,11 @@ describe("FeeEvaluationReviewExportPage", () => {
       row_kind: "report_preparation",
       unit_price: "0",
     });
+    expect(
+      await screen.findByText(
+        /^DL-2026-001 Fee Evaluation Draft \d{14}\.xls downloaded\.$/
+      )
+    ).toBeTruthy();
   });
 
   it("autosaves current pricing draft edits through the pricing draft endpoint", async () => {
@@ -343,7 +348,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
-    expect(await screen.findByText("Unsaved changes.")).toBeTruthy();
+    expect(screen.queryByText("Unsaved changes.")).toBeNull();
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
     await waitFor(() => {
@@ -360,7 +365,7 @@ describe("FeeEvaluationReviewExportPage", () => {
         expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     }, { timeout: 1600 });
-    expect(await screen.findByText("Saved pricing draft.")).toBeTruthy();
+    expect(screen.queryByText("Saved pricing draft.")).toBeNull();
   });
 
   it("seeds a missing pricing draft from defaults and confirms without an extra save", async () => {
@@ -388,7 +393,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     await waitFor(() => {
       expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
     }, { timeout: 1600 });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
@@ -439,13 +444,13 @@ describe("FeeEvaluationReviewExportPage", () => {
       target: { value: "5" },
     });
     expect(
-      (screen.getByRole("button", { name: "Confirm Fee" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Update Fee" }) as HTMLButtonElement)
         .disabled
     ).toBe(true);
     await waitFor(() => {
       expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
     }, { timeout: 1600 });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
@@ -489,7 +494,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Unconfirmed saved changes")).toBeNull();
   });
 
-  it("loads a promoted current pricing draft and allows Confirm Fee when authority is missing", async () => {
+  it("loads a promoted current pricing draft and allows Update Fee when authority is missing", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
         saved_draft_edit_id: "fed-promoted",
@@ -522,14 +527,14 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     expect(await screen.findByDisplayValue("promoted pricing note")).toBeTruthy();
     expect(screen.queryByText("Not confirmed")).toBeNull();
-    expect(screen.queryByText("Save pricing draft before confirming Fee.")).toBeNull();
+    expect(screen.queryByText("Save pricing draft before updating Fee.")).toBeNull();
     expect(screen.queryByText(/fee_rebase|payload_signature|\/api\//i)).toBeNull();
-    expect(screen.getByRole("button", { name: "Confirm Fee" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
       "disabled",
       false
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith(
@@ -607,12 +612,12 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     expect(await screen.findByDisplayValue("promoted numeric note")).toBeTruthy();
     expect(screen.getByLabelText("Selected group fee").textContent).toContain("10.00");
-    expect(screen.getByRole("button", { name: "Confirm Fee" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
       "disabled",
       false
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
@@ -630,7 +635,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
-  it("allows Confirm Fee refresh when confirmed fee is stale and promoted draft is current", async () => {
+  it("allows Update Fee refresh when confirmed fee is stale and promoted draft is current", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
         saved_draft_edit_id: "fed-promoted-updated",
@@ -662,13 +667,13 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(await screen.findByDisplayValue("stale authority refresh")).toBeTruthy();
     expect(screen.queryByText("Confirmed Fee stale")).toBeNull();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Confirm Fee" })).toHaveProperty(
+      expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
         "disabled",
         false
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith(
@@ -728,7 +733,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       target: { value: "12" },
     });
     expect(screen.queryByText("Unconfirmed local changes")).toBeNull();
-    expect(screen.getByRole("button", { name: "Confirm Fee" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
       "disabled",
       true
     );
@@ -754,51 +759,86 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     expect(
       await screen.findAllByText(
-        "Save returned no pricing draft id. Retry before confirming."
+        "Save returned no pricing draft id. Retry before updating."
       )
     ).toHaveLength(2);
     expect(
-      (screen.getByRole("button", { name: "Confirm Fee" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Update Fee" }) as HTMLButtonElement)
         .disabled
     ).toBe(true);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
   });
 
-  it("discards the current pricing draft before returning to Workbench", async () => {
+  it("returns to Workbench without deleting the current pricing draft when unchanged", async () => {
     arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
-    apiMocks.discardFeeEvaluationPricingDraft.mockResolvedValue({
-      discarded: true,
-      current_confirmed_matrix_id: "cmv-1",
-      current_confirmed_revision: 1,
-      current_fee_rule_version_id: "fee_rules_v2026_06_03",
-    });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const onBackToWorkbench = vi.fn();
 
     render(
       <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
     );
 
-    await screen.findByText("Loaded saved pricing draft.");
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    expect(screen.queryByText("Loaded saved pricing draft.")).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
-    await waitFor(() => {
-      expect(apiMocks.discardFeeEvaluationPricingDraft).toHaveBeenCalledWith("P1", {
-        expected_pricing_draft_edit_id: "fed-1",
-        expected_confirmed_matrix_id: "cmv-1",
-        expected_confirmed_revision: 1,
-        expected_fee_rule_version_id: "fee_rules_v2026_06_03",
-      });
-      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
-    });
+    expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
-  it("stays on Fee Evaluation when pricing draft discard fails", async () => {
+  it("restores the entry baseline before leaving when autosave already saved edits", async () => {
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        payload: promotedPricingDraftPayload({
+          notes: "baseline note",
+          unit_price: "10",
+          testing_fee: "10",
+        }),
+      }),
+    });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(currentPricingDraftResponse());
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+    );
+
+    expect(await screen.findByDisplayValue("baseline note")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Notes for Visual Examination"), {
+      target: { value: "dirty note" },
+    });
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    }, { timeout: 1600 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
+    });
+
+    const restorePayload = apiMocks.saveFeeEvaluationPricingDraft.mock.calls[1]?.[1];
+    expect(restorePayload).toMatchObject({
+      expected_confirmed_matrix_id: "cmv-1",
+      expected_confirmed_revision: 1,
+      expected_fee_rule_version_id: "fee_rules_v2026_06_03",
+    });
+    expect(restorePayload.rows[0]).toMatchObject({
+      notes: "baseline note",
+      unit_price: "10",
+      testing_fee: "10",
+    });
+    expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays on Fee Evaluation when baseline restore fails", async () => {
     arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
-    apiMocks.discardFeeEvaluationPricingDraft.mockRejectedValue(
-      new Error("Pricing draft changed before discard.")
+    apiMocks.saveFeeEvaluationPricingDraft.mockRejectedValue(
+      new Error("Unable to restore Fee Evaluation pricing before leaving.")
     );
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const onBackToWorkbench = vi.fn();
@@ -807,34 +847,39 @@ describe("FeeEvaluationReviewExportPage", () => {
       <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
     );
 
-    await screen.findByText("Loaded saved pricing draft.");
-    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
+      target: { value: "12" },
+    });
+    await screen.findByText("Saving pricing draft before update.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
-      expect(apiMocks.discardFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
     });
+    expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
     expect(onBackToWorkbench).not.toHaveBeenCalled();
-    expect(screen.getAllByText("Pricing draft changed before discard.")).toHaveLength(2);
+    expect(
+      await screen.findAllByText(
+        "Unable to restore Fee Evaluation pricing before leaving."
+      )
+    ).toHaveLength(2);
   });
 
-  it("does not hang Cancel when in-flight autosave never settles", async () => {
+  it("stays on Fee Evaluation when in-flight autosave cannot be confirmed safe", async () => {
     arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.saveFeeEvaluationPricingDraft.mockReturnValue(new Promise(() => undefined));
-    apiMocks.discardFeeEvaluationPricingDraft.mockResolvedValue({
-      discarded: true,
-      current_confirmed_matrix_id: "cmv-1",
-      current_confirmed_revision: 1,
-      current_fee_rule_version_id: "fee_rules_v2026_06_03",
-    });
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    const abortSpy = vi.spyOn(AbortController.prototype, "abort");
     const onBackToWorkbench = vi.fn();
 
     render(
       <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
     );
 
-    await screen.findByText("Loaded saved pricing draft.");
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
     vi.useFakeTimers();
     fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
@@ -850,10 +895,52 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     vi.useRealTimers();
 
-    await waitFor(() => {
-      expect(apiMocks.discardFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    expect(abortSpy).not.toHaveBeenCalled();
+    expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(
+      await screen.findAllByText(
+        "Fee Evaluation is still saving. Wait a moment and retry Cancel."
+      )
+    ).toHaveLength(2);
+  });
+
+  it("stays on Fee Evaluation when the Matrix or fee context changed before restore", async () => {
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse())
+      .mockResolvedValueOnce(
+        currentPricingDraftResponse({
+          current_confirmed_matrix_id: "cmv-2",
+          current_confirmed_revision: 2,
+        })
+      );
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+    );
+
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
+      target: { value: "12" },
     });
+    await screen.findByText("Saving pricing draft before update.");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
+    });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(
+      await screen.findAllByText(
+        "Fee Evaluation context changed. Refresh before leaving."
+      )
+    ).toHaveLength(2);
   });
 
   it("keeps the Fee file action enabled when the project folder path is missing", async () => {
@@ -895,7 +982,11 @@ describe("FeeEvaluationReviewExportPage", () => {
       );
     });
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText("Fee-P1.xls downloaded.")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        /^DL-2026-001 Fee Evaluation Draft \d{14}\.xls downloaded\.$/
+      )
+    ).toBeTruthy();
   });
 
   it("shows timeout cleanup guidance from structured API detail", async () => {
@@ -917,6 +1008,31 @@ describe("FeeEvaluationReviewExportPage", () => {
       await screen.findByText("Fee Evaluation export timed out after 90 seconds.")
     ).toBeTruthy();
     expect(screen.getByText("Close the Excel instance opened by ConnLab if it remains.")).toBeTruthy();
+  });
+
+  it("shows the template-missing download error instead of a Matrix blocker", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+    apiMocks.generateConfirmedMatrixFeeFileDownload.mockRejectedValue(
+      new ApiRequestError(
+        "Template does not exist: D:\\Source\\Template\\Testing Fee Evaluation-Even.optimized-v1.xls",
+        404,
+        "Template does not exist: D:\\Source\\Template\\Testing Fee Evaluation-Even.optimized-v1.xls"
+      )
+    );
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+
+    expect(
+      await screen.findByText(
+        "Template does not exist: D:\\Source\\Template\\Testing Fee Evaluation-Even.optimized-v1.xls"
+      )
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Confirm Matrix authority before generating the Fee file.")
+    ).toBeNull();
   });
 });
 

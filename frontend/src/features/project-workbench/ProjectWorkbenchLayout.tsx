@@ -7,10 +7,8 @@ import {
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
-import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
-import { OfficialWorkspaceActionPanel } from "./OfficialWorkspaceActionPanel";
+import { ProjectWorkbenchActiveMatrixWorkspace } from "./ProjectWorkbenchActiveMatrixWorkspace";
 import {
-  PackagePreparationMode,
   ProjectLifecycleManagementPanel,
   RegisteredSetupMode,
   TemporaryPlanningMode,
@@ -71,9 +69,7 @@ export function ProjectWorkbenchLayout({
     packagePreview,
     packagePreviewError,
     officialWorkspacePreview,
-    officialWorkspaceLoading,
     officialWorkspaceCreating,
-    officialWorkspaceError,
     onCreateOfficialWorkspace,
     officialFolderCheckPreview,
     officialFolderCheckError,
@@ -164,14 +160,8 @@ export function ProjectWorkbenchLayout({
     projectFolderTasks.some((task) => task.key === selectedProjectFolderTaskKey)
       ? selectedProjectFolderTaskKey
       : currentProjectFolderTaskKey;
-  const shouldShowWorkspaceCreation =
-    Boolean(projectNumber) &&
-    activeMatrixAuthorityReady &&
-    !effectiveFolderReady &&
-    (officialWorkspacePreview?.status === "ready" ||
-      officialWorkspacePreview?.status === "adoptable" ||
-      officialWorkspacePreview?.status === "blocked" ||
-      officialWorkspacePreview?.status === "inconsistent");
+  const isActiveMatrixWorkspace =
+    Boolean(projectNumber) && activeMatrixAuthorityReady;
 
   useEffect(() => {
     let cancelled = false;
@@ -317,26 +307,49 @@ export function ProjectWorkbenchLayout({
         </div>
       </header>
 
-      {shouldShowWorkspaceCreation ? (
-        <>
-          <OfficialWorkspaceActionPanel
-            preview={officialWorkspacePreview}
-            loading={officialWorkspaceLoading}
-            creating={officialWorkspaceCreating}
-            error={officialWorkspaceError}
-            onCreate={onCreateOfficialWorkspace}
-          />
-          {project.status !== "cancelled" ? (
-            <ProjectLifecycleManagementPanel
-              allowDelete={false}
-              deletePreview={null}
-              lifecycleBusy={lifecycleBusy}
-              lifecycleError={lifecycleError}
-              onDeleteTemporaryProject={() => undefined}
-              onStopProject={() => void handleStopProject()}
-            />
-          ) : null}
-        </>
+      {isActiveMatrixWorkspace ? (
+        <ProjectWorkbenchActiveMatrixWorkspace
+          activeMatrixAuthorityReady={activeMatrixAuthorityReady}
+          confirmedFeeLatest={confirmedFeeLatest}
+          creatingFolder={officialWorkspaceCreating}
+          effectiveFolderReady={effectiveFolderReady}
+          feeEvaluationOutputStatus={feeEvaluationOutputStatus}
+          officialWorkspaceStatus={officialWorkspacePreview?.status}
+          onFolderCommand={() => {
+            if (!effectiveFolderReady) {
+              void onCreateOfficialWorkspace();
+              return;
+            }
+            const currentTask = projectFolderTasks.find(
+              (task) => task.key === currentProjectFolderTaskKey
+            );
+            if (currentTask?.actionTarget) {
+              handleProjectFolderTaskAction(currentTask.actionTarget);
+            }
+          }}
+          onOpenFeeEvaluation={onOpenFeeEvaluation}
+          onOpenMatrixEditor={onOpenMatrixEditor}
+          onProjectFolderTaskAction={handleProjectFolderTaskAction}
+          onSelectProjectFolderTask={setSelectedProjectFolderTaskKey}
+          projectFolderTasks={projectFolderTasks}
+          projectId={project.project_id}
+          projectIdentity={projectIdentity}
+          projectSubtitle={titleParts.slice(1).join(" ")}
+          requestMaterialPreview={requestMaterialPreview}
+          requestMaterialError={requestMaterialError}
+          requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
+          requiredFormsPreview={requiredFormsPreview}
+          requiredFormsError={requiredFormsError}
+          requiredFormsLoading={requiredFormsLoading || requiredFormsGenerating}
+          publicDriveUploadPreview={publicDriveUploadPreview}
+          publicDriveUploadError={publicDriveUploadError}
+          publicDriveUploadLoading={publicDriveUploadLoading || publicDriveUploading}
+          currentProjectFolderTaskKey={currentProjectFolderTaskKey}
+          selectedProjectFolderTaskKey={effectiveSelectedProjectFolderTaskKey}
+          runtimeProjectionSnapshot={runtimeProjectionSnapshot}
+          selectedProjectionToken={selectedProjectionToken}
+          setSelectedProjectionToken={setSelectedProjectionToken}
+        />
       ) : (
         <>
           <WorkbenchStageBanner
@@ -381,38 +394,6 @@ export function ProjectWorkbenchLayout({
             <RegisteredSetupMode
               hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
               onOpenMatrixEditor={onOpenMatrixEditor}
-            />
-          ) : null}
-
-          {lifecycle.mode === "package_preparation" ? (
-            <PackagePreparationMode
-              projectFolderTasks={projectFolderTasks}
-              currentProjectFolderTaskKey={currentProjectFolderTaskKey}
-              selectedProjectFolderTaskKey={effectiveSelectedProjectFolderTaskKey}
-              onSelectProjectFolderTask={setSelectedProjectFolderTaskKey}
-              onProjectFolderTaskAction={handleProjectFolderTaskAction}
-              requestMaterialPreview={requestMaterialPreview}
-              requestMaterialError={requestMaterialError}
-              requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
-              requiredFormsPreview={requiredFormsPreview}
-              requiredFormsError={requiredFormsError}
-              requiredFormsLoading={requiredFormsLoading || requiredFormsGenerating}
-              publicDriveUploadPreview={publicDriveUploadPreview}
-              publicDriveUploadError={publicDriveUploadError}
-              publicDriveUploadLoading={publicDriveUploadLoading || publicDriveUploading}
-            />
-          ) : null}
-
-          {lifecycle.mode === "execution_console" ? (
-            <ProjectWorkbenchExecutionConsole
-              feeEvaluationOutputStatus={feeEvaluationOutputStatus}
-              activeMatrixAuthorityReady={activeMatrixAuthorityReady}
-              onOpenFeeEvaluation={onOpenFeeEvaluation}
-              onOpenMatrixEditor={onOpenMatrixEditor}
-              projectId={project.project_id}
-              runtimeProjectionSnapshot={runtimeProjectionSnapshot}
-              selectedProjectionToken={selectedProjectionToken}
-              setSelectedProjectionToken={setSelectedProjectionToken}
             />
           ) : null}
 

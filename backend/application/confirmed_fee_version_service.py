@@ -8,6 +8,9 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Callable, Protocol
 from uuid import uuid4
 
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportValues,
+)
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftContext,
     FeeEvaluationPricingDraftLoadResult,
@@ -117,7 +120,9 @@ class ConfirmedFeeVersionService:
             pricing_draft_edit_id=snapshot.draft_edit_id,
             pricing_effective_from=None,
             summary=command.summary,
-            pricing_snapshot_json=edited_values_to_json(snapshot.edited_values),
+            pricing_snapshot_json=edited_values_to_json(
+                _active_only_edited_values(snapshot.edited_values)
+            ),
             confirmed_by=confirmed_by,
             confirmed_at=self._clock(),
             confirmation_note=_normalize_optional_text(command.confirmation_note),
@@ -143,6 +148,17 @@ class ConfirmedFeeVersionService:
             current_context=load_result.current_context,
             latest_confirmed_fee=latest,
         )
+
+
+def _active_only_edited_values(
+    values: FeeEvaluationEditedExportValues,
+) -> FeeEvaluationEditedExportValues:
+    """Return the confirmable Fee snapshot without hidden recovery rows."""
+    return FeeEvaluationEditedExportValues(
+        rows=values.rows,
+        summary=values.summary,
+        manual_rows=values.manual_rows,
+    )
 
 
 def _require_current_pricing_snapshot(

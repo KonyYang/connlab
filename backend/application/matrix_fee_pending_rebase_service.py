@@ -2,35 +2,37 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-import json
 from typing import Callable, Protocol, Literal
 from uuid import uuid4
 
 from backend.application.fee_evaluation_edited_export_values import (
-    FeeEvaluationEditedExportValues,
     FeeEvaluationEditedExportRow,
-    FeeEvaluationEditedManualRow,
-    edited_row_identity,
 )
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     BuildMatrixBasicFeeTemplateCommand,
     ConfirmedMatrixFeeTemplateBasicFillService,
-    MatrixBasicFillLine,
 )
 from backend.application.matrix_fee_draft_rebase_service import (
     MatrixFeeDraftRebaseService,
-    MatrixFeeInactiveRemovedRow,
+    MatrixFeeRebaseKey,
     MatrixFeeRebaseLineage,
     MatrixFeeRebaseResult,
-    MatrixFeeRebaseSourceRow,
     MatrixFeeRebaseSummary,
     MatrixFeeRebaseTargetGroup,
     MatrixFeeRebaseTargetRow,
+    matrix_fee_rebase_key_for_lineage,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftStore,
+)
+from backend.application.matrix_fee_pending_rebase_payload import (
+    pending_rebase_payload_from_json,
+    pending_rebase_payload_to_json,
+)
+from backend.application.matrix_fee_pending_rebase_source import (
+    source_rows_from_basic_fill as _source_rows_from_basic_fill,
 )
 from backend.domain.project_matrix_draft_models import ProjectMatrixDraftSnapshot
 from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
@@ -235,11 +237,15 @@ class DefaultMatrixFeePendingRebaseBuilder:
             fee_rule_version_id=command.fee_rule_version_id,
         )
         source_values = pricing_draft.edited_values if pricing_draft is not None else None
-        return self._rebase.rebase(
+        structural_keys = _structural_rebase_keys_from_matrix_draft(
+            command.saved_matrix_draft
+        )
+        result = self._rebase.rebase(
             source_rows=(
                 _source_rows_from_basic_fill(
                     basic_fill.groups,
                     source_values=source_values,
+                    structural_keys=structural_keys,
                 )
                 if source_values is not None
                 else ()
@@ -248,42 +254,10 @@ class DefaultMatrixFeePendingRebaseBuilder:
             source_manual_rows=source_values.manual_rows if source_values is not None else (),
             target_groups=_target_groups_from_matrix_draft(command.saved_matrix_draft),
         )
-
-
-def _source_rows_from_basic_fill(
-    groups,
-    *,
-    source_values: FeeEvaluationEditedExportValues | None,
-) -> tuple[MatrixFeeRebaseSourceRow, ...]:
-    edited_by_identity = (
-        {edited_row_identity(row): row for row in source_values.rows}
-        if source_values is not None
-        else {}
-    )
-    rows: list[MatrixFeeRebaseSourceRow] = []
-    for group in groups:
-        for line in group.lines:
-            default_row = _default_row_from_basic_fill_line(line)
-            rows.append(
-                MatrixFeeRebaseSourceRow(
-                    lineage=MatrixFeeRebaseLineage(
-                        group_key=group.group_key,
-                        group_label=group.group_label,
-                        confirmed_group_id=line.confirmed_group_id,
-                        confirmed_row_id=line.confirmed_row_id,
-                        source_row_snapshot_id=line.source_row_id,
-                        draft_row_id=None,
-                        step_token=line.step_tokens[0] if line.step_tokens else "",
-                        step_index=line.step_index,
-                        test_item=line.test_item,
-                    ),
-                    edited_row=edited_by_identity.get(
-                        edited_row_identity(default_row),
-                        default_row,
-                    ),
-                )
-            )
-    return tuple(rows)
+        return _filter_hard_deleted_inactive_rows(
+            result,
+            structural_keys=structural_keys,
+        )
 
 
 def _target_groups_from_matrix_draft(
@@ -303,13 +277,37 @@ def _target_groups_from_matrix_draft(
 def _target_rows_from_matrix_draft(
     draft: ProjectMatrixDraftSnapshot,
 ) -> tuple[MatrixFeeRebaseTargetRow, ...]:
+    return tuple(
+        MatrixFeeRebaseTargetRow(
+            lineage=lineage,
+            default_row=_default_row_from_target_lineage(lineage),
+        )
+        for lineage in _lineages_from_matrix_draft(draft, selected_only=True)
+    )
+
+
+def _structural_rebase_keys_from_matrix_draft(
+    draft: ProjectMatrixDraftSnapshot,
+) -> set[MatrixFeeRebaseKey]:
+    """Return rebase keys for all structurally present non-sample Matrix steps."""
+    return {
+        matrix_fee_rebase_key_for_lineage(lineage)
+        for lineage in _lineages_from_matrix_draft(draft, selected_only=False)
+    }
+
+
+def _lineages_from_matrix_draft(
+    draft: ProjectMatrixDraftSnapshot,
+    *,
+    selected_only: bool,
+) -> tuple[MatrixFeeRebaseLineage, ...]:
     selected_groups = {
         group.draft_group_id: group
         for group in draft.groups
-        if group.is_selected
+        if group.is_selected or not selected_only
     }
     rows_by_id = {row.draft_row_id: row for row in draft.rows if not row.is_sample_row}
-    target_rows: list[MatrixFeeRebaseTargetRow] = []
+    lineages: list[MatrixFeeRebaseLineage] = []
     for cell in sorted(draft.cells, key=lambda item: item.draft_cell_id):
         group = selected_groups.get(cell.draft_group_id)
         row = rows_by_id.get(cell.draft_row_id)
@@ -335,30 +333,25 @@ def _target_rows_from_matrix_draft(
                 condition=row.condition,
                 requirement=row.requirement,
             )
-            target_rows.append(
-                MatrixFeeRebaseTargetRow(
-                    lineage=lineage,
-                    default_row=_default_row_from_target_lineage(lineage),
-                )
-            )
-    return tuple(target_rows)
+            lineages.append(lineage)
+    return tuple(lineages)
 
 
-def _default_row_from_basic_fill_line(line: MatrixBasicFillLine) -> FeeEvaluationEditedExportRow:
-    return FeeEvaluationEditedExportRow(
-        source_line_id=line.line_id,
-        confirmed_group_id=line.confirmed_group_id,
-        confirmed_row_id=line.confirmed_row_id,
-        step_token=line.step_tokens[0] if line.step_tokens else "",
-        step_index=line.step_index,
-        spend_time="0",
-        unit_price="0",
-        unit_type="Pending",
-        units="1",
-        base_fee="0",
-        discount="0%",
-        testing_fee="0",
-        notes="",
+def _filter_hard_deleted_inactive_rows(
+    result: MatrixFeeRebaseResult,
+    *,
+    structural_keys: set[MatrixFeeRebaseKey],
+) -> MatrixFeeRebaseResult:
+    """Drop inactive rows whose Matrix draft structure has been truly deleted."""
+    inactive_rows = tuple(
+        row for row in result.inactive_removed_rows if row.rebase_key in structural_keys
+    )
+    if inactive_rows == result.inactive_removed_rows:
+        return result
+    return replace(
+        result,
+        inactive_removed_rows=inactive_rows,
+        summary=replace(result.summary, removed_count=len(inactive_rows)),
     )
 
 
@@ -385,51 +378,6 @@ def _default_row_from_target_lineage(
     )
 
 
-def pending_rebase_payload_to_json(result: MatrixFeeRebaseResult) -> str:
-    """Serialize a pending rebase result as self-contained JSON."""
-    payload = {
-        "active_rows": [_row_to_dict(row) for row in result.active_rows],
-        "inactive_removed_rows": [
-            _inactive_removed_row_to_dict(row)
-            for row in result.inactive_removed_rows
-        ],
-        "manual_rows": [_manual_row_to_dict(row) for row in result.manual_rows],
-        "summary": {
-            "preserved_count": result.summary.preserved_count,
-            "added_count": result.summary.added_count,
-            "removed_count": result.summary.removed_count,
-            "preserved_manual_count": result.summary.preserved_manual_count,
-            "removed_manual_count": result.summary.removed_manual_count,
-        },
-        "warnings": list(result.warnings),
-    }
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-
-def pending_rebase_payload_from_json(payload_json: str) -> MatrixFeeRebaseResult:
-    """Deserialize one persisted pending Matrix-to-Fee rebase payload."""
-    payload = json.loads(payload_json)
-    summary = payload.get("summary") or {}
-    return MatrixFeeRebaseResult(
-        active_rows=tuple(_row_from_dict(row) for row in payload.get("active_rows", [])),
-        inactive_removed_rows=tuple(
-            _inactive_removed_row_from_dict(row)
-            for row in payload.get("inactive_removed_rows", [])
-        ),
-        manual_rows=tuple(
-            _manual_row_from_dict(row) for row in payload.get("manual_rows", [])
-        ),
-        summary=MatrixFeeRebaseSummary(
-            preserved_count=int(summary.get("preserved_count", 0)),
-            added_count=int(summary.get("added_count", 0)),
-            removed_count=int(summary.get("removed_count", 0)),
-            preserved_manual_count=int(summary.get("preserved_manual_count", 0)),
-            removed_manual_count=int(summary.get("removed_manual_count", 0)),
-        ),
-        warnings=tuple(str(item) for item in payload.get("warnings", [])),
-    )
-
-
 def _has_required_context(command: RebaseAfterMatrixAutosaveCommand) -> bool:
     return (
         command.saved_matrix_draft is not None
@@ -449,100 +397,3 @@ def _draft_matches_active_matrix(
 
 def _time_generation() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1_000_000)
-
-
-def _row_to_dict(row: FeeEvaluationEditedExportRow) -> dict[str, object]:
-    return {
-        "source_line_id": row.source_line_id,
-        "confirmed_group_id": row.confirmed_group_id,
-        "confirmed_row_id": row.confirmed_row_id,
-        "step_token": row.step_token,
-        "step_index": row.step_index,
-        "spend_time": row.spend_time,
-        "unit_price": row.unit_price,
-        "unit_type": row.unit_type,
-        "units": row.units,
-        "base_fee": row.base_fee,
-        "discount": row.discount,
-        "testing_fee": row.testing_fee,
-        "notes": row.notes,
-    }
-
-
-def _manual_row_to_dict(row: FeeEvaluationEditedManualRow) -> dict[str, object]:
-    return {
-        "row_kind": row.row_kind,
-        "spend_time": row.spend_time,
-        "unit_price": row.unit_price,
-        "unit_type": row.unit_type,
-        "units": row.units,
-        "base_fee": row.base_fee,
-        "discount": row.discount,
-        "testing_fee": row.testing_fee,
-        "notes": row.notes,
-        "confirmed_group_id": row.confirmed_group_id,
-        "group_key": row.group_key,
-        "group_label": row.group_label,
-    }
-
-
-def _inactive_removed_row_to_dict(
-    row: MatrixFeeInactiveRemovedRow,
-) -> dict[str, object]:
-    return {
-        "previous_row": _row_to_dict(row.previous_row),
-        "previous_group_key": row.previous_group_key,
-        "previous_group_label": row.previous_group_label,
-        "previous_row_signature": row.previous_row_signature,
-        "inactive_reason": row.inactive_reason,
-    }
-
-
-def _row_from_dict(payload: dict[str, object]) -> FeeEvaluationEditedExportRow:
-    return FeeEvaluationEditedExportRow(
-        source_line_id=str(payload.get("source_line_id", "")),
-        confirmed_group_id=str(payload.get("confirmed_group_id", "")),
-        confirmed_row_id=str(payload.get("confirmed_row_id", "")),
-        step_token=str(payload.get("step_token", "")),
-        step_index=int(payload.get("step_index", 0)),
-        spend_time=str(payload.get("spend_time", "")),
-        unit_price=str(payload.get("unit_price", "")),
-        unit_type=str(payload.get("unit_type", "")),
-        units=str(payload.get("units", "")),
-        base_fee=str(payload.get("base_fee", "")),
-        discount=str(payload.get("discount", "")),
-        testing_fee=str(payload.get("testing_fee", "")),
-        notes=str(payload.get("notes", "")),
-    )
-
-
-def _manual_row_from_dict(payload: dict[str, object]) -> FeeEvaluationEditedManualRow:
-    return FeeEvaluationEditedManualRow(
-        row_kind=str(payload.get("row_kind", "")),
-        spend_time=str(payload.get("spend_time", "")),
-        unit_price=str(payload.get("unit_price", "")),
-        unit_type=str(payload.get("unit_type", "")),
-        units=str(payload.get("units", "")),
-        base_fee=str(payload.get("base_fee", "")),
-        discount=str(payload.get("discount", "")),
-        testing_fee=str(payload.get("testing_fee", "")),
-        notes=str(payload.get("notes", "")),
-        confirmed_group_id=str(payload.get("confirmed_group_id", "")),
-        group_key=str(payload.get("group_key", "")),
-        group_label=str(payload.get("group_label", "")),
-    )
-
-
-def _inactive_removed_row_from_dict(
-    payload: dict[str, object],
-) -> MatrixFeeInactiveRemovedRow:
-    previous = payload.get("previous_row")
-    if not isinstance(previous, dict):
-        previous = {}
-    return MatrixFeeInactiveRemovedRow(
-        previous_row=_row_from_dict(previous),
-        previous_group_key=str(payload.get("previous_group_key", "")),
-        previous_group_label=str(payload.get("previous_group_label", "")),
-        previous_row_signature=str(payload.get("previous_row_signature", "")),
-        inactive_reason=str(payload.get("inactive_reason", "removed_from_matrix")),
-    )

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
@@ -27,6 +27,7 @@ export function ProjectWorkbenchExecutionConsole({
   runtimeProjectionSnapshot,
   selectedProjectionToken,
   setSelectedProjectionToken,
+  sideColumnAfter,
 }: {
   activeMatrixAuthorityReady: boolean;
   feeEvaluationOutputStatus: ProjectRuntimeConsoleModel["versionStatus"]["downstream"][number] | null;
@@ -36,6 +37,7 @@ export function ProjectWorkbenchExecutionConsole({
   runtimeProjectionSnapshot: ProjectRuntimeConsoleModel["runtimeProjectionSnapshot"];
   selectedProjectionToken: MatrixProjectionTokenCell | null;
   setSelectedProjectionToken: (token: MatrixProjectionTokenCell | null) => void;
+  sideColumnAfter?: ReactNode;
 }): ReactElement {
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
   const selectedWorkspaceToken = selectedWorkspace?.selected_token ?? null;
@@ -128,6 +130,7 @@ export function ProjectWorkbenchExecutionConsole({
           canOpen={activeMatrixAuthorityReady}
           onOpenFeeEvaluation={onOpenFeeEvaluation}
         />
+        {sideColumnAfter}
       </div>
     </section>
   );

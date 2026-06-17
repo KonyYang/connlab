@@ -82,6 +82,7 @@ class Settings:
         """Load settings from the environment and ensure required folders exist."""
         root_dir = base_dir or Path(__file__).resolve().parents[2]
         local_config = _load_local_config(root_dir)
+        paths_config = local_config.get("paths", {})
         workbook_config = local_config.get("ltr_workbook", {})
         test_record_config = local_config.get("test_record", {})
         settings = cls(
@@ -91,8 +92,9 @@ class Settings:
                 root_dir / "projects",
                 root_dir,
             ),
-            templates_dir=_resolve_directory(
+            templates_dir=_resolve_configured_directory(
                 "CONNLAB_TEMPLATES_DIR",
+                paths_config.get("templates_dir"),
                 root_dir / "templates",
                 root_dir,
             ),
@@ -119,6 +121,25 @@ def _resolve_directory(env_name: str, default: Path, base_dir: Path) -> Path:
     """Resolve a configured directory from the environment or a default path."""
     raw_value = os.getenv(env_name)
     if not raw_value:
+        return default
+
+    candidate = Path(raw_value).expanduser()
+    if not candidate.is_absolute():
+        candidate = base_dir / candidate
+    return candidate.resolve()
+
+
+def _resolve_configured_directory(
+    env_name: str,
+    config_value: object,
+    default: Path,
+    base_dir: Path,
+) -> Path:
+    """Resolve a directory from env, local config, or default."""
+    raw_value = os.getenv(env_name)
+    if raw_value is None:
+        raw_value = str(config_value or "")
+    if not raw_value.strip():
         return default
 
     candidate = Path(raw_value).expanduser()

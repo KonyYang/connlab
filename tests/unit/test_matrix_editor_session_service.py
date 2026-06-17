@@ -25,6 +25,7 @@ from backend.application.matrix_fee_pending_rebase_service import (
 from backend.application.matrix_fee_rebase_promotion_service import (
     MatrixFeeRebasePromotionResult,
 )
+from backend.application.matrix_import_commit_service import MatrixImportCommitResult
 from backend.domain import (
     ConfirmedMatrixCell,
     ConfirmedMatrixGroup,
@@ -274,6 +275,28 @@ def test_confirm_saved_revision_keeps_published_when_fee_promotion_failed() -> N
     assert result.confirmed_snapshot is not None
     assert result.fee_rebase_promotion_status == "failed"
     assert "database unavailable" in (result.fee_rebase_promotion_error or "")
+
+
+def test_confirm_first_authority_initializes_default_fee_authority() -> None:
+    promotion = _RecordingFeeRebasePromotionService(
+        MatrixFeeRebasePromotionResult(status="default_promoted")
+    )
+    service = _service(
+        active=None,
+        source_snapshot=None,
+        draft_persistence_service=_RecordingDraftPersistenceService(),
+        matrix_import_commit_service=_RecordingMatrixImportCommitService(),
+        confirmed_matrix_authority_service=_RecordingConfirmedAuthorityService(),
+        fee_rebase_promotion_service=promotion,
+    )
+
+    result = service.confirm_session(_first_confirm_command())
+
+    assert result.publish_status == "published"
+    assert result.confirmed_snapshot is not None
+    assert result.fee_rebase_promotion_status == "default_promoted"
+    assert promotion.initial_project_id == "P1"
+    assert promotion.initial_confirmed_matrix is result.confirmed_snapshot
 
 
 def test_discard_editor_draft_deletes_pending_fee_rebase() -> None:
@@ -666,6 +689,20 @@ class _MatrixImportCommitService:
         raise AssertionError("commit should not be called in no-change tests")
 
 
+class _RecordingMatrixImportCommitService:
+    def __init__(self) -> None:
+        self.draft = _saved_revision_draft()
+
+    def commit(self, command):
+        return MatrixImportCommitResult(
+            source_import_id="smi-1",
+            source_snapshot_id="sms-1",
+            selected_group_keys_committed=("g1",),
+            commit_status="committed",
+            project_matrix_draft=self.draft,
+        )
+
+
 class _MatrixRevisionFlowService:
     def create_revision_draft(self, command):
         raise AssertionError("create_revision_draft should not be called in no-change tests")
@@ -764,6 +801,11 @@ class _ConfirmedAuthorityService:
         raise AssertionError("confirm_draft should not be called in no-change tests")
 
 
+class _RecordingConfirmedAuthorityService:
+    def confirm_draft(self, command):
+        return _build_active_snapshot()
+
+
 class _RecordingPendingFeeRebaseService:
     def __init__(self, result: MatrixFeePendingRebaseResult) -> None:
         self._result = result
@@ -807,9 +849,22 @@ class _RecordingFeeRebasePromotionService:
     def __init__(self, result: MatrixFeeRebasePromotionResult) -> None:
         self._result = result
         self.command = None
+        self.initial_project_id = None
+        self.initial_confirmed_matrix = None
 
     def promote_after_matrix_confirm(self, command):
         self.command = command
+        return self._result
+
+    def initialize_after_first_matrix_confirm(
+        self,
+        *,
+        project_id,
+        new_confirmed_matrix,
+        fee_rule_version_id,
+    ):
+        self.initial_project_id = project_id
+        self.initial_confirmed_matrix = new_confirmed_matrix
         return self._result
 
 
@@ -819,7 +874,9 @@ def _service(
     source_snapshot,
     draft_store=None,
     draft_persistence_service=None,
+    matrix_import_commit_service=None,
     matrix_revision_flow_service=None,
+    confirmed_matrix_authority_service=None,
     pending_fee_rebase_service=None,
     fee_rebase_promotion_service=None,
 ):
@@ -829,10 +886,12 @@ def _service(
         source_store=_SourceStore(source_snapshot=source_snapshot),
         draft_store=draft_store or _DraftStore(),
         draft_persistence_service=draft_persistence_service or _DraftPersistenceService(),
-        matrix_import_commit_service=_MatrixImportCommitService(),
+        matrix_import_commit_service=matrix_import_commit_service
+        or _MatrixImportCommitService(),
         matrix_revision_flow_service=matrix_revision_flow_service
         or _MatrixRevisionFlowService(),
-        confirmed_matrix_authority_service=_ConfirmedAuthorityService(),
+        confirmed_matrix_authority_service=confirmed_matrix_authority_service
+        or _ConfirmedAuthorityService(),
         pending_fee_rebase_service=pending_fee_rebase_service,
         fee_rebase_promotion_service=fee_rebase_promotion_service,
     )
@@ -1003,6 +1062,56 @@ def _confirm_saved_revision_command(
         ),
         expected_editor_draft_id=draft.record.project_matrix_draft_id,
         expected_saved_payload_signature=_build_signature_from_project_draft(draft),
+    )
+
+
+def _first_confirm_command() -> MatrixEditorSessionConfirmCommand:
+    draft = _saved_revision_draft()
+    return MatrixEditorSessionConfirmCommand(
+        project_id="P1",
+        expected_active_confirmed_matrix_id=None,
+        expected_active_confirmed_revision=None,
+        source_document_path=None,
+        source_document_name=None,
+        source_format=None,
+        source_import_id=None,
+        source_snapshot_id="sms-1",
+        confirmed_by="operator",
+        groups=tuple(
+            MatrixEditorSessionGroup(
+                draft_group_id=group.draft_group_id,
+                source_group_snapshot_id=group.source_group_snapshot_id,
+                group_order=group.group_order,
+                group_key=group.group_key,
+                group_label=group.group_label,
+                is_selected=group.is_selected,
+                sample_quantity_expression=group.sample_quantity_expression,
+                sample_note=group.sample_note,
+            )
+            for group in draft.groups
+        ),
+        rows=tuple(
+            MatrixEditorSessionRow(
+                draft_row_id=row.draft_row_id,
+                source_row_snapshot_id=row.source_row_snapshot_id,
+                row_order=row.row_order,
+                test_item=row.test_item,
+                source_section=row.source_section,
+                method=row.method,
+                condition=row.condition,
+                requirement=row.requirement,
+                is_sample_row=row.is_sample_row,
+            )
+            for row in draft.rows
+        ),
+        cells=tuple(
+            MatrixEditorSessionCell(
+                draft_row_id=cell.draft_row_id,
+                draft_group_id=cell.draft_group_id,
+                cell_value=cell.cell_value,
+            )
+            for cell in draft.cells
+        ),
     )
 
 

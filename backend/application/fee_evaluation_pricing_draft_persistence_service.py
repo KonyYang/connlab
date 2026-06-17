@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import json
 from typing import Literal, Protocol
@@ -14,6 +14,8 @@ from backend.application.confirmed_matrix_fee_template_basic_fill_service import
     MatrixBasicFillWorkbook,
 )
 from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedInactiveRow,
+    FeeEvaluationEditedInactiveRowKey,
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
@@ -32,6 +34,9 @@ class SaveFeeEvaluationPricingDraftCommand:
 
     project_id: str
     edited_values: FeeEvaluationEditedExportValues
+    expected_confirmed_matrix_id: str | None = None
+    expected_confirmed_revision: int | None = None
+    expected_fee_rule_version_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,7 +92,7 @@ class FeeEvaluationPricingDraftDiscardResult:
 
 
 class FeeEvaluationPricingDraftConflictError(ValueError):
-    """Raised when pricing draft discard tokens do not match current context."""
+    """Raised when pricing draft optimistic context tokens do not match."""
 
 
 class FeeEvaluationPricingDraftStore(Protocol):
@@ -143,6 +148,7 @@ class FeeEvaluationPricingDraftPersistenceService:
         basic_fill = self._build_basic_fill(command.project_id)
         _validate_edited_values(command.edited_values, basic_fill)
         context = _context_from_basic_fill(basic_fill)
+        _validate_save_expectations(command, context)
         now = datetime.now(timezone.utc).isoformat()
         existing = self._draft_store.get_by_context(
             project_id=context.project_id,
@@ -152,13 +158,17 @@ class FeeEvaluationPricingDraftPersistenceService:
         )
         draft_edit_id = existing.draft_edit_id if existing is not None else uuid4().hex
         created_at = existing.created_at if existing is not None else now
+        edited_values = _merge_existing_inactive_rows(
+            incoming=command.edited_values,
+            existing=existing.edited_values if existing is not None else None,
+        )
         snapshot = FeeEvaluationPricingDraftSnapshot(
             draft_edit_id=draft_edit_id,
             project_id=context.project_id,
             confirmed_matrix_id=context.confirmed_matrix_id,
             confirmed_revision=context.confirmed_revision,
             fee_rule_version_id=context.fee_rule_version_id,
-            edited_values=command.edited_values,
+            edited_values=edited_values,
             created_at=created_at,
             updated_at=now,
         )
@@ -273,6 +283,22 @@ def edited_values_to_json(values: FeeEvaluationEditedExportValues) -> str:
             }
             for row in values.manual_rows
         ],
+        "inactive_rows": [
+            {
+                "previous_row": _row_to_dict(row.previous_row),
+                "rebase_key": {
+                    "group_identity": row.rebase_key.group_identity,
+                    "row_identity": row.rebase_key.row_identity,
+                    "step_token": row.rebase_key.step_token,
+                    "step_index": row.rebase_key.step_index,
+                },
+                "group_key": row.group_key,
+                "group_label": row.group_label,
+                "group_signature": row.group_signature,
+                "inactive_reason": row.inactive_reason,
+            }
+            for row in values.inactive_rows
+        ],
     }
     return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
@@ -325,6 +351,66 @@ def edited_values_from_json(payload_json: str) -> FeeEvaluationEditedExportValue
             )
             for row in payload.get("manual_rows", [])
         ),
+        inactive_rows=tuple(
+            _inactive_row_from_dict(row)
+            for row in payload.get("inactive_rows", [])
+        ),
+    )
+
+
+def _row_to_dict(row: FeeEvaluationEditedExportRow) -> dict[str, object]:
+    """Serialize one edited active or inactive Fee row."""
+    return {
+        "source_line_id": row.source_line_id,
+        "confirmed_group_id": row.confirmed_group_id,
+        "confirmed_row_id": row.confirmed_row_id,
+        "step_token": row.step_token,
+        "step_index": row.step_index,
+        "spend_time": row.spend_time,
+        "unit_price": row.unit_price,
+        "unit_type": row.unit_type,
+        "units": row.units,
+        "base_fee": row.base_fee,
+        "discount": row.discount,
+        "testing_fee": row.testing_fee,
+        "notes": row.notes,
+    }
+
+
+def _inactive_row_from_dict(payload: dict[str, object]) -> FeeEvaluationEditedInactiveRow:
+    """Deserialize one hidden inactive Fee row."""
+    previous = payload.get("previous_row")
+    key = payload.get("rebase_key") or payload.get("key")
+    if not isinstance(previous, dict):
+        previous = {}
+    if not isinstance(key, dict):
+        key = {}
+    return FeeEvaluationEditedInactiveRow(
+        previous_row=FeeEvaluationEditedExportRow(
+            source_line_id=str(previous.get("source_line_id", "")),
+            confirmed_group_id=str(previous.get("confirmed_group_id", "")),
+            confirmed_row_id=str(previous.get("confirmed_row_id", "")),
+            step_token=str(previous.get("step_token", "")),
+            step_index=int(previous.get("step_index", 0)),
+            spend_time=str(previous.get("spend_time", "")),
+            unit_price=str(previous.get("unit_price", "")),
+            unit_type=str(previous.get("unit_type", "")),
+            units=str(previous.get("units", "")),
+            base_fee=str(previous.get("base_fee", "")),
+            discount=str(previous.get("discount", "")),
+            testing_fee=str(previous.get("testing_fee", "")),
+            notes=str(previous.get("notes", "")),
+        ),
+        rebase_key=FeeEvaluationEditedInactiveRowKey(
+            group_identity=str(key.get("group_identity", "")),
+            row_identity=str(key.get("row_identity", "")),
+            step_token=str(key.get("step_token", "")),
+            step_index=int(key.get("step_index", 0)),
+        ),
+        group_key=str(payload.get("group_key", "")),
+        group_label=str(payload.get("group_label", "")),
+        group_signature=str(payload.get("group_signature", "")),
+        inactive_reason=str(payload.get("inactive_reason", "removed_from_matrix")),
     )
 
 
@@ -334,6 +420,17 @@ def _validate_edited_values(
 ) -> None:
     edited_row_lookup(values, basic_fill)
     validate_supported_manual_rows(values.manual_rows, basic_fill)
+
+
+def _merge_existing_inactive_rows(
+    *,
+    incoming: FeeEvaluationEditedExportValues,
+    existing: FeeEvaluationEditedExportValues | None,
+) -> FeeEvaluationEditedExportValues:
+    """Preserve server-side hidden rows when clients save active Fee rows only."""
+    if incoming.inactive_rows or existing is None or not existing.inactive_rows:
+        return incoming
+    return replace(incoming, inactive_rows=existing.inactive_rows)
 
 
 def _context_from_basic_fill(
@@ -393,4 +490,32 @@ def _validate_discard_expectations(
     ):
         raise FeeEvaluationPricingDraftConflictError(
             "Pricing draft fee rule version changed before discard."
+        )
+
+
+def _validate_save_expectations(
+    command: SaveFeeEvaluationPricingDraftCommand,
+    context: FeeEvaluationPricingDraftContext,
+) -> None:
+    """Validate optimistic save tokens before writing the current draft."""
+    if (
+        command.expected_confirmed_matrix_id
+        and command.expected_confirmed_matrix_id != context.confirmed_matrix_id
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft Matrix context changed before save."
+        )
+    if (
+        command.expected_confirmed_revision is not None
+        and command.expected_confirmed_revision != context.confirmed_revision
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft Matrix revision changed before save."
+        )
+    if (
+        command.expected_fee_rule_version_id
+        and command.expected_fee_rule_version_id != context.fee_rule_version_id
+    ):
+        raise FeeEvaluationPricingDraftConflictError(
+            "Pricing draft fee rule version changed before save."
         )

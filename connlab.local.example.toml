@@ -1,3 +1,6 @@
+[paths]
+templates_dir = ""
+
 [ltr_workbook]
 path = ""
 mode = "local_only"

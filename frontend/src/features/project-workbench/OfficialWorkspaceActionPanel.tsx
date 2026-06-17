@@ -27,30 +27,26 @@ export function OfficialWorkspaceActionPanel({
     );
   const reason = blocked
     ? formatWorkspaceBlocker(preview?.blockers[0], settingsBlocked)
-    : "The official project folder has not been created locally.";
+    : "Create the formal project folder from the standard template.";
   const nextActionTitle = settingsBlocked
     ? "Project folder template is not ready"
     : blocked
       ? "Resolve project folder blocker"
-      : "Create local project folder";
+      : "Create official project folder locally";
   const nextActionDescription = settingsBlocked
     ? "Ask the ConnLab administrator to confirm the installed template before creating the folder."
     : blocked
       ? "Review the blocker before creating the local project folder."
-      : "Copy the official folder template into the local DL folder.";
+      : "ConnLab will copy the template and prepare the standard folders.";
   const pathSummaryTitle = formatWorkspacePathSummaryTitle(preview?.status ?? null);
 
   return (
     <section className="runtime-console-mode-stack" aria-label="Local project folder">
-      <section className={`runtime-console-stage-banner ${blocked ? "status-blocked" : "status-ready"}`}>
-        <div>
-          <p className="eyebrow">Current task</p>
-          <h3>Create local project folder</h3>
+      <section className={`runtime-console-folder-primary ${blocked ? "status-blocked" : "status-ready"}`}>
+        <div className="runtime-console-folder-task-heading">
+          <p className="eyebrow">Next step</p>
+          <h3>{nextActionTitle}</h3>
           <p>{reason}</p>
-        </div>
-        <div className="runtime-console-next-action">
-          <span>Next action</span>
-          <strong>{nextActionTitle}</strong>
           <p>{nextActionDescription}</p>
           {blocked ? (
             <p className="runtime-console-action-unavailable">
@@ -64,7 +60,7 @@ export function OfficialWorkspaceActionPanel({
               disabled={loading || creating}
               onClick={() => void onCreate()}
             >
-              {creating ? "Creating..." : "Create local project folder"}
+              {creating ? "Creating..." : "Create project folder"}
             </button>
           )}
         </div>
