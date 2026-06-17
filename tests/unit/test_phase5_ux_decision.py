@@ -156,6 +156,7 @@ def test_phase5_decision_record_closes_phase_and_recommends_next_phase() -> None
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+            or "Current Active Task: `TASK_315F_FEE_CURRENT_VERSION_CANCEL_UPDATE_SEMANTICS` is complete" in board
         or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert "TASK_024_PHASE5_DOCS_AND_BOARD_SYNC` | done" in board

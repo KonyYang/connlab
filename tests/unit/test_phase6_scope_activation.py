@@ -184,6 +184,7 @@ def test_task_board_preserves_phase6a_completion_and_forbids_future_scope() -> N
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+            or "Current Active Task: `TASK_315F_FEE_CURRENT_VERSION_CANCEL_UPDATE_SEMANTICS` is complete" in board
         or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert (

@@ -521,9 +521,24 @@ def _service(
             )
         ),
         workspace_repository=repository or _WorkspaceRepo(),
-        ltr_repository=ltr_repository or _LtrRepo(),
+        ltr_repository=ltr_repository or _default_ltr_repo(),
         application_form_repository=_ApplicationFormRepo(forms),
         settings=settings,
+    )
+
+
+def _default_ltr_repo() -> _LtrRepo:
+    return _LtrRepo(
+        [
+            LtrRecord(
+                ltr_id="ltr-1",
+                project_id="project-1",
+                ltr_number="DL-2025-11-074",
+                status=LtrStatus.REGISTERED,
+                registered_on=date(2026, 5, 11),
+                notes=None,
+            )
+        ]
     )
 
 

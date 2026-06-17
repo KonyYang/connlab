@@ -1251,7 +1251,7 @@ def test_task067_frontend_uses_new_project_and_ltr_number_language() -> None:
     assert "New Project" in sidebar_source
     assert "New Project" in top_bar_source
     assert "Project ID" in list_page_source
-    assert "registered LTR/DL identity or a temporary planning ID" in list_page_source
+    assert "Temporary Planning" in list_page_source
     assert "Pending LTR Number" not in list_page_source
     assert "LTR Number" in ltr_source
     assert "LTR Number" in folder_source
@@ -3314,7 +3314,7 @@ def test_task219f_removes_legacy_support_surfaces_from_workbench() -> None:
     ]:
         assert removed_component not in layout_source
 
-    assert "OfficialWorkspaceActionPanel" in layout_source
+    assert "ProjectFolderTaskList" in project_workbench_feature_source()
 
     for removed_runtime_label in [
         "Derived outputs",
@@ -3354,9 +3354,9 @@ def test_task306_project_folder_panel_is_workbench_entry_only() -> None:
         / "useProjectRuntimeConsoleModel.ts"
     ).read_text(encoding="utf-8")
 
-    assert "OfficialWorkspaceActionPanel" in layout_source
     assert "officialWorkspacePreview" in layout_source
     assert "onCreateOfficialWorkspace" in layout_source
+    assert "Local project folder" in project_workbench_feature_source()
 
     assert '"folderResources"' in runtime_model_source
     assert '"onFolderCreated"' in runtime_model_source
@@ -4741,7 +4741,8 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
     ).read_text(encoding="utf-8")
     styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(encoding="utf-8")
 
-    assert "ProjectWorkbenchExecutionConsole" in layout_source
+    assert "ProjectWorkbenchActiveMatrixWorkspace" in layout_source
+    assert "ProjectWorkbenchExecutionConsole" in project_workbench_feature_source()
     assert "ProjectWorkbenchMatrixProjectionPanel" in execution_console_source
     assert "projectId={projectId}" in execution_console_source
     assert "onTokenSelect={setSelectedProjectionToken}" in execution_console_source
@@ -4754,7 +4755,7 @@ def test_task269_project_workbench_matrix_projection_prototype_is_wired() -> Non
     )
     assert (
         "Read-only authority view" in projection_source
-        or "runtime-console-matrix-toolbar" in projection_source
+        or "runtime-console-matrix-projection-table" in projection_source
     )
     assert "runtime-console-matrix-token-stack" in projection_source
     assert "buildMatrixProjectionViewModel" in selector_source
@@ -5056,8 +5057,8 @@ def test_task276_workbench_execution_surface_density_polish_is_wired() -> None:
 
     assert "onOpenMatrixEditor" in layout_source
     assert "Matrix" in projection_source
-    assert "Test record" in projection_source
-    assert "disabled" in projection_source
+    assert "Test record" in project_workbench_feature_source()
+    assert "disabled" in project_workbench_feature_source()
     assert "Selected token:" not in projection_source
 
     for removed_field in ["<dt>Token</dt>", "<dt>Group</dt>", "<dt>Section</dt>", "<dt>Test item</dt>", "<dt>Step token</dt>"]:
@@ -5216,7 +5217,7 @@ def test_task317_project_folder_request_material_ui_is_wired() -> None:
         "Project Folder preparation",
         "Request material",
         "Collect request material",
-        "runtime-console-project-folder-tasks",
+        "runtime-console-project-folder-flow",
     ]:
         assert (
             required in lifecycle_sections_source
@@ -5230,7 +5231,7 @@ def test_task317_project_folder_request_material_ui_is_wired() -> None:
     assert "Package details" not in lifecycle_sections_source
     assert '"request_material"' in selector_source
     assert "requestMaterialPreview" in layout_source
-    assert ".runtime-console-project-folder-tasks" in styles_source
+    assert ".runtime-console-project-folder-flow" in styles_source
 
 
 def test_task318_official_project_folder_check_ui_and_service_boundaries() -> None:
@@ -5444,7 +5445,7 @@ def test_task320_project_folder_single_task_ui_boundaries_are_wired() -> None:
     assert "confirmedFeeLatest" in layout_source
     assert "Project Folder preparation checklist" not in lifecycle_sections_source
     assert "ProjectPackagePreviewPanel" not in lifecycle_sections_source
-    assert ".runtime-console-project-folder-tasks" in styles_source
+    assert ".runtime-console-project-folder-flow" in styles_source
     assert ".runtime-console-current-folder-task" in styles_source
 
 
@@ -5578,12 +5579,13 @@ def test_task316_official_workspace_action_keeps_internal_terms_out_of_ui() -> N
         encoding="utf-8"
     )
 
-    assert "OfficialWorkspaceActionPanel" in layout_source
+    assert "ProjectFolderTaskList" in project_workbench_feature_source()
     assert "officialWorkspacePreview" in runtime_model_source
     assert "fetchOfficialWorkspacePreview" in client_source
     assert "createOfficialWorkspace" in client_source
-    assert "Create local project folder" in action_source
-    assert "The official project folder has not been created locally." in action_source
+    assert "Create official project folder locally" in action_source
+    assert "Create project folder" in action_source
+    assert "Create the formal project folder from the standard template." in action_source
     assert "Planned project folder paths" in action_source
     assert "Created project folder paths" in action_source
     assert "Workspace details" not in action_source

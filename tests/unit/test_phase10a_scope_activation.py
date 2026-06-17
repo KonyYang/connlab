@@ -122,6 +122,7 @@ def test_phase10a_board_closes_after_task065_completion() -> None:
             or "Current Active Task: none; TASK_220 Project Workbench target UI alignment complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_221 Matrix Editor target UI alignment and workflow convergence complete, pending user approval for next controlled task" in board
             or "Current Active Task: none; TASK_222 Matrix Editor target UI pixel tuning pass complete, pending user approval for next controlled task" in board
+            or "Current Active Task: `TASK_315F_FEE_CURRENT_VERSION_CANCEL_UPDATE_SEMANTICS` is complete" in board
         or "Current Active Task: none (`DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` complete; awaiting next approved task)." in board
     )
     assert "### Phase 10A - Intake Entry Completion" in board
