@@ -140,7 +140,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
-    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Project commands")).toBeTruthy();
     expect(
       screen.getByText("DL-2026-06-777 Coolpower HDF 3.40mm pin Qualification Testing")
@@ -175,11 +175,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Project commands")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open Fee" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Folder ready" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Folder ready" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
     expect(screen.getByLabelText("Folder Action")).toBeTruthy();
@@ -203,7 +204,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("tab", { name: "Overview" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Project Folder" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
-    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Folder Action").textContent).toContain("Required forms");
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
@@ -245,7 +246,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix authority setup")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
@@ -263,7 +264,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getByText("Test Execution Workspace")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Project Folder progress")).toBeTruthy();
@@ -275,10 +276,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Fee Evaluation" })).toBeNull();
     expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Fee" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Open Fee Evaluation" })).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
-    expect(screen.getByText("Fee summary panel")).toBeTruthy();
+    expect(screen.queryByText("Fee summary panel")).toBeNull();
   });
 
   it("maps Confirmed Fee latest status into Project Folder authority readiness", async () => {

@@ -2017,7 +2017,22 @@
 }
 
 .runtime-console-active-matrix .runtime-console-main {
-  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.runtime-console-active-matrix .runtime-console-matrix-projection {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.runtime-console-active-matrix .runtime-console-matrix-projection-table-wrap {
+  border-radius: 10px;
+  background: var(--color-surface);
 }
 
 .runtime-console-folder-inspector {

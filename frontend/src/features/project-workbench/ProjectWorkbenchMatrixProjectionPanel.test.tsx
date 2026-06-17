@@ -5,7 +5,6 @@ import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixP
 
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixTestRecordPreview: vi.fn(),
-  generateConfirmedMatrixTestRecordDraftDownload: vi.fn(),
 }));
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -13,15 +12,10 @@ vi.mock("../../api/client", async (importOriginal) => {
   return {
     ...actual,
     fetchConfirmedMatrixTestRecordPreview: apiMocks.fetchConfirmedMatrixTestRecordPreview,
-    generateConfirmedMatrixTestRecordDraftDownload: apiMocks.generateConfirmedMatrixTestRecordDraftDownload,
   };
 });
 
 describe("ProjectWorkbenchMatrixProjectionPanel", () => {
-  const createObjectUrlMock = vi.fn(() => "blob:test-record");
-  const revokeObjectUrlMock = vi.fn();
-  const anchorClickMock = vi.fn();
-
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -29,7 +23,6 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
 
   it("renders confirmed groups as matrix columns and step tokens as clickable cells", async () => {
     const onTokenSelect = vi.fn();
-    const onOpenMatrixEditor = vi.fn();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
       project_id: "P1",
       confirmed_matrix_id: "cm-1",
@@ -71,20 +64,9 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
         },
       ],
     });
-    apiMocks.generateConfirmedMatrixTestRecordDraftDownload.mockResolvedValue({
-      blob: new Blob(["docx"]),
-      fileName: "DL-001 Test Record.docx",
-    });
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(anchorClickMock);
-    vi.stubGlobal("URL", {
-      createObjectURL: createObjectUrlMock,
-      revokeObjectURL: revokeObjectUrlMock,
-    });
-
     render(
       <ProjectWorkbenchMatrixProjectionPanel
         projectId="P1"
-        onOpenMatrixEditor={onOpenMatrixEditor}
         onTokenSelect={onTokenSelect}
       />
     );
@@ -93,9 +75,8 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
       expect(apiMocks.fetchConfirmedMatrixTestRecordPreview).toHaveBeenCalledWith("P1");
     });
     await screen.findByRole("columnheader", { name: "Group 1" });
-    expect(screen.getByRole("button", { name: "Matrix" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Test record" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Test record" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Matrix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Test record" })).toBeNull();
     expect(screen.queryByText("Authority Change History")).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
     expect(screen.queryByText("Confirmed: cm-1")).toBeNull();
@@ -124,8 +105,6 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(screen.queryByText("Reopened / retest")).toBeNull();
 
     const tokens = screen.getAllByRole("button", { name: "1" });
-    fireEvent.click(screen.getByRole("button", { name: "Matrix" }));
-    expect(onOpenMatrixEditor).toHaveBeenCalledTimes(1);
     fireEvent.click(tokens[0]);
     expect(screen.queryByLabelText("Record Step Workspace")).toBeNull();
     expect(screen.queryByText("Selected token: Group 1 / 1")).toBeNull();
@@ -133,13 +112,6 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     const lastCall = onTokenSelect.mock.calls[onTokenSelect.mock.calls.length - 1];
     expect(lastCall?.[0]?.groupLabel).toBe("Group 1");
     expect(lastCall?.[0]?.rawToken).toBe("1");
-
-    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
-    await waitFor(() => {
-      expect(apiMocks.generateConfirmedMatrixTestRecordDraftDownload).toHaveBeenCalledWith("P1");
-    });
-    expect(createObjectUrlMock).toHaveBeenCalledTimes(1);
-    expect(anchorClickMock).toHaveBeenCalledTimes(1);
   });
 
   it("renders not-ready state for missing active confirmed matrix", async () => {
@@ -152,7 +124,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(
       await screen.findByText("No active confirmed matrix yet. Confirm Matrix authority first.")
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Test record" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Test record" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
   });
 
@@ -202,7 +174,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
 
     await screen.findByRole("columnheader", { name: "Group 1" });
-    expect(screen.getByRole("button", { name: "Matrix" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Matrix" })).toBeNull();
     const table = await screen.findByRole("table");
     const visualRows = within(table).getAllByRole("row").filter((row) => within(row).queryByText("Visual"));
     expect(visualRows).toHaveLength(1);
@@ -312,47 +284,6 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
 
     expect(
       await screen.findByText("Unable to load Matrix projection. Try again after confirming Matrix authority.")
-    ).toBeTruthy();
-  });
-
-  it("shows backend generation error message when Test record generation fails", async () => {
-    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
-      project_id: "P1",
-      confirmed_matrix_id: "cm-1",
-      preview_status: "ready",
-      groups: [
-        {
-          group_key: "g1",
-          group_label: "Group 1",
-          sample_quantity_expression: "3",
-          step_count: 1,
-          steps: [
-            {
-              sequence: 1,
-              raw_token: "1",
-              test_item: "Visual",
-              section: "6.1",
-              method: "EIA-364-18B",
-              condition: "10x",
-              requirement: "No damage",
-            },
-          ],
-        },
-      ],
-    });
-    apiMocks.generateConfirmedMatrixTestRecordDraftDownload.mockRejectedValue(
-      new ApiRequestError("Test record template path is not configured.", 422, {
-        detail: "Test record template path is not configured.",
-      })
-    );
-
-    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
-
-    await screen.findByRole("columnheader", { name: "Group 1" });
-    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
-
-    expect(
-      await screen.findByText("Test record template path is not configured.")
     ).toBeTruthy();
   });
 });

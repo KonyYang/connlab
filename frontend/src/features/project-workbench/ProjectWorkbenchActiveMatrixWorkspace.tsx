@@ -14,7 +14,6 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"];
   creatingFolder: boolean;
   effectiveFolderReady: boolean;
-  feeEvaluationOutputStatus: ProjectRuntimeConsoleModel["versionStatus"]["downstream"][number] | null;
   officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
   onFolderCommand: () => void;
   onOpenFeeEvaluation: () => void;
@@ -23,8 +22,6 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   onSelectProjectFolderTask: (taskKey: ProjectFolderTaskKey) => void;
   projectFolderTasks: ProjectFolderTaskRow[];
   projectId: string;
-  projectIdentity: string;
-  projectSubtitle: string;
   requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
   requestMaterialError: ProjectRuntimeConsoleModel["requestMaterialError"];
   requestMaterialLoading: boolean;
@@ -46,7 +43,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   confirmedFeeLatest,
   creatingFolder,
   effectiveFolderReady,
-  feeEvaluationOutputStatus,
   officialWorkspaceStatus,
   onFolderCommand,
   onOpenFeeEvaluation,
@@ -55,8 +51,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   onSelectProjectFolderTask,
   projectFolderTasks,
   projectId,
-  projectIdentity,
-  projectSubtitle,
   requestMaterialPreview,
   requestMaterialError,
   requestMaterialLoading,
@@ -83,18 +77,12 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
     visibleProjectFolderTasks[0];
   const folderCommand = deriveFolderCommand({
     creatingFolder,
-    effectiveFolderReady,
     officialWorkspaceStatus,
-    currentFolderTask,
   });
 
   return (
     <section className="runtime-console-active-matrix" aria-label="Test Execution Workspace">
       <section className="runtime-console-commandbar" aria-label="Project commands">
-        <div className="runtime-console-commandbar-identity">
-          <strong>{projectIdentity}</strong>
-          <span>{projectSubtitle}</span>
-        </div>
         <div className="runtime-console-commandbar-status" aria-label="Project status">
           <StatusChip tone="ready" label={activeMatrixAuthorityReady ? "Matrix confirmed" : "Matrix missing"} />
           <StatusChip
@@ -113,15 +101,17 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
           <button type="button" onClick={onOpenFeeEvaluation}>
             Open Fee
           </button>
-          <button
-            type="button"
-            className="is-primary"
-            disabled={folderCommand.disabled}
-            title={folderCommand.disabledReason}
-            onClick={onFolderCommand}
-          >
-            {folderCommand.label}
-          </button>
+          {!effectiveFolderReady ? (
+            <button
+              type="button"
+              className="is-primary"
+              disabled={folderCommand.disabled}
+              title={folderCommand.disabledReason}
+              onClick={onFolderCommand}
+            >
+              {folderCommand.label}
+            </button>
+          ) : null}
           <button
             type="button"
             disabled
@@ -132,22 +122,8 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
         </div>
       </section>
 
-      <header className="runtime-console-workspace-heading">
-        <div>
-          <h3>Test Execution Workspace</h3>
-          <p>
-            Use the confirmed Matrix as the main testing map. Folder generation and updates
-            stay in the command bar and inspector.
-          </p>
-        </div>
-      </header>
-
       <section className="runtime-console-workbench-canvas">
         <ProjectWorkbenchExecutionConsole
-          feeEvaluationOutputStatus={feeEvaluationOutputStatus}
-          activeMatrixAuthorityReady={activeMatrixAuthorityReady}
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-          onOpenMatrixEditor={onOpenMatrixEditor}
           projectId={projectId}
           runtimeProjectionSnapshot={runtimeProjectionSnapshot}
           selectedProjectionToken={selectedProjectionToken}
@@ -252,39 +228,22 @@ function formatFeeAuthorityLabel(
 
 function deriveFolderCommand({
   creatingFolder,
-  currentFolderTask,
-  effectiveFolderReady,
   officialWorkspaceStatus,
 }: {
   creatingFolder: boolean;
-  currentFolderTask: ProjectFolderTaskRow;
-  effectiveFolderReady: boolean;
   officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
 }): {
   disabled: boolean;
   disabledReason?: string;
   label: string;
 } {
-  if (!effectiveFolderReady) {
-    const canGenerate =
-      officialWorkspaceStatus === "ready" || officialWorkspaceStatus === "adoptable";
-    return {
-      disabled: creatingFolder || !canGenerate,
-      disabledReason: canGenerate
-        ? undefined
-        : "Project folder template or target path is not ready.",
-      label: creatingFolder ? "Generating..." : "Generate folder",
-    };
-  }
-  if (currentFolderTask.actionLabel && currentFolderTask.actionTarget) {
-    return {
-      disabled: false,
-      label: currentFolderTask.actionLabel,
-    };
-  }
+  const canGenerate =
+    officialWorkspaceStatus === "ready" || officialWorkspaceStatus === "adoptable";
   return {
-    disabled: true,
-    disabledReason: "Project folder actions are current.",
-    label: "Folder ready",
+    disabled: creatingFolder || !canGenerate,
+    disabledReason: canGenerate
+      ? undefined
+      : "Project folder template or target path is not ready.",
+    label: creatingFolder ? "Generating..." : "Generate folder",
   };
 }

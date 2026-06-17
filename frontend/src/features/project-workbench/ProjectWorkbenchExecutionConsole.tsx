@@ -1,5 +1,4 @@
 import type { ReactElement, ReactNode } from "react";
-import { FeeEvaluationStatusSummary } from "./FeeEvaluationStatusSummary";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -19,20 +18,12 @@ const STEP_STATUS_BY_TONE: Record<
 };
 
 export function ProjectWorkbenchExecutionConsole({
-  activeMatrixAuthorityReady,
-  feeEvaluationOutputStatus,
-  onOpenFeeEvaluation,
-  onOpenMatrixEditor,
   projectId,
   runtimeProjectionSnapshot,
   selectedProjectionToken,
   setSelectedProjectionToken,
   sideColumnAfter,
 }: {
-  activeMatrixAuthorityReady: boolean;
-  feeEvaluationOutputStatus: ProjectRuntimeConsoleModel["versionStatus"]["downstream"][number] | null;
-  onOpenFeeEvaluation: () => void;
-  onOpenMatrixEditor: () => void;
   projectId: string;
   runtimeProjectionSnapshot: ProjectRuntimeConsoleModel["runtimeProjectionSnapshot"];
   selectedProjectionToken: MatrixProjectionTokenCell | null;
@@ -68,7 +59,6 @@ export function ProjectWorkbenchExecutionConsole({
       <div className="runtime-console-main">
         <ProjectWorkbenchMatrixProjectionPanel
           projectId={projectId}
-          onOpenMatrixEditor={onOpenMatrixEditor}
           onTokenSelect={setSelectedProjectionToken}
         />
       </div>
@@ -124,12 +114,6 @@ export function ProjectWorkbenchExecutionConsole({
             <textarea readOnly disabled value="Result judgement is not available yet." />
           </label>
         </aside>
-        <FeeEvaluationStatusSummary
-          projectId={projectId}
-          outputStatus={feeEvaluationOutputStatus}
-          canOpen={activeMatrixAuthorityReady}
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-        />
         {sideColumnAfter}
       </div>
     </section>

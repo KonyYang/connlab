@@ -136,10 +136,6 @@ export function ProjectWorkbenchLayout({
     },
     selectedLifecycleMode
   );
-  const feeEvaluationOutputStatus =
-    runtimeModel.versionStatus.downstream.find(
-      (item) => item.key === "fee_evaluation"
-    ) ?? null;
   const projectFolderTasks = deriveProjectFolderTasks({
     folderReady: effectiveFolderReady,
     matrixAuthorityReady: activeMatrixAuthorityReady,
@@ -313,7 +309,6 @@ export function ProjectWorkbenchLayout({
           confirmedFeeLatest={confirmedFeeLatest}
           creatingFolder={officialWorkspaceCreating}
           effectiveFolderReady={effectiveFolderReady}
-          feeEvaluationOutputStatus={feeEvaluationOutputStatus}
           officialWorkspaceStatus={officialWorkspacePreview?.status}
           onFolderCommand={() => {
             if (!effectiveFolderReady) {
@@ -333,8 +328,6 @@ export function ProjectWorkbenchLayout({
           onSelectProjectFolderTask={setSelectedProjectFolderTaskKey}
           projectFolderTasks={projectFolderTasks}
           projectId={project.project_id}
-          projectIdentity={projectIdentity}
-          projectSubtitle={titleParts.slice(1).join(" ")}
           requestMaterialPreview={requestMaterialPreview}
           requestMaterialError={requestMaterialError}
           requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
