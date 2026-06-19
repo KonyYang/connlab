@@ -12,7 +12,6 @@ from backend.application.project_request_material_collection_helpers import (
     candidate_from_asset,
     dedupe_target_names,
     is_application_form,
-    is_confirmed_request_attachment,
     is_request_email,
     preview_status,
     role_priority,
@@ -226,50 +225,39 @@ class ProjectRequestMaterialCollectionService:
         attachments: Sequence[SourceCandidate],
     ) -> tuple[PlannedTarget, ...]:
         """Build target-copy plans from classified source candidates."""
-        source_root = workspace.source_book_path / "Request Material"
         plans: list[PlannedTarget] = []
         for email in email_candidates:
-            plans.extend(
-                [
-                    target(email, "source_book_email", source_root / "E-mail", False),
-                    target(
-                        email,
-                        "official_email",
-                        workspace.official_folder_path / "E-mail",
-                        False,
-                    ),
-                ]
+            plans.append(
+                target(
+                    email,
+                    "official_email",
+                    workspace.official_folder_path / "E-mail",
+                    False,
+                )
             )
         if application_form is not None:
-            plans.extend(
-                [
-                    target(
-                        application_form,
-                        "source_book_application_form",
-                        source_root / "Application Form",
-                        False,
-                    ),
-                    target(
-                        application_form,
-                        "submitted_material",
-                        workspace.official_folder_path / "Submitted Material",
-                        False,
-                    ),
-                ]
+            plans.append(
+                target(
+                    application_form,
+                    "submitted_material",
+                    workspace.official_folder_path / "Submitted Material",
+                    False,
+                )
             )
         for attachment in attachments:
             if attachment.asset.asset_type is not FileAssetType.ATTACHMENT:
                 continue
-            review_required = not is_confirmed_request_attachment(attachment)
-            plans.append(
-                target(
-                    attachment,
-                    "source_book_attachment",
-                    source_root / "Attachments",
-                    review_required,
+            is_msg = _is_msg_attachment(attachment)
+            if is_msg:
+                plans.append(
+                    target(
+                        attachment,
+                        "official_email",
+                        workspace.official_folder_path / "E-mail",
+                        False,
+                    )
                 )
-            )
-            if not review_required:
+            else:
                 plans.append(
                     target(
                         attachment,
@@ -301,6 +289,13 @@ class ProjectRequestMaterialCollectionService:
                     action = "already_present"
                     status = "needs_review" if plan.review_required else "already_present"
                     message = "Already collected."
+                elif (
+                    candidate.asset.asset_type is FileAssetType.APPLICATION_FORM
+                    and plan.target_area == "submitted_material"
+                ):
+                    action = "already_present"
+                    status = "already_present"
+                    message = "Application Form is already collected and may include ConnLab write-back."
                 else:
                     action = "block"
                     status = "conflict"
@@ -308,6 +303,7 @@ class ProjectRequestMaterialCollectionService:
                     if "Target file conflict" not in blockers:
                         blockers.append("Target file conflict")
             elif plan.review_required:
+                action = "skip"
                 status = "needs_review"
                 message = "Needs review before Submitted Material placement."
             items.append(_preview_item(candidate, plan, action, status, message))
@@ -381,14 +377,19 @@ def _preview_item(
     )
 
 
+def _is_msg_attachment(candidate: SourceCandidate) -> bool:
+    """Return whether a confirmed attachment is an Outlook message file."""
+    return candidate.name.lower().endswith(".msg") or candidate.path.suffix.lower() == ".msg"
+
+
 def _review_required_source_paths(
     items: tuple[RequestMaterialPreviewItem, ...],
 ) -> tuple:
-    """Return source paths for items preserved in Source Book only."""
+    """Return source paths for request attachments that still need review."""
     return tuple(
         item.source_path
         for item in items
-        if item.review_required and item.target_area == "source_book_attachment"
+        if item.review_required and item.target_area == "review_attachment"
     )
 
 

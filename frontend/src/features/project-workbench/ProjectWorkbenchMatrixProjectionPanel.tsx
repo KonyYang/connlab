@@ -66,9 +66,19 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         : null,
     [preview]
   );
+  useEffect(() => {
+    if (state !== "ready" || !viewModel || selectedTokenReference) {
+      return;
+    }
+    const firstToken = findFirstProjectionToken(viewModel);
+    if (!firstToken) {
+      return;
+    }
+    setSelectedTokenReference(firstToken.tokenReference);
+    onTokenSelect?.(firstToken);
+  }, [onTokenSelect, selectedTokenReference, state, viewModel]);
   return (
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
-      {state === "loading" ? <p className="fine-print">Loading Matrix projection...</p> : null}
       {state === "not_ready" ? (
         <p className="runtime-console-matrix-projection-empty">
           No active confirmed matrix yet. Confirm Matrix authority first.
@@ -163,4 +173,18 @@ export function ProjectWorkbenchMatrixProjectionPanel({
       ) : null}
     </section>
   );
+}
+
+function findFirstProjectionToken(
+  viewModel: ReturnType<typeof buildMatrixProjectionViewModel>
+): MatrixProjectionTokenCell | null {
+  for (const row of viewModel.rows) {
+    for (const group of viewModel.groupColumns) {
+      const firstCell = row.cellsByGroupKey[group.groupKey]?.[0];
+      if (firstCell) {
+        return firstCell;
+      }
+    }
+  }
+  return null;
 }

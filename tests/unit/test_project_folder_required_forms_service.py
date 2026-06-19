@@ -9,7 +9,6 @@ from backend.application.official_project_workspace_service import OfficialWorks
 from backend.application.project_folder_required_forms_service import (
     GenerateRequiredFormsCommand,
     ProjectFolderRequiredFormsService,
-    RequiredFormsConflictError,
     RequiredFormsContextMismatchError,
     RequiredFormsGenerateTarget,
 )
@@ -22,6 +21,7 @@ from backend.application.project_output_record_service import (
     ProjectOutputStatusSummary,
 )
 from backend.domain import (
+    ApplicationForm,
     ProjectOutputKind,
     ProjectOutputSource,
     ProjectOutputStatus,
@@ -95,13 +95,46 @@ def test_preview_places_fee_and_customer_feedback_at_official_root(tmp_path: Pat
     assert feedback.target_path.parent == preview.official_project_folder_path
 
 
-def test_preview_blocks_existing_target_conflict(tmp_path: Path) -> None:
+def test_preview_allows_untracked_business_form_target_refresh(tmp_path: Path) -> None:
     service = _service(tmp_path, existing_targets={"fee_form"})
 
     preview = service.preview("P1")
 
-    assert preview.status == "conflict"
-    assert _item(preview.items, "fee_form").action == "conflict"
+    assert preview.status == "ready"
+    assert _item(preview.items, "fee_form").action == "update"
+    assert _item(preview.items, "fee_form").existing_sha256 is not None
+
+
+def test_preview_allows_business_form_refresh_when_legacy_record_path_differs(
+    tmp_path: Path,
+) -> None:
+    output_store = _OutputStatusService()
+    output_store.items.append(
+        ProjectOutputStatusItem(
+            output_kind=ProjectOutputKind.FEE_EVALUATION,
+            status=ProjectOutputStatus.CURRENT,
+            output_path=str(tmp_path / "legacy" / "old_fee.xls"),
+            source=ProjectOutputSource.SYSTEM_GENERATED,
+            draft_id="draft-1",
+            draft_version=1,
+            reason="current",
+            updated_at="2026-06-14T00:00:00+00:00",
+            output_sha256="legacy",
+            output_size_bytes=1,
+            source_context_signature="old-context",
+        )
+    )
+    service = _service(
+        tmp_path,
+        existing_targets={"fee_form"},
+        output_service=output_store,
+    )
+
+    preview = service.preview("P1")
+
+    assert preview.status == "ready"
+    assert _item(preview.items, "fee_form").action == "update"
+    assert _item(preview.items, "fee_form").existing_sha256 is not None
 
 
 def test_preview_marks_same_context_unchanged_managed_target_current(tmp_path: Path) -> None:
@@ -156,9 +189,12 @@ def test_generate_rejects_stale_preview_context(tmp_path: Path) -> None:
 def test_generate_blocks_before_copy_when_target_exists(tmp_path: Path) -> None:
     service = _service(tmp_path, existing_targets={"test_record"})
 
-    with pytest.raises(RequiredFormsConflictError):
-        service.generate(_ready_command(tmp_path))
+    result = service.generate(_ready_command(tmp_path))
 
+    assert result.status == "partial"
+    assert _item(result.items, "test_record").status == "conflict"
+    assert _item(result.items, "fee_form").status == "generated"
+    assert _item(result.items, "customer_feedback_form").status == "generated"
     assert _final_path(tmp_path, "test_record").read_text(encoding="utf-8") == "manual"
 
 
@@ -176,6 +212,52 @@ def test_generate_skips_same_context_unchanged_managed_target(tmp_path: Path) ->
     latest = output_store.latest(ProjectOutputKind.FEE_EVALUATION)
     assert latest is not None
     assert latest.status is ProjectOutputStatus.CURRENT
+
+
+def test_generate_recreates_deleted_form_files_from_existing_output_records(
+    tmp_path: Path,
+) -> None:
+    output_store = _OutputStatusService()
+    service = _service(
+        tmp_path,
+        output_service=output_store,
+        managed_targets={
+            "test_record": "same_context_unchanged_fingerprint",
+            "fee_form": "same_context_unchanged_fingerprint",
+            "customer_feedback_form": "same_context_unchanged_fingerprint",
+        },
+    )
+    _final_path(tmp_path, "fee_form").unlink()
+    _final_path(tmp_path, "customer_feedback_form").unlink()
+
+    preview = service.preview("P1")
+    assert preview.status == "ready"
+    assert _item(preview.items, "fee_form").action == "generate"
+    assert _item(preview.items, "customer_feedback_form").action == "generate"
+
+    result = service.generate(
+        _ready_command(
+            tmp_path,
+            expected_targets=(
+                RequiredFormsGenerateTarget("fee_form", _final_path(tmp_path, "fee_form")),
+                RequiredFormsGenerateTarget(
+                    "customer_feedback_form",
+                    _final_path(tmp_path, "customer_feedback_form"),
+                ),
+            ),
+        )
+    )
+
+    assert result.status == "generated"
+    assert _item(result.items, "fee_form").status == "generated"
+    assert _item(result.items, "customer_feedback_form").status == "generated"
+    assert _final_path(tmp_path, "fee_form").is_file()
+    assert _final_path(tmp_path, "customer_feedback_form").is_file()
+    assert output_store.latest(ProjectOutputKind.FEE_EVALUATION).status is ProjectOutputStatus.CURRENT
+    assert (
+        output_store.latest(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM).status
+        is ProjectOutputStatus.CURRENT
+    )
 
 
 def test_generate_accepts_command_with_only_writable_targets_when_some_items_are_current(
@@ -533,6 +615,7 @@ def _service(
         confirmed_matrix_reader=_MatrixReader(matrix_snapshot),
         confirmed_fee_reader=_FeeReader(fee_result),
         customer_feedback_template_reader=_TemplateReader(tmp_path),
+        application_form_reader=_ApplicationFormReader(),
         generator=_Generator(tmp_path),
         file_gateway=file_gateway or _FileGateway(),
         output_status_service=output_service,
@@ -593,7 +676,7 @@ def _final_path(tmp_path: Path, key: str) -> Path:
     names = {
         "test_record": root / "Submitted Material" / "DL-001_Test_Record.docx",
         "fee_form": root / "DL-001_Fee_Form.xls",
-        "customer_feedback_form": root / "DL-001_Customer_Feedback_Form.xlsx",
+        "customer_feedback_form": root / "DL-001_Customer_Feedback_Form_Alice.xlsx",
     }
     return names[key]
 
@@ -611,3 +694,17 @@ def _item(items: tuple[object, ...], key: str):
         if getattr(item, "key") == key:
             return item
     raise AssertionError(f"Missing item {key}")
+
+
+class _ApplicationFormReader:
+    def list_by_project(self, project_id: str) -> list[ApplicationForm]:
+        return [
+            ApplicationForm(
+                form_id="F1",
+                project_id=project_id,
+                form_no="E-3718",
+                revision="H",
+                requester="Requester",
+                assigned_personnel="Alice",
+            )
+        ]

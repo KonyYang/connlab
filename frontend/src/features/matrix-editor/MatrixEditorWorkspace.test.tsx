@@ -191,12 +191,18 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     cleanup();
   });
 
-  it("shows Import Matrix in the header and completion actions in a sticky footer", async () => {
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+  it("shows Matrix-only header actions and completion actions in a sticky footer", async () => {
+    render(
+      <MatrixEditorWorkspace
+        projectId="P1"
+        onBackToWorkbench={() => {}}
+      />
+    );
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
     expect(screen.getByText("spec.docx")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Test record" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Fee Evaluation" })).toBeNull();
     const completionDock = screen.getByRole("contentinfo", { name: "Matrix editor completion actions" });
     expect((completionDock as HTMLElement).classList.contains("matrix-editor-completion-dock")).toBe(true);
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
@@ -826,6 +832,26 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       "Sample quantity is required for selected groups."
     );
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(0));
+  });
+
+  it("keeps transient autosave progress out of the Matrix grid layout", async () => {
+    apiMocks.saveMatrixEditorSessionDraft.mockImplementationOnce(
+      () => new Promise(() => {})
+    );
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Updated method before confirm" },
+    });
+
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
+    expect(screen.queryByText("Preparing confirm...")).toBeNull();
+    expect(document.querySelector(".matrix-editor-save-status")?.textContent ?? "").not.toContain(
+      "Preparing confirm..."
+    );
   });
 
   it("sends day and schedule planning fields when confirming Matrix", async () => {

@@ -166,6 +166,9 @@ from backend.application.public_drive_upload_service import PublicDriveUploadSer
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
 )
+from backend.application.project_application_form_write_back_service import (
+    ProjectApplicationFormWriteBackService,
+)
 from backend.application.matrix_revision_flow_service import (
     MatrixRevisionFlowService,
 )
@@ -803,6 +806,19 @@ def get_project_request_material_collection_service(
     )
 
 
+def get_project_application_form_write_back_service(
+    session: Session = Depends(get_session),
+) -> ProjectApplicationFormWriteBackService:
+    """Build the Project Folder Application Form write-back service."""
+    return ProjectApplicationFormWriteBackService(
+        project_store=ProjectRepository(session),
+        workspace_store=ProjectOfficialWorkspaceRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+        file_asset_store=FileAssetRepository(session),
+        output_record_service=get_project_output_record_service(session),
+    )
+
+
 def get_official_project_folder_check_service(
     session: Session = Depends(get_session),
 ) -> OfficialProjectFolderCheckService:
@@ -929,7 +945,6 @@ class _RequiredFormsStagingGenerator:
             result = self._customer_feedback_service.generate(
                 CustomerFeedbackFormGenerationCommand(
                     project_id=project_id,
-                    output_dir=output_dir,
                 )
             )
             return _rename_staged_file(result.output_path, target_name)
@@ -985,6 +1000,7 @@ def get_project_folder_required_forms_service(
         customer_feedback_template_reader=_CustomerFeedbackTemplateReader(
             ExternalResourceRepository(session)
         ),
+        application_form_reader=ApplicationFormRepository(session),
         generator=_RequiredFormsStagingGenerator(
             settings=settings,
             test_record_service=test_record_service,

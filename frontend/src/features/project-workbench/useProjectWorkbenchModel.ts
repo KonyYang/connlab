@@ -36,6 +36,7 @@ import {
   updateProjectTestPlanMatrixDraft,
   uploadPublicDriveProjectFolder,
   validateProjectTestPlanMatrixDraft,
+  writeBackProjectApplicationForm,
   type ApprovalPackageRequest,
   type ApprovalPackageResponse,
   type ConfirmedMatrixSnapshot,
@@ -57,6 +58,7 @@ import {
   type OfficialFolderCheckPreview,
   type OfficialFolderRepairResponse,
   type OfficialWorkspaceCreateResponse,
+  type OfficialWorkspaceConflictStrategy,
   type OfficialWorkspacePreview,
   type PublicDriveUploadPreview,
   type PublicDriveUploadResult,
@@ -190,7 +192,9 @@ export type ProjectWorkbenchModel = {
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
-  onCreateOfficialWorkspace: () => Promise<void>;
+  onCreateOfficialWorkspace: (
+    conflictStrategy?: OfficialWorkspaceConflictStrategy
+  ) => Promise<void>;
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
   onRefreshPublicDriveUploadPreview: () => Promise<void>;
@@ -617,23 +621,120 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function onCreateOfficialWorkspace(): Promise<void> {
+  async function onCreateOfficialWorkspace(
+    conflictStrategy?: OfficialWorkspaceConflictStrategy
+  ): Promise<void> {
     setOfficialWorkspaceCreating(true);
     try {
-      const result = await createOfficialWorkspace(projectId);
+      const result = await createOfficialWorkspace(
+        projectId,
+        conflictStrategy ? { conflict_strategy: conflictStrategy } : {}
+      );
       setOfficialWorkspaceResult(result);
-      setMessage("Local project folder created.");
+      setMessage(
+        conflictStrategy
+          ? "Project folder rebuilt."
+          : "Project folder workflow updated."
+      );
       setError(null);
       setOfficialWorkspaceError(null);
       await onRefreshOfficialWorkspacePreview();
-      await onRefreshPackagePreview();
-      await onRefreshRequestMaterial();
-      await onRefreshOfficialFolderCheck();
-      await onRefreshPublicDriveUploadPreview();
+      await runProjectFolderBusinessFlowAfterCreate();
     } catch (err) {
       setOfficialWorkspaceError((err as Error).message);
     } finally {
       setOfficialWorkspaceCreating(false);
+    }
+  }
+
+  async function runProjectFolderBusinessFlowAfterCreate(): Promise<void> {
+    await collectRequestMaterialAfterFolderCreate();
+    await refreshOfficialFolderCheckAfterFolderCreate();
+    await generateRequiredFormsAfterFolderCreate();
+    await syncSection2AfterFolderCreate();
+    await writeBackApplicationFormAfterFolderCreate();
+    await onRefreshPackagePreview();
+    await onRefreshPublicDriveUploadPreview();
+  }
+
+  async function collectRequestMaterialAfterFolderCreate(): Promise<void> {
+    try {
+      const result = await collectRequestMaterial(projectId);
+      setRequestMaterialPreview(result);
+      setRequestMaterialError(null);
+    } catch (err) {
+      setRequestMaterialError((err as Error).message);
+      try {
+        setRequestMaterialPreview(await fetchRequestMaterialPreview(projectId));
+      } catch {
+        setRequestMaterialPreview(null);
+      }
+    }
+  }
+
+  async function refreshOfficialFolderCheckAfterFolderCreate(): Promise<void> {
+    try {
+      setOfficialFolderCheckPreview(await fetchOfficialFolderCheck(projectId));
+      setOfficialFolderCheckError(null);
+    } catch (err) {
+      setOfficialFolderCheckPreview(null);
+      setOfficialFolderCheckError((err as Error).message);
+    }
+  }
+
+  async function generateRequiredFormsAfterFolderCreate(): Promise<void> {
+    try {
+      const preview = await fetchProjectFolderRequiredFormsPreview(projectId);
+      setRequiredFormsPreview(preview);
+      setRequiredFormsError(null);
+      if (preview.status !== "ready" && preview.status !== "conflict") {
+        return;
+      }
+      if (!preview.items.some((item) => item.action === "generate" || item.action === "update")) {
+        return;
+      }
+      const result = await generateProjectFolderRequiredForms(
+        projectId,
+        buildRequiredFormsGenerateRequest(preview)
+      );
+      setRequiredFormsResult(result);
+      setRequiredFormsPreview(await fetchProjectFolderRequiredFormsPreview(projectId));
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+    } catch (err) {
+      setRequiredFormsError((err as Error).message);
+    }
+  }
+
+  async function syncSection2AfterFolderCreate(): Promise<void> {
+    try {
+      const preview = await fetchProjectSection2SyncPreview(projectId);
+      setSection2SyncPreview(preview);
+      setSection2SyncError(null);
+      if (
+        preview.status !== "ready" ||
+        !preview.confirmed_matrix_id ||
+        preview.confirmed_revision === null
+      ) {
+        return;
+      }
+      const result = await syncProjectSection2FromConfirmedMatrix(projectId, {
+        expected_confirmed_matrix_id: preview.confirmed_matrix_id,
+        expected_confirmed_revision: preview.confirmed_revision,
+        operator: null,
+      });
+      setSection2SyncPreview(result);
+    } catch (err) {
+      setSection2SyncError((err as Error).message);
+    }
+  }
+
+  async function writeBackApplicationFormAfterFolderCreate(): Promise<void> {
+    try {
+      await writeBackProjectApplicationForm(projectId);
+      setSection2SyncError(null);
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+    } catch (err) {
+      setSection2SyncError((err as Error).message);
     }
   }
 

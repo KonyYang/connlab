@@ -90,6 +90,8 @@ function deriveLocalProjectFolderTask(
   input: ProjectFolderTaskSelectorInput
 ): ProjectFolderTaskRow {
   const checkStatus = input.officialFolderCheckPreview?.status ?? null;
+  const requiredFolders = input.officialFolderCheckPreview?.required_folders ?? [];
+  const hasFolderConflict = requiredFolders.some((item) => item.status === "conflict");
   if (!input.folderReady) {
     return {
       key: "local_project_folder",
@@ -118,7 +120,7 @@ function deriveLocalProjectFolderTask(
       warnings: input.officialFolderCheckPreview?.warnings ?? [],
     };
   }
-  if (checkStatus === "conflict") {
+  if (checkStatus === "conflict" && hasFolderConflict) {
     return {
       key: "local_project_folder",
       title: "Local project folder",

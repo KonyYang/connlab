@@ -5,12 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import json
 from typing import Callable, Protocol
 from uuid import uuid4
 
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
 )
+from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftContext,
     FeeEvaluationPricingDraftLoadResult,
@@ -58,6 +60,7 @@ class ConfirmedFeeVersionReadResult:
     status: ConfirmedFeeStatus
     current_context: FeeEvaluationPricingDraftContext
     latest_confirmed_fee: ConfirmedFeeVersion | None
+    fee_review_required_count: int = 0
 
 
 class ConfirmedFeeVersionStore(Protocol):
@@ -139,14 +142,20 @@ class ConfirmedFeeVersionService:
                 current_context=load_result.current_context,
                 latest_confirmed_fee=None,
             )
+        status: ConfirmedFeeStatus = (
+            "current"
+            if _version_matches_context(latest, load_result.current_context)
+            else "stale"
+        )
         return ConfirmedFeeVersionReadResult(
-            status=(
-                "current"
-                if _version_matches_context(latest, load_result.current_context)
-                else "stale"
-            ),
+            status=status,
             current_context=load_result.current_context,
             latest_confirmed_fee=latest,
+            fee_review_required_count=(
+                _auto_rebase_fee_review_required_count(latest)
+                if status == "current"
+                else 0
+            ),
         )
 
 
@@ -244,6 +253,53 @@ def _summary_from_saved_pricing_snapshot(
         external_cost=_format_decimal(external_cost, Decimal("0.01")),
         grand_cost=_format_decimal(grand_cost, Decimal("0.01")),
     )
+
+
+def _auto_rebase_fee_review_required_count(version: ConfirmedFeeVersion) -> int:
+    """Return rows that still need operator review after an automatic Matrix Fee rebase."""
+    if (version.confirmation_note or "").strip() != AUTO_REBASE_FEE_CONFIRMATION_NOTE:
+        return 0
+    try:
+        payload = json.loads(version.pricing_snapshot_json)
+    except (TypeError, json.JSONDecodeError):
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    rows = payload.get("rows")
+    manual_rows = payload.get("manual_rows")
+    return sum(
+        1
+        for row in _iter_row_payloads(rows, manual_rows)
+        if _row_requires_fee_review(row)
+    )
+
+
+def _iter_row_payloads(*collections: object):
+    for collection in collections:
+        if not isinstance(collection, list):
+            continue
+        for item in collection:
+            if isinstance(item, dict):
+                yield item
+
+
+def _row_requires_fee_review(row: dict[str, object]) -> bool:
+    unit_type = str(row.get("unit_type") or "").strip()
+    if unit_type.casefold() == "pending":
+        return True
+    return (
+        _decimal_value_for_review(row.get("unit_price")) == Decimal("0")
+        and _decimal_value_for_review(row.get("base_fee")) == Decimal("0")
+        and _decimal_value_for_review(row.get("testing_fee")) == Decimal("0")
+        and not str(row.get("notes") or "").strip()
+    )
+
+
+def _decimal_value_for_review(value: object) -> Decimal:
+    try:
+        return _decimal_value(str(value or "0"))
+    except ConfirmedFeeSummaryValidationError:
+        return Decimal("0")
 
 
 def _decimal_value(value: str) -> Decimal:

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from backend.api.dependencies import get_official_project_workspace_service
 from backend.application.official_project_workspace_service import (
+    OfficialWorkspaceConflictOption,
     OfficialProjectWorkspaceService,
     OfficialWorkspaceCreateError,
     OfficialWorkspaceCreateResult,
@@ -40,6 +41,22 @@ class OfficialWorkspacePreviewResponse(BaseModel):
     blockers: list[str]
     warnings: list[str]
     planned_paths: list[str]
+    conflict_paths: list[str]
+    conflict_options: list["OfficialWorkspaceConflictOptionResponse"]
+
+
+class OfficialWorkspaceConflictOptionResponse(BaseModel):
+    """Operator choice for an existing local project folder conflict."""
+
+    key: str
+    label: str
+    description: str
+
+
+class OfficialWorkspaceCreateRequest(BaseModel):
+    """Create request for resolving local project folder conflicts."""
+
+    conflict_strategy: str | None = None
 
 
 class OfficialWorkspaceCreateResponse(BaseModel):
@@ -79,11 +96,17 @@ def preview_official_workspace(
 )
 def create_official_workspace(
     project_id: str,
+    request: OfficialWorkspaceCreateRequest | None = None,
     service: OfficialProjectWorkspaceService = Depends(get_official_project_workspace_service),
 ) -> OfficialWorkspaceCreateResponse:
     """Create or continue a local official project workspace."""
     try:
-        return _create_response(service.create(project_id))
+        return _create_response(
+            service.create(
+                project_id,
+                conflict_strategy=request.conflict_strategy if request else None,
+            )
+        )
     except OfficialWorkspaceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except OfficialWorkspaceCreateError as exc:
@@ -108,6 +131,11 @@ def _preview_response(preview: OfficialWorkspacePreview) -> OfficialWorkspacePre
         blockers=list(preview.blockers),
         warnings=list(preview.warnings),
         planned_paths=[str(path) for path in preview.planned_paths],
+        conflict_paths=[str(path) for path in preview.conflict_paths],
+        conflict_options=[
+            _conflict_option_response(option)
+            for option in preview.conflict_options
+        ],
     )
 
 
@@ -132,3 +160,14 @@ def _create_response(result: OfficialWorkspaceCreateResult) -> OfficialWorkspace
 def _path(path: Path | None) -> str | None:
     """Return a string path or None."""
     return str(path) if path is not None else None
+
+
+def _conflict_option_response(
+    option: OfficialWorkspaceConflictOption,
+) -> OfficialWorkspaceConflictOptionResponse:
+    """Convert a conflict option to the API response model."""
+    return OfficialWorkspaceConflictOptionResponse(
+        key=option.key,
+        label=option.label,
+        description=option.description,
+    )

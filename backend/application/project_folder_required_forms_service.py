@@ -13,6 +13,7 @@ from backend.application.project_output_record_service import (
     RegisterProjectOutputCommand,
 )
 from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
+from backend.domain.models import ApplicationForm
 
 
 REQUIRED_FORM_DEFINITIONS: tuple[tuple[str, str, ProjectOutputKind, str, str | None], ...] = (
@@ -34,7 +35,7 @@ REQUIRED_FORM_DEFINITIONS: tuple[tuple[str, str, ProjectOutputKind, str, str | N
         "customer_feedback_form",
         "Customer Feedback Form",
         ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
-        "{dl}_Customer_Feedback_Form.xlsx",
+        "{dl}_Customer_Feedback_Form{owner}.xlsx",
         None,
     ),
 )
@@ -89,6 +90,13 @@ class CustomerFeedbackTemplateReader(Protocol):
 
     def preview_template(self, project_id: str) -> Path:
         """Return the unique Customer Feedback template path."""
+
+
+class ApplicationFormReader(Protocol):
+    """Application Form reader for formal Project Folder naming."""
+
+    def list_by_project(self, project_id: str) -> list[ApplicationForm]:
+        """Return Application Forms for a project."""
 
 
 class RequiredFormsStagingGenerator(Protocol):
@@ -216,6 +224,7 @@ class ProjectFolderRequiredFormsService:
         confirmed_matrix_reader: ConfirmedMatrixReader,
         confirmed_fee_reader: ConfirmedFeeReader,
         customer_feedback_template_reader: CustomerFeedbackTemplateReader,
+        application_form_reader: ApplicationFormReader,
         generator: RequiredFormsStagingGenerator,
         file_gateway: RequiredFormsFileGateway,
         output_status_service: OutputStatusServicePort,
@@ -226,6 +235,7 @@ class ProjectFolderRequiredFormsService:
         self._matrices = confirmed_matrix_reader
         self._fees = confirmed_fee_reader
         self._feedback_templates = customer_feedback_template_reader
+        self._application_forms = application_form_reader
         self._generator = generator
         self._files = file_gateway
         self._outputs = output_status_service
@@ -249,6 +259,7 @@ class ProjectFolderRequiredFormsService:
         if fee is None:
             return _blocked_preview(project_id, "Confirmed Fee is missing.")
         template_path = self._feedback_templates.preview_template(project_id)
+        owner_suffix = _owner_suffix(self._application_forms.list_by_project(project_id))
         source_context = _source_context_signature(matrix, fee)
         summary = self._outputs.get_status_summary(project_id)
         by_kind = {item.output_kind: item for item in summary.items}
@@ -256,6 +267,7 @@ class ProjectFolderRequiredFormsService:
             self._preview_item(
                 definition=definition,
                 workspace=workspace,
+                owner_suffix=owner_suffix,
                 source_context=source_context,
                 output_item=by_kind.get(definition[2]),
             )
@@ -287,8 +299,6 @@ class ProjectFolderRequiredFormsService:
         """Generate and place Required forms after rechecking the preview context."""
         preview = self.preview(command.project_id)
         self._validate_context(command, preview)
-        if preview.status == "conflict":
-            raise RequiredFormsConflictError("Required forms target conflict.")
         if preview.status == "blocked":
             raise RequiredFormsConflictError(
                 preview.blockers[0] if preview.blockers else "Required forms are blocked."
@@ -298,6 +308,9 @@ class ProjectFolderRequiredFormsService:
         final_placement_success_count = 0
         for item in preview.items:
             if item.target_path is None:
+                continue
+            if item.action == "conflict":
+                generated.append(_failed_item(item, "conflict", item.message))
                 continue
             if item.action == "skip":
                 generated.append(
@@ -362,9 +375,12 @@ class ProjectFolderRequiredFormsService:
                     message="Placed in the Official project folder.",
                 )
             )
+        statuses = {item.status for item in generated}
         overall = "generated"
-        if generated and all(item.status == "updated" for item in generated):
-            overall = "generated"
+        if "failed" in statuses:
+            overall = "partial" if final_placement_success_count > 0 else "blocked"
+        elif "conflict" in statuses:
+            overall = "partial" if final_placement_success_count > 0 else "conflict"
         return RequiredFormsGenerateResult(
             project_id=command.project_id,
             status=overall,
@@ -378,11 +394,17 @@ class ProjectFolderRequiredFormsService:
         *,
         definition: tuple[str, str, ProjectOutputKind, str, str | None],
         workspace: OfficialWorkspaceRecord,
+        owner_suffix: str | None,
         source_context: str,
         output_item: object | None,
     ) -> RequiredFormPreviewItem:
         key, label, kind, pattern, relative_folder = definition
-        target_path = _target_path(workspace, pattern, relative_folder)
+        target_path = _target_path(
+            workspace,
+            pattern,
+            relative_folder,
+            owner_suffix=owner_suffix if key == "customer_feedback_form" else None,
+        )
         if not target_path.exists():
             return RequiredFormPreviewItem(
                 key=key,
@@ -393,7 +415,31 @@ class ProjectFolderRequiredFormsService:
                 message="Ready to generate.",
                 output_kind=kind,
             )
-        if output_item is None or getattr(output_item, "output_path", None) != str(target_path):
+        if output_item is None:
+            if key in {"fee_form", "customer_feedback_form"}:
+                return RequiredFormPreviewItem(
+                    key=key,
+                    label=label,
+                    target_path=target_path,
+                    status="ready",
+                    action="update",
+                    message="Existing formal business form can be refreshed.",
+                    output_kind=kind,
+                    existing_sha256=compute_sha256(target_path),
+                )
+            return _conflict_item(key, label, target_path, kind)
+        if getattr(output_item, "output_path", None) != str(target_path):
+            if key in {"fee_form", "customer_feedback_form"}:
+                return RequiredFormPreviewItem(
+                    key=key,
+                    label=label,
+                    target_path=target_path,
+                    status="ready",
+                    action="update",
+                    message="Existing formal business form can be refreshed.",
+                    output_kind=kind,
+                    existing_sha256=compute_sha256(target_path),
+                )
             return _conflict_item(key, label, target_path, kind)
         stored_sha = getattr(output_item, "output_sha256", None)
         if not stored_sha or compute_sha256(target_path) != stored_sha:
@@ -454,14 +500,23 @@ class ProjectFolderRequiredFormsService:
         if item.target_path is None:
             raise RequiredFormsConflictError("Cannot register a missing target path.")
         summary = self._outputs.get_status_summary(project_id)
+        active_draft_id = getattr(summary, "active_draft_id", None)
         return self._outputs.register_output(
             RegisterProjectOutputCommand(
                 project_id=project_id,
                 output_kind=item.output_kind,
-                status=ProjectOutputStatus.CURRENT,
-                source=ProjectOutputSource.SYSTEM_GENERATED,
+                status=(
+                    ProjectOutputStatus.CURRENT
+                    if active_draft_id
+                    else ProjectOutputStatus.MANUAL
+                ),
+                source=(
+                    ProjectOutputSource.SYSTEM_GENERATED
+                    if active_draft_id
+                    else ProjectOutputSource.MANUAL
+                ),
                 output_path=str(item.target_path),
-                draft_id=summary.active_draft_id,
+                draft_id=active_draft_id,
                 output_sha256=compute_sha256(item.target_path),
                 output_size_bytes=item.target_path.stat().st_size,
                 source_context_signature=source_context,
@@ -482,18 +537,33 @@ def _target_path(
     workspace: OfficialWorkspaceRecord,
     pattern: str,
     relative_folder: str | None,
+    *,
+    owner_suffix: str | None = None,
 ) -> Path:
     dl = _safe_name(workspace.dl_number)
+    owner = f"_{_safe_name(owner_suffix)}" if owner_suffix else ""
     folder = (
         workspace.official_folder_path / relative_folder
         if relative_folder
         else workspace.official_folder_path
     )
-    return folder / pattern.format(dl=dl)
+    return folder / pattern.format(dl=dl, owner=owner)
 
 
 def _safe_name(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in value).strip("._")
+
+
+def _owner_suffix(forms: list[ApplicationForm]) -> str | None:
+    """Return the best business owner suffix for Customer Feedback file names."""
+    form = forms[-1] if forms else None
+    if form is None:
+        return None
+    for value in (form.assigned_personnel, form.requester):
+        text = (value or "").strip()
+        if text:
+            return text
+    return None
 
 
 def _source_context_signature(matrix: object, fee: object) -> str:

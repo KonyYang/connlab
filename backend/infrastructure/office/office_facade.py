@@ -89,6 +89,14 @@ class OfficeFacade:
         """Write Section 2 fields through the configured Word gateway."""
         return self._word_gateway.write_section2_fields(source_path, fields)
 
+    def write_word_application_form_fields(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ) -> WordSection2WriteResult:
+        """Write known application fields through the configured Word gateway."""
+        return self._word_gateway.write_application_form_fields(source_path, fields)
+
     def import_outlook_msg(
         self,
         source_path: Path,

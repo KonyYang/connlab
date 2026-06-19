@@ -92,7 +92,7 @@ def dedupe_target_names(plans: list[PlannedTarget]) -> tuple[PlannedTarget, ...]
 def is_request_email(candidate: SourceCandidate) -> bool:
     """Return whether a candidate is the request email."""
     role = (candidate.role or "").casefold()
-    return role == "email_source" or candidate.path.suffix.casefold() == ".msg"
+    return role == "email_source"
 
 
 def is_application_form(candidate: SourceCandidate) -> bool:

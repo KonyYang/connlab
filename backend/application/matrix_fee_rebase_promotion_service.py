@@ -18,6 +18,7 @@ from backend.application.confirmed_matrix_fee_draft_service import (
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     build_basic_fill_from_confirmed_snapshot,
 )
+from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
@@ -363,7 +364,7 @@ class MatrixFeeRebasePromotionService:
             ),
             confirmed_by="ConnLab Auto",
             confirmed_at=datetime.now(timezone.utc).isoformat(),
-            confirmation_note="Auto-created from Matrix Confirm default Fee pricing draft.",
+            confirmation_note=AUTO_REBASE_FEE_CONFIRMATION_NOTE,
         )
         return self._confirmed_fee_store.create(version)
 

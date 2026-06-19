@@ -60,6 +60,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     const backButton = screen.getByRole("button", { name: "Back to projects" });
     expect(backButton.getAttribute("title")).toBe("Back to Projects overview");
+    expect(screen.queryByText("Project Workbench")).toBeNull();
 
     await user.click(backButton);
     expect(onBack).toHaveBeenCalledTimes(1);
@@ -141,7 +142,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
 
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
-    expect(screen.getByLabelText("Project commands")).toBeTruthy();
+    expect(screen.getByLabelText("Project Workbench actions")).toBeTruthy();
     expect(
       screen.getByText("DL-2026-06-777 Coolpower HDF 3.40mm pin Qualification Testing")
     ).toBeTruthy();
@@ -165,7 +166,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
   });
 
-  it("uses a command bar and Matrix workspace once active Matrix exists", () => {
+  it("uses header actions and Matrix workspace once active Matrix exists", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -176,15 +177,20 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
-    expect(screen.getByLabelText("Project commands")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Fee" })).toBeTruthy();
+    expect(screen.queryByLabelText("Project commands")).toBeNull();
+    expect(screen.getByLabelText("Project Workbench actions")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fee Evaluation" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Folder ready" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Update project folder" })).toBeTruthy();
+    expect(screen.queryByText("Matrix confirmed")).toBeNull();
+    expect(screen.queryByText("Fee confirmed")).toBeNull();
+    expect(screen.queryByText("Folder generated")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
     expect(screen.getByLabelText("Folder Action")).toBeTruthy();
-    expect(screen.getByText("Project folder details")).toBeTruthy();
+    expect(screen.queryByText("Project folder details")).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByRole("tab", { name: "Project Folder" })).toBeNull();
@@ -211,8 +217,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
   });
 
-  it("opens Settings from the next action when the folder template blocks package readiness", async () => {
-    const user = userEvent.setup();
+  it("keeps the project folder button enabled when package template readiness is blocked", () => {
     const onOpenSettings = vi.fn();
     renderWorkbench(
       {
@@ -225,13 +230,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { onOpenSettings }
     );
 
-    expect(screen.getByRole("button", { name: "Generate folder" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Generate project folder" })).toHaveProperty(
       "disabled",
-      true
+      false
     );
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
     expect(onOpenSettings).not.toHaveBeenCalled();
-    expect(user).toBeTruthy();
   });
 
   it("uses active confirmed Matrix authority even when legacy test-plan drafts are absent", async () => {
@@ -254,7 +258,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(user).toBeTruthy();
   });
 
-  it("keeps Project Folder details collapsed below the Matrix workspace", () => {
+  it("keeps Project Folder details out of the active Matrix workspace", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -267,17 +271,17 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Project Folder progress")).toBeTruthy();
+    expect(screen.queryByLabelText("Project Folder progress")).toBeNull();
+    expect(screen.queryByText("Project folder details")).toBeNull();
     expect(
       screen.getAllByRole("button", { name: "Collect request material" }).length
     ).toBeGreaterThan(0);
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Secondary links")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Fee Evaluation" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Fee" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Open Fee Evaluation" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open Matrix" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Fee Evaluation" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open Fee" })).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
     expect(screen.queryByText("Fee summary panel")).toBeNull();
@@ -319,19 +323,57 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         confirmedFeeLatest: item.confirmedFeeLatest,
       });
 
-      expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
+      expect(screen.getByLabelText("Folder Action").textContent).toContain(
         item.selectedTask
       );
       expect(screen.getAllByText(item.expectedStatus).length).toBeGreaterThan(0);
+      const feeButton = screen.getByRole("button", { name: "Fee Evaluation" });
       if (item.confirmedFeeLatest.status !== "current") {
         expect(screen.queryByRole("button", { name: "Generate required forms" })).toBeNull();
+        expect(feeButton.className).not.toContain("is-review-required");
+        expect(feeButton.getAttribute("title")).toBeNull();
       } else {
+        expect(feeButton.className).not.toContain("is-review-required");
+        expect(feeButton.getAttribute("title")).toBeNull();
         expect(
           screen.getAllByRole("button", { name: "Generate required forms" }).length
         ).toBeGreaterThan(0);
       }
       unmount();
     }
+  });
+
+  it("highlights Fee Evaluation when the current confirmed Fee has auto-rebased rows to review", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      folderReady: true,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      confirmedFeeLatest: confirmedFeeLatest("current", { feeReviewRequiredCount: 2 }),
+    });
+
+    const feeButton = screen.getByRole("button", { name: "Fee Evaluation" });
+
+    expect(feeButton.className).toContain("is-review-required");
+    expect(feeButton.getAttribute("title")).toBe(
+      "2 Fee Evaluation rows need pricing review."
+    );
+  });
+
+  it("shows official workspace workflow errors from the project folder action", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      officialWorkspaceError: "Official project folder is missing.",
+    });
+
+    const alert = screen.getByRole("alert");
+
+    expect(alert.textContent).toContain("Project folder workflow");
+    expect(alert.textContent).toContain("Official project folder is missing.");
   });
 
   it("shows folder structure repair as the single next action", async () => {
@@ -373,8 +415,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Customer Feedback form ready from package preview")).toBeNull();
   });
 
-  it("shows public-drive upload preview counts and item details after selecting that task", async () => {
-    const user = userEvent.setup();
+  it("keeps public-drive upload checklist details out of the active Matrix workspace", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -386,22 +427,15 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    await user.click(screen.getByRole("button", { name: /Public drive upload/ }));
-
-    expect(screen.getByLabelText("Selected Project Folder task").textContent).toContain(
-      "Public drive upload"
-    );
+    expect(screen.queryByRole("button", { name: /Public drive upload/ })).toBeNull();
+    expect(screen.queryByLabelText("Selected Project Folder task")).toBeNull();
     expect(
-      screen.getByText(
+      screen.queryByText(
         "D:/PublicProjects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test"
       )
-    ).toBeTruthy();
-    expect(screen.getAllByText("Add").length).toBeGreaterThan(0);
-    expect(screen.getByText("Update")).toBeTruthy();
-    expect(screen.getByText("Already current")).toBeTruthy();
-    expect(screen.getByText("Conflict")).toBeTruthy();
-    expect(screen.getByText("Submitted Material/application.docx")).toBeTruthy();
-    expect(screen.getByText("Photos")).toBeTruthy();
+    ).toBeNull();
+    expect(screen.queryByText("Submitted Material/application.docx")).toBeNull();
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
   });
 
   it("shows one local project folder creation action before package preparation", async () => {
@@ -431,7 +465,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onCreateOfficialWorkspace,
     });
 
-    expect(screen.getByRole("button", { name: "Generate folder" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate project folder" })).toBeTruthy();
     expect(
       screen.getAllByText("Create the official project folder from the standard template.").length
     ).toBeTruthy();
@@ -440,12 +474,100 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Generate folder" }));
+    await user.click(screen.getByRole("button", { name: "Generate project folder" }));
 
     expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("shows missing workspace settings as a blocker without a create shortcut", () => {
+  it("asks for an explicit conflict strategy before rebuilding an existing project folder", async () => {
+    const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      officialWorkspacePreview: {
+        project_id: "project-1",
+        dl_number: "DL-2026-06-001",
+        status: "exists",
+        local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-2026-06-001",
+        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
+        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
+        official_project_folder_path:
+          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
+        template_root_mode: "template_root",
+        blockers: ["Official project folder already exists."],
+        warnings: [],
+        planned_paths: [],
+        conflict_paths: [
+          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+        ],
+        conflict_options: [
+          {
+            key: "backup_and_recreate",
+            label: "Backup and Rebuild",
+            description: "Move the existing folder to a timestamped backup first.",
+          },
+          {
+            key: "overwrite_rebuild",
+            label: "Overwrite",
+            description: "Replace the existing folder after staging the new template copy.",
+          },
+        ],
+      },
+      officialWorkspaceCreating: false,
+      onCreateOfficialWorkspace,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Generate project folder" }));
+
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
+
+    expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate");
+  });
+
+  it("disables the permanent project folder action until current Fee authority exists", () => {
+    const onCreateOfficialWorkspace = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      confirmedFeeLatest: confirmedFeeLatest("stale"),
+      officialWorkspacePreview: {
+        project_id: "project-1",
+        dl_number: "DL-2026-06-001",
+        status: "ready",
+        local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-2026-06-001",
+        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
+        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
+        official_project_folder_path:
+          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
+        template_root_mode: "template_root",
+        blockers: [],
+        warnings: [],
+        planned_paths: [],
+      },
+      onCreateOfficialWorkspace,
+    });
+
+    const folderButton = screen.getByRole("button", { name: "Generate project folder" });
+    expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toBe(
+      "Update Fee before generating the project folder."
+    );
+    expect(screen.queryByText("Fee needs update")).toBeNull();
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("keeps the permanent project folder action clickable when workspace preflight is blocked", async () => {
+    const user = userEvent.setup();
     const onCreateOfficialWorkspace = vi.fn();
     renderWorkbench(
       {
@@ -475,11 +597,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
-    expect(screen.getByRole("button", { name: "Generate folder" })).toHaveProperty(
-      "disabled",
-      true
-    );
-    expect(screen.getByText("Folder not generated")).toBeTruthy();
+    const folderButton = screen.getByRole("button", { name: "Generate project folder" });
+    expect(folderButton).toHaveProperty("disabled", false);
+    expect(folderButton.getAttribute("title")).toBeNull();
     expect(
       screen.getAllByText(
         "Project folder generation is unavailable until the template and target path are ready."
@@ -489,11 +609,15 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Project default save location is not configured.")).toBeNull();
     expect(screen.queryAllByRole("button", { name: "Create project folder" })).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+
+    await user.click(folderButton);
+
+    expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("treats completed official workspace preview as project folder ready", async () => {
+  it("asks for an explicit update strategy when completed official workspace already exists", async () => {
     const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -516,12 +640,52 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         planned_paths: [],
       },
       packagePreview: readyPackagePreview,
+      onCreateOfficialWorkspace,
     });
 
-    expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
+    const folderButton = screen.getByRole("button", { name: "Update project folder" });
+    expect(folderButton).toHaveProperty("disabled", false);
+    expect(folderButton.getAttribute("title")).toBeNull();
 
-    expect(screen.getAllByText("Local project folder").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Created").length).toBeGreaterThan(0);
+    await user.click(folderButton);
+
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
+    expect(
+      screen.getByText("D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test")
+    ).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
+
+    expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate");
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+  });
+
+  it("asks before updating a recorded project folder while preview is still loading", async () => {
+    const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      folderReady: true,
+      officialWorkspacePreview: null,
+      packagePreview: readyPackagePreview,
+      onCreateOfficialWorkspace,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Update project folder" }));
+
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
+    expect(screen.getByText("Existing project folder")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("dialog", { name: "Project folder already exists" })
+    ).toBeNull();
   });
 });
 
@@ -856,13 +1020,15 @@ const readyRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
 };
 
 function confirmedFeeLatest(
-  status: ConfirmedFeeLatestResponse["status"]
+  status: ConfirmedFeeLatestResponse["status"],
+  options: { feeReviewRequiredCount?: number } = {}
 ): ConfirmedFeeLatestResponse {
   return {
     status,
     current_confirmed_matrix_id: "CM1",
     current_confirmed_revision: 1,
     current_fee_rule_version_id: "fee-rule-1",
+    fee_review_required_count: options.feeReviewRequiredCount ?? 0,
     confirmed_fee:
       status === "missing"
         ? null

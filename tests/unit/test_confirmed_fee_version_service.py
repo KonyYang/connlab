@@ -10,6 +10,7 @@ from backend.application.confirmed_fee_version_service import (
     ConfirmedFeeSummaryValidationError,
     ConfirmedFeeVersionService,
 )
+from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedInactiveRow,
     FeeEvaluationEditedInactiveRowKey,
@@ -21,6 +22,7 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftContext,
     FeeEvaluationPricingDraftLoadResult,
     FeeEvaluationPricingDraftSnapshot,
+    edited_values_to_json,
 )
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
 
@@ -196,6 +198,28 @@ def test_confirm_fee_read_model_reports_missing_current_and_stale() -> None:
     assert stale.latest_confirmed_fee == created
 
 
+def test_confirm_fee_read_model_reports_auto_rebase_fee_rows_for_review() -> None:
+    store = _ConfirmedFeeStore()
+    store.create(_auto_rebase_version())
+    service = _service(store=store)
+
+    result = service.get_latest("P1")
+
+    assert result.status == "current"
+    assert result.fee_review_required_count == 1
+
+
+def test_confirm_fee_read_model_does_not_report_manual_update_for_review() -> None:
+    store = _ConfirmedFeeStore()
+    store.create(_auto_rebase_version(confirmation_note="operator reviewed"))
+    service = _service(store=store)
+
+    result = service.get_latest("P1")
+
+    assert result.status == "current"
+    assert result.fee_review_required_count == 0
+
+
 def _service(
     *,
     store: "_ConfirmedFeeStore | None" = None,
@@ -338,6 +362,58 @@ def _pricing_snapshot(
         ),
         created_at="2026-06-09T09:00:00+00:00",
         updated_at="2026-06-09T09:10:00+00:00",
+    )
+
+
+def _auto_rebase_version(
+    *,
+    confirmation_note: str = AUTO_REBASE_FEE_CONFIRMATION_NOTE,
+) -> ConfirmedFeeVersion:
+    return ConfirmedFeeVersion(
+        confirmed_fee_id="auto-cfv",
+        project_id="P1",
+        confirmed_fee_revision=1,
+        confirmed_matrix_id="cmv-1",
+        confirmed_revision=1,
+        fee_rule_version_id="fee_rules_v2026_06_03",
+        pricing_draft_edit_id="fed-1",
+        pricing_effective_from=None,
+        summary=_summary(
+            testing_fee_total="0",
+            working_hours="0",
+            lab_manpower_cost="0",
+            grand_cost="0",
+        ),
+        pricing_snapshot_json=edited_values_to_json(
+            FeeEvaluationEditedExportValues(
+                rows=(
+                    FeeEvaluationEditedExportRow(
+                        source_line_id="line-new",
+                        confirmed_group_id="group-new",
+                        confirmed_row_id="row-new",
+                        step_token="1",
+                        step_index=0,
+                        spend_time="0",
+                        unit_price="0",
+                        unit_type="Pending",
+                        units="1",
+                        base_fee="0",
+                        discount="0%",
+                        testing_fee="0",
+                        notes="",
+                    ),
+                ),
+                summary=FeeEvaluationEditedExportSummary(
+                    condition_confirmation_spend_time="0",
+                    external_cost="0",
+                    external_cost_note="",
+                    lab_manpower_hourly_rate="200",
+                ),
+            )
+        ),
+        confirmed_by="Lab User",
+        confirmed_at="2026-06-10T09:00:00+00:00",
+        confirmation_note=confirmation_note,
     )
 
 

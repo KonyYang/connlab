@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from backend.api.dependencies import get_official_project_workspace_service
 from backend.api.main import app
 from backend.application.official_project_workspace_service import (
+    OfficialWorkspaceConflictOption,
     OfficialWorkspaceCreateError,
     OfficialWorkspaceCreateResult,
     OfficialWorkspaceNotFoundError,
@@ -31,6 +32,8 @@ def test_official_workspace_preview_api_returns_typed_preview() -> None:
             blockers=(),
             warnings=("Public Project locations is not configured; upload readiness will be checked later.",),
             planned_paths=(Path("D:/Projects/DL-2025-11-074"),),
+            conflict_paths=(),
+            conflict_options=(),
         )
     )
     app.dependency_overrides[get_official_project_workspace_service] = lambda: service
@@ -47,6 +50,50 @@ def test_official_workspace_preview_api_returns_typed_preview() -> None:
     assert payload["status"] == "ready"
     assert payload["dl_number"] == "DL-2025-11-074"
     assert payload["warnings"][0].startswith("Public Project locations")
+    assert payload["conflict_paths"] == []
+    assert payload["conflict_options"] == []
+
+
+def test_official_workspace_preview_api_returns_conflict_options() -> None:
+    conflict_path = Path("D:/Projects/DL-2025-11-074/DL-2025-11-074 Product Qualification test")
+    service = _FakeWorkspaceService(
+        preview=OfficialWorkspacePreview(
+            project_id="P1",
+            dl_number="DL-2025-11-074",
+            local_workspace_root=Path("D:/Projects"),
+            local_workspace_path=Path("D:/Projects/DL-2025-11-074"),
+            source_book_path=Path("D:/Projects/DL-2025-11-074/Source Book"),
+            template_path=Path("D:/Template/DL-XXXX-YY-ZZZ project"),
+            official_folder_path=conflict_path,
+            manifest_path=Path("D:/Projects/DL-2025-11-074/.connlab/manifest.json"),
+            template_root_mode="template_root",
+            status="exists",
+            blockers=(f"Official project folder already exists: {conflict_path}",),
+            warnings=(),
+            planned_paths=(Path("D:/Projects/DL-2025-11-074"), conflict_path),
+            conflict_paths=(conflict_path,),
+            conflict_options=(
+                OfficialWorkspaceConflictOption(
+                    key="backup_and_recreate",
+                    label="Backup and Rebuild",
+                    description="Move the existing folder to a timestamped backup first.",
+                ),
+            ),
+        )
+    )
+    app.dependency_overrides[get_official_project_workspace_service] = lambda: service
+    client = TestClient(app)
+
+    try:
+        response = client.get("/api/projects/P1/official-workspace/preview")
+    finally:
+        app.dependency_overrides.clear()
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "exists"
+    assert payload["conflict_paths"] == [str(conflict_path)]
+    assert payload["conflict_options"][0]["key"] == "backup_and_recreate"
 
 
 def test_official_workspace_create_api_returns_created_paths() -> None:
@@ -72,7 +119,10 @@ def test_official_workspace_create_api_returns_created_paths() -> None:
     client = TestClient(app)
 
     try:
-        response = client.post("/api/projects/P1/official-workspace/create")
+        response = client.post(
+            "/api/projects/P1/official-workspace/create",
+            json={"conflict_strategy": "backup_and_recreate"},
+        )
     finally:
         app.dependency_overrides.clear()
 
@@ -81,6 +131,7 @@ def test_official_workspace_create_api_returns_created_paths() -> None:
     assert payload["workspace_id"] == "W1"
     assert payload["official_project_folder_path"].endswith("Qualification test")
     assert len(payload["created_paths"]) == 2
+    assert service.created_with_strategy == "backup_and_recreate"
 
 
 def test_official_workspace_create_blocked_returns_409() -> None:
@@ -129,8 +180,13 @@ class _FakeWorkspaceService:
         assert self._preview is not None
         return self._preview
 
-    def create(self, project_id: str) -> OfficialWorkspaceCreateResult:
+    def create(
+        self,
+        project_id: str,
+        conflict_strategy: str | None = None,
+    ) -> OfficialWorkspaceCreateResult:
         if self._error:
             raise self._error
         assert self._create is not None
+        self.created_with_strategy = conflict_strategy
         return self._create

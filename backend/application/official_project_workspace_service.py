@@ -75,6 +75,15 @@ class ApplicationFormRepositoryPort(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class OfficialWorkspaceConflictOption:
+    """One operator choice for resolving an existing local project folder."""
+
+    key: str
+    label: str
+    description: str
+
+
+@dataclass(frozen=True, slots=True)
 class OfficialWorkspaceRecord:
     """ConnLab application index record for an official project workspace."""
 
@@ -106,6 +115,8 @@ class OfficialWorkspacePreview:
     blockers: tuple[str, ...]
     warnings: tuple[str, ...]
     planned_paths: tuple[Path, ...]
+    conflict_paths: tuple[Path, ...] = tuple()
+    conflict_options: tuple[OfficialWorkspaceConflictOption, ...] = tuple()
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,6 +131,15 @@ class OfficialWorkspaceCreateResult:
     def official_folder_path(self) -> Path:
         """Return the created official project folder path."""
         return self.record.official_folder_path
+
+
+@dataclass(frozen=True, slots=True)
+class OfficialWorkspaceConflictResolution:
+    """Paths moved while resolving a local project folder conflict."""
+
+    created_paths: tuple[Path, ...]
+    restore_path: Path | None
+    restore_target: Path | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,6 +270,49 @@ class OfficialProjectWorkspaceService:
                         completed_record.manifest_path,
                     ),
                 )
+            if (
+                not completed_record.official_folder_path.is_dir()
+                and completed_record.local_workspace_path.is_dir()
+                and completed_record.source_book_path.is_dir()
+            ):
+                record_warnings.append(
+                    "Previous local project workspace record points to a missing "
+                    "official project folder; ConnLab can generate the current folder "
+                    "from the standard template."
+                )
+                if official_folder_path.exists():
+                    return OfficialWorkspacePreview(
+                        project_id=project_id,
+                        dl_number=dl_number,
+                        local_workspace_root=local_root,
+                        local_workspace_path=completed_record.local_workspace_path,
+                        source_book_path=completed_record.source_book_path,
+                        template_path=template_root.path,
+                        official_folder_path=official_folder_path,
+                        manifest_path=manifest_path,
+                        template_root_mode=template_root.mode,
+                        status="exists",
+                        blockers=(f"Official project folder already exists: {official_folder_path}",),
+                        warnings=tuple(record_warnings),
+                        planned_paths=planned_paths,
+                        conflict_paths=(official_folder_path,),
+                        conflict_options=_conflict_options(),
+                    )
+                return OfficialWorkspacePreview(
+                    project_id=project_id,
+                    dl_number=dl_number,
+                    local_workspace_root=local_root,
+                    local_workspace_path=completed_record.local_workspace_path,
+                    source_book_path=completed_record.source_book_path,
+                    template_path=template_root.path,
+                    official_folder_path=official_folder_path,
+                    manifest_path=manifest_path,
+                    template_root_mode=template_root.mode,
+                    status="adoptable",
+                    blockers=tuple(),
+                    warnings=tuple(record_warnings),
+                    planned_paths=planned_paths,
+                )
             return OfficialWorkspacePreview(
                 project_id=project_id,
                 dl_number=dl_number,
@@ -325,10 +388,30 @@ class OfficialProjectWorkspaceService:
                 blockers=(f"Official project folder already exists: {official_folder_path}",),
                 warnings=tuple(warnings),
                 planned_paths=planned_paths,
+                conflict_paths=(official_folder_path,),
+                conflict_options=_conflict_options(),
             )
 
         status = "ready"
         if workspace_path.exists():
+            if _workspace_has_business_content(workspace_path):
+                return OfficialWorkspacePreview(
+                    project_id=project_id,
+                    dl_number=dl_number,
+                    local_workspace_root=local_root,
+                    local_workspace_path=workspace_path,
+                    source_book_path=source_book_path,
+                    template_path=template_root.path,
+                    official_folder_path=official_folder_path,
+                    manifest_path=manifest_path,
+                    template_root_mode=template_root.mode,
+                    status="exists",
+                    blockers=(f"Local project workspace already exists: {workspace_path}",),
+                    warnings=tuple(warnings),
+                    planned_paths=planned_paths,
+                    conflict_paths=(workspace_path,),
+                    conflict_options=_conflict_options(),
+                )
             status = "adoptable"
             warnings.append("Local project workspace already exists and can be continued.")
 
@@ -348,10 +431,14 @@ class OfficialProjectWorkspaceService:
             planned_paths=planned_paths,
         )
 
-    def create(self, project_id: str) -> OfficialWorkspaceCreateResult:
+    def create(
+        self,
+        project_id: str,
+        conflict_strategy: str | None = None,
+    ) -> OfficialWorkspaceCreateResult:
         """Create or continue the local official project workspace."""
         preview = self.preview(project_id)
-        if preview.status == "completed":
+        if preview.status == "completed" and conflict_strategy is None:
             record = self._workspaces.get_by_project(project_id)
             if record is None:
                 raise OfficialWorkspaceCreateError("Local project workspace record is missing.")
@@ -360,7 +447,12 @@ class OfficialProjectWorkspaceService:
                 created_paths=tuple(),
                 warnings=preview.warnings,
             )
-        if preview.status not in {"ready", "adoptable"}:
+        allowed_conflict_strategies = {option.key for option in preview.conflict_options}
+        if preview.status == "completed":
+            allowed_conflict_strategies = {"backup_and_recreate", "overwrite_rebuild"}
+        if preview.status in {"exists", "completed"} and conflict_strategy in allowed_conflict_strategies:
+            pass
+        elif preview.status not in {"ready", "adoptable"}:
             detail = preview.blockers[0] if preview.blockers else preview.status
             raise OfficialWorkspaceCreateError(detail)
         assert preview.dl_number is not None
@@ -371,23 +463,51 @@ class OfficialProjectWorkspaceService:
         assert preview.manifest_path is not None
 
         created_paths: list[Path] = []
+        restore_path: Path | None = None
+        restore_target: Path | None = None
         workspace_path = preview.local_workspace_path
         source_book_path = preview.source_book_path
-        tmp_root = workspace_path / ".connlab" / "tmp"
+        workspace_conflict = preview.conflict_paths == (workspace_path,)
+        tmp_root = (
+            workspace_path.parent / ".connlab" / "tmp"
+            if workspace_conflict
+            else workspace_path / ".connlab" / "tmp"
+        )
         operation_tmp = tmp_root / f"create-official-folder-{uuid4().hex}"
         copied_root = operation_tmp / preview.template_path.name
         try:
+            operation_tmp.mkdir(parents=True, exist_ok=True)
+            if preview.status == "exists" and workspace_conflict:
+                assert conflict_strategy is not None
+                resolution = _resolve_existing_path(
+                    existing_path=workspace_path,
+                    conflict_strategy=conflict_strategy,
+                    operation_tmp=operation_tmp,
+                )
+                created_paths.extend(resolution.created_paths)
+                restore_path = resolution.restore_path
+                restore_target = resolution.restore_target
             if not workspace_path.exists():
                 workspace_path.mkdir(parents=True)
                 created_paths.append(workspace_path)
             if not source_book_path.exists():
                 source_book_path.mkdir(parents=True)
                 created_paths.append(source_book_path)
-            operation_tmp.mkdir(parents=True)
             _copytree_no_overwrite(preview.template_path, copied_root)
-            copied_root.replace(preview.official_folder_path)
+            if preview.status in {"exists", "completed"} and not workspace_conflict:
+                assert conflict_strategy is not None
+                resolution = _resolve_existing_path(
+                    existing_path=preview.official_folder_path,
+                    conflict_strategy=conflict_strategy,
+                    operation_tmp=operation_tmp,
+                )
+                created_paths.extend(resolution.created_paths)
+                restore_path = resolution.restore_path
+                restore_target = resolution.restore_target
+            shutil.move(str(copied_root), str(preview.official_folder_path))
             created_paths.append(preview.official_folder_path)
         except Exception as exc:
+            _restore_overwrite_source(restore_path, restore_target)
             shutil.rmtree(operation_tmp, ignore_errors=True)
             raise OfficialWorkspaceCreateError(str(exc)) from exc
         finally:
@@ -555,6 +675,76 @@ def _looks_like_template_root(path: Path) -> bool:
 def _copytree_no_overwrite(source: Path, target: Path) -> None:
     """Copy a directory tree and fail if the target exists."""
     shutil.copytree(source, target)
+
+
+def _conflict_options() -> tuple[OfficialWorkspaceConflictOption, ...]:
+    """Return the operator choices for an existing official project folder."""
+    return (
+        OfficialWorkspaceConflictOption(
+            key="backup_and_recreate",
+            label="Backup and Rebuild",
+            description="Move the existing project folder to a timestamped backup, then create a fresh folder.",
+        ),
+        OfficialWorkspaceConflictOption(
+            key="overwrite_rebuild",
+            label="Overwrite",
+            description="Replace the existing project folder after the new template copy is staged.",
+        ),
+    )
+
+
+def _resolve_existing_path(
+    *,
+    existing_path: Path,
+    conflict_strategy: str,
+    operation_tmp: Path,
+) -> OfficialWorkspaceConflictResolution:
+    """Move an existing project path according to an explicit strategy."""
+    if conflict_strategy == "backup_and_recreate":
+        backup_path = _unique_backup_path(existing_path)
+        shutil.move(str(existing_path), str(backup_path))
+        return OfficialWorkspaceConflictResolution(
+            created_paths=(backup_path,),
+            restore_path=None,
+            restore_target=None,
+        )
+    if conflict_strategy == "overwrite_rebuild":
+        old_path = operation_tmp / f"overwrite-old-{existing_path.name}"
+        shutil.move(str(existing_path), str(old_path))
+        return OfficialWorkspaceConflictResolution(
+            created_paths=tuple(),
+            restore_path=old_path,
+            restore_target=existing_path,
+        )
+    raise OfficialWorkspaceCreateError(f"Unsupported project folder conflict strategy: {conflict_strategy}")
+
+
+def _restore_overwrite_source(restore_path: Path | None, restore_target: Path | None) -> None:
+    """Restore an overwritten source path after a failed staged replacement."""
+    if restore_path is None or restore_target is None or not restore_path.exists():
+        return
+    if restore_target.exists():
+        return
+    shutil.move(str(restore_path), str(restore_target))
+
+
+def _workspace_has_business_content(workspace_path: Path) -> bool:
+    """Return whether an existing LTR workspace contains operator-created content."""
+    ignored_names = {".connlab"}
+    return any(child.name not in ignored_names for child in workspace_path.iterdir())
+
+
+def _unique_backup_path(existing_path: Path) -> Path:
+    """Return a timestamped sibling backup path that does not already exist."""
+    timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    base = existing_path.with_name(f"{existing_path.name} Backup {timestamp}")
+    if not base.exists():
+        return base
+    for index in range(2, 1000):
+        candidate = existing_path.with_name(f"{base.name} {index}")
+        if not candidate.exists():
+            return candidate
+    raise OfficialWorkspaceCreateError("Unable to create a unique backup folder name.")
 
 
 def _clean_text(value: str | None) -> str | None:

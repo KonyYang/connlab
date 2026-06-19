@@ -88,6 +88,7 @@ class ConfirmedFeeLatestResponse(BaseModel):
     current_confirmed_matrix_id: str
     current_confirmed_revision: int
     current_fee_rule_version_id: str
+    fee_review_required_count: int = 0
     confirmed_fee: ConfirmedFeeVersionResponse | None
 
 
@@ -156,6 +157,7 @@ def _to_latest_response(
         current_confirmed_matrix_id=result.current_context.confirmed_matrix_id,
         current_confirmed_revision=result.current_context.confirmed_revision,
         current_fee_rule_version_id=result.current_context.fee_rule_version_id,
+        fee_review_required_count=result.fee_review_required_count,
         confirmed_fee=(
             _to_version_response(result.latest_confirmed_fee)
             if result.latest_confirmed_fee

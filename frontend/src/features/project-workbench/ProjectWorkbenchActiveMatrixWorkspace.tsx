@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { ProjectFolderTaskList } from "./ProjectFolderTaskList";
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type {
@@ -10,64 +9,32 @@ import type {
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 type ProjectWorkbenchActiveMatrixWorkspaceProps = {
-  activeMatrixAuthorityReady: boolean;
-  confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"];
-  creatingFolder: boolean;
   effectiveFolderReady: boolean;
   officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
-  onFolderCommand: () => void;
-  onOpenFeeEvaluation: () => void;
-  onOpenMatrixEditor: () => void;
   onProjectFolderTaskAction: (actionTarget: ProjectFolderTaskActionTarget) => void;
-  onSelectProjectFolderTask: (taskKey: ProjectFolderTaskKey) => void;
   projectFolderTasks: ProjectFolderTaskRow[];
   projectId: string;
-  requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
-  requestMaterialError: ProjectRuntimeConsoleModel["requestMaterialError"];
-  requestMaterialLoading: boolean;
-  requiredFormsPreview: ProjectRuntimeConsoleModel["requiredFormsPreview"];
-  requiredFormsError: ProjectRuntimeConsoleModel["requiredFormsError"];
-  requiredFormsLoading: boolean;
-  publicDriveUploadPreview: ProjectRuntimeConsoleModel["publicDriveUploadPreview"];
-  publicDriveUploadError: ProjectRuntimeConsoleModel["publicDriveUploadError"];
-  publicDriveUploadLoading: boolean;
   currentProjectFolderTaskKey: ProjectFolderTaskKey;
-  selectedProjectFolderTaskKey: ProjectFolderTaskKey;
   runtimeProjectionSnapshot: ProjectRuntimeConsoleModel["runtimeProjectionSnapshot"];
   selectedProjectionToken: MatrixProjectionTokenCell | null;
   setSelectedProjectionToken: (token: MatrixProjectionTokenCell | null) => void;
 };
 
 export function ProjectWorkbenchActiveMatrixWorkspace({
-  activeMatrixAuthorityReady,
-  confirmedFeeLatest,
-  creatingFolder,
   effectiveFolderReady,
   officialWorkspaceStatus,
-  onFolderCommand,
-  onOpenFeeEvaluation,
-  onOpenMatrixEditor,
   onProjectFolderTaskAction,
-  onSelectProjectFolderTask,
   projectFolderTasks,
   projectId,
-  requestMaterialPreview,
-  requestMaterialError,
-  requestMaterialLoading,
-  requiredFormsPreview,
-  requiredFormsError,
-  requiredFormsLoading,
-  publicDriveUploadPreview,
-  publicDriveUploadError,
-  publicDriveUploadLoading,
   currentProjectFolderTaskKey,
-  selectedProjectFolderTaskKey,
   runtimeProjectionSnapshot,
   selectedProjectionToken,
   setSelectedProjectionToken,
 }: ProjectWorkbenchActiveMatrixWorkspaceProps): ReactElement {
   const canGenerateFolder =
-    officialWorkspaceStatus === "ready" || officialWorkspaceStatus === "adoptable";
+    officialWorkspaceStatus === "ready" ||
+    officialWorkspaceStatus === "adoptable" ||
+    officialWorkspaceStatus === "exists";
   const visibleProjectFolderTasks =
     !effectiveFolderReady && !canGenerateFolder
       ? withoutUnavailableFolderAction(projectFolderTasks)
@@ -75,53 +42,8 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   const currentFolderTask =
     visibleProjectFolderTasks.find((task) => task.key === currentProjectFolderTaskKey) ??
     visibleProjectFolderTasks[0];
-  const folderCommand = deriveFolderCommand({
-    creatingFolder,
-    officialWorkspaceStatus,
-  });
-
   return (
     <section className="runtime-console-active-matrix" aria-label="Test Execution Workspace">
-      <section className="runtime-console-commandbar" aria-label="Project commands">
-        <div className="runtime-console-commandbar-status" aria-label="Project status">
-          <StatusChip tone="ready" label={activeMatrixAuthorityReady ? "Matrix confirmed" : "Matrix missing"} />
-          <StatusChip
-            tone={confirmedFeeLatest?.status === "current" ? "ready" : "warning"}
-            label={formatFeeAuthorityLabel(confirmedFeeLatest)}
-          />
-          <StatusChip
-            tone={effectiveFolderReady ? "ready" : "warning"}
-            label={effectiveFolderReady ? "Folder generated" : "Folder not generated"}
-          />
-        </div>
-        <div className="runtime-console-commandbar-actions">
-          <button type="button" onClick={onOpenMatrixEditor}>
-            Open Matrix
-          </button>
-          <button type="button" onClick={onOpenFeeEvaluation}>
-            Open Fee
-          </button>
-          {!effectiveFolderReady ? (
-            <button
-              type="button"
-              className="is-primary"
-              disabled={folderCommand.disabled}
-              title={folderCommand.disabledReason}
-              onClick={onFolderCommand}
-            >
-              {folderCommand.label}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            disabled
-            title="Activity history is a planned future surface."
-          >
-            History
-          </button>
-        </div>
-      </section>
-
       <section className="runtime-console-workbench-canvas">
         <ProjectWorkbenchExecutionConsole
           projectId={projectId}
@@ -149,26 +71,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
           }
         />
       </section>
-
-      <details className="runtime-console-folder-bottom-details">
-        <summary>Project folder details</summary>
-        <ProjectFolderTaskList
-          tasks={visibleProjectFolderTasks}
-          currentTaskKey={currentProjectFolderTaskKey}
-          selectedTaskKey={selectedProjectFolderTaskKey}
-          onSelectTask={onSelectProjectFolderTask}
-          onTaskAction={onProjectFolderTaskAction}
-          requestMaterialPreview={requestMaterialPreview}
-          requestMaterialError={requestMaterialError}
-          requestMaterialLoading={requestMaterialLoading}
-          requiredFormsPreview={requiredFormsPreview}
-          requiredFormsError={requiredFormsError}
-          requiredFormsLoading={requiredFormsLoading}
-          publicDriveUploadPreview={publicDriveUploadPreview}
-          publicDriveUploadError={publicDriveUploadError}
-          publicDriveUploadLoading={publicDriveUploadLoading}
-        />
-      </details>
     </section>
   );
 }
@@ -189,16 +91,6 @@ function withoutUnavailableFolderAction(
   );
 }
 
-function StatusChip({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "ready" | "warning";
-}): ReactElement {
-  return <span className={`runtime-console-status-chip status-${tone}`}>{label}</span>;
-}
-
 function FolderTaskMessages({ task }: { task: ProjectFolderTaskRow }): ReactElement | null {
   const messages = [...task.blockers, ...task.warnings].slice(0, 2);
   if (messages.length === 0) {
@@ -213,37 +105,51 @@ function FolderTaskMessages({ task }: { task: ProjectFolderTaskRow }): ReactElem
   );
 }
 
-function formatFeeAuthorityLabel(
-  confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"]
-): string {
-  if (confirmedFeeLatest?.status === "current") {
-    const revision = confirmedFeeLatest.confirmed_fee?.confirmed_fee_revision;
-    return revision ? `Fee v${revision} confirmed` : "Fee confirmed";
-  }
-  if (confirmedFeeLatest?.status === "stale") {
-    return "Fee needs update";
-  }
-  return "Fee not confirmed";
-}
-
-function deriveFolderCommand({
+export function deriveActiveMatrixFolderCommand({
+  activeMatrixAuthorityReady,
+  confirmedFeeLatest,
   creatingFolder,
+  effectiveFolderReady,
   officialWorkspaceStatus,
 }: {
+  activeMatrixAuthorityReady: boolean;
+  confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"];
   creatingFolder: boolean;
+  effectiveFolderReady: boolean;
   officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
 }): {
   disabled: boolean;
   disabledReason?: string;
   label: string;
 } {
-  const canGenerate =
-    officialWorkspaceStatus === "ready" || officialWorkspaceStatus === "adoptable";
+  const hasCurrentFeeAuthority = confirmedFeeLatest?.status === "current";
+  const label =
+    effectiveFolderReady || officialWorkspaceStatus === "completed"
+      ? "Update project folder"
+      : "Generate project folder";
+  if (creatingFolder) {
+    return {
+      disabled: true,
+      disabledReason: "Generating project folder...",
+      label: "Generating...",
+    };
+  }
+  if (!activeMatrixAuthorityReady) {
+    return {
+      disabled: true,
+      disabledReason: "Confirm Matrix before generating the project folder.",
+      label,
+    };
+  }
+  if (!hasCurrentFeeAuthority) {
+    return {
+      disabled: true,
+      disabledReason: "Update Fee before generating the project folder.",
+      label,
+    };
+  }
   return {
-    disabled: creatingFolder || !canGenerate,
-    disabledReason: canGenerate
-      ? undefined
-      : "Project folder template or target path is not ready.",
-    label: creatingFolder ? "Generating..." : "Generate folder",
+    disabled: false,
+    label,
   };
 }

@@ -171,7 +171,7 @@ def test_preview_keeps_review_required_separate_from_submitted_material_missing(
         tmp_path,
         status="review_required",
         item_status="needs_review",
-        target_area="source_book_attachment",
+        target_area="review_attachment",
         review_required=True,
     )
     service = _service(

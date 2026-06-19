@@ -54,14 +54,13 @@ def test_preview_allows_partial_collection_when_request_email_is_missing(
     assert preview.status == "partial"
     assert "Request email missing" in preview.warnings
     target_areas = [(item.source_asset_id, item.target_area) for item in preview.items]
-    assert ("form-1", "source_book_application_form") in target_areas
     assert ("form-1", "submitted_material") in target_areas
     assert ("support-1", "submitted_material") in target_areas
-    assert ("unknown-1", "source_book_attachment") in target_areas
-    assert ("unknown-1", "submitted_material") not in target_areas
+    assert ("unknown-1", "submitted_material") in target_areas
     unknown_item = next(item for item in preview.items if item.source_asset_id == "unknown-1")
-    assert unknown_item.review_required is True
-    assert unknown_item.status == "needs_review"
+    assert unknown_item.review_required is False
+    assert unknown_item.action == "copy"
+    assert unknown_item.status == "planned"
 
 
 def test_preview_blocks_multiple_request_email_candidates(tmp_path: Path) -> None:
@@ -133,7 +132,7 @@ def test_collect_copies_request_material_without_deleting_sources(tmp_path: Path
     app_form = _write(tmp_path / "source" / "application.docx", b"form")
     request_email = _write(tmp_path / "source" / "request.msg", b"mail")
     support = _write(tmp_path / "source" / "drawing.pdf", b"drawing")
-    needs_review = _write(tmp_path / "source" / "inline.png", b"image")
+    inline_image = _write(tmp_path / "source" / "inline.png", b"image")
     service = _service(
         tmp_path,
         [
@@ -161,27 +160,91 @@ def test_collect_copies_request_material_without_deleting_sources(tmp_path: Path
                 role="supporting_attachment",
                 sha256=_sha("drawing"),
             ),
-            _asset("review-1", FileAssetType.ATTACHMENT, needs_review, "inline.png"),
+            _asset("inline-1", FileAssetType.ATTACHMENT, inline_image, "inline.png"),
         ],
     )
 
     result = service.collect("P1")
 
-    assert result.status == "review_required"
+    assert result.status == "collected"
     assert request_email.is_file()
     assert app_form.is_file()
     assert support.is_file()
-    assert needs_review.is_file()
-    source_book = tmp_path / "DL-001" / "Source Book" / "Request Material"
+    assert inline_image.is_file()
     official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
-    assert (source_book / "E-mail" / "request.msg").read_bytes() == b"mail"
     assert (official / "E-mail" / "request.msg").read_bytes() == b"mail"
-    assert (source_book / "Application Form" / "application.docx").read_bytes() == b"form"
     assert (official / "Submitted Material" / "application.docx").read_bytes() == b"form"
     assert (official / "Submitted Material" / "drawing.pdf").read_bytes() == b"drawing"
-    assert (source_book / "Attachments" / "inline.png").read_bytes() == b"image"
-    assert not (official / "Submitted Material" / "inline.png").exists()
-    assert result.skipped_paths
+    assert (official / "Submitted Material" / "inline.png").read_bytes() == b"image"
+    assert not (tmp_path / "DL-001" / "Source Book" / "Request Material").exists()
+    assert not result.skipped_paths
+
+
+def test_confirmed_msg_attachment_is_archived_to_official_email_folder(
+    tmp_path: Path,
+) -> None:
+    app_form = _write(tmp_path / "source" / "application.docx", b"form")
+    request_email = _write(tmp_path / "source" / "request.msg", b"mail")
+    forwarded_email = _write(tmp_path / "source" / "customer-forward.msg", b"forward")
+    support = _write(tmp_path / "source" / "drawing.pdf", b"drawing")
+    service = _service(
+        tmp_path,
+        [
+            _asset(
+                "form-1",
+                FileAssetType.APPLICATION_FORM,
+                app_form,
+                "application.docx",
+                role="selected_application_form",
+                sha256=_sha("form"),
+            ),
+            _asset(
+                "mail-1",
+                FileAssetType.ATTACHMENT,
+                request_email,
+                "request.msg",
+                role="email_source",
+                sha256=_sha("mail"),
+            ),
+            _asset(
+                "forward-1",
+                FileAssetType.ATTACHMENT,
+                forwarded_email,
+                "customer-forward.msg",
+                role="supporting_attachment",
+                sha256=_sha("forward"),
+            ),
+            _asset(
+                "support-1",
+                FileAssetType.ATTACHMENT,
+                support,
+                "drawing.pdf",
+                role="supporting_attachment",
+                sha256=_sha("drawing"),
+            ),
+        ],
+    )
+
+    preview = service.preview("P1")
+
+    forward_item = next(
+        item
+        for item in preview.items
+        if item.source_asset_id == "forward-1" and item.target_area == "official_email"
+    )
+    assert forward_item.target_path.name == "customer-forward.msg"
+    assert not any(
+        item.source_asset_id == "forward-1" and item.target_area == "submitted_material"
+        for item in preview.items
+    )
+
+    result = service.collect("P1")
+
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    assert result.status == "collected"
+    assert (official / "E-mail" / "customer-forward.msg").read_bytes() == b"forward"
+    assert not (official / "Submitted Material" / "customer-forward.msg").exists()
+    assert (official / "Submitted Material" / "drawing.pdf").read_bytes() == b"drawing"
 
 
 def test_collect_returns_partial_result_after_file_copy_failure(tmp_path: Path) -> None:
@@ -214,8 +277,13 @@ def test_collect_returns_partial_result_after_file_copy_failure(tmp_path: Path) 
 
     result = service.collect("P1")
 
-    source_book = tmp_path / "DL-001" / "Source Book" / "Request Material"
-    copied_target = source_book / "E-mail" / "request.msg"
+    copied_target = (
+        tmp_path
+        / "DL-001"
+        / "DL-001 Connector Qualification test"
+        / "E-mail"
+        / "request.msg"
+    )
     assert result.status == "partial"
     assert copied_target in result.copied_paths
     assert copied_target.is_file()
@@ -254,6 +322,44 @@ def test_collect_blocks_existing_target_with_different_content(tmp_path: Path) -
     assert preview.status == "conflict"
     with pytest.raises(ProjectRequestMaterialCollectionConflictError):
         service.collect("P1")
+
+
+def test_preview_accepts_written_back_application_form_in_submitted_material(
+    tmp_path: Path,
+) -> None:
+    app_form = _write(tmp_path / "source" / "application.docx", b"form")
+    submitted_target = (
+        tmp_path
+        / "DL-001"
+        / "DL-001 Connector Qualification test"
+        / "Submitted Material"
+        / "application.docx"
+    )
+    _write(submitted_target, b"form after connlab write-back")
+    service = _service(
+        tmp_path,
+        [
+            _asset(
+                "form-1",
+                FileAssetType.APPLICATION_FORM,
+                app_form,
+                "application.docx",
+                role="selected_application_form",
+                sha256=_sha("form"),
+            ),
+        ],
+    )
+
+    preview = service.preview("P1")
+
+    submitted_item = next(
+        item
+        for item in preview.items
+        if item.source_asset_id == "form-1" and item.target_area == "submitted_material"
+    )
+    assert submitted_item.action == "already_present"
+    assert submitted_item.status == "already_present"
+    assert "write-back" in submitted_item.message
 
 
 def _write(path: Path, content: bytes) -> Path:

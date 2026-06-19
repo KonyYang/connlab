@@ -13,7 +13,7 @@
 
 .runtime-console-topbar {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   min-height: 72px;
@@ -1235,6 +1235,22 @@
   padding: 7px;
 }
 
+.matrix-editor-grid-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+}
+
+.matrix-editor-grid-save-error {
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-left: auto;
+}
+
 .matrix-editor-grid-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1622,13 +1638,6 @@
   gap: 12px;
   align-items: center;
   min-height: 38px;
-  padding-right: 16px;
-  border-right: 1px solid var(--color-border);
-}
-
-.runtime-console-app-title strong {
-  color: var(--color-ink);
-  font-size: 16px;
 }
 
 .runtime-console-menu-button {
@@ -1668,7 +1677,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .runtime-console-project-identity {
@@ -1875,10 +1884,10 @@
 }
 
 .runtime-console-commandbar {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: flex-start;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
@@ -1944,13 +1953,18 @@
 
 .runtime-console-commandbar-actions {
   justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--color-border);
 }
 
 .runtime-console-commandbar-actions button {
   min-height: 34px;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(31, 102, 209, 0.24);
   border-radius: 7px;
-  background: var(--color-surface);
+  background: rgba(31, 102, 209, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(31, 102, 209, 0.08);
   color: var(--color-primary-strong);
   font-size: 12px;
   font-weight: 850;
@@ -1965,11 +1979,157 @@
   color: var(--color-surface);
 }
 
+.runtime-console-commandbar-actions button.is-review-required {
+  border-color: color-mix(in srgb, var(--color-danger) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface-muted));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 24%, transparent);
+  color: var(--color-danger);
+}
+
 .runtime-console-commandbar-actions button:disabled {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-ink-muted);
   cursor: not-allowed;
+}
+
+.runtime-console-workflow-alert {
+  align-items: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  margin: 0 18px 14px;
+  padding: 12px 14px;
+}
+
+.runtime-console-workflow-alert strong {
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.runtime-console-workflow-alert span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.runtime-console-workflow-alert.is-danger {
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
+}
+
+.runtime-console-workflow-alert.is-danger span {
+  color: var(--color-danger);
+}
+
+.runtime-console-modal-backdrop {
+  align-items: center;
+  background: rgba(23, 32, 51, 0.22);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 40;
+}
+
+.runtime-console-conflict-dialog {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(23, 32, 51, 0.18);
+  color: var(--color-ink);
+  font-family: Aptos, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  max-width: 600px;
+  padding: 20px 22px 18px;
+  width: min(100%, 600px);
+}
+
+.runtime-console-conflict-dialog header {
+  margin-bottom: 8px;
+}
+
+.runtime-console-conflict-dialog h3 {
+  margin: 0;
+}
+
+.runtime-console-conflict-dialog p {
+  color: var(--color-ink-muted);
+  margin: 0 0 10px;
+}
+
+.runtime-console-conflict-path {
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, var(--color-primary));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface-muted) 38%, var(--color-surface));
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.runtime-console-conflict-path span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.runtime-console-conflict-path strong {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.runtime-console-conflict-path em {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.runtime-console-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.runtime-console-conflict-actions button {
+  min-height: 36px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 7%, transparent);
+  color: var(--color-primary-strong);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 780;
+  line-height: 1.2;
+  padding: 8px 14px;
+}
+
+.runtime-console-conflict-actions button:hover:not(:disabled),
+.runtime-console-conflict-actions button:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  outline: none;
+}
+
+.runtime-console-conflict-actions button.is-danger {
+  border-color: color-mix(in srgb, var(--color-danger) 52%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+}
+
+.runtime-console-conflict-actions button.is-danger:hover:not(:disabled),
+.runtime-console-conflict-actions button.is-danger:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-danger) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 15%, var(--color-surface));
 }
 
 .runtime-console-workspace-heading {
@@ -2098,24 +2258,6 @@
   display: grid;
   gap: 4px;
   padding-left: 16px;
-}
-
-.runtime-console-folder-bottom-details {
-  min-width: 0;
-  border-top: 1px solid var(--color-border);
-  padding-top: 8px;
-}
-
-.runtime-console-folder-bottom-details > summary {
-  cursor: pointer;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.runtime-console-folder-bottom-details[open] {
-  display: grid;
-  gap: 10px;
 }
 
 .runtime-console-mode-surface,
@@ -3544,7 +3686,7 @@
 }
 
 .runtime-console-matrix-projection-table tbody th {
-  font-weight: 700;
+  font-weight: 400;
   background: #fbfdff;
 }
 
@@ -4091,6 +4233,9 @@
 
 .runtime-console-note-box textarea {
   min-height: 50px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
   resize: vertical;
 }
 
@@ -4247,6 +4392,11 @@
 .fee-evaluation-preview-header > div:first-child {
   display: grid;
   align-content: center;
+}
+
+.fee-evaluation-preview-title {
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .fee-evaluation-preview-header h3 {
@@ -6769,6 +6919,11 @@
   .runtime-console-commandbar,
   .runtime-console-active-matrix .runtime-console-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .runtime-console-topbar .runtime-console-commandbar-actions {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .runtime-console-commandbar-status,

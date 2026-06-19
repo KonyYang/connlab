@@ -42,6 +42,62 @@ def matrix_editor_feature_source() -> str:
     )
 
 
+def test_task315f_project_commandbar_secondary_buttons_have_visible_fill() -> None:
+    """TASK_315F follow-up keeps Workbench command buttons visibly button-like."""
+    workbench_css = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert ".runtime-console-commandbar-actions button" in workbench_css
+    assert "background: rgba(31, 102, 209, 0.08);" in workbench_css
+    assert "border: 1px solid rgba(31, 102, 209, 0.24);" in workbench_css
+    assert "box-shadow: inset 0 0 0 1px rgba(31, 102, 209, 0.08);" in workbench_css
+
+
+def test_task315f_matrix_editor_header_links_fee_evaluation() -> None:
+    """TASK_315F follow-up keeps Matrix-bound Fee Evaluation reachable from Matrix Editor."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    matrix_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectMatrixEditorPage.tsx"
+    ).read_text(encoding="utf-8")
+    matrix_workspace_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "matrix-editor"
+        / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "onOpenFeeEvaluation" in app_source
+    assert "/fee-evaluation" in app_source
+    assert "onOpenFeeEvaluation" in matrix_page_source
+    assert "onOpenFeeEvaluation={onOpenFeeEvaluation}" in matrix_page_source
+    assert "onOpenFeeEvaluation" in matrix_workspace_source
+    assert "Fee Evaluation" in matrix_workspace_source
+
+
+def test_task315f_fee_cancel_returns_to_matrix_editor() -> None:
+    """TASK_315F follow-up keeps Fee Cancel Matrix-bound while Update Fee returns to Workbench."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    fee_page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectFeeEvaluationPage.tsx"
+    ).read_text(encoding="utf-8")
+    fee_feature_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "fee-evaluation"
+        / "FeeEvaluationReviewExportPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "onCancelToMatrixEditor" in app_source
+    assert "/matrix-editor" in app_source
+    assert "onCancelToMatrixEditor" in fee_page_source
+    assert "onCancelToMatrixEditor={onCancelToMatrixEditor}" in fee_page_source
+    assert "onCancelToMatrixEditor();" in fee_feature_source
+    assert "onBackToWorkbench();" in fee_feature_source
+
+
 def test_task315d_fee_ui_project_folder_regression_wiring_is_present() -> None:
     """TASK_315D keeps Fee UI and Project Folder readiness on approved boundaries."""
     fee_page = (
@@ -4497,7 +4553,6 @@ def test_task256_matrix_editor_save_to_project_matrix_draft_wiring_is_present() 
         "buildDraftSavePayload",
         "currentSavePayload",
         "hasUnsavedChanges",
-        "Preparing confirm...",
         "Sample quantity is required for selected groups.",
         "buildConfirmInput",
         "confirmMatrixEditorSession(",
@@ -4512,6 +4567,26 @@ def test_task256_matrix_editor_save_to_project_matrix_draft_wiring_is_present() 
         assert required_route_symbol in route_source
 
     assert ".matrix-editor-save-status" in styles_source
+
+
+def test_task322_matrix_editor_hides_transient_autosave_progress_copy() -> None:
+    """TASK_322 keeps normal Matrix autosave progress out of the editor layout."""
+    matrix_editor_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "matrix-editor"
+        / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Preparing confirm..." not in matrix_editor_source
+    assert "Saving Matrix draft..." not in matrix_editor_source
+    assert "matrix-editor-grid-save-error" in matrix_editor_source
+    assert ".matrix-editor-grid-controls" in styles_source
+    assert ".matrix-editor-grid-save-error" in styles_source
 
 
 def test_task259_matrix_editor_revision_actions_wiring_is_present() -> None:
@@ -4949,7 +5024,6 @@ def test_task273_matrix_editor_workbench_smoke_ui_fixes_are_wired() -> None:
     ).read_text(encoding="utf-8")
 
     assert "Sample quantity is required for selected groups." in matrix_editor_source
-    assert "Preparing confirm..." in matrix_editor_source
     assert "Save failed. Retry before confirming." in matrix_editor_source
     if "Revert to last saved draft" not in action_groups_source:
         assert ">Undo<" in matrix_editor_source or "Undo" in matrix_editor_source
@@ -5911,3 +5985,166 @@ def test_task284_matrix_editor_schedule_planning_is_wired() -> None:
 
     assert ".matrix-editor-schedule-card" in styles_source
     assert ".matrix-editor-test-days-row" in styles_source
+
+
+def test_task315f_project_folder_button_runs_business_flow_steps() -> None:
+    """Project folder CTA orchestrates the approved post-create business steps."""
+    model_source = (
+        FRONTEND_ROOT / "src" / "features" / "project-workbench" / "useProjectWorkbenchModel.ts"
+    ).read_text(encoding="utf-8")
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    create_body = model_source[
+        model_source.index("async function onCreateOfficialWorkspace") :
+        model_source.index("async function onRefreshOfficialFolderCheck")
+    ]
+
+    for required_source in [
+        "await runProjectFolderBusinessFlowAfterCreate()",
+        "collectRequestMaterial(projectId)",
+        "fetchProjectFolderRequiredFormsPreview(projectId)",
+        "generateProjectFolderRequiredForms(",
+        "fetchProjectSection2SyncPreview(projectId)",
+        "syncProjectSection2FromConfirmedMatrix(",
+    ]:
+        assert required_source in model_source
+
+    assert "fetch(" not in create_body
+    assert "conflict_strategy?: OfficialWorkspaceConflictStrategy | null;" in client_source
+
+
+def test_task323_project_folder_conflict_dialog_uses_connlab_workbench_styles() -> None:
+    """TASK_323 styles the existing conflict dialog without changing its content."""
+    layout_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Backup and Rebuild" in layout_source
+    assert "Overwrite" in layout_source
+    assert "runtime-console-conflict-path" in layout_source
+    assert ".runtime-console-conflict-actions button {" in styles_source
+    assert ".runtime-console-conflict-actions button:hover:not(:disabled)" in styles_source
+    assert ".runtime-console-conflict-actions button.is-danger" in styles_source
+
+
+def test_task324_project_workbench_entry_hides_short_loading_copy() -> None:
+    """TASK_324 keeps fast Workbench entry free of transient loading copy."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "Loading project workbench" not in page_source
+    assert "LoadingState" not in page_source
+    assert "model.error && <ErrorMessage" in page_source
+
+
+def test_project_workbench_page_only_surfaces_errors_not_success_messages() -> None:
+    """Workbench success events should not create a page-level banner."""
+    page_source = (
+        FRONTEND_ROOT / "src" / "pages" / "ProjectWorkbenchPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "model.error && <ErrorMessage" in page_source
+    assert "model.message &&" not in page_source
+    assert 'className="success"' not in page_source
+
+
+def test_task325_project_workbench_projection_hides_short_loading_copy() -> None:
+    """TASK_325 keeps Matrix projection refresh free of transient loading copy."""
+    projection_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchMatrixProjectionPanel.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "Loading Matrix projection" not in projection_source
+    assert "Unable to load Matrix projection" in projection_source
+    assert "No active confirmed matrix yet" in projection_source
+
+
+def test_task326_active_matrix_workspace_removes_duplicate_folder_details() -> None:
+    """TASK_326 keeps the active Matrix workspace focused on the single Folder Action card."""
+    active_workspace_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchActiveMatrixWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'aria-label="Folder Action"' in active_workspace_source
+    assert "Project folder details" not in active_workspace_source
+    assert "ProjectFolderTaskList" not in active_workspace_source
+    assert "runtime-console-folder-bottom-details" not in active_workspace_source
+    assert "runtime-console-folder-bottom-details" not in styles_source
+
+
+def test_task327_project_workbench_topbar_removes_redundant_title() -> None:
+    """TASK_327 removes the redundant visible Workbench title from the topbar."""
+    layout_source = (
+        FRONTEND_ROOT
+        / "src"
+        / "features"
+        / "project-workbench"
+        / "ProjectWorkbenchLayout.tsx"
+    ).read_text(encoding="utf-8")
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'aria-label="Back to projects"' in layout_source
+    assert "<strong>Project Workbench</strong>" not in layout_source
+    assert ".runtime-console-app-title strong" not in styles_source
+
+
+def test_task328_project_workbench_topbar_icon_column_is_compact() -> None:
+    """TASK_328 keeps the back icon from reserving a wide empty title column."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    topbar_block = styles_source[
+        styles_source.index(".runtime-console-topbar {") :
+        styles_source.index(".project-workbench-status", styles_source.index(".runtime-console-topbar {"))
+    ]
+    app_title_block = styles_source[
+        styles_source.index(".runtime-console-app-title {") :
+        styles_source.index(".runtime-console-menu-button", styles_source.index(".runtime-console-app-title {"))
+    ]
+
+    assert "grid-template-columns: auto minmax(0, 1fr) auto;" in topbar_block
+    assert "grid-template-columns: 220px minmax(0, 1fr) auto;" not in topbar_block
+    assert "padding-right" not in app_title_block
+    assert "border-right" not in app_title_block
+
+
+def test_task329_matrix_projection_test_item_cells_are_not_bold() -> None:
+    """TASK_329 keeps Matrix projection Test item body cells visually quiet."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    body_header_block = styles_source[
+        styles_source.index(".runtime-console-matrix-projection-table tbody th {") :
+        styles_source.index(
+            ".runtime-console-matrix-meta-row th",
+            styles_source.index(".runtime-console-matrix-projection-table tbody th {"),
+        )
+    ]
+
+    assert "font-weight: 400;" in body_header_block
+    assert "font-weight: 700;" not in body_header_block

@@ -135,6 +135,24 @@ export type ProjectSection2SyncRequest = {
   operator?: string | null;
 };
 
+export type ApplicationFormWriteBackField = {
+  field_key: string;
+  label: string;
+  old_value: string;
+  new_value: string;
+  location: string;
+};
+
+export type ApplicationFormWriteBackResponse = {
+  project_id: string;
+  target_path: string;
+  status: string;
+  changed_fields: ApplicationFormWriteBackField[];
+  unchanged_fields: ApplicationFormWriteBackField[];
+  warnings: string[];
+  output_record_id?: string | null;
+};
+
 export type ProjectPackagePreviewStatus = "ready" | "blocked";
 export type ProjectPackagePreviewItemStatus =
   | "ready"
@@ -198,6 +216,22 @@ export type OfficialWorkspacePreview = {
   blockers: string[];
   warnings: string[];
   planned_paths: string[];
+  conflict_paths?: string[];
+  conflict_options?: OfficialWorkspaceConflictOption[];
+};
+
+export type OfficialWorkspaceConflictStrategy =
+  | "backup_and_recreate"
+  | "overwrite_rebuild";
+
+export type OfficialWorkspaceConflictOption = {
+  key: OfficialWorkspaceConflictStrategy;
+  label: string;
+  description: string;
+};
+
+export type OfficialWorkspaceCreateRequest = {
+  conflict_strategy?: OfficialWorkspaceConflictStrategy | null;
 };
 
 export type OfficialWorkspaceCreateResponse = {
@@ -1886,6 +1920,7 @@ export type ConfirmedFeeLatestResponse = {
   current_confirmed_matrix_id: string;
   current_confirmed_revision: number;
   current_fee_rule_version_id: string;
+  fee_review_required_count?: number;
   confirmed_fee?: ConfirmedFeeVersion | null;
 };
 
@@ -2854,11 +2889,15 @@ export function fetchOfficialWorkspacePreview(
 }
 
 export function createOfficialWorkspace(
-  projectId: string
+  projectId: string,
+  input: OfficialWorkspaceCreateRequest = {}
 ): Promise<OfficialWorkspaceCreateResponse> {
   return requestJson<OfficialWorkspaceCreateResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/official-workspace/create`,
-    { method: "POST" }
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
   );
 }
 
@@ -2948,6 +2987,15 @@ export function syncProjectSection2FromConfirmedMatrix(
       method: "POST",
       body: JSON.stringify(input)
     }
+  );
+}
+
+export function writeBackProjectApplicationForm(
+  projectId: string
+): Promise<ApplicationFormWriteBackResponse> {
+  return requestJson<ApplicationFormWriteBackResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/project-folder/application-form/write-back`,
+    { method: "POST" }
   );
 }
 

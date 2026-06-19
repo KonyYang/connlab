@@ -58,7 +58,9 @@ describe("FeeEvaluationReviewExportPage", () => {
       <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
     );
 
-    expect(await screen.findByText("Fee Evaluation")).toBeTruthy();
+    const feeEvaluationTitle = await screen.findByText("Fee Evaluation");
+    expect(feeEvaluationTitle).toBeTruthy();
+    expect(feeEvaluationTitle.className).toContain("fee-evaluation-preview-title");
     expect(screen.queryByText(/Matrix line\(s\)/)).toBeNull();
     expect(container.querySelector(".fee-evaluation-topbar")).toBeNull();
     expect(screen.queryByLabelText("Fee summary")).toBeNull();
@@ -775,7 +777,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     const onBackToWorkbench = vi.fn();
 
     render(
-      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={onBackToWorkbench}
+      />
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
@@ -803,7 +808,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     const onBackToWorkbench = vi.fn();
 
     render(
-      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={onBackToWorkbench}
+      />
     );
 
     expect(await screen.findByDisplayValue("baseline note")).toBeTruthy();

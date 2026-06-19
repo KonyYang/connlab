@@ -91,7 +91,7 @@ def collect_request_material(
         get_project_request_material_collection_service
     ),
 ) -> RequestMaterialCollectResponse:
-    """Collect request material into Source Book and the Official project folder."""
+    """Collect request material into the Official project folder."""
     try:
         return _collect_response(service.collect(project_id))
     except ProjectRequestMaterialCollectionNotFoundError as exc:

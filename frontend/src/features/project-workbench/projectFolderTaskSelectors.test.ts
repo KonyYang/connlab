@@ -209,6 +209,42 @@ describe("deriveProjectFolderTasks", () => {
     expect(taskByTitle(tasks, "Required forms").actionTarget).toBeNull();
   });
 
+  it("keeps Local project folder ready when only required files have conflicts", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      officialFolderCheckPreview: {
+        ...readyOfficialFolderCheckPreview,
+        status: "conflict",
+        required_folders: [
+          {
+            key: "official_root",
+            label: "Official project folder",
+            kind: "folder",
+            status: "ready",
+            path: "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+            message: "Ready.",
+            repairable: false,
+          },
+        ],
+        required_files: [
+          {
+            key: "request_material",
+            label: "Request material",
+            kind: "file",
+            status: "conflict",
+            path: "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+            message: "Multiple request email candidates need review.",
+            repairable: false,
+          },
+        ],
+        blockers: ["Required file path conflict."],
+      },
+    });
+
+    expect(taskByTitle(tasks, "Local project folder").status).toBe("ready");
+    expect(taskByTitle(tasks, "Local project folder").statusLabel).toBe("Created");
+  });
+
   it("selects Public drive upload only after prior Project Folder tasks are ready", () => {
     const tasks = deriveProjectFolderTasks({
       ...readyInput(),

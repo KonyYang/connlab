@@ -30,6 +30,7 @@ def test_confirmed_fee_get_missing_returns_current_context() -> None:
         "current_confirmed_matrix_id": "cmv-1",
         "current_confirmed_revision": 1,
         "current_fee_rule_version_id": "fee_rules_v2026_06_03",
+        "fee_review_required_count": 0,
         "confirmed_fee": None,
     }
 

@@ -34,6 +34,34 @@ SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
     "sample_condition": ("sample condition", "sample received condition"),
 }
 
+APPLICATION_FORM_FIELD_LABELS: dict[str, tuple[str, ...]] = {
+    "ltr_number": ("ltr number", "lab test request number", "dl number"),
+    "project_number": ("project number", "project no"),
+    "product_description": ("product description", "product name", "product"),
+    "test_item": (
+        "test item",
+        "requested testing",
+        "requested testing description",
+        "test to be performed",
+    ),
+    "requester": ("requester", "requestor", "requested by", "requested by requestor"),
+    "phone": ("phone", "telephone", "tel"),
+    "email": ("email", "e mail", "e-mail of requestor"),
+    "business_unit": ("business unit", "bu"),
+    "manufacturing_site": ("manufacturing site", "site"),
+    "requested_completion_date": (
+        "requested completion date",
+        "request completion date",
+    ),
+    "lab": SECTION2_FIELD_LABELS["lab"],
+    "assigned_personnel": SECTION2_FIELD_LABELS["assigned_personnel"],
+    "received_date": SECTION2_FIELD_LABELS["received_date"],
+    "estimated_completion_date": SECTION2_FIELD_LABELS[
+        "estimated_completion_date"
+    ],
+    "sample_condition": SECTION2_FIELD_LABELS["sample_condition"],
+}
+
 
 class WordDocumentGateway:
     """Read Word documents into neutral snapshots without business parsing."""
@@ -154,6 +182,66 @@ class WordDocumentGateway:
         return WordSection2WriteResult(
             changed_fields=tuple(changed),
             unchanged_fields=tuple(unchanged),
+        )
+
+    def write_application_form_fields(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ) -> WordSection2WriteResult:
+        """Write known application fields into adjacent Word table value cells."""
+        path = Path(source_path)
+        if path.suffix.lower() != ".docx":
+            raise ValueError(f"Only .docx files are supported by the Word gateway: {path}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Word document does not exist: {path}")
+        normalized_fields = {
+            key: value
+            for key, value in fields.items()
+            if key in APPLICATION_FORM_FIELD_LABELS and value is not None
+        }
+
+        document = Document(path)
+        locations = _locate_labeled_fields(
+            document,
+            normalized_fields,
+            APPLICATION_FORM_FIELD_LABELS,
+        )
+
+        changed: list[WordSection2FieldChange] = []
+        unchanged: list[WordSection2FieldChange] = []
+        warnings: list[str] = []
+        for field_key, new_value in normalized_fields.items():
+            location = locations.get(field_key)
+            if location is None:
+                warnings.append(f"Application Form field location not found: {field_key}")
+                continue
+            table_index, row_index, label_column, value_column = location
+            row = document.tables[table_index].rows[row_index]
+            label = _clean(row.cells[label_column].text)
+            cell = row.cells[value_column]
+            old_value = _clean(cell.text)
+            update = WordSection2FieldChange(
+                field_key=field_key,
+                label=label,
+                old_value=old_value,
+                new_value=new_value,
+                location=(
+                    f"table[{table_index}].row[{row_index}].cell[{value_column}]"
+                ),
+            )
+            if old_value == new_value:
+                unchanged.append(update)
+            else:
+                cell.text = new_value
+                changed.append(update)
+
+        if changed:
+            document.save(path)
+        return WordSection2WriteResult(
+            changed_fields=tuple(changed),
+            unchanged_fields=tuple(unchanged),
+            warnings=tuple(warnings),
         )
 
 
@@ -358,13 +446,26 @@ def _clean(value: str) -> str:
 
 def _locate_section2_fields(document, fields: dict[str, str]) -> dict[str, tuple[int, int, int, int]]:
     """Locate requested Section 2 field value cells without mutating the document."""
+    return _locate_labeled_fields(document, fields, SECTION2_FIELD_LABELS)
+
+
+def _locate_labeled_fields(
+    document,
+    fields: dict[str, str],
+    aliases_by_field: dict[str, tuple[str, ...]],
+) -> dict[str, tuple[int, int, int, int]]:
+    """Locate requested field value cells without mutating the document."""
     locations: dict[str, tuple[int, int, int, int]] = {}
     requested = set(fields)
     for table_index, table in enumerate(document.tables):
         for row_index, row in enumerate(table.rows):
             cells = row.cells
             for column_index, cell in enumerate(cells):
-                field_key = _field_key_for_label(cell.text, requested - locations.keys())
+                field_key = _field_key_for_label(
+                    cell.text,
+                    requested - locations.keys(),
+                    aliases_by_field,
+                )
                 if field_key is None:
                     continue
                 value_column = _value_column(cells, column_index)
@@ -378,13 +479,17 @@ def _locate_section2_fields(document, fields: dict[str, str]) -> dict[str, tuple
     return locations
 
 
-def _field_key_for_label(label: str, candidates: set[str]) -> str | None:
+def _field_key_for_label(
+    label: str,
+    candidates: set[str],
+    aliases_by_field: dict[str, tuple[str, ...]],
+) -> str | None:
     """Return the matching field key for a Word table label cell."""
     normalized = _normalize_label(label)
     if not normalized:
         return None
     for field_key in candidates:
-        aliases = SECTION2_FIELD_LABELS[field_key]
+        aliases = aliases_by_field[field_key]
         if normalized in {_normalize_label(alias) for alias in aliases}:
             return field_key
     return None

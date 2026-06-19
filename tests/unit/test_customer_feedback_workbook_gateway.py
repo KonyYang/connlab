@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook, load_workbook
 
 from backend.infrastructure.office.customer_feedback_workbook_gateway import (
     CustomerFeedbackWorkbookGateway,
@@ -14,21 +15,33 @@ def test_customer_feedback_workbook_gateway_copies_template_without_overwriting_
     tmp_path: Path,
 ) -> None:
     template = tmp_path / "E-4243_D Customer Feedback Form.xlsx"
-    template.write_bytes(b"template")
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet["A1"] = "LTR Number"
+    sheet["A2"] = "Product Description"
+    sheet["A3"] = "Requestor"
+    workbook.save(template)
     output = tmp_path / "generated" / "feedback.xlsx"
 
     result_path, warnings = CustomerFeedbackWorkbookGateway().generate(
         template_path=template,
         output_path=output,
-        identity={"ltr_number": "DL-2026-05-003"},
+        identity={
+            "ltr_number": "DL-2026-05-003",
+            "product_name": "Connector",
+            "requestor": "MP Cao",
+        },
     )
 
     assert result_path == output
-    assert output.read_bytes() == b"template"
-    assert template.read_bytes() == b"template"
-    assert warnings == (
-        "Customer Feedback workbook was copied; safe cell filling requires Excel COM implementation.",
-    )
+    generated = load_workbook(output)
+    sheet = generated.active
+    assert sheet["B1"].value == "DL-2026-05-003"
+    assert sheet["B2"].value == "Connector"
+    assert sheet["B3"].value == "MP Cao"
+    assert warnings == ()
+    source = load_workbook(template)
+    assert source.active["B1"].value is None
 
 
 def test_customer_feedback_workbook_gateway_rejects_non_xlsx_template(tmp_path: Path) -> None:

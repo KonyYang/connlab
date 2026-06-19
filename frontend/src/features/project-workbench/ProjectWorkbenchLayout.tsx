@@ -1,13 +1,17 @@
 import { useEffect, useState, type ReactElement } from "react";
 import {
   deleteTemporaryProject,
+  type OfficialWorkspaceConflictStrategy,
   previewTemporaryProjectDelete,
   stopProject,
   type Project,
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
-import { ProjectWorkbenchActiveMatrixWorkspace } from "./ProjectWorkbenchActiveMatrixWorkspace";
+import {
+  deriveActiveMatrixFolderCommand,
+  ProjectWorkbenchActiveMatrixWorkspace,
+} from "./ProjectWorkbenchActiveMatrixWorkspace";
 import {
   ProjectLifecycleManagementPanel,
   RegisteredSetupMode,
@@ -20,7 +24,6 @@ import {
   deriveProjectFolderTasks,
   selectCurrentProjectFolderTaskKey,
   type ProjectFolderTaskActionTarget,
-  type ProjectFolderTaskKey,
 } from "./projectFolderTaskSelectors";
 import {
   deriveProjectWorkbenchLifecycle,
@@ -55,8 +58,7 @@ export function ProjectWorkbenchLayout({
     useState<TemporaryProjectDeletePreview | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
-  const [selectedProjectFolderTaskKey, setSelectedProjectFolderTaskKey] =
-    useState<ProjectFolderTaskKey | null>(null);
+  const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -70,6 +72,7 @@ export function ProjectWorkbenchLayout({
     packagePreviewError,
     officialWorkspacePreview,
     officialWorkspaceCreating,
+    officialWorkspaceError,
     onCreateOfficialWorkspace,
     officialFolderCheckPreview,
     officialFolderCheckError,
@@ -151,13 +154,23 @@ export function ProjectWorkbenchLayout({
     confirmedFeeAuthorityStatus: deriveConfirmedFeeAuthorityStatus(confirmedFeeLatest),
   });
   const currentProjectFolderTaskKey = selectCurrentProjectFolderTaskKey(projectFolderTasks);
-  const effectiveSelectedProjectFolderTaskKey =
-    selectedProjectFolderTaskKey &&
-    projectFolderTasks.some((task) => task.key === selectedProjectFolderTaskKey)
-      ? selectedProjectFolderTaskKey
-      : currentProjectFolderTaskKey;
   const isActiveMatrixWorkspace =
     Boolean(projectNumber) && activeMatrixAuthorityReady;
+  const activeMatrixFolderCommand = deriveActiveMatrixFolderCommand({
+    activeMatrixAuthorityReady,
+    confirmedFeeLatest,
+    creatingFolder: officialWorkspaceCreating,
+    effectiveFolderReady,
+    officialWorkspaceStatus: officialWorkspacePreview?.status,
+  });
+  const feeEvaluationButtonState = deriveFeeEvaluationButtonState(confirmedFeeLatest);
+  const officialWorkspaceConflictPaths =
+    deriveOfficialWorkspaceConflictPaths(officialWorkspacePreview);
+  const hasOfficialWorkspaceConflict =
+    effectiveFolderReady ||
+    officialWorkspaceConflictPaths.length > 0 ||
+    officialWorkspacePreview?.status === "exists" ||
+    officialWorkspacePreview?.status === "completed";
 
   useEffect(() => {
     let cancelled = false;
@@ -236,7 +249,7 @@ export function ProjectWorkbenchLayout({
     actionTarget: ProjectFolderTaskActionTarget
   ): void {
     if (actionTarget === "folder") {
-      void onCreateOfficialWorkspace();
+      handleProjectFolderCreateClick();
       return;
     }
     if (actionTarget === "request_material") {
@@ -272,6 +285,21 @@ export function ProjectWorkbenchLayout({
     }
   }
 
+  function handleProjectFolderCreateClick(): void {
+    if (hasOfficialWorkspaceConflict) {
+      setShowFolderConflictDialog(true);
+      return;
+    }
+    void onCreateOfficialWorkspace();
+  }
+
+  function handleProjectFolderConflictChoice(
+    strategy: OfficialWorkspaceConflictStrategy
+  ): void {
+    setShowFolderConflictDialog(false);
+    void onCreateOfficialWorkspace(strategy);
+  }
+
   return (
     <section className="runtime-console-shell" aria-label="Project runtime console">
       <header className="runtime-console-topbar">
@@ -285,60 +313,63 @@ export function ProjectWorkbenchLayout({
           >
             <UiIcon name="project-overview" />
           </button>
-          <strong>Project Workbench</strong>
         </div>
         <div className="runtime-console-project-title">
           <h2 className="runtime-console-project-identity">
             {titleParts.join(" ")}
           </h2>
         </div>
-        <div className="runtime-console-last-update">
-          <button
-            type="button"
-            disabled
-            title="Activity history is a planned future surface."
-          >
-            View activity history
-          </button>
-        </div>
+        {isActiveMatrixWorkspace ? (
+          <div className="runtime-console-commandbar-actions" aria-label="Project Workbench actions">
+            <button type="button" onClick={onOpenMatrixEditor}>
+              Matrix Editor
+            </button>
+            <button
+              type="button"
+              className={feeEvaluationButtonState.className}
+              title={feeEvaluationButtonState.title}
+              onClick={onOpenFeeEvaluation}
+            >
+              Fee Evaluation
+            </button>
+            <button
+              type="button"
+              className="is-primary"
+              disabled={activeMatrixFolderCommand.disabled}
+              title={activeMatrixFolderCommand.disabledReason}
+              onClick={handleProjectFolderCreateClick}
+            >
+              {activeMatrixFolderCommand.label}
+            </button>
+          </div>
+        ) : (
+          <div className="runtime-console-last-update">
+            <button
+              type="button"
+              disabled
+              title="Activity history is a planned future surface."
+            >
+              View activity history
+            </button>
+          </div>
+        )}
       </header>
+
+      {officialWorkspaceError ? (
+        <div className="runtime-console-workflow-alert is-danger" role="alert">
+          <strong>Project folder workflow</strong>
+          <span>{officialWorkspaceError}</span>
+        </div>
+      ) : null}
 
       {isActiveMatrixWorkspace ? (
         <ProjectWorkbenchActiveMatrixWorkspace
-          activeMatrixAuthorityReady={activeMatrixAuthorityReady}
-          confirmedFeeLatest={confirmedFeeLatest}
-          creatingFolder={officialWorkspaceCreating}
           effectiveFolderReady={effectiveFolderReady}
           officialWorkspaceStatus={officialWorkspacePreview?.status}
-          onFolderCommand={() => {
-            if (!effectiveFolderReady) {
-              void onCreateOfficialWorkspace();
-              return;
-            }
-            const currentTask = projectFolderTasks.find(
-              (task) => task.key === currentProjectFolderTaskKey
-            );
-            if (currentTask?.actionTarget) {
-              handleProjectFolderTaskAction(currentTask.actionTarget);
-            }
-          }}
-          onOpenFeeEvaluation={onOpenFeeEvaluation}
-          onOpenMatrixEditor={onOpenMatrixEditor}
           onProjectFolderTaskAction={handleProjectFolderTaskAction}
-          onSelectProjectFolderTask={setSelectedProjectFolderTaskKey}
           projectFolderTasks={projectFolderTasks}
           projectId={project.project_id}
-          requestMaterialPreview={requestMaterialPreview}
-          requestMaterialError={requestMaterialError}
-          requestMaterialLoading={requestMaterialLoading || requestMaterialCollecting}
-          requiredFormsPreview={requiredFormsPreview}
-          requiredFormsError={requiredFormsError}
-          requiredFormsLoading={requiredFormsLoading || requiredFormsGenerating}
-          publicDriveUploadPreview={publicDriveUploadPreview}
-          publicDriveUploadError={publicDriveUploadError}
-          publicDriveUploadLoading={publicDriveUploadLoading || publicDriveUploading}
           currentProjectFolderTaskKey={currentProjectFolderTaskKey}
-          selectedProjectFolderTaskKey={effectiveSelectedProjectFolderTaskKey}
           runtimeProjectionSnapshot={runtimeProjectionSnapshot}
           selectedProjectionToken={selectedProjectionToken}
           setSelectedProjectionToken={setSelectedProjectionToken}
@@ -402,7 +433,87 @@ export function ProjectWorkbenchLayout({
           ) : null}
         </>
       )}
+      {showFolderConflictDialog ? (
+        <ProjectFolderConflictDialog
+          conflictPaths={officialWorkspaceConflictPaths}
+          onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
+          onCancel={() => setShowFolderConflictDialog(false)}
+          onOverwrite={() => handleProjectFolderConflictChoice("overwrite_rebuild")}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function deriveOfficialWorkspaceConflictPaths(
+  preview: ProjectRuntimeConsoleModel["officialWorkspacePreview"]
+): string[] {
+  if (!preview) {
+    return [];
+  }
+  if (preview.conflict_paths?.length) {
+    return preview.conflict_paths;
+  }
+  if (preview.status === "completed" && preview.official_project_folder_path) {
+    return [preview.official_project_folder_path];
+  }
+  return [];
+}
+
+function deriveFeeEvaluationButtonState(
+  confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"]
+): {
+  className?: string;
+  title?: string;
+} {
+  const reviewCount = confirmedFeeLatest?.fee_review_required_count ?? 0;
+  if (reviewCount <= 0) {
+    return {};
+  }
+  return {
+    className: "is-review-required",
+    title: `${reviewCount} Fee Evaluation row${reviewCount === 1 ? "" : "s"} need pricing review.`,
+  };
+}
+
+function ProjectFolderConflictDialog({
+  conflictPaths,
+  onBackup,
+  onCancel,
+  onOverwrite,
+}: {
+  conflictPaths: string[];
+  onBackup: () => void;
+  onCancel: () => void;
+  onOverwrite: () => void;
+}): ReactElement {
+  const visiblePath = conflictPaths[0] ?? "Existing project folder";
+  const extraPathCount = Math.max(conflictPaths.length - 1, 0);
+  return (
+    <div className="runtime-console-modal-backdrop">
+      <section
+        aria-label="Project folder already exists"
+        className="runtime-console-conflict-dialog"
+        role="dialog"
+      >
+        <div className="runtime-console-conflict-path">
+          <span>Existing folder</span>
+          <strong>{visiblePath}</strong>
+          {extraPathCount > 0 ? <em>+{extraPathCount} more</em> : null}
+        </div>
+        <div className="runtime-console-conflict-actions">
+          <button type="button" onClick={onBackup}>
+            Backup and Rebuild
+          </button>
+          <button type="button" className="is-danger" onClick={onOverwrite}>
+            Overwrite
+          </button>
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

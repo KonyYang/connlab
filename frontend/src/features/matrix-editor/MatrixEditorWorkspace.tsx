@@ -81,9 +81,9 @@ type MatrixPublishMode = "first_authority" | "revision_authority";
 const AUTOSAVE_CANCEL_WAIT_TIMEOUT_MS = 1500;
 
 const AUTO_SAVE_STATUS_COPY: Record<MatrixSaveState, string> = {
-  idle: "Editing",
-  dirty: "Saving Matrix draft...",
-  saving: "Preparing confirm...",
+  idle: "",
+  dirty: "",
+  saving: "",
   saved: "",
   error: "Save failed. Retry before confirming.",
 };
@@ -1562,7 +1562,7 @@ const REFERENCE_ROWS = [
 
 export function MatrixEditorWorkspace({
   projectId,
-  onBackToWorkbench
+  onBackToWorkbench,
 }: MatrixEditorWorkspaceProps): ReactElement {
   const model = useProjectRuntimeConsoleModel(projectId);
   const [editableRows, setEditableRows] = useState<EditableMatrixRow[]>(() => buildInitialMatrixRows());
@@ -2145,13 +2145,12 @@ export function MatrixEditorWorkspace({
         (group) => (row.groups[group.id] ?? "").trim().length > 0
       );
     });
-  const saveStatusLabel =
-    saveState === "error"
-        ? AUTO_SAVE_STATUS_COPY.error
-        : saveState === "saving" || saveState === "dirty"
-        ? AUTO_SAVE_STATUS_COPY.saving
-        : AUTO_SAVE_STATUS_COPY.saved;
-  const editorStatusMessage = confirmActiveMessage || saveStatusLabel;
+  const gridSaveStatusMessage =
+    saveState === "error" ? AUTO_SAVE_STATUS_COPY.error : "";
+  const completionStatusMessage =
+    confirmActiveMessage ||
+    publishBlockingMessage ||
+    "Confirm returns to Workbench without creating a new version when nothing changed.";
 
   const openChooseDocx = (): void => {
     fileInputRef.current?.click();
@@ -2879,11 +2878,6 @@ export function MatrixEditorWorkspace({
         </div>
       </section>
 
-      {editorStatusMessage ? (
-        <section className="matrix-editor-save-status">
-          {editorStatusMessage}
-        </section>
-      ) : null}
       {testRecordMessage ? (
         <section
           className={`matrix-editor-save-status${
@@ -2970,15 +2964,22 @@ export function MatrixEditorWorkspace({
       <section className="matrix-editor-studio">
         <section className="matrix-editor-grid-surface">
           <div className="matrix-editor-main-table-wrap">
-            <label className="matrix-editor-filter-toggle">
-              <input
-                aria-label="Show selected groups only"
-                type="checkbox"
-                checked={showSelectedGroupsOnly}
-                onChange={(event) => setShowSelectedGroupsOnly(event.target.checked)}
-              />
-              Show selected groups only
-            </label>
+            <div className="matrix-editor-grid-controls">
+              <label className="matrix-editor-filter-toggle">
+                <input
+                  aria-label="Show selected groups only"
+                  type="checkbox"
+                  checked={showSelectedGroupsOnly}
+                  onChange={(event) => setShowSelectedGroupsOnly(event.target.checked)}
+                />
+                Show selected groups only
+              </label>
+              {gridSaveStatusMessage ? (
+                <span className="matrix-editor-grid-save-error" role="status">
+                  {gridSaveStatusMessage}
+                </span>
+              ) : null}
+            </div>
             <table className="matrix-editor-main-table">
               <thead>
                 <tr>
@@ -3392,7 +3393,7 @@ export function MatrixEditorWorkspace({
         aria-label="Matrix editor completion actions"
         className="matrix-editor-completion-dock"
       >
-        <span>{publishBlockingMessage || "Confirm returns to Workbench without creating a new version when nothing changed."}</span>
+        <span>{completionStatusMessage}</span>
         <div className="matrix-editor-completion-actions">
           <button type="button" onClick={() => void onCancelEditing()}>
             Cancel

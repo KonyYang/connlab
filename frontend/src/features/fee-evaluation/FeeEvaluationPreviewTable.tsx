@@ -85,7 +85,7 @@ export function FeeEvaluationPreviewTable({
     <section className="fee-evaluation-preview-surface" aria-label="Testing Prices preview">
       <header className="fee-evaluation-preview-header">
         <div>
-          <p className="eyebrow">Fee Evaluation</p>
+          <p className="eyebrow fee-evaluation-preview-title">Fee Evaluation</p>
         </div>
         <div className="fee-evaluation-preview-controls">
           <div className="fee-evaluation-preview-group-card">

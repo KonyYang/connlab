@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -111,6 +112,181 @@ def test_existing_official_folder_blocks_create(tmp_path: Path) -> None:
         service.create("project-1")
 
 
+def test_preview_existing_official_folder_reports_conflict_choices(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    official_folder = (
+        tmp_path
+        / "workspaces"
+        / "DL-2025-11-074"
+        / "DL-2025-11-074 Coolpower Qualification test"
+    )
+    official_folder.mkdir(parents=True)
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "exists"
+    assert preview.conflict_paths == (official_folder,)
+    assert {option.key for option in preview.conflict_options} == {
+        "backup_and_recreate",
+        "overwrite_rebuild",
+    }
+
+
+def test_create_with_backup_strategy_preserves_existing_official_folder(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    official_folder.mkdir(parents=True)
+    (official_folder / "old.txt").write_text("old", encoding="utf-8")
+    repo = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        repository=repo,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+
+    result = service.create("project-1", conflict_strategy="backup_and_recreate")
+
+    backups = list(workspace.glob("DL-2025-11-074 Coolpower Qualification test Backup *"))
+    assert len(backups) == 1
+    assert (backups[0] / "old.txt").read_text(encoding="utf-8") == "old"
+    assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+    assert repo.saved is not None
+
+
+def test_create_with_overwrite_strategy_replaces_existing_official_folder(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    official_folder.mkdir(parents=True)
+    (official_folder / "old.txt").write_text("old", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+
+    result = service.create("project-1", conflict_strategy="overwrite_rebuild")
+
+    assert result.official_folder_path == official_folder
+    assert not (official_folder / "old.txt").exists()
+    assert (official_folder / "template.txt").read_text(encoding="utf-8") == "new"
+    assert not list((workspace / ".connlab" / "tmp").glob("overwrite-old-*"))
+
+
+def test_overwrite_strategy_restores_existing_folder_when_final_move_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    official_folder.mkdir(parents=True)
+    (official_folder / "old.txt").write_text("old", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+    real_move = shutil.move
+
+    def fail_final_move(source: str, target: str) -> str:
+        if source.endswith(template.name) and target.endswith("Qualification test"):
+            raise OSError("final move failed")
+        return real_move(source, target)
+
+    monkeypatch.setattr(
+        "backend.application.official_project_workspace_service.shutil.move",
+        fail_final_move,
+    )
+
+    with pytest.raises(OfficialWorkspaceCreateError, match="final move failed"):
+        service.create("project-1", conflict_strategy="overwrite_rebuild")
+
+    assert official_folder.is_dir()
+    assert (official_folder / "old.txt").read_text(encoding="utf-8") == "old"
+    assert not (official_folder / "template.txt").exists()
+    assert not list((workspace / ".connlab" / "tmp").glob("*"))
+
+
+def test_existing_ltr_workspace_reports_conflict_choices(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    workspace.mkdir(parents=True)
+    (workspace / "legacy.txt").write_text("legacy", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "exists"
+    assert workspace in preview.conflict_paths
+    assert {option.key for option in preview.conflict_options} == {
+        "backup_and_recreate",
+        "overwrite_rebuild",
+    }
+
+
+def test_create_with_backup_strategy_preserves_existing_ltr_workspace(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    workspace.mkdir(parents=True)
+    (workspace / "legacy.txt").write_text("legacy", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+
+    result = service.create("project-1", conflict_strategy="backup_and_recreate")
+
+    backups = list((tmp_path / "workspaces").glob("DL-2025-11-074 Backup *"))
+    assert len(backups) == 1
+    assert (backups[0] / "legacy.txt").read_text(encoding="utf-8") == "legacy"
+    assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+
+
 def test_create_from_adoptable_workspace_adds_missing_pieces(tmp_path: Path) -> None:
     template = _make_template(tmp_path / "template")
     workspace = tmp_path / "workspaces" / "DL-2025-11-074"
@@ -156,6 +332,35 @@ def test_preview_completed_after_connlab_created_workspace(tmp_path: Path) -> No
     assert preview.official_folder_path == result.official_folder_path
     assert preview.local_workspace_path == result.record.local_workspace_path
     assert not preview.blockers
+
+
+def test_completed_workspace_can_be_rebuilt_with_backup_strategy(tmp_path: Path) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    (tmp_path / "workspaces").mkdir()
+    repo = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        repository=repo,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+    first = service.create("project-1")
+    old_note = first.official_folder_path / "operator-note.txt"
+    old_note.write_text("old folder content", encoding="utf-8")
+
+    rebuilt = service.create("project-1", conflict_strategy="backup_and_recreate")
+
+    backups = list(first.official_folder_path.parent.glob(f"{first.official_folder_path.name} Backup *"))
+    assert len(backups) == 1
+    assert (backups[0] / "operator-note.txt").read_text(encoding="utf-8") == "old folder content"
+    assert not old_note.exists()
+    assert (rebuilt.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+    assert repo.saved is not None
+    assert repo.saved.workspace_id == rebuilt.record.workspace_id
 
 
 def test_preview_keeps_completed_workspace_when_current_naming_rule_changes(
@@ -395,6 +600,53 @@ def test_manifest_disagreement_is_repairable_inconsistency(tmp_path: Path) -> No
 
     assert preview.status == "inconsistent"
     assert "Workspace manifest does not match" in preview.blockers[0]
+
+
+def test_missing_recorded_official_folder_can_be_regenerated(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    source_book.mkdir(parents=True)
+    old_missing_folder = workspace / "DL-2025-11-074 Coolpower Old test"
+    repository = _WorkspaceRepo()
+    repository.saved = OfficialWorkspaceRecord(
+        workspace_id="workspace-1",
+        project_id="project-1",
+        dl_number="DL-2025-11-074",
+        local_workspace_path=workspace,
+        source_book_path=source_book,
+        official_folder_path=old_missing_folder,
+        manifest_path=workspace / ".connlab" / "manifest.json",
+        template_source_path=template,
+        created_at="2026-06-01T00:00:00+00:00",
+    )
+    service = _service(
+        tmp_path,
+        repository=repository,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "adoptable"
+    assert not preview.blockers
+    assert preview.official_folder_path == workspace / (
+        "DL-2025-11-074 Coolpower Qualification test"
+    )
+    assert any("missing official project folder" in warning for warning in preview.warnings)
+
+    result = service.create("project-1")
+
+    assert result.official_folder_path == preview.official_folder_path
+    assert result.official_folder_path.is_dir()
+    assert repository.saved is not None
+    assert repository.saved.official_folder_path == preview.official_folder_path
 
 
 def test_manifest_without_workspace_record_is_repairable_inconsistency(tmp_path: Path) -> None:

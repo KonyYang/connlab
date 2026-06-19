@@ -114,6 +114,71 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(lastCall?.[0]?.rawToken).toBe("1");
   });
 
+  it("selects the first available Matrix step by default", async () => {
+    const onTokenSelect = vi.fn();
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
+      project_id: "P1",
+      confirmed_matrix_id: "cm-1",
+      preview_status: "ready",
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group 1",
+          sample_quantity_expression: "3",
+          step_count: 2,
+          steps: [
+            {
+              sequence: 2,
+              raw_token: "2",
+              test_item: "LLCR",
+              section: "6.1",
+              method: "EIA-364-23",
+              condition: "",
+              requirement: "Initial resistance",
+            },
+          ],
+        },
+        {
+          group_key: "g2",
+          group_label: "Group 2",
+          sample_quantity_expression: "5",
+          step_count: 1,
+          steps: [
+            {
+              sequence: 1,
+              raw_token: "1",
+              test_item: "Visual",
+              section: "6.1",
+              method: "EIA-364-18B",
+              condition: "10x",
+              requirement: "No damage",
+            },
+          ],
+        },
+      ],
+    });
+
+    render(
+      <ProjectWorkbenchMatrixProjectionPanel
+        projectId="P1"
+        onTokenSelect={onTokenSelect}
+      />
+    );
+
+    await waitFor(() => {
+      expect(onTokenSelect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          groupLabel: "Group 2",
+          rawToken: "1",
+          testItem: "Visual",
+        })
+      );
+    });
+    expect(screen.getByRole("button", { name: "1" }).className).toContain(
+      "is-selected"
+    );
+  });
+
   it("renders not-ready state for missing active confirmed matrix", async () => {
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockRejectedValue(
       new ApiRequestError("Not Found", 404, null)
@@ -126,6 +191,16 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Test record" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
+  });
+
+  it("keeps transient projection loading copy hidden", () => {
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockImplementation(
+      () => new Promise(() => {})
+    );
+
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+
+    expect(screen.queryByText("Loading Matrix projection...")).toBeNull();
   });
 
   it("merges same row context across groups even when token sequence differs", async () => {
