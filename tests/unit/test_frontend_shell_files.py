@@ -6006,6 +6006,7 @@ def test_task315f_project_folder_button_runs_business_flow_steps() -> None:
         "collectRequestMaterial(projectId)",
         "fetchProjectFolderRequiredFormsPreview(projectId)",
         "generateProjectFolderRequiredForms(",
+        "await refreshOfficialFolderCheckAfterFolderCreate();",
         "fetchProjectSection2SyncPreview(projectId)",
         "syncProjectSection2FromConfirmedMatrix(",
     ]:

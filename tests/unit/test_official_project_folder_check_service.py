@@ -260,7 +260,7 @@ def test_current_test_record_and_fee_outputs_are_missing_when_files_are_absent(
                 ProjectOutputStatusItem(
                     output_kind=ProjectOutputKind.FEE_EVALUATION,
                     status=ProjectOutputStatus.CURRENT,
-                    output_path=str(official / "DL-001_Fee_Form.xls"),
+                    output_path=str(official / "DL-001 Fee Form.xls"),
                     source=ProjectOutputSource.SYSTEM_GENERATED,
                     draft_id="draft-1",
                     draft_version=1,
@@ -279,7 +279,7 @@ def test_current_test_record_and_fee_outputs_are_missing_when_files_are_absent(
 
 def test_customer_feedback_ready_when_current_output_exists(tmp_path: Path) -> None:
     official = _official_with_required_folders(tmp_path)
-    feedback_path = official / "DL-001_Customer_Feedback_Form.xlsx"
+    feedback_path = official / "DL-001 Customer Feedback Form.xlsx"
     feedback_path.write_text("feedback", encoding="utf-8")
     service = _service(
         tmp_path,
@@ -315,7 +315,7 @@ def test_customer_feedback_missing_when_current_output_missing_on_disk(tmp_path:
                 ProjectOutputStatusItem(
                     output_kind=ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
                     status=ProjectOutputStatus.CURRENT,
-                    output_path=str(official / "DL-001_Customer_Feedback_Form.xlsx"),
+                    output_path=str(official / "DL-001 Customer Feedback Form.xlsx"),
                     source=ProjectOutputSource.SYSTEM_GENERATED,
                     draft_id="draft-1",
                     draft_version=1,

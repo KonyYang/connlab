@@ -9,6 +9,8 @@ from typing import Protocol
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_output_record_service import (
+    ProjectOutputRecordError,
+    ProjectOutputRecordNotFoundError,
     ProjectOutputStatusSummary,
     RegisterProjectOutputCommand,
 )
@@ -21,21 +23,21 @@ REQUIRED_FORM_DEFINITIONS: tuple[tuple[str, str, ProjectOutputKind, str, str | N
         "test_record",
         "Test Record",
         ProjectOutputKind.TEST_RECORD_FORM,
-        "{dl}_Test_Record.docx",
+        "{dl} Test Record.docx",
         "Submitted Material",
     ),
     (
         "fee_form",
         "Fee Form",
         ProjectOutputKind.FEE_EVALUATION,
-        "{dl}_Fee_Form.xls",
+        "{dl} Fee Form.xls",
         None,
     ),
     (
         "customer_feedback_form",
         "Customer Feedback Form",
         ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
-        "{dl}_Customer_Feedback_Form{owner}.xlsx",
+        "{dl} Customer Feedback Form{owner}.xlsx",
         None,
     ),
 )
@@ -362,7 +364,14 @@ class ProjectFolderRequiredFormsService:
                     items=tuple(generated),
                     warnings=tuple(warnings),
                 )
-            record = self._register_output(command.project_id, item, preview.source_context_signature)
+            output_record_id: str | None = None
+            try:
+                record = self._register_output(
+                    command.project_id, item, preview.source_context_signature
+                )
+                output_record_id = str(getattr(record, "output_record_id", "")) or None
+            except (ProjectOutputRecordError, ProjectOutputRecordNotFoundError) as exc:
+                warnings.append(f"{item.label} was placed, but output tracking was not updated: {exc}")
             final_placement_success_count += 1
             generated.append(
                 RequiredFormsGenerateItem(
@@ -371,7 +380,7 @@ class ProjectFolderRequiredFormsService:
                     target_path=item.target_path,
                     status=status,
                     source_path=source,
-                    output_record_id=str(getattr(record, "output_record_id", "")) or None,
+                    output_record_id=output_record_id,
                     message="Placed in the Official project folder.",
                 )
             )
@@ -421,11 +430,10 @@ class ProjectFolderRequiredFormsService:
                     key=key,
                     label=label,
                     target_path=target_path,
-                    status="ready",
-                    action="update",
-                    message="Existing formal business form can be refreshed.",
+                    status="current",
+                    action="skip",
+                    message="Existing formal business form is present.",
                     output_kind=kind,
-                    existing_sha256=compute_sha256(target_path),
                 )
             return _conflict_item(key, label, target_path, kind)
         if getattr(output_item, "output_path", None) != str(target_path):
@@ -434,11 +442,10 @@ class ProjectFolderRequiredFormsService:
                     key=key,
                     label=label,
                     target_path=target_path,
-                    status="ready",
-                    action="update",
-                    message="Existing formal business form can be refreshed.",
+                    status="current",
+                    action="skip",
+                    message="Existing formal business form is present.",
                     output_kind=kind,
-                    existing_sha256=compute_sha256(target_path),
                 )
             return _conflict_item(key, label, target_path, kind)
         stored_sha = getattr(output_item, "output_sha256", None)
@@ -541,7 +548,7 @@ def _target_path(
     owner_suffix: str | None = None,
 ) -> Path:
     dl = _safe_name(workspace.dl_number)
-    owner = f"_{_safe_name(owner_suffix)}" if owner_suffix else ""
+    owner = f" {_safe_name(owner_suffix)}" if owner_suffix else ""
     folder = (
         workspace.official_folder_path / relative_folder
         if relative_folder
@@ -551,7 +558,7 @@ def _target_path(
 
 
 def _safe_name(value: str) -> str:
-    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in value).strip("._")
+    return "".join(ch if ch.isalnum() or ch in {"-", " "} else " " for ch in value).strip(" .")
 
 
 def _owner_suffix(forms: list[ApplicationForm]) -> str | None:

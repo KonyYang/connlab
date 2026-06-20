@@ -87,7 +87,7 @@ def _preview(project_id: str) -> RequiredFormsPreview:
             RequiredFormPreviewItem(
                 key="test_record",
                 label="Test Record",
-                target_path=official / "Submitted Material" / "DL-001_Test_Record.docx",
+                target_path=official / "Submitted Material" / "DL-001 Test Record.docx",
                 status="ready",
                 action="generate",
                 message="Ready.",
@@ -112,7 +112,7 @@ def _request_payload() -> dict[str, object]:
         "expected_targets": [
             {
                 "key": "test_record",
-                "target_path": f"{official}/Submitted Material/DL-001_Test_Record.docx",
+                "target_path": f"{official}/Submitted Material/DL-001 Test Record.docx",
             }
         ],
     }

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 from pathlib import Path
+import sys
+import types
 
 import pytest
 
@@ -48,6 +50,27 @@ def test_fee_gateway_rejects_missing_template(tmp_path: Path) -> None:
             output_path=tmp_path / "out.xls",
             preview=None,
         )
+
+
+def test_fee_gateway_initializes_com_for_real_excel_dispatch(monkeypatch) -> None:
+    calls: list[str] = []
+    excel = object()
+    pythoncom = types.SimpleNamespace(
+        CoInitialize=lambda: calls.append("initialize"),
+        CoUninitialize=lambda: calls.append("uninitialize"),
+    )
+    win32com_client = types.SimpleNamespace(
+        DispatchEx=lambda name: calls.append(f"dispatch:{name}") or excel
+    )
+    monkeypatch.setitem(sys.modules, "pythoncom", pythoncom)
+    monkeypatch.setitem(sys.modules, "win32com", types.SimpleNamespace(client=win32com_client))
+    monkeypatch.setitem(sys.modules, "win32com.client", win32com_client)
+
+    result, pythoncom_module = FeeEvaluationWorkbookGateway()._open_excel_application()
+    pythoncom_module.CoUninitialize()
+
+    assert result is excel
+    assert calls == ["initialize", "dispatch:Excel.Application", "uninitialize"]
 
 
 def test_fee_gateway_structured_writer_maps_draft_rows_to_testing_prices_sheet(

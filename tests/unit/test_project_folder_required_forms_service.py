@@ -12,6 +12,7 @@ from backend.application.project_folder_required_forms_service import (
     RequiredFormsContextMismatchError,
     RequiredFormsGenerateTarget,
 )
+from backend.application.project_output_record_service import ProjectOutputRecordError
 from backend.application.official_project_folder_check_service import (
     OfficialFolderCheckItem,
     OfficialFolderCheckPreview,
@@ -95,17 +96,18 @@ def test_preview_places_fee_and_customer_feedback_at_official_root(tmp_path: Pat
     assert feedback.target_path.parent == preview.official_project_folder_path
 
 
-def test_preview_allows_untracked_business_form_target_refresh(tmp_path: Path) -> None:
+def test_preview_skips_untracked_existing_business_form_target(tmp_path: Path) -> None:
     service = _service(tmp_path, existing_targets={"fee_form"})
 
     preview = service.preview("P1")
 
     assert preview.status == "ready"
-    assert _item(preview.items, "fee_form").action == "update"
-    assert _item(preview.items, "fee_form").existing_sha256 is not None
+    assert _item(preview.items, "fee_form").action == "skip"
+    assert _item(preview.items, "fee_form").status == "current"
+    assert _item(preview.items, "fee_form").existing_sha256 is None
 
 
-def test_preview_allows_business_form_refresh_when_legacy_record_path_differs(
+def test_preview_skips_existing_business_form_when_legacy_record_path_differs(
     tmp_path: Path,
 ) -> None:
     output_store = _OutputStatusService()
@@ -133,8 +135,9 @@ def test_preview_allows_business_form_refresh_when_legacy_record_path_differs(
     preview = service.preview("P1")
 
     assert preview.status == "ready"
-    assert _item(preview.items, "fee_form").action == "update"
-    assert _item(preview.items, "fee_form").existing_sha256 is not None
+    assert _item(preview.items, "fee_form").action == "skip"
+    assert _item(preview.items, "fee_form").status == "current"
+    assert _item(preview.items, "fee_form").existing_sha256 is None
 
 
 def test_preview_marks_same_context_unchanged_managed_target_current(tmp_path: Path) -> None:
@@ -258,6 +261,79 @@ def test_generate_recreates_deleted_form_files_from_existing_output_records(
         output_store.latest(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM).status
         is ProjectOutputStatus.CURRENT
     )
+
+
+def test_generate_recreates_business_forms_when_legacy_underscore_records_exist(
+    tmp_path: Path,
+) -> None:
+    output_store = _OutputStatusService()
+    legacy_fee_path = _official_root(tmp_path) / "DL-001_Fee_Form.xls"
+    legacy_feedback_path = _official_root(tmp_path) / "DL-001_Customer_Feedback_Form_Alice.xlsx"
+    for kind, path in (
+        (ProjectOutputKind.FEE_EVALUATION, legacy_fee_path),
+        (ProjectOutputKind.CUSTOMER_FEEDBACK_FORM, legacy_feedback_path),
+    ):
+        output_store.items.append(
+            ProjectOutputStatusItem(
+                output_kind=kind,
+                status=ProjectOutputStatus.CURRENT,
+                output_path=str(path),
+                source=ProjectOutputSource.SYSTEM_GENERATED,
+                draft_id="draft-1",
+                draft_version=1,
+                reason="current",
+                updated_at="2026-06-14T00:00:00+00:00",
+                output_sha256="legacy",
+                output_size_bytes=1,
+                source_context_signature="matrix:CM1@1|fee:CF1@1|pricing:PD1",
+            )
+        )
+    service = _service(
+        tmp_path,
+        output_service=output_store,
+        managed_targets={"test_record": "same_context_unchanged_fingerprint"},
+    )
+
+    preview = service.preview("P1")
+    assert preview.status == "ready"
+    assert _item(preview.items, "test_record").action == "skip"
+    assert _item(preview.items, "fee_form").action == "generate"
+    assert _item(preview.items, "customer_feedback_form").action == "generate"
+
+    result = service.generate(
+        _ready_command(
+            tmp_path,
+            expected_targets=(
+                RequiredFormsGenerateTarget("fee_form", _final_path(tmp_path, "fee_form")),
+                RequiredFormsGenerateTarget(
+                    "customer_feedback_form",
+                    _final_path(tmp_path, "customer_feedback_form"),
+                ),
+            ),
+        )
+    )
+
+    assert result.status == "generated"
+    assert _final_path(tmp_path, "fee_form").is_file()
+    assert _final_path(tmp_path, "customer_feedback_form").is_file()
+
+
+def test_generate_continues_when_output_tracking_registration_fails(
+    tmp_path: Path,
+) -> None:
+    output_store = _OutputStatusService(fail_register_for={"test_record"})
+    service = _service(tmp_path, output_service=output_store)
+
+    result = service.generate(_ready_command(tmp_path))
+
+    assert result.status == "generated"
+    assert _item(result.items, "test_record").status == "generated"
+    assert _item(result.items, "fee_form").status == "generated"
+    assert _item(result.items, "customer_feedback_form").status == "generated"
+    assert _item(result.items, "test_record").output_record_id is None
+    assert _final_path(tmp_path, "fee_form").is_file()
+    assert _final_path(tmp_path, "customer_feedback_form").is_file()
+    assert any("output tracking was not updated" in warning for warning in result.warnings)
 
 
 def test_generate_accepts_command_with_only_writable_targets_when_some_items_are_current(
@@ -502,8 +578,14 @@ class _FileGateway:
 
 
 class _OutputStatusService:
-    def __init__(self, items: tuple[ProjectOutputStatusItem, ...] = tuple()) -> None:
+    def __init__(
+        self,
+        items: tuple[ProjectOutputStatusItem, ...] = tuple(),
+        *,
+        fail_register_for: set[str] | None = None,
+    ) -> None:
         self.items = list(items)
+        self.fail_register_for = fail_register_for or set()
 
     def get_status_summary(self, project_id: str) -> ProjectOutputStatusSummary:
         return ProjectOutputStatusSummary(
@@ -516,6 +598,13 @@ class _OutputStatusService:
     def register_output(self, command):
         from backend.domain import ProjectOutputRecord
 
+        key_by_kind = {
+            ProjectOutputKind.TEST_RECORD_FORM: "test_record",
+            ProjectOutputKind.FEE_EVALUATION: "fee_form",
+            ProjectOutputKind.CUSTOMER_FEEDBACK_FORM: "customer_feedback_form",
+        }
+        if key_by_kind.get(command.output_kind) in self.fail_register_for:
+            raise ProjectOutputRecordError("draft_id is required unless status is manual or failed.")
         record = ProjectOutputRecord(
             output_record_id=f"por-{len(self.items) + 1}",
             project_id=command.project_id,
@@ -674,9 +763,9 @@ def _official_root(tmp_path: Path) -> Path:
 def _final_path(tmp_path: Path, key: str) -> Path:
     root = _official_root(tmp_path)
     names = {
-        "test_record": root / "Submitted Material" / "DL-001_Test_Record.docx",
-        "fee_form": root / "DL-001_Fee_Form.xls",
-        "customer_feedback_form": root / "DL-001_Customer_Feedback_Form_Alice.xlsx",
+        "test_record": root / "Submitted Material" / "DL-001 Test Record.docx",
+        "fee_form": root / "DL-001 Fee Form.xls",
+        "customer_feedback_form": root / "DL-001 Customer Feedback Form Alice.xlsx",
     }
     return names[key]
 

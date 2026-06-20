@@ -699,6 +699,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       );
       setRequiredFormsResult(result);
       setRequiredFormsPreview(await fetchProjectFolderRequiredFormsPreview(projectId));
+      await refreshOfficialFolderCheckAfterFolderCreate();
       await refreshOutputStatus(projectId, setOutputStatusSummary);
     } catch (err) {
       setRequiredFormsError((err as Error).message);

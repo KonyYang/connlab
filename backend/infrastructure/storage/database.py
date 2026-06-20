@@ -62,6 +62,7 @@ def init_db(engine: Engine) -> None:
     _migrate_source_matrix_import_commit_fingerprint(engine)
     _migrate_source_matrix_import_preview_payload(engine)
     _migrate_source_matrix_row_detail_columns(engine)
+    _migrate_project_basic_information_records_table(engine)
 
 
 def _migrate_project_no_optional(engine: Engine) -> None:
@@ -642,3 +643,46 @@ def _migrate_source_matrix_row_detail_columns(engine: Engine) -> None:
             connection.exec_driver_sql(
                 f"ALTER TABLE source_matrix_row_snapshots ADD COLUMN {missing_column} TEXT"
             )
+
+
+def _migrate_project_basic_information_records_table(engine: Engine) -> None:
+    """Create TASK_330A Basic Information records table for local SQLite DBs."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "project_basic_information_records" in table_names:
+            return
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE project_basic_information_records (
+                record_id VARCHAR(64) NOT NULL,
+                project_id VARCHAR(64) NOT NULL,
+                status VARCHAR(32) NOT NULL,
+                version INTEGER NOT NULL,
+                values_json TEXT NOT NULL,
+                source_signature_json TEXT NOT NULL,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                confirmed_at VARCHAR(64),
+                confirmed_by VARCHAR(255),
+                PRIMARY KEY (record_id),
+                CONSTRAINT uq_project_basic_information_project_status_version
+                    UNIQUE (project_id, status, version),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_project_basic_information_records_project_id "
+            "ON project_basic_information_records(project_id)"
+        )
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_project_basic_information_records_status "
+            "ON project_basic_information_records(status)"
+        )

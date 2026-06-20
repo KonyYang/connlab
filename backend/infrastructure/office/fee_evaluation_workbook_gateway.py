@@ -74,7 +74,7 @@ class FeeEvaluationWorkbookGateway:
         if not target.parent.exists():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
-        excel = self._open_excel_application()
+        excel, pythoncom_module = self._open_excel_application()
         workbook = None
         excel_state = None
         try:
@@ -97,8 +97,11 @@ class FeeEvaluationWorkbookGateway:
         finally:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
-            _restore_excel_batch(excel, excel_state)
-            excel.Quit()
+            try:
+                _restore_excel_batch(excel, excel_state)
+                excel.Quit()
+            finally:
+                _uninitialize_com(pythoncom_module)
 
         return FeeEvaluationWorkbookWriteResult(
             output_path=target,
@@ -127,7 +130,7 @@ class FeeEvaluationWorkbookGateway:
         if not target.parent.exists():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
-        excel = self._open_excel_application()
+        excel, pythoncom_module = self._open_excel_application()
         workbook = None
         excel_state = None
         gateway_warnings: tuple[str, ...] = ()
@@ -147,8 +150,11 @@ class FeeEvaluationWorkbookGateway:
         finally:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
-            _restore_excel_batch(excel, excel_state)
-            excel.Quit()
+            try:
+                _restore_excel_batch(excel, excel_state)
+                excel.Quit()
+            finally:
+                _uninitialize_com(pythoncom_module)
 
         return FeeEvaluationWorkbookWriteResult(
             output_path=target,
@@ -179,7 +185,7 @@ class FeeEvaluationWorkbookGateway:
         if not target.parent.exists():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
-        excel = self._open_excel_application()
+        excel, pythoncom_module = self._open_excel_application()
         workbook = None
         excel_state = None
         try:
@@ -197,8 +203,11 @@ class FeeEvaluationWorkbookGateway:
         finally:
             if workbook is not None:
                 workbook.Close(SaveChanges=False)
-            _restore_excel_batch(excel, excel_state)
-            excel.Quit()
+            try:
+                _restore_excel_batch(excel, excel_state)
+                excel.Quit()
+            finally:
+                _uninitialize_com(pythoncom_module)
 
         warnings = ["Matrix basic fill only."]
         warnings.extend(gateway_warnings)
@@ -210,16 +219,28 @@ class FeeEvaluationWorkbookGateway:
             warnings=tuple(warnings),
         )
 
-    def _open_excel_application(self) -> Any:
+    def _open_excel_application(self) -> tuple[Any, Any | None]:
         if self._excel_app_factory is not None:
-            return self._excel_app_factory()
+            return self._excel_app_factory(), None
         try:
+            import pythoncom  # type: ignore[import-not-found]
             import win32com.client  # type: ignore[import-not-found]
         except ImportError as exc:  # pragma: no cover
             raise OfficeAutomationUnavailable(
                 "Excel COM automation is required for fee template generation."
             ) from exc
-        return win32com.client.DispatchEx("Excel.Application")
+        pythoncom.CoInitialize()
+        try:
+            excel = win32com.client.DispatchEx("Excel.Application")
+        except Exception:
+            pythoncom.CoUninitialize()
+            raise
+        return excel, pythoncom
+
+
+def _uninitialize_com(pythoncom_module: Any | None) -> None:
+    if pythoncom_module is not None:
+        pythoncom_module.CoUninitialize()
 
 
 def _testing_prices_sheet(workbook: Any) -> Any:

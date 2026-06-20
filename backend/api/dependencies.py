@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -90,6 +91,9 @@ from backend.application.project_registry_summary_service import (
     ProjectRegistrySummaryService,
 )
 from backend.application.project_service import ProjectService
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationService,
+)
 from backend.application.project_test_plan_matrix_preview_service import (
     ProjectTestPlanMatrixPreviewService,
 )
@@ -255,6 +259,7 @@ from backend.infrastructure.storage.repositories import (
     LtrRecordRepository,
     PrecheckResultRepository,
     ProjectCleanupAuditRecordRepository,
+    ProjectBasicInformationRepository,
     ProjectFolderRecordRepository,
     ProjectMatrixDraftRepository,
     MatrixFeePendingRebaseRepository,
@@ -323,6 +328,19 @@ def get_project_registry_summary_service(
         project_store=ProjectRepository(session),
         ltr_store=LtrRecordRepository(session),
         temporary_context_store=ProjectTemporaryContextRepository(session),
+    )
+
+
+def get_project_basic_information_service(
+    session: Session = Depends(get_session),
+) -> ProjectBasicInformationService:
+    """Build Project Basic Information authority service."""
+    return ProjectBasicInformationService(
+        project_store=ProjectRepository(session),
+        ltr_store=LtrRecordRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+        basic_information_store=ProjectBasicInformationRepository(session),
+        clock=lambda: datetime.now(timezone.utc).isoformat(),
     )
 
 

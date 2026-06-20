@@ -22,6 +22,9 @@ from backend.infrastructure.storage.repositories.project_cleanup import (
     ProjectCleanupAuditRecordRepository,
 )
 from backend.infrastructure.storage.repositories.project import ProjectRepository
+from backend.infrastructure.storage.repositories.project_basic_information import (
+    ProjectBasicInformationRepository,
+)
 from backend.infrastructure.storage.repositories.project_temporary_context import (
     ProjectTemporaryContextRepository,
 )
@@ -84,6 +87,7 @@ __all__ = [
     "ProjectFolderRecordRepository",
     "ProjectMatrixDraftRepository",
     "ProjectRepository",
+    "ProjectBasicInformationRepository",
     "ProjectTemporaryContextRepository",
     "ProjectOutputRecordRepository",
     "ProjectOfficialWorkspaceRepository",

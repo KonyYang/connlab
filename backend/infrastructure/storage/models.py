@@ -472,6 +472,35 @@ class ProjectOutputRecordModel(Base):
     note: Mapped[str | None] = mapped_column(Text)
 
 
+class ProjectBasicInformationRecordModel(Base):
+    """Database row for one Project Basic Information authority record."""
+
+    __tablename__ = "project_basic_information_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "status",
+            "version",
+            name="uq_project_basic_information_project_status_version",
+        ),
+    )
+
+    record_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    values_json: Mapped[str] = mapped_column(Text, nullable=False)
+    source_signature_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    confirmed_at: Mapped[str | None] = mapped_column(String(64))
+    confirmed_by: Mapped[str | None] = mapped_column(String(255))
+
+
 class FeeEvaluationPricingDraftEditModel(Base):
     """Database row for one saved Fee Evaluation pricing draft edit payload."""
 
