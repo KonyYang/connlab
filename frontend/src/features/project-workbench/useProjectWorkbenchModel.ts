@@ -20,6 +20,7 @@ import {
   fetchProjectSection2SyncPreview,
   getProjectTestPlanDraft,
   getProject,
+  getProjectBasicInformation,
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
   previewProjectTestPlanMatrixFromSourceCandidate,
@@ -51,6 +52,7 @@ import {
   type MatrixSourceCandidatesResponse,
   type MatrixValidationSummary,
   type Project,
+  type ProjectBasicInformationResponse,
   type ProjectPackagePreview,
   type ProjectFolderRequiredFormsGenerateRequest,
   type ProjectFolderRequiredFormsGenerateResponse,
@@ -105,6 +107,9 @@ export type ProjectWorkbenchModel = {
   message: string | null;
   activeConfirmedMatrixSnapshot: ConfirmedMatrixSnapshot | null;
   activeConfirmedMatrixLoading: boolean;
+  basicInformation: ProjectBasicInformationResponse | null;
+  basicInformationLoading: boolean;
+  basicInformationError: string | null;
   confirmedFeeLatest: ConfirmedFeeLatestResponse | null;
   packagePreview: ProjectPackagePreview | null;
   packagePreviewLoading: boolean;
@@ -198,6 +203,7 @@ export type ProjectWorkbenchModel = {
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
   onRefreshPublicDriveUploadPreview: () => Promise<void>;
+  onRefreshBasicInformation: () => Promise<void>;
   onUploadPublicDriveProjectFolder: () => Promise<void>;
   onRefreshRequestMaterial: () => Promise<void>;
   onCollectRequestMaterial: () => Promise<void>;
@@ -292,6 +298,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [activeConfirmedMatrixSnapshot, setActiveConfirmedMatrixSnapshot] =
     useState<ConfirmedMatrixSnapshot | null>(null);
   const [activeConfirmedMatrixLoading, setActiveConfirmedMatrixLoading] = useState(true);
+  const [basicInformation, setBasicInformation] =
+    useState<ProjectBasicInformationResponse | null>(null);
+  const [basicInformationLoading, setBasicInformationLoading] = useState(false);
+  const [basicInformationError, setBasicInformationError] = useState<string | null>(null);
   const [confirmedFeeLatest, setConfirmedFeeLatest] =
     useState<ConfirmedFeeLatestResponse | null>(null);
   const [packagePreview, setPackagePreview] = useState<ProjectPackagePreview | null>(null);
@@ -360,6 +370,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshRequiredForms();
     void onRefreshOfficialFolderCheck();
     void onRefreshPublicDriveUploadPreview();
+    void onRefreshBasicInformation();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -625,10 +636,16 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     conflictStrategy?: OfficialWorkspaceConflictStrategy
   ): Promise<void> {
     setOfficialWorkspaceCreating(true);
+    const timings: ProjectFolderFlowTiming[] = [];
     try {
-      const result = await createOfficialWorkspace(
-        projectId,
-        conflictStrategy ? { conflict_strategy: conflictStrategy } : {}
+      const result = await timeProjectFolderStep(
+        timings,
+        "createOfficialWorkspace",
+        () =>
+          createOfficialWorkspace(
+            projectId,
+            conflictStrategy ? { conflict_strategy: conflictStrategy } : {}
+          )
       );
       setOfficialWorkspaceResult(result);
       setMessage(
@@ -638,23 +655,42 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       );
       setError(null);
       setOfficialWorkspaceError(null);
-      await onRefreshOfficialWorkspacePreview();
-      await runProjectFolderBusinessFlowAfterCreate();
+      await timeProjectFolderStep(
+        timings,
+        "officialWorkspacePreview.afterCreate",
+        () => onRefreshOfficialWorkspacePreview()
+      );
+      await runProjectFolderBusinessFlowAfterCreate(timings);
     } catch (err) {
       setOfficialWorkspaceError((err as Error).message);
     } finally {
+      logProjectFolderFlowTiming(projectId, conflictStrategy ?? "direct", timings);
       setOfficialWorkspaceCreating(false);
     }
   }
 
-  async function runProjectFolderBusinessFlowAfterCreate(): Promise<void> {
-    await collectRequestMaterialAfterFolderCreate();
-    await refreshOfficialFolderCheckAfterFolderCreate();
-    await generateRequiredFormsAfterFolderCreate();
-    await syncSection2AfterFolderCreate();
-    await writeBackApplicationFormAfterFolderCreate();
-    await onRefreshPackagePreview();
-    await onRefreshPublicDriveUploadPreview();
+  async function runProjectFolderBusinessFlowAfterCreate(
+    timings?: ProjectFolderFlowTiming[]
+  ): Promise<void> {
+    await timeProjectFolderStep(timings, "requestMaterial.collect", () =>
+      collectRequestMaterialAfterFolderCreate()
+    );
+    await timeProjectFolderStep(timings, "officialFolderCheck.afterCollect", () =>
+      refreshOfficialFolderCheckAfterFolderCreate()
+    );
+    await generateRequiredFormsAfterFolderCreate(timings);
+    await timeProjectFolderStep(timings, "section2.sync", () =>
+      syncSection2AfterFolderCreate()
+    );
+    await timeProjectFolderStep(timings, "applicationForm.writeBack", () =>
+      writeBackApplicationFormAfterFolderCreate()
+    );
+    await timeProjectFolderStep(timings, "projectPackage.preview", () =>
+      onRefreshPackagePreview()
+    );
+    await timeProjectFolderStep(timings, "publicDrive.preview", () =>
+      onRefreshPublicDriveUploadPreview()
+    );
   }
 
   async function collectRequestMaterialAfterFolderCreate(): Promise<void> {
@@ -682,9 +718,15 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function generateRequiredFormsAfterFolderCreate(): Promise<void> {
+  async function generateRequiredFormsAfterFolderCreate(
+    timings?: ProjectFolderFlowTiming[]
+  ): Promise<void> {
     try {
-      const preview = await fetchProjectFolderRequiredFormsPreview(projectId);
+      const preview = await timeProjectFolderStep(
+        timings,
+        "requiredForms.preview",
+        () => fetchProjectFolderRequiredFormsPreview(projectId)
+      );
       setRequiredFormsPreview(preview);
       setRequiredFormsError(null);
       if (preview.status !== "ready" && preview.status !== "conflict") {
@@ -693,14 +735,33 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       if (!preview.items.some((item) => item.action === "generate" || item.action === "update")) {
         return;
       }
-      const result = await generateProjectFolderRequiredForms(
-        projectId,
-        buildRequiredFormsGenerateRequest(preview)
+      const result = await timeProjectFolderStep(
+        timings,
+        "requiredForms.generate",
+        () =>
+          generateProjectFolderRequiredForms(
+            projectId,
+            buildRequiredFormsGenerateRequest(preview)
+          )
       );
+      if (result.timings?.length) {
+        console.info("[required-forms-generate]", {
+          projectId,
+          timings: result.timings,
+        });
+      }
       setRequiredFormsResult(result);
-      setRequiredFormsPreview(await fetchProjectFolderRequiredFormsPreview(projectId));
-      await refreshOfficialFolderCheckAfterFolderCreate();
-      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      setRequiredFormsPreview(
+        await timeProjectFolderStep(timings, "requiredForms.previewAfterGenerate", () =>
+          fetchProjectFolderRequiredFormsPreview(projectId)
+        )
+      );
+      await timeProjectFolderStep(timings, "officialFolderCheck.afterRequiredForms", () =>
+        refreshOfficialFolderCheckAfterFolderCreate()
+      );
+      await timeProjectFolderStep(timings, "outputStatus.afterRequiredForms", () =>
+        refreshOutputStatus(projectId, setOutputStatusSummary)
+      );
     } catch (err) {
       setRequiredFormsError((err as Error).message);
     }
@@ -867,6 +928,22 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setPublicDriveUploadError((err as Error).message);
     } finally {
       setPublicDriveUploadLoading(false);
+    }
+  }
+
+  async function onRefreshBasicInformation(): Promise<void> {
+    setBasicInformationLoading(true);
+    try {
+      const nextBasicInformation = await getProjectBasicInformation(projectId);
+      setBasicInformation(nextBasicInformation);
+      setBasicInformationError(null);
+    } catch (err) {
+      setBasicInformation(null);
+      setBasicInformationError(
+        err instanceof Error ? err.message : "Failed to load Basic Information."
+      );
+    } finally {
+      setBasicInformationLoading(false);
     }
   }
 
@@ -1221,6 +1298,9 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     message,
     activeConfirmedMatrixSnapshot,
     activeConfirmedMatrixLoading,
+    basicInformation,
+    basicInformationLoading,
+    basicInformationError,
     confirmedFeeLatest,
     packagePreview,
     packagePreviewLoading,
@@ -1305,6 +1385,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview,
+    onRefreshBasicInformation,
     onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial,
     onCollectRequestMaterial,
@@ -1481,6 +1562,41 @@ async function refreshOutputStatus(
   } catch {
     setOutputStatusSummary(null);
   }
+}
+
+type ProjectFolderFlowTiming = {
+  label: string;
+  elapsedMs: number;
+};
+
+async function timeProjectFolderStep<T>(
+  timings: ProjectFolderFlowTiming[] | undefined,
+  label: string,
+  action: () => Promise<T>
+): Promise<T> {
+  const startedAt = performance.now();
+  try {
+    return await action();
+  } finally {
+    timings?.push({
+      label,
+      elapsedMs: Math.round(performance.now() - startedAt),
+    });
+  }
+}
+
+function logProjectFolderFlowTiming(
+  projectId: string,
+  mode: string,
+  timings: ProjectFolderFlowTiming[]
+): void {
+  const totalMs = timings.reduce((total, item) => total + item.elapsedMs, 0);
+  console.info("[project-folder-flow]", {
+    projectId,
+    mode,
+    totalMs,
+    timings,
+  });
 }
 
 function buildRequiredFormsGenerateRequest(

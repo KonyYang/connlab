@@ -136,7 +136,7 @@ class NewProjectCompletionService:
         project = self._confirm_or_load_project(command.case_id)
         project = self._ensure_ltr_ready_status(project)
         if not self._registered_ltrs(project):
-            self._promote_lab_performing_tests(project.project_id, command)
+            self._promote_setup_confirmation(project.project_id, command)
         ltr_result = self._commit_or_load_ltr(project, command)
         final_project = self._projects.get(project.project_id) or project
         return NewProjectCompletionResult(
@@ -210,20 +210,26 @@ class NewProjectCompletionService:
             if ltr.status is LtrStatus.REGISTERED
         ]
 
-    def _promote_lab_performing_tests(
+    def _promote_setup_confirmation(
         self,
         project_id: str,
         command: CompleteNewProjectCommand,
     ) -> None:
-        """Persist confirmed Lab Performing the Tests into ApplicationForm.lab."""
+        """Persist confirmed Project setup fields into the ApplicationForm."""
         lab = normalize_lab_performing_tests(command.lab_performing_tests, required=True)
         forms = self._forms.list_by_project(project_id)
         if not forms:
             raise NewProjectCompletionError(
-                "Application form not found for Lab Performing the Tests confirmation."
+                "Application form not found for Project setup confirmation."
             )
         latest = forms[-1]
-        self._forms.update(replace(latest, lab=lab))
+        self._forms.update(
+            replace(
+                latest,
+                lab=lab,
+                assigned_personnel=_text(command.project_leader) or "",
+            )
+        )
 
     def _validate_setup_confirmation(self, command: CompleteNewProjectCommand) -> None:
         """Require operator-confirmed values that will map to LTR workbook fields."""

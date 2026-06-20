@@ -309,6 +309,7 @@ def test_complete_new_project_does_not_mutate_lab_on_registered_idempotent_retry
         with session_factory() as session:
             forms = ApplicationFormRepository(session).list_by_project(project_id)
             assert forms[-1].lab == "Valley Green"
+            assert forms[-1].assigned_personnel == "Alice"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

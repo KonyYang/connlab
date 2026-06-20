@@ -12,6 +12,9 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "latestLtr"
   | "activeConfirmedMatrixSnapshot"
   | "activeConfirmedMatrixLoading"
+  | "basicInformation"
+  | "basicInformationLoading"
+  | "basicInformationError"
   | "confirmedFeeLatest"
   | "matrixAuthorityDraft"
   | "matrixCandidateDraft"
@@ -65,6 +68,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshOfficialFolderCheck"
   | "onRepairOfficialFolderStructure"
   | "onRefreshPublicDriveUploadPreview"
+  | "onRefreshBasicInformation"
   | "onUploadPublicDriveProjectFolder"
   | "onRefreshRequestMaterial"
   | "onCollectRequestMaterial"
@@ -86,6 +90,9 @@ export function selectProjectRuntimeConsoleModel(
     latestLtr: model.latestLtr,
     activeConfirmedMatrixSnapshot: model.activeConfirmedMatrixSnapshot,
     activeConfirmedMatrixLoading: model.activeConfirmedMatrixLoading,
+    basicInformation: model.basicInformation,
+    basicInformationLoading: model.basicInformationLoading,
+    basicInformationError: model.basicInformationError,
     confirmedFeeLatest: model.confirmedFeeLatest,
     matrixAuthorityDraft: model.matrixAuthorityDraft,
     matrixCandidateDraft: model.matrixCandidateDraft,
@@ -139,6 +146,7 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshOfficialFolderCheck: model.onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure: model.onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview: model.onRefreshPublicDriveUploadPreview,
+    onRefreshBasicInformation: model.onRefreshBasicInformation,
     onUploadPublicDriveProjectFolder: model.onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial: model.onRefreshRequestMaterial,
     onCollectRequestMaterial: model.onCollectRequestMaterial,

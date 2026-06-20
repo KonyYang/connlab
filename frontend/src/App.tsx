@@ -12,6 +12,7 @@ import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
 import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectMatrixEditorPage } from "./pages/ProjectMatrixEditorPage";
 import { ProjectFeeEvaluationPage } from "./pages/ProjectFeeEvaluationPage";
+import { ProjectBasicInformationPage } from "./pages/ProjectBasicInformationPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
 import { RuntimeProjectionPrototypePage } from "./pages/RuntimeProjectionPrototypePage";
@@ -26,6 +27,7 @@ type Route =
   | { name: "projectDetail"; projectId: string }
   | { name: "projectMatrixEditor"; projectId: string }
   | { name: "projectFeeEvaluation"; projectId: string }
+  | { name: "projectBasicInformation"; projectId: string }
   | { name: "runtimeProjection" }
   | { name: "settings" }
   | { name: "notFound" };
@@ -65,6 +67,14 @@ function parseRoute(pathname: string): Route {
   const feeEvaluationMatch = pathname.match(/^\/projects\/([^/]+)\/fee-evaluation$/);
   if (feeEvaluationMatch) {
     return { name: "projectFeeEvaluation", projectId: decodeURIComponent(feeEvaluationMatch[1]) };
+  }
+
+  const basicInformationMatch = pathname.match(/^\/projects\/([^/]+)\/basic-information$/);
+  if (basicInformationMatch) {
+    return {
+      name: "projectBasicInformation",
+      projectId: decodeURIComponent(basicInformationMatch[1]),
+    };
   }
 
   const match = pathname.match(/^\/projects\/([^/]+)$/);
@@ -120,12 +130,19 @@ export default function App(): ReactElement {
         ? "workbench"
       : route.name === "projectFeeEvaluation"
         ? "workbench"
+      : route.name === "projectBasicInformation"
+        ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
         : route.name === "runtimeProjection"
           ? "runtime-projection"
         : route.name;
-  const topBarTitle = route.name === "projectMatrixEditor" ? "Matrix Editor" : undefined;
+  const topBarTitle =
+    route.name === "projectMatrixEditor"
+      ? "Matrix Editor"
+      : route.name === "projectBasicInformation"
+        ? "Basic Information"
+        : undefined;
 
   return (
     <AppShell
@@ -189,6 +206,9 @@ export default function App(): ReactElement {
           onOpenFeeEvaluation={() =>
             navigate(`/projects/${encodeURIComponent(route.projectId)}/fee-evaluation`)
           }
+          onOpenBasicInformation={() =>
+            navigate(`/projects/${encodeURIComponent(route.projectId)}/basic-information`)
+          }
           onOpenSettings={() => navigate("/settings")}
         />
       )}
@@ -200,6 +220,12 @@ export default function App(): ReactElement {
       )}
       {route.name === "projectFeeEvaluation" && (
         <ProjectFeeEvaluationPage
+          projectId={route.projectId}
+          onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+        />
+      )}
+      {route.name === "projectBasicInformation" && (
+        <ProjectBasicInformationPage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
         />
@@ -223,6 +249,7 @@ function isProjectWorkspaceRoute(route: Route): boolean {
   return (
     route.name === "projectDetail" ||
     route.name === "projectMatrixEditor" ||
-    route.name === "projectFeeEvaluation"
+    route.name === "projectFeeEvaluation" ||
+    route.name === "projectBasicInformation"
   );
 }

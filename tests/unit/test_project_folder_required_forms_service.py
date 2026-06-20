@@ -765,7 +765,7 @@ def _final_path(tmp_path: Path, key: str) -> Path:
     names = {
         "test_record": root / "Submitted Material" / "DL-001 Test Record.docx",
         "fee_form": root / "DL-001 Fee Form.xls",
-        "customer_feedback_form": root / "DL-001 Customer Feedback Form Alice.xlsx",
+        "customer_feedback_form": root / "DL-001 Customer Feedback Form_Alice.xlsx",
     }
     return names[key]
 

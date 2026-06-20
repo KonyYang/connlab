@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { ProjectBasicInformationSummaryCard } from "../project-basic-information/ProjectBasicInformationSummaryCard";
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type {
@@ -15,6 +16,9 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   projectFolderTasks: ProjectFolderTaskRow[];
   projectId: string;
   currentProjectFolderTaskKey: ProjectFolderTaskKey;
+  basicInformation: ProjectRuntimeConsoleModel["basicInformation"];
+  basicInformationLoading: ProjectRuntimeConsoleModel["basicInformationLoading"];
+  basicInformationError: ProjectRuntimeConsoleModel["basicInformationError"];
   runtimeProjectionSnapshot: ProjectRuntimeConsoleModel["runtimeProjectionSnapshot"];
   selectedProjectionToken: MatrixProjectionTokenCell | null;
   setSelectedProjectionToken: (token: MatrixProjectionTokenCell | null) => void;
@@ -27,6 +31,9 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   projectFolderTasks,
   projectId,
   currentProjectFolderTaskKey,
+  basicInformation,
+  basicInformationLoading,
+  basicInformationError,
   runtimeProjectionSnapshot,
   selectedProjectionToken,
   setSelectedProjectionToken,
@@ -51,23 +58,30 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
           selectedProjectionToken={selectedProjectionToken}
           setSelectedProjectionToken={setSelectedProjectionToken}
           sideColumnAfter={
-            <section className="runtime-console-folder-inspector" aria-label="Folder Action">
-            <p className="eyebrow">Folder Action</p>
-            <h3>{currentFolderTask.title}</h3>
-            <strong className={`runtime-console-folder-inspector-status status-${currentFolderTask.status}`}>
-              {currentFolderTask.statusLabel}
-            </strong>
-            <p>{currentFolderTask.summary}</p>
-            <FolderTaskMessages task={currentFolderTask} />
-            {currentFolderTask.actionLabel && currentFolderTask.actionTarget ? (
-              <button
-                type="button"
-                onClick={() => onProjectFolderTaskAction(currentFolderTask.actionTarget ?? null)}
-              >
-                {currentFolderTask.actionLabel}
-              </button>
-            ) : null}
-          </section>
+            <>
+              <ProjectBasicInformationSummaryCard
+                basicInformation={basicInformation}
+                loading={basicInformationLoading}
+                error={basicInformationError}
+              />
+              <section className="runtime-console-folder-inspector" aria-label="Folder Action">
+                <p className="eyebrow">Folder Action</p>
+                <h3>{currentFolderTask.title}</h3>
+                <strong className={`runtime-console-folder-inspector-status status-${currentFolderTask.status}`}>
+                  {currentFolderTask.statusLabel}
+                </strong>
+                <p>{currentFolderTask.summary}</p>
+                <FolderTaskMessages task={currentFolderTask} />
+                {currentFolderTask.actionLabel && currentFolderTask.actionTarget ? (
+                  <button
+                    type="button"
+                    onClick={() => onProjectFolderTaskAction(currentFolderTask.actionTarget ?? null)}
+                  >
+                    {currentFolderTask.actionLabel}
+                  </button>
+                ) : null}
+              </section>
+            </>
           }
         />
       </section>

@@ -5,6 +5,7 @@ import type {
   ConfirmedMatrixSnapshot,
   ConfirmedFeeLatestResponse,
   Project,
+  ProjectBasicInformationResponse,
   OfficialFolderCheckPreview,
   ProjectPackagePreview,
   PublicDriveUploadPreview,
@@ -166,7 +167,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
   });
 
-  it("uses header actions and Matrix workspace once active Matrix exists", () => {
+  it("uses header actions and Matrix workspace once active Matrix exists", async () => {
+    const user = userEvent.setup();
+    const onOpenBasicInformation = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -174,13 +177,20 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: readyPackagePreview,
       requestMaterialPreview: collectedRequestMaterialPreview,
       folderReady: true,
-    });
+    }, {}, { onOpenBasicInformation });
 
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.queryByLabelText("Project commands")).toBeNull();
-    expect(screen.getByLabelText("Project Workbench actions")).toBeTruthy();
+    const actionBar = screen.getByLabelText("Project Workbench actions");
+    expect(actionBar).toBeTruthy();
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Fee Evaluation" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Basic Information" })).toBeTruthy();
+    expect(actionBar.textContent).toMatch(
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Update project folder/
+    );
+    await user.click(screen.getByRole("button", { name: "Basic Information" }));
+    expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: "Folder ready" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
     expect(screen.getByRole("button", { name: "Update project folder" })).toBeTruthy();
@@ -195,6 +205,32 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByRole("tab", { name: "Project Folder" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
+  });
+
+  it("shows a read-only Basic Information summary card without duplicate identity fields", async () => {
+    const user = userEvent.setup();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: true,
+      basicInformation: confirmedBasicInformation,
+    });
+
+    expect(screen.getByLabelText("Project Basic Information")).toBeTruthy();
+    expect(screen.getByText("Confirmed")).toBeTruthy();
+    expect(screen.getByText("Project Type")).toBeTruthy();
+    expect(screen.getByText("NPD")).toBeTruthy();
+    expect(screen.queryByText("DL/LTR Number")).toBeNull();
+    expect(screen.queryByText("Product Description")).toBeNull();
+    expect(screen.queryByText("Test Item")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByText("All confirmed fields")).toBeTruthy();
+    expect(screen.getByText("DL-2026-05-011")).toBeTruthy();
   });
 
   it("does not show mode tabs when the active Matrix workspace is the main task", () => {
@@ -695,7 +731,7 @@ function renderWorkbench(
   callbacks: Partial<Pick<
     ProjectWorkbenchLayoutPropsForTest,
     "onBack" | "onOpenMatrixEditor" | "onOpenFeeEvaluation"
-    | "onOpenSettings"
+    | "onOpenBasicInformation" | "onOpenSettings"
   >> = {}
 ): ReturnType<typeof render> {
   const currentProject = { ...project, ...projectOverrides };
@@ -706,6 +742,7 @@ function renderWorkbench(
       onBack={callbacks.onBack ?? vi.fn()}
       onOpenMatrixEditor={callbacks.onOpenMatrixEditor ?? vi.fn()}
       onOpenFeeEvaluation={callbacks.onOpenFeeEvaluation ?? vi.fn()}
+      onOpenBasicInformation={callbacks.onOpenBasicInformation ?? vi.fn()}
       onOpenSettings={callbacks.onOpenSettings ?? vi.fn()}
     />
   );
@@ -781,6 +818,9 @@ function buildRuntimeModel(
     requestMaterialLoading: false,
     requestMaterialCollecting: false,
     requestMaterialError: null,
+    basicInformation: null,
+    basicInformationLoading: false,
+    basicInformationError: null,
     setRuntimeSelectedTokenReference: vi.fn(),
     onFolderCreated: vi.fn(),
     onRefreshPackagePreview: vi.fn(),
@@ -789,6 +829,7 @@ function buildRuntimeModel(
     onRefreshOfficialFolderCheck: vi.fn(),
     onRepairOfficialFolderStructure: vi.fn(),
     onRefreshPublicDriveUploadPreview: vi.fn(),
+    onRefreshBasicInformation: vi.fn(),
     onUploadPublicDriveProjectFolder: vi.fn(),
     onRefreshRequestMaterial: vi.fn(),
     onCollectRequestMaterial: vi.fn(),
@@ -807,6 +848,48 @@ const project: Project = {
   product_name: "Connector Sample",
   requestor: "Lab User",
   status: "active",
+};
+
+const confirmedBasicInformation: ProjectBasicInformationResponse = {
+  project_id: "P1",
+  status: "confirmed",
+  draft: {
+    values: {
+      dl_number: "DL-2026-05-011",
+      project_type: "NPD",
+      product_description: "Coolpower HDF",
+      test_item: "Qualification Testing",
+      requested_by: "MP Cao",
+      project_leader: "Even Yang",
+      lab_performing_tests: "Dongguan",
+    },
+  },
+  latest_confirmed: {
+    record_id: "BASIC-1",
+    project_id: "P1",
+    status: "confirmed",
+    version: 1,
+    values: {
+      dl_number: "DL-2026-05-011",
+      project_type: "NPD",
+      product_description: "Coolpower HDF",
+      test_item: "Qualification Testing",
+      requested_by: "MP Cao",
+      project_leader: "Even Yang",
+      lab_performing_tests: "Dongguan",
+    },
+    source_signature: "{}",
+    created_at: "2026-06-20T09:00:00+00:00",
+    updated_at: "2026-06-20T09:00:00+00:00",
+    confirmed_at: "2026-06-20T09:00:00+00:00",
+    confirmed_by: "Lab User",
+  },
+  field_suggestions: {},
+  changed_source_fields: [],
+  missing_required_fields: [],
+  missing_required_labels: [],
+  blockers: [],
+  warnings: [],
 };
 
 const testPlanDraft: ProjectTestPlanDraft = {

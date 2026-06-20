@@ -19,6 +19,7 @@ from backend.application.project_folder_required_forms_service import (
     RequiredFormsGenerateResult,
     RequiredFormsGenerateTarget,
     RequiredFormsPreview,
+    RequiredFormsTiming,
 )
 
 
@@ -88,6 +89,13 @@ class RequiredFormsGenerateItemResponse(BaseModel):
     message: str
 
 
+class RequiredFormsTimingResponse(BaseModel):
+    """Diagnostic timing entry for Required forms generation."""
+
+    label: str
+    elapsed_ms: int
+
+
 class RequiredFormsGenerateResponse(BaseModel):
     """Response DTO for Required forms generation."""
 
@@ -96,6 +104,7 @@ class RequiredFormsGenerateResponse(BaseModel):
     official_project_folder_path: str
     items: list[RequiredFormsGenerateItemResponse]
     warnings: list[str]
+    timings: list[RequiredFormsTimingResponse] = Field(default_factory=list)
 
 
 @router.get("/preview", response_model=RequiredFormsPreviewResponse)
@@ -193,6 +202,7 @@ def _generate_response(result: RequiredFormsGenerateResult) -> RequiredFormsGene
         official_project_folder_path=str(result.official_project_folder_path),
         items=[_generate_item_response(item) for item in result.items],
         warnings=list(result.warnings),
+        timings=[_timing_response(item) for item in result.timings],
     )
 
 
@@ -214,3 +224,8 @@ def _generate_item_response(
 def _path(path: Path | None) -> str | None:
     """Return path text for JSON responses."""
     return str(path) if path is not None else None
+
+
+def _timing_response(item: RequiredFormsTiming) -> RequiredFormsTimingResponse:
+    """Convert one timing entry to API response DTO."""
+    return RequiredFormsTimingResponse(label=item.label, elapsed_ms=item.elapsed_ms)

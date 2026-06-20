@@ -33,6 +33,15 @@ def project_workbench_feature_source() -> str:
     )
 
 
+def project_basic_information_feature_source() -> str:
+    """Return the Basic Information feature source used by static UI checks."""
+    feature_root = FRONTEND_ROOT / "src" / "features" / "project-basic-information"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(feature_root.glob("*.tsx")) + sorted(feature_root.glob("*.ts"))
+    )
+
+
 def matrix_editor_feature_source() -> str:
     """Return the current Matrix Editor feature source used by static checks."""
     feature_root = FRONTEND_ROOT / "src" / "features" / "matrix-editor"
@@ -52,6 +61,27 @@ def test_task315f_project_commandbar_secondary_buttons_have_visible_fill() -> No
     assert "background: rgba(31, 102, 209, 0.08);" in workbench_css
     assert "border: 1px solid rgba(31, 102, 209, 0.24);" in workbench_css
     assert "box-shadow: inset 0 0 0 1px rgba(31, 102, 209, 0.08);" in workbench_css
+
+
+def test_task330b_basic_information_frontend_route_and_boundaries() -> None:
+    """TASK_330B adds the Workbench entry and keeps Basic Information API access centralized."""
+    app_source = (FRONTEND_ROOT / "src" / "App.tsx").read_text(encoding="utf-8")
+    workbench_source = project_workbench_feature_source()
+    basic_information_source = project_basic_information_feature_source()
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/basic-information" in app_source
+    assert "ProjectBasicInformationPage" in app_source
+    assert "Matrix Editor" in workbench_source
+    assert "Fee Evaluation" in workbench_source
+    assert "Basic Information" in workbench_source
+    assert "ProjectBasicInformationSummaryCard" in workbench_source
+    assert "getProjectBasicInformation" in client_source
+    assert "saveProjectBasicInformationDraft" in client_source
+    assert "confirmProjectBasicInformation" in client_source
+    assert "fetch(" not in basic_information_source
 
 
 def test_task315f_matrix_editor_header_links_fee_evaluation() -> None:

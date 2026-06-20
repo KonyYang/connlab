@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from time import perf_counter
 from typing import Protocol
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
@@ -205,6 +206,14 @@ class RequiredFormsGenerateItem:
 
 
 @dataclass(frozen=True, slots=True)
+class RequiredFormsTiming:
+    """Diagnostic timing entry for one Required forms generation step."""
+
+    label: str
+    elapsed_ms: int
+
+
+@dataclass(frozen=True, slots=True)
 class RequiredFormsGenerateResult:
     """Required forms generation result."""
 
@@ -213,6 +222,7 @@ class RequiredFormsGenerateResult:
     official_project_folder_path: Path
     items: tuple[RequiredFormsGenerateItem, ...]
     warnings: tuple[str, ...]
+    timings: tuple[RequiredFormsTiming, ...] = tuple()
 
 
 class ProjectFolderRequiredFormsService:
@@ -299,8 +309,14 @@ class ProjectFolderRequiredFormsService:
 
     def generate(self, command: GenerateRequiredFormsCommand) -> RequiredFormsGenerateResult:
         """Generate and place Required forms after rechecking the preview context."""
+        total_start = perf_counter()
+        timings: list[RequiredFormsTiming] = []
+        preview_start = perf_counter()
         preview = self.preview(command.project_id)
+        _append_timing(timings, "required_forms.preview", preview_start)
+        validate_start = perf_counter()
         self._validate_context(command, preview)
+        _append_timing(timings, "required_forms.validate_context", validate_start)
         if preview.status == "blocked":
             raise RequiredFormsConflictError(
                 preview.blockers[0] if preview.blockers else "Required forms are blocked."
@@ -328,11 +344,14 @@ class ProjectFolderRequiredFormsService:
                 )
                 continue
             try:
+                generate_start = perf_counter()
                 source = self._generator.generate(
                     project_id=command.project_id,
                     key=item.key,
                     target_name=item.target_path.name,
                 )
+                _append_timing(timings, f"{item.key}.generate", generate_start)
+                place_start = perf_counter()
                 if item.action == "update" and item.existing_sha256:
                     self._files.update_managed(
                         source,
@@ -344,6 +363,7 @@ class ProjectFolderRequiredFormsService:
                 else:
                     self._files.create_new(source, item.target_path, key=item.key)
                     status = "generated"
+                _append_timing(timings, f"{item.key}.place", place_start)
             except RequiredFormsTargetChangedError as exc:
                 generated.append(
                     _failed_item(item, "conflict", f"Target changed before update: {exc}")
@@ -354,6 +374,7 @@ class ProjectFolderRequiredFormsService:
                     official_project_folder_path=command.expected_official_project_folder_path,
                     items=tuple(generated),
                     warnings=tuple(warnings),
+                    timings=_finish_timings(timings, total_start),
                 )
             except OSError as exc:
                 generated.append(_failed_item(item, "failed", str(exc)))
@@ -363,8 +384,10 @@ class ProjectFolderRequiredFormsService:
                     official_project_folder_path=command.expected_official_project_folder_path,
                     items=tuple(generated),
                     warnings=tuple(warnings),
+                    timings=_finish_timings(timings, total_start),
                 )
             output_record_id: str | None = None
+            register_start = perf_counter()
             try:
                 record = self._register_output(
                     command.project_id, item, preview.source_context_signature
@@ -372,6 +395,7 @@ class ProjectFolderRequiredFormsService:
                 output_record_id = str(getattr(record, "output_record_id", "")) or None
             except (ProjectOutputRecordError, ProjectOutputRecordNotFoundError) as exc:
                 warnings.append(f"{item.label} was placed, but output tracking was not updated: {exc}")
+            _append_timing(timings, f"{item.key}.register_output", register_start)
             final_placement_success_count += 1
             generated.append(
                 RequiredFormsGenerateItem(
@@ -396,6 +420,7 @@ class ProjectFolderRequiredFormsService:
             official_project_folder_path=command.expected_official_project_folder_path,
             items=tuple(generated),
             warnings=tuple(warnings),
+            timings=_finish_timings(timings, total_start),
         )
 
     def _preview_item(
@@ -540,6 +565,32 @@ def compute_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _append_timing(
+    timings: list[RequiredFormsTiming], label: str, start: float
+) -> None:
+    """Append one elapsed timing entry."""
+    timings.append(RequiredFormsTiming(label=label, elapsed_ms=_elapsed_ms(start)))
+
+
+def _finish_timings(
+    timings: list[RequiredFormsTiming], total_start: float
+) -> tuple[RequiredFormsTiming, ...]:
+    """Append total elapsed timing and return immutable entries."""
+    return tuple(
+        [
+            *timings,
+            RequiredFormsTiming(
+                label="required_forms.total",
+                elapsed_ms=_elapsed_ms(total_start),
+            ),
+        ]
+    )
+
+
+def _elapsed_ms(start: float) -> int:
+    return int(round((perf_counter() - start) * 1000))
+
+
 def _target_path(
     workspace: OfficialWorkspaceRecord,
     pattern: str,
@@ -548,7 +599,7 @@ def _target_path(
     owner_suffix: str | None = None,
 ) -> Path:
     dl = _safe_name(workspace.dl_number)
-    owner = f" {_safe_name(owner_suffix)}" if owner_suffix else ""
+    owner = f"_{_safe_name(owner_suffix)}" if owner_suffix else ""
     folder = (
         workspace.official_folder_path / relative_folder
         if relative_folder
@@ -562,15 +613,12 @@ def _safe_name(value: str) -> str:
 
 
 def _owner_suffix(forms: list[ApplicationForm]) -> str | None:
-    """Return the best business owner suffix for Customer Feedback file names."""
+    """Return the Project Leader suffix for Customer Feedback file names."""
     form = forms[-1] if forms else None
     if form is None:
         return None
-    for value in (form.assigned_personnel, form.requester):
-        text = (value or "").strip()
-        if text:
-            return text
-    return None
+    text = (form.assigned_personnel or "").strip()
+    return text or None
 
 
 def _source_context_signature(matrix: object, fee: object) -> str:

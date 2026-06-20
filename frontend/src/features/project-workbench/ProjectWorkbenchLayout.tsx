@@ -37,6 +37,7 @@ type ProjectWorkbenchLayoutProps = {
   onBack: () => void;
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
+  onOpenBasicInformation: () => void;
   onOpenSettings: () => void;
 };
 
@@ -46,6 +47,7 @@ export function ProjectWorkbenchLayout({
   onBack,
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
+  onOpenBasicInformation,
   onOpenSettings,
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const [selectedProjectionToken, setSelectedProjectionToken] =
@@ -332,6 +334,9 @@ export function ProjectWorkbenchLayout({
             >
               Fee Evaluation
             </button>
+            <button type="button" onClick={onOpenBasicInformation}>
+              Basic Information
+            </button>
             <button
               type="button"
               className="is-primary"
@@ -373,6 +378,9 @@ export function ProjectWorkbenchLayout({
           runtimeProjectionSnapshot={runtimeProjectionSnapshot}
           selectedProjectionToken={selectedProjectionToken}
           setSelectedProjectionToken={setSelectedProjectionToken}
+          basicInformation={runtimeModel.basicInformation}
+          basicInformationLoading={runtimeModel.basicInformationLoading}
+          basicInformationError={runtimeModel.basicInformationError}
         />
       ) : (
         <>

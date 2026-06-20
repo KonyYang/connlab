@@ -83,6 +83,57 @@ export type ProjectStopResponse = {
   audit_recorded: boolean;
 };
 
+export type ProjectBasicInformationStatus =
+  | "unconfirmed"
+  | "confirmed"
+  | "needs_review";
+
+export type ProjectBasicInformationRecord = {
+  record_id: string;
+  project_id: string;
+  status: "draft" | "confirmed";
+  version: number;
+  values: Record<string, string>;
+  source_signature: string;
+  created_at: string;
+  updated_at: string;
+  confirmed_at?: string | null;
+  confirmed_by?: string | null;
+};
+
+export type ProjectBasicInformationDraft = {
+  values: Record<string, string>;
+};
+
+export type ProjectBasicInformationFieldSuggestion = {
+  field_key: string;
+  source: string;
+  source_value: string;
+  needs_review: boolean;
+};
+
+export type ProjectBasicInformationResponse = {
+  project_id: string;
+  status: ProjectBasicInformationStatus;
+  draft: ProjectBasicInformationDraft;
+  latest_confirmed: ProjectBasicInformationRecord | null;
+  field_suggestions: Record<string, ProjectBasicInformationFieldSuggestion>;
+  changed_source_fields: string[];
+  missing_required_fields: string[];
+  missing_required_labels: string[];
+  blockers: string[];
+  warnings: string[];
+};
+
+export type ProjectBasicInformationDraftRequest = {
+  values: Record<string, string>;
+};
+
+export type ProjectBasicInformationConfirmRequest = {
+  values: Record<string, string>;
+  confirmed_by: string;
+};
+
 export type ApplicationForm = {
   form_id: string;
   project_id: string;
@@ -471,12 +522,18 @@ export type ProjectFolderRequiredFormsGenerateItem = {
   message: string;
 };
 
+export type ProjectFolderRequiredFormsTiming = {
+  label: string;
+  elapsed_ms: number;
+};
+
 export type ProjectFolderRequiredFormsGenerateResponse = {
   project_id: string;
   status: "generated" | "partial" | "blocked" | "conflict";
   official_project_folder_path: string;
   items: ProjectFolderRequiredFormsGenerateItem[];
   warnings: string[];
+  timings?: ProjectFolderRequiredFormsTiming[];
 };
 
 export type PrecheckIssue = {
@@ -2952,6 +3009,45 @@ export function uploadPublicDriveProjectFolder(
   return requestJson<PublicDriveUploadResult>(
     `/api/projects/${encodeURIComponent(projectId)}/public-drive/upload`,
     { method: "POST" }
+  );
+}
+
+export function getProjectBasicInformation(
+  projectId: string
+): Promise<ProjectBasicInformationResponse> {
+  return requestJson<ProjectBasicInformationResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/basic-information`,
+    { cache: "no-store" }
+  );
+}
+
+export function saveProjectBasicInformationDraft(
+  projectId: string,
+  values: Record<string, string>
+): Promise<ProjectBasicInformationResponse> {
+  return requestJson<ProjectBasicInformationResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/basic-information/draft`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ values } satisfies ProjectBasicInformationDraftRequest),
+    }
+  );
+}
+
+export function confirmProjectBasicInformation(
+  projectId: string,
+  values: Record<string, string>,
+  confirmedBy: string
+): Promise<ProjectBasicInformationResponse> {
+  return requestJson<ProjectBasicInformationResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/basic-information/confirm`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        values,
+        confirmed_by: confirmedBy,
+      } satisfies ProjectBasicInformationConfirmRequest),
+    }
   );
 }
 

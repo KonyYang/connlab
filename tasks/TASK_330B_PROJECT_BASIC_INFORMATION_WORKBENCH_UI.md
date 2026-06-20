@@ -2,7 +2,7 @@
 
 ## Status
 
-Plan ready for user review. Implementation not started.
+Completed on 2026-06-20.
 
 ## Current Phase
 
@@ -10,7 +10,7 @@ Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 ## Why This Task Is Allowed
 
-TASK_330A is complete and provides the backend Project Basic Information authority API. TASK_330B is the next split task and only consumes the 330A API in the frontend. It is not authorized for implementation until the user explicitly approves this task.
+TASK_330A is complete and provides the backend Project Basic Information authority API. The user explicitly approved TASK_330B implementation. TASK_330B only consumes the 330A API in the frontend.
 
 ## Plan
 
@@ -129,6 +129,8 @@ The editable page should include these configured fields:
 
 ## Validation
 
+Completed validation:
+
 ```powershell
 cd frontend
 npm test -- --run ProjectWorkbenchLayout ProjectBasicInformation --watch=false
@@ -136,8 +138,17 @@ npm run build
 ```
 
 ```powershell
-py -m pytest tests/unit/test_frontend_shell_files.py -q -k "task330 or basic_information or project_workbench"
+py -m pytest tests/unit/test_frontend_shell_files.py -q -k task330b
+git diff --check
 ```
+
+Results:
+
+- Review follow-up: date fields now preserve business text such as `20 Jun 2026`, draft edits save automatically, the manual `Save Draft` button was removed, Confirm is disabled while autosave is pending, and Confirm is disabled while required fields are missing.
+- `npm test -- --run ProjectWorkbenchLayout ProjectBasicInformation --watch=false`: 3 files passed, 31 tests passed.
+- `npm run build`: passed.
+- `py -m pytest tests/unit/test_frontend_shell_files.py -q -k task330b`: 1 passed, 159 deselected.
+- `git diff --check`: no whitespace errors; existing CRLF warnings only.
 
 Manual smoke:
 
