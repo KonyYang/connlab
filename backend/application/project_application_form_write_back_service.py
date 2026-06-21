@@ -7,6 +7,10 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Protocol
 
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationReader,
+    ConfirmedBasicInformationSnapshot,
+)
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
 from backend.application.project_request_material_collection_helpers import (
@@ -104,6 +108,7 @@ class ProjectApplicationFormWriteBackService:
         workspace_store: WorkspaceStore,
         application_form_store: ApplicationFormStore,
         file_asset_store: FileAssetStore,
+        basic_information_reader: ConfirmedBasicInformationReader,
         output_record_service: OutputRecordService,
         office: ApplicationFormWordWriter | None = None,
     ) -> None:
@@ -111,6 +116,7 @@ class ProjectApplicationFormWriteBackService:
         self._workspaces = workspace_store
         self._forms = application_form_store
         self._assets = file_asset_store
+        self._basic_information = basic_information_reader
         self._outputs = output_record_service
         self._office = office or OfficeFacade()
 
@@ -131,9 +137,15 @@ class ProjectApplicationFormWriteBackService:
             workspace.official_folder_path / "Submitted Material",
             self._assets.list_by_project(project_id),
         )
-        fields = _fields(project, form)
-        write_result = self._office.write_word_application_form_fields(target, fields)
+        basic_information = self._basic_information.get_latest_confirmed(project_id)
+        if basic_information is None:
+            raise ProjectApplicationFormWriteBackError(
+                "Confirm Basic Information before writing the Application Form."
+            )
         summary = self._outputs.get_status_summary(project_id)
+        _ensure_safe_managed_target(summary, target)
+        fields = _fields(project, form, basic_information)
+        write_result = self._office.write_word_application_form_fields(target, fields)
         active_draft_id = getattr(summary, "active_draft_id", None)
         record = self._outputs.register_output(
             RegisterProjectOutputCommand(
@@ -153,7 +165,9 @@ class ProjectApplicationFormWriteBackService:
                 draft_id=active_draft_id,
                 output_sha256=_sha256(target),
                 output_size_bytes=target.stat().st_size,
-                source_context_signature=f"application-form:{form.form_id}",
+                source_context_signature=(
+                    f"application-form:{form.form_id}|{basic_information.context_signature}"
+                ),
             )
         )
         status = "updated" if write_result.changed_fields else "current"
@@ -208,25 +222,72 @@ def _target_application_form(submitted_material: Path, assets: list[FileAsset]) 
     )
 
 
-def _fields(project: Project, form: ApplicationForm) -> dict[str, str]:
+def _fields(
+    project: Project,
+    form: ApplicationForm,
+    basic_information: ConfirmedBasicInformationSnapshot,
+) -> dict[str, str]:
+    basic = basic_information.values
     values = {
-        "ltr_number": form.lab_test_request_number or project.project_no,
-        "project_number": form.project_number or project.project_no,
-        "product_description": project.product_name,
-        "test_item": form.requested_testing,
-        "requester": form.requester or project.requestor,
-        "phone": form.phone,
-        "email": form.email,
+        "ltr_number": basic.get("dl_number") or form.lab_test_request_number or project.project_no,
+        "project_number": basic.get("project_number") or form.project_number or project.project_no,
+        "project_type": basic.get("project_type"),
+        "description_pn": basic.get("description_pn"),
+        "product_description": basic.get("product_description") or project.product_name,
+        "test_item": basic.get("test_item") or form.requested_testing,
+        "applicable_specifications": basic.get("applicable_specifications"),
+        "requested_by": basic.get("requested_by") or form.requester or project.requestor,
+        "requester": basic.get("requested_by") or form.requester or project.requestor,
+        "phone": basic.get("phone") or form.phone,
+        "email": basic.get("requestor_email") or form.email,
+        "location": basic.get("location"),
+        "project_leader": basic.get("project_leader"),
         "business_unit": form.business_unit or project.business_unit,
         "manufacturing_site": form.manufacturing_site,
         "requested_completion_date": form.requested_completion_date,
-        "lab": form.lab,
+        "lab": basic.get("lab_performing_tests") or form.lab,
         "assigned_personnel": form.assigned_personnel,
-        "received_date": form.received_date,
-        "estimated_completion_date": form.estimated_completion_date,
-        "sample_condition": form.sample_condition,
+        "received_date": basic.get("date_lab_received_samples") or form.received_date,
+        "estimated_completion_date": (
+            basic.get("estimated_completion_date") or form.estimated_completion_date
+        ),
+        "start_test_date": basic.get("start_test_date"),
+        "finish_test_date": basic.get("finish_test_date"),
+        "report_date": basic.get("report_date"),
+        "test_fee": basic.get("test_fee"),
+        "remarks_po": basic.get("remarks_po"),
+        "sample_condition": (
+            basic.get("condition_of_samples_when_received") or form.sample_condition
+        ),
     }
     return {key: value.strip() for key, value in values.items() if value and value.strip()}
+
+
+def _ensure_safe_managed_target(summary: object, target: Path) -> None:
+    """Block write-back when a prior managed target was edited on disk."""
+    item = _latest_section_write_back_item(summary, target)
+    if item is None:
+        return
+    stored_sha = getattr(item, "output_sha256", None)
+    if not stored_sha:
+        raise ProjectApplicationFormWriteBackError(
+            "Existing Application Form write-back record is missing a fingerprint."
+        )
+    if _sha256(target) != stored_sha:
+        raise ProjectApplicationFormWriteBackError(
+            "Application Form target was changed outside ConnLab."
+        )
+
+
+def _latest_section_write_back_item(summary: object, target: Path) -> object | None:
+    """Return the latest matching SECTION2 write-back status item."""
+    items = getattr(summary, "items", tuple())
+    for item in reversed(tuple(items)):
+        if getattr(item, "output_kind", None) is not ProjectOutputKind.SECTION2_WRITE_BACK:
+            continue
+        if getattr(item, "output_path", None) == str(target):
+            return item
+    return None
 
 
 def _sha256(path: Path) -> str:

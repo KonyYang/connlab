@@ -88,6 +88,11 @@ export type WorkbenchBaselineItem = {
   value: string;
 };
 
+type ProjectFolderBusinessFlowResult =
+  | { status: "completed" }
+  | { status: "skipped" }
+  | { status: "blocked"; message: string };
+
 export type ProjectWorkbenchModel = {
   approvalInput: ApprovalPackageRequest;
   approvalInputSources: ApprovalInputSources;
@@ -660,7 +665,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         "officialWorkspacePreview.afterCreate",
         () => onRefreshOfficialWorkspacePreview()
       );
-      await runProjectFolderBusinessFlowAfterCreate(timings);
+      const flowResult = await runProjectFolderBusinessFlowAfterCreate(timings);
+      if (flowResult.status === "blocked") {
+        setMessage(`Project folder update blocked: ${flowResult.message}`);
+      }
     } catch (err) {
       setOfficialWorkspaceError((err as Error).message);
     } finally {
@@ -671,14 +679,17 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
 
   async function runProjectFolderBusinessFlowAfterCreate(
     timings?: ProjectFolderFlowTiming[]
-  ): Promise<void> {
+  ): Promise<ProjectFolderBusinessFlowResult> {
     await timeProjectFolderStep(timings, "requestMaterial.collect", () =>
       collectRequestMaterialAfterFolderCreate()
     );
     await timeProjectFolderStep(timings, "officialFolderCheck.afterCollect", () =>
       refreshOfficialFolderCheckAfterFolderCreate()
     );
-    await generateRequiredFormsAfterFolderCreate(timings);
+    const requiredFormsResult = await generateRequiredFormsAfterFolderCreate(timings);
+    if (requiredFormsResult.status === "blocked") {
+      return requiredFormsResult;
+    }
     await timeProjectFolderStep(timings, "section2.sync", () =>
       syncSection2AfterFolderCreate()
     );
@@ -691,6 +702,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     await timeProjectFolderStep(timings, "publicDrive.preview", () =>
       onRefreshPublicDriveUploadPreview()
     );
+    return { status: "completed" };
   }
 
   async function collectRequestMaterialAfterFolderCreate(): Promise<void> {
@@ -720,7 +732,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
 
   async function generateRequiredFormsAfterFolderCreate(
     timings?: ProjectFolderFlowTiming[]
-  ): Promise<void> {
+  ): Promise<ProjectFolderBusinessFlowResult> {
     try {
       const preview = await timeProjectFolderStep(
         timings,
@@ -729,11 +741,16 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       );
       setRequiredFormsPreview(preview);
       setRequiredFormsError(null);
+      if (preview.status === "blocked") {
+        const blocker = formatRequiredFormsPreviewBlocker(preview);
+        setRequiredFormsError(blocker);
+        return { status: "blocked", message: blocker };
+      }
       if (preview.status !== "ready" && preview.status !== "conflict") {
-        return;
+        return { status: "skipped" };
       }
       if (!preview.items.some((item) => item.action === "generate" || item.action === "update")) {
-        return;
+        return { status: "skipped" };
       }
       const result = await timeProjectFolderStep(
         timings,
@@ -762,8 +779,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       await timeProjectFolderStep(timings, "outputStatus.afterRequiredForms", () =>
         refreshOutputStatus(projectId, setOutputStatusSummary)
       );
+      return { status: "completed" };
     } catch (err) {
-      setRequiredFormsError((err as Error).message);
+      const message = (err as Error).message;
+      setRequiredFormsError(message);
+      return { status: "blocked", message };
     }
   }
 
@@ -890,6 +910,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   async function onGenerateRequiredForms(): Promise<void> {
     if (!requiredFormsPreview) {
       setRequiredFormsError("Refresh Required forms before generating controlled files.");
+      return;
+    }
+    if (requiredFormsPreview.status === "blocked") {
+      setRequiredFormsError(formatRequiredFormsPreviewBlocker(requiredFormsPreview));
       return;
     }
     setRequiredFormsGenerating(true);
@@ -1608,6 +1632,9 @@ function buildRequiredFormsGenerateRequest(
   const confirmedFeeId = preview.confirmed_fee_id;
   const confirmedFeeRevision = preview.confirmed_fee_revision;
   const confirmedFeePricingDraftEditId = preview.confirmed_fee_pricing_draft_edit_id;
+  const confirmedBasicInformationVersion = preview.confirmed_basic_information_version;
+  const confirmedBasicInformationSourceSignatureHash =
+    preview.confirmed_basic_information_source_signature_hash;
   const customerFeedbackTemplatePath = preview.customer_feedback_template_path;
   if (
     !officialProjectFolderPath ||
@@ -1616,6 +1643,8 @@ function buildRequiredFormsGenerateRequest(
     !confirmedFeeId ||
     confirmedFeeRevision === null ||
     !confirmedFeePricingDraftEditId ||
+    confirmedBasicInformationVersion === null ||
+    !confirmedBasicInformationSourceSignatureHash ||
     !customerFeedbackTemplatePath
   ) {
     throw new Error("Required forms preview is missing generation context.");
@@ -1641,9 +1670,22 @@ function buildRequiredFormsGenerateRequest(
     expected_confirmed_fee_id: confirmedFeeId,
     expected_confirmed_fee_revision: confirmedFeeRevision,
     expected_confirmed_fee_pricing_draft_edit_id: confirmedFeePricingDraftEditId,
+    expected_confirmed_basic_information_version: confirmedBasicInformationVersion,
+    expected_confirmed_basic_information_source_signature_hash:
+      confirmedBasicInformationSourceSignatureHash,
     expected_customer_feedback_template_path: customerFeedbackTemplatePath,
     expected_targets: expectedTargets
   };
+}
+
+function formatRequiredFormsPreviewBlocker(
+  preview: ProjectFolderRequiredFormsPreview
+): string {
+  return (
+    preview.blockers[0] ??
+    preview.items.find((item) => item.status === "blocked")?.message ??
+    "Resolve Required forms blockers before generating controlled files."
+  );
 }
 
 function deriveApprovalInputAutofill(input: {

@@ -23,6 +23,7 @@ import {
   type FeeEvaluationPricingDraftSaveRequest,
   type Project,
 } from "../../api/client";
+import { buildProjectIdentityLine } from "../projectIdentity";
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
 import {
   buildFeeEvaluationCostRisk,
@@ -402,6 +403,10 @@ export function FeeEvaluationReviewExportPage({
         ltrNumber: contextState.kind === "ready" ? contextState.ltrNumber : null,
         requestor: contextState.kind === "ready" ? contextState.project.requestor : null,
       }),
+    [contextState]
+  );
+  const previewIdentityLine = useMemo(
+    () => buildFeeEvaluationIdentityLine(contextState),
     [contextState]
   );
   const basePreviewTotals = useMemo(
@@ -809,6 +814,7 @@ export function FeeEvaluationReviewExportPage({
         groupFilter={previewGroupFilter}
         groupOptions={groupOptions}
         header={previewHeader}
+        identityLine={previewIdentityLine}
         downloadState={downloadState}
         generateDisabledReason={generateDisabledReason}
         onCostPreviewChange={handleCostPreviewChange}
@@ -922,6 +928,18 @@ async function loadPageContext(projectId: string): Promise<{
 
 function flattenDraftLines(draft: FeeEvaluationDraft | null): FeeEvaluationLineItem[] {
   return draft?.groups.flatMap((group) => group.line_items) ?? [];
+}
+
+function buildFeeEvaluationIdentityLine(contextState: FeePageContextState): string {
+  if (contextState.kind !== "ready") {
+    return "Fee Evaluation";
+  }
+
+  return buildProjectIdentityLine({
+    project: contextState.project,
+    latestLtr: contextState.ltrNumber,
+    projectId: contextState.project.project_id,
+  });
 }
 
 function contextFromPricingDraftResponse(

@@ -58,9 +58,14 @@ describe("FeeEvaluationReviewExportPage", () => {
       <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
     );
 
-    const feeEvaluationTitle = await screen.findByText("Fee Evaluation");
+    const feeEvaluationTitle = await screen.findByText(
+      "DL-2026-001 Coolpower HDF 3.40mm pin Qualification Testing"
+    );
     expect(feeEvaluationTitle).toBeTruthy();
     expect(feeEvaluationTitle.className).toContain("fee-evaluation-preview-title");
+    expect(feeEvaluationTitle.getAttribute("title")).toBe(
+      "DL-2026-001 Coolpower HDF 3.40mm pin Qualification Testing"
+    );
     expect(screen.queryByText(/Matrix line\(s\)/)).toBeNull();
     expect(container.querySelector(".fee-evaluation-topbar")).toBeNull();
     expect(screen.queryByLabelText("Fee summary")).toBeNull();
@@ -1055,6 +1060,8 @@ function arrangeSuccessfulContext(
     project_id: "P1",
     project_no: "CP-001",
     product_name: "CoolPower HDF",
+    sample_description: "Coolpower HDF 3.40mm pin",
+    test_item: "Qualification Testing",
     requestor: "Lab User",
     status: "folder_created",
   });

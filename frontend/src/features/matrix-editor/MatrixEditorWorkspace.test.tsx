@@ -40,7 +40,13 @@ vi.mock("../../api/client", () => {
 
 vi.mock("../project-workbench/useProjectRuntimeConsoleModel", () => ({
   useProjectRuntimeConsoleModel: () => ({
-    project: { product_name: "Connector A", business_unit: "BU-1", requestor: "Alice" },
+    project: {
+      product_name: "Connector A",
+      sample_description: "Coolpower HDF 3.40mm pin",
+      test_item: "Qualification Testing",
+      business_unit: "BU-1",
+      requestor: "Alice",
+    },
     latestLtr: "LTR-0001",
     matrixAuthorityDraft: { source_document_name: "EIA-364 Qualification Matrix" },
     runtimeAuthoritySync: {
@@ -198,7 +204,11 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
         onBackToWorkbench={() => {}}
       />
     );
+    expect(screen.queryByText("Loading matrix editor...")).toBeNull();
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+    const identityLine = screen.getByText("LTR-0001 Coolpower HDF 3.40mm pin Qualification Testing");
+    expect(identityLine.getAttribute("title")).toBe("LTR-0001 Coolpower HDF 3.40mm pin Qualification Testing");
+    expect(screen.queryByText("LTR-0001 | Connector A | EIA-364 Qualification Matrix")).toBeNull();
     expect(screen.getByText("spec.docx")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Test record" })).toBeTruthy();

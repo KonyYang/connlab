@@ -253,6 +253,53 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
   });
 
+  it("disables Update project folder when Required forms are blocked by Basic Information", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      folderReady: true,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
+    });
+
+    const folderButton = screen.getByRole("button", { name: "Update project folder" });
+    expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toBe(
+      "Confirm Basic Information before generating Project Folder outputs."
+    );
+    const folderAction = screen.getByLabelText("Folder Action");
+    expect(folderAction.textContent).toContain("Required forms");
+    expect(folderAction.textContent).toContain(
+      "Confirm Basic Information before generating Required forms."
+    );
+    expect(folderAction.textContent).toContain(
+      "Confirm Basic Information before generating Project Folder outputs."
+    );
+  });
+
+  it("keeps Update project folder disabled when an earlier folder task masks the Required forms blocker", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      folderReady: true,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: readyRequestMaterialPreview,
+      requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
+    });
+
+    expect(screen.getByLabelText("Folder Action").textContent).toContain(
+      "Request material"
+    );
+    const folderButton = screen.getByRole("button", { name: "Update project folder" });
+    expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toBe(
+      "Confirm Basic Information before generating Project Folder outputs."
+    );
+  });
+
   it("keeps the project folder button enabled when package template readiness is blocked", () => {
     const onOpenSettings = vi.fn();
     renderWorkbench(
@@ -1086,6 +1133,8 @@ const readyRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
   confirmed_fee_id: "CF1",
   confirmed_fee_revision: 1,
   confirmed_fee_pricing_draft_edit_id: "fed-current",
+  confirmed_basic_information_version: 1,
+  confirmed_basic_information_source_signature_hash: "basic-hash",
   customer_feedback_template_path: "D:/Template/Customer Feedback.xlsx",
   items: [
     {
@@ -1100,6 +1149,22 @@ const readyRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
   ],
   blockers: [],
   warnings: [],
+};
+
+const basicInformationBlockedRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
+  ...readyRequiredFormsPreview,
+  status: "blocked",
+  official_project_folder_path: null,
+  confirmed_matrix_id: null,
+  confirmed_revision: null,
+  confirmed_fee_id: null,
+  confirmed_fee_revision: null,
+  confirmed_fee_pricing_draft_edit_id: null,
+  confirmed_basic_information_version: null,
+  confirmed_basic_information_source_signature_hash: null,
+  customer_feedback_template_path: null,
+  items: [],
+  blockers: ["Confirm Basic Information before generating Project Folder outputs."],
 };
 
 function confirmedFeeLatest(

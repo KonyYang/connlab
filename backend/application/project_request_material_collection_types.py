@@ -132,6 +132,9 @@ class RequestMaterialCollectResult:
     """Result of collecting request material into the Project Folder."""
 
     project_id: str
+    local_workspace_path: Path | None
+    source_book_path: Path | None
+    official_project_folder_path: Path | None
     collection_id: str
     status: str
     items: tuple[RequestMaterialPreviewItem, ...]

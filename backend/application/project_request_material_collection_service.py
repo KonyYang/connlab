@@ -406,6 +406,9 @@ def _collect_result_from_preview(
     """Build a collect result from the post-copy preview state."""
     return RequestMaterialCollectResult(
         project_id=project_id,
+        local_workspace_path=after.local_workspace_path,
+        source_book_path=after.source_book_path,
+        official_project_folder_path=after.official_project_folder_path,
         collection_id=collection_id,
         status=status or after.status,
         items=after.items,

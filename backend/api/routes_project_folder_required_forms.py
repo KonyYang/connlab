@@ -51,6 +51,8 @@ class RequiredFormsPreviewResponse(BaseModel):
     confirmed_fee_id: str | None
     confirmed_fee_revision: int | None
     confirmed_fee_pricing_draft_edit_id: str | None
+    confirmed_basic_information_version: int | None
+    confirmed_basic_information_source_signature_hash: str | None
     customer_feedback_template_path: str | None
     items: list[RequiredFormPreviewItemResponse]
     blockers: list[str]
@@ -73,6 +75,8 @@ class RequiredFormsGenerateRequest(BaseModel):
     expected_confirmed_fee_id: str = Field(min_length=1)
     expected_confirmed_fee_revision: int
     expected_confirmed_fee_pricing_draft_edit_id: str = Field(min_length=1)
+    expected_confirmed_basic_information_version: int
+    expected_confirmed_basic_information_source_signature_hash: str = Field(min_length=1)
     expected_customer_feedback_template_path: str = Field(min_length=1)
     expected_targets: list[RequiredFormsGenerateTargetRequest]
 
@@ -142,6 +146,12 @@ def generate_required_forms(
         expected_confirmed_fee_pricing_draft_edit_id=(
             request.expected_confirmed_fee_pricing_draft_edit_id
         ),
+        expected_confirmed_basic_information_version=(
+            request.expected_confirmed_basic_information_version
+        ),
+        expected_confirmed_basic_information_source_signature_hash=(
+            request.expected_confirmed_basic_information_source_signature_hash
+        ),
         expected_customer_feedback_template_path=Path(
             request.expected_customer_feedback_template_path
         ),
@@ -173,6 +183,10 @@ def _preview_response(preview: RequiredFormsPreview) -> RequiredFormsPreviewResp
         confirmed_fee_id=preview.confirmed_fee_id,
         confirmed_fee_revision=preview.confirmed_fee_revision,
         confirmed_fee_pricing_draft_edit_id=preview.confirmed_fee_pricing_draft_edit_id,
+        confirmed_basic_information_version=preview.confirmed_basic_information_version,
+        confirmed_basic_information_source_signature_hash=(
+            preview.confirmed_basic_information_source_signature_hash
+        ),
         customer_feedback_template_path=_path(preview.customer_feedback_template_path),
         items=[_preview_item_response(item) for item in preview.items],
         blockers=list(preview.blockers),

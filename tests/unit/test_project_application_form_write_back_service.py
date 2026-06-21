@@ -4,15 +4,24 @@ from pathlib import Path
 
 from docx import Document
 
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationSnapshot,
+)
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_application_form_write_back_service import (
+    ProjectApplicationFormWriteBackError,
     ProjectApplicationFormWriteBackService,
 )
+from backend.application.project_folder_required_forms_service import compute_sha256
+from backend.application.project_output_record_service import ProjectOutputStatusItem
 from backend.domain import (
     ApplicationForm,
     FileAsset,
     FileAssetType,
     Project,
+    ProjectOutputKind,
+    ProjectOutputSource,
+    ProjectOutputStatus,
     ProjectStatus,
 )
 
@@ -30,6 +39,7 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
         file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
         output_record_service=output_store,
     )
 
@@ -38,13 +48,86 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     assert result.status == "updated"
     assert result.target_path == target
     values = _read_table_values(target)
-    assert values["Product Description"] == "Connector"
-    assert values["Requested Testing"] == "Qualification Testing"
-    assert values["Requester"] == "MP Cao"
-    assert values["E-mail of Requestor"] == "mp@example.test"
-    assert values["Received Date"] == "2026-06-01"
+    assert values["Product Description"] == "Connector from Basic Info"
+    assert values["Requested Testing"] == "BI Qualification Test"
+    assert values["Requester"] == "Requester BI"
+    assert values["E-mail of Requestor"] == "requester@example.test"
+    assert values["Received Date"] == "20 Jun 2026"
     assert output_store.commands
     assert str(target) == output_store.commands[-1].output_path
+    assert output_store.commands[-1].source_context_signature == (
+        "application-form:F1|"
+        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+    )
+
+
+def test_application_form_write_back_blocks_without_confirmed_basic_information(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(None),
+        output_record_service=_OutputStore(),
+        office=_RejectingOffice(),
+    )
+
+    try:
+        service.write_back("P1")
+    except ProjectApplicationFormWriteBackError as exc:
+        assert "Basic Information" in str(exc)
+    else:
+        raise AssertionError("Expected Basic Information blocker.")
+
+
+def test_application_form_write_back_blocks_user_changed_managed_target(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    original_sha = compute_sha256(target)
+    target.write_text("operator changed", encoding="utf-8")
+    output_store = _OutputStore(
+        items=(
+            ProjectOutputStatusItem(
+                output_kind=ProjectOutputKind.SECTION2_WRITE_BACK,
+                status=ProjectOutputStatus.CURRENT,
+                output_path=str(target),
+                source=ProjectOutputSource.SYSTEM_GENERATED,
+                draft_id="D1",
+                draft_version=1,
+                reason="current",
+                updated_at="2026-06-20T00:00:00+00:00",
+                output_sha256=original_sha,
+                output_size_bytes=1,
+                source_context_signature="application-form:F1|basic:1@old",
+            ),
+        )
+    )
+    office = _RejectingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=output_store,
+        office=office,
+    )
+
+    try:
+        service.write_back("P1")
+    except ProjectApplicationFormWriteBackError as exc:
+        assert "changed outside ConnLab" in str(exc)
+    else:
+        raise AssertionError("Expected managed fingerprint blocker.")
+    assert office.calls == 0
 
 
 def _write_docx(path: Path) -> None:
@@ -136,14 +219,19 @@ class _FileAssetStore:
 
 
 class _OutputStore:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        items: tuple[ProjectOutputStatusItem, ...] = tuple(),
+    ) -> None:
         self.commands = []
+        self.items = items
 
     def get_status_summary(self, project_id: str):
-        class _Summary:
-            active_draft_id = "D1"
-
-        return _Summary()
+        return type(
+            "_Summary",
+            (),
+            {"active_draft_id": "D1", "items": self.items},
+        )()
 
     def register_output(self, command):
         self.commands.append(command)
@@ -152,3 +240,41 @@ class _OutputStore:
             output_record_id = "O1"
 
         return _Record()
+
+
+class _BasicInformationReader:
+    def __init__(self, snapshot: ConfirmedBasicInformationSnapshot | None) -> None:
+        self.snapshot = snapshot
+
+    def get_latest_confirmed(
+        self, project_id: str
+    ) -> ConfirmedBasicInformationSnapshot | None:
+        return self.snapshot
+
+
+class _RejectingOffice:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def write_word_application_form_fields(self, source_path: Path, fields: dict[str, str]):
+        self.calls += 1
+        raise AssertionError("Office writer should not be called.")
+
+
+def _basic_information() -> ConfirmedBasicInformationSnapshot:
+    return ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=2,
+        values={
+            "dl_number": "DL-001",
+            "project_number": "PN-1",
+            "product_description": "Connector from Basic Info",
+            "test_item": "BI Qualification Test",
+            "requested_by": "Requester BI",
+            "requestor_email": "requester@example.test",
+            "date_lab_received_samples": "20 Jun 2026",
+        },
+        source_signature='{"dl_number":"DL-001"}',
+        confirmed_at="2026-06-20T00:00:00+00:00",
+        confirmed_by="Lab User",
+    )

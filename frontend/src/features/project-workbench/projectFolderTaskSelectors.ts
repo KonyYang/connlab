@@ -86,6 +86,20 @@ export function selectCurrentProjectFolderTaskKey(
   return needsAttention?.key ?? "public_drive_upload";
 }
 
+export function selectProjectFolderOneClickBlocker(
+  tasks: ProjectFolderTaskRow[],
+  folderReady: boolean
+): string | null {
+  if (!folderReady) {
+    return null;
+  }
+  const requiredFormsTask = tasks.find((task) => task.key === "required_forms");
+  if (requiredFormsTask?.status !== "blocked") {
+    return null;
+  }
+  return requiredFormsTask.blockers.find(isBasicInformationRequiredFormsBlocker) ?? null;
+}
+
 function deriveLocalProjectFolderTask(
   input: ProjectFolderTaskSelectorInput
 ): ProjectFolderTaskRow {
@@ -276,15 +290,16 @@ function deriveRequiredFormsTask(
   }
 
   if (preview?.status === "conflict" || preview?.status === "blocked") {
+    const blockedItemMessage = preview.items.find(
+      (item) => item.status === "conflict" || item.status === "blocked"
+    )?.message;
     return baseTask(
       "required_forms",
       "Required forms",
       preview.status === "conflict" ? "Conflict" : "Blocked",
       "blocked",
       {
-        summary:
-          preview.items.find((item) => item.status === "conflict" || item.status === "blocked")
-            ?.message ?? "Resolve Required forms blockers before generating controlled files.",
+        summary: formatRequiredFormsBlockedSummary(blockers, blockedItemMessage),
         detailKind: "required_forms",
         blockers,
         warnings,
@@ -356,6 +371,23 @@ function deriveRequiredFormsTask(
 
 function formatRequiredFormsList(preview: Pick<ProjectFolderRequiredFormsPreview, "items">): string {
   return preview.items.map((item) => item.label).join(", ");
+}
+
+function formatRequiredFormsBlockedSummary(
+  blockers: string[],
+  itemMessage: string | undefined
+): string {
+  if (blockers.some(isBasicInformationRequiredFormsBlocker)) {
+    return "Confirm Basic Information before generating Required forms.";
+  }
+  return itemMessage ?? "Resolve Required forms blockers before generating controlled files.";
+}
+
+function isBasicInformationRequiredFormsBlocker(message: string): boolean {
+  return (
+    message.includes("Basic Information") &&
+    (message.includes("Confirm") || message.includes("confirm"))
+  );
 }
 
 function deriveSection2Task(input: ProjectFolderTaskSelectorInput): ProjectFolderTaskRow {

@@ -45,6 +45,23 @@ def test_request_material_collect_api_maps_conflict_to_409() -> None:
     assert response.json()["detail"] == "Target file conflict"
 
 
+def test_request_material_collect_api_returns_workspace_context() -> None:
+    service = _FakeRequestMaterialService()
+    app.dependency_overrides[get_project_request_material_collection_service] = lambda: service
+    try:
+        response = TestClient(app).post("/api/projects/P1/request-material/collect")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["collection_id"] == "collection-1"
+    assert payload["local_workspace_path"] == "workspace"
+    assert payload["source_book_path"] == "workspace\\Source Book"
+    assert payload["official_project_folder_path"] == "workspace\\Official"
+    assert payload["copied_paths"] == ["target\\application.docx"]
+
+
 class _FakeRequestMaterialService:
     def __init__(
         self,
@@ -107,6 +124,9 @@ def _preview(
 def _collect() -> RequestMaterialCollectResult:
     return RequestMaterialCollectResult(
         project_id="P1",
+        local_workspace_path=Path("workspace"),
+        source_book_path=Path("workspace/Source Book"),
+        official_project_folder_path=Path("workspace/Official"),
         collection_id="collection-1",
         status="collected",
         items=(_item("copied"),),

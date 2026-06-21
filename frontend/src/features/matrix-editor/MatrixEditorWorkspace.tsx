@@ -1,6 +1,6 @@
 ﻿import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
-import { LoadingState } from "../../components/common/LoadingState";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
+import { buildProjectIdentityLine } from "../projectIdentity";
 import {
   ApiRequestError,
   commitMatrixImport,
@@ -1751,12 +1751,11 @@ export function MatrixEditorWorkspace({
     });
   }, [groupColumns]);
 
-  const projectLabel = model.project?.product_name ?? "Connector Project";
-  const ltr = model.latestLtr ?? `Temporary project ${projectId.slice(0, 8)}`;
-  const testDescription = model.matrixAuthorityDraft?.source_document_name?.trim()
-    ? model.matrixAuthorityDraft.source_document_name.trim()
-    : "Test description unavailable";
-  const matrixEditorIdentityLine = `${ltr} | ${projectLabel} | ${testDescription}`;
+  const matrixEditorIdentityLine = buildProjectIdentityLine({
+    project: model.project,
+    latestLtr: model.latestLtr,
+    projectId,
+  });
   const currentSourceDocumentName =
     importPreview?.source_document_name?.trim() ||
     model.matrixAuthorityDraft?.source_document_name?.trim() ||
@@ -2340,7 +2339,7 @@ export function MatrixEditorWorkspace({
     : null;
 
   if ((!model.project && !model.error) || draftLoading) {
-    return <LoadingState label="Loading matrix editor..." />;
+    return <></>;
   }
 
   const pushSnapshot = (): void => {

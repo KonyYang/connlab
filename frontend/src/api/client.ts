@@ -490,6 +490,8 @@ export type ProjectFolderRequiredFormsPreview = {
   confirmed_fee_id: string | null;
   confirmed_fee_revision: number | null;
   confirmed_fee_pricing_draft_edit_id: string | null;
+  confirmed_basic_information_version: number | null;
+  confirmed_basic_information_source_signature_hash: string | null;
   customer_feedback_template_path: string | null;
   items: ProjectFolderRequiredFormPreviewItem[];
   blockers: string[];
@@ -508,6 +510,8 @@ export type ProjectFolderRequiredFormsGenerateRequest = {
   expected_confirmed_fee_id: string;
   expected_confirmed_fee_revision: number;
   expected_confirmed_fee_pricing_draft_edit_id: string;
+  expected_confirmed_basic_information_version: number;
+  expected_confirmed_basic_information_source_signature_hash: string;
   expected_customer_feedback_template_path: string;
   expected_targets: ProjectFolderRequiredFormsGenerateTarget[];
 };

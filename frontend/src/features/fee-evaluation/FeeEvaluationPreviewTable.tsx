@@ -16,6 +16,7 @@ type FeeEvaluationPreviewTableProps = {
   labManpowerCostLabel: string;
   groupFilter: string;
   header: FeeEvaluationPreviewHeader;
+  identityLine: string;
   downloadState: FeeFileDownloadState;
   generateDisabledReason: string | null;
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
@@ -69,6 +70,7 @@ export function FeeEvaluationPreviewTable({
   labManpowerCostLabel,
   groupFilter,
   header,
+  identityLine,
   downloadState,
   generateDisabledReason,
   onCostPreviewChange,
@@ -85,7 +87,9 @@ export function FeeEvaluationPreviewTable({
     <section className="fee-evaluation-preview-surface" aria-label="Testing Prices preview">
       <header className="fee-evaluation-preview-header">
         <div>
-          <p className="eyebrow fee-evaluation-preview-title">Fee Evaluation</p>
+          <p className="eyebrow fee-evaluation-preview-title" title={identityLine}>
+            {identityLine}
+          </p>
         </div>
         <div className="fee-evaluation-preview-controls">
           <div className="fee-evaluation-preview-group-card">

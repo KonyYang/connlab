@@ -5901,7 +5901,12 @@ def test_task277_matrix_editor_single_draft_publish_flow_is_wired() -> None:
     assert "Cancel" in combined_source
     assert "Confirm As Active Matrix" not in combined_source
     assert "Back to Workbench" not in workspace_source
-    assert "topBarTitle = route.name === \"projectMatrixEditor\" ? \"Matrix Editor\" : undefined;" in app_source
+    assert 'route.name === "projectMatrixEditor"' in app_source
+    assert '"Matrix Editor"' in app_source
+    assert 'route.name === "projectFeeEvaluation"' in app_source
+    assert '"Fee Evaluation"' in app_source
+    assert 'route.name === "projectBasicInformation"' in app_source
+    assert '"Basic Information"' in app_source
     assert "titleOverride" in topbar_source
 
 

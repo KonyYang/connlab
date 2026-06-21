@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import {
   confirmProjectBasicInformation,
+  getProject,
   getProjectBasicInformation,
+  listProjectLtrs,
   saveProjectBasicInformationDraft,
+  type Project,
   type ProjectBasicInformationResponse,
 } from "../../api/client";
+import { buildProjectIdentityLine } from "../projectIdentity";
 import { getBasicInformationConfirmedBy } from "./currentUserDisplay";
+import { normalizeBasicInformationFieldValues } from "./basicInformationFieldConfig";
 
 export type BackToWorkbenchOptions = {
   refreshBasicInformation: boolean;
@@ -14,6 +19,7 @@ export type BackToWorkbenchOptions = {
 export type ProjectBasicInformationModel = {
   response: ProjectBasicInformationResponse | null;
   values: Record<string, string>;
+  identityLabel: string;
   loading: boolean;
   saving: boolean;
   confirming: boolean;
@@ -33,6 +39,8 @@ export function useProjectBasicInformationModel({
 }): ProjectBasicInformationModel {
   const [response, setResponse] = useState<ProjectBasicInformationResponse | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [project, setProject] = useState<Project | null>(null);
+  const [latestLtr, setLatestLtr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -52,7 +60,7 @@ export function useProjectBasicInformationModel({
           return;
         }
         setResponse(nextResponse);
-        setValues(nextResponse.draft.values);
+        setValues(normalizeBasicInformationFieldValues(nextResponse.draft.values));
         setDraftDirty(false);
       })
       .catch((err) => {
@@ -65,6 +73,27 @@ export function useProjectBasicInformationModel({
           setLoading(false);
         }
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.allSettled([getProject(projectId), listProjectLtrs(projectId)]).then(
+      ([projectResult, ltrResult]) => {
+        if (cancelled) {
+          return;
+        }
+        if (projectResult.status === "fulfilled") {
+          setProject(projectResult.value);
+        }
+        if (ltrResult.status === "fulfilled") {
+          const ltrs = ltrResult.value;
+          setLatestLtr(ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null);
+        }
+      }
+    );
     return () => {
       cancelled = true;
     };
@@ -123,13 +152,14 @@ export function useProjectBasicInformationModel({
     setConfirming(true);
     setError(null);
     try {
+      const nextValues = normalizeBasicInformationFieldValues(values);
       const nextResponse = await confirmProjectBasicInformation(
         projectId,
-        values,
+        nextValues,
         getBasicInformationConfirmedBy()
       );
       setResponse(nextResponse);
-      setValues(nextResponse.draft.values);
+      setValues(normalizeBasicInformationFieldValues(nextResponse.draft.values));
       onBackToWorkbench({ refreshBasicInformation: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to confirm Basic Information.");
@@ -145,6 +175,12 @@ export function useProjectBasicInformationModel({
   return {
     response,
     values,
+    identityLabel: buildBasicInformationIdentityLabel({
+      latestLtr,
+      project,
+      values,
+      projectId,
+    }),
     loading,
     saving,
     confirming,
@@ -154,4 +190,24 @@ export function useProjectBasicInformationModel({
     confirm,
     cancel,
   };
+}
+
+function buildBasicInformationIdentityLabel({
+  latestLtr,
+  project,
+  values,
+  projectId,
+}: {
+  latestLtr: string | null;
+  project: Project | null;
+  values: Record<string, string>;
+  projectId: string;
+}): string {
+  return buildProjectIdentityLine({
+    project,
+    latestLtr,
+    projectId,
+    productFallback: values.product_description,
+    testItemFallback: values.test_item,
+  });
 }

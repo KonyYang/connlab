@@ -94,6 +94,10 @@ from backend.application.project_service import ProjectService
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationService,
 )
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationSnapshot,
+    ProjectBasicInformationSnapshotReader,
+)
 from backend.application.project_test_plan_matrix_preview_service import (
     ProjectTestPlanMatrixPreviewService,
 )
@@ -155,6 +159,7 @@ from backend.application.customer_feedback_template_discovery import (
     discover_customer_feedback_template,
 )
 from backend.application.project_folder_required_forms_service import (
+    compute_sha256,
     ProjectFolderRequiredFormsService,
 )
 from backend.application.project_package_preview_service import (
@@ -283,7 +288,12 @@ from backend.infrastructure.storage.repositories.intake_package import (
     IntakeDraftRepository,
     IntakePackageRepository,
 )
-from backend.domain import ExternalResourceType
+from backend.domain import (
+    ExternalResourceType,
+    ProjectOutputKind,
+    ProjectOutputSource,
+    ProjectOutputStatus,
+)
 from backend.shared.config import OfficialWorkspaceSettings, Settings
 
 
@@ -833,6 +843,9 @@ def get_project_application_form_write_back_service(
         workspace_store=ProjectOfficialWorkspaceRepository(session),
         application_form_store=ApplicationFormRepository(session),
         file_asset_store=FileAssetRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
         output_record_service=get_project_output_record_service(session),
     )
 
@@ -911,6 +924,43 @@ class _NoopProjectOutputService:
         return _Record()
 
 
+class _ReusableFeeFormArtifactReader:
+    """Find safe current generated Fee Form artifacts for Required forms reuse."""
+
+    def __init__(self, output_service: ProjectOutputRecordService) -> None:
+        self._output_service = output_service
+
+    def find_current_artifact(
+        self,
+        *,
+        project_id: str,
+        source_context_signature: str,
+        final_target_path: Path,
+    ) -> Path | None:
+        """Return a reusable generated Fee Form source path when safe."""
+        summary = self._output_service.get_status_summary(project_id)
+        for item in summary.items:
+            if item.output_kind != ProjectOutputKind.FEE_EVALUATION:
+                continue
+            if item.status != ProjectOutputStatus.CURRENT:
+                return None
+            if item.source != ProjectOutputSource.SYSTEM_GENERATED:
+                return None
+            if item.source_context_signature != source_context_signature:
+                return None
+            if not item.output_path or not item.output_sha256:
+                return None
+            path = Path(item.output_path)
+            if path == final_target_path:
+                return None
+            if path.suffix.lower() != ".xls" or not path.is_file():
+                return None
+            if compute_sha256(path) != item.output_sha256:
+                return None
+            return path
+        return None
+
+
 class _RequiredFormsStagingGenerator:
     """Generate Required forms into controlled staging without final output records."""
 
@@ -929,7 +979,14 @@ class _RequiredFormsStagingGenerator:
         self._fee_export_service = fee_export_service
         self._customer_feedback_service = customer_feedback_service
 
-    def generate(self, *, project_id: str, key: str, target_name: str) -> Path:
+    def generate(
+        self,
+        *,
+        project_id: str,
+        key: str,
+        target_name: str,
+        basic_information: ConfirmedBasicInformationSnapshot,
+    ) -> Path:
         """Generate one Required form into staging and return the staged file path."""
         output_dir = self._settings.data_dir / "staged_required_forms" / project_id
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -956,6 +1013,7 @@ class _RequiredFormsStagingGenerator:
                     overwrite=True,
                     allow_review_required=True,
                     fill_mode="matrix_basic",
+                    basic_information_values=dict(basic_information.values),
                 )
             )
             return result.output_path
@@ -963,6 +1021,7 @@ class _RequiredFormsStagingGenerator:
             result = self._customer_feedback_service.generate(
                 CustomerFeedbackFormGenerationCommand(
                     project_id=project_id,
+                    basic_information_values=dict(basic_information.values),
                 )
             )
             return _rename_staged_file(result.output_path, target_name)
@@ -1015,6 +1074,9 @@ def get_project_folder_required_forms_service(
         folder_check_service=get_official_project_folder_check_service(session),
         confirmed_matrix_reader=_ConfirmedMatrixReader(confirmed_store),
         confirmed_fee_reader=get_confirmed_fee_version_service(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
         customer_feedback_template_reader=_CustomerFeedbackTemplateReader(
             ExternalResourceRepository(session)
         ),
@@ -1030,6 +1092,7 @@ def get_project_folder_required_forms_service(
         ),
         file_gateway=ProjectFolderRequiredFormsFileGateway(),
         output_status_service=output_service,
+        reusable_fee_form_reader=_ReusableFeeFormArtifactReader(output_service),
     )
 
 

@@ -64,6 +64,7 @@ class CustomerFeedbackFormGenerationCommand:
     project_id: str
     output_dir: Path | None = None
     operator: str | None = None
+    basic_information_values: dict[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +109,9 @@ class CustomerFeedbackFormGenerationService:
         template_path = _discover_template(template_folder)
         output_dir = self._controlled_output_dir(command)
         output_path = _available_output_path(output_dir, _output_file_name(project))
-        identity = _identity_from_project(project)
+        identity = _identity_from_basic_information(
+            command.basic_information_values
+        ) or _identity_from_project(project)
         try:
             generated_path, warnings = self._workbook_gateway.generate(
                 template_path=template_path,
@@ -177,6 +180,30 @@ def _identity_from_project(project: Project) -> dict[str, str]:
     }
     if project.project_no:
         identity["ltr_number"] = project.project_no
+    return identity
+
+
+def _identity_from_basic_information(values: dict[str, str] | None) -> dict[str, str]:
+    """Return Customer Feedback identity fields from Basic Information."""
+    if not values:
+        return {}
+    mapping = {
+        "dl_number": "ltr_number",
+        "product_description": "product_name",
+        "test_item": "test_item",
+        "requested_by": "requestor",
+        "phone": "phone",
+        "requestor_email": "email",
+        "project_leader": "project_leader",
+        "lab_performing_tests": "lab",
+        "date_lab_received_samples": "received_date",
+        "estimated_completion_date": "estimated_completion_date",
+    }
+    identity = {
+        target: text.strip()
+        for source, target in mapping.items()
+        if (text := values.get(source, "").strip())
+    }
     return identity
 
 

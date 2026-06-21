@@ -748,9 +748,9 @@
 
 .matrix-editor-project-identity {
   margin: 0;
-  color: var(--color-primary-strong);
+  color: var(--color-text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4412,36 +4412,17 @@
   padding: 10px 10px 0;
 }
 
-.basic-information-header,
 .basic-information-surface {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
 }
 
-.basic-information-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-}
-
-.basic-information-header h2,
-.basic-information-header p,
-.basic-information-field-group h3 {
+.basic-information-functional-panel header h3,
+.basic-information-functional-panel header p,
+.basic-information-panel-identity,
+.basic-information-field-group h4 {
   margin: 0;
-}
-
-.basic-information-header h2 {
-  color: var(--color-primary-strong);
-  font-size: 18px;
-}
-
-.basic-information-header p {
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .basic-information-surface {
@@ -4450,11 +4431,100 @@
   padding: 14px;
 }
 
+.basic-information-panel-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.basic-information-ltr-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 12px 14px;
+}
+
+.basic-information-ltr-card button {
+  min-height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 12px;
+}
+
+.basic-information-ltr-card button:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
+}
+
+.basic-information-functional-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 14px;
+}
+
+.basic-information-functional-panel header {
+  display: grid;
+  gap: 4px;
+}
+
+.basic-information-functional-panel header h3 {
+  color: var(--color-ink);
+  font-size: 15px;
+}
+
+.basic-information-panel-identity {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.basic-information-functional-panel header p {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.basic-information-panel-hints {
+  display: grid;
+  gap: 5px;
+  margin-top: 2px;
+  border: 1px solid rgba(189, 57, 48, 0.22);
+  border-radius: 8px;
+  background: #fff7f7;
+  color: var(--color-danger);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.basic-information-panel-hints strong {
+  font-size: 12px;
+}
+
+.basic-information-panel-hints ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
 .basic-information-meta-grid,
 .basic-information-field-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 .basic-information-field-group {
@@ -4462,28 +4532,68 @@
   gap: 8px;
 }
 
-.basic-information-field-group h3 {
+.basic-information-field-group h4 {
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .basic-information-field {
   display: grid;
   gap: 5px;
+  grid-column: span 6;
   min-width: 0;
 }
 
 .basic-information-field.is-textarea {
+  grid-column: span 12;
+}
+
+.basic-information-field.is-full {
+  grid-column: span 12;
+}
+
+.basic-information-field.is-two-thirds {
+  grid-column: span 8;
+}
+
+.basic-information-field.is-textarea.is-compact {
+  grid-column: span 6;
+}
+
+.basic-information-field.is-third {
+  grid-column: span 4;
+}
+
+.basic-information-field.is-inline-third {
+  grid-column: span 4;
+}
+
+.basic-information-field.is-quarter {
+  grid-column: span 3;
+}
+
+.basic-information-field.is-narrow-quarter {
   grid-column: span 2;
 }
 
-.basic-information-field span {
+.basic-information-field.is-wide-quarter {
+  grid-column: span 4;
+}
+
+.basic-information-field span,
+.basic-information-field legend {
   color: var(--color-ink-muted);
   font-size: 12px;
   font-weight: 800;
 }
 
+.basic-information-field legend {
+  padding: 0;
+}
+
 .basic-information-field input,
+.basic-information-field select,
 .basic-information-field textarea {
   min-width: 0;
   width: 100%;
@@ -4496,14 +4606,97 @@
   padding: 8px 10px;
 }
 
+.basic-information-field.is-missing-date span,
+.basic-information-field.is-missing-date legend {
+  color: var(--color-warning);
+}
+
+.basic-information-field.is-missing-date input,
+.basic-information-field.is-missing-date select,
+.basic-information-field.is-missing-date textarea {
+  border-color: rgba(154, 100, 28, 0.52);
+  background: rgba(154, 100, 28, 0.06);
+  box-shadow: 0 0 0 1px rgba(154, 100, 28, 0.1);
+}
+
+.basic-information-field.is-missing-date input:focus,
+.basic-information-field.is-missing-date select:focus,
+.basic-information-field.is-missing-date textarea:focus {
+  border-color: var(--color-warning);
+  box-shadow: 0 0 0 3px rgba(154, 100, 28, 0.16);
+  outline: none;
+}
+
+.basic-information-field.is-missing-required span,
+.basic-information-field.is-missing-required legend,
+.basic-information-field.is-invalid-sequence span,
+.basic-information-field.is-invalid-sequence legend {
+  color: var(--color-danger);
+}
+
+.basic-information-field.is-missing-required input,
+.basic-information-field.is-missing-required select,
+.basic-information-field.is-missing-required textarea,
+.basic-information-field.is-invalid-sequence input,
+.basic-information-field.is-invalid-sequence select,
+.basic-information-field.is-invalid-sequence textarea {
+  border-color: var(--color-danger);
+  background: #fff7f7;
+  box-shadow: 0 0 0 1px rgba(189, 57, 48, 0.14);
+}
+
+.basic-information-field.is-missing-required input:focus,
+.basic-information-field.is-missing-required select:focus,
+.basic-information-field.is-missing-required textarea:focus,
+.basic-information-field.is-invalid-sequence input:focus,
+.basic-information-field.is-invalid-sequence select:focus,
+.basic-information-field.is-invalid-sequence textarea:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(189, 57, 48, 0.18);
+  outline: none;
+}
+
 .basic-information-field input[readonly] {
   background: var(--color-surface-muted);
   color: var(--color-ink-muted);
 }
 
 .basic-information-field textarea {
-  min-height: 72px;
-  resize: vertical;
+  min-height: 42px;
+  overflow: hidden;
+  resize: none;
+}
+
+.basic-information-radio-field {
+  border: 0;
+  padding: 0;
+}
+
+.basic-information-radio-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 34px;
+}
+
+.basic-information-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.basic-information-radio-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.basic-information-radio-option span {
+  color: var(--color-primary-strong);
+  font-size: 13px;
 }
 
 .basic-information-alert {
@@ -4558,6 +4751,7 @@
 }
 
 .basic-information-completion-actions {
+  grid-column: 2;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -4580,13 +4774,32 @@
 }
 
 @media (max-width: 820px) {
-  .basic-information-meta-grid,
-  .basic-information-field-grid {
+  .basic-information-panel-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .basic-information-ltr-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+
+  .basic-information-meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .basic-information-field-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
   .basic-information-field.is-textarea {
-    grid-column: span 1;
+    grid-column: 1 / -1;
+  }
+
+  .basic-information-field,
+  .basic-information-field.is-full,
+  .basic-information-field.is-textarea.is-compact,
+  .basic-information-field.is-third {
+    grid-column: 1 / -1;
   }
 
   .basic-information-completion-dock {
@@ -4595,6 +4808,7 @@
   }
 
   .basic-information-completion-actions {
+    grid-column: 1;
     justify-content: flex-end;
   }
 }
@@ -4683,6 +4897,8 @@
 }
 
 .fee-evaluation-preview-title {
+  color: var(--color-text);
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -4693,10 +4909,11 @@
 
 .fee-evaluation-preview-controls {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) max-content;
-  gap: 8px;
+  grid-template-columns: max-content max-content;
+  gap: 6px;
   align-items: center;
-  min-width: min(620px, 100%);
+  justify-content: end;
+  min-width: 0;
 }
 
 .fee-evaluation-preview-back {
@@ -4707,15 +4924,15 @@
 .fee-evaluation-preview-controls > label,
 .fee-evaluation-preview-controls > div {
   display: grid;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 3px;
+  padding: 5px 7px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 7px;
   background: #f8fbff;
 }
 
 .fee-evaluation-preview-group-card {
-  grid-template-columns: 90px max-content;
+  grid-template-columns: 74px max-content;
   align-items: center;
 }
 
@@ -4729,8 +4946,8 @@
 .fee-evaluation-preview-group-card .fee-evaluation-preview-scope-fee {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 34px;
+  gap: 6px;
+  min-height: 28px;
   min-width: max-content;
   white-space: nowrap;
   overflow: visible;
@@ -4738,13 +4955,13 @@
 
 .fee-evaluation-preview-controls select {
   width: 100%;
-  min-width: 90px;
+  min-width: 74px;
   border: 1px solid var(--color-border);
-  border-radius: 7px;
+  border-radius: 6px;
   background: var(--color-surface);
   color: var(--color-ink);
-  font-size: 12px;
-  padding: 6px 8px;
+  font-size: 11px;
+  padding: 4px 6px;
 }
 
 .fee-evaluation-preview-controls label,
@@ -4761,7 +4978,7 @@
 .fee-evaluation-preview-group-card .fee-evaluation-preview-scope-fee span,
 .fee-evaluation-preview-group-card .fee-evaluation-preview-scope-fee strong {
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
 }

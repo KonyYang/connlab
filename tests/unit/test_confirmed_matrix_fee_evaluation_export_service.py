@@ -270,6 +270,44 @@ def test_matrix_basic_fill_passes_edited_values_to_writer(tmp_path: Path) -> Non
     assert writer.basic_calls[0].edited_values == edited_values
 
 
+def test_matrix_basic_fill_passes_basic_information_values_to_writer(
+    tmp_path: Path,
+) -> None:
+    writer = _Writer()
+    service = _service(
+        draft=_draft(status="needs_review"),
+        writer=writer,
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+    )
+
+    result = service.export(
+        ExportConfirmedMatrixFeeEvaluationCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=tmp_path,
+            fill_mode="matrix_basic",
+            basic_information_values={
+                "dl_number": "DL-BI",
+                "product_description": "Connector from Basic Information",
+                "test_item": "Qualification test",
+                "requested_by": "Requester BI",
+                "location": "Dongguan",
+                "lab_performing_tests": "Dongguan",
+            },
+        )
+    )
+
+    assert result.status == "generated"
+    assert writer.basic_calls[0].basic_information_values == {
+        "dl_number": "DL-BI",
+        "product_description": "Connector from Basic Information",
+        "test_item": "Qualification test",
+        "requested_by": "Requester BI",
+        "location": "Dongguan",
+        "lab_performing_tests": "Dongguan",
+    }
+
+
 def test_matrix_basic_fill_rejects_duplicate_edited_row_identity(tmp_path: Path) -> None:
     service = _service(
         draft=_draft(status="needs_review"),
@@ -675,6 +713,7 @@ class _BasicWriteCall:
     prepared_by: str | None
     approved_by: str | None
     edited_values: FeeEvaluationEditedExportValues | None
+    basic_information_values: dict[str, str] | None
 
 
 class _Writer:
@@ -717,6 +756,7 @@ class _Writer:
         prepared_by: str | None,
         approved_by: str | None,
         edited_values: FeeEvaluationEditedExportValues | None = None,
+        basic_information_values: dict[str, str] | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         self.basic_calls.append(
             _BasicWriteCall(
@@ -727,6 +767,7 @@ class _Writer:
                 prepared_by=prepared_by,
                 approved_by=approved_by,
                 edited_values=edited_values,
+                basic_information_values=basic_information_values,
             )
         )
         output_path.write_text("generated-basic", encoding="utf-8")

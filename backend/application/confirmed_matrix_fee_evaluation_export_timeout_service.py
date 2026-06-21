@@ -99,6 +99,11 @@ def command_to_payload(command: ExportConfirmedMatrixFeeEvaluationCommand) -> di
         "connlab_user": command.connlab_user,
         "fill_mode": command.fill_mode,
         "edited_values": _edited_values_to_payload(command.edited_values),
+        "basic_information_values": (
+            dict(command.basic_information_values)
+            if command.basic_information_values is not None
+            else None
+        ),
     }
 
 
@@ -120,6 +125,9 @@ def command_from_payload(payload: dict[str, Any]) -> ExportConfirmedMatrixFeeEva
         connlab_user=_optional_str(payload.get("connlab_user")),
         fill_mode=fill_mode,  # type: ignore[arg-type]
         edited_values=_edited_values_from_payload(payload.get("edited_values")),
+        basic_information_values=_basic_information_values_from_payload(
+            payload.get("basic_information_values")
+        ),
     )
 
 
@@ -212,6 +220,14 @@ def _error_message(result: FeeEvaluationExportProcessResult) -> str:
             f"{result.elapsed_seconds:.1f} seconds."
         )
     return "Fee Evaluation export failed in a subprocess."
+
+
+def _basic_information_values_from_payload(
+    payload: object,
+) -> dict[str, str] | None:
+    if payload is None:
+        return None
+    return {str(key): str(value) for key, value in dict(payload).items()}
 
 
 def _optional_str(value: Any) -> str | None:

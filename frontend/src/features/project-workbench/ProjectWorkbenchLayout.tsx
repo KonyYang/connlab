@@ -22,6 +22,7 @@ import {
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import {
   deriveProjectFolderTasks,
+  selectProjectFolderOneClickBlocker,
   selectCurrentProjectFolderTaskKey,
   type ProjectFolderTaskActionTarget,
 } from "./projectFolderTaskSelectors";
@@ -29,6 +30,10 @@ import {
   deriveProjectWorkbenchLifecycle,
   type WorkbenchLifecycleMode,
 } from "./projectWorkbenchLifecycleSelectors";
+import {
+  buildProjectIdentityLine,
+  deriveRegisteredProjectReference,
+} from "../projectIdentity";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 type ProjectWorkbenchLayoutProps = {
@@ -102,17 +107,11 @@ export function ProjectWorkbenchLayout({
     confirmedFeeLatest,
   } = runtimeModel;
 
-  const projectNumber = deriveProjectNumber(latestLtr, project.project_no);
+  const projectNumber = deriveRegisteredProjectReference(latestLtr, project.project_no);
   const activeMatrixAuthorityReady = Boolean(activeConfirmedMatrixSnapshot);
   const effectiveFolderReady =
     folderReady || officialWorkspacePreview?.status === "completed";
-  const projectIdentity =
-    projectNumber ?? temporaryProjectId(project.project_id);
-  const titleParts = [
-    projectIdentity,
-    project.sample_description?.trim() || project.product_name,
-    project.test_item,
-  ].filter(Boolean);
+  const titleParts = [buildProjectIdentityLine({ project, latestLtr, projectId: project.project_id })];
   const lifecycle = deriveProjectWorkbenchLifecycle(
     {
       hasLtr: Boolean(projectNumber),
@@ -164,6 +163,10 @@ export function ProjectWorkbenchLayout({
     creatingFolder: officialWorkspaceCreating,
     effectiveFolderReady,
     officialWorkspaceStatus: officialWorkspacePreview?.status,
+    projectFolderBlocker: selectProjectFolderOneClickBlocker(
+      projectFolderTasks,
+      effectiveFolderReady
+    ),
   });
   const feeEvaluationButtonState = deriveFeeEvaluationButtonState(confirmedFeeLatest);
   const officialWorkspaceConflictPaths =
@@ -532,22 +535,6 @@ function deriveFolderTemplateReady(
     return false;
   }
   return template.active && template.validation_status === "valid";
-}
-
-function deriveProjectNumber(
-  latestLtr: string | null | undefined,
-  projectNo: string | null | undefined
-): string | null {
-  const fromLatestLtr = latestLtr?.trim();
-  if (fromLatestLtr) {
-    return fromLatestLtr;
-  }
-  const fromProjectNo = projectNo?.trim();
-  return fromProjectNo || null;
-}
-
-function temporaryProjectId(projectId: string): string {
-  return `TMP-${projectId.slice(0, 8).toUpperCase()}`;
 }
 
 function deriveConfirmedFeeAuthorityStatus(

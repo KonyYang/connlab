@@ -140,6 +140,8 @@ export default function App(): ReactElement {
   const topBarTitle =
     route.name === "projectMatrixEditor"
       ? "Matrix Editor"
+      : route.name === "projectFeeEvaluation"
+        ? "Fee Evaluation"
       : route.name === "projectBasicInformation"
         ? "Basic Information"
         : undefined;

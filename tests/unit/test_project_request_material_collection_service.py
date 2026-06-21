@@ -167,6 +167,12 @@ def test_collect_copies_request_material_without_deleting_sources(tmp_path: Path
     result = service.collect("P1")
 
     assert result.status == "collected"
+    assert result.local_workspace_path == tmp_path / "DL-001"
+    assert result.source_book_path == tmp_path / "DL-001" / "Source Book"
+    assert (
+        result.official_project_folder_path
+        == tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    )
     assert request_email.is_file()
     assert app_form.is_file()
     assert support.is_file()

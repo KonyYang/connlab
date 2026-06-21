@@ -125,12 +125,14 @@ export function deriveActiveMatrixFolderCommand({
   creatingFolder,
   effectiveFolderReady,
   officialWorkspaceStatus,
+  projectFolderBlocker,
 }: {
   activeMatrixAuthorityReady: boolean;
   confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"];
   creatingFolder: boolean;
   effectiveFolderReady: boolean;
   officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
+  projectFolderBlocker?: string | null;
 }): {
   disabled: boolean;
   disabledReason?: string;
@@ -159,6 +161,16 @@ export function deriveActiveMatrixFolderCommand({
     return {
       disabled: true,
       disabledReason: "Update Fee before generating the project folder.",
+      label,
+    };
+  }
+  if (
+    (effectiveFolderReady || officialWorkspaceStatus === "completed") &&
+    projectFolderBlocker
+  ) {
+    return {
+      disabled: true,
+      disabledReason: projectFolderBlocker,
       label,
     };
   }

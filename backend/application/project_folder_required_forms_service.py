@@ -9,6 +9,10 @@ from time import perf_counter
 from typing import Protocol
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationReader,
+    ConfirmedBasicInformationSnapshot,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
     ProjectOutputRecordNotFoundError,
@@ -105,7 +109,14 @@ class ApplicationFormReader(Protocol):
 class RequiredFormsStagingGenerator(Protocol):
     """Output-record-free staging generator for Required forms."""
 
-    def generate(self, *, project_id: str, key: str, target_name: str) -> Path:
+    def generate(
+        self,
+        *,
+        project_id: str,
+        key: str,
+        target_name: str,
+        basic_information: ConfirmedBasicInformationSnapshot,
+    ) -> Path:
         """Generate one form into ConnLab-controlled staging."""
 
 
@@ -136,6 +147,33 @@ class OutputStatusServicePort(Protocol):
         """Register one project output record."""
 
 
+class ReusableFeeFormArtifactReader(Protocol):
+    """Reader for a current generated Fee Form artifact that can be reused."""
+
+    def find_current_artifact(
+        self,
+        *,
+        project_id: str,
+        source_context_signature: str,
+        final_target_path: Path,
+    ) -> Path | None:
+        """Return a safe reusable Fee Form source path, if one exists."""
+
+
+class NullReusableFeeFormArtifactReader:
+    """Default no-op Fee Form artifact reader."""
+
+    def find_current_artifact(
+        self,
+        *,
+        project_id: str,
+        source_context_signature: str,
+        final_target_path: Path,
+    ) -> Path | None:
+        """Return no reusable artifact."""
+        return None
+
+
 @dataclass(frozen=True, slots=True)
 class RequiredFormPreviewItem:
     """One Required form preview item."""
@@ -162,6 +200,8 @@ class RequiredFormsPreview:
     confirmed_fee_id: str | None
     confirmed_fee_revision: int | None
     confirmed_fee_pricing_draft_edit_id: str | None
+    confirmed_basic_information_version: int | None
+    confirmed_basic_information_source_signature_hash: str | None
     customer_feedback_template_path: Path | None
     source_context_signature: str | None
     items: tuple[RequiredFormPreviewItem, ...]
@@ -188,6 +228,8 @@ class GenerateRequiredFormsCommand:
     expected_confirmed_fee_id: str
     expected_confirmed_fee_revision: int
     expected_confirmed_fee_pricing_draft_edit_id: str
+    expected_confirmed_basic_information_version: int
+    expected_confirmed_basic_information_source_signature_hash: str
     expected_customer_feedback_template_path: Path
     expected_targets: tuple[RequiredFormsGenerateTarget, ...]
 
@@ -235,20 +277,26 @@ class ProjectFolderRequiredFormsService:
         folder_check_service: OfficialFolderCheckPort,
         confirmed_matrix_reader: ConfirmedMatrixReader,
         confirmed_fee_reader: ConfirmedFeeReader,
+        basic_information_reader: ConfirmedBasicInformationReader,
         customer_feedback_template_reader: CustomerFeedbackTemplateReader,
         application_form_reader: ApplicationFormReader,
         generator: RequiredFormsStagingGenerator,
         file_gateway: RequiredFormsFileGateway,
         output_status_service: OutputStatusServicePort,
+        reusable_fee_form_reader: ReusableFeeFormArtifactReader | None = None,
     ) -> None:
         """Create the Required forms service with explicit ports."""
         self._workspaces = workspace_repository
         self._folder_check = folder_check_service
         self._matrices = confirmed_matrix_reader
         self._fees = confirmed_fee_reader
+        self._basic_information = basic_information_reader
         self._feedback_templates = customer_feedback_template_reader
         self._application_forms = application_form_reader
         self._generator = generator
+        self._reusable_fee_forms = (
+            reusable_fee_form_reader or NullReusableFeeFormArtifactReader()
+        )
         self._files = file_gateway
         self._outputs = output_status_service
 
@@ -270,9 +318,18 @@ class ProjectFolderRequiredFormsService:
         fee = getattr(fee_result, "latest_confirmed_fee", None)
         if fee is None:
             return _blocked_preview(project_id, "Confirmed Fee is missing.")
+        basic_information = self._basic_information.get_latest_confirmed(project_id)
+        if basic_information is None:
+            return _blocked_preview(
+                project_id,
+                "Confirm Basic Information before generating Project Folder outputs.",
+            )
         template_path = self._feedback_templates.preview_template(project_id)
-        owner_suffix = _owner_suffix(self._application_forms.list_by_project(project_id))
-        source_context = _source_context_signature(matrix, fee)
+        owner_suffix = _owner_suffix(
+            self._application_forms.list_by_project(project_id),
+            basic_information,
+        )
+        source_context = _source_context_signature(matrix, fee, basic_information)
         summary = self._outputs.get_status_summary(project_id)
         by_kind = {item.output_kind: item for item in summary.items}
         items = tuple(
@@ -300,6 +357,10 @@ class ProjectFolderRequiredFormsService:
             confirmed_fee_id=_fee_id(fee),
             confirmed_fee_revision=_fee_revision(fee),
             confirmed_fee_pricing_draft_edit_id=str(getattr(fee, "pricing_draft_edit_id")),
+            confirmed_basic_information_version=basic_information.version,
+            confirmed_basic_information_source_signature_hash=(
+                basic_information.source_signature_hash
+            ),
             customer_feedback_template_path=template_path,
             source_context_signature=source_context,
             items=items,
@@ -316,6 +377,8 @@ class ProjectFolderRequiredFormsService:
         _append_timing(timings, "required_forms.preview", preview_start)
         validate_start = perf_counter()
         self._validate_context(command, preview)
+        basic_information = self._require_basic_information(command.project_id)
+        self._validate_basic_information_context(command, basic_information)
         _append_timing(timings, "required_forms.validate_context", validate_start)
         if preview.status == "blocked":
             raise RequiredFormsConflictError(
@@ -344,13 +407,13 @@ class ProjectFolderRequiredFormsService:
                 )
                 continue
             try:
-                generate_start = perf_counter()
-                source = self._generator.generate(
-                    project_id=command.project_id,
-                    key=item.key,
-                    target_name=item.target_path.name,
+                source = self._source_for_item(
+                    command=command,
+                    item=item,
+                    basic_information=basic_information,
+                    source_context=preview.source_context_signature,
+                    timings=timings,
                 )
-                _append_timing(timings, f"{item.key}.generate", generate_start)
                 place_start = perf_counter()
                 if item.action == "update" and item.existing_sha256:
                     self._files.update_managed(
@@ -450,28 +513,8 @@ class ProjectFolderRequiredFormsService:
                 output_kind=kind,
             )
         if output_item is None:
-            if key in {"fee_form", "customer_feedback_form"}:
-                return RequiredFormPreviewItem(
-                    key=key,
-                    label=label,
-                    target_path=target_path,
-                    status="current",
-                    action="skip",
-                    message="Existing formal business form is present.",
-                    output_kind=kind,
-                )
             return _conflict_item(key, label, target_path, kind)
         if getattr(output_item, "output_path", None) != str(target_path):
-            if key in {"fee_form", "customer_feedback_form"}:
-                return RequiredFormPreviewItem(
-                    key=key,
-                    label=label,
-                    target_path=target_path,
-                    status="current",
-                    action="skip",
-                    message="Existing formal business form is present.",
-                    output_kind=kind,
-                )
             return _conflict_item(key, label, target_path, kind)
         stored_sha = getattr(output_item, "output_sha256", None)
         if not stored_sha or compute_sha256(target_path) != stored_sha:
@@ -517,6 +560,10 @@ class ProjectFolderRequiredFormsService:
             or preview.confirmed_fee_revision != command.expected_confirmed_fee_revision
             or preview.confirmed_fee_pricing_draft_edit_id
             != command.expected_confirmed_fee_pricing_draft_edit_id
+            or preview.confirmed_basic_information_version
+            != command.expected_confirmed_basic_information_version
+            or preview.confirmed_basic_information_source_signature_hash
+            != command.expected_confirmed_basic_information_source_signature_hash
             or preview.customer_feedback_template_path
             != command.expected_customer_feedback_template_path
             or not target_context_matches
@@ -554,6 +601,64 @@ class ProjectFolderRequiredFormsService:
                 source_context_signature=source_context,
             )
         )
+
+    def _require_basic_information(
+        self, project_id: str
+    ) -> ConfirmedBasicInformationSnapshot:
+        """Return confirmed Basic Information or raise a generation conflict."""
+        snapshot = self._basic_information.get_latest_confirmed(project_id)
+        if snapshot is None:
+            raise RequiredFormsConflictError(
+                "Confirm Basic Information before generating Project Folder outputs."
+            )
+        return snapshot
+
+    def _validate_basic_information_context(
+        self,
+        command: GenerateRequiredFormsCommand,
+        snapshot: ConfirmedBasicInformationSnapshot,
+    ) -> None:
+        """Ensure generation uses the same Basic Information snapshot as preview."""
+        if (
+            snapshot.version != command.expected_confirmed_basic_information_version
+            or snapshot.source_signature_hash
+            != command.expected_confirmed_basic_information_source_signature_hash
+        ):
+            raise RequiredFormsContextMismatchError("Required forms preview is stale.")
+
+    def _source_for_item(
+        self,
+        *,
+        command: GenerateRequiredFormsCommand,
+        item: RequiredFormPreviewItem,
+        basic_information: ConfirmedBasicInformationSnapshot,
+        source_context: str | None,
+        timings: list[RequiredFormsTiming],
+    ) -> Path:
+        """Return a staging source for one item, reusing Fee Form when safe."""
+        if (
+            item.key == "fee_form"
+            and item.target_path is not None
+            and source_context is not None
+        ):
+            reuse_start = perf_counter()
+            reusable = self._reusable_fee_forms.find_current_artifact(
+                project_id=command.project_id,
+                source_context_signature=source_context,
+                final_target_path=item.target_path,
+            )
+            _append_timing(timings, "fee_form.reuse_lookup", reuse_start)
+            if reusable is not None:
+                return reusable
+        generate_start = perf_counter()
+        source = self._generator.generate(
+            project_id=command.project_id,
+            key=item.key,
+            target_name=item.target_path.name if item.target_path else item.key,
+            basic_information=basic_information,
+        )
+        _append_timing(timings, f"{item.key}.generate", generate_start)
+        return source
 
 
 def compute_sha256(path: Path) -> str:
@@ -612,8 +717,14 @@ def _safe_name(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in {"-", " "} else " " for ch in value).strip(" .")
 
 
-def _owner_suffix(forms: list[ApplicationForm]) -> str | None:
+def _owner_suffix(
+    forms: list[ApplicationForm],
+    basic_information: ConfirmedBasicInformationSnapshot,
+) -> str | None:
     """Return the Project Leader suffix for Customer Feedback file names."""
+    project_leader = basic_information.values.get("project_leader", "").strip()
+    if project_leader:
+        return project_leader
     form = forms[-1] if forms else None
     if form is None:
         return None
@@ -621,11 +732,16 @@ def _owner_suffix(forms: list[ApplicationForm]) -> str | None:
     return text or None
 
 
-def _source_context_signature(matrix: object, fee: object) -> str:
+def _source_context_signature(
+    matrix: object,
+    fee: object,
+    basic_information: ConfirmedBasicInformationSnapshot,
+) -> str:
     return (
         f"matrix:{_matrix_id(matrix)}@{_matrix_revision(matrix)}"
         f"|fee:{_fee_id(fee)}@{_fee_revision(fee)}"
         f"|pricing:{getattr(fee, 'pricing_draft_edit_id')}"
+        f"|{basic_information.context_signature}"
     )
 
 
@@ -657,6 +773,8 @@ def _blocked_preview(project_id: str, message: str) -> RequiredFormsPreview:
         confirmed_fee_id=None,
         confirmed_fee_revision=None,
         confirmed_fee_pricing_draft_edit_id=None,
+        confirmed_basic_information_version=None,
+        confirmed_basic_information_source_signature_hash=None,
         customer_feedback_template_path=None,
         source_context_signature=None,
         items=tuple(),

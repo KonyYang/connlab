@@ -2,7 +2,7 @@
 
 ## Status
 
-Task file and executable plan are ready for user review. Implementation is not started.
+Complete including follow-up review fixes.
 
 ## Current Phase
 
@@ -12,7 +12,7 @@ Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 TASK_330A established the backend Project Basic Information draft/confirmed authority data/API. TASK_330B added the Workbench `Basic Information` entry, editor workspace, autosaved draft behavior, confirm flow, and read-only summary card. The task board stop point explicitly names TASK_330C as the next allowed task after separate approval.
 
-This task is still not authorized for implementation until the user approves the executable plan.
+The user approved implementation on 2026-06-20. Implementation and validation are complete.
 
 ## Goal
 
@@ -75,24 +75,58 @@ The snapshot becomes the source for:
 - User-modified or unmanaged output files return conflict/block and are not overwritten.
 - Existing Matrix/Fee authority gates remain intact.
 
+## Implementation Summary
+
+- Added a small application-layer Basic Information output reader/snapshot boundary for latest confirmed snapshots.
+- Required forms preview/generate now blocks without confirmed Basic Information, echoes Basic Information version/source-signature hash, and rejects stale generate requests.
+- Required forms output context now includes Basic Information context so reconfirmed snapshots make managed outputs stale.
+- Unmanaged existing Fee Form / Customer Feedback Form targets now return conflict instead of being treated as current.
+- Fee Form and Customer Feedback staging now receive confirmed Basic Information values through backend generator commands.
+- Fee Form Matrix basic export now passes Basic Information identity values into the workbook writer, and the Office gateway writes those values into the workbook header area.
+- Customer Feedback identity fields and owner suffix prefer confirmed Basic Information.
+- Copied application Word write-back now reads confirmed Basic Information fields and blocks user-modified managed targets through fingerprint checks before writing.
+- Frontend Required forms DTO/request construction now carries Basic Information version/hash for stale-preview validation.
+- Required forms generate validates that the Basic Information snapshot read for actual generation still matches the preview context.
+
 ## Validation
 
-Planned targeted validation after implementation:
+Completed targeted validation:
 
 ```powershell
-py -m pytest tests/unit/test_project_folder_required_forms_service.py -q
-py -m pytest tests/unit/test_project_application_form_write_back_service.py -q
-py -m pytest tests/unit/test_official_project_workspace_service.py -q
-py -m pytest tests/integration/test_project_folder_required_forms_api.py -q
-py -m pytest tests/integration/test_official_project_workspace_api.py -q
+py -m pytest tests/integration/test_project_folder_required_forms_api.py tests/unit/test_project_folder_required_forms_service.py tests/unit/test_project_application_form_write_back_service.py tests/unit/test_customer_feedback_form_generation_service.py -q
+# 42 passed
+
+py -m pytest tests/integration/test_project_folder_required_forms_api.py tests/unit/test_project_folder_required_forms_service.py tests/unit/test_project_application_form_write_back_service.py tests/unit/test_customer_feedback_form_generation_service.py tests/unit/test_confirmed_matrix_fee_evaluation_export_timeout_service.py tests/unit/test_confirmed_matrix_fee_evaluation_export_service.py tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py tests/unit/test_fee_evaluation_workbook_gateway.py -q
+# 91 passed
+
+py -m pytest tests/unit/test_confirmed_matrix_fee_evaluation_export_timeout_service.py tests/unit/test_confirmed_matrix_fee_evaluation_export_service.py tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py -q
+# 36 passed
+
+py -m pytest tests/unit/test_project_basic_information_service.py tests/integration/test_project_basic_information_api.py -q
+# 12 passed
+
+cd frontend
+npm test -- --run ProjectWorkbenchLayout ProjectFolderTaskList projectFolderTaskSelectors --watch=false
+# 39 passed
+
+npm run build
+# passed
+
+git diff --check
+# no whitespace errors; CRLF warnings only
 ```
 
-If frontend DTOs or task status copy must change because backend blockers/context fields are exposed:
+Known non-blocking validation note:
 
 ```powershell
+py -m pytest tests/unit/test_frontend_shell_files.py -q
+# 4 failures in older exact-string guard tests for TASK_315F/TASK_277 Matrix/Fee UI wiring.
+# These failures are unrelated to TASK_330C output consumption.
+
 cd frontend
-npm test -- --run ProjectWorkbenchLayout projectFolderTaskSelectors --watch=false
 npm run build
+# currently blocked by unrelated existing edits in frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx:
+# TS2322 Type 'null' is not assignable to type 'ReactElement...'.
 ```
 
 Manual smoke after implementation:

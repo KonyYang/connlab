@@ -352,6 +352,7 @@ class _ApiWriter:
         prepared_by: str | None,
         approved_by: str | None,
         edited_values: object | None = None,
+        basic_information_values: dict[str, str] | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         output_path.write_text("generated-basic", encoding="utf-8")
         return FeeEvaluationWorkbookWriteResult(

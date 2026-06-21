@@ -252,6 +252,51 @@ def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
     assert "Matrix basic fill only." in result.warnings
 
 
+def test_fee_gateway_matrix_basic_fill_writes_basic_information_identity(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(5, 2)] = "0.5"
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
+    workbook.sheet.cells[(5, 5)] = "per sample"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    excel = _FakeExcel(workbook)
+    output = tmp_path / "fee_out.xls"
+
+    FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=output,
+        basic_fill=_basic_fill(),
+        review_required=False,
+        prepared_by="Operator",
+        approved_by=None,
+        basic_information_values={
+            "dl_number": "DL-BI",
+            "product_description": "Connector from Basic Information",
+            "test_item": "Qualification test",
+            "requested_by": "Requester BI",
+            "location": "Dongguan",
+            "lab_performing_tests": "Dongguan Lab",
+        },
+    )
+
+    sheet = excel.workbook.sheet
+    assert sheet.cells[(2, 1)] == "DL/LTR Number: DL-BI"
+    assert sheet.cells[(2, 4)] == "Product Description: Connector from Basic Information"
+    assert sheet.cells[(3, 1)] == "Test Item: Qualification test"
+    assert sheet.cells[(3, 4)] == "Requested by: Requester BI"
+    assert sheet.cells[(4, 1)] == "Location: Dongguan"
+    assert sheet.cells[(4, 4)] == "Lab Performing the Tests: Dongguan Lab"
+
+
 def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     tmp_path: Path,
 ) -> None:

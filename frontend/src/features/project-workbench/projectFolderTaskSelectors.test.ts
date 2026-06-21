@@ -8,6 +8,7 @@ import type {
 import {
   deriveProjectFolderTasks,
   selectCurrentProjectFolderTaskKey,
+  selectProjectFolderOneClickBlocker,
 } from "./projectFolderTaskSelectors";
 import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors";
 
@@ -209,6 +210,43 @@ describe("deriveProjectFolderTasks", () => {
     expect(taskByTitle(tasks, "Required forms").actionTarget).toBeNull();
   });
 
+  it("surfaces Basic Information Required forms blockers for the one-click folder action", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
+    });
+    const requiredFormsTask = taskByTitle(tasks, "Required forms");
+
+    expect(selectCurrentProjectFolderTaskKey(tasks)).toBe("required_forms");
+    expect(requiredFormsTask.status).toBe("blocked");
+    expect(requiredFormsTask.summary).toBe(
+      "Confirm Basic Information before generating Required forms."
+    );
+    expect(requiredFormsTask.blockers).toContain(
+      "Confirm Basic Information before generating Project Folder outputs."
+    );
+    expect(selectProjectFolderOneClickBlocker(tasks, true)).toBe(
+      "Confirm Basic Information before generating Project Folder outputs."
+    );
+    expect(selectProjectFolderOneClickBlocker(tasks, false)).toBeNull();
+  });
+
+  it("keeps the one-click Basic Information blocker visible behind earlier non-ready tasks", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      requestMaterialPreview: {
+        ...collectedRequestMaterialPreview,
+        status: "partial",
+      },
+      requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
+    });
+
+    expect(selectCurrentProjectFolderTaskKey(tasks)).toBe("request_material");
+    expect(selectProjectFolderOneClickBlocker(tasks, true)).toBe(
+      "Confirm Basic Information before generating Project Folder outputs."
+    );
+  });
+
   it("keeps Local project folder ready when only required files have conflicts", () => {
     const tasks = deriveProjectFolderTasks({
       ...readyInput(),
@@ -354,6 +392,8 @@ const currentRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
   confirmed_fee_id: "fee-1",
   confirmed_fee_revision: 1,
   confirmed_fee_pricing_draft_edit_id: "pricing-1",
+  confirmed_basic_information_version: 1,
+  confirmed_basic_information_source_signature_hash: "basic-hash",
   customer_feedback_template_path: "D:/Source/Template/Customer Feedback.xlsx",
   items: [
     {
@@ -386,6 +426,22 @@ const currentRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
   ],
   blockers: [],
   warnings: [],
+};
+
+const basicInformationBlockedRequiredFormsPreview: ProjectFolderRequiredFormsPreview = {
+  ...currentRequiredFormsPreview,
+  status: "blocked",
+  official_project_folder_path: null,
+  confirmed_matrix_id: null,
+  confirmed_revision: null,
+  confirmed_fee_id: null,
+  confirmed_fee_revision: null,
+  confirmed_fee_pricing_draft_edit_id: null,
+  confirmed_basic_information_version: null,
+  confirmed_basic_information_source_signature_hash: null,
+  customer_feedback_template_path: null,
+  items: [],
+  blockers: ["Confirm Basic Information before generating Project Folder outputs."],
 };
 
 const syncedSection2Preview = {

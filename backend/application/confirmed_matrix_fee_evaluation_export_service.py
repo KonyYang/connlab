@@ -87,6 +87,7 @@ class ExportConfirmedMatrixFeeEvaluationCommand:
     connlab_user: str | None = None
     fill_mode: Literal["fee_draft", "matrix_basic"] = "fee_draft"
     edited_values: FeeEvaluationEditedExportValues | None = None
+    basic_information_values: dict[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +133,7 @@ class FeeEvaluationWorkbookWriter(Protocol):
         prepared_by: str | None,
         approved_by: str | None,
         edited_values: FeeEvaluationEditedExportValues | None = None,
+        basic_information_values: dict[str, str] | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         """Generate a workbook from Matrix basic-fill rows."""
 
@@ -284,6 +286,7 @@ class ConfirmedMatrixFeeEvaluationExportService:
             prepared_by=prepared_by,
             approved_by=approved_by,
             edited_values=command.edited_values,
+            basic_information_values=command.basic_information_values,
         )
         warnings.extend(
             warning for warning in write.warnings if warning not in warnings

@@ -118,9 +118,15 @@ def _preview_response(preview: RequestMaterialPreview) -> RequestMaterialPreview
 
 def _collect_response(result: RequestMaterialCollectResult) -> RequestMaterialCollectResponse:
     """Convert a collect result into a response DTO."""
-    preview = _preview_response(result)
     return RequestMaterialCollectResponse(
-        **preview.model_dump(),
+        project_id=result.project_id,
+        local_workspace_path=_path(result.local_workspace_path),
+        source_book_path=_path(result.source_book_path),
+        official_project_folder_path=_path(result.official_project_folder_path),
+        status=result.status,
+        items=[_item_response(item) for item in result.items],
+        blockers=list(result.blockers),
+        warnings=list(result.warnings),
         collection_id=result.collection_id,
         copied_paths=[str(path) for path in result.copied_paths],
         already_present_paths=[str(path) for path in result.already_present_paths],

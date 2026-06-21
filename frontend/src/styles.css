@@ -422,6 +422,8 @@ button {
 }
 
 .fee-evaluation-preview-title {
+  color: var(--color-text);
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
 }

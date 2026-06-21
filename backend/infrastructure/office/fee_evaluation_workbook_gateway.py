@@ -172,6 +172,7 @@ class FeeEvaluationWorkbookGateway:
         prepared_by: str | None,
         approved_by: str | None,
         edited_values: FeeEvaluationEditedExportValues | None = None,
+        basic_information_values: dict[str, str] | None = None,
     ) -> FeeEvaluationWorkbookWriteResult:
         """Write Matrix basic-fill A/C rows to the Testing Prices sheet."""
         template = Path(template_path)
@@ -194,6 +195,7 @@ class FeeEvaluationWorkbookGateway:
             excel_state = _begin_excel_batch(excel)
             workbook = excel.Workbooks.Open(str(template))
             sheet = _testing_prices_sheet(workbook)
+            _write_basic_information_identity(sheet, basic_information_values)
             gateway_warnings = _write_matrix_basic_fill(
                 sheet=sheet,
                 basic_fill=basic_fill,
@@ -339,6 +341,26 @@ def _write_structured_fee_draft(
 
     sheet.Cells(row_index, 7).Value = "Total"
     sheet.Cells(row_index, 8).Value = _decimal_text(draft.total_fee)
+
+
+def _write_basic_information_identity(
+    sheet: Any,
+    values: dict[str, str] | None,
+) -> None:
+    if not values:
+        return
+    entries = (
+        ((2, 1), "DL/LTR Number", values.get("dl_number")),
+        ((2, 4), "Product Description", values.get("product_description")),
+        ((3, 1), "Test Item", values.get("test_item")),
+        ((3, 4), "Requested by", values.get("requested_by")),
+        ((4, 1), "Location", values.get("location")),
+        ((4, 4), "Lab Performing the Tests", values.get("lab_performing_tests")),
+    )
+    for (row, column), label, raw_value in entries:
+        value = (raw_value or "").strip()
+        if value:
+            sheet.Cells(row, column).Value = f"{label}: {value}"
 
 
 def _write_matrix_basic_fill(

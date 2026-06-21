@@ -212,6 +212,8 @@ const requiredFormsPreview: ProjectFolderRequiredFormsPreview = {
   confirmed_fee_id: "fee-1",
   confirmed_fee_revision: 1,
   confirmed_fee_pricing_draft_edit_id: "pricing-1",
+  confirmed_basic_information_version: 1,
+  confirmed_basic_information_source_signature_hash: "basic-hash",
   customer_feedback_template_path: "D:/Source/Template/Customer Feedback.xlsx",
   items: [
     {

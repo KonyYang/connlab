@@ -38,6 +38,60 @@ def test_customer_feedback_generation_uses_unique_e4243_template(tmp_path: Path)
     ]
 
 
+def test_customer_feedback_generation_uses_basic_information_identity(
+    tmp_path: Path,
+) -> None:
+    template_dir = tmp_path / "templates"
+    template_dir.mkdir()
+    template = template_dir / "E-4243_D Customer Feedback Form.xlsx"
+    template.write_bytes(b"template")
+    gateway = FakeCustomerFeedbackGateway()
+    service = _service(tmp_path, template_dir=template_dir, gateway=gateway)
+
+    service.generate(
+        CustomerFeedbackFormGenerationCommand(
+            project_id="P1",
+            basic_information_values={
+                "dl_number": "DL-BI",
+                "product_description": "Connector from Basic Information",
+                "test_item": "Qualification test",
+                "requested_by": "Requester BI",
+                "phone": "12345",
+                "requestor_email": "requester@example.test",
+                "project_leader": "Even Yang",
+                "lab_performing_tests": "Dongguan",
+                "date_lab_received_samples": "20 Jun 2026",
+                "estimated_completion_date": "02 Jul 2026",
+            },
+        )
+    )
+
+    assert gateway.calls == [
+        CustomerFeedbackGatewayCall(
+            template_path=template,
+            output_path=(
+                tmp_path
+                / "data"
+                / "generated_customer_feedback"
+                / "P1"
+                / "DL-2026-05-003_customer_feedback_E-4243.xlsx"
+            ),
+            identity={
+                "ltr_number": "DL-BI",
+                "product_name": "Connector from Basic Information",
+                "test_item": "Qualification test",
+                "requestor": "Requester BI",
+                "phone": "12345",
+                "email": "requester@example.test",
+                "project_leader": "Even Yang",
+                "lab": "Dongguan",
+                "received_date": "20 Jun 2026",
+                "estimated_completion_date": "02 Jul 2026",
+            },
+        )
+    ]
+
+
 def test_customer_feedback_generation_rejects_missing_template_folder_resource(
     tmp_path: Path,
 ) -> None:

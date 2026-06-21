@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationSnapshot,
+)
 from backend.application.project_folder_required_forms_service import (
     GenerateRequiredFormsCommand,
     ProjectFolderRequiredFormsService,
@@ -73,6 +76,37 @@ def test_preview_blocks_when_confirmed_fee_authority_is_stale(tmp_path: Path) ->
     assert any("Fee" in blocker for blocker in preview.blockers)
 
 
+def test_preview_blocks_when_confirmed_basic_information_is_missing(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path, basic_information=None)
+
+    preview = service.preview("P1")
+
+    assert preview.status == "blocked"
+    assert any("Basic Information" in blocker for blocker in preview.blockers)
+
+
+def test_preview_includes_basic_information_context_and_owner_suffix(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+
+    preview = service.preview("P1")
+    feedback = _item(preview.items, "customer_feedback_form")
+
+    assert preview.confirmed_basic_information_version == 2
+    assert preview.confirmed_basic_information_source_signature_hash == (
+        "394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+    )
+    assert preview.source_context_signature == (
+        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
+        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+    )
+    assert feedback.target_path is not None
+    assert feedback.target_path.name == "DL-001 Customer Feedback Form_Even Yang.xlsx"
+
+
 def test_preview_places_test_record_under_submitted_material(tmp_path: Path) -> None:
     service = _service(tmp_path)
 
@@ -96,18 +130,18 @@ def test_preview_places_fee_and_customer_feedback_at_official_root(tmp_path: Pat
     assert feedback.target_path.parent == preview.official_project_folder_path
 
 
-def test_preview_skips_untracked_existing_business_form_target(tmp_path: Path) -> None:
+def test_preview_conflicts_untracked_existing_business_form_target(tmp_path: Path) -> None:
     service = _service(tmp_path, existing_targets={"fee_form"})
 
     preview = service.preview("P1")
 
-    assert preview.status == "ready"
-    assert _item(preview.items, "fee_form").action == "skip"
-    assert _item(preview.items, "fee_form").status == "current"
+    assert preview.status == "conflict"
+    assert _item(preview.items, "fee_form").action == "conflict"
+    assert _item(preview.items, "fee_form").status == "conflict"
     assert _item(preview.items, "fee_form").existing_sha256 is None
 
 
-def test_preview_skips_existing_business_form_when_legacy_record_path_differs(
+def test_preview_conflicts_existing_business_form_when_record_path_differs(
     tmp_path: Path,
 ) -> None:
     output_store = _OutputStatusService()
@@ -134,9 +168,9 @@ def test_preview_skips_existing_business_form_when_legacy_record_path_differs(
 
     preview = service.preview("P1")
 
-    assert preview.status == "ready"
-    assert _item(preview.items, "fee_form").action == "skip"
-    assert _item(preview.items, "fee_form").status == "current"
+    assert preview.status == "conflict"
+    assert _item(preview.items, "fee_form").action == "conflict"
+    assert _item(preview.items, "fee_form").status == "conflict"
     assert _item(preview.items, "fee_form").existing_sha256 is None
 
 
@@ -187,6 +221,114 @@ def test_generate_rejects_stale_preview_context(tmp_path: Path) -> None:
 
     with pytest.raises(RequiredFormsContextMismatchError):
         service.generate(command)
+
+
+def test_generate_rejects_stale_basic_information_context(tmp_path: Path) -> None:
+    service = _service(tmp_path)
+    command = _ready_command(tmp_path, expected_basic_information_version=99)
+
+    with pytest.raises(RequiredFormsContextMismatchError):
+        service.generate(command)
+
+
+def test_generate_rejects_if_basic_information_changes_between_preview_and_write(
+    tmp_path: Path,
+) -> None:
+    changed_snapshot = ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=3,
+        values={
+            "dl_number": "DL-001",
+            "product_description": "Changed Connector",
+            "test_item": "Qualification Test",
+            "requested_by": "Requester BI",
+            "project_leader": "Even Yang",
+        },
+        source_signature='{"dl_number":"DL-001","changed":true}',
+        confirmed_at="2026-06-20T00:01:00+00:00",
+        confirmed_by="Lab User",
+    )
+    service = _service(
+        tmp_path,
+        basic_information=(_default_basic_information(), changed_snapshot),
+    )
+
+    with pytest.raises(RequiredFormsContextMismatchError):
+        service.generate(_ready_command(tmp_path))
+
+
+def test_generate_passes_basic_information_to_staging_generator(tmp_path: Path) -> None:
+    generator = _Generator(tmp_path)
+    service = _service(tmp_path, generator=generator)
+
+    service.generate(_ready_command(tmp_path))
+
+    assert generator.basic_information_by_key["fee_form"]["dl_number"] == "DL-001"
+    assert (
+        generator.basic_information_by_key["fee_form"]["product_description"]
+        == "Connector from Basic Info"
+    )
+    assert generator.basic_information_by_key["fee_form"]["requested_by"] == "Requester BI"
+    assert generator.basic_information_by_key["fee_form"]["location"] == "Dongguan"
+    assert (
+        generator.basic_information_by_key["customer_feedback_form"]["requestor_email"]
+        == "requester@example.test"
+    )
+    assert (
+        generator.basic_information_by_key["customer_feedback_form"]["project_leader"]
+        == "Even Yang"
+    )
+
+
+def test_generate_reuses_safe_fee_form_artifact_without_calling_generator(
+    tmp_path: Path,
+) -> None:
+    reusable = _write_text(tmp_path / "generated_fee" / "current.xls", "reusable fee")
+    generator = _Generator(tmp_path)
+    service = _service(
+        tmp_path,
+        generator=generator,
+        reusable_fee_form_reader=_ReusableFeeFormReader(reusable),
+    )
+
+    result = service.generate(_ready_command(tmp_path))
+
+    assert result.status == "generated"
+    assert _item(result.items, "fee_form").source_path == reusable
+    assert _final_path(tmp_path, "fee_form").read_text(encoding="utf-8") == "reusable fee"
+    assert "fee_form" not in generator.basic_information_by_key
+    assert _timing_labels(result) == [
+        "required_forms.preview",
+        "required_forms.validate_context",
+        "test_record.generate",
+        "test_record.place",
+        "test_record.register_output",
+        "fee_form.reuse_lookup",
+        "fee_form.place",
+        "fee_form.register_output",
+        "customer_feedback_form.generate",
+        "customer_feedback_form.place",
+        "customer_feedback_form.register_output",
+        "required_forms.total",
+    ]
+
+
+def test_generate_falls_back_to_fee_form_generator_when_reuse_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    generator = _Generator(tmp_path)
+    service = _service(
+        tmp_path,
+        generator=generator,
+        reusable_fee_form_reader=_ReusableFeeFormReader(None),
+    )
+
+    result = service.generate(_ready_command(tmp_path))
+
+    assert result.status == "generated"
+    assert generator.basic_information_by_key["fee_form"]["dl_number"] == "DL-001"
+    assert _item(result.items, "fee_form").source_path != _final_path(tmp_path, "fee_form")
+    assert "fee_form.generate" in _timing_labels(result)
 
 
 def test_generate_blocks_before_copy_when_target_exists(tmp_path: Path) -> None:
@@ -379,7 +521,10 @@ def test_generate_refreshes_changed_context_when_managed_target_is_unmodified(
     assert _item(result.items, "fee_form").status == "updated"
     latest = output_store.latest(ProjectOutputKind.FEE_EVALUATION)
     assert latest is not None
-    assert latest.source_context_signature == "matrix:CM1@1|fee:CF1@1|pricing:PD1"
+    assert latest.source_context_signature == (
+        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
+        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+    )
 
 
 def test_generate_conflicts_when_managed_target_changes_between_preview_and_write(
@@ -529,12 +674,37 @@ class _TemplateReader:
 class _Generator:
     def __init__(self, tmp_path: Path) -> None:
         self.root = tmp_path / "stage"
+        self.basic_information_by_key: dict[str, dict[str, str]] = {}
 
-    def generate(self, *, project_id: str, key: str, target_name: str) -> Path:
+    def generate(
+        self,
+        *,
+        project_id: str,
+        key: str,
+        target_name: str,
+        basic_information: ConfirmedBasicInformationSnapshot,
+    ) -> Path:
+        self.basic_information_by_key[key] = dict(basic_information.values)
         path = self.root / project_id / target_name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"{key}:{target_name}", encoding="utf-8")
         return path
+
+
+class _ReusableFeeFormReader:
+    def __init__(self, path: Path | None) -> None:
+        self.path = path
+        self.calls: list[tuple[str, str, Path]] = []
+
+    def find_current_artifact(
+        self,
+        *,
+        project_id: str,
+        source_context_signature: str,
+        final_target_path: Path,
+    ) -> Path | None:
+        self.calls.append((project_id, source_context_signature, final_target_path))
+        return self.path
 
 
 class _FileGateway:
@@ -657,6 +827,14 @@ def _service(
         status="current",
         latest_confirmed_fee=_FeeVersion(),
     ),
+    basic_information: (
+        ConfirmedBasicInformationSnapshot
+        | tuple[ConfirmedBasicInformationSnapshot | None, ...]
+        | None
+        | str
+    ) = "default",
+    generator: _Generator | None = None,
+    reusable_fee_form_reader: _ReusableFeeFormReader | None = None,
 ) -> ProjectFolderRequiredFormsService:
     _prepare_official_folder(tmp_path)
     output_service = output_service or _OutputStatusService()
@@ -688,7 +866,10 @@ def _service(
                 source_context_signature=(
                     "old-context"
                     if scenario.startswith("changed_context")
-                    else "matrix:CM1@1|fee:CF1@1|pricing:PD1"
+                    else (
+                        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
+                        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+                    )
                 ),
             )
         )
@@ -698,14 +879,20 @@ def _service(
         path.write_text("manual", encoding="utf-8")
     if workspace == "default":
         workspace = _workspace(tmp_path)
+    if basic_information == "default":
+        basic_information = _default_basic_information()
     return ProjectFolderRequiredFormsService(
         workspace_repository=_WorkspaceRepo(workspace),
         folder_check_service=_FolderCheck(tmp_path),
         confirmed_matrix_reader=_MatrixReader(matrix_snapshot),
         confirmed_fee_reader=_FeeReader(fee_result),
+        basic_information_reader=_BasicInformationReader(basic_information),
         customer_feedback_template_reader=_TemplateReader(tmp_path),
         application_form_reader=_ApplicationFormReader(),
-        generator=_Generator(tmp_path),
+        generator=generator or _Generator(tmp_path),
+        reusable_fee_form_reader=(
+            reusable_fee_form_reader or _ReusableFeeFormReader(None)
+        ),
         file_gateway=file_gateway or _FileGateway(),
         output_status_service=output_service,
     )
@@ -715,6 +902,7 @@ def _ready_command(
     tmp_path: Path,
     *,
     expected_confirmed_revision: int = 1,
+    expected_basic_information_version: int = 2,
     expected_targets: tuple[RequiredFormsGenerateTarget, ...] | None = None,
 ) -> GenerateRequiredFormsCommand:
     return GenerateRequiredFormsCommand(
@@ -725,6 +913,10 @@ def _ready_command(
         expected_confirmed_fee_id="CF1",
         expected_confirmed_fee_revision=1,
         expected_confirmed_fee_pricing_draft_edit_id="PD1",
+        expected_confirmed_basic_information_version=expected_basic_information_version,
+        expected_confirmed_basic_information_source_signature_hash=(
+            "394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+        ),
         expected_customer_feedback_template_path=tmp_path / "template" / "E-4243.xlsx",
         expected_targets=expected_targets
         or (
@@ -756,6 +948,12 @@ def _prepare_official_folder(tmp_path: Path) -> None:
     (_official_root(tmp_path) / "Submitted Material").mkdir(parents=True, exist_ok=True)
 
 
+def _write_text(path: Path, content: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
 def _official_root(tmp_path: Path) -> Path:
     return tmp_path / "DL-001" / "DL-001 Connector Qualification test"
 
@@ -765,7 +963,7 @@ def _final_path(tmp_path: Path, key: str) -> Path:
     names = {
         "test_record": root / "Submitted Material" / "DL-001 Test Record.docx",
         "fee_form": root / "DL-001 Fee Form.xls",
-        "customer_feedback_form": root / "DL-001 Customer Feedback Form_Alice.xlsx",
+        "customer_feedback_form": root / "DL-001 Customer Feedback Form_Even Yang.xlsx",
     }
     return names[key]
 
@@ -785,6 +983,10 @@ def _item(items: tuple[object, ...], key: str):
     raise AssertionError(f"Missing item {key}")
 
 
+def _timing_labels(result) -> list[str]:
+    return [item.label for item in result.timings]
+
+
 class _ApplicationFormReader:
     def list_by_project(self, project_id: str) -> list[ApplicationForm]:
         return [
@@ -797,3 +999,45 @@ class _ApplicationFormReader:
                 assigned_personnel="Alice",
             )
         ]
+
+
+class _BasicInformationReader:
+    def __init__(
+        self,
+        snapshot: (
+            ConfirmedBasicInformationSnapshot
+            | tuple[ConfirmedBasicInformationSnapshot | None, ...]
+            | None
+        ),
+    ) -> None:
+        self.snapshots = list(snapshot) if isinstance(snapshot, tuple) else [snapshot]
+
+    def get_latest_confirmed(
+        self, project_id: str
+    ) -> ConfirmedBasicInformationSnapshot | None:
+        if len(self.snapshots) > 1:
+            return self.snapshots.pop(0)
+        return self.snapshots[0]
+
+
+def _default_basic_information() -> ConfirmedBasicInformationSnapshot:
+    return ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=2,
+        values={
+            "dl_number": "DL-001",
+            "product_description": "Connector from Basic Info",
+            "test_item": "Qualification Test",
+            "requested_by": "Requester BI",
+            "location": "Dongguan",
+            "lab_performing_tests": "Dongguan",
+            "phone": "123456",
+            "requestor_email": "requester@example.test",
+            "project_leader": "Even Yang",
+            "date_lab_received_samples": "20 Jun 2026",
+            "estimated_completion_date": "25 Jun 2026",
+        },
+        source_signature='{"dl_number":"DL-001"}',
+        confirmed_at="2026-06-20T00:00:00+00:00",
+        confirmed_by="Lab User",
+    )

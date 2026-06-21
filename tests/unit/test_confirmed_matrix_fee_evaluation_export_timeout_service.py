@@ -109,6 +109,30 @@ def test_command_payload_round_trip_preserves_edited_values(tmp_path: Path) -> N
     assert restored.edited_values.manual_rows[0].group_label == "Group 1"
 
 
+def test_command_payload_round_trip_preserves_basic_information_values(
+    tmp_path: Path,
+) -> None:
+    command = ExportConfirmedMatrixFeeEvaluationCommand(
+        project_id="P1",
+        template_path=tmp_path / "template.xls",
+        output_dir=tmp_path / "out",
+        basic_information_values={
+            "dl_number": "DL-BI",
+            "product_description": "Connector from Basic Information",
+            "requested_by": "Requester BI",
+        },
+    )
+
+    restored = command_from_payload(command_to_payload(command))
+
+    assert restored == command
+    assert restored.basic_information_values == {
+        "dl_number": "DL-BI",
+        "product_description": "Connector from Basic Information",
+        "requested_by": "Requester BI",
+    }
+
+
 def test_result_payload_round_trip_preserves_traceability() -> None:
     result = _result()
 
