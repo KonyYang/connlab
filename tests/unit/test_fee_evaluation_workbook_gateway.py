@@ -258,6 +258,10 @@ def test_fee_gateway_matrix_basic_fill_writes_basic_information_identity(
     template = tmp_path / "fee.xls"
     template.write_text("template", encoding="utf-8")
     workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(2, 3)] = "LTR Number"
+    workbook.sheet.cells[(2, 6)] = "Test Description"
+    workbook.sheet.cells[(3, 3)] = "Requestor"
+    workbook.sheet.cells[(3, 6)] = "Site"
     workbook.sheet.cells[(5, 2)] = "0.5"
     workbook.sheet.cells[(5, 3)] = "Sample preparation"
     workbook.sheet.cells[(5, 5)] = "per sample"
@@ -289,12 +293,20 @@ def test_fee_gateway_matrix_basic_fill_writes_basic_information_identity(
     )
 
     sheet = excel.workbook.sheet
-    assert sheet.cells[(2, 1)] == "DL/LTR Number: DL-BI"
-    assert sheet.cells[(2, 4)] == "Product Description: Connector from Basic Information"
-    assert sheet.cells[(3, 1)] == "Test Item: Qualification test"
-    assert sheet.cells[(3, 4)] == "Requested by: Requester BI"
-    assert sheet.cells[(4, 1)] == "Location: Dongguan"
-    assert sheet.cells[(4, 4)] == "Lab Performing the Tests: Dongguan Lab"
+    assert sheet.cells[(2, 3)] == "LTR Number"
+    assert sheet.cells[(2, 4)] == "DL-BI"
+    assert sheet.cells[(2, 6)] == "Test Description"
+    assert sheet.cells[(2, 7)] == "Connector from Basic Information Qualification test"
+    assert sheet.cells[(3, 3)] == "Requestor"
+    assert sheet.cells[(3, 4)] == "Requester BI"
+    assert sheet.cells[(3, 6)] == "Site"
+    assert sheet.cells[(3, 7)] == "Dongguan"
+    assert (2, 1) not in sheet.cells
+    assert (3, 1) not in sheet.cells
+    assert (4, 1) not in sheet.cells
+    assert excel.workbook.open_count == 1
+    assert excel.workbook.save_count == 1
+    assert excel.quit is True
 
 
 def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
@@ -754,9 +766,12 @@ class _FakeWorkbook:
         self.opened_path: str | None = None
         self.saved_path: str | None = None
         self.saved_file_format: int | None = None
+        self.open_count = 0
+        self.save_count = 0
         self.closed = False
 
     def SaveAs(self, path: str, FileFormat: int | None = None) -> None:
+        self.save_count += 1
         self.saved_path = path
         self.saved_file_format = FileFormat
 
@@ -769,6 +784,7 @@ class _FakeWorkbooks:
         self._workbook = workbook
 
     def Open(self, path: str) -> _FakeWorkbook:
+        self._workbook.open_count += 1
         self._workbook.opened_path = path
         return self._workbook
 

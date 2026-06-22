@@ -1,5 +1,8 @@
 import type { ProjectBasicInformationResponse } from "../../api/client";
-import { BASIC_INFORMATION_FIELD_LABELS } from "./basicInformationFieldConfig";
+import {
+  BASIC_INFORMATION_FIELD_LABELS,
+  normalizeBasicInformationFieldValues,
+} from "./basicInformationFieldConfig";
 
 export type BasicInformationDisplayItem = {
   key: string;
@@ -8,16 +11,22 @@ export type BasicInformationDisplayItem = {
 };
 
 const SUMMARY_KEYS = [
+  "test_result",
+  "test_fee",
+  "sub_contract",
+  "remarks_po",
+  "location",
+  "sample_deposition",
   "project_type",
+  "test_type_in_sheet",
   "requested_by",
   "project_leader",
-  "lab_performing_tests",
-  "test_result",
-  "sub_contract",
-  "test_fee",
+  "failed_item",
 ];
 
-const SUMMARY_EXCLUDED_KEYS = new Set(["dl_number", "product_description", "test_item"]);
+const WORKBENCH_SUMMARY_LABELS: Record<string, string> = {
+  location: "Location",
+};
 
 export function selectBasicInformationStatusLabel(
   response: ProjectBasicInformationResponse | null
@@ -54,22 +63,18 @@ export function selectChangedSourceFieldLabels(
 export function selectWorkbenchSummaryItems(
   response: ProjectBasicInformationResponse | null
 ): BasicInformationDisplayItem[] {
-  const values = response?.latest_confirmed?.values;
-  if (!values) {
+  const confirmedValues = response?.latest_confirmed?.values;
+  if (!confirmedValues) {
     return [];
   }
-  return SUMMARY_KEYS.flatMap((key) => {
-    const value = values[key]?.trim();
-    if (!value || SUMMARY_EXCLUDED_KEYS.has(key)) {
-      return [];
-    }
-    return [
-      {
-        key,
-        label: BASIC_INFORMATION_FIELD_LABELS[key] ?? key,
-        value,
-      },
-    ];
+  const values = normalizeBasicInformationFieldValues(confirmedValues);
+  return SUMMARY_KEYS.map((key) => {
+    const value = values[key]?.trim() || "-";
+    return {
+      key,
+      label: WORKBENCH_SUMMARY_LABELS[key] ?? BASIC_INFORMATION_FIELD_LABELS[key] ?? key,
+      value,
+    };
   });
 }
 

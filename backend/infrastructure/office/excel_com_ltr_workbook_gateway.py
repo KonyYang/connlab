@@ -152,6 +152,25 @@ class ExcelComLTRWorkbookGateway:
             ) from exc
         return ExcelComLTRWorkbookWriteSession(handle)
 
+    def open_read_session(self) -> "ExcelComLTRWorkbookReadSession":
+        """Open a read-only session through the Office facade."""
+        if self._config.path is None:
+            raise LtrWorkbookWriteError("LTR workbook path is not configured.")
+
+        try:
+            handle = self._office.open_excel_workbook(
+                self._config.path,
+                modify_password=None,
+                read_only=True,
+            )
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                "Unable to open LTR workbook for preview. "
+                "Check workbook path and Excel file lock state. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
+        return ExcelComLTRWorkbookReadSession(handle)
+
 
 class ExcelComLTRWorkbookWriteSession:
     """Context-manager write session for one LTR workbook transaction."""
@@ -419,6 +438,13 @@ class ExcelComLTRWorkbookWriteSession:
         if last_row < clear_start_row:
             return
         sheet.Range(f"A{clear_start_row}:Q{last_row}").ClearContents()
+
+
+class ExcelComLTRWorkbookReadSession(ExcelComLTRWorkbookWriteSession):
+    """Read-only session for workbook preview operations."""
+
+    def __enter__(self) -> "ExcelComLTRWorkbookReadSession":
+        return self
 
 
 def _tuple_rows(values) -> tuple[tuple[object, ...], ...]:

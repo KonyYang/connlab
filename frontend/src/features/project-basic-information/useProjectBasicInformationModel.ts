@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   confirmProjectBasicInformation,
+  getNewProjectCompletionOptions,
   getProject,
   getProjectBasicInformation,
   listProjectLtrs,
   saveProjectBasicInformationDraft,
+  type NewProjectCompletionOptions,
   type Project,
   type ProjectBasicInformationResponse,
 } from "../../api/client";
@@ -19,6 +21,7 @@ export type BackToWorkbenchOptions = {
 export type ProjectBasicInformationModel = {
   response: ProjectBasicInformationResponse | null;
   values: Record<string, string>;
+  testTypeInSheetOptions: string[];
   identityLabel: string;
   loading: boolean;
   saving: boolean;
@@ -39,6 +42,8 @@ export function useProjectBasicInformationModel({
 }): ProjectBasicInformationModel {
   const [response, setResponse] = useState<ProjectBasicInformationResponse | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [completionOptions, setCompletionOptions] =
+    useState<NewProjectCompletionOptions | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [latestLtr, setLatestLtr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,12 +59,16 @@ export function useProjectBasicInformationModel({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void getProjectBasicInformation(projectId)
-      .then((nextResponse) => {
+    void Promise.all([
+      getProjectBasicInformation(projectId),
+      getNewProjectCompletionOptions(),
+    ])
+      .then(([nextResponse, nextCompletionOptions]) => {
         if (cancelled) {
           return;
         }
         setResponse(nextResponse);
+        setCompletionOptions(nextCompletionOptions);
         setValues(normalizeBasicInformationFieldValues(nextResponse.draft.values));
         setDraftDirty(false);
       })
@@ -175,6 +184,7 @@ export function useProjectBasicInformationModel({
   return {
     response,
     values,
+    testTypeInSheetOptions: completionOptions?.test_type_in_sheet_options ?? [],
     identityLabel: buildBasicInformationIdentityLabel({
       latestLtr,
       project,

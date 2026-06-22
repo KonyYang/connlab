@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -112,11 +113,129 @@ def test_ltr_workbook_short_transaction_saves_closes_and_releases(
     assert _expected_lock_path(_config(workbook, tmp_path)).exists() is False
 
 
+def test_ltr_workbook_short_transaction_prunes_only_owned_old_backups(
+    tmp_path: Path,
+) -> None:
+    """Retention removes only matching old backups beyond the recent keep count."""
+    workbook = tmp_path / "LTR_updated.xlsx"
+    workbook.write_bytes(b"workbook")
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    old_backup = _write_owned_backup(
+        workbook,
+        backup_dir,
+        datetime.now() - timedelta(days=10),
+        b"old",
+    )
+    newest_existing_backup = _write_owned_backup(
+        workbook,
+        backup_dir,
+        datetime.now() - timedelta(days=9),
+        b"newer",
+    )
+    unrelated_backup = backup_dir / "Other_20200101_000000_000000.xlsx"
+    unrelated_backup.write_bytes(b"other")
+    manually_named_file = backup_dir / "LTR_updated_manual.xlsx"
+    manually_named_file.write_bytes(b"manual")
+    config = _config(
+        workbook,
+        tmp_path,
+        backup_retention_count=2,
+        backup_retention_days=1,
+    )
+
+    result = LtrWorkbookTransactionGateway(
+        _FakeOfficeFacade(),
+        config,
+    ).run_short_transaction(lambda transaction: transaction.backup_path)
+
+    assert result.exists()
+    assert old_backup.exists() is False
+    assert newest_existing_backup.exists()
+    assert unrelated_backup.exists()
+    assert manually_named_file.exists()
+
+
+def test_ltr_workbook_short_transaction_applies_backup_size_cap_safely(
+    tmp_path: Path,
+) -> None:
+    """Retention trims oldest eligible backups when the owned backup set is too large."""
+    workbook = tmp_path / "LTR_updated.xlsx"
+    workbook.write_bytes(b"workbook")
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    oldest_backup = _write_owned_backup(
+        workbook,
+        backup_dir,
+        datetime.now() - timedelta(minutes=4),
+        b"a" * 700_000,
+    )
+    middle_backup = _write_owned_backup(
+        workbook,
+        backup_dir,
+        datetime.now() - timedelta(minutes=3),
+        b"b" * 700_000,
+    )
+    newest_backup = _write_owned_backup(
+        workbook,
+        backup_dir,
+        datetime.now() - timedelta(minutes=2),
+        b"c" * 700_000,
+    )
+    config = _config(
+        workbook,
+        tmp_path,
+        backup_retention_count=2,
+        backup_retention_days=30,
+        backup_retention_max_mb=1,
+    )
+
+    current_backup = LtrWorkbookTransactionGateway(
+        _FakeOfficeFacade(),
+        config,
+    ).run_short_transaction(lambda transaction: transaction.backup_path)
+
+    assert current_backup.exists()
+    assert newest_backup.exists()
+    assert oldest_backup.exists() is False
+    assert middle_backup.exists() is False
+
+
+def test_ltr_workbook_read_only_transaction_does_not_lock_backup_or_save(
+    tmp_path: Path,
+) -> None:
+    """Read-only preview opens the workbook without write side effects."""
+    workbook = tmp_path / "LTR_number.xls"
+    workbook.write_bytes(b"workbook")
+    office = _FakeOfficeFacade()
+    config = _config(workbook, tmp_path)
+    gateway = LtrWorkbookTransactionGateway(office, config)
+
+    with gateway.open_read_only_transaction() as transaction:
+        assert transaction.workbook_path == workbook.resolve()
+        assert transaction.session.list_sheets() == ["2026"]
+
+    assert _expected_lock_path(config).exists() is False
+    assert not (tmp_path / "backups").exists()
+    assert office.open_calls == [
+        {
+            "path": workbook.resolve(),
+            "modify_password": None,
+            "read_only": True,
+        }
+    ]
+    assert office.handle.saved is False
+    assert office.handle.closed is True
+
+
 def _config(
     workbook: Path,
     tmp_path: Path,
     *,
     lock_timeout_seconds: float = 1,
+    backup_retention_count: int = 30,
+    backup_retention_days: int = 30,
+    backup_retention_max_mb: int = 500,
 ) -> LtrWorkbookTransactionConfig:
     """Return a complete transaction config for tests."""
     return LtrWorkbookTransactionConfig(
@@ -127,6 +246,9 @@ def _config(
         lock_timeout_seconds=lock_timeout_seconds,
         backup_dir=tmp_path / "backups",
         lock_poll_seconds=0.01,
+        backup_retention_count=backup_retention_count,
+        backup_retention_days=backup_retention_days,
+        backup_retention_max_mb=backup_retention_max_mb,
     )
 
 
@@ -136,6 +258,21 @@ def _expected_lock_path(config: LtrWorkbookTransactionConfig) -> Path:
     workbook = Path(config.path or "").resolve()
     digest = hashlib.sha1(str(workbook).encode("utf-8")).hexdigest()[:12]
     return lock_dir / f"{workbook.name}.{digest}.lock"
+
+
+def _write_owned_backup(
+    workbook: Path,
+    backup_dir: Path,
+    created_at: datetime,
+    content: bytes,
+) -> Path:
+    """Create a backup filename owned by the transaction gateway pattern."""
+    backup_path = (
+        backup_dir
+        / f"{workbook.stem}_{created_at.strftime('%Y%m%d_%H%M%S_%f')}{workbook.suffix}"
+    )
+    backup_path.write_bytes(content)
+    return backup_path
 
 
 class _FakeOfficeFacade:

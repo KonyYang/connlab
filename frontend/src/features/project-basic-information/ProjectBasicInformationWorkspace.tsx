@@ -64,9 +64,6 @@ export function ProjectBasicInformationWorkspace({
 
           <section className="basic-information-ltr-card" aria-label="LTR information">
             <span className="basic-information-panel-identity">{panelIdentity}</span>
-            <button type="button" disabled>
-              Update LTR
-            </button>
           </section>
 
           <section className="basic-information-panel-grid">
@@ -84,6 +81,7 @@ export function ProjectBasicInformationWorkspace({
                     missingLabels={missingLabels}
                     missingDateLabels={dateValidation.missingLabels}
                     invalidDateLabels={dateValidation.invalidLabels}
+                    testTypeInSheetOptions={model.testTypeInSheetOptions}
                     onChange={model.updateValue}
                   />
                 ))}
@@ -134,6 +132,7 @@ function BasicInformationFieldGroupView({
   missingLabels,
   missingDateLabels,
   invalidDateLabels,
+  testTypeInSheetOptions,
   onChange,
 }: {
   group: BasicInformationFieldGroup;
@@ -141,11 +140,19 @@ function BasicInformationFieldGroupView({
   missingLabels: string[];
   missingDateLabels: string[];
   invalidDateLabels: string[];
+  testTypeInSheetOptions: string[];
   onChange: (key: string, value: string) => void;
 }): ReactElement {
   const missingLabelSet = new Set(missingLabels);
   const missingDateLabelSet = new Set(missingDateLabels);
   const invalidDateLabelSet = new Set(invalidDateLabels);
+  const fieldGridClassName = [
+    "basic-information-field-grid",
+    group.layout === "failedItemWithSheetType" ? "is-failed-item-with-sheet-type" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <section className="basic-information-field-group">
       {[
@@ -158,7 +165,7 @@ function BasicInformationFieldGroupView({
       ].includes(group.title) ? null : (
         <h4>{group.title}</h4>
       )}
-      <div className="basic-information-field-grid">
+      <div className={fieldGridClassName}>
         {group.fields.map((field) => (
           <BasicInformationField
             key={field.key}
@@ -167,6 +174,7 @@ function BasicInformationFieldGroupView({
             missingRequired={missingLabelSet.has(field.label)}
             missingDate={missingDateLabelSet.has(field.label)}
             invalidDateSequence={invalidDateLabelSet.has(field.label)}
+            testTypeInSheetOptions={testTypeInSheetOptions}
             onChange={onChange}
           />
         ))}
@@ -181,6 +189,7 @@ function BasicInformationField({
   missingRequired,
   missingDate,
   invalidDateSequence,
+  testTypeInSheetOptions,
   onChange,
 }: {
   field: BasicInformationFieldConfig;
@@ -188,6 +197,7 @@ function BasicInformationField({
   missingRequired: boolean;
   missingDate: boolean;
   invalidDateSequence: boolean;
+  testTypeInSheetOptions: string[];
   onChange: (key: string, value: string) => void;
 }): ReactElement {
   const label =
@@ -208,6 +218,7 @@ function BasicInformationField({
     field.layout === "quarter" ? "is-quarter" : "",
     field.layout === "narrowQuarter" ? "is-narrow-quarter" : "",
     field.layout === "wideQuarter" ? "is-wide-quarter" : "",
+    field.layout === "wideRemainder" ? "is-wide-remainder" : "",
     missingDate ? "is-missing-date" : "",
     missingRequired ? "is-missing-required" : "",
     invalidDateSequence ? "is-invalid-sequence" : "",
@@ -241,12 +252,13 @@ function BasicInformationField({
     );
   }
   if (field.kind === "select") {
+    const options = selectFieldOptions(field, testTypeInSheetOptions);
     const shouldPreserveUnknownOption = field.preserveUnknownOption !== false;
-    const selectValue = field.options?.includes(value)
+    const selectValue = options.includes(value)
       ? value
       : shouldPreserveUnknownOption
         ? value
-        : field.defaultValue ?? field.options?.[0] ?? "";
+        : field.defaultValue ?? options[0] ?? "";
     return (
       <label className={fieldClassName}>
         <span>{label}</span>
@@ -256,7 +268,7 @@ function BasicInformationField({
           onChange={(event) => onChange(field.key, event.target.value)}
         >
           {(
-            shouldPreserveUnknownOption && value && !field.options?.includes(value)
+            shouldPreserveUnknownOption && value && !options.includes(value)
               ? [value]
               : []
           ).map((option) => (
@@ -264,7 +276,7 @@ function BasicInformationField({
               {option}
             </option>
           ))}
-          {(field.options ?? []).map((option) => (
+          {options.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -306,6 +318,16 @@ function BasicInformationField({
       />
     </label>
   );
+}
+
+function selectFieldOptions(
+  field: BasicInformationFieldConfig,
+  testTypeInSheetOptions: string[]
+): string[] {
+  if (field.optionSource === "testTypeInSheet") {
+    return testTypeInSheetOptions;
+  }
+  return field.options ?? [];
 }
 
 function selectCurrentMissingLabels(

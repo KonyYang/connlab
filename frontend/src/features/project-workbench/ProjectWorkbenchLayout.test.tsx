@@ -209,7 +209,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
   it("shows a read-only Basic Information summary card without duplicate identity fields", async () => {
     const user = userEvent.setup();
-    renderWorkbench({
+    const { container } = renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
       matrixAuthorityDraft: testPlanDraft,
@@ -219,18 +219,53 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       basicInformation: confirmedBasicInformation,
     });
 
-    expect(screen.getByLabelText("Project Basic Information")).toBeTruthy();
-    expect(screen.getByText("Confirmed")).toBeTruthy();
-    expect(screen.getByText("Project Type")).toBeTruthy();
+    const folderActionCard = screen.getByLabelText("Folder Action");
+    const basicInformationCard = screen.getByLabelText("Project Basic Information");
+    expect(basicInformationCard).toBeTruthy();
+    expect(
+      Boolean(
+        folderActionCard.compareDocumentPosition(basicInformationCard) &
+          globalThis.Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+    expect(screen.queryByText("Confirmed")).toBeNull();
+    const summaryLabels = Array.from(
+      container.querySelectorAll(".runtime-console-basic-information-list.is-summary dt")
+    ).map((item) => item.textContent);
+    expect(summaryLabels).toEqual([
+      "Test Result",
+      "Test Fee",
+      "Sub-contract",
+      "Remarks (PO)",
+      "Location",
+      "Sample deposition",
+      "Project Type",
+      "Test Type in sheet",
+      "Requested by",
+      "Project Leader",
+      "Failed item",
+    ]);
+    expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByText("1630.00")).toBeTruthy();
+    expect(screen.getByText("PO-123")).toBeTruthy();
+    expect(screen.getByText("Dongguan")).toBeTruthy();
+    expect(screen.getByText("Send Back")).toBeTruthy();
     expect(screen.getByText("NPD")).toBeTruthy();
+    expect(screen.getByText("Qualification")).toBeTruthy();
+    expect(screen.getByText("MP Cao")).toBeTruthy();
+    expect(screen.getByText("Even Yang")).toBeTruthy();
+    expect(screen.getByText("None")).toBeTruthy();
+    expect(screen.queryByText("DL")).toBeNull();
     expect(screen.queryByText("DL/LTR Number")).toBeNull();
     expect(screen.queryByText("Product Description")).toBeNull();
+    expect(screen.queryByText("Description P/N")).toBeNull();
     expect(screen.queryByText("Test Item")).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Update LTR" }).hasAttribute("disabled")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "View" }));
     expect(screen.getByText("All confirmed fields")).toBeTruthy();
-    expect(screen.getByText("DL-2026-05-011")).toBeTruthy();
+    expect(screen.getAllByText("DL-2026-05-011").length).toBeGreaterThan(0);
   });
 
   it("does not show mode tabs when the active Matrix workspace is the main task", () => {
@@ -905,10 +940,20 @@ const confirmedBasicInformation: ProjectBasicInformationResponse = {
       dl_number: "DL-2026-05-011",
       project_type: "NPD",
       product_description: "Coolpower HDF",
+      description_pn: "HDF-34",
       test_item: "Qualification Testing",
+      test_type: "Product/Process Qualification",
+      test_type_in_sheet: "Qualification",
       requested_by: "MP Cao",
+      location: "Dongguan",
       project_leader: "Even Yang",
       lab_performing_tests: "Dongguan",
+      test_result: "In progress",
+      failed_item: "None",
+      sample_deposition: "Send Back",
+      sub_contract: "Yes",
+      test_fee: "1630.00",
+      remarks_po: "PO-123",
     },
   },
   latest_confirmed: {
@@ -920,10 +965,20 @@ const confirmedBasicInformation: ProjectBasicInformationResponse = {
       dl_number: "DL-2026-05-011",
       project_type: "NPD",
       product_description: "Coolpower HDF",
+      description_pn: "HDF-34",
       test_item: "Qualification Testing",
+      test_type: "Product/Process Qualification",
+      test_type_in_sheet: "Qualification",
       requested_by: "MP Cao",
+      location: "Dongguan",
       project_leader: "Even Yang",
       lab_performing_tests: "Dongguan",
+      test_result: "In progress",
+      failed_item: "None",
+      sample_deposition: "Send Back",
+      sub_contract: "Yes",
+      test_fee: "1630.00",
+      remarks_po: "PO-123",
     },
     source_signature: "{}",
     created_at: "2026-06-20T09:00:00+00:00",

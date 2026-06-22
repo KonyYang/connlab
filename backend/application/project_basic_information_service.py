@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from typing import Callable, Protocol
 from uuid import uuid4
 
+from backend.application.project_identity import (
+    select_registered_ltr,
+    setup_payload_from_ltr_notes,
+)
 from backend.domain import ApplicationForm, LtrRecord, Project
 
 
@@ -316,6 +320,10 @@ class ProjectBasicInformationSourceAssembler:
         latest_form = forms[-1] if forms else None
         ltrs = self._ltrs.list_by_project(project.project_id)
         latest_ltr = ltrs[-1] if ltrs else None
+        registered_ltr = select_registered_ltr(ltrs)
+        setup_payload = setup_payload_from_ltr_notes(
+            registered_ltr.notes if registered_ltr else None
+        )
         raw_values: dict[str, tuple[str, str | None]] = {
             "dl_number": (
                 "project_identity",
@@ -354,6 +362,10 @@ class ProjectBasicInformationSourceAssembler:
                 (latest_form.business_unit if latest_form else None) or project.business_unit,
             ),
             "test_type": ("application_form", latest_form.test_type if latest_form else None),
+            "test_type_in_sheet": (
+                "project_setup_confirmation",
+                _text_from_payload(setup_payload.get("test_type_in_sheet")),
+            ),
             "sub_contract": (
                 "application_form",
                 latest_form.subcontract if latest_form else None,
@@ -381,6 +393,14 @@ class ProjectBasicInformationSourceAssembler:
             for key, (source, value) in raw_values.items()
             if value is not None and value.strip()
         }
+
+
+def _text_from_payload(value: object) -> str | None:
+    """Return stripped setup payload text."""
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
 
 
 def _result_status(

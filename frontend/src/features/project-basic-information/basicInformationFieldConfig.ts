@@ -14,6 +14,7 @@ export type BasicInformationFieldConfig = {
   compact?: boolean;
   defaultValue?: string;
   preserveUnknownOption?: boolean;
+  optionSource?: "testTypeInSheet";
   layout?:
     | "full"
     | "twoThirds"
@@ -21,12 +22,14 @@ export type BasicInformationFieldConfig = {
     | "inlineThird"
     | "quarter"
     | "narrowQuarter"
-    | "wideQuarter";
+    | "wideQuarter"
+    | "wideRemainder";
   options?: string[];
 };
 
 export type BasicInformationFieldGroup = {
   title: string;
+  layout?: "failedItemWithSheetType";
   fields: BasicInformationFieldConfig[];
 };
 
@@ -383,6 +386,8 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
         kind: "select",
         layout: "quarter",
         options: TEST_RESULT_OPTIONS,
+        defaultValue: "OK",
+        preserveUnknownOption: false,
       },
       {
         key: "date_lab_received_samples",
@@ -413,8 +418,16 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
   },
   {
     title: "Result and commercial",
+    layout: "failedItemWithSheetType",
     fields: [
-      { key: "failed_item", label: "Failed item", kind: "textarea" },
+      { key: "failed_item", label: "Failed item", kind: "textarea", layout: "wideRemainder" },
+      {
+        key: "test_type_in_sheet",
+        label: "Test Type in sheet",
+        kind: "select",
+        layout: "narrowQuarter",
+        optionSource: "testTypeInSheet",
+      },
     ],
   },
   {

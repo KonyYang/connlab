@@ -11,6 +11,12 @@ from backend.application.customer_feedback_template_discovery import (
     CustomerFeedbackTemplateDiscoveryError,
     discover_customer_feedback_template,
 )
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationSnapshot,
+)
+from backend.application.project_basic_information_output_identity import (
+    customer_feedback_identity,
+)
 from backend.domain import ExternalResource, ExternalResourceType, Project
 
 
@@ -187,24 +193,19 @@ def _identity_from_basic_information(values: dict[str, str] | None) -> dict[str,
     """Return Customer Feedback identity fields from Basic Information."""
     if not values:
         return {}
-    mapping = {
-        "dl_number": "ltr_number",
-        "product_description": "product_name",
-        "test_item": "test_item",
-        "requested_by": "requestor",
-        "phone": "phone",
-        "requestor_email": "email",
-        "project_leader": "project_leader",
-        "lab_performing_tests": "lab",
-        "date_lab_received_samples": "received_date",
-        "estimated_completion_date": "estimated_completion_date",
+    snapshot = ConfirmedBasicInformationSnapshot(
+        project_id="",
+        version=0,
+        values=dict(values),
+        source_signature="",
+        confirmed_at=None,
+        confirmed_by=None,
+    )
+    return {
+        key: value
+        for key, value in customer_feedback_identity(snapshot).as_dict().items()
+        if value
     }
-    identity = {
-        target: text.strip()
-        for source, target in mapping.items()
-        if (text := values.get(source, "").strip())
-    }
-    return identity
 
 
 def _output_file_name(project: Project) -> str:

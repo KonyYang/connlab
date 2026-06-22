@@ -7,6 +7,7 @@ import { ProjectBasicInformationWorkspace } from "./ProjectBasicInformationWorks
 const api = vi.hoisted(() => ({
   getProject: vi.fn(),
   getProjectBasicInformation: vi.fn(),
+  getNewProjectCompletionOptions: vi.fn(),
   listProjectLtrs: vi.fn(),
   saveProjectBasicInformationDraft: vi.fn(),
   confirmProjectBasicInformation: vi.fn(),
@@ -18,6 +19,7 @@ describe("ProjectBasicInformationWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.getProject.mockResolvedValue(project());
+    api.getNewProjectCompletionOptions.mockResolvedValue(completionOptions());
     api.listProjectLtrs.mockResolvedValue([{ ltr_number: "DL-2026-05-011" }]);
   });
 
@@ -131,6 +133,13 @@ describe("ProjectBasicInformationWorkspace", () => {
         (option) => option.value
       )
     ).toEqual(["OK", "Ref", "NG", "In progress", "In-waiting"]);
+    const testTypeInSheetSelect = screen.getByLabelText("Test Type in sheet");
+    expect(testTypeInSheetSelect.tagName).toBe("SELECT");
+    expect(
+      Array.from(testTypeInSheetSelect.querySelectorAll("option")).map(
+        (option) => option.value
+      )
+    ).toEqual(["Qualification", "Partial Qualification", "Reliability"]);
     const labPerformingSelect = screen.getByLabelText("Lab Performing");
     expect(labPerformingSelect.tagName).toBe("SELECT");
     expect(
@@ -646,8 +655,8 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(identity?.textContent).toBe("DL-2026-05-011");
     expect(productPanel.querySelector(".basic-information-panel-identity")).toBeNull();
     expect(
-      within(ltrCard).getByRole("button", { name: "Update LTR" })
-    ).toHaveProperty("disabled", true);
+      within(ltrCard).queryByRole("button", { name: "Update LTR" })
+    ).toBeNull();
     const productDescriptionField = screen
       .getByLabelText("Product Description")
       .closest(".basic-information-field");
@@ -715,6 +724,12 @@ describe("ProjectBasicInformationWorkspace", () => {
     const remarksPoField = screen
       .getByLabelText("Remarks (PO)")
       .closest(".basic-information-field");
+    const failedItemField = screen
+      .getByLabelText("Failed item")
+      .closest(".basic-information-field");
+    const testTypeInSheetField = screen
+      .getByLabelText("Test Type in sheet")
+      .closest(".basic-information-field");
     const sampleDepositionField = screen
       .getByLabelText("Sample deposition")
       .closest(".basic-information-field");
@@ -754,6 +769,8 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(finishTestDateField?.classList.contains("is-quarter")).toBe(true);
     expect(reportDateField?.classList.contains("is-quarter")).toBe(true);
     expect(remarksPoField?.classList.contains("is-quarter")).toBe(true);
+    expect(failedItemField?.classList.contains("is-wide-remainder")).toBe(true);
+    expect(testTypeInSheetField?.classList.contains("is-narrow-quarter")).toBe(true);
     expect(sampleDepositionField?.classList.contains("is-quarter")).toBe(true);
     expect(productDescriptionInput).toHaveProperty("rows", 1);
     expect(projectLeaderInput.tagName).toBe("TEXTAREA");
@@ -850,6 +867,9 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(laboratoryPanelText.indexOf("Remarks (PO)")).toBeLessThan(
       laboratoryPanelText.indexOf("Failed item")
     );
+    expect(laboratoryPanelText.indexOf("Failed item")).toBeLessThan(
+      laboratoryPanelText.indexOf("Test Type in sheet")
+    );
     expect(
       screen.queryByRole("heading", { name: "Product information" })
     ).toBeNull();
@@ -870,9 +890,22 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(productPanel.textContent).toContain("Sub-contract");
     expect(laboratoryPanel.textContent).toContain("Project Leader");
     expect(laboratoryPanel.textContent).toContain("Test Result");
+    expect(laboratoryPanel.textContent).toContain("Test Type in sheet");
     expect(laboratoryPanel.textContent).toContain("Estimated Completion");
   });
 });
+
+function completionOptions() {
+  return {
+    location_options: ["Dongguan"],
+    test_type_in_sheet_options: [
+      "Qualification",
+      "Partial Qualification",
+      "Reliability",
+    ],
+    default_project_leader: "Lab User",
+  };
+}
 
 function response(
   overrides: Record<string, string> = {},
@@ -893,6 +926,7 @@ function response(
     date_lab_received_samples: "20 Jun 2026",
     estimated_completion_date: "2026-07-02",
     test_type: "Product/Process Qualification",
+    test_type_in_sheet: "Qualification",
     sub_contract: "No",
     business_unit: "Power Solutions",
     project_no: "1252502",

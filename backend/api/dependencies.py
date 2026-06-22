@@ -59,6 +59,9 @@ from backend.application.ltr_workbook_write_commit_service import (
     LtrWorkbookYearSheetBootstrapPolicy,
     LtrWorkbookWriteCommitService,
 )
+from backend.application.ltr_workbook_basic_information_sync_service import (
+    LtrWorkbookBasicInformationSyncService,
+)
 from backend.application.ltr_readiness_service import LtrReadinessService
 from backend.application.ltr_service import LtrService
 from backend.application.lookup_options_service import LookupOptionService
@@ -97,6 +100,9 @@ from backend.application.project_basic_information_service import (
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
     ProjectBasicInformationSnapshotReader,
+)
+from backend.application.project_basic_information_output_identity import (
+    fee_form_identity,
 )
 from backend.application.project_test_plan_matrix_preview_service import (
     ProjectTestPlanMatrixPreviewService,
@@ -536,6 +542,9 @@ def get_confirmed_matrix_test_record_document_generation_service(
         intake_case_store=IntakeCaseRepository(session),
         intake_draft_store=IntakeDraftRepository(session),
         application_form_store=ApplicationFormRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
     )
 
 
@@ -843,6 +852,9 @@ def get_project_application_form_write_back_service(
         workspace_store=ProjectOfficialWorkspaceRepository(session),
         application_form_store=ApplicationFormRepository(session),
         file_asset_store=FileAssetRepository(session),
+        request_material_collection_store=ProjectRequestMaterialCollectionRepository(
+            session
+        ),
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         ),
@@ -1013,7 +1025,9 @@ class _RequiredFormsStagingGenerator:
                     overwrite=True,
                     allow_review_required=True,
                     fill_mode="matrix_basic",
-                    basic_information_values=dict(basic_information.values),
+                    basic_information_values=fee_form_identity(
+                        basic_information
+                    ).as_dict(),
                 )
             )
             return result.output_path
@@ -1060,6 +1074,9 @@ def get_project_folder_required_forms_service(
         intake_case_store=IntakeCaseRepository(session),
         intake_draft_store=IntakeDraftRepository(session),
         application_form_store=ApplicationFormRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
     )
     fee_service = ConfirmedMatrixFeeEvaluationExportService(
         fee_draft_service=ConfirmedMatrixFeeDraftService(
@@ -1504,6 +1521,9 @@ def get_ltr_workbook_write_commit_service(
             lock_dir=settings.ltr_workbook.lock_dir,
             lock_timeout_seconds=settings.ltr_workbook.lock_timeout_seconds,
             backup_dir=settings.ltr_workbook.backup_dir,
+            backup_retention_count=settings.ltr_workbook.backup_retention_count,
+            backup_retention_days=settings.ltr_workbook.backup_retention_days,
+            backup_retention_max_mb=settings.ltr_workbook.backup_retention_max_mb,
         ),
     )
     return LtrWorkbookWriteCommitService(
@@ -1527,6 +1547,34 @@ def get_ltr_workbook_write_commit_service(
                 settings.ltr_workbook.sheet_bootstrap_clear_start_row
             ),
         ),
+    )
+
+
+def get_ltr_workbook_basic_information_sync_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> LtrWorkbookBasicInformationSyncService:
+    """Build the post-registration LTR workbook Basic Information sync service."""
+    transaction_gateway = LtrWorkbookTransactionGateway(
+        OfficeFacade(),
+        LtrWorkbookTransactionConfig(
+            path=settings.ltr_workbook.path,
+            write_enabled=settings.ltr_workbook.write_enabled,
+            modify_password=settings.ltr_workbook.modify_password,
+            lock_dir=settings.ltr_workbook.lock_dir,
+            lock_timeout_seconds=settings.ltr_workbook.lock_timeout_seconds,
+            backup_dir=settings.ltr_workbook.backup_dir,
+            backup_retention_count=settings.ltr_workbook.backup_retention_count,
+            backup_retention_days=settings.ltr_workbook.backup_retention_days,
+            backup_retention_max_mb=settings.ltr_workbook.backup_retention_max_mb,
+        ),
+    )
+    return LtrWorkbookBasicInformationSyncService(
+        ltr_store=LtrRecordRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+        transaction_gateway=transaction_gateway,
     )
 
 

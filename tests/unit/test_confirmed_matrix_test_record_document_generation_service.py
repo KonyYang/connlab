@@ -12,6 +12,9 @@ from backend.application.confirmed_matrix_test_record_document_generation_servic
     ConfirmedMatrixTestRecordDocumentGenerationService,
     GenerateConfirmedMatrixTestRecordDocumentCommand,
 )
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationSnapshot,
+)
 from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreview,
     ConfirmedMatrixTestRecordPreviewGroup,
@@ -52,6 +55,98 @@ def test_generation_service_writes_preview_groups_to_controlled_output(tmp_path:
     assert writer.calls[0]["groups"][0].group_label == "Group 1"
     assert writer.calls[0]["groups"][0].sample_quantity_expression == "5"
     assert writer.calls[0]["groups"][0].steps[0].raw_token == "1"
+
+
+def test_generation_service_requires_confirmed_basic_information_when_reader_is_configured(
+    tmp_path: Path,
+) -> None:
+    writer = _Writer()
+    service = ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=_PreviewService(_preview()),
+        project_store=_ProjectStore(),
+        writer=writer,
+        basic_information_reader=_BasicInformationReader(None),
+    )
+
+    with pytest.raises(
+        ConfirmedMatrixTestRecordDocumentGenerationError,
+        match="Confirm Basic Information before generating Test Record",
+    ):
+        service.generate(
+            GenerateConfirmedMatrixTestRecordDocumentCommand(
+                project_id="P1",
+                output_dir=tmp_path,
+                template_path=_template(tmp_path),
+            )
+        )
+
+    assert writer.calls == []
+
+
+def test_generation_service_uses_confirmed_basic_information_for_header_metadata(
+    tmp_path: Path,
+) -> None:
+    writer = _Writer()
+    service = ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=_PreviewService(_preview()),
+        project_store=_ProjectStore(),
+        writer=writer,
+        basic_information_reader=_BasicInformationReader(
+            _basic_information(
+                {
+                    "dl_number": "DL-2026-05-011",
+                    "product_description": "Confirmed Coolpower HDF",
+                    "description_pn": "SHOULD-NOT-BE-USED",
+                    "applicable_specifications": "GS-12-9999",
+                },
+                version=3,
+            )
+        ),
+        ltr_store=_LtrStore(),
+        intake_case_store=_IntakeCaseStore(),
+        intake_draft_store=_IntakeDraftStore(),
+    )
+
+    result = service.generate(
+        GenerateConfirmedMatrixTestRecordDocumentCommand(
+            project_id="P1",
+            output_dir=tmp_path,
+            template_path=_template(tmp_path),
+        )
+    )
+
+    header_metadata = writer.calls[0]["header_metadata"]
+    assert header_metadata.lab_test_request_number == "DL-2026-05-011"
+    assert header_metadata.product_description == "Confirmed Coolpower HDF"
+    assert header_metadata.applicable_specification == "GS-12-9999"
+    assert writer.calls[0]["product_description"] == "Confirmed Coolpower HDF"
+    assert result.confirmed_basic_information_version == 3
+    assert result.confirmed_basic_information_source_signature_hash == (
+        _basic_information({}, version=3).source_signature_hash
+    )
+
+
+def test_generation_service_uses_unique_draft_name_when_target_exists(
+    tmp_path: Path,
+) -> None:
+    writer = _Writer()
+    (tmp_path / "DL-001 Test Record.docx").write_bytes(b"user edited")
+    service = ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=_PreviewService(_preview()),
+        project_store=_ProjectStore(),
+        writer=writer,
+    )
+
+    result = service.generate(
+        GenerateConfirmedMatrixTestRecordDocumentCommand(
+            project_id="P1",
+            output_dir=tmp_path,
+            template_path=_template(tmp_path),
+        )
+    )
+
+    assert result.output_path.name == "DL-001 Test Record (2).docx"
+    assert (tmp_path / "DL-001 Test Record.docx").read_bytes() == b"user edited"
 
 
 def test_generation_service_uses_active_confirmed_preview_only(tmp_path: Path) -> None:
@@ -235,6 +330,14 @@ class _ProjectStore:
         return _Project() if project_id == "P1" else None
 
 
+class _BasicInformationReader:
+    def __init__(self, snapshot: ConfirmedBasicInformationSnapshot | None) -> None:
+        self.snapshot = snapshot
+
+    def get_latest_confirmed(self, project_id: str):
+        return self.snapshot if project_id == "P1" else None
+
+
 class _Writer:
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
@@ -371,3 +474,18 @@ class _ApplicationFormStore:
 
     def list_by_project(self, project_id: str):
         return list(self._forms) if project_id == "P1" else []
+
+
+def _basic_information(
+    values: dict[str, str],
+    *,
+    version: int = 1,
+) -> ConfirmedBasicInformationSnapshot:
+    return ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=version,
+        values=values,
+        source_signature='{"source":"test"}',
+        confirmed_at="2026-06-20T00:00:00+00:00",
+        confirmed_by="tester",
+    )

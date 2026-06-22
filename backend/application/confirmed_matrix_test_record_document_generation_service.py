@@ -14,6 +14,13 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewNotFoundError,
     ConfirmedMatrixTestRecordPreviewService,
 )
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationReader,
+    ConfirmedBasicInformationSnapshot,
+)
+from backend.application.project_basic_information_output_identity import (
+    test_record_header_identity,
+)
 from backend.domain.enums import LtrStatus
 
 
@@ -106,6 +113,8 @@ class ConfirmedMatrixTestRecordDocumentGenerationResult:
     confirmed_matrix_id: str
     output_path: Path
     file_name: str
+    confirmed_basic_information_version: int | None = None
+    confirmed_basic_information_source_signature_hash: str | None = None
 
 
 class ConfirmedMatrixTestRecordDocumentGenerationService:
@@ -122,6 +131,7 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
         intake_case_store: IntakeCaseLookup | None = None,
         intake_draft_store: IntakeDraftLookup | None = None,
         application_form_store: ApplicationFormLookup | None = None,
+        basic_information_reader: ConfirmedBasicInformationReader | None = None,
     ) -> None:
         self._preview_service = preview_service
         self._project_store = project_store
@@ -131,6 +141,7 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
         self._intake_cases = intake_case_store
         self._intake_drafts = intake_draft_store
         self._forms = application_form_store
+        self._basic_information = basic_information_reader
 
     def generate(
         self,
@@ -156,9 +167,11 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
 
         project = self._project_store.get(command.project_id)
         project_no = str(getattr(project, "project_no", "") or "")
+        basic_information = self._confirmed_basic_information(command.project_id)
         header_metadata = self._resolve_header_metadata(
             project_id=command.project_id,
             project=project,
+            basic_information=basic_information,
         )
         product_description = header_metadata.product_description
         file_name = _output_file_name(command.project_id, project_no)
@@ -167,6 +180,7 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
             output_dir=output_dir,
             file_name=file_name,
         )
+        output_path = _non_overwriting_output_path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -188,6 +202,14 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
             confirmed_matrix_id=preview.confirmed_matrix_id,
             output_path=written,
             file_name=file_name,
+            confirmed_basic_information_version=(
+                basic_information.version if basic_information is not None else None
+            ),
+            confirmed_basic_information_source_signature_hash=(
+                basic_information.source_signature_hash
+                if basic_information is not None
+                else None
+            ),
         )
 
     def _load_preview(self, project_id: str):
@@ -221,7 +243,27 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
         *,
         project_id: str,
         project: object,
+        basic_information: ConfirmedBasicInformationSnapshot | None = None,
     ) -> TestRecordHeaderMetadata:
+        if basic_information is not None:
+            identity = test_record_header_identity(basic_information)
+            lab_test_request_number = _required_identity_text(
+                identity.lab_test_request_number,
+                "DL/LTR Number",
+            )
+            product_description = _required_identity_text(
+                identity.product_description,
+                "Product Description",
+            )
+            applicable_specification = identity.applicable_specification
+            if not applicable_specification:
+                applicable_specification = self._resolve_applicable_specification(project_id)
+            return TestRecordHeaderMetadata(
+                lab_test_request_number=lab_test_request_number,
+                product_description=product_description,
+                applicable_specification=applicable_specification,
+            )
+
         registered_ltr = self._latest_registered_ltr(project_id)
         lab_test_request_number = ""
         product_description = str(getattr(project, "product_name", "") or "")
@@ -238,6 +280,18 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
             product_description=product_description,
             applicable_specification=applicable_specification,
         )
+
+    def _confirmed_basic_information(
+        self, project_id: str
+    ) -> ConfirmedBasicInformationSnapshot | None:
+        if self._basic_information is None:
+            return None
+        snapshot = self._basic_information.get_latest_confirmed(project_id)
+        if snapshot is None:
+            raise ConfirmedMatrixTestRecordDocumentGenerationError(
+                "Confirm Basic Information before generating Test Record."
+            )
+        return snapshot
 
     def _latest_registered_ltr(self, project_id: str):
         if self._ltrs is None:
@@ -310,6 +364,45 @@ def _safe_name(value: str) -> str:
 def _output_file_name(project_id: str, project_no: str) -> str:
     preferred = _safe_name(project_no) if project_no.strip() else _safe_name(project_id)
     return f"{preferred} Test Record.docx"
+
+
+def _non_overwriting_output_path(path: Path) -> Path:
+    """Return a unique draft path so existing user documents are not overwritten."""
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    for index in range(2, 1000):
+        candidate = path.with_name(f"{stem} ({index}){suffix}")
+        if not candidate.exists():
+            return candidate
+    raise ConfirmedMatrixTestRecordDocumentGenerationError(
+        f"Cannot find an available Test Record output name near: {path}"
+    )
+
+
+def _required_basic_text(
+    values: dict[str, str],
+    keys: tuple[str, ...],
+    label: str,
+) -> str:
+    """Return a required value from confirmed Basic Information."""
+    for key in keys:
+        value = str(values.get(key, "") or "").strip()
+        if value:
+            return value
+    raise ConfirmedMatrixTestRecordDocumentGenerationError(
+        f"Confirm Basic Information before generating Test Record: {label} is missing."
+    )
+
+
+def _required_identity_text(value: str, label: str) -> str:
+    """Return a required Test Record header identity value."""
+    if value.strip():
+        return value.strip()
+    raise ConfirmedMatrixTestRecordDocumentGenerationError(
+        f"Confirm Basic Information before generating Test Record: {label} is missing."
+    )
 
 
 def _parse_json_object(raw: object) -> dict[str, object]:

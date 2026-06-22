@@ -21,6 +21,9 @@ class LtrWorkbookSettings:
     lock_dir: Path | None = None
     lock_timeout_seconds: int = 120
     backup_dir: Path | None = None
+    backup_retention_count: int = 30
+    backup_retention_days: int = 30
+    backup_retention_max_mb: int = 500
     modify_password: str | None = None
     require_operator_confirmation_for_year_sheet_bootstrap: bool = True
     allow_system_assisted_create_year_sheet: bool = False
@@ -36,6 +39,9 @@ class LtrWorkbookSettings:
             "lock_dir": str(self.lock_dir) if self.lock_dir else None,
             "lock_timeout_seconds": self.lock_timeout_seconds,
             "backup_dir": str(self.backup_dir) if self.backup_dir else None,
+            "backup_retention_count": self.backup_retention_count,
+            "backup_retention_days": self.backup_retention_days,
+            "backup_retention_max_mb": self.backup_retention_max_mb,
             "modify_password_configured": self.modify_password is not None,
             "require_operator_confirmation_for_year_sheet_bootstrap": (
                 self.require_operator_confirmation_for_year_sheet_bootstrap
@@ -201,6 +207,27 @@ def _load_ltr_workbook_settings(
         backup_dir=_optional_path(
             os.getenv("CONNLAB_LTR_WORKBOOK_BACKUP_DIR", str(config.get("backup_dir", ""))),
             base_dir,
+        ),
+        backup_retention_count=_positive_int_setting(
+            "backup_retention_count",
+            os.getenv(
+                "CONNLAB_LTR_WORKBOOK_BACKUP_RETENTION_COUNT",
+                str(config.get("backup_retention_count", 30)),
+            ),
+        ),
+        backup_retention_days=_positive_int_setting(
+            "backup_retention_days",
+            os.getenv(
+                "CONNLAB_LTR_WORKBOOK_BACKUP_RETENTION_DAYS",
+                str(config.get("backup_retention_days", 30)),
+            ),
+        ),
+        backup_retention_max_mb=_positive_int_setting(
+            "backup_retention_max_mb",
+            os.getenv(
+                "CONNLAB_LTR_WORKBOOK_BACKUP_RETENTION_MAX_MB",
+                str(config.get("backup_retention_max_mb", 500)),
+            ),
         ),
         modify_password=_optional_secret(
             os.getenv(

@@ -51,6 +51,14 @@ class _TemplateRow:
     formula_columns: tuple[int, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class _IdentityFieldRule:
+    """Label-based Fee Form header write rule."""
+
+    field_key: str
+    aliases: tuple[str, ...]
+
+
 class FeeEvaluationWorkbookGateway:
     """Generate fee-evaluation workbooks through a COM-only Excel boundary."""
 
@@ -349,18 +357,56 @@ def _write_basic_information_identity(
 ) -> None:
     if not values:
         return
-    entries = (
-        ((2, 1), "DL/LTR Number", values.get("dl_number")),
-        ((2, 4), "Product Description", values.get("product_description")),
-        ((3, 1), "Test Item", values.get("test_item")),
-        ((3, 4), "Requested by", values.get("requested_by")),
-        ((4, 1), "Location", values.get("location")),
-        ((4, 4), "Lab Performing the Tests", values.get("lab_performing_tests")),
+    field_values = {
+        "dl_number": (values.get("dl_number") or "").strip(),
+        "test_description": _fee_test_description(values),
+        "requestor": (values.get("requested_by") or "").strip(),
+        "site": (values.get("location") or "").strip(),
+    }
+    rules = (
+        _IdentityFieldRule("dl_number", ("LTR Number", "DL/LTR Number")),
+        _IdentityFieldRule("test_description", ("Test Description",)),
+        _IdentityFieldRule("requestor", ("Requestor", "Requested by")),
+        _IdentityFieldRule("site", ("Site", "Mfg. Site", "Location")),
     )
-    for (row, column), label, raw_value in entries:
-        value = (raw_value or "").strip()
-        if value:
-            sheet.Cells(row, column).Value = f"{label}: {value}"
+    for rule in rules:
+        value = field_values.get(rule.field_key, "")
+        if not value:
+            continue
+        target = _find_identity_target_cell(sheet, rule)
+        if target is None:
+            continue
+        row, column = target
+        sheet.Cells(row, column).Value = value
+
+
+def _fee_test_description(values: dict[str, str]) -> str:
+    product_description = (values.get("product_description") or "").strip()
+    test_item = (values.get("test_item") or "").strip()
+    if not product_description:
+        return test_item
+    if not test_item:
+        return product_description
+    if test_item.lower() in product_description.lower():
+        return product_description
+    return f"{product_description} {test_item}"
+
+
+def _find_identity_target_cell(
+    sheet: Any,
+    rule: _IdentityFieldRule,
+) -> tuple[int, int] | None:
+    aliases = {_normalize_identity_label(alias) for alias in rule.aliases}
+    for row in range(1, _DETAIL_START_ROW):
+        for column in range(1, 10):
+            text = _normalize_identity_label(_cell_text(sheet, row, column))
+            if text in aliases:
+                return row, column + 1
+    return None
+
+
+def _normalize_identity_label(value: str) -> str:
+    return " ".join(value.replace(":", " ").split()).strip().lower()
 
 
 def _write_matrix_basic_fill(

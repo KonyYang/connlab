@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -7,10 +9,11 @@ import pytest
 from backend.application.project_basic_information_service import (
     ConfirmProjectBasicInformationCommand,
     ProjectBasicInformationMissingRequiredError,
+    ProjectBasicInformationRecord,
     ProjectBasicInformationService,
     SaveProjectBasicInformationDraftCommand,
 )
-from backend.domain import ApplicationForm, LtrRecord, Project, ProjectStatus
+from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
 
 
 def test_existing_project_without_records_returns_assembled_unconfirmed_draft() -> None:
@@ -125,6 +128,83 @@ def test_changed_sources_after_confirmation_mark_needs_review_without_mutation()
     assert result.latest_confirmed.values["requested_by"] == "MP Cao"
     assert "requested_by" in result.changed_source_fields
     assert result.field_suggestions["requested_by"].needs_review is True
+
+
+def test_source_assembly_keeps_application_test_type_separate_from_sheet_test_type() -> None:
+    ltrs = _LtrStore()
+    ltrs.records = [
+        LtrRecord(
+            ltr_id="DRAFT",
+            project_id="P1",
+            ltr_number="DL-2026-05-010",
+            status=LtrStatus.DRAFT,
+            registered_on=date(2026, 5, 1),
+            notes=_ltr_notes("Analysis"),
+        ),
+        LtrRecord(
+            ltr_id="REGISTERED",
+            project_id="P1",
+            ltr_number="DL-2026-05-011",
+            status=LtrStatus.REGISTERED,
+            registered_on=date(2026, 5, 2),
+            notes=_ltr_notes("Qualification"),
+        ),
+    ]
+    service = ProjectBasicInformationService(
+        project_store=_ProjectStore(),
+        ltr_store=ltrs,
+        application_form_store=_ApplicationFormStore(),
+        basic_information_store=_BasicInformationStore(),
+        clock=lambda: "2026-06-20T09:00:00+08:00",
+        id_factory=_id_factory(),
+    )
+
+    result = service.get("P1")
+
+    assert result.draft.values["test_type"] == "Partial Qualification"
+    assert result.field_suggestions["test_type"].source == "application_form"
+    assert result.draft.values["test_type_in_sheet"] == "Qualification"
+    assert result.field_suggestions["test_type_in_sheet"].source == (
+        "project_setup_confirmation"
+    )
+
+
+def test_new_sheet_test_type_source_marks_existing_confirmed_snapshot_needs_review() -> None:
+    ltrs = _LtrStore()
+    ltrs.records[0] = replace(
+        ltrs.records[0],
+        status=LtrStatus.REGISTERED,
+        registered_on=date(2026, 5, 2),
+        notes=_ltr_notes("Qualification"),
+    )
+    records = _BasicInformationStore()
+    records.records.append(
+        ProjectBasicInformationRecord(
+            record_id="LEGACY",
+            project_id="P1",
+            status="confirmed",
+            version=1,
+            values=_complete_values(test_type="Partial Qualification"),
+            source_signature='{"test_type":"Partial Qualification"}',
+            created_at="2026-06-19T09:00:00+08:00",
+            updated_at="2026-06-19T09:00:00+08:00",
+            confirmed_at="2026-06-19T09:00:00+08:00",
+            confirmed_by="Lab User",
+        )
+    )
+    service = ProjectBasicInformationService(
+        project_store=_ProjectStore(),
+        ltr_store=ltrs,
+        application_form_store=_ApplicationFormStore(),
+        basic_information_store=records,
+        clock=lambda: "2026-06-20T09:00:00+08:00",
+        id_factory=_id_factory(),
+    )
+    result = service.get("P1")
+
+    assert result.status == "needs_review"
+    assert "test_type_in_sheet" in result.changed_source_fields
+    assert result.field_suggestions["test_type_in_sheet"].needs_review is True
 
 
 def test_confirm_rejects_missing_required_fields_with_business_labels() -> None:
@@ -265,6 +345,7 @@ class _LtrStore:
                 ltr_id="L1",
                 project_id="P1",
                 ltr_number="DL-2026-05-011",
+                status=LtrStatus.REGISTERED,
                 requested_by="MP Cao",
                 requested_date=date(2026, 6, 20),
             )
@@ -280,6 +361,21 @@ class _ApplicationFormStore:
 
     def list_by_project(self, project_id: str) -> list[ApplicationForm]:
         return [form for form in self.forms if form.project_id == project_id]
+
+
+def _ltr_notes(test_type_in_sheet: str) -> str:
+    return json.dumps(
+        {
+            "operator_note": json.dumps(
+                {
+                    "source": "new_project_setup_confirmation",
+                    "test_type_in_sheet": test_type_in_sheet,
+                },
+                sort_keys=True,
+            )
+        },
+        sort_keys=True,
+    )
 
 
 class _BasicInformationStore:

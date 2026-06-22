@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from docx import Document
 
@@ -49,7 +50,7 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     assert result.target_path == target
     values = _read_table_values(target)
     assert values["Product Description"] == "Connector from Basic Info"
-    assert values["Requested Testing"] == "BI Qualification Test"
+    assert values["Tests to be Performed"] == "BI Qualification Test"
     assert values["Requester"] == "Requester BI"
     assert values["E-mail of Requestor"] == "requester@example.test"
     assert values["Received Date"] == "20 Jun 2026"
@@ -130,13 +131,143 @@ def test_application_form_write_back_blocks_user_changed_managed_target(
     assert office.calls == 0
 
 
+def test_application_form_write_back_uses_basic_information_without_project_fallback(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    office = _CapturingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(
+            _basic_information_with_conflicting_sources()
+        ),
+        output_record_service=_OutputStore(),
+        office=office,
+    )
+
+    service.write_back("P1")
+
+    assert "product_description" not in office.fields
+    assert office.fields["description_pn"] == "101-BI"
+    assert office.fields["test_item"] == "BI Test Item"
+    assert office.fields["requested_by"] == "BI Requester"
+    assert office.fields["requester"] == "BI Requester"
+    assert office.fields["location"] == "BI Dongguan"
+    assert office.fields["manufacturing_site"] == "BI Dongguan"
+    assert office.fields["project_leader"] == "BI Leader"
+    assert office.fields["applicable_specifications"] == "BI Spec"
+    assert "Connector" not in office.fields.values()
+    assert "Qualification Testing" not in office.fields.values()
+    assert "MP Cao" not in office.fields.values()
+
+
+def test_application_form_write_back_blocks_gateway_critical_failure(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    output_store = _OutputStore()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=output_store,
+        office=_FailingOffice("Application Form header LTR location not found."),
+    )
+
+    try:
+        service.write_back("P1")
+    except ProjectApplicationFormWriteBackError as exc:
+        assert "header LTR" in str(exc)
+    else:
+        raise AssertionError("Expected gateway critical failure blocker.")
+    assert not output_store.commands
+
+
+def test_application_form_write_back_uses_selected_request_material_target(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    submitted = official / "Submitted Material"
+    selected_target = submitted / "selected request.docx"
+    other_target = submitted / "other request.docx"
+    _write_docx(selected_target)
+    _write_docx(other_target)
+    office = _CapturingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(other_target),
+        request_material_collection_store=_CollectionStore(selected_target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=_OutputStore(),
+        office=office,
+    )
+
+    result = service.write_back("P1")
+
+    assert result.target_path == selected_target
+    assert office.calls == 1
+
+
+def test_application_form_write_back_allows_rebuilt_target_restored_to_source(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    source_sha = compute_sha256(target)
+    output_store = _OutputStore(
+        items=(
+            ProjectOutputStatusItem(
+                output_kind=ProjectOutputKind.SECTION2_WRITE_BACK,
+                status=ProjectOutputStatus.CURRENT,
+                output_path=str(target),
+                source=ProjectOutputSource.SYSTEM_GENERATED,
+                draft_id="D1",
+                draft_version=1,
+                reason="current",
+                updated_at="2026-06-20T00:00:00+00:00",
+                output_sha256="old-managed-write-back-sha",
+                output_size_bytes=1,
+                source_context_signature="application-form:F1|basic:1@old",
+            ),
+        )
+    )
+    office = _CapturingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        request_material_collection_store=_CollectionStore(target, source_sha),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=output_store,
+        office=office,
+    )
+
+    result = service.write_back("P1")
+
+    assert result.target_path == target
+    assert office.calls == 1
+
+
 def _write_docx(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     document = Document()
     table = document.add_table(rows=0, cols=2)
     for label in (
+        "LTR Number",
         "Product Description",
-        "Requested Testing",
         "Requester",
         "E-mail of Requestor",
         "Received Date",
@@ -144,15 +275,21 @@ def _write_docx(path: Path) -> None:
         row = table.add_row()
         row.cells[0].text = label
         row.cells[1].text = ""
+    test_table = document.add_table(rows=2, cols=1)
+    test_table.cell(0, 0).text = "Tests to be Performed"
     document.save(path)
 
 
 def _read_table_values(path: Path) -> dict[str, str]:
     document = Document(path)
-    return {
+    values = {
         row.cells[0].text.strip(): row.cells[1].text.strip()
         for row in document.tables[0].rows
     }
+    values[document.tables[1].cell(0, 0).text.strip()] = (
+        document.tables[1].cell(1, 0).text.strip()
+    )
+    return values
 
 
 class _ProjectStore:
@@ -218,6 +355,28 @@ class _FileAssetStore:
         ]
 
 
+class _CollectionStore:
+    def __init__(self, target: Path, source_sha: str | None = None) -> None:
+        self.target = target
+        self.source_sha = source_sha or compute_sha256(target)
+
+    def latest_by_project(self, project_id: str):
+        return SimpleNamespace(collection_id="C1")
+
+    def list_items(self, collection_id: str):
+        return (
+            SimpleNamespace(
+                source_asset_id="A1",
+                source_asset_type="application_form",
+                source_role="selected_application_form",
+                source_path=self.target,
+                target_area="submitted_material",
+                target_path=self.target,
+                sha256=self.source_sha,
+            ),
+        )
+
+
 class _OutputStore:
     def __init__(
         self,
@@ -261,6 +420,31 @@ class _RejectingOffice:
         raise AssertionError("Office writer should not be called.")
 
 
+class _CapturingOffice:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.fields: dict[str, str] = {}
+
+    def write_word_application_form_fields(self, source_path: Path, fields: dict[str, str]):
+        self.calls += 1
+        self.fields = dict(fields)
+
+        class _Result:
+            changed_fields = tuple()
+            unchanged_fields = tuple()
+            warnings = tuple()
+
+        return _Result()
+
+
+class _FailingOffice:
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+    def write_word_application_form_fields(self, source_path: Path, fields: dict[str, str]):
+        raise ValueError(self.message)
+
+
 def _basic_information() -> ConfirmedBasicInformationSnapshot:
     return ConfirmedBasicInformationSnapshot(
         project_id="P1",
@@ -276,5 +460,25 @@ def _basic_information() -> ConfirmedBasicInformationSnapshot:
         },
         source_signature='{"dl_number":"DL-001"}',
         confirmed_at="2026-06-20T00:00:00+00:00",
+        confirmed_by="Lab User",
+    )
+
+
+def _basic_information_with_conflicting_sources() -> ConfirmedBasicInformationSnapshot:
+    return ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=3,
+        values={
+            "dl_number": "DL-001",
+            "description_pn": "101-BI",
+            "product_description": "",
+            "test_item": "BI Test Item",
+            "requested_by": "BI Requester",
+            "location": "BI Dongguan",
+            "project_leader": "BI Leader",
+            "applicable_specifications": "BI Spec",
+        },
+        source_signature='{"dl_number":"DL-001","version":3}',
+        confirmed_at="2026-06-21T00:00:00+00:00",
         confirmed_by="Lab User",
     )

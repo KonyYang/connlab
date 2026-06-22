@@ -11,6 +11,9 @@ from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationReader,
     ConfirmedBasicInformationSnapshot,
 )
+from backend.application.project_basic_information_output_identity import (
+    application_form_identity,
+)
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
 from backend.application.project_request_material_collection_helpers import (
@@ -26,6 +29,7 @@ from backend.domain import (
     ProjectOutputStatus,
 )
 from backend.infrastructure.office import OfficeFacade, WordSection2FieldChange
+from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 
 
 class ProjectApplicationFormWriteBackError(ValueError):
@@ -64,6 +68,16 @@ class FileAssetStore(Protocol):
         """Return FileAsset rows for a project."""
 
 
+class RequestMaterialCollectionStore(Protocol):
+    """Request-material collection lookup port."""
+
+    def latest_by_project(self, project_id: str) -> object | None:
+        """Return the latest request-material collection run."""
+
+    def list_items(self, collection_id: str) -> tuple[object, ...]:
+        """Return persisted request-material items for one collection run."""
+
+
 class ApplicationFormWordWriter(Protocol):
     """Office write boundary for Application Form fields."""
 
@@ -98,6 +112,14 @@ class ProjectApplicationFormWriteBackResult:
     output_record_id: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class _SelectedApplicationFormTarget:
+    """Selected copied Application Form target and source fingerprint."""
+
+    path: Path
+    source_sha256: str | None = None
+
+
 class ProjectApplicationFormWriteBackService:
     """Write application/project metadata into the copied request Word form."""
 
@@ -108,6 +130,7 @@ class ProjectApplicationFormWriteBackService:
         workspace_store: WorkspaceStore,
         application_form_store: ApplicationFormStore,
         file_asset_store: FileAssetStore,
+        request_material_collection_store: RequestMaterialCollectionStore | None = None,
         basic_information_reader: ConfirmedBasicInformationReader,
         output_record_service: OutputRecordService,
         office: ApplicationFormWordWriter | None = None,
@@ -116,6 +139,7 @@ class ProjectApplicationFormWriteBackService:
         self._workspaces = workspace_store
         self._forms = application_form_store
         self._assets = file_asset_store
+        self._request_material_collections = request_material_collection_store
         self._basic_information = basic_information_reader
         self._outputs = output_record_service
         self._office = office or OfficeFacade()
@@ -133,19 +157,31 @@ class ProjectApplicationFormWriteBackService:
                 "Create the Official project folder before writing the Application Form."
             )
         form = _single_form(self._forms.list_by_project(project_id))
-        target = _target_application_form(
+        selected_target = _target_application_form(
             workspace.official_folder_path / "Submitted Material",
+            project_id,
             self._assets.list_by_project(project_id),
+            self._request_material_collections,
         )
+        target = selected_target.path
         basic_information = self._basic_information.get_latest_confirmed(project_id)
         if basic_information is None:
             raise ProjectApplicationFormWriteBackError(
                 "Confirm Basic Information before writing the Application Form."
             )
         summary = self._outputs.get_status_summary(project_id)
-        _ensure_safe_managed_target(summary, target)
+        _ensure_safe_managed_target(
+            summary,
+            target,
+            source_sha256=selected_target.source_sha256,
+        )
         fields = _fields(project, form, basic_information)
-        write_result = self._office.write_word_application_form_fields(target, fields)
+        try:
+            write_result = self._office.write_word_application_form_fields(target, fields)
+        except OfficeAutomationUnavailable as exc:
+            raise ProjectApplicationFormWriteBackError(str(exc)) from exc
+        except ValueError as exc:
+            raise ProjectApplicationFormWriteBackError(str(exc)) from exc
         active_draft_id = getattr(summary, "active_draft_id", None)
         record = self._outputs.register_output(
             RegisterProjectOutputCommand(
@@ -194,7 +230,19 @@ def _single_form(forms: list[ApplicationForm]) -> ApplicationForm:
     return forms[0]
 
 
-def _target_application_form(submitted_material: Path, assets: list[FileAsset]) -> Path:
+def _target_application_form(
+    submitted_material: Path,
+    project_id: str,
+    assets: list[FileAsset],
+    collection_store: RequestMaterialCollectionStore | None,
+) -> _SelectedApplicationFormTarget:
+    from_collection = _target_from_latest_collection(
+        submitted_material,
+        project_id,
+        collection_store,
+    )
+    if from_collection is not None:
+        return from_collection
     selected = [
         asset
         for asset in assets
@@ -208,11 +256,14 @@ def _target_application_form(submitted_material: Path, assets: list[FileAsset]) 
         )
         target = submitted_material / name
         if target.is_file():
-            return target
+            return _SelectedApplicationFormTarget(
+                path=target,
+                source_sha256=_source_asset_sha256(selected[0], target),
+            )
     candidates = sorted(submitted_material.glob("*.docx"))
     candidates = [path for path in candidates if ".bak-" not in path.name]
     if len(candidates) == 1:
-        return candidates[0]
+        return _SelectedApplicationFormTarget(path=candidates[0])
     if not candidates:
         raise ProjectApplicationFormWriteBackNotFoundError(
             f"No Application Form .docx found in Submitted Material: {submitted_material}"
@@ -222,48 +273,86 @@ def _target_application_form(submitted_material: Path, assets: list[FileAsset]) 
     )
 
 
+def _target_from_latest_collection(
+    submitted_material: Path,
+    project_id: str,
+    collection_store: RequestMaterialCollectionStore | None,
+) -> _SelectedApplicationFormTarget | None:
+    """Return the selected Application Form copied by Request Material collection."""
+    if collection_store is None:
+        return None
+    collection = collection_store.latest_by_project(project_id)
+    collection_id = getattr(collection, "collection_id", None)
+    if not collection_id:
+        return None
+    for item in collection_store.list_items(collection_id):
+        if getattr(item, "target_area", None) != "submitted_material":
+            continue
+        source_type = str(getattr(item, "source_asset_type", "") or "").casefold()
+        source_role = str(getattr(item, "source_role", "") or "").casefold()
+        if source_type != FileAssetType.APPLICATION_FORM.value and (
+            source_role != "selected_application_form"
+        ):
+            continue
+        target_path = Path(getattr(item, "target_path"))
+        if not _is_direct_child(target_path, submitted_material) or not target_path.is_file():
+            continue
+        return _SelectedApplicationFormTarget(
+            path=target_path,
+            source_sha256=_collection_source_sha256(item, target_path),
+        )
+    return None
+
+
+def _is_direct_child(path: Path, folder: Path) -> bool:
+    try:
+        return path.parent.resolve() == folder.resolve()
+    except OSError:
+        return path.parent == folder
+
+
+def _collection_source_sha256(item: object, target: Path) -> str | None:
+    sha = getattr(item, "sha256", None)
+    if sha:
+        return str(sha)
+    source_path = Path(getattr(item, "source_path", ""))
+    try:
+        if source_path.resolve() == target.resolve():
+            return None
+    except OSError:
+        if source_path == target:
+            return None
+    return _sha256(source_path) if source_path.is_file() else None
+
+
+def _source_asset_sha256(asset: FileAsset, target: Path) -> str | None:
+    if asset.sha256:
+        return asset.sha256
+    try:
+        if asset.path.resolve() == target.resolve():
+            return None
+    except OSError:
+        if asset.path == target:
+            return None
+    return _sha256(asset.path) if asset.path.is_file() else None
+
+
 def _fields(
     project: Project,
     form: ApplicationForm,
     basic_information: ConfirmedBasicInformationSnapshot,
 ) -> dict[str, str]:
-    basic = basic_information.values
-    values = {
-        "ltr_number": basic.get("dl_number") or form.lab_test_request_number or project.project_no,
-        "project_number": basic.get("project_number") or form.project_number or project.project_no,
-        "project_type": basic.get("project_type"),
-        "description_pn": basic.get("description_pn"),
-        "product_description": basic.get("product_description") or project.product_name,
-        "test_item": basic.get("test_item") or form.requested_testing,
-        "applicable_specifications": basic.get("applicable_specifications"),
-        "requested_by": basic.get("requested_by") or form.requester or project.requestor,
-        "requester": basic.get("requested_by") or form.requester or project.requestor,
-        "phone": basic.get("phone") or form.phone,
-        "email": basic.get("requestor_email") or form.email,
-        "location": basic.get("location"),
-        "project_leader": basic.get("project_leader"),
-        "business_unit": form.business_unit or project.business_unit,
-        "manufacturing_site": form.manufacturing_site,
-        "requested_completion_date": form.requested_completion_date,
-        "lab": basic.get("lab_performing_tests") or form.lab,
-        "assigned_personnel": form.assigned_personnel,
-        "received_date": basic.get("date_lab_received_samples") or form.received_date,
-        "estimated_completion_date": (
-            basic.get("estimated_completion_date") or form.estimated_completion_date
-        ),
-        "start_test_date": basic.get("start_test_date"),
-        "finish_test_date": basic.get("finish_test_date"),
-        "report_date": basic.get("report_date"),
-        "test_fee": basic.get("test_fee"),
-        "remarks_po": basic.get("remarks_po"),
-        "sample_condition": (
-            basic.get("condition_of_samples_when_received") or form.sample_condition
-        ),
-    }
+    values = application_form_identity(basic_information).fields
+    values["assigned_personnel"] = form.assigned_personnel
     return {key: value.strip() for key, value in values.items() if value and value.strip()}
 
 
-def _ensure_safe_managed_target(summary: object, target: Path) -> None:
+def _ensure_safe_managed_target(
+    summary: object,
+    target: Path,
+    *,
+    source_sha256: str | None = None,
+) -> None:
     """Block write-back when a prior managed target was edited on disk."""
     item = _latest_section_write_back_item(summary, target)
     if item is None:
@@ -273,7 +362,10 @@ def _ensure_safe_managed_target(summary: object, target: Path) -> None:
         raise ProjectApplicationFormWriteBackError(
             "Existing Application Form write-back record is missing a fingerprint."
         )
-    if _sha256(target) != stored_sha:
+    current_sha = _sha256(target)
+    if current_sha != stored_sha and source_sha256 and current_sha == source_sha256:
+        return
+    if current_sha != stored_sha:
         raise ProjectApplicationFormWriteBackError(
             "Application Form target was changed outside ConnLab."
         )

@@ -7,6 +7,17 @@ from pathlib import Path
 
 from docx import Document
 
+from backend.infrastructure.office.application_form_word_gateway import (
+    application_form_requires_com,
+    drop_duplicate_application_form_aliases,
+    normalize_label,
+    write_application_form_fields_with_com,
+)
+from backend.infrastructure.office.application_form_word_mapping import (
+    APPLICATION_FORM_CRITICAL_FIELDS,
+    APPLICATION_FORM_FIELD_LABELS,
+    APPLICATION_FORM_NEXT_ROW_FIELDS,
+)
 from backend.infrastructure.office.models import (
     WordDocumentSnapshot,
     WordHeaderCellResult,
@@ -32,34 +43,6 @@ SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
         "estimated complete date",
     ),
     "sample_condition": ("sample condition", "sample received condition"),
-}
-
-APPLICATION_FORM_FIELD_LABELS: dict[str, tuple[str, ...]] = {
-    "ltr_number": ("ltr number", "lab test request number", "dl number"),
-    "project_number": ("project number", "project no"),
-    "product_description": ("product description", "product name", "product"),
-    "test_item": (
-        "test item",
-        "requested testing",
-        "requested testing description",
-        "test to be performed",
-    ),
-    "requester": ("requester", "requestor", "requested by", "requested by requestor"),
-    "phone": ("phone", "telephone", "tel"),
-    "email": ("email", "e mail", "e-mail of requestor"),
-    "business_unit": ("business unit", "bu"),
-    "manufacturing_site": ("manufacturing site", "site"),
-    "requested_completion_date": (
-        "requested completion date",
-        "request completion date",
-    ),
-    "lab": SECTION2_FIELD_LABELS["lab"],
-    "assigned_personnel": SECTION2_FIELD_LABELS["assigned_personnel"],
-    "received_date": SECTION2_FIELD_LABELS["received_date"],
-    "estimated_completion_date": SECTION2_FIELD_LABELS[
-        "estimated_completion_date"
-    ],
-    "sample_condition": SECTION2_FIELD_LABELS["sample_condition"],
 }
 
 
@@ -189,23 +172,27 @@ class WordDocumentGateway:
         source_path: Path,
         fields: dict[str, str],
     ) -> WordSection2WriteResult:
-        """Write known application fields into adjacent Word table value cells."""
+        """Write known application fields into visible Word form/table targets."""
         path = Path(source_path)
         if path.suffix.lower() != ".docx":
             raise ValueError(f"Only .docx files are supported by the Word gateway: {path}")
         if not path.is_file():
             raise FileNotFoundError(f"Word document does not exist: {path}")
         normalized_fields = {
-            key: value
+            key: str(value)
             for key, value in fields.items()
             if key in APPLICATION_FORM_FIELD_LABELS and value is not None
         }
+        drop_duplicate_application_form_aliases(normalized_fields)
+        if application_form_requires_com(path):
+            return write_application_form_fields_with_com(path, normalized_fields)
 
         document = Document(path)
         locations = _locate_labeled_fields(
             document,
             normalized_fields,
             APPLICATION_FORM_FIELD_LABELS,
+            next_row_fields=APPLICATION_FORM_NEXT_ROW_FIELDS,
         )
 
         changed: list[WordSection2FieldChange] = []
@@ -214,7 +201,10 @@ class WordDocumentGateway:
         for field_key, new_value in normalized_fields.items():
             location = locations.get(field_key)
             if location is None:
-                warnings.append(f"Application Form field location not found: {field_key}")
+                message = f"Application Form field location not found: {field_key}"
+                if field_key in APPLICATION_FORM_CRITICAL_FIELDS:
+                    raise ValueError(message)
+                warnings.append(message)
                 continue
             table_index, row_index, label_column, value_column = location
             row = document.tables[table_index].rows[row_index]
@@ -244,14 +234,11 @@ class WordDocumentGateway:
             warnings=tuple(warnings),
         )
 
-
 def _table_rows(table) -> list[list[str]]:
-    """Return cleaned rows from a python-docx table."""
     return [[_clean(cell.text) for cell in row.cells] for row in table.rows]
 
 
 def _section_text(document, *, part_name: str) -> list[str]:
-    """Extract cleaned paragraph text from section headers or footers."""
     values: list[str] = []
     for section in document.sections:
         part = getattr(section, part_name)
@@ -380,7 +367,6 @@ def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
 
 
 def _preceding_paragraph_text(table) -> str:
-    """Return the paragraph immediately before a COM table when available."""
     try:
         paragraph_range = table.Range.Duplicate
         paragraph_range.Start = max(0, int(table.Range.Start) - 1)
@@ -392,7 +378,6 @@ def _preceding_paragraph_text(table) -> str:
 
 
 def _safe_int(value: object) -> int | None:
-    """Convert COM values to int when possible."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -400,7 +385,6 @@ def _safe_int(value: object) -> int | None:
 
 
 def _com_iter(collection) -> list[object]:
-    """Return COM collection items using 1-based indexing."""
     count = int(getattr(collection, "Count", 0))
     return [collection.Item(index) for index in range(1, count + 1)]
 
@@ -428,7 +412,6 @@ def _raw_text(
     headers: list[str],
     footers: list[str],
 ) -> str:
-    """Build a plain text view of the document snapshot."""
     lines: list[str] = []
     lines.extend(headers)
     lines.extend(paragraphs)
@@ -440,12 +423,10 @@ def _raw_text(
 
 
 def _clean(value: str) -> str:
-    """Collapse Word whitespace into a single trimmed string."""
     return re.sub(r"\s+", " ", value.replace("\x07", " ")).strip()
 
 
 def _locate_section2_fields(document, fields: dict[str, str]) -> dict[str, tuple[int, int, int, int]]:
-    """Locate requested Section 2 field value cells without mutating the document."""
     return _locate_labeled_fields(document, fields, SECTION2_FIELD_LABELS)
 
 
@@ -453,10 +434,12 @@ def _locate_labeled_fields(
     document,
     fields: dict[str, str],
     aliases_by_field: dict[str, tuple[str, ...]],
+    *,
+    next_row_fields: set[str] | None = None,
 ) -> dict[str, tuple[int, int, int, int]]:
-    """Locate requested field value cells without mutating the document."""
     locations: dict[str, tuple[int, int, int, int]] = {}
     requested = set(fields)
+    next_row_fields = next_row_fields or set()
     for table_index, table in enumerate(document.tables):
         for row_index, row in enumerate(table.rows):
             cells = row.cells
@@ -468,14 +451,28 @@ def _locate_labeled_fields(
                 )
                 if field_key is None:
                     continue
-                value_column = _value_column(cells, column_index)
-                if value_column is not None:
+                if field_key in next_row_fields:
+                    if row_index + 1 >= len(table.rows):
+                        continue
+                    value_cells = table.rows[row_index + 1].cells
+                    if column_index >= len(value_cells):
+                        continue
                     locations[field_key] = (
                         table_index,
-                        row_index,
+                        row_index + 1,
                         column_index,
-                        value_column,
+                        column_index,
                     )
+                    continue
+                value_column = _value_column(cells, column_index)
+                if value_column is None:
+                    continue
+                locations[field_key] = (
+                    table_index,
+                    row_index,
+                    column_index,
+                    value_column,
+                )
     return locations
 
 
@@ -484,25 +481,18 @@ def _field_key_for_label(
     candidates: set[str],
     aliases_by_field: dict[str, tuple[str, ...]],
 ) -> str | None:
-    """Return the matching field key for a Word table label cell."""
-    normalized = _normalize_label(label)
+    normalized = normalize_label(label)
     if not normalized:
         return None
     for field_key in candidates:
         aliases = aliases_by_field[field_key]
-        if normalized in {_normalize_label(alias) for alias in aliases}:
+        normalized_aliases = {normalize_label(alias) for alias in aliases}
+        if normalized in normalized_aliases:
             return field_key
     return None
 
 
 def _value_column(cells, label_column: int) -> int | None:
-    """Return the adjacent value-cell index for a label cell."""
     if label_column + 1 < len(cells):
         return label_column + 1
     return None
-
-
-def _normalize_label(value: str) -> str:
-    """Normalize Word labels for deterministic matching."""
-    text = _clean(value).lower().rstrip(":")
-    return re.sub(r"[^a-z0-9]+", " ", text).strip()

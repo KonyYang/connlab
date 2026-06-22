@@ -10,8 +10,12 @@ from backend.api.dependencies import get_settings
 from backend.api.main import app
 from backend.domain import IntakeCase, IntakeDraft, LtrRecord
 from backend.domain.enums import IntakeCaseStatus, LtrStatus
+from backend.application.project_basic_information_service import ProjectBasicInformationRecord
 from backend.infrastructure.storage.database import create_database_engine, create_session_factory
-from backend.infrastructure.storage.repositories import LtrRecordRepository
+from backend.infrastructure.storage.repositories import (
+    LtrRecordRepository,
+    ProjectBasicInformationRepository,
+)
 from backend.infrastructure.storage.repositories.intake_package import (
     IntakeCaseRepository,
     IntakeDraftRepository,
@@ -37,6 +41,7 @@ def test_confirmed_matrix_test_record_generation_api_downloads_docx(tmp_path: Pa
         )
         _seed_project("P1", tmp_path)
         _seed_header_metadata_sources("P1", tmp_path)
+        _seed_basic_information("P1", tmp_path)
         source_import_id = _seed_source_import("P1", tmp_path)
         draft = client.post(
             "/api/projects/P1/matrix-drafts",
@@ -52,6 +57,8 @@ def test_confirmed_matrix_test_record_generation_api_downloads_docx(tmp_path: Pa
         response = client.post("/api/projects/P1/confirmed-matrix/test-record-draft/generate")
 
         assert response.status_code == 200
+        assert response.headers["x-connlab-basic-information-version"] == "1"
+        assert response.headers["x-connlab-basic-information-source-hash"]
         assert response.headers["content-type"].startswith(
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
@@ -74,8 +81,8 @@ def test_confirmed_matrix_test_record_generation_api_downloads_docx(tmp_path: Pa
         assert "LLCR" in table_text
         assert "G2" not in text
         assert "DL-2026-05-003" in header_text
-        assert "Coolpower HDF 3.40mm pin" in header_text
-        assert "GS-12-1507" in header_text
+        assert "Confirmed Coolpower HDF 3.40mm pin" in header_text
+        assert "GS-12-9999" in header_text
         assert document.sections[0].header.tables[1].cell(0, 5).text == ""
     finally:
         app.dependency_overrides.clear()
@@ -96,8 +103,46 @@ def test_confirmed_matrix_test_record_generation_api_returns_404_without_active_
             test_record=TestRecordSettings(template_path=template_path),
         )
         _seed_project("P1", tmp_path)
+        _seed_basic_information("P1", tmp_path)
         response = client.post("/api/projects/P1/confirmed-matrix/test-record-draft/generate")
         assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_confirmed_matrix_test_record_generation_api_blocks_without_basic_information(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        template_path = _build_template(tmp_path / "template.docx")
+        app.dependency_overrides[get_settings] = lambda: Settings(
+            data_dir=tmp_path / "data",
+            projects_dir=tmp_path / "projects",
+            templates_dir=tmp_path / "templates",
+            database_path=tmp_path / "connlab.sqlite3",
+            test_record=TestRecordSettings(template_path=template_path),
+        )
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        draft = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1"]},
+        )
+        draft_id = draft.json()["record"]["project_matrix_draft_id"]
+        confirm = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirm.status_code == 201
+
+        response = client.post("/api/projects/P1/confirmed-matrix/test-record-draft/generate")
+
+        assert response.status_code == 422
+        assert response.json()["detail"] == (
+            "Confirm Basic Information before generating Test Record."
+        )
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -185,6 +230,44 @@ def _seed_header_metadata_sources(project_id: str, tmp_path: Path) -> None:
                 parser_warnings_json="[]",
                 manual_overrides_json=None,
                 updated_at="2026-05-30T09:00:00+00:00",
+            )
+        )
+        session.commit()
+    engine.dispose()
+
+
+def _seed_basic_information(project_id: str, tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    session_factory = create_session_factory(engine)
+    with session_factory() as session:
+        ProjectBasicInformationRepository(session).create_confirmed(
+            ProjectBasicInformationRecord(
+                record_id="bi-1",
+                project_id=project_id,
+                status="confirmed",
+                version=1,
+                values={
+                    "dl_number": "DL-2026-05-003",
+                    "product_description": "Confirmed Coolpower HDF 3.40mm pin",
+                    "test_item": "Qualification Testing",
+                    "applicable_specifications": "GS-12-9999",
+                    "project_type": "New Product Development",
+                    "requested_by": "MP Cao",
+                    "location": "Dongguan",
+                    "test_type": "Partial Qualification",
+                    "project_leader": "Even Yang",
+                },
+                source_signature='{"project":"P1"}',
+                created_at="2026-06-20T00:00:00+00:00",
+                updated_at="2026-06-20T00:00:00+00:00",
+                confirmed_at="2026-06-20T00:00:00+00:00",
+                confirmed_by="tester",
             )
         )
         session.commit()

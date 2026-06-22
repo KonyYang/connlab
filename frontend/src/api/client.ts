@@ -1638,6 +1638,44 @@ export type LtrWorkbookWriteCommit = {
   ltr_number: string;
 };
 
+export type LtrWorkbookBasicInformationSyncColumn = {
+  column: string;
+  field_name: string;
+  value: unknown;
+};
+
+export type LtrWorkbookBasicInformationSyncPreview = {
+  status: string;
+  project_id: string;
+  ltr_number: string;
+  workbook_path: string | null;
+  target_sheet: string | null;
+  target_row: number | null;
+  columns: LtrWorkbookBasicInformationSyncColumn[];
+  confirmed_basic_information_version: number | null;
+  confirmed_basic_information_source_signature_hash: string | null;
+  blockers: string[];
+  warnings: string[];
+};
+
+export type LtrWorkbookBasicInformationSyncCommitInput = {
+  operator_confirmed: boolean;
+  preview_acknowledged: boolean;
+  expected_confirmed_basic_information_version: number;
+  expected_confirmed_basic_information_source_signature_hash: string;
+};
+
+export type LtrWorkbookBasicInformationSyncCommit = {
+  project_id: string;
+  ltr_number: string;
+  workbook_path: string;
+  backup_path: string;
+  sheet_name: string;
+  row_number: number;
+  confirmed_basic_information_version: number;
+  confirmed_basic_information_source_signature_hash: string;
+};
+
 export type RuntimeProjectionValueCountItem = {
   value: string | null;
   count: number;
@@ -2559,6 +2597,28 @@ export function commitLtrWorkbookWrite(
 ): Promise<LtrWorkbookWriteCommit> {
   return requestJson<LtrWorkbookWriteCommit>(
     `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/write-commit`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function previewLtrWorkbookBasicInformationSync(
+  projectId: string
+): Promise<LtrWorkbookBasicInformationSyncPreview> {
+  return requestJson<LtrWorkbookBasicInformationSyncPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/basic-information-sync/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function commitLtrWorkbookBasicInformationSync(
+  projectId: string,
+  input: LtrWorkbookBasicInformationSyncCommitInput
+): Promise<LtrWorkbookBasicInformationSyncCommit> {
+  return requestJson<LtrWorkbookBasicInformationSyncCommit>(
+    `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/basic-information-sync/commit`,
     {
       method: "POST",
       body: JSON.stringify(input)

@@ -48,8 +48,18 @@ def generate_confirmed_matrix_test_record_draft(
     except ConfirmedMatrixTestRecordDocumentGenerationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    headers = {}
+    if result.confirmed_basic_information_version is not None:
+        headers["X-ConnLab-Basic-Information-Version"] = str(
+            result.confirmed_basic_information_version
+        )
+    if result.confirmed_basic_information_source_signature_hash is not None:
+        headers["X-ConnLab-Basic-Information-Source-Hash"] = (
+            result.confirmed_basic_information_source_signature_hash
+        )
     return FileResponse(
         path=result.output_path,
         filename=result.file_name,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers=headers,
     )

@@ -59,11 +59,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
           setSelectedProjectionToken={setSelectedProjectionToken}
           sideColumnAfter={
             <>
-              <ProjectBasicInformationSummaryCard
-                basicInformation={basicInformation}
-                loading={basicInformationLoading}
-                error={basicInformationError}
-              />
               <section className="runtime-console-folder-inspector" aria-label="Folder Action">
                 <p className="eyebrow">Folder Action</p>
                 <h3>{currentFolderTask.title}</h3>
@@ -81,6 +76,12 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
                   </button>
                 ) : null}
               </section>
+              <ProjectBasicInformationSummaryCard
+                projectId={projectId}
+                basicInformation={basicInformation}
+                loading={basicInformationLoading}
+                error={basicInformationError}
+              />
             </>
           }
         />

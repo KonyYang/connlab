@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import shutil
 import socket
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, TypeVar
 
@@ -44,6 +45,9 @@ class LtrWorkbookTransactionConfig:
     lock_timeout_seconds: float = 120
     backup_dir: Path | None = None
     lock_poll_seconds: float = 0.2
+    backup_retention_count: int = 30
+    backup_retention_days: int = 30
+    backup_retention_max_mb: int = 500
 
     def write_config(self) -> LtrWorkbookWriteConfig:
         """Return the existing COM write-session configuration."""
@@ -62,6 +66,23 @@ class LtrWorkbookTransactionContext:
     workbook_path: Path
     lock_path: Path
     backup_path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookReadOnlyTransactionContext:
+    """Open workbook read-only state returned to preview callers."""
+
+    session: ExcelComLTRWorkbookWriteSession
+    workbook_path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class _BackupCandidate:
+    """ConnLab-owned workbook backup eligible for retention decisions."""
+
+    path: Path
+    created_at: datetime
+    size_bytes: int
 
 
 class LtrWorkbookTransactionGateway:
@@ -90,6 +111,13 @@ class LtrWorkbookTransactionGateway:
             sleeper=self._sleeper,
         )
 
+    def open_read_only_transaction(self) -> "LtrWorkbookReadOnlyTransaction":
+        """Open a read-only workbook context for preview operations."""
+        return LtrWorkbookReadOnlyTransaction(
+            office=self._office,
+            config=self._config,
+        )
+
     def run_short_transaction(
         self,
         operation: Callable[[LtrWorkbookTransactionContext], T],
@@ -98,6 +126,11 @@ class LtrWorkbookTransactionGateway:
         with self.open_transaction() as transaction:
             result = operation(transaction)
             transaction.session.save()
+            _prune_workbook_backups(
+                transaction.workbook_path,
+                self._config,
+                transaction.backup_path,
+            )
             return result
 
 
@@ -165,6 +198,40 @@ class LtrWorkbookTransaction:
             self._lock_path = None
 
 
+class LtrWorkbookReadOnlyTransaction:
+    """Context manager for a read-only LTR workbook preview."""
+
+    def __init__(
+        self,
+        *,
+        office: OfficeFacade,
+        config: LtrWorkbookTransactionConfig,
+    ) -> None:
+        """Create a read-only preview context."""
+        self._office = office
+        self._config = config
+        self._session = None
+
+    def __enter__(self) -> LtrWorkbookReadOnlyTransactionContext:
+        """Open the workbook read-only without lock, backup, or save."""
+        workbook_path = _validated_read_only_workbook_path(self._config)
+        session = ExcelComLTRWorkbookGateway(
+            self._office,
+            self._config.write_config(),
+        ).open_read_session()
+        self._session = session.__enter__()
+        return LtrWorkbookReadOnlyTransactionContext(
+            session=self._session,
+            workbook_path=workbook_path,
+        )
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        """Close the read-only workbook without saving."""
+        if self._session is not None:
+            self._session.__exit__(exc_type, exc, traceback)
+            self._session = None
+
+
 def _validated_workbook_path(config: LtrWorkbookTransactionConfig) -> Path:
     """Validate transaction-level settings before lock acquisition."""
     if not config.write_enabled:
@@ -181,6 +248,19 @@ def _validated_workbook_path(config: LtrWorkbookTransactionConfig) -> Path:
         raise LtrWorkbookWriteError("LTR workbook lock timeout cannot be negative.")
     if config.lock_poll_seconds <= 0:
         raise LtrWorkbookWriteError("LTR workbook lock poll interval must be positive.")
+    if config.backup_retention_count <= 0:
+        raise LtrWorkbookWriteError("LTR workbook backup retention count must be positive.")
+    if config.backup_retention_days <= 0:
+        raise LtrWorkbookWriteError("LTR workbook backup retention days must be positive.")
+    if config.backup_retention_max_mb <= 0:
+        raise LtrWorkbookWriteError("LTR workbook backup retention size must be positive.")
+    return Path(config.path).resolve()
+
+
+def _validated_read_only_workbook_path(config: LtrWorkbookTransactionConfig) -> Path:
+    """Validate read-only preview settings before opening the workbook."""
+    if config.path is None:
+        raise LtrWorkbookWriteError("LTR workbook path is not configured.")
     return Path(config.path).resolve()
 
 
@@ -226,6 +306,110 @@ def _backup_workbook(workbook_path: Path, config: LtrWorkbookTransactionConfig) 
             f"Failed to back up LTR workbook to {backup_path}"
         ) from exc
     return backup_path
+
+
+def _prune_workbook_backups(
+    workbook_path: Path,
+    config: LtrWorkbookTransactionConfig,
+    current_backup_path: Path,
+) -> None:
+    """Prune old ConnLab-owned backups after a successful workbook save."""
+    if config.backup_dir is None:
+        return
+    backup_dir = Path(config.backup_dir).resolve()
+    candidates = _list_owned_workbook_backups(workbook_path, backup_dir)
+    if not candidates:
+        return
+
+    current_backup = current_backup_path.resolve()
+    candidates_by_newest = sorted(
+        candidates,
+        key=lambda item: (item.created_at, item.path.name),
+        reverse=True,
+    )
+    preserved_paths = {
+        candidate.path.resolve()
+        for candidate in candidates_by_newest[: config.backup_retention_count]
+    }
+    preserved_paths.add(current_backup)
+
+    cutoff = datetime.now() - timedelta(days=config.backup_retention_days)
+    for candidate in candidates_by_newest:
+        candidate_path = candidate.path.resolve()
+        if candidate_path in preserved_paths or candidate.created_at >= cutoff:
+            continue
+        _unlink_backup(candidate.path)
+
+    remaining_candidates = _list_owned_workbook_backups(workbook_path, backup_dir)
+    total_bytes = sum(candidate.size_bytes for candidate in remaining_candidates)
+    max_bytes = config.backup_retention_max_mb * 1024 * 1024
+    if total_bytes <= max_bytes:
+        return
+
+    remaining_by_oldest = sorted(
+        remaining_candidates,
+        key=lambda item: (item.created_at, item.path.name),
+    )
+    for candidate in remaining_by_oldest:
+        candidate_path = candidate.path.resolve()
+        if candidate_path in preserved_paths:
+            continue
+        if _unlink_backup(candidate.path):
+            total_bytes -= candidate.size_bytes
+        if total_bytes <= max_bytes:
+            break
+
+
+def _list_owned_workbook_backups(
+    workbook_path: Path,
+    backup_dir: Path,
+) -> list[_BackupCandidate]:
+    """Return backup files matching this workbook's ConnLab naming pattern."""
+    if not backup_dir.is_dir():
+        return []
+    pattern = re.compile(
+        rf"^{re.escape(workbook_path.stem)}_(\d{{8}}_\d{{6}}_\d{{6}})"
+        rf"{re.escape(workbook_path.suffix)}$"
+    )
+    candidates: list[_BackupCandidate] = []
+    for path in backup_dir.iterdir():
+        if not path.is_file():
+            continue
+        match = pattern.match(path.name)
+        if match is None:
+            continue
+        created_at = _parse_backup_timestamp(match.group(1))
+        if created_at is None:
+            continue
+        try:
+            size_bytes = path.stat().st_size
+        except OSError:
+            continue
+        candidates.append(
+            _BackupCandidate(
+                path=path,
+                created_at=created_at,
+                size_bytes=size_bytes,
+            )
+        )
+    return candidates
+
+
+def _parse_backup_timestamp(value: str) -> datetime | None:
+    """Parse the timestamp embedded in ConnLab-owned backup filenames."""
+    try:
+        return datetime.strptime(value, "%Y%m%d_%H%M%S_%f")
+    except ValueError:
+        return None
+
+
+def _unlink_backup(path: Path) -> bool:
+    """Remove a stale backup without making cleanup a write blocker."""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        return False
+    return True
 
 
 def _lock_file_name(workbook_path: Path) -> str:
