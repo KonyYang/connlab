@@ -274,17 +274,29 @@ function LtrWorkbookSyncPanel({
             </ul>
           ) : null}
           {!isBlocked ? (
-            <dl className="runtime-console-ltr-sync-values">
-              {preview.columns.map((column) => (
-                <div key={`${column.column}-${column.field_name}`}>
-                  <dt>
-                    {column.field_name}
-                    <span>{column.column}</span>
-                  </dt>
-                  <dd>{formatPreviewValue(column.value)}</dd>
-                </div>
-              ))}
-            </dl>
+            <>
+              <p className="runtime-console-ltr-sync-note">
+                Review the current LTR workbook row before updating it.
+              </p>
+              <table className="runtime-console-ltr-sync-comparison">
+                <thead>
+                  <tr>
+                    <th scope="col">Field</th>
+                    <th scope="col">Current LTR workbook</th>
+                    <th scope="col">Value to write</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.comparison_values.map((value) => (
+                    <tr key={value.field_name}>
+                      <th scope="row">{value.label}</th>
+                      <td>{formatPreviewValue(value.current_value)}</td>
+                      <td>{formatPreviewValue(value.pending_value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           ) : null}
           <div className="runtime-console-ltr-sync-actions">
             {!isBlocked ? (
@@ -293,7 +305,7 @@ function LtrWorkbookSyncPanel({
                 onClick={onCommit}
                 disabled={!canCommit || commitLoading}
               >
-                {commitLoading ? "Updating..." : "Confirm LTR update"}
+                {commitLoading ? "Updating..." : "Confirm update"}
               </button>
             ) : null}
             <button type="button" onClick={onCancel} disabled={commitLoading}>

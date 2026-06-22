@@ -1644,6 +1644,13 @@ export type LtrWorkbookBasicInformationSyncColumn = {
   value: unknown;
 };
 
+export type LtrWorkbookBasicInformationSyncComparisonValue = {
+  field_name: string;
+  label: string;
+  current_value: unknown;
+  pending_value: unknown;
+};
+
 export type LtrWorkbookBasicInformationSyncPreview = {
   status: string;
   project_id: string;
@@ -1652,6 +1659,7 @@ export type LtrWorkbookBasicInformationSyncPreview = {
   target_sheet: string | null;
   target_row: number | null;
   columns: LtrWorkbookBasicInformationSyncColumn[];
+  comparison_values: LtrWorkbookBasicInformationSyncComparisonValue[];
   confirmed_basic_information_version: number | null;
   confirmed_basic_information_source_signature_hash: string | null;
   blockers: string[];

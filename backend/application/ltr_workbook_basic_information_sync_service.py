@@ -72,6 +72,7 @@ class LtrWorkbookBasicInformationSyncPreview:
     target_row: int | None
     row_data: LtrWorkbookRowData | None
     columns: tuple[LtrWorkbookWriteColumnPreview, ...]
+    comparison_values: tuple["LtrWorkbookBasicInformationSyncComparisonValue", ...]
     confirmed_basic_information_version: int | None
     confirmed_basic_information_source_signature_hash: str | None
     blockers: tuple[str, ...] = ()
@@ -81,6 +82,16 @@ class LtrWorkbookBasicInformationSyncPreview:
     def status(self) -> str:
         """Return the typed preview state."""
         return "blocked" if self.blockers else "ready"
+
+
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookBasicInformationSyncComparisonValue:
+    """Current workbook value and pending Basic Information value for one field."""
+
+    field_name: str
+    label: str
+    current_value: object
+    pending_value: object
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +213,7 @@ class LtrWorkbookBasicInformationSyncService:
             ltr_number=ltr.ltr_number,
             row_number=existing.row_number,
         )
+        columns = _column_previews(row_data)
         return LtrWorkbookBasicInformationSyncPreview(
             project_id=project_id,
             ltr_number=ltr.ltr_number,
@@ -209,7 +221,11 @@ class LtrWorkbookBasicInformationSyncService:
             target_sheet=existing.sheet_name,
             target_row=existing.row_number,
             row_data=row_data,
-            columns=_column_previews(row_data),
+            columns=columns,
+            comparison_values=_comparison_values(
+                current_row=existing.values,
+                pending_columns=columns,
+            ),
             confirmed_basic_information_version=basic_information.version,
             confirmed_basic_information_source_signature_hash=(
                 basic_information.source_signature_hash
@@ -295,6 +311,7 @@ def _blocked_preview(
         target_row=None,
         row_data=None,
         columns=(),
+        comparison_values=(),
         confirmed_basic_information_version=None,
         confirmed_basic_information_source_signature_hash=None,
         blockers=(blocker,),
@@ -312,25 +329,6 @@ def _ensure_ready_preview(preview: LtrWorkbookBasicInformationSyncPreview) -> No
 def _column_previews(
     row_data: LtrWorkbookRowData,
 ) -> tuple[LtrWorkbookWriteColumnPreview, ...]:
-    field_names = (
-        "month",
-        "total",
-        "monthly_number",
-        "dl_number",
-        "project_type",
-        "description_pn",
-        "test_item",
-        "test_type_in_sheet",
-        "requested_by",
-        "location",
-        "project_leader",
-        "test_result",
-        "failed_item",
-        "sample_deposition",
-        "sub_contract",
-        "test_fee",
-        "remarks_po",
-    )
     return tuple(
         LtrWorkbookWriteColumnPreview(
             column=chr(ord("A") + index),
@@ -338,8 +336,29 @@ def _column_previews(
             value=value,
         )
         for index, (field_name, value) in enumerate(
-            zip(field_names, row_data.as_excel_row(), strict=True)
+            zip(_LTR_ROW_FIELD_NAMES, row_data.as_excel_row(), strict=True)
         )
+    )
+
+
+def _comparison_values(
+    *,
+    current_row: tuple[object, ...],
+    pending_columns: tuple[LtrWorkbookWriteColumnPreview, ...],
+) -> tuple[LtrWorkbookBasicInformationSyncComparisonValue, ...]:
+    current_by_field = {
+        field_name: current_row[index] if index < len(current_row) else None
+        for index, field_name in enumerate(_LTR_ROW_FIELD_NAMES)
+    }
+    pending_by_field = {column.field_name: column.value for column in pending_columns}
+    return tuple(
+        LtrWorkbookBasicInformationSyncComparisonValue(
+            field_name=field_name,
+            label=label,
+            current_value=current_by_field.get(field_name),
+            pending_value=pending_by_field.get(field_name),
+        )
+        for field_name, label in _LTR_SYNC_COMPARISON_FIELDS
     )
 
 
@@ -384,3 +403,38 @@ def _project_type_to_ltr_value(project_type: str) -> str:
             f"Project Type has no LTR workbook mapping: {project_type}"
         )
     return mapped
+
+
+_LTR_ROW_FIELD_NAMES = (
+    "month",
+    "total",
+    "monthly_number",
+    "dl_number",
+    "project_type",
+    "description_pn",
+    "test_item",
+    "test_type_in_sheet",
+    "requested_by",
+    "location",
+    "project_leader",
+    "test_result",
+    "failed_item",
+    "sample_deposition",
+    "sub_contract",
+    "test_fee",
+    "remarks_po",
+)
+
+_LTR_SYNC_COMPARISON_FIELDS = (
+    ("test_result", "Test Result"),
+    ("test_fee", "Test Fee"),
+    ("sub_contract", "Sub-contract"),
+    ("remarks_po", "Remarks (PO)"),
+    ("location", "Location"),
+    ("sample_deposition", "Sample deposition"),
+    ("project_type", "Project Type"),
+    ("test_type_in_sheet", "Test Type"),
+    ("requested_by", "Requested by"),
+    ("project_leader", "Project Leader"),
+    ("failed_item", "Failed item"),
+)

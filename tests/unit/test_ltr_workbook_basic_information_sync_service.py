@@ -38,6 +38,16 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert preview.row_data.location == "Dongguan"
     assert preview.row_data.project_leader == "Even Yang"
     assert preview.row_data.sub_contract == "No"
+    comparison_by_field = {
+        value.field_name: value for value in preview.comparison_values
+    }
+    assert comparison_by_field["test_result"].label == "Test Result"
+    assert comparison_by_field["test_result"].current_value == "In progress"
+    assert comparison_by_field["test_result"].pending_value is None
+    assert comparison_by_field["test_fee"].current_value == "1200"
+    assert comparison_by_field["test_fee"].pending_value is None
+    assert comparison_by_field["location"].current_value == "Suzhou"
+    assert comparison_by_field["location"].pending_value == "Dongguan"
     assert session.find_calls == [("DL-2026-05-011", ("2026",))]
     assert session.appended == []
 
@@ -91,6 +101,7 @@ def test_preview_blocks_without_confirmed_basic_information() -> None:
         "Confirm Basic Information before synchronizing LTR workbook.",
     )
     assert preview.columns == ()
+    assert preview.comparison_values == ()
 
 
 def test_preview_blocks_when_existing_ltr_row_is_missing() -> None:
@@ -167,7 +178,30 @@ def _service(
     session = _FakeWorkbookSession(
         rows_by_sheet
         if rows_by_sheet is not None
-        else {"2026": [("May", 1, 1, "DL-2026-05-001"), ("May", 2, 2, "DL-2026-05-011")]}
+        else {
+            "2026": [
+                ("May", 1, 1, "DL-2026-05-001"),
+                (
+                    "May",
+                    2,
+                    2,
+                    "DL-2026-05-011",
+                    "NPD",
+                    "Old P/N",
+                    "Old testing",
+                    "Old type",
+                    "Old requester",
+                    "Suzhou",
+                    "Old leader",
+                    "In progress",
+                    "Old failed item",
+                    "Old sample deposition",
+                    "Yes",
+                    "1200",
+                    "Old PO",
+                ),
+            ]
+        }
     )
     snapshot = _basic_information() if basic_information == "__default__" else basic_information
     transaction_gateway = _FakeTransactionGateway(session)

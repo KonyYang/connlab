@@ -170,6 +170,20 @@ describe("ProjectBasicInformationSummaryCard", () => {
         { column: "J", field_name: "Test Result", value: "OK" },
         { column: "P", field_name: "Test Fee", value: "12531" },
       ],
+      comparison_values: [
+        {
+          field_name: "test_result",
+          label: "Test Result",
+          current_value: "In progress",
+          pending_value: "OK",
+        },
+        {
+          field_name: "test_fee",
+          label: "Test Fee",
+          current_value: "1200",
+          pending_value: "12531",
+        },
+      ],
       confirmed_basic_information_version: 1,
       confirmed_basic_information_source_signature_hash: "hash-1",
       blockers: [],
@@ -201,10 +215,15 @@ describe("ProjectBasicInformationSummaryCard", () => {
     expect(await screen.findByText("LTR workbook update preview")).toBeTruthy();
     expect(screen.getByText("P:\\LTR\\LTR.xlsx")).toBeTruthy();
     expect(screen.getByText("2026 row 42")).toBeTruthy();
+    expect(screen.getByText("Current LTR workbook")).toBeTruthy();
+    expect(screen.getByText("Value to write")).toBeTruthy();
     expect(screen.getAllByText("Test Result").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("In progress").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("OK")).toBeTruthy();
+    expect(screen.getByText("1200")).toBeTruthy();
+    expect(screen.getByText("12531")).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "Confirm LTR update" }));
+    await user.click(screen.getByRole("button", { name: "Confirm update" }));
 
     expect(commitLtrWorkbookBasicInformationSyncMock).toHaveBeenCalledWith("P1", {
       operator_confirmed: true,
@@ -229,6 +248,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       target_sheet: null,
       target_row: null,
       columns: [],
+      comparison_values: [],
       confirmed_basic_information_version: 1,
       confirmed_basic_information_source_signature_hash: "hash-1",
       blockers: ["The registered LTR row was not found in the configured workbook."],
@@ -248,7 +268,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
 
     expect(await screen.findByText("LTR workbook update is blocked")).toBeTruthy();
     expect(screen.getByText("The registered LTR row was not found in the configured workbook.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Confirm LTR update" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm update" })).toBeNull();
   });
 
   it("maps workbook lock and stale preview errors to operator copy", async () => {
@@ -280,6 +300,14 @@ describe("ProjectBasicInformationSummaryCard", () => {
       target_sheet: "2026",
       target_row: 42,
       columns: [{ column: "J", field_name: "Test Result", value: "OK" }],
+      comparison_values: [
+        {
+          field_name: "test_result",
+          label: "Test Result",
+          current_value: "In progress",
+          pending_value: "OK",
+        },
+      ],
       confirmed_basic_information_version: 1,
       confirmed_basic_information_source_signature_hash: "hash-1",
       blockers: [],
@@ -290,7 +318,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Update LTR" }));
-    await user.click(await screen.findByRole("button", { name: "Confirm LTR update" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm update" }));
 
     expect(
       await screen.findByText("Basic Information changed after preview. Refresh before updating LTR.")

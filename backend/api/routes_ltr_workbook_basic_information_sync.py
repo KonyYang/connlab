@@ -28,6 +28,15 @@ class LtrWorkbookBasicInformationSyncColumnResponse(BaseModel):
     value: object
 
 
+class LtrWorkbookBasicInformationSyncComparisonValueResponse(BaseModel):
+    """One business-field current-vs-pending preview row."""
+
+    field_name: str
+    label: str
+    current_value: object
+    pending_value: object
+
+
 class LtrWorkbookBasicInformationSyncPreviewResponse(BaseModel):
     """LTR workbook Basic Information sync preview response."""
 
@@ -38,6 +47,7 @@ class LtrWorkbookBasicInformationSyncPreviewResponse(BaseModel):
     target_sheet: str | None
     target_row: int | None
     columns: list[LtrWorkbookBasicInformationSyncColumnResponse]
+    comparison_values: list[LtrWorkbookBasicInformationSyncComparisonValueResponse]
     confirmed_basic_information_version: int | None
     confirmed_basic_information_source_signature_hash: str | None
     blockers: list[str]
@@ -156,6 +166,15 @@ def _preview_response(
                 value=column.value,
             )
             for column in preview.columns
+        ],
+        comparison_values=[
+            LtrWorkbookBasicInformationSyncComparisonValueResponse(
+                field_name=value.field_name,
+                label=value.label,
+                current_value=value.current_value,
+                pending_value=value.pending_value,
+            )
+            for value in preview.comparison_values
         ],
         confirmed_basic_information_version=preview.confirmed_basic_information_version,
         confirmed_basic_information_source_signature_hash=(

@@ -8,6 +8,7 @@ from backend.api.dependencies import get_ltr_workbook_basic_information_sync_ser
 from backend.api.main import app
 from backend.application.ltr_workbook_basic_information_sync_service import (
     LtrWorkbookBasicInformationSyncError,
+    LtrWorkbookBasicInformationSyncComparisonValue,
     LtrWorkbookBasicInformationSyncPreview,
     LtrWorkbookBasicInformationSyncResult,
 )
@@ -35,6 +36,12 @@ def test_ltr_workbook_basic_information_sync_preview_api_returns_context() -> No
         assert payload["confirmed_basic_information_version"] == 7
         assert payload["confirmed_basic_information_source_signature_hash"] == "hash-7"
         assert payload["columns"][3]["field_name"] == "dl_number"
+        assert payload["comparison_values"][0] == {
+            "field_name": "test_result",
+            "label": "Test Result",
+            "current_value": "In progress",
+            "pending_value": "OK",
+        }
         assert fake.preview_project_id == "P1"
     finally:
         app.dependency_overrides.clear()
@@ -173,6 +180,7 @@ class _FakeSyncService:
                 target_row=None,
                 row_data=None,
                 columns=(),
+                comparison_values=(),
                 confirmed_basic_information_version=None,
                 confirmed_basic_information_source_signature_hash=None,
                 blockers=(
@@ -251,6 +259,14 @@ def _preview(project_id: str) -> LtrWorkbookBasicInformationSyncPreview:
                     strict=True,
                 )
             )
+        ),
+        comparison_values=(
+            LtrWorkbookBasicInformationSyncComparisonValue(
+                field_name="test_result",
+                label="Test Result",
+                current_value="In progress",
+                pending_value="OK",
+            ),
         ),
         confirmed_basic_information_version=7,
         confirmed_basic_information_source_signature_hash="hash-7",
