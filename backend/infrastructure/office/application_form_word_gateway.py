@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
+from backend.infrastructure.office.application_form_header_ltr_xml import (
+    normalize_header_ltr_layout,
+)
 from backend.infrastructure.office.models import (
     WordSection2FieldChange,
     WordSection2WriteResult,
@@ -33,6 +37,10 @@ def write_application_form_fields_with_com(
     pythoncom.CoInitialize()
     word = None
     document = None
+    result: WordSection2WriteResult | None = None
+    ltr_value = _field_value(fields, "ltr_number")
+    if ltr_value:
+        normalize_header_ltr_layout(path, ltr_value)
     try:
         word = win32com.client.DispatchEx("Word.Application")
         word.Visible = False
@@ -46,7 +54,6 @@ def write_application_form_fields_with_com(
         unchanged: list[WordSection2FieldChange] = []
         warnings: list[str] = []
 
-        ltr_value = _field_value(fields, "ltr_number")
         if ltr_value:
             _append_verified_change(
                 _write_header_ltr_with_com(document, ltr_value),
@@ -63,7 +70,7 @@ def write_application_form_fields_with_com(
                 continue
             cell, label, location = target
             old_value = _com_clean(getattr(cell.Range, "Text", ""))
-            if _body_value_matches(old_value, str(new_value)):
+            if _field_value_matches(field_key, old_value, str(new_value)):
                 unchanged.append(
                     WordSection2FieldChange(field_key, label, old_value, str(new_value), location)
                 )
@@ -73,7 +80,7 @@ def write_application_form_fields_with_com(
             if write_warning:
                 _handle_field_warning(field_key, f"{field_key}: {write_warning}", warnings)
                 continue
-            if not _body_value_matches(visible_value, str(new_value)):
+            if not _field_value_matches(field_key, visible_value, str(new_value)):
                 _handle_field_warning(
                     field_key,
                     (
@@ -89,7 +96,7 @@ def write_application_form_fields_with_com(
 
         if changed:
             document.Save()
-        return WordSection2WriteResult(
+        result = WordSection2WriteResult(
             changed_fields=tuple(changed),
             unchanged_fields=tuple(unchanged),
             warnings=tuple(warnings),
@@ -100,6 +107,11 @@ def write_application_form_fields_with_com(
         if word is not None:
             word.Quit()
         pythoncom.CoUninitialize()
+    if ltr_value:
+        normalize_header_ltr_layout(path, ltr_value)
+    if result is None:  # pragma: no cover - defensive guard
+        raise RuntimeError("Application Form Word write-back did not produce a result.")
+    return result
 
 
 def drop_duplicate_application_form_aliases(fields: dict[str, str]) -> None:
@@ -177,7 +189,7 @@ def _write_header_table_ltr(
         if "lab test request number" not in normalize_label(text):
             continue
         old_value = _header_ltr_visible_value(cell)
-        if _header_value_matches(text, value):
+        if _body_value_matches(old_value, value) and _header_ltr_is_normalized(cell, value):
             return WordSection2FieldChange(
                 "ltr_number",
                 "Lab Test Request Number",
@@ -186,8 +198,8 @@ def _write_header_table_ltr(
                 f"{location_prefix}.cell[{row_index},{column_index}]",
             )
         _replace_header_ltr_value(cell, value)
-        visible = _com_clean(getattr(cell.Range, "Text", ""))
-        if not _header_value_matches(visible, value):
+        visible = _header_ltr_visible_value(cell)
+        if not _body_value_matches(visible, value):
             raise ValueError(
                 "Application Form header LTR read-back mismatch: "
                 f"expected {value!r}, got {visible!r}"
@@ -348,8 +360,86 @@ def _select_dropdown_value(control, value: str) -> bool:
 def _replace_header_ltr_value(cell, value: str) -> None:
     """Replace the header LTR visible value while preserving page text."""
     paragraphs = _com_iter(cell.Range.Paragraphs)
+    bounds = _header_ltr_bounds(paragraphs)
+    if bounds is None:
+        raise ValueError("Application Form header LTR safe replacement point not found.")
+    label_index, page_index = bounds
+    middle = paragraphs[label_index + 1 : page_index]
+    non_empty = [
+        (index, paragraph)
+        for index, paragraph in enumerate(middle, start=label_index + 1)
+        if _com_clean(getattr(paragraph.Range, "Text", ""))
+    ]
+    if len(non_empty) > 1:
+        raise ValueError("Application Form header LTR value is ambiguous.")
+    if middle:
+        if non_empty:
+            value_index, value_paragraph = non_empty[0]
+            before_value = paragraphs[label_index + 1 : value_index]
+            if before_value:
+                _set_paragraph_text(before_value[0], "")
+                for paragraph in before_value[1:]:
+                    if not _try_delete_paragraph(paragraph):
+                        raise ValueError(
+                            "Application Form header LTR spacer could not be normalized."
+                        )
+            else:
+                value_paragraph.Range.InsertBefore("\r")
+            _set_paragraph_text(value_paragraph, value)
+            after_value = paragraphs[value_index + 1 : page_index]
+        else:
+            _set_paragraph_text(middle[0], "")
+            paragraphs[page_index].Range.InsertBefore(f"{value}\r")
+            after_value = middle[1:]
+        for paragraph in after_value:
+            if not _try_delete_paragraph(paragraph):
+                raise ValueError("Application Form header LTR value paragraph could not be normalized.")
+        _remove_blank_paragraphs_after_header_page(cell)
+        return
+    paragraphs[page_index].Range.InsertBefore(f"\r{value}\r")
+    _remove_blank_paragraphs_after_header_page(cell)
+
+
+def _header_ltr_visible_value(cell) -> str:
+    """Return the visible value currently between the LTR label and page text."""
+    paragraphs = _com_iter(cell.Range.Paragraphs)
+    bounds = _header_ltr_bounds(paragraphs)
+    if bounds is None:
+        return ""
+    label_index, page_index = bounds
+    values = [
+        _com_clean(getattr(paragraph.Range, "Text", ""))
+        for paragraph in paragraphs[label_index + 1 : page_index]
+    ]
+    non_empty = [value for value in values if value]
+    if len(non_empty) != 1:
+        return ""
+    return clean_word_text(non_empty[0])
+
+
+def _header_ltr_is_normalized(cell, value: str) -> bool:
+    paragraphs = _com_iter(cell.Range.Paragraphs)
+    bounds = _header_ltr_bounds(paragraphs)
+    if bounds is None:
+        return False
+    label_index, page_index = bounds
+    middle = paragraphs[label_index + 1 : page_index]
+    if (
+        len(middle) != 2
+        or _com_clean(getattr(middle[0].Range, "Text", ""))
+        or not _body_value_matches(
+            _com_clean(getattr(middle[1].Range, "Text", "")),
+            value,
+        )
+    ):
+        return False
+    return not any(
+        not _com_clean(getattr(paragraph.Range, "Text", ""))
+        for paragraph in paragraphs[page_index + 1 :]
+    )
+
+def _header_ltr_bounds(paragraphs: list[object]) -> tuple[int, int] | None:
     label_index = None
-    page_index = None
     for index, paragraph in enumerate(paragraphs):
         text = _com_clean(getattr(paragraph.Range, "Text", ""))
         normalized = normalize_label(text)
@@ -357,32 +447,32 @@ def _replace_header_ltr_value(cell, value: str) -> None:
             label_index = index
             continue
         if label_index is not None and normalized.startswith("page"):
-            page_index = index
-            break
-    if label_index is None or page_index is None:
-        raise ValueError("Application Form header LTR safe replacement point not found.")
-    for index in range(page_index - 1, label_index, -1):
-        paragraphs[index].Range.Delete()
-    paragraphs[page_index].Range.InsertBefore(f"{value}\r")
+            return label_index, index
+    return None
 
 
-def _header_ltr_visible_value(cell) -> str:
-    """Return the visible value currently between the LTR label and page text."""
-    values: list[str] = []
-    seen_label = False
-    for paragraph in _com_iter(cell.Range.Paragraphs):
-        text = _com_clean(getattr(paragraph.Range, "Text", ""))
-        normalized = normalize_label(text)
-        if not text:
+def _set_paragraph_text(paragraph: object, value: str) -> None:
+    paragraph.Range.Text = f"{value}\r"
+
+
+def _try_delete_paragraph(paragraph: object) -> bool:
+    try:
+        paragraph.Range.Delete()
+    except Exception:
+        return False
+    return True
+
+
+def _remove_blank_paragraphs_after_header_page(cell) -> None:
+    paragraphs = _com_iter(cell.Range.Paragraphs)
+    bounds = _header_ltr_bounds(paragraphs)
+    if bounds is None:
+        return
+    _label_index, page_index = bounds
+    for paragraph in paragraphs[page_index + 1 :]:
+        if _com_clean(getattr(paragraph.Range, "Text", "")):
             continue
-        if "lab test request number" in normalized:
-            seen_label = True
-            continue
-        if seen_label and normalized.startswith("page"):
-            break
-        if seen_label:
-            values.append(text)
-    return clean_word_text(" ".join(values))
+        _try_delete_paragraph(paragraph)
 
 
 def _append_verified_change(
@@ -390,7 +480,6 @@ def _append_verified_change(
     changed: list[WordSection2FieldChange],
     unchanged: list[WordSection2FieldChange],
 ) -> None:
-    """Append a verified update to changed or unchanged collections."""
     if _body_value_matches(update.old_value, update.new_value):
         unchanged.append(update)
     else:
@@ -398,7 +487,6 @@ def _append_verified_change(
 
 
 def _handle_missing_field(field_key: str, warnings: list[str]) -> None:
-    """Record or raise for a missing mapped field."""
     _handle_field_warning(
         field_key,
         f"Application Form field location not found: {field_key}",
@@ -407,7 +495,6 @@ def _handle_missing_field(field_key: str, warnings: list[str]) -> None:
 
 
 def _handle_field_warning(field_key: str, message: str, warnings: list[str]) -> None:
-    """Raise for critical fields and warn for optional fields."""
     if field_key in APPLICATION_FORM_CRITICAL_FIELDS:
         raise ValueError(message)
     warnings.append(message)
@@ -452,13 +539,32 @@ def _field_value(fields: dict[str, str], *keys: str) -> str:
 
 
 def _header_value_matches(actual: str, expected: str) -> bool:
-    """Compare header text after extracting mixed label/value text."""
-    return clean_word_text(expected).casefold() in clean_word_text(actual).casefold()
+    return _body_value_matches(actual, expected)
+
+
+def _field_value_matches(field_key: str, actual: str, expected: str) -> bool:
+    """Compare a visible field value, allowing Word date-control display formats."""
+    if _body_value_matches(actual, expected):
+        return True
+    if field_key not in {"received_date", "estimated_completion_date"}:
+        return False
+    actual_date = _parse_date_value(actual)
+    expected_date = _parse_date_value(expected)
+    return actual_date is not None and actual_date == expected_date
 
 
 def _body_value_matches(actual: str, expected: str) -> bool:
-    """Compare body target values exactly after Word whitespace cleanup."""
     return clean_word_text(actual).casefold() == clean_word_text(expected).casefold()
+
+
+def _parse_date_value(value: str):
+    text = clean_word_text(value)
+    for date_format in ("%d %b %Y", "%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(text, date_format).date()
+        except ValueError:
+            continue
+    return None
 
 
 def _com_clean(value: object) -> str:

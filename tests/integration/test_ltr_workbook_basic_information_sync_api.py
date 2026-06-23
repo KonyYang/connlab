@@ -36,11 +36,17 @@ def test_ltr_workbook_basic_information_sync_preview_api_returns_context() -> No
         assert payload["confirmed_basic_information_version"] == 7
         assert payload["confirmed_basic_information_source_signature_hash"] == "hash-7"
         assert payload["columns"][3]["field_name"] == "dl_number"
-        assert payload["comparison_values"][0] == {
-            "field_name": "test_result",
-            "label": "Test Result",
-            "current_value": "In progress",
-            "pending_value": "OK",
+        assert [value["field_name"] for value in payload["comparison_values"][:4]] == [
+            "project_type",
+            "description_pn",
+            "test_item",
+            "test_type_in_sheet",
+        ]
+        assert payload["comparison_values"][1] == {
+            "field_name": "description_pn",
+            "label": "Description P/N",
+            "current_value": "Old P/N",
+            "pending_value": "Coolpower HDF 3.40mm pin",
         }
         assert fake.preview_project_id == "P1"
     finally:
@@ -261,6 +267,30 @@ def _preview(project_id: str) -> LtrWorkbookBasicInformationSyncPreview:
             )
         ),
         comparison_values=(
+            LtrWorkbookBasicInformationSyncComparisonValue(
+                field_name="project_type",
+                label="Project Type",
+                current_value="NPD",
+                pending_value="NPD",
+            ),
+            LtrWorkbookBasicInformationSyncComparisonValue(
+                field_name="description_pn",
+                label="Description P/N",
+                current_value="Old P/N",
+                pending_value="Coolpower HDF 3.40mm pin",
+            ),
+            LtrWorkbookBasicInformationSyncComparisonValue(
+                field_name="test_item",
+                label="Test Item",
+                current_value="Old testing",
+                pending_value="Qualification Testing",
+            ),
+            LtrWorkbookBasicInformationSyncComparisonValue(
+                field_name="test_type_in_sheet",
+                label="Test Type",
+                current_value="Old type",
+                pending_value="Partial Qualification",
+            ),
             LtrWorkbookBasicInformationSyncComparisonValue(
                 field_name="test_result",
                 label="Test Result",

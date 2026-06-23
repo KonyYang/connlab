@@ -95,9 +95,9 @@ export function ProjectBasicInformationSummaryCard({
   }
 
   return (
-    <section className="runtime-console-basic-information" aria-label="Project Basic Information">
+    <section className="runtime-console-basic-information" aria-label="LTR Information">
       <div className="runtime-console-card-header">
-        <p className="eyebrow">Basic Information</p>
+        <p className="eyebrow">LTR Information</p>
         {showStatusBadge ? (
           <strong className={`runtime-console-basic-information-status status-${basicInformation?.status ?? "none"}`}>
             {loading ? "Loading" : statusLabel}
@@ -242,9 +242,12 @@ function LtrWorkbookSyncPanel({
       ) : null}
       {preview && !previewLoading ? (
         <>
-          <strong>
-            {isBlocked ? "LTR workbook update is blocked" : "LTR workbook update preview"}
-          </strong>
+          <div className="runtime-console-ltr-sync-heading">
+            <strong>
+              {isBlocked ? "LTR workbook update is blocked" : "LTR workbook update preview"}
+            </strong>
+            <span>{preview.ltr_number}</span>
+          </div>
           <dl className="runtime-console-ltr-sync-context">
             <div>
               <dt>Workbook</dt>
@@ -253,10 +256,6 @@ function LtrWorkbookSyncPanel({
             <div>
               <dt>Target row</dt>
               <dd>{targetLabel}</dd>
-            </div>
-            <div>
-              <dt>LTR</dt>
-              <dd>{preview.ltr_number}</dd>
             </div>
           </dl>
           {preview.blockers.length > 0 ? (
@@ -275,9 +274,6 @@ function LtrWorkbookSyncPanel({
           ) : null}
           {!isBlocked ? (
             <>
-              <p className="runtime-console-ltr-sync-note">
-                Review the current LTR workbook row before updating it.
-              </p>
               <table className="runtime-console-ltr-sync-comparison">
                 <thead>
                   <tr>

@@ -2325,9 +2325,26 @@
   padding-top: 10px;
 }
 
-.runtime-console-ltr-sync-panel > strong {
+.runtime-console-ltr-sync-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.runtime-console-ltr-sync-heading strong {
   color: var(--color-ink);
   font-size: 13px;
+}
+
+.runtime-console-ltr-sync-heading span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: auto;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .runtime-console-ltr-sync-error {
@@ -2381,12 +2398,6 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--color-ink);
-  font-size: 12px;
-}
-
-.runtime-console-ltr-sync-note {
-  margin: 0;
-  color: var(--color-ink-muted);
   font-size: 12px;
 }
 

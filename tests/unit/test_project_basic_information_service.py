@@ -13,7 +13,14 @@ from backend.application.project_basic_information_service import (
     ProjectBasicInformationService,
     SaveProjectBasicInformationDraftCommand,
 )
-from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
+from backend.domain import (
+    ApplicationForm,
+    LtrRecord,
+    LtrStatus,
+    Project,
+    ProjectStatus,
+    SampleInfo,
+)
 
 
 def test_existing_project_without_records_returns_assembled_unconfirmed_draft() -> None:
@@ -24,6 +31,9 @@ def test_existing_project_without_records_returns_assembled_unconfirmed_draft() 
     assert result.status == "unconfirmed"
     assert result.draft.values["dl_number"] == "DL-2026-05-011"
     assert result.draft.values["project_type"] == "NPD"
+    assert result.draft.values["description_pn"] == (
+        "Coolpower HDF:PN-001, Shield:PN-002"
+    )
     assert result.draft.values["requested_by"] == "MP Cao"
     assert result.draft.values["phone"] == "1234"
     assert result.latest_confirmed is None
@@ -38,6 +48,7 @@ def test_saved_draft_values_survive_later_source_changes() -> None:
         project_store=projects,
         ltr_store=ltrs,
         application_form_store=forms,
+        sample_store=_SampleInfoStore(),
         basic_information_store=records,
         clock=lambda: "2026-06-20T09:00:00+08:00",
         id_factory=_id_factory(),
@@ -107,6 +118,7 @@ def test_changed_sources_after_confirmation_mark_needs_review_without_mutation()
         project_store=projects,
         ltr_store=ltrs,
         application_form_store=forms,
+        sample_store=_SampleInfoStore(),
         basic_information_store=records,
         clock=lambda: "2026-06-20T09:00:00+08:00",
         id_factory=_id_factory(),
@@ -154,6 +166,7 @@ def test_source_assembly_keeps_application_test_type_separate_from_sheet_test_ty
         project_store=_ProjectStore(),
         ltr_store=ltrs,
         application_form_store=_ApplicationFormStore(),
+        sample_store=_SampleInfoStore(),
         basic_information_store=_BasicInformationStore(),
         clock=lambda: "2026-06-20T09:00:00+08:00",
         id_factory=_id_factory(),
@@ -196,6 +209,7 @@ def test_new_sheet_test_type_source_marks_existing_confirmed_snapshot_needs_revi
         project_store=_ProjectStore(),
         ltr_store=ltrs,
         application_form_store=_ApplicationFormStore(),
+        sample_store=_SampleInfoStore(),
         basic_information_store=records,
         clock=lambda: "2026-06-20T09:00:00+08:00",
         id_factory=_id_factory(),
@@ -257,6 +271,7 @@ def _service(records: _BasicInformationStore | None = None) -> ProjectBasicInfor
         project_store=_ProjectStore(),
         ltr_store=_LtrStore(),
         application_form_store=_ApplicationFormStore(),
+        sample_store=_SampleInfoStore(),
         basic_information_store=records or _BasicInformationStore(),
         clock=lambda: "2026-06-20T09:00:00+08:00",
         id_factory=_id_factory(),
@@ -330,6 +345,24 @@ def _form(
     )
 
 
+def _sample(
+    *,
+    sample_id: str = "S1",
+    product_name: str = "Coolpower HDF",
+    part_number: str = "PN-001",
+) -> SampleInfo:
+    return SampleInfo(
+        sample_id=sample_id,
+        project_id="P1",
+        product_name=product_name,
+        part_number=part_number,
+        lot_or_traceability="LOT-1",
+        material="Base material",
+        plating="Contact plating",
+        housing_material="Housing material",
+    )
+
+
 class _ProjectStore:
     def __init__(self) -> None:
         self.project = _project()
@@ -361,6 +394,17 @@ class _ApplicationFormStore:
 
     def list_by_project(self, project_id: str) -> list[ApplicationForm]:
         return [form for form in self.forms if form.project_id == project_id]
+
+
+class _SampleInfoStore:
+    def __init__(self) -> None:
+        self.samples = [
+            _sample(),
+            _sample(sample_id="S2", product_name="Shield", part_number="PN-002"),
+        ]
+
+    def list_by_project(self, project_id: str) -> list[SampleInfo]:
+        return [sample for sample in self.samples if sample.project_id == project_id]
 
 
 def _ltr_notes(test_type_in_sheet: str) -> str:

@@ -11,7 +11,8 @@ from backend.application.project_identity import (
     select_registered_ltr,
     setup_payload_from_ltr_notes,
 )
-from backend.domain import ApplicationForm, LtrRecord, Project
+from backend.application.sample_description import format_description_pn
+from backend.domain import ApplicationForm, LtrRecord, Project, SampleInfo
 
 
 REQUIRED_FIELD_LABELS: dict[str, str] = {
@@ -136,6 +137,13 @@ class ApplicationFormRepositoryPort(Protocol):
         """Return application forms for a project."""
 
 
+class SampleInfoRepositoryPort(Protocol):
+    """Application-form sample info lookup port."""
+
+    def list_by_project(self, project_id: str) -> list[SampleInfo]:
+        """Return sample rows for a project."""
+
+
 class ProjectBasicInformationRepositoryPort(Protocol):
     """Persistence port for Basic Information records."""
 
@@ -175,6 +183,7 @@ class ProjectBasicInformationService:
         project_store: ProjectRepositoryPort,
         ltr_store: LtrRecordRepositoryPort,
         application_form_store: ApplicationFormRepositoryPort,
+        sample_store: SampleInfoRepositoryPort,
         basic_information_store: ProjectBasicInformationRepositoryPort,
         clock: Callable[[], str],
         id_factory: Callable[[], str] | None = None,
@@ -187,6 +196,7 @@ class ProjectBasicInformationService:
         self._source_assembler = ProjectBasicInformationSourceAssembler(
             ltr_store=ltr_store,
             application_form_store=application_form_store,
+            sample_store=sample_store,
         )
 
     def get(self, project_id: str) -> ProjectBasicInformationResult:
@@ -309,15 +319,18 @@ class ProjectBasicInformationSourceAssembler:
         *,
         ltr_store: LtrRecordRepositoryPort,
         application_form_store: ApplicationFormRepositoryPort,
+        sample_store: SampleInfoRepositoryPort,
     ) -> None:
         """Create a source assembler for Project/LTR/ApplicationForm sources."""
         self._ltrs = ltr_store
         self._forms = application_form_store
+        self._samples = sample_store
 
     def assemble(self, project: Project) -> dict[str, ProjectBasicInformationFieldSuggestion]:
         """Return current source suggestions for a project."""
         forms = self._forms.list_by_project(project.project_id)
         latest_form = forms[-1] if forms else None
+        samples = self._samples.list_by_project(project.project_id)
         ltrs = self._ltrs.list_by_project(project.project_id)
         latest_ltr = ltrs[-1] if ltrs else None
         registered_ltr = select_registered_ltr(ltrs)
@@ -331,7 +344,7 @@ class ProjectBasicInformationSourceAssembler:
             ),
             "project_type": ("application_form", latest_form.project_type if latest_form else None),
             "product_description": ("project_identity", project.product_name),
-            "description_pn": ("application_form", latest_form.reference_doc if latest_form else None),
+            "description_pn": ("sample_info", format_description_pn(samples)),
             "test_item": (
                 "application_form",
                 latest_form.requested_testing if latest_form else None,

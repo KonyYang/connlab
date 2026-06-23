@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 from typing import Protocol
 
+from backend.application.sample_description import format_description_pn
 from backend.domain import ApplicationForm, Project, SampleInfo
 from backend.infrastructure.office import LtrWorkbookRowData
 from backend.infrastructure.office.models import LtrWorkbookSnapshot
@@ -121,7 +122,7 @@ class LtrWorkbookWritePreviewService:
             monthly_number=parsed_number.sequence or 0,
             dl_number=parsed_number.normalized,
             project_type=_project_type_to_ltr_value(getattr(form, "project_type", None)),
-            description_pn=_text(command.sample_description) or _sample_description(samples),
+            description_pn=_text(command.sample_description) or format_description_pn(samples),
             test_item=_required_text(command.test_item, "Test Item"),
             test_type=_required_text(command.test_type_in_sheet, "Test Type in sheet"),
             requested_by=_text(project.requestor) or _text(getattr(form, "requester", None)),
@@ -225,15 +226,6 @@ def _warnings(
     elif target_sheet not in snapshot.readable_sheet_names:
         warnings.append(f"Target workbook sheet is not in the snapshot: {target_sheet}")
     return tuple(warnings)
-
-
-def _sample_description(samples: list[SampleInfo]) -> str | None:
-    """Return a fallback sample description from the first sample row."""
-    if not samples:
-        return None
-    sample = samples[0]
-    parts = [sample.product_name, sample.part_number]
-    return " / ".join(part for part in parts if _text(part)) or None
 
 
 def _subcontract_value(form: ApplicationForm | None) -> str | None:

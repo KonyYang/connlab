@@ -31,6 +31,24 @@ from backend.domain import (
 from backend.infrastructure.office import OfficeFacade, WordSection2FieldChange
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 
+_APPLICATION_FORM_WRITE_BACK_FIELDS = {
+    "ltr_number",
+    "lab",
+    "project_leader",
+    "received_date",
+    "estimated_completion_date",
+    "sample_condition",
+}
+
+_APPLICATION_FORM_REQUIRED_LABELS = {
+    "ltr_number": "Lab Test Request Number",
+    "lab": "Lab Performing the Tests",
+    "project_leader": "Lab Personnel Assigned",
+    "received_date": "Date Lab Received Samples",
+    "estimated_completion_date": "Estimated Completion Date",
+    "sample_condition": "Condition of Samples when Received",
+}
+
 
 class ProjectApplicationFormWriteBackError(ValueError):
     """Raised when Project Folder application write-back cannot proceed."""
@@ -343,8 +361,23 @@ def _fields(
     basic_information: ConfirmedBasicInformationSnapshot,
 ) -> dict[str, str]:
     values = application_form_identity(basic_information).fields
-    values["assigned_personnel"] = form.assigned_personnel
-    return {key: value.strip() for key, value in values.items() if value and value.strip()}
+    if not str(values.get("project_leader", "") or "").strip():
+        values["project_leader"] = form.assigned_personnel
+    fields = {
+        key: str(values.get(key, "") or "").strip()
+        for key in _APPLICATION_FORM_WRITE_BACK_FIELDS
+    }
+    missing = [
+        _APPLICATION_FORM_REQUIRED_LABELS[key]
+        for key, value in fields.items()
+        if not value
+    ]
+    if missing:
+        raise ProjectApplicationFormWriteBackError(
+            "Application Form write-back requires confirmed Basic Information: "
+            + ", ".join(missing)
+        )
+    return fields
 
 
 def _ensure_safe_managed_target(

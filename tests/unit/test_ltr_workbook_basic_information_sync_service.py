@@ -31,16 +31,40 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert preview.target_row == 3
     assert preview.row_data.dl_number == "DL-2026-05-011"
     assert preview.row_data.project_type == "NPD"
-    assert preview.row_data.description_pn == "Coolpower HDF 3.40mm pin"
+    assert preview.row_data.description_pn == "Coolpower HDF:PN-001"
     assert preview.row_data.test_item == "Qualification Testing"
     assert preview.row_data.test_type == "Partial Qualification"
     assert preview.row_data.requested_by == "MP Cao"
     assert preview.row_data.location == "Dongguan"
     assert preview.row_data.project_leader == "Even Yang"
     assert preview.row_data.sub_contract == "No"
+    assert [value.field_name for value in preview.comparison_values] == [
+        "project_type",
+        "description_pn",
+        "test_item",
+        "test_type_in_sheet",
+        "requested_by",
+        "location",
+        "project_leader",
+        "test_result",
+        "failed_item",
+        "sample_deposition",
+        "sub_contract",
+        "test_fee",
+        "remarks_po",
+    ]
     comparison_by_field = {
         value.field_name: value for value in preview.comparison_values
     }
+    assert comparison_by_field["project_type"].label == "Project Type"
+    assert comparison_by_field["project_type"].current_value == "NPD"
+    assert comparison_by_field["project_type"].pending_value == "NPD"
+    assert comparison_by_field["description_pn"].label == "Description P/N"
+    assert comparison_by_field["description_pn"].current_value == "Old P/N"
+    assert comparison_by_field["description_pn"].pending_value == "Coolpower HDF:PN-001"
+    assert comparison_by_field["test_item"].label == "Test Item"
+    assert comparison_by_field["test_item"].current_value == "Old testing"
+    assert comparison_by_field["test_item"].pending_value == "Qualification Testing"
     assert comparison_by_field["test_result"].label == "Test Result"
     assert comparison_by_field["test_result"].current_value == "In progress"
     assert comparison_by_field["test_result"].pending_value is None
@@ -88,6 +112,26 @@ def test_preview_blocks_when_sheet_test_type_is_missing_even_if_application_type
     assert preview.status == "blocked"
     assert preview.blockers == (
         "Test Type in sheet is required in confirmed Basic Information.",
+    )
+
+
+def test_preview_blocks_when_description_pn_is_missing_even_if_product_description_exists() -> None:
+    service, _ = _service(
+        basic_information=_basic_information(
+            {
+                "description_pn": "",
+                "product_description": "Product Description must not be used",
+            }
+        )
+    )
+
+    preview = service.preview(
+        PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1")
+    )
+
+    assert preview.status == "blocked"
+    assert preview.blockers == (
+        "Description P/N is required in confirmed Basic Information.",
     )
 
 
@@ -318,6 +362,7 @@ def _basic_information(
         "dl_number": "DL-2026-05-011",
         "project_type": "New Product Development",
         "product_description": "Coolpower HDF 3.40mm pin",
+        "description_pn": "Coolpower HDF:PN-001",
         "test_item": "Qualification Testing",
         "test_type": "Application Type",
         "test_type_in_sheet": "Partial Qualification",

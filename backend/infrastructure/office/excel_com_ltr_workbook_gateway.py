@@ -258,6 +258,7 @@ class ExcelComLTRWorkbookWriteSession:
         sheet.Range(f"A{target_row}:Q{target_row}").Value = [
             adjusted_row_data.as_excel_row()
         ]
+        _fit_description_pn_cell(sheet, target_row)
         _merge_adjacent_month_cells(sheet, target_row, adjusted_row_data.month)
         return LtrWorkbookRowPointer(
             sheet_name=sheet_name,
@@ -276,6 +277,7 @@ class ExcelComLTRWorkbookWriteSession:
             raise LtrWorkbookWriteError("LTR workbook write row must be 2 or greater.")
         sheet = self._handle.workbook.Worksheets.Item(sheet_name)
         sheet.Range(f"A{row_number}:Q{row_number}").Value = [row_data.as_excel_row()]
+        _fit_description_pn_cell(sheet, row_number)
         return LtrWorkbookRowPointer(
             sheet_name=sheet_name,
             row_number=row_number,
@@ -633,6 +635,18 @@ def _set_validation_formula(cell, formula: str) -> None:
     except Exception as exc:
         raise LtrWorkbookWriteError(
             f"Unable to update J-column dropdown source formula: {formula}. "
+            f"Excel error: {_exception_summary(exc)}"
+        ) from exc
+
+
+def _fit_description_pn_cell(sheet, row_number: int) -> None:
+    """Allow the LTR Description P/N cell to wrap and expand the row height."""
+    try:
+        sheet.Range(f"F{row_number}").WrapText = True
+        sheet.Rows(row_number).AutoFit()
+    except Exception as exc:
+        raise LtrWorkbookWriteError(
+            f"Unable to auto-fit LTR Description P/N cell on row {row_number}. "
             f"Excel error: {_exception_summary(exc)}"
         ) from exc
 

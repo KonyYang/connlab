@@ -355,6 +355,7 @@ def get_project_basic_information_service(
         project_store=ProjectRepository(session),
         ltr_store=LtrRecordRepository(session),
         application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
         basic_information_store=ProjectBasicInformationRepository(session),
         clock=lambda: datetime.now(timezone.utc).isoformat(),
     )

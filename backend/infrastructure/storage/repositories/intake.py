@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import literal_column, select
 from sqlalchemy.orm import Session
 
 from backend.domain import ApplicationForm, SampleInfo
@@ -108,7 +108,7 @@ class SampleInfoRepository:
         rows = self._session.scalars(
             select(SampleInfoModel)
             .where(SampleInfoModel.project_id == project_id)
-            .order_by(SampleInfoModel.sample_id)
+            .order_by(literal_column("rowid"))
         ).all()
         return [_sample_to_domain(row) for row in rows]
 

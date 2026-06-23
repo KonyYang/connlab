@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from backend.application.sample_description import format_description_pn
 from backend.domain import ApplicationForm, FileAsset, Project, SampleInfo
 from backend.modules.ltr import (
     LtrFieldDefinition,
@@ -291,13 +292,9 @@ def _first_value(*values: tuple[str | None, str | None]) -> tuple[str | None, st
 
 
 def _sample_description(samples: list[SampleInfo]) -> tuple[str | None, str | None]:
-    """Return part number and product name from the first sample."""
-    if not samples:
-        return None, None
-    sample = samples[0]
-    parts = [sample.part_number, sample.product_name]
-    value = " / ".join(part for part in parts if part)
-    return _string_value(value, "sample_info.part_number")
+    """Return sample Description P/N text in application-form source order."""
+    value = format_description_pn(samples)
+    return _string_value(value, "sample_info.description_pn")
 
 
 def _sample_product(samples: list[SampleInfo]) -> tuple[str | None, str | None]:

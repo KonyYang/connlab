@@ -119,6 +119,8 @@ def test_excel_com_write_session_uses_batch_read_and_row_write() -> None:
     assert rows == (("Apr", 30, 30, "DL-2026-04-030"),)
     assert sheet.range_reads == ["A2:Q2"]
     assert sheet.range_writes == ["A3:Q3", "A2:A3"]
+    assert sheet.wrap_text_cells == ["F3"]
+    assert sheet.row_autofit_calls == [3]
     assert pointer.row_number == 3
     assert office.handle.saved is True
     assert office.handle.closed is True
@@ -157,6 +159,8 @@ def test_excel_com_write_session_appends_at_first_blank_ltr_number_cell() -> Non
     sheet = office.handle.workbook.Worksheets.Item("2026")
     assert pointer.row_number == 3
     assert sheet.range_writes == ["A3:Q3", "A2:A3"]
+    assert sheet.wrap_text_cells == ["F3"]
+    assert sheet.row_autofit_calls == [3]
     assert sheet.last_written_rows[0][1] == 31
     assert sheet.last_written_rows[0][2] == 31
     assert sheet.last_written_rows[0][3] == "DL-2026-04-031"
@@ -192,6 +196,8 @@ def test_excel_com_write_session_finds_and_replaces_existing_ltr_row() -> None:
     sheet = office.handle.workbook.Worksheets.Item("2026")
     assert pointer.row_number == 2
     assert sheet.range_writes == ["A2:Q2"]
+    assert sheet.wrap_text_cells == ["F2"]
+    assert sheet.row_autofit_calls == [2]
     assert sheet.last_written_rows[0][4] == "Replacement"
 
 
@@ -497,6 +503,8 @@ class _FakeSheet:
         self.range_reads: list[str] = []
         self.range_writes: list[str] = []
         self.clear_calls: list[str] = []
+        self.wrap_text_cells: list[str] = []
+        self.row_autofit_calls: list[int] = []
         self.last_written_rows: list[list[object]] = []
         self._validations: dict[tuple[int, int], _FakeValidation] = {
             (2, 10): _FakeValidation(
@@ -525,6 +533,9 @@ class _FakeSheet:
 
     def Cells(self, row: int, column: int):
         return _FakeCell(self, row, column)
+
+    def Rows(self, row: int):
+        return _FakeSheetRow(self, row)
 
     def Copy(self, *, After) -> None:
         after_name = After.Name
@@ -559,6 +570,17 @@ class _FakeRange:
     def __init__(self, sheet: _FakeSheet, address: str) -> None:
         self._sheet = sheet
         self._address = address
+        self._wrap_text = False
+
+    @property
+    def WrapText(self) -> bool:
+        return self._wrap_text
+
+    @WrapText.setter
+    def WrapText(self, value: bool) -> None:
+        self._wrap_text = bool(value)
+        if self._wrap_text:
+            self._sheet.wrap_text_cells.append(self._address)
 
     @property
     def Value(self):
@@ -651,6 +673,15 @@ class _FakeCell:
     @property
     def Validation(self):
         return self._sheet._validations.get((self._row, self._column))
+
+
+class _FakeSheetRow:
+    def __init__(self, sheet: _FakeSheet, row: int) -> None:
+        self._sheet = sheet
+        self._row = row
+
+    def AutoFit(self) -> None:
+        self._sheet.row_autofit_calls.append(self._row)
 
 
 class _FakeValidation:

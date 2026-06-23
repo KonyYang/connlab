@@ -221,6 +221,45 @@ def test_store_application_form_with_sample_rows(tmp_path: Path) -> None:
         engine.dispose()
 
 
+def test_sample_repository_preserves_inserted_sample_row_order(tmp_path: Path) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    try:
+        with session_factory() as session:
+            ProjectRepository(session).create(
+                Project(
+                    project_id="project-1",
+                    project_no="PRJ-001",
+                    product_name="Connector",
+                    requestor="Alice",
+                )
+            )
+            samples = (
+                SampleInfo(
+                    sample_id="sample-z",
+                    project_id="project-1",
+                    product_name="Top row",
+                    part_number="PN-TOP",
+                ),
+                SampleInfo(
+                    sample_id="sample-a",
+                    project_id="project-1",
+                    product_name="Bottom row",
+                    part_number="PN-BOTTOM",
+                ),
+            )
+
+            for sample in samples:
+                SampleInfoRepository(session).create(sample)
+            session.commit()
+
+            assert SampleInfoRepository(session).list_by_project("project-1") == list(samples)
+    finally:
+        engine.dispose()
+
+
 def test_store_precheck_result_with_issues(tmp_path: Path) -> None:
     engine = _create_temp_engine(tmp_path)
     init_db(engine)

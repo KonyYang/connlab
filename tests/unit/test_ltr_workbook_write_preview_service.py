@@ -114,6 +114,27 @@ def test_ltr_workbook_write_preview_requires_setup_values(tmp_path: Path) -> Non
         service.preview_project("P1", _command(test_item=" "))
 
 
+def test_ltr_workbook_write_preview_falls_back_to_ordered_sample_description(
+    tmp_path: Path,
+) -> None:
+    """Preview fallback keeps application-form sample row order and delimiters."""
+    service = LtrWorkbookWritePreviewService(
+        project_store=_ProjectStore(),
+        application_form_store=_FormStore(),
+        sample_store=_SampleStore(),
+        workbook_settings=LtrWorkbookSettings(path=tmp_path / "LTR_number.xls"),
+    )
+
+    preview = service.preview_project(
+        "P1",
+        _command(sample_description=" "),
+    )
+
+    assert preview.row_data.description_pn == (
+        "Connector:PN-001, Shield:PN-002"
+    )
+
+
 def test_ltr_workbook_write_preview_maps_innovation_and_lab_activities_to_adm(
     tmp_path: Path,
 ) -> None:
@@ -150,13 +171,14 @@ def _command(
     *,
     ltr_number: str = "DL-2026-05-007",
     test_item: str = "Qualification bend testing",
+    sample_description: str = "CoolPower connector samples",
 ) -> PreviewLtrWorkbookWriteCommand:
     """Return a complete preview command."""
     return PreviewLtrWorkbookWriteCommand(
         ltr_number=ltr_number,
         plan_date=date(2026, 5, 7),
         test_item=test_item,
-        sample_description="CoolPower connector samples",
+        sample_description=sample_description,
         location="AIPG Guangzhou",
         test_type_in_sheet="Qualification",
         project_leader="Alice",
@@ -210,6 +232,12 @@ class _SampleStore:
                 project_id=project_id,
                 product_name="Connector",
                 part_number="PN-001",
+            ),
+            SampleInfo(
+                sample_id="S2",
+                project_id=project_id,
+                product_name="Shield",
+                part_number="PN-002",
             )
         ]
 

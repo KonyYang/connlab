@@ -220,7 +220,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     const folderActionCard = screen.getByLabelText("Folder Action");
-    const basicInformationCard = screen.getByLabelText("Project Basic Information");
+    const basicInformationCard = screen.getByLabelText("LTR Information");
     expect(basicInformationCard).toBeTruthy();
     expect(
       Boolean(

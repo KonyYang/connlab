@@ -6,19 +6,6 @@ APPLICATION_FORM_FIELD_LABELS: dict[str, tuple[str, ...]] = {
     "project_type": ("project type",),
     "test_type": ("test type",),
     "test_sample_status": ("test sample status", "sample status"),
-    "description_pn": ("description p n", "description pn", "p n"),
-    "product_description": ("product description", "product name", "product"),
-    "test_item": (
-        "test item",
-        "requested testing",
-        "requested testing description",
-        "test to be performed",
-        "tests to be performed",
-    ),
-    "applicable_specifications": (
-        "applicable specifications",
-        "applicable specification",
-    ),
     "requester": ("requester", "requestor", "requested by", "requested by requestor"),
     "requested_by": ("requester", "requestor", "requested by", "requested by requestor"),
     "phone": ("phone", "telephone", "tel"),
@@ -45,13 +32,6 @@ APPLICATION_FORM_FIELD_LABELS: dict[str, tuple[str, ...]] = {
         "test engineer",
         "tested by",
     ),
-    "assigned_personnel": (
-        "lab personnel assigned",
-        "assigned personnel",
-        "assigned engineer",
-        "test engineer",
-        "tested by",
-    ),
     "received_date": (
         "date lab received samples",
         "received date",
@@ -72,17 +52,13 @@ APPLICATION_FORM_NEXT_ROW_FIELDS = {
     "project_type",
     "test_type",
     "test_sample_status",
-    "test_item",
-    "applicable_specifications",
 }
 
 APPLICATION_FORM_CRITICAL_FIELDS = {
     "ltr_number",
-    "requested_by",
-    "requester",
-    "location",
-    "manufacturing_site",
-    "test_item",
-    "applicable_specifications",
     "lab",
+    "project_leader",
+    "received_date",
+    "estimated_completion_date",
+    "sample_condition",
 }

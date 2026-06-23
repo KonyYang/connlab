@@ -49,11 +49,12 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     assert result.status == "updated"
     assert result.target_path == target
     values = _read_table_values(target)
-    assert values["Product Description"] == "Connector from Basic Info"
-    assert values["Tests to be Performed"] == "BI Qualification Test"
-    assert values["Requester"] == "Requester BI"
-    assert values["E-mail of Requestor"] == "requester@example.test"
-    assert values["Received Date"] == "20 Jun 2026"
+    assert values["LTR Number"] == "DL-001"
+    assert values["Lab Performing the Tests"] == "Dongguan"
+    assert values["Lab Personnel Assigned"] == "BI Leader"
+    assert values["Date Lab Received Samples"] == "20 Jun 2026"
+    assert values["Estimated Completion Date"] == "30 Jun 2026"
+    assert values["Condition of Samples when Received"] == "Acceptable"
     assert output_store.commands
     assert str(target) == output_store.commands[-1].output_path
     assert output_store.commands[-1].source_context_signature == (
@@ -152,18 +153,70 @@ def test_application_form_write_back_uses_basic_information_without_project_fall
 
     service.write_back("P1")
 
+    assert "description_pn" not in office.fields
     assert "product_description" not in office.fields
-    assert office.fields["description_pn"] == "101-BI"
-    assert office.fields["test_item"] == "BI Test Item"
-    assert office.fields["requested_by"] == "BI Requester"
-    assert office.fields["requester"] == "BI Requester"
-    assert office.fields["location"] == "BI Dongguan"
-    assert office.fields["manufacturing_site"] == "BI Dongguan"
+    assert "test_item" not in office.fields
+    assert "applicable_specifications" not in office.fields
+    assert "requested_by" not in office.fields
+    assert "requester" not in office.fields
+    assert "location" not in office.fields
+    assert "manufacturing_site" not in office.fields
     assert office.fields["project_leader"] == "BI Leader"
-    assert office.fields["applicable_specifications"] == "BI Spec"
+    assert "assigned_personnel" not in office.fields
     assert "Connector" not in office.fields.values()
     assert "Qualification Testing" not in office.fields.values()
     assert "MP Cao" not in office.fields.values()
+
+
+def test_application_form_write_back_uses_parsed_assigned_personnel_only_as_fallback(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    office = _CapturingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(assigned_personnel="Parsed Engineer"),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(
+            _basic_information_with_blank_project_leader()
+        ),
+        output_record_service=_OutputStore(),
+        office=office,
+    )
+
+    service.write_back("P1")
+
+    assert office.fields["project_leader"] == "Parsed Engineer"
+    assert "assigned_personnel" not in office.fields
+
+
+def test_application_form_write_back_blocks_missing_required_value_before_office(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    office = _RejectingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information_missing_lab()),
+        output_record_service=_OutputStore(),
+        office=office,
+    )
+
+    try:
+        service.write_back("P1")
+    except ProjectApplicationFormWriteBackError as exc:
+        assert "Lab Performing the Tests" in str(exc)
+    else:
+        raise AssertionError("Expected required Basic Information blocker.")
+    assert office.calls == 0
 
 
 def test_application_form_write_back_blocks_gateway_critical_failure(
@@ -267,16 +320,15 @@ def _write_docx(path: Path) -> None:
     table = document.add_table(rows=0, cols=2)
     for label in (
         "LTR Number",
-        "Product Description",
-        "Requester",
-        "E-mail of Requestor",
-        "Received Date",
+        "Lab Performing the Tests",
+        "Lab Personnel Assigned",
+        "Date Lab Received Samples",
+        "Estimated Completion Date",
+        "Condition of Samples when Received",
     ):
         row = table.add_row()
         row.cells[0].text = label
         row.cells[1].text = ""
-    test_table = document.add_table(rows=2, cols=1)
-    test_table.cell(0, 0).text = "Tests to be Performed"
     document.save(path)
 
 
@@ -286,9 +338,6 @@ def _read_table_values(path: Path) -> dict[str, str]:
         row.cells[0].text.strip(): row.cells[1].text.strip()
         for row in document.tables[0].rows
     }
-    values[document.tables[1].cell(0, 0).text.strip()] = (
-        document.tables[1].cell(1, 0).text.strip()
-    )
     return values
 
 
@@ -323,6 +372,9 @@ class _WorkspaceStore:
 
 
 class _ApplicationFormStore:
+    def __init__(self, *, assigned_personnel: str = "") -> None:
+        self.assigned_personnel = assigned_personnel
+
     def list_by_project(self, project_id: str) -> list[ApplicationForm]:
         return [
             ApplicationForm(
@@ -334,6 +386,7 @@ class _ApplicationFormStore:
                 email="mp@example.test",
                 requested_testing="Qualification Testing",
                 received_date="2026-06-01",
+                assigned_personnel=self.assigned_personnel,
             )
         ]
 
@@ -457,6 +510,10 @@ def _basic_information() -> ConfirmedBasicInformationSnapshot:
             "requested_by": "Requester BI",
             "requestor_email": "requester@example.test",
             "date_lab_received_samples": "20 Jun 2026",
+            "estimated_completion_date": "30 Jun 2026",
+            "condition_of_samples_when_received": "Acceptable",
+            "lab_performing_tests": "Dongguan",
+            "project_leader": "BI Leader",
         },
         source_signature='{"dl_number":"DL-001"}',
         confirmed_at="2026-06-20T00:00:00+00:00",
@@ -477,8 +534,47 @@ def _basic_information_with_conflicting_sources() -> ConfirmedBasicInformationSn
             "location": "BI Dongguan",
             "project_leader": "BI Leader",
             "applicable_specifications": "BI Spec",
+            "lab_performing_tests": "BI Lab",
+            "date_lab_received_samples": "21 Jun 2026",
+            "estimated_completion_date": "30 Jun 2026",
+            "condition_of_samples_when_received": "Acceptable",
         },
         source_signature='{"dl_number":"DL-001","version":3}',
+        confirmed_at="2026-06-21T00:00:00+00:00",
+        confirmed_by="Lab User",
+    )
+
+
+def _basic_information_with_blank_project_leader() -> ConfirmedBasicInformationSnapshot:
+    return ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=4,
+        values={
+            "dl_number": "DL-001",
+            "project_leader": "",
+            "lab_performing_tests": "Dongguan",
+            "date_lab_received_samples": "20 Jun 2026",
+            "estimated_completion_date": "30 Jun 2026",
+            "condition_of_samples_when_received": "Acceptable",
+        },
+        source_signature='{"dl_number":"DL-001","version":4}',
+        confirmed_at="2026-06-21T00:00:00+00:00",
+        confirmed_by="Lab User",
+    )
+
+
+def _basic_information_missing_lab() -> ConfirmedBasicInformationSnapshot:
+    return ConfirmedBasicInformationSnapshot(
+        project_id="P1",
+        version=5,
+        values={
+            "dl_number": "DL-001",
+            "project_leader": "BI Leader",
+            "date_lab_received_samples": "20 Jun 2026",
+            "estimated_completion_date": "30 Jun 2026",
+            "condition_of_samples_when_received": "Acceptable",
+        },
+        source_signature='{"dl_number":"DL-001","version":5}',
         confirmed_at="2026-06-21T00:00:00+00:00",
         confirmed_by="Lab User",
     )

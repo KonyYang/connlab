@@ -40,7 +40,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    expect(screen.getByText("Basic Information")).toBeTruthy();
+    expect(screen.getByText("LTR Information")).toBeTruthy();
     expect(screen.getByText("Unconfirmed")).toBeTruthy();
     expect(screen.getByText("Confirm from Basic Information")).toBeTruthy();
     expect(screen.getByText("Project Leader")).toBeTruthy();
@@ -172,16 +172,82 @@ describe("ProjectBasicInformationSummaryCard", () => {
       ],
       comparison_values: [
         {
+          field_name: "project_type",
+          label: "Project Type",
+          current_value: "NPD",
+          pending_value: "NPD",
+        },
+        {
+          field_name: "description_pn",
+          label: "Description P/N",
+          current_value: "Old P/N",
+          pending_value: "Coolpower HDF 3.40mm pin",
+        },
+        {
+          field_name: "test_item",
+          label: "Test Item",
+          current_value: "Old testing",
+          pending_value: "Qualification Testing",
+        },
+        {
+          field_name: "test_type_in_sheet",
+          label: "Test Type",
+          current_value: "Old type",
+          pending_value: "Partial Qualification",
+        },
+        {
+          field_name: "requested_by",
+          label: "Requested by",
+          current_value: "Old requester",
+          pending_value: "MP Cao",
+        },
+        {
+          field_name: "location",
+          label: "Location",
+          current_value: "Suzhou",
+          pending_value: "Dongguan",
+        },
+        {
+          field_name: "project_leader",
+          label: "Project Leader",
+          current_value: "Old leader",
+          pending_value: "Even Yang",
+        },
+        {
           field_name: "test_result",
           label: "Test Result",
           current_value: "In progress",
           pending_value: "OK",
         },
         {
+          field_name: "failed_item",
+          label: "Failed item",
+          current_value: "Old failed item",
+          pending_value: "None",
+        },
+        {
+          field_name: "sample_deposition",
+          label: "Sample deposition",
+          current_value: "Old sample deposition",
+          pending_value: "Send Back",
+        },
+        {
+          field_name: "sub_contract",
+          label: "Sub-contract",
+          current_value: "Yes",
+          pending_value: "No",
+        },
+        {
           field_name: "test_fee",
           label: "Test Fee",
           current_value: "1200",
           pending_value: "12531",
+        },
+        {
+          field_name: "remarks_po",
+          label: "Remarks (PO)",
+          current_value: "Old PO",
+          pending_value: "PO-123",
         },
       ],
       confirmed_basic_information_version: 1,
@@ -200,7 +266,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       confirmed_basic_information_source_signature_hash: "hash-1",
     });
 
-    render(
+    const { container } = render(
       <ProjectBasicInformationSummaryCard
         projectId="P1"
         basicInformation={response("confirmed", confirmedRecord())}
@@ -213,10 +279,40 @@ describe("ProjectBasicInformationSummaryCard", () => {
 
     expect(previewLtrWorkbookBasicInformationSyncMock).toHaveBeenCalledWith("P1");
     expect(await screen.findByText("LTR workbook update preview")).toBeTruthy();
+    const previewHeading = container.querySelector(".runtime-console-ltr-sync-heading");
+    expect(previewHeading?.textContent).toContain("LTR workbook update preview");
+    expect(previewHeading?.textContent).toContain("DL-2026-05-011");
     expect(screen.getByText("P:\\LTR\\LTR.xlsx")).toBeTruthy();
     expect(screen.getByText("2026 row 42")).toBeTruthy();
+    const contextLabels = Array.from(
+      container.querySelectorAll(".runtime-console-ltr-sync-context dt")
+    ).map((item) => item.textContent);
+    expect(contextLabels).toEqual(["Workbook", "Target row"]);
+    expect(
+      screen.queryByText("Review the current LTR workbook row before updating it.")
+    ).toBeNull();
     expect(screen.getByText("Current LTR workbook")).toBeTruthy();
     expect(screen.getByText("Value to write")).toBeTruthy();
+    const previewFields = Array.from(
+      container.querySelectorAll(".runtime-console-ltr-sync-comparison tbody th")
+    ).map((item) => item.textContent);
+    expect(previewFields).toEqual([
+      "Project Type",
+      "Description P/N",
+      "Test Item",
+      "Test Type",
+      "Requested by",
+      "Location",
+      "Project Leader",
+      "Test Result",
+      "Failed item",
+      "Sample deposition",
+      "Sub-contract",
+      "Test Fee",
+      "Remarks (PO)",
+    ]);
+    expect(screen.getAllByText("Description P/N").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Test Item").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Test Result").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("In progress").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("OK")).toBeTruthy();

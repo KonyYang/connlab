@@ -280,8 +280,8 @@ def _row_data_from_basic_information(
         ),
         description_pn=_required(
             values,
-            ("product_description", "description_pn"),
-            "Product Description",
+            ("description_pn",),
+            "Description P/N",
         ),
         test_item=_required(values, ("test_item",), "Test Item"),
         test_type=_required(values, ("test_type_in_sheet",), "Test Type in sheet"),
@@ -426,15 +426,17 @@ _LTR_ROW_FIELD_NAMES = (
 )
 
 _LTR_SYNC_COMPARISON_FIELDS = (
-    ("test_result", "Test Result"),
-    ("test_fee", "Test Fee"),
-    ("sub_contract", "Sub-contract"),
-    ("remarks_po", "Remarks (PO)"),
-    ("location", "Location"),
-    ("sample_deposition", "Sample deposition"),
     ("project_type", "Project Type"),
+    ("description_pn", "Description P/N"),
+    ("test_item", "Test Item"),
     ("test_type_in_sheet", "Test Type"),
     ("requested_by", "Requested by"),
+    ("location", "Location"),
     ("project_leader", "Project Leader"),
+    ("test_result", "Test Result"),
     ("failed_item", "Failed item"),
+    ("sample_deposition", "Sample deposition"),
+    ("sub_contract", "Sub-contract"),
+    ("test_fee", "Test Fee"),
+    ("remarks_po", "Remarks (PO)"),
 )
