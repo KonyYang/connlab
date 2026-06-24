@@ -68,6 +68,26 @@ def test_register_output_requires_draft_for_current_status() -> None:
         )
 
 
+def test_register_output_allows_context_bound_current_system_output_without_draft() -> None:
+    service = _service()
+
+    record = service.register_output(
+        RegisterProjectOutputCommand(
+            project_id="P1",
+            output_kind=ProjectOutputKind.FEE_EVALUATION,
+            status=ProjectOutputStatus.CURRENT,
+            source=ProjectOutputSource.SYSTEM_GENERATED,
+            output_path="C:/fee.xls",
+            draft_id=None,
+            source_context_signature="basic:1@hash|fee-output:matrix_basic",
+        )
+    )
+
+    assert record.status is ProjectOutputStatus.CURRENT
+    assert record.source is ProjectOutputSource.SYSTEM_GENERATED
+    assert record.draft_id is None
+
+
 def test_status_summary_marks_stale_when_active_draft_version_changes() -> None:
     store = _OutputStore()
     draft = _draft(version=1)

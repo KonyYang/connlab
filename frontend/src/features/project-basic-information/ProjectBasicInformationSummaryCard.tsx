@@ -10,8 +10,6 @@ import {
   selectBasicInformationMissingLabels,
   selectBasicInformationStatusLabel,
   selectChangedSourceFieldLabels,
-  selectConfirmedViewItems,
-  selectWorkbenchSummaryItems,
 } from "./basicInformationSelectors";
 
 type ProjectBasicInformationSummaryCardProps = {
@@ -27,7 +25,6 @@ export function ProjectBasicInformationSummaryCard({
   loading,
   error,
 }: ProjectBasicInformationSummaryCardProps): ReactElement {
-  const [expanded, setExpanded] = useState(false);
   const [ltrPreview, setLtrPreview] =
     useState<LtrWorkbookBasicInformationSyncPreview | null>(null);
   const [ltrPreviewLoading, setLtrPreviewLoading] = useState(false);
@@ -38,15 +35,17 @@ export function ProjectBasicInformationSummaryCard({
   const statusLabel = selectBasicInformationStatusLabel(basicInformation);
   const missingLabels = selectBasicInformationMissingLabels(basicInformation);
   const changedLabels = selectChangedSourceFieldLabels(basicInformation);
-  const summaryItems = selectWorkbenchSummaryItems(basicInformation);
-  const confirmedItems = selectConfirmedViewItems(basicInformation);
   const hasConfirmed = Boolean(basicInformation?.latest_confirmed);
   const canUpdateLtr = basicInformation?.status === "confirmed" && hasConfirmed;
   const showStatusBadge = loading || basicInformation?.status !== "confirmed";
+  const hasLtrPreviewChanges = Boolean(
+    ltrPreview?.comparison_values.some((value) => value.changed)
+  );
   const canCommitLtrPreview =
     ltrPreview?.status === "ready" &&
     ltrPreview.confirmed_basic_information_version !== null &&
-    ltrPreview.confirmed_basic_information_source_signature_hash !== null;
+    ltrPreview.confirmed_basic_information_source_signature_hash !== null &&
+    hasLtrPreviewChanges;
 
   async function handlePreviewLtrSync(): Promise<void> {
     if (!canUpdateLtr) {
@@ -96,14 +95,13 @@ export function ProjectBasicInformationSummaryCard({
 
   return (
     <section className="runtime-console-basic-information" aria-label="LTR Information">
-      <div className="runtime-console-card-header">
-        <p className="eyebrow">LTR Information</p>
-        {showStatusBadge ? (
+      {showStatusBadge ? (
+        <div className="runtime-console-card-header">
           <strong className={`runtime-console-basic-information-status status-${basicInformation?.status ?? "none"}`}>
             {loading ? "Loading" : statusLabel}
           </strong>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {error ? <p className="runtime-console-basic-information-error">{error}</p> : null}
       {!loading && !error && !hasConfirmed ? (
         <>
@@ -128,25 +126,8 @@ export function ProjectBasicInformationSummaryCard({
           <p>Confirm from Basic Information</p>
         </>
       ) : null}
-      {!loading && !error && hasConfirmed ? (
-        <>
-          <dl className="runtime-console-basic-information-list is-summary">
-            {summaryItems.map((item) => (
-              <div key={item.key}>
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </>
-      ) : null}
       {!loading && !error ? (
         <div className="runtime-console-basic-information-actions">
-          {hasConfirmed ? (
-            <button type="button" onClick={() => setExpanded((value) => !value)}>
-              {expanded ? "Hide" : "View"}
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={handlePreviewLtrSync}
@@ -157,7 +138,7 @@ export function ProjectBasicInformationSummaryCard({
                 : "Confirm Basic Information before updating LTR."
             }
           >
-            {ltrPreviewLoading ? "Previewing..." : "Update LTR"}
+            {ltrPreviewLoading ? "Previewing..." : "LTR update preview"}
           </button>
         </div>
       ) : null}
@@ -175,19 +156,6 @@ export function ProjectBasicInformationSummaryCard({
             setLtrSyncError(null);
           }}
         />
-      ) : null}
-      {!loading && !error && hasConfirmed && expanded ? (
-        <div className="runtime-console-basic-information-expanded">
-          <strong>All confirmed fields</strong>
-          <dl className="runtime-console-basic-information-list">
-            {confirmedItems.map((item) => (
-              <div key={item.key}>
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
       ) : null}
     </section>
   );
@@ -223,6 +191,7 @@ function LtrWorkbookSyncPanel({
       ? `${preview.target_sheet} row ${preview.target_row}`
       : "-";
   const isBlocked = preview?.status !== "ready";
+  const hasChanges = Boolean(preview?.comparison_values.some((value) => value.changed));
 
   return (
     <div className="runtime-console-ltr-sync-panel" aria-live="polite">
@@ -243,9 +212,6 @@ function LtrWorkbookSyncPanel({
       {preview && !previewLoading ? (
         <>
           <div className="runtime-console-ltr-sync-heading">
-            <strong>
-              {isBlocked ? "LTR workbook update is blocked" : "LTR workbook update preview"}
-            </strong>
             <span>{preview.ltr_number}</span>
           </div>
           <dl className="runtime-console-ltr-sync-context">
@@ -274,6 +240,11 @@ function LtrWorkbookSyncPanel({
           ) : null}
           {!isBlocked ? (
             <>
+              {!hasChanges ? (
+                <p className="runtime-console-ltr-sync-up-to-date">
+                  LTR workbook is already up to date.
+                </p>
+              ) : null}
               <table className="runtime-console-ltr-sync-comparison">
                 <thead>
                   <tr>
@@ -284,7 +255,10 @@ function LtrWorkbookSyncPanel({
                 </thead>
                 <tbody>
                   {preview.comparison_values.map((value) => (
-                    <tr key={value.field_name}>
+                    <tr
+                      key={value.field_name}
+                      className={value.changed ? "is-changed" : undefined}
+                    >
                       <th scope="row">{value.label}</th>
                       <td>{formatPreviewValue(value.current_value)}</td>
                       <td>{formatPreviewValue(value.pending_value)}</td>
@@ -349,6 +323,9 @@ function toLtrSyncOperatorMessage(error: unknown): string {
   }
   if (message.includes("not found") || message.includes("registered ltr row")) {
     return "The registered LTR row was not found in the configured workbook.";
+  }
+  if (message.includes("already up to date")) {
+    return "LTR workbook is already up to date.";
   }
   return "Unable to update the LTR workbook. Check the setup path and try again.";
 }

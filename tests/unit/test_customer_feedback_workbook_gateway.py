@@ -11,6 +11,16 @@ from backend.infrastructure.office.customer_feedback_workbook_gateway import (
 )
 
 
+def test_customer_feedback_workbook_gateway_keeps_python_xlsx_engine() -> None:
+    source = Path(
+        "backend/infrastructure/office/customer_feedback_workbook_gateway.py"
+    ).read_text(encoding="utf-8")
+
+    assert "openpyxl" in source
+    assert "win32com" not in source
+    assert "DispatchEx" not in source
+
+
 def test_customer_feedback_workbook_gateway_copies_template_without_overwriting_source(
     tmp_path: Path,
 ) -> None:

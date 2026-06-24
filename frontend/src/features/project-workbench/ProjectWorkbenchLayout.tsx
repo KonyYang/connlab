@@ -79,6 +79,7 @@ export function ProjectWorkbenchLayout({
     packagePreviewError,
     officialWorkspacePreview,
     officialWorkspaceCreating,
+    officialWorkspaceProgressLabel,
     officialWorkspaceError,
     onCreateOfficialWorkspace,
     officialFolderCheckPreview,
@@ -452,6 +453,9 @@ export function ProjectWorkbenchLayout({
           onOverwrite={() => handleProjectFolderConflictChoice("overwrite_rebuild")}
         />
       ) : null}
+      {officialWorkspaceCreating ? (
+        <ProjectFolderProgressDialog currentStep={officialWorkspaceProgressLabel} />
+      ) : null}
     </section>
   );
 }
@@ -527,6 +531,56 @@ function ProjectFolderConflictDialog({
     </div>
   );
 }
+
+function ProjectFolderProgressDialog({
+  currentStep,
+}: {
+  currentStep: string | null;
+}): ReactElement {
+  const visibleStep = currentStep ?? "Preparing project folder files";
+  return (
+    <div className="runtime-console-modal-backdrop">
+      <section
+        aria-label="Project folder update in progress"
+        aria-live="polite"
+        className="runtime-console-conflict-dialog runtime-console-progress-dialog"
+        role="dialog"
+      >
+        <div className="runtime-console-progress-dialog-indicator" aria-hidden="true" />
+        <div>
+          <h3>Project folder update in progress</h3>
+          <p>
+            ConnLab is preparing the project folder files. Keep this page open until the
+            operation finishes.
+          </p>
+          <dl className="runtime-console-progress-dialog-step">
+            <div>
+              <dt>Current step</dt>
+              <dd>{visibleStep}</dd>
+            </div>
+          </dl>
+          <ul className="runtime-console-progress-dialog-steps" aria-label="Project folder update steps">
+            {PROJECT_FOLDER_PROGRESS_STEPS.map((step) => (
+              <li className={step === visibleStep ? "is-current" : undefined} key={step}>
+                {step}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const PROJECT_FOLDER_PROGRESS_STEPS = [
+  "Creating or updating project folder",
+  "Archiving request materials",
+  "Checking project folder structure",
+  "Updating Customer Feedback Form",
+  "Updating Fee Form",
+  "Updating Test Record",
+  "Updating Application Form",
+];
 
 function deriveFolderTemplateReady(
   template: ProjectRuntimeConsoleModel["folderResources"]["template"]

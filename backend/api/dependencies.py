@@ -974,6 +974,18 @@ class _ReusableFeeFormArtifactReader:
         return None
 
 
+class _FeeFormTemplateContextReader:
+    """Build Fee Form template identity for Required forms reuse context."""
+
+    def __init__(self, templates_dir: Path) -> None:
+        self._templates_dir = templates_dir
+
+    def preview_template_context(self, project_id: str) -> str:
+        """Return Fee Form template path and content hash context."""
+        template = discover_fee_evaluation_template(self._templates_dir)
+        return f"fee-template:{template.resolve()}@sha256:{compute_sha256(template)}"
+
+
 class _RequiredFormsStagingGenerator:
     """Generate Required forms into controlled staging without final output records."""
 
@@ -1097,6 +1109,9 @@ def get_project_folder_required_forms_service(
         ),
         customer_feedback_template_reader=_CustomerFeedbackTemplateReader(
             ExternalResourceRepository(session)
+        ),
+        fee_form_template_context_reader=_FeeFormTemplateContextReader(
+            settings.templates_dir
         ),
         application_form_reader=ApplicationFormRepository(session),
         generator=_RequiredFormsStagingGenerator(

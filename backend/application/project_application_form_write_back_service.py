@@ -106,6 +106,13 @@ class ApplicationFormWordWriter(Protocol):
     ) -> object:
         """Write known application fields into a Word document."""
 
+    def write_word_application_form_fields_with_owned_session(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ) -> object:
+        """Write known application fields inside an Office-owned Word session."""
+
 
 class OutputRecordService(Protocol):
     """Project output registration dependency."""
@@ -195,7 +202,12 @@ class ProjectApplicationFormWriteBackService:
         )
         fields = _fields(project, form, basic_information)
         try:
-            write_result = self._office.write_word_application_form_fields(target, fields)
+            write_result = (
+                self._office.write_word_application_form_fields_with_owned_session(
+                    target,
+                    fields,
+                )
+            )
         except OfficeAutomationUnavailable as exc:
             raise ProjectApplicationFormWriteBackError(str(exc)) from exc
         except ValueError as exc:

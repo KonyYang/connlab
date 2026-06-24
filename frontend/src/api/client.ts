@@ -1649,6 +1649,7 @@ export type LtrWorkbookBasicInformationSyncComparisonValue = {
   label: string;
   current_value: unknown;
   pending_value: unknown;
+  changed: boolean;
 };
 
 export type LtrWorkbookBasicInformationSyncPreview = {

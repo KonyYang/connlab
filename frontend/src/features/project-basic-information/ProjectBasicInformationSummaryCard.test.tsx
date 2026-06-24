@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+﻿import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectBasicInformationResponse } from "../../api/client";
@@ -40,16 +40,16 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    expect(screen.getByText("LTR Information")).toBeTruthy();
+    expect(screen.getByLabelText("LTR Information")).toBeTruthy();
+    expect(screen.queryByText("LTR Information")).toBeNull();
     expect(screen.getByText("Unconfirmed")).toBeTruthy();
     expect(screen.getByText("Confirm from Basic Information")).toBeTruthy();
     expect(screen.getByText("Project Leader")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Update LTR" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("renders compact confirmed LTR summary fields in workbench priority order", async () => {
-    const user = userEvent.setup();
+  it("renders an on-demand confirmed LTR workbook update entry", () => {
     const { container } = render(
       <ProjectBasicInformationSummaryCard
         projectId="P1"
@@ -64,44 +64,17 @@ describe("ProjectBasicInformationSummaryCard", () => {
     ).map((item) => item.textContent);
 
     expect(screen.queryByText("Confirmed")).toBeNull();
-    expect(summaryLabels).toEqual([
-      "Test Result",
-      "Test Fee",
-      "Sub-contract",
-      "Remarks (PO)",
-      "Location",
-      "Sample deposition",
-      "Project Type",
-      "Test Type in sheet",
-      "Requested by",
-      "Project Leader",
-      "Failed item",
-    ]);
-    expect(screen.getByText("In progress")).toBeTruthy();
-    expect(screen.getByText("1630.00")).toBeTruthy();
-    expect(screen.getByText("Yes")).toBeTruthy();
-    expect(screen.getByText("PO-123")).toBeTruthy();
-    expect(screen.getByText("Dongguan")).toBeTruthy();
-    expect(screen.getByText("Send Back")).toBeTruthy();
-    expect(screen.getByText("NPD")).toBeTruthy();
-    expect(screen.getByText("Qualification")).toBeTruthy();
-    expect(screen.getByText("MP Cao")).toBeTruthy();
-    expect(screen.getByText("Even Yang")).toBeTruthy();
-    expect(screen.getByText("None")).toBeTruthy();
+    expect(summaryLabels).toEqual([]);
+    expect(screen.queryByText("In progress")).toBeNull();
+    expect(screen.queryByText("1630.00")).toBeNull();
     expect(screen.queryByText("DL")).toBeNull();
     expect(screen.queryByText("Description P/N")).toBeNull();
     expect(screen.queryByText("Test Item")).toBeNull();
-    expect(screen.getByRole("button", { name: "Update LTR" }).hasAttribute("disabled")).toBe(false);
-
-    await user.click(screen.getByRole("button", { name: "View" }));
-
-    expect(screen.getByText("All confirmed fields")).toBeTruthy();
-    expect(screen.getByText("DL-2026-05-011")).toBeTruthy();
-    expect(screen.getByText("Coolpower HDF")).toBeTruthy();
-    expect(screen.getByText("Qualification Testing")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "View" })).toBeNull();
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(false);
   });
 
-  it("keeps empty workbench priority fields visible", () => {
+  it("does not render empty LTR summary placeholders before preview", () => {
     render(
       <ProjectBasicInformationSummaryCard
         projectId="P1"
@@ -117,11 +90,11 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    expect(screen.getByText("Failed item")).toBeTruthy();
-    expect(screen.getByText("-")).toBeTruthy();
+    expect(screen.queryByText("Failed item")).toBeNull();
+    expect(screen.queryByText("-")).toBeNull();
   });
 
-  it("uses controlled field defaults for older confirmed workbench summaries", () => {
+  it("does not render controlled defaults before preview", () => {
     const values = Object.fromEntries(
       Object.entries(confirmedRecord().values).filter(([key]) => key !== "test_result")
     );
@@ -137,8 +110,8 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    expect(screen.getByText("Test Result")).toBeTruthy();
-    expect(screen.getByText("OK")).toBeTruthy();
+    expect(screen.queryByText("Test Result")).toBeNull();
+    expect(screen.queryByText("OK")).toBeNull();
   });
 
   it("shows needs-review state and changed field count", () => {
@@ -154,7 +127,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
     expect(screen.getByText("Needs review")).toBeTruthy();
     expect(screen.getByText("1 source field changed")).toBeTruthy();
     expect(screen.getByText("Confirm from Basic Information")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Update LTR" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("previews and commits the confirmed Basic Information LTR workbook update", async () => {
@@ -176,78 +149,91 @@ describe("ProjectBasicInformationSummaryCard", () => {
           label: "Project Type",
           current_value: "NPD",
           pending_value: "NPD",
+          changed: false,
         },
         {
           field_name: "description_pn",
           label: "Description P/N",
           current_value: "Old P/N",
           pending_value: "Coolpower HDF 3.40mm pin",
+          changed: true,
         },
         {
           field_name: "test_item",
           label: "Test Item",
           current_value: "Old testing",
           pending_value: "Qualification Testing",
+          changed: true,
         },
         {
           field_name: "test_type_in_sheet",
           label: "Test Type",
           current_value: "Old type",
           pending_value: "Partial Qualification",
+          changed: true,
         },
         {
           field_name: "requested_by",
           label: "Requested by",
           current_value: "Old requester",
           pending_value: "MP Cao",
+          changed: true,
         },
         {
           field_name: "location",
           label: "Location",
           current_value: "Suzhou",
           pending_value: "Dongguan",
+          changed: true,
         },
         {
           field_name: "project_leader",
           label: "Project Leader",
           current_value: "Old leader",
           pending_value: "Even Yang",
+          changed: true,
         },
         {
           field_name: "test_result",
           label: "Test Result",
           current_value: "In progress",
           pending_value: "OK",
+          changed: true,
         },
         {
           field_name: "failed_item",
           label: "Failed item",
           current_value: "Old failed item",
           pending_value: "None",
+          changed: true,
         },
         {
           field_name: "sample_deposition",
           label: "Sample deposition",
           current_value: "Old sample deposition",
           pending_value: "Send Back",
+          changed: true,
         },
         {
           field_name: "sub_contract",
           label: "Sub-contract",
           current_value: "Yes",
           pending_value: "No",
+          changed: true,
         },
         {
           field_name: "test_fee",
           label: "Test Fee",
           current_value: "1200",
           pending_value: "12531",
+          changed: true,
         },
         {
           field_name: "remarks_po",
           label: "Remarks (PO)",
           current_value: "Old PO",
           pending_value: "PO-123",
+          changed: true,
         },
       ],
       confirmed_basic_information_version: 1,
@@ -275,12 +261,12 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(previewLtrWorkbookBasicInformationSyncMock).toHaveBeenCalledWith("P1");
-    expect(await screen.findByText("LTR workbook update preview")).toBeTruthy();
+    expect(await screen.findByText("DL-2026-05-011")).toBeTruthy();
+    expect(screen.queryByText("LTR workbook update preview")).toBeNull();
     const previewHeading = container.querySelector(".runtime-console-ltr-sync-heading");
-    expect(previewHeading?.textContent).toContain("LTR workbook update preview");
     expect(previewHeading?.textContent).toContain("DL-2026-05-011");
     expect(screen.getByText("P:\\LTR\\LTR.xlsx")).toBeTruthy();
     expect(screen.getByText("2026 row 42")).toBeTruthy();
@@ -313,11 +299,12 @@ describe("ProjectBasicInformationSummaryCard", () => {
     ]);
     expect(screen.getAllByText("Description P/N").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Test Item").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Test Result").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("In progress").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Test Result").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("In progress").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("OK")).toBeTruthy();
     expect(screen.getByText("1200")).toBeTruthy();
     expect(screen.getByText("12531")).toBeTruthy();
+    expect(container.querySelectorAll(".runtime-console-ltr-sync-comparison tbody tr.is-changed").length).toBe(12);
 
     await user.click(screen.getByRole("button", { name: "Confirm update" }));
 
@@ -360,11 +347,53 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
-    expect(await screen.findByText("LTR workbook update is blocked")).toBeTruthy();
+    expect(await screen.findByText("DL-2026-05-011")).toBeTruthy();
+    expect(screen.queryByText("LTR workbook update is blocked")).toBeNull();
     expect(screen.getByText("The registered LTR row was not found in the configured workbook.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Confirm update" })).toBeNull();
+  });
+
+  it("disables commit when the LTR workbook already matches Basic Information", async () => {
+    const user = userEvent.setup();
+    previewLtrWorkbookBasicInformationSyncMock.mockResolvedValue({
+      status: "ready",
+      project_id: "P1",
+      ltr_number: "DL-2026-05-011",
+      workbook_path: "P:\\LTR\\LTR.xlsx",
+      target_sheet: "2026",
+      target_row: 42,
+      columns: [{ column: "J", field_name: "Test Result", value: "OK" }],
+      comparison_values: [
+        {
+          field_name: "test_result",
+          label: "Test Result",
+          current_value: "OK",
+          pending_value: "OK",
+          changed: false,
+        },
+      ],
+      confirmed_basic_information_version: 1,
+      confirmed_basic_information_source_signature_hash: "hash-1",
+      blockers: [],
+      warnings: [],
+    });
+
+    render(
+      <ProjectBasicInformationSummaryCard
+        projectId="P1"
+        basicInformation={response("confirmed", confirmedRecord())}
+        loading={false}
+        error={null}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
+
+    expect(await screen.findByText("LTR workbook is already up to date.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Confirm update" }).hasAttribute("disabled")).toBe(true);
+    expect(commitLtrWorkbookBasicInformationSyncMock).not.toHaveBeenCalled();
   });
 
   it("maps workbook lock and stale preview errors to operator copy", async () => {
@@ -382,7 +411,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(
       await screen.findByText("The LTR workbook appears to be open or locked. Close it and retry.")
@@ -402,6 +431,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
           label: "Test Result",
           current_value: "In progress",
           pending_value: "OK",
+          changed: true,
         },
       ],
       confirmed_basic_information_version: 1,
@@ -413,7 +443,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       new Error("Basic Information changed after preview")
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
     await user.click(await screen.findByRole("button", { name: "Confirm update" }));
 
     expect(

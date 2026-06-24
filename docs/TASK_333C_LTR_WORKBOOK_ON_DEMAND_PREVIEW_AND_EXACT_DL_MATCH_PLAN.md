@@ -129,6 +129,19 @@ class LtrWorkbookBasicInformationSyncComparisonValue:
 
 If the existing API response uses Pydantic models in the route layer, mirror the same `changed: bool` field there.
 
+### Comparison Normalization
+
+Compute `changed` from normalized business display values, not raw Python or Excel object identity.
+
+Use the same normalization for `current_value` and `pending_value` before comparing:
+
+- Treat `None`, empty string, and whitespace-only text as the same blank value.
+- Replace non-breaking spaces with normal spaces, trim leading/trailing whitespace, and collapse repeated internal whitespace for text fields.
+- Compare text case-sensitively by default because LTR workbook values are business-visible identifiers; do not silently lower-case DL numbers, names, part numbers, or remarks.
+- Compare numeric values by their business display string when the workbook field is shown as text to the operator, so `12531` and `"12531"` do not become a false difference.
+- Compare date values by canonical `YYYY/MM/DD` display date when a field is a date, so Excel date objects and already-formatted strings do not become a false difference.
+- Preserve the original display values in the response for the table, but base the `changed` flag on the normalized values.
+
 ### No-Difference Preview
 
 When all comparison rows have `changed == False`:
@@ -173,6 +186,12 @@ Keep:
 - short confirmed/unconfirmed guidance
 - visible action button
 - preview result area after the operator clicks the action
+
+Basic Information viewing must remain available outside this card:
+
+- Preserve the existing Workbench top `Basic Information` navigation button as the primary entry to the confirmed Basic Information page.
+- Do not keep a secondary `View` action inside the `LTR Information` card unless implementation proves the top Workbench entry is unavailable.
+- The `LTR Information` card should stay focused on workbook preview/update only.
 
 Suggested button naming:
 
@@ -222,9 +241,11 @@ Add or update tests for:
 Add or update tests for:
 
 - card does not render the summary value list before preview
+- top Workbench `Basic Information` navigation remains available after the LTR card is simplified
 - preview action is visible but disabled before Basic Information confirmation
 - preview action calls the API only when clicked
 - changed rows are highlighted
+- semantically equal blank, numeric, and date display values do not produce false changed rows
 - no-difference preview disables `Confirm update`
 - missing/duplicate exact-row blockers are shown with operator-facing copy
 

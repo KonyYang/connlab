@@ -171,6 +171,8 @@ class WordDocumentGateway:
         self,
         source_path: Path,
         fields: dict[str, str],
+        *,
+        application_form_word_session: object | None = None,
     ) -> WordSection2WriteResult:
         """Write known application fields into visible Word form/table targets."""
         path = Path(source_path)
@@ -185,7 +187,11 @@ class WordDocumentGateway:
         }
         drop_duplicate_application_form_aliases(normalized_fields)
         if application_form_requires_com(path):
-            return write_application_form_fields_with_com(path, normalized_fields)
+            return write_application_form_fields_with_com(
+                path,
+                normalized_fields,
+                word_session=application_form_word_session,
+            )
 
         document = Document(path)
         locations = _locate_labeled_fields(

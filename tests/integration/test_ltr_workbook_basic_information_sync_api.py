@@ -47,6 +47,7 @@ def test_ltr_workbook_basic_information_sync_preview_api_returns_context() -> No
             "label": "Description P/N",
             "current_value": "Old P/N",
             "pending_value": "Coolpower HDF 3.40mm pin",
+            "changed": True,
         }
         assert fake.preview_project_id == "P1"
     finally:
@@ -272,30 +273,35 @@ def _preview(project_id: str) -> LtrWorkbookBasicInformationSyncPreview:
                 label="Project Type",
                 current_value="NPD",
                 pending_value="NPD",
+                changed=False,
             ),
             LtrWorkbookBasicInformationSyncComparisonValue(
                 field_name="description_pn",
                 label="Description P/N",
                 current_value="Old P/N",
                 pending_value="Coolpower HDF 3.40mm pin",
+                changed=True,
             ),
             LtrWorkbookBasicInformationSyncComparisonValue(
                 field_name="test_item",
                 label="Test Item",
                 current_value="Old testing",
                 pending_value="Qualification Testing",
+                changed=True,
             ),
             LtrWorkbookBasicInformationSyncComparisonValue(
                 field_name="test_type_in_sheet",
                 label="Test Type",
                 current_value="Old type",
                 pending_value="Partial Qualification",
+                changed=True,
             ),
             LtrWorkbookBasicInformationSyncComparisonValue(
                 field_name="test_result",
                 label="Test Result",
                 current_value="In progress",
                 pending_value="OK",
+                changed=True,
             ),
         ),
         confirmed_basic_information_version=7,

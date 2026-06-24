@@ -99,12 +99,24 @@ def test_preview_includes_basic_information_context_and_owner_suffix(
     assert preview.confirmed_basic_information_source_signature_hash == (
         "394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
     )
-    assert preview.source_context_signature == (
-        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
-        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
-    )
+    assert preview.source_context_signature == _same_context()
     assert feedback.target_path is not None
     assert feedback.target_path.name == "DL-001 Customer Feedback Form_Even Yang.xlsx"
+
+
+def test_preview_source_context_includes_fee_template_identity(tmp_path: Path) -> None:
+    service = _service(
+        tmp_path,
+        fee_template_reader=_FeeTemplateReader("fee-template:custom@sha256:abc"),
+    )
+
+    preview = service.preview("P1")
+
+    assert preview.source_context_signature == (
+        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
+        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe|"
+        "fee-template:custom@sha256:abc|fee-output:matrix_basic_with_basic_information"
+    )
 
 
 def test_preview_places_test_record_under_submitted_material(tmp_path: Path) -> None:
@@ -300,15 +312,15 @@ def test_generate_reuses_safe_fee_form_artifact_without_calling_generator(
     assert _timing_labels(result) == [
         "required_forms.preview",
         "required_forms.validate_context",
-        "test_record.generate",
-        "test_record.place",
-        "test_record.register_output",
-        "fee_form.reuse_lookup",
-        "fee_form.place",
-        "fee_form.register_output",
         "customer_feedback_form.generate",
         "customer_feedback_form.place",
         "customer_feedback_form.register_output",
+        "fee_form.reuse_lookup",
+        "fee_form.place",
+        "fee_form.register_output",
+        "test_record.generate",
+        "test_record.place",
+        "test_record.register_output",
         "required_forms.total",
     ]
 
@@ -329,6 +341,23 @@ def test_generate_falls_back_to_fee_form_generator_when_reuse_is_unavailable(
     assert generator.basic_information_by_key["fee_form"]["dl_number"] == "DL-001"
     assert _item(result.items, "fee_form").source_path != _final_path(tmp_path, "fee_form")
     assert "fee_form.generate" in _timing_labels(result)
+
+
+def test_generate_registers_context_bound_outputs_as_current_without_active_draft(
+    tmp_path: Path,
+) -> None:
+    output_store = _OutputStatusService(active_draft_id=None)
+    service = _service(tmp_path, output_service=output_store)
+
+    result = service.generate(_ready_command(tmp_path))
+
+    assert result.status == "generated"
+    fee = output_store.latest(ProjectOutputKind.FEE_EVALUATION)
+    assert fee is not None
+    assert fee.status is ProjectOutputStatus.CURRENT
+    assert fee.source is ProjectOutputSource.SYSTEM_GENERATED
+    assert fee.draft_id is None
+    assert fee.source_context_signature == _same_context()
 
 
 def test_generate_blocks_before_copy_when_target_exists(tmp_path: Path) -> None:
@@ -501,7 +530,10 @@ def test_generate_accepts_command_with_only_writable_targets_when_some_items_are
     result = service.generate(command)
 
     assert result.status == "generated"
-    assert _item(result.items, "fee_form").status == "skipped"
+    assert [item.key for item in result.items] == [
+        "customer_feedback_form",
+        "test_record",
+    ]
     assert _item(result.items, "test_record").status == "generated"
     assert _item(result.items, "customer_feedback_form").status == "generated"
 
@@ -521,10 +553,22 @@ def test_generate_refreshes_changed_context_when_managed_target_is_unmodified(
     assert _item(result.items, "fee_form").status == "updated"
     latest = output_store.latest(ProjectOutputKind.FEE_EVALUATION)
     assert latest is not None
-    assert latest.source_context_signature == (
-        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
-        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+    assert latest.source_context_signature == _same_context()
+
+
+def test_generate_rejects_fee_form_reuse_when_template_context_changes(
+    tmp_path: Path,
+) -> None:
+    service = _service(
+        tmp_path,
+        managed_targets={"fee_form": "same_context_unchanged_fingerprint"},
+        fee_template_reader=_FeeTemplateReader("fee-template:changed@sha256:new"),
     )
+
+    preview = service.preview("P1")
+
+    assert preview.status == "ready"
+    assert _item(preview.items, "fee_form").action == "update"
 
 
 def test_generate_conflicts_when_managed_target_changes_between_preview_and_write(
@@ -576,7 +620,11 @@ def test_generate_reports_partial_failure_and_does_not_mark_missing_outputs_curr
     result = service.generate(_ready_command(tmp_path))
 
     assert result.status == "partial"
-    assert output_store.latest(ProjectOutputKind.TEST_RECORD_FORM).status is ProjectOutputStatus.CURRENT
+    assert (
+        output_store.latest(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM).status
+        is ProjectOutputStatus.CURRENT
+    )
+    assert output_store.latest(ProjectOutputKind.TEST_RECORD_FORM) is None
     assert output_store.latest(ProjectOutputKind.FEE_EVALUATION) is None
 
 
@@ -585,14 +633,14 @@ def test_generate_reports_blocked_when_first_final_placement_fails(tmp_path: Pat
     service = _service(
         tmp_path,
         output_service=output_store,
-        file_gateway=_FileGateway(fail_on_key="test_record"),
+        file_gateway=_FileGateway(fail_on_key="customer_feedback_form"),
     )
 
     result = service.generate(_ready_command(tmp_path))
 
     assert result.status == "blocked"
-    assert _item(result.items, "test_record").status == "failed"
-    assert output_store.latest(ProjectOutputKind.TEST_RECORD_FORM) is None
+    assert _item(result.items, "customer_feedback_form").status == "failed"
+    assert output_store.latest(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM) is None
 
 
 @dataclass(frozen=True, slots=True)
@@ -669,6 +717,17 @@ class _TemplateReader:
 
     def preview_template(self, project_id: str) -> Path:
         return self.template_path
+
+
+class _FeeTemplateReader:
+    def __init__(
+        self,
+        context: str = "fee-template:E-176.xls@sha256:fee-template-hash",
+    ) -> None:
+        self.context = context
+
+    def preview_template_context(self, project_id: str) -> str:
+        return self.context
 
 
 class _Generator:
@@ -753,15 +812,17 @@ class _OutputStatusService:
         items: tuple[ProjectOutputStatusItem, ...] = tuple(),
         *,
         fail_register_for: set[str] | None = None,
+        active_draft_id: str | None = "draft-1",
     ) -> None:
         self.items = list(items)
         self.fail_register_for = fail_register_for or set()
+        self.active_draft_id = active_draft_id
 
     def get_status_summary(self, project_id: str) -> ProjectOutputStatusSummary:
         return ProjectOutputStatusSummary(
             project_id=project_id,
-            active_draft_id="draft-1",
-            active_draft_version=1,
+            active_draft_id=self.active_draft_id,
+            active_draft_version=1 if self.active_draft_id else None,
             items=tuple(self.items),
         )
 
@@ -835,6 +896,7 @@ def _service(
     ) = "default",
     generator: _Generator | None = None,
     reusable_fee_form_reader: _ReusableFeeFormReader | None = None,
+    fee_template_reader: _FeeTemplateReader | None = None,
 ) -> ProjectFolderRequiredFormsService:
     _prepare_official_folder(tmp_path)
     output_service = output_service or _OutputStatusService()
@@ -866,10 +928,7 @@ def _service(
                 source_context_signature=(
                     "old-context"
                     if scenario.startswith("changed_context")
-                    else (
-                        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
-                        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
-                    )
+                    else _same_context()
                 ),
             )
         )
@@ -888,6 +947,7 @@ def _service(
         confirmed_fee_reader=_FeeReader(fee_result),
         basic_information_reader=_BasicInformationReader(basic_information),
         customer_feedback_template_reader=_TemplateReader(tmp_path),
+        fee_form_template_context_reader=fee_template_reader or _FeeTemplateReader(),
         application_form_reader=_ApplicationFormReader(),
         generator=generator or _Generator(tmp_path),
         reusable_fee_form_reader=(
@@ -985,6 +1045,15 @@ def _item(items: tuple[object, ...], key: str):
 
 def _timing_labels(result) -> list[str]:
     return [item.label for item in result.timings]
+
+
+def _same_context() -> str:
+    return (
+        "matrix:CM1@1|fee:CF1@1|pricing:PD1|"
+        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe|"
+        "fee-template:E-176.xls@sha256:fee-template-hash|"
+        "fee-output:matrix_basic_with_basic_information"
+    )
 
 
 class _ApplicationFormReader:

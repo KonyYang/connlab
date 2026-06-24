@@ -47,6 +47,12 @@ REQUIRED_FORM_DEFINITIONS: tuple[tuple[str, str, ProjectOutputKind, str, str | N
     ),
 )
 
+REQUIRED_FORM_GENERATION_ORDER = {
+    "customer_feedback_form": 0,
+    "fee_form": 1,
+    "test_record": 2,
+}
+
 
 class RequiredFormsError(ValueError):
     """Base error for Project Folder Required forms workflows."""
@@ -97,6 +103,13 @@ class CustomerFeedbackTemplateReader(Protocol):
 
     def preview_template(self, project_id: str) -> Path:
         """Return the unique Customer Feedback template path."""
+
+
+class FeeFormTemplateContextReader(Protocol):
+    """Fee Form template identity reader for safe output reuse."""
+
+    def preview_template_context(self, project_id: str) -> str:
+        """Return a stable Fee Form template context token."""
 
 
 class ApplicationFormReader(Protocol):
@@ -279,6 +292,7 @@ class ProjectFolderRequiredFormsService:
         confirmed_fee_reader: ConfirmedFeeReader,
         basic_information_reader: ConfirmedBasicInformationReader,
         customer_feedback_template_reader: CustomerFeedbackTemplateReader,
+        fee_form_template_context_reader: FeeFormTemplateContextReader,
         application_form_reader: ApplicationFormReader,
         generator: RequiredFormsStagingGenerator,
         file_gateway: RequiredFormsFileGateway,
@@ -292,6 +306,7 @@ class ProjectFolderRequiredFormsService:
         self._fees = confirmed_fee_reader
         self._basic_information = basic_information_reader
         self._feedback_templates = customer_feedback_template_reader
+        self._fee_form_templates = fee_form_template_context_reader
         self._application_forms = application_form_reader
         self._generator = generator
         self._reusable_fee_forms = (
@@ -329,7 +344,13 @@ class ProjectFolderRequiredFormsService:
             self._application_forms.list_by_project(project_id),
             basic_information,
         )
-        source_context = _source_context_signature(matrix, fee, basic_information)
+        fee_template_context = self._fee_form_templates.preview_template_context(project_id)
+        source_context = _source_context_signature(
+            matrix,
+            fee,
+            basic_information,
+            fee_template_context,
+        )
         summary = self._outputs.get_status_summary(project_id)
         by_kind = {item.output_kind: item for item in summary.items}
         items = tuple(
@@ -384,10 +405,19 @@ class ProjectFolderRequiredFormsService:
             raise RequiredFormsConflictError(
                 preview.blockers[0] if preview.blockers else "Required forms are blocked."
             )
+        expected_target_keys = {item.key for item in command.expected_targets}
         generated: list[RequiredFormsGenerateItem] = []
         warnings: list[str] = []
         final_placement_success_count = 0
-        for item in preview.items:
+        for item in sorted(
+            preview.items,
+            key=lambda preview_item: (
+                REQUIRED_FORM_GENERATION_ORDER.get(preview_item.key, 99),
+                preview_item.key,
+            ),
+        ):
+            if item.key not in expected_target_keys:
+                continue
             if item.target_path is None:
                 continue
             if item.action == "conflict":
@@ -549,8 +579,13 @@ class ProjectFolderRequiredFormsService:
             if item.action in {"generate", "update"}
         }
         all_current_targets = {item.key: item.target_path for item in preview.items}
+        expected_keys = set(expected_targets)
+        expected_paths_match = all(
+            all_current_targets.get(key) == path for key, path in expected_targets.items()
+        )
         target_context_matches = (
             expected_targets == current_targets or expected_targets == all_current_targets
+            or (expected_paths_match and expected_keys.issubset(current_targets.keys()))
         )
         if (
             preview.official_project_folder_path != command.expected_official_project_folder_path
@@ -584,16 +619,8 @@ class ProjectFolderRequiredFormsService:
             RegisterProjectOutputCommand(
                 project_id=project_id,
                 output_kind=item.output_kind,
-                status=(
-                    ProjectOutputStatus.CURRENT
-                    if active_draft_id
-                    else ProjectOutputStatus.MANUAL
-                ),
-                source=(
-                    ProjectOutputSource.SYSTEM_GENERATED
-                    if active_draft_id
-                    else ProjectOutputSource.MANUAL
-                ),
+                status=ProjectOutputStatus.CURRENT,
+                source=ProjectOutputSource.SYSTEM_GENERATED,
                 output_path=str(item.target_path),
                 draft_id=active_draft_id,
                 output_sha256=compute_sha256(item.target_path),
@@ -736,12 +763,15 @@ def _source_context_signature(
     matrix: object,
     fee: object,
     basic_information: ConfirmedBasicInformationSnapshot,
+    fee_template_context: str,
 ) -> str:
     return (
         f"matrix:{_matrix_id(matrix)}@{_matrix_revision(matrix)}"
         f"|fee:{_fee_id(fee)}@{_fee_revision(fee)}"
         f"|pricing:{getattr(fee, 'pricing_draft_edit_id')}"
         f"|{basic_information.context_signature}"
+        f"|{fee_template_context}"
+        "|fee-output:matrix_basic_with_basic_information"
     )
 
 

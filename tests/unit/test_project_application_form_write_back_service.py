@@ -270,6 +270,8 @@ def test_application_form_write_back_uses_selected_request_material_target(
 
     assert result.target_path == selected_target
     assert office.calls == 1
+    assert office.owned_session_calls == 1
+    assert office.default_calls == 0
 
 
 def test_application_form_write_back_allows_rebuilt_target_restored_to_source(
@@ -472,13 +474,35 @@ class _RejectingOffice:
         self.calls += 1
         raise AssertionError("Office writer should not be called.")
 
+    def write_word_application_form_fields_with_owned_session(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ):
+        self.calls += 1
+        raise AssertionError("Office writer should not be called.")
+
 
 class _CapturingOffice:
     def __init__(self) -> None:
         self.calls = 0
+        self.default_calls = 0
+        self.owned_session_calls = 0
         self.fields: dict[str, str] = {}
 
     def write_word_application_form_fields(self, source_path: Path, fields: dict[str, str]):
+        self.default_calls += 1
+        return self._write(fields)
+
+    def write_word_application_form_fields_with_owned_session(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ):
+        self.owned_session_calls += 1
+        return self._write(fields)
+
+    def _write(self, fields: dict[str, str]):
         self.calls += 1
         self.fields = dict(fields)
 
@@ -495,6 +519,13 @@ class _FailingOffice:
         self.message = message
 
     def write_word_application_form_fields(self, source_path: Path, fields: dict[str, str]):
+        raise ValueError(self.message)
+
+    def write_word_application_form_fields_with_owned_session(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ):
         raise ValueError(self.message)
 
 

@@ -3,9 +3,190 @@ from __future__ import annotations
 from zipfile import ZipFile
 
 from backend.infrastructure.office import application_form_word_gateway as gateway
+from backend.infrastructure.office.office_facade import OfficeFacade
+from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
 from backend.infrastructure.office.application_form_header_ltr_xml import (
     normalize_header_ltr_layout,
 )
+from backend.infrastructure.office.application_form_word_session import (
+    ApplicationFormWordSession,
+)
+from backend.infrastructure.office.models import OfficeTimingSnapshot
+from backend.infrastructure.office.models import WordSection2WriteResult
+
+
+def test_word_document_gateway_passes_optional_application_form_session(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    captured: dict[str, object | None] = {}
+    source = tmp_path / "request.docx"
+    source.write_bytes(b"fake-docx")
+    session = object()
+
+    def fake_requires_com(path):
+        return True
+
+    def fake_write(path, fields, *, word_session=None):
+        captured["word_session"] = word_session
+        return WordSection2WriteResult(changed_fields=(), unchanged_fields=())
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.word_document_gateway.application_form_requires_com",
+        fake_requires_com,
+    )
+    monkeypatch.setattr(
+        "backend.infrastructure.office.word_document_gateway.write_application_form_fields_with_com",
+        fake_write,
+    )
+
+    WordDocumentGateway().write_application_form_fields(
+        source,
+        {"ltr_number": "DL-2026-05-011"},
+        application_form_word_session=session,
+    )
+
+    assert captured["word_session"] is session
+
+
+def test_office_facade_owns_application_form_word_session(monkeypatch, tmp_path) -> None:
+    source = tmp_path / "request.docx"
+    source.write_bytes(b"fake-docx")
+    events: list[str] = []
+
+    class _Session:
+        def __enter__(self):
+            events.append("enter")
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            events.append("exit")
+
+    class _Gateway:
+        def write_application_form_fields(
+            self,
+            path,
+            fields,
+            *,
+            application_form_word_session=None,
+        ):
+            assert path == source
+            assert fields == {"ltr_number": "DL-2026-05-011"}
+            assert isinstance(application_form_word_session, _Session)
+            events.append("write")
+            return WordSection2WriteResult(changed_fields=(), unchanged_fields=())
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.office_facade.ApplicationFormWordSession",
+        _Session,
+    )
+    monkeypatch.setattr(
+        "backend.infrastructure.office.office_facade.application_form_requires_com",
+        lambda path: True,
+    )
+
+    OfficeFacade(word_gateway=_Gateway()).write_word_application_form_fields_with_owned_session(
+        source,
+        {"ltr_number": "DL-2026-05-011"},
+    )
+
+    assert events == ["enter", "write", "exit"]
+
+
+def test_office_facade_owned_session_falls_back_without_starting_word(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    source = tmp_path / "request.docx"
+    source.write_bytes(b"fake-docx")
+    events: list[str] = []
+
+    class _Session:
+        def __enter__(self):
+            raise AssertionError("Word session should not start for non-COM documents")
+
+        def __exit__(self, exc_type, exc, traceback):
+            events.append("exit")
+
+    class _Gateway:
+        def write_application_form_fields(self, path, fields, **kwargs):
+            assert path == source
+            assert fields == {"ltr_number": "DL-2026-05-011"}
+            assert kwargs == {}
+            events.append("write_default")
+            return WordSection2WriteResult(changed_fields=(), unchanged_fields=())
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.office_facade.ApplicationFormWordSession",
+        _Session,
+    )
+    monkeypatch.setattr(
+        "backend.infrastructure.office.office_facade.application_form_requires_com",
+        lambda path: False,
+    )
+
+    result = OfficeFacade(
+        word_gateway=_Gateway()
+    ).write_word_application_form_fields_with_owned_session(
+        source,
+        {"ltr_number": "DL-2026-05-011"},
+    )
+
+    assert result.changed_fields == ()
+    assert events == ["write_default"]
+
+
+def test_office_timing_snapshot_returns_named_stage_seconds() -> None:
+    snapshot = OfficeTimingSnapshot.from_seconds(
+        {
+            "word_dispatch": 1.25,
+            "document_open": 2.5,
+        }
+    )
+
+    assert snapshot.stage_seconds("word_dispatch") == 1.25
+    assert snapshot.stage_seconds("document_open") == 2.5
+    assert snapshot.stage_seconds("missing") == 0.0
+    assert snapshot.total_seconds == 3.75
+
+
+def test_application_form_word_gateway_records_split_close_and_quit_timings() -> None:
+    word = _FakeWordApplication()
+    session = ApplicationFormWordSession(dispatch_factory=lambda: word)
+
+    with session:
+        result = gateway.write_application_form_fields_with_com(
+            _FakePath(),
+            {},
+            word_session=session,
+        )
+        assert not word.quit_called
+
+    stages = {stage.name for stage in result.timings.stages}
+    assert "document_close" in stages
+    assert "document_close_quit" in stages
+    assert "word_quit" not in stages
+    assert word.Documents.opened[0].closed
+    assert word.quit_called
+
+
+def test_application_form_word_gateway_default_path_quits_owned_session(monkeypatch) -> None:
+    word = _FakeWordApplication()
+
+    monkeypatch.setattr(
+        gateway,
+        "ApplicationFormWordSession",
+        lambda: ApplicationFormWordSession(dispatch_factory=lambda: word),
+    )
+
+    result = gateway.write_application_form_fields_with_com(_FakePath(), {})
+
+    assert result.timings.stage_seconds("word_dispatch") >= 0
+    assert result.timings.stage_seconds("document_close") >= 0
+    assert result.timings.stage_seconds("word_quit") >= 0
+    assert result.timings.stage_seconds("document_close_quit") >= 0
+    assert word.Documents.opened[0].closed
+    assert word.quit_called
 
 
 def test_body_value_readback_requires_exact_visible_value() -> None:
@@ -379,3 +560,43 @@ class _FakeHeaderTable:
         if row == 1 and column == 3:
             return self._header_cell
         return _FakeCell("")
+
+
+class _FakePath:
+    def __fspath__(self) -> str:
+        return "request.docx"
+
+
+class _FakeDocumentCollection:
+    def __init__(self) -> None:
+        self.opened: list[_FakeWordDocument] = []
+
+    def Open(self, path: str, **kwargs):
+        document = _FakeWordDocument(path)
+        self.opened.append(document)
+        return document
+
+
+class _FakeWordDocument:
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self.Tables = _FakeCount(0)
+        self.closed = False
+        self.saved = False
+
+    def Close(self, *, SaveChanges: bool) -> None:
+        self.closed = True
+
+    def Save(self) -> None:
+        self.saved = True
+
+
+class _FakeWordApplication:
+    def __init__(self) -> None:
+        self.Documents = _FakeDocumentCollection()
+        self.Visible = True
+        self.DisplayAlerts = 1
+        self.quit_called = False
+
+    def Quit(self) -> None:
+        self.quit_called = True

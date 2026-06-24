@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+﻿import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -207,8 +207,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
   });
 
-  it("shows a read-only Basic Information summary card without duplicate identity fields", async () => {
-    const user = userEvent.setup();
+  it("shows the on-demand LTR Information update card after Folder Action", () => {
     const { container } = renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -232,40 +231,23 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const summaryLabels = Array.from(
       container.querySelectorAll(".runtime-console-basic-information-list.is-summary dt")
     ).map((item) => item.textContent);
-    expect(summaryLabels).toEqual([
-      "Test Result",
-      "Test Fee",
-      "Sub-contract",
-      "Remarks (PO)",
-      "Location",
-      "Sample deposition",
-      "Project Type",
-      "Test Type in sheet",
-      "Requested by",
-      "Project Leader",
-      "Failed item",
-    ]);
-    expect(screen.getByText("In progress")).toBeTruthy();
-    expect(screen.getByText("1630.00")).toBeTruthy();
-    expect(screen.getByText("PO-123")).toBeTruthy();
-    expect(screen.getByText("Dongguan")).toBeTruthy();
-    expect(screen.getByText("Send Back")).toBeTruthy();
-    expect(screen.getByText("NPD")).toBeTruthy();
-    expect(screen.getByText("Qualification")).toBeTruthy();
-    expect(screen.getByText("MP Cao")).toBeTruthy();
-    expect(screen.getByText("Even Yang")).toBeTruthy();
-    expect(screen.getByText("None")).toBeTruthy();
+    expect(summaryLabels).toEqual([]);
+    expect(screen.queryByText("In progress")).toBeNull();
+    expect(screen.queryByText("1630.00")).toBeNull();
+    expect(screen.queryByText("PO-123")).toBeNull();
+    expect(screen.queryByText("NPD")).toBeNull();
+    expect(screen.queryByText("Qualification")).toBeNull();
+    expect(screen.queryByText("MP Cao")).toBeNull();
+    expect(screen.queryByText("Even Yang")).toBeNull();
+    expect(screen.queryByText("None")).toBeNull();
     expect(screen.queryByText("DL")).toBeNull();
     expect(screen.queryByText("DL/LTR Number")).toBeNull();
     expect(screen.queryByText("Product Description")).toBeNull();
     expect(screen.queryByText("Description P/N")).toBeNull();
     expect(screen.queryByText("Test Item")).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Update LTR" }).hasAttribute("disabled")).toBe(false);
-
-    await user.click(screen.getByRole("button", { name: "View" }));
-    expect(screen.getByText("All confirmed fields")).toBeTruthy();
-    expect(screen.getAllByText("DL-2026-05-011").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "View" })).toBeNull();
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("does not show mode tabs when the active Matrix workspace is the main task", () => {
@@ -805,6 +787,48 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       screen.queryByRole("dialog", { name: "Project folder already exists" })
     ).toBeNull();
   });
+
+  it("blocks navigation clicks while the project folder workflow is running", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      folderReady: true,
+      officialWorkspaceCreating: true,
+      officialWorkspaceProgressLabel: "Updating Application Form",
+      officialWorkspacePreview: {
+        project_id: "project-1",
+        dl_number: "DL-2026-06-001",
+        status: "completed",
+        local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-2026-06-001",
+        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
+        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
+        official_project_folder_path:
+          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
+        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
+        template_root_mode: "template_root",
+        blockers: [],
+        warnings: [],
+        planned_paths: [],
+      },
+      packagePreview: readyPackagePreview,
+    });
+
+    const dialog = screen.getByRole("dialog", {
+      name: "Project folder update in progress",
+    });
+    expect(dialog).toBeTruthy();
+    expect(dialog.textContent).toContain("Keep this page open until the operation finishes.");
+    expect(dialog.textContent).toContain("Current step");
+    expect(dialog.textContent).toContain("Updating Application Form");
+    expect(dialog.textContent).toContain("Updating Customer Feedback Form");
+    expect(dialog.textContent).toContain("Updating Fee Form");
+    expect(screen.getByRole("button", { name: "Generating..." })).toHaveProperty(
+      "disabled",
+      true
+    );
+  });
 });
 
 function renderWorkbench(
@@ -884,6 +908,7 @@ function buildRuntimeModel(
     officialWorkspacePreview: null,
     officialWorkspaceLoading: false,
     officialWorkspaceCreating: false,
+    officialWorkspaceProgressLabel: null,
     officialWorkspaceError: null,
     officialWorkspaceResult: null,
     officialFolderCheckPreview: null,

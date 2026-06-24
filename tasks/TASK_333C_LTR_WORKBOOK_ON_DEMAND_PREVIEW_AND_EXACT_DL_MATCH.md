@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed. Task and plan created after the user explicitly approved establishing `TASK_333C` on 2026-06-23.
+Complete, including review follow-up. Task and plan were created after the user explicitly approved establishing `TASK_333C` on 2026-06-23, and implementation was explicitly approved by the user on 2026-06-24.
 
-Implementation is not approved yet. Do not write implementation code until the user explicitly approves `TASK_333C` implementation and the task board authorizes this task as active.
+Implementation and review follow-up completed on 2026-06-24.
 
 ## Current Phase
 
@@ -18,7 +18,7 @@ Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 After smoke use, the user clarified that the Workbench `LTR Information` card should behave as an on-demand workbook update tool rather than an always-visible Basic Information summary. The user also required exact DL matching so a row for `DL-2026-05-011` can never be confused with `DL-2026-05-011A`.
 
-The user approved creating a new task named `TASK_333C_LTR_WORKBOOK_ON_DEMAND_PREVIEW_AND_EXACT_DL_MATCH`.
+The user approved creating and implementing a new task named `TASK_333C_LTR_WORKBOOK_ON_DEMAND_PREVIEW_AND_EXACT_DL_MATCH`.
 
 ## Plan
 
@@ -38,7 +38,7 @@ Turn the Workbench `LTR Information` card into a focused LTR workbook update sur
 
 ## Core Behavior
 
-1. The Workbench card remains visible and is titled `LTR Information`.
+1. The Workbench card remains visible as an LTR workbook update surface without a separate visible title.
 2. The main action remains visible even before Basic Information is confirmed, but it is disabled until Basic Information is confirmed.
 3. Clicking the action performs a read-only preview against the configured LTR workbook path.
 4. The preview displays workbook metadata, exact target row metadata, and current-vs-write comparison rows.
@@ -73,10 +73,13 @@ Turn the Workbench `LTR Information` card into a focused LTR workbook update sur
 ## Acceptance Criteria
 
 - `LTR Information` no longer renders the Basic Information/LTR summary field list before preview.
+- The existing Workbench top `Basic Information` navigation remains the primary way to view confirmed Basic Information after this card is simplified.
 - The preview/update action remains visible but is disabled until Basic Information is confirmed.
 - Clicking the enabled action opens a read-only preview and only then reads the public-drive LTR workbook.
 - Preview comparison rows follow the business LTR workbook order already established in `TASK_333B`.
-- Rows where current workbook value and pending write value differ are visibly highlighted.
+- Rows where normalized current workbook value and normalized pending write value differ are visibly highlighted.
+- Comparison normalization avoids false differences for equivalent blanks, text spacing, numeric display values, and date display values while keeping business text comparison case-sensitive.
+- Backend commit blocks no-op writes even if the API is called directly, preventing unnecessary workbook saves/backups when the workbook is already up to date.
 - Preview blocks when no exact DL row exists.
 - Preview blocks when more than one exact DL row exists.
 - `DL-2026-05-011` does not match `DL-2026-05-011A`, `DL-2026-05-011 ` after trimming is acceptable, but prefix/contains matching is not.
@@ -86,18 +89,21 @@ Turn the Workbench `LTR Information` card into a focused LTR workbook update sur
 
 ## Validation
 
-Planned validation after implementation approval:
+Completed validation:
 
 ```powershell
 py -m pytest tests/unit/test_ltr_workbook_basic_information_sync_service.py tests/integration/test_ltr_workbook_basic_information_sync_api.py -q
-cd frontend; npm test -- --run ProjectBasicInformationSummaryCard --watch=false
-cd frontend; npm test -- --run ProjectWorkbenchLayout --watch=false
+# 20 passed
+
+cd frontend; npm test -- --run ProjectBasicInformationSummaryCard ProjectWorkbenchLayout --watch=false
+# 36 passed
+
 cd frontend; npm run build
-git diff --check
+# passed
 ```
 
-If the implementation touches the workbook transaction gateway directly, also run the focused gateway tests that cover LTR workbook row lookup and transaction behavior.
+`git diff --check` passed with CRLF conversion warnings only.
 
 ## Stop Point
 
-Stop after task/plan review. Do not implement until the user explicitly approves `TASK_333C` implementation.
+Stop after TASK_333C completion. Do not start another task without separate explicit approval.

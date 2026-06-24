@@ -123,7 +123,10 @@ class ProjectOutputRecordService:
                     f"Project test-plan draft not found for project: {command.project_id}"
                 )
             draft_version = draft.version
-        elif command.status not in {ProjectOutputStatus.MANUAL, ProjectOutputStatus.FAILED}:
+        elif (
+            command.status not in {ProjectOutputStatus.MANUAL, ProjectOutputStatus.FAILED}
+            and not _is_context_bound_system_output(command)
+        ):
             raise ProjectOutputRecordError(
                 "draft_id is required unless status is manual or failed."
             )
@@ -280,6 +283,14 @@ def _normalize_optional_text(value: str | None) -> str | None:
         return None
     text = value.strip()
     return text or None
+
+
+def _is_context_bound_system_output(command: RegisterProjectOutputCommand) -> bool:
+    return (
+        command.status is ProjectOutputStatus.CURRENT
+        and command.source is ProjectOutputSource.SYSTEM_GENERATED
+        and _normalize_optional_text(command.source_context_signature) is not None
+    )
 
 
 def _utc_now() -> str:

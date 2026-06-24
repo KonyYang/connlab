@@ -252,6 +252,114 @@ def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(
     assert "Matrix basic fill only." in result.warnings
 
 
+def test_fee_gateway_matrix_basic_fill_batches_unedited_row_segments(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    excel = _FakeExcel(workbook)
+    output = tmp_path / "fee_out.xls"
+
+    FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=output,
+        basic_fill=_basic_fill(),
+        review_required=False,
+        prepared_by="Operator",
+        approved_by=None,
+    )
+
+    sheet = excel.workbook.sheet
+    assert sheet.row_value_writes <= 4
+    assert sheet.block_value_writes >= 1
+    assert sheet.cell_value_writes < 20
+
+
+def test_fee_gateway_matrix_basic_fill_uses_cached_anchor_snapshot(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(2, 3)] = "LTR Number"
+    workbook.sheet.cells[(2, 6)] = "Test Description"
+    workbook.sheet.cells[(3, 3)] = "Requestor"
+    workbook.sheet.cells[(3, 6)] = "Site"
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(10, 1)] = "External Cost"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    excel = _FakeExcel(workbook)
+
+    FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=tmp_path / "fee_out.xls",
+        basic_fill=_basic_fill(),
+        review_required=False,
+        prepared_by="Operator",
+        approved_by=None,
+        basic_information_values={
+            "dl_number": "DL-BI",
+            "product_description": "Connector from Basic Information",
+            "test_item": "Qualification test",
+            "requested_by": "Requester BI",
+            "location": "Dongguan",
+        },
+    )
+
+    sheet = excel.workbook.sheet
+    assert sheet.range_value_reads == 1
+    assert sheet.cell_value_reads < 40
+
+
+def test_fee_gateway_matrix_basic_fill_does_not_clear_blank_comments(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "fee.xls"
+    template.write_text("template", encoding="utf-8")
+    workbook = _FakeWorkbook(sheet_names=("Testing Prices",))
+    workbook.sheet.cells[(5, 3)] = "Sample preparation"
+    workbook.sheet.formulas[(5, 9)] = "=D5*F5*(1-H5)+G5"
+    workbook.sheet.cells[(7, 3)] = "Report preparation"
+    workbook.sheet.formulas[(7, 9)] = "=D7*F7*(1-H7)+G7"
+    workbook.sheet.cells[(8, 1)] = "条件确认"
+    workbook.sheet.formulas[(8, 9)] = "=D8*F8*(1-H8)+G8"
+    workbook.sheet.cells[(9, 7)] = "Total"
+    workbook.sheet.cells[(11, 3)] = "Grand Cost"
+    excel = _FakeExcel(workbook)
+
+    FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: excel
+    ).generate_matrix_basic_fill(
+        template_path=template,
+        output_path=tmp_path / "fee_out.xls",
+        basic_fill=_basic_fill(),
+        review_required=False,
+        prepared_by="Operator",
+        approved_by=None,
+    )
+
+    assert excel.workbook.sheet.comment_clear_calls == 0
+
+
 def test_fee_gateway_matrix_basic_fill_writes_basic_information_identity(
     tmp_path: Path,
 ) -> None:
@@ -352,6 +460,7 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     assert sheet.formulas[(5, 9)] == "=D5*F5*(1-H5)+G5"
     assert sheet.comments[(5, 9)] == "sample prep note"
     assert sheet.cells[(6, 2)] == "1.5"
+    assert sheet.cells[(6, 3)] == "Visual Examination"
     assert sheet.cells[(6, 4)] == "20"
     assert sheet.cells[(6, 5)] == "per sample"
     assert sheet.cells[(6, 6)] == "2"
@@ -640,10 +749,12 @@ class _FakeCell:
 
     @property
     def Value(self) -> str | None:
+        self._sheet.cell_value_reads += 1
         return self._sheet.cells.get((self._row, self._column))
 
     @Value.setter
     def Value(self, value: object) -> None:
+        self._sheet.cell_value_writes += 1
         self._sheet.cells[(self._row, self._column)] = "" if value is None else str(value)
 
     @property
@@ -661,6 +772,7 @@ class _FakeCell:
         return _FakeInterior(self._sheet, self._row, self._column)
 
     def ClearComments(self) -> None:
+        self._sheet.comment_clear_calls += 1
         self._sheet.comments.pop((self._row, self._column), None)
 
     def AddComment(self, text: str) -> None:
@@ -696,9 +808,64 @@ class _FakeSheet:
         self.a_column_bold_ranges: list[tuple[int, int]] = []
         self.comments: dict[tuple[int, int], str] = {}
         self.comment_failures: set[tuple[int, int]] = set()
+        self.cell_value_writes = 0
+        self.cell_value_reads = 0
+        self.range_value_reads = 0
+        self.row_value_writes = 0
+        self.block_value_writes = 0
+        self.formula_block_writes = 0
+        self.comment_clear_calls = 0
 
     def Cells(self, row: int, column: int) -> _FakeCell:
         return _FakeCell(self, row, column)
+
+    def Range(self, start: _FakeCell, end: _FakeCell) -> "_FakeRange":
+        return _FakeRange(
+            self,
+            start._row,
+            start._column,
+            end._row,
+            end._column,
+        )
+
+    def set_row_values(
+        self,
+        row: int,
+        start_column: int,
+        values: tuple[object | None, ...],
+    ) -> None:
+        self.row_value_writes += 1
+        for offset, value in enumerate(values):
+            self.cells[(row, start_column + offset)] = "" if value is None else str(value)
+
+    def set_block_values(
+        self,
+        start_row: int,
+        start_column: int,
+        rows: tuple[tuple[object | None, ...], ...],
+    ) -> None:
+        self.block_value_writes += 1
+        for row_offset, values in enumerate(rows):
+            for column_offset, value in enumerate(values):
+                self.cells[(start_row + row_offset, start_column + column_offset)] = (
+                    "" if value is None else str(value)
+                )
+
+    def clear_cell_fill_range(self, start_row: int, end_row: int, column: int) -> None:
+        for row in range(start_row, end_row + 1):
+            self.cell_fills.pop((row, column), None)
+
+    def set_formula_block(
+        self,
+        start_row: int,
+        column: int,
+        formulas: tuple[str, ...],
+    ) -> None:
+        self.formula_block_writes += 1
+        for row_offset, formula in enumerate(formulas):
+            row = start_row + row_offset
+            self.formulas[(row, column)] = formula
+            self.cells[(row, column)] = "0.0" if formula.startswith("=") else formula
 
     def insert_rows(self, row: int, count: int) -> None:
         shifted: dict[tuple[int, int], str] = {}
@@ -743,7 +910,56 @@ class _FakeSheet:
         if text:
             self.comments[(row, column)] = text
         else:
+            self.comment_clear_calls += 1
             self.comments.pop((row, column), None)
+
+
+class _FakeRange:
+    def __init__(
+        self,
+        sheet: _FakeSheet,
+        start_row: int,
+        start_column: int,
+        end_row: int,
+        end_column: int,
+    ) -> None:
+        self._sheet = sheet
+        self._start_row = start_row
+        self._start_column = start_column
+        self._end_row = end_row
+        self._end_column = end_column
+
+    @property
+    def Value(self) -> tuple[tuple[str | None, ...], ...]:
+        self._sheet.range_value_reads += 1
+        return tuple(
+            tuple(
+                self._sheet.cells.get((row, column))
+                for column in range(self._start_column, self._end_column + 1)
+            )
+            for row in range(self._start_row, self._end_row + 1)
+        )
+
+    @Value.setter
+    def Value(self, values: tuple[tuple[object | None, ...], ...]) -> None:
+        for row_offset, row_values in enumerate(values):
+            for column_offset, value in enumerate(row_values):
+                self._sheet.cell_value_writes += 1
+                self._sheet.cells[
+                    (self._start_row + row_offset, self._start_column + column_offset)
+                ] = "" if value is None else str(value)
+
+    @property
+    def Formula(self) -> tuple[tuple[str | None, ...], ...]:
+        return tuple(
+            tuple(
+                self._sheet.formulas.get(
+                    (row, column), self._sheet.cells.get((row, column))
+                )
+                for column in range(self._start_column, self._end_column + 1)
+            )
+            for row in range(self._start_row, self._end_row + 1)
+        )
 
 
 class _FakeWorksheets:

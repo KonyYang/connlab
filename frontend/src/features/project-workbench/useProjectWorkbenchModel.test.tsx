@@ -197,6 +197,15 @@ describe("useProjectWorkbenchModel", () => {
       missing_source_paths: [],
       conflict_paths: [],
     });
+    apiMocks.writeBackProjectApplicationForm.mockResolvedValue({
+      project_id: "project-1",
+      target_path: "D:/Projects/DL-2026-06-001/Official/Submitted Material/request.docx",
+      status: "updated",
+      changed_fields: [],
+      unchanged_fields: [],
+      warnings: [],
+      output_record_id: "application-form-output-1",
+    });
   });
 
   it("stops the one-click project folder chain when Required forms preview is blocked", async () => {
@@ -231,6 +240,55 @@ describe("useProjectWorkbenchModel", () => {
       publicDriveCallsBefore
     );
   });
+
+  it("generates project folder Required forms in separate timed batches", async () => {
+    apiMocks.generateProjectFolderRequiredForms.mockImplementation(
+      async (_projectId: string, request: { expected_targets: Array<{ key: string }> }) => {
+        const key = request.expected_targets[0]?.key ?? "unknown";
+        return {
+          project_id: "project-1",
+          status: "generated",
+          official_project_folder_path: "D:/Projects/DL-2026-06-001/Official",
+          items: [
+            {
+              key,
+              label: key,
+              target_path: `D:/Projects/DL-2026-06-001/Official/${key}`,
+              status: "generated",
+              source_path: `D:/Temp/${key}`,
+              output_record_id: `${key}-output`,
+              message: "Placed in the Official project folder.",
+            },
+          ],
+          warnings: [],
+          timings: [{ label: `${key}.generate`, elapsed_ms: 7 }],
+        };
+      }
+    );
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    apiMocks.fetchProjectFolderRequiredFormsPreview
+      .mockResolvedValueOnce(readyRequiredFormsPreview)
+      .mockResolvedValueOnce(currentRequiredFormsPreview);
+
+    await act(async () => {
+      await result.current.onCreateOfficialWorkspace();
+    });
+
+    expect(apiMocks.generateProjectFolderRequiredForms).toHaveBeenCalledTimes(3);
+    expect(
+      apiMocks.generateProjectFolderRequiredForms.mock.calls.map(
+        ([, request]) => request.expected_targets[0].key
+      )
+    ).toEqual(["customer_feedback_form", "fee_form", "test_record"]);
+    expect(result.current.requiredFormsResult?.items.map((item) => item.key)).toEqual([
+      "customer_feedback_form",
+      "fee_form",
+      "test_record",
+    ]);
+    expect(apiMocks.syncProjectSection2FromConfirmedMatrix).not.toHaveBeenCalled();
+  });
 });
 
 const blockedRequiredFormsPreview = {
@@ -248,4 +306,67 @@ const blockedRequiredFormsPreview = {
   items: [],
   blockers: ["Confirm Basic Information before generating Project Folder outputs."],
   warnings: [],
+};
+
+const requiredFormsPreviewContext = {
+  project_id: "project-1",
+  status: "ready",
+  official_project_folder_path: "D:/Projects/DL-2026-06-001/Official",
+  confirmed_matrix_id: "CM1",
+  confirmed_revision: 1,
+  confirmed_fee_id: "CF1",
+  confirmed_fee_revision: 1,
+  confirmed_fee_pricing_draft_edit_id: "PD1",
+  confirmed_basic_information_version: 2,
+  confirmed_basic_information_source_signature_hash: "basic-info-hash",
+  customer_feedback_template_path: "D:/Template/E-4243 Customer Feedback Form.xlsx",
+  blockers: [],
+  warnings: [],
+};
+
+const readyRequiredFormsPreview = {
+  ...requiredFormsPreviewContext,
+  items: [
+    {
+      key: "test_record",
+      label: "Test Record",
+      target_path: "D:/Projects/DL-2026-06-001/Official/Submitted Material/DL Test Record.docx",
+      status: "ready",
+      action: "generate",
+      message: "Ready to generate.",
+      output_kind: "test_record_form",
+      existing_sha256: null,
+    },
+    {
+      key: "fee_form",
+      label: "Fee Form",
+      target_path: "D:/Projects/DL-2026-06-001/Official/DL Fee Form.xls",
+      status: "ready",
+      action: "generate",
+      message: "Ready to generate.",
+      output_kind: "fee_evaluation",
+      existing_sha256: null,
+    },
+    {
+      key: "customer_feedback_form",
+      label: "Customer Feedback Form",
+      target_path: "D:/Projects/DL-2026-06-001/Official/DL Customer Feedback Form.xlsx",
+      status: "ready",
+      action: "generate",
+      message: "Ready to generate.",
+      output_kind: "customer_feedback_form",
+      existing_sha256: null,
+    },
+  ],
+};
+
+const currentRequiredFormsPreview = {
+  ...requiredFormsPreviewContext,
+  status: "current",
+  items: readyRequiredFormsPreview.items.map((item) => ({
+    ...item,
+    status: "current",
+    action: "skip",
+    message: "Current.",
+  })),
 };

@@ -115,12 +115,54 @@ class WordSection2FieldChange:
 
 
 @dataclass(frozen=True, slots=True)
+class OfficeTimingStage:
+    """One named Office automation timing stage."""
+
+    name: str
+    seconds: float
+
+
+@dataclass(frozen=True, slots=True)
+class OfficeTimingSnapshot:
+    """Structured timing snapshot for one Office automation operation."""
+
+    stages: tuple[OfficeTimingStage, ...] = ()
+
+    @classmethod
+    def from_seconds(cls, timings: dict[str, float]) -> "OfficeTimingSnapshot":
+        """Build a timing snapshot from stage names and elapsed seconds."""
+        return cls(
+            stages=tuple(
+                OfficeTimingStage(name=name, seconds=float(seconds))
+                for name, seconds in timings.items()
+            )
+        )
+
+    @property
+    def total_seconds(self) -> float:
+        """Return the sum of all recorded stage timings."""
+        gateway_total = self.stage_seconds("gateway_total")
+        if gateway_total:
+            return gateway_total
+        return sum(stage.seconds for stage in self.stages)
+
+    def stage_seconds(self, name: str) -> float:
+        """Return seconds recorded for a named stage, or zero when missing."""
+        for stage in self.stages:
+            if stage.name == name:
+                return stage.seconds
+        return 0.0
+
+
+@dataclass(frozen=True, slots=True)
 class WordSection2WriteResult:
     """Result from writing Section 2 fields into a Word document."""
 
     changed_fields: tuple[WordSection2FieldChange, ...]
     unchanged_fields: tuple[WordSection2FieldChange, ...]
     warnings: tuple[str, ...] = ()
+    timings: OfficeTimingSnapshot | None = None
+
 
 
 @dataclass(frozen=True, slots=True)

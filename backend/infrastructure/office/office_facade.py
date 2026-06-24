@@ -18,6 +18,12 @@ from backend.infrastructure.office.models import (
     WordTableLocation,
 )
 from backend.infrastructure.office.outlook_msg_gateway import OutlookMsgGateway
+from backend.infrastructure.office.application_form_word_session import (
+    ApplicationFormWordSession,
+)
+from backend.infrastructure.office.application_form_word_gateway import (
+    application_form_requires_com,
+)
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
 from backend.infrastructure.office.office_lifecycle import (
     ExcelWorkbookHandle,
@@ -96,6 +102,21 @@ class OfficeFacade:
     ) -> WordSection2WriteResult:
         """Write known application fields through the configured Word gateway."""
         return self._word_gateway.write_application_form_fields(source_path, fields)
+
+    def write_word_application_form_fields_with_owned_session(
+        self,
+        source_path: Path,
+        fields: dict[str, str],
+    ) -> WordSection2WriteResult:
+        """Write Application Form fields with a ConnLab-owned hidden Word session."""
+        if not application_form_requires_com(Path(source_path)):
+            return self._word_gateway.write_application_form_fields(source_path, fields)
+        with ApplicationFormWordSession() as word_session:
+            return self._word_gateway.write_application_form_fields(
+                source_path,
+                fields,
+                application_form_word_session=word_session,
+            )
 
     def import_outlook_msg(
         self,

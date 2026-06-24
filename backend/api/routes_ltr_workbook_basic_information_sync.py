@@ -35,6 +35,7 @@ class LtrWorkbookBasicInformationSyncComparisonValueResponse(BaseModel):
     label: str
     current_value: object
     pending_value: object
+    changed: bool
 
 
 class LtrWorkbookBasicInformationSyncPreviewResponse(BaseModel):
@@ -173,6 +174,7 @@ def _preview_response(
                 label=value.label,
                 current_value=value.current_value,
                 pending_value=value.pending_value,
+                changed=value.changed,
             )
             for value in preview.comparison_values
         ],

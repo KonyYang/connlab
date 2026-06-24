@@ -59,9 +59,11 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert comparison_by_field["project_type"].label == "Project Type"
     assert comparison_by_field["project_type"].current_value == "NPD"
     assert comparison_by_field["project_type"].pending_value == "NPD"
+    assert comparison_by_field["project_type"].changed is False
     assert comparison_by_field["description_pn"].label == "Description P/N"
     assert comparison_by_field["description_pn"].current_value == "Old P/N"
     assert comparison_by_field["description_pn"].pending_value == "Coolpower HDF:PN-001"
+    assert comparison_by_field["description_pn"].changed is True
     assert comparison_by_field["test_item"].label == "Test Item"
     assert comparison_by_field["test_item"].current_value == "Old testing"
     assert comparison_by_field["test_item"].pending_value == "Qualification Testing"
@@ -72,7 +74,6 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert comparison_by_field["test_fee"].pending_value is None
     assert comparison_by_field["location"].current_value == "Suzhou"
     assert comparison_by_field["location"].pending_value == "Dongguan"
-    assert session.find_calls == [("DL-2026-05-011", ("2026",))]
     assert session.appended == []
 
 
@@ -159,6 +160,119 @@ def test_preview_blocks_when_existing_ltr_row_is_missing() -> None:
     )
 
 
+def test_preview_requires_exact_ltr_match_not_prefixed_match() -> None:
+    service, _ = _service(
+        rows_by_sheet={
+            "2026": [
+                ("May", 2, 2, "DL-2026-05-011A"),
+            ]
+        }
+    )
+
+    preview = service.preview(PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1"))
+
+    assert preview.status == "blocked"
+    assert preview.blockers == (
+        "Registered LTR row not found in workbook: DL-2026-05-011",
+    )
+
+
+def test_preview_blocks_duplicate_exact_ltr_rows() -> None:
+    service, _ = _service(
+        rows_by_sheet={
+            "2026": [
+                ("May", 2, 2, "DL-2026-05-011"),
+                ("May", 3, 3, " DL-2026-05-011\u00a0"),
+            ]
+        }
+    )
+
+    preview = service.preview(PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1"))
+
+    assert preview.status == "blocked"
+    assert preview.blockers == (
+        "Duplicate exact LTR rows found in workbook: DL-2026-05-011",
+    )
+
+
+def test_preview_normalizes_comparison_whitespace_without_marking_changed() -> None:
+    service, _ = _service(
+        rows_by_sheet={
+            "2026": [
+                (
+                    "May",
+                    2,
+                    2,
+                    "\u00a0DL-2026-05-011 ",
+                    "NPD",
+                    "Coolpower\u00a0HDF:PN-001",
+                    "Qualification   Testing",
+                    "Partial Qualification",
+                    "MP\u00a0Cao",
+                    "Dongguan",
+                    "Even Yang",
+                    None,
+                    None,
+                    None,
+                    "No",
+                    None,
+                    None,
+                ),
+            ]
+        }
+    )
+
+    preview = service.preview(PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1"))
+    comparison_by_field = {
+        value.field_name: value for value in preview.comparison_values
+    }
+
+    assert preview.status == "ready"
+    assert preview.target_row == 2
+    assert comparison_by_field["description_pn"].changed is False
+    assert comparison_by_field["test_item"].changed is False
+    assert comparison_by_field["requested_by"].changed is False
+
+
+def test_preview_normalizes_integer_numeric_comparison_without_marking_changed() -> None:
+    service, _ = _service(
+        basic_information=_basic_information({"test_fee": "12531"}),
+        rows_by_sheet={
+            "2026": [
+                (
+                    "May",
+                    2,
+                    2,
+                    "DL-2026-05-011",
+                    "NPD",
+                    "Coolpower HDF:PN-001",
+                    "Qualification Testing",
+                    "Partial Qualification",
+                    "MP Cao",
+                    "Dongguan",
+                    "Even Yang",
+                    None,
+                    None,
+                    None,
+                    "No",
+                    12531.0,
+                    None,
+                ),
+            ]
+        },
+    )
+
+    preview = service.preview(PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1"))
+    comparison_by_field = {
+        value.field_name: value for value in preview.comparison_values
+    }
+
+    assert preview.status == "ready"
+    assert comparison_by_field["test_fee"].current_value == 12531.0
+    assert comparison_by_field["test_fee"].pending_value == "12531"
+    assert comparison_by_field["test_fee"].changed is False
+
+
 def test_commit_rejects_stale_basic_information_context() -> None:
     service, _ = _service()
 
@@ -172,6 +286,57 @@ def test_commit_rejects_stale_basic_information_context() -> None:
                 expected_confirmed_basic_information_source_signature_hash="old",
             )
         )
+
+
+def test_commit_rejects_when_workbook_is_already_up_to_date() -> None:
+    service, session = _service(
+        rows_by_sheet={
+            "2026": [
+                (
+                    "May",
+                    2,
+                    2,
+                    "DL-2026-05-011",
+                    "NPD",
+                    "Coolpower HDF:PN-001",
+                    "Qualification Testing",
+                    "Partial Qualification",
+                    "MP Cao",
+                    "Dongguan",
+                    "Even Yang",
+                    None,
+                    None,
+                    None,
+                    "No",
+                    None,
+                    None,
+                ),
+            ]
+        }
+    )
+    preview = service.preview(
+        PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1")
+    )
+
+    with pytest.raises(
+        LtrWorkbookBasicInformationSyncError,
+        match="LTR workbook is already up to date.",
+    ):
+        service.commit(
+            CommitLtrWorkbookBasicInformationSyncCommand(
+                project_id="P1",
+                operator_confirmed=True,
+                preview_acknowledged=True,
+                expected_confirmed_basic_information_version=preview.confirmed_basic_information_version,
+                expected_confirmed_basic_information_source_signature_hash=(
+                    preview.confirmed_basic_information_source_signature_hash
+                ),
+            )
+        )
+
+    assert all(value.changed is False for value in preview.comparison_values)
+    assert session.replaced == []
+    assert session.saved is False
 
 
 def test_commit_writes_existing_row_only() -> None:
@@ -334,6 +499,9 @@ class _FakeWorkbookSession:
 
     def list_sheets(self):
         return list(self.rows_by_sheet)
+
+    def read_annual_sheet(self, sheet_name):
+        return tuple(self.rows_by_sheet[sheet_name])
 
     def find_ltr_number(self, ltr_number: str, sheet_names=None):
         normalized_sheets = tuple(sheet_names) if sheet_names is not None else None

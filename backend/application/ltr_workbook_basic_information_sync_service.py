@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+from numbers import Number
 from pathlib import Path
+import re
 from typing import Protocol
 
 from backend.application.ltr_workbook_write_preview_service import (
@@ -15,7 +19,11 @@ from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
 )
 from backend.domain import LtrRecord, LtrStatus
-from backend.infrastructure.office import LtrWorkbookRowData, LtrWorkbookRowPointer
+from backend.infrastructure.office import (
+    LtrWorkbookExistingRow,
+    LtrWorkbookRowData,
+    LtrWorkbookRowPointer,
+)
 from backend.modules.ltr import LtrNumberError, parse_ltr_number
 
 
@@ -92,6 +100,7 @@ class LtrWorkbookBasicInformationSyncComparisonValue:
     label: str
     current_value: object
     pending_value: object
+    changed: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +182,7 @@ class LtrWorkbookBasicInformationSyncService:
                 context=context,
             )
             _ensure_ready_preview(preview)
+            _ensure_preview_has_changes(preview)
             pointer = context.session.write_registration_row(
                 preview.target_sheet,
                 preview.target_row,
@@ -203,7 +213,11 @@ class LtrWorkbookBasicInformationSyncService:
         context,
     ) -> LtrWorkbookBasicInformationSyncPreview:
         sheet_names = _annual_sheet_names(context.session.list_sheets())
-        existing = context.session.find_ltr_number(ltr.ltr_number, sheet_names)
+        existing = _find_exact_ltr_number(
+            context.session,
+            ltr_number=ltr.ltr_number,
+            sheet_names=sheet_names,
+        )
         if existing is None:
             raise LtrWorkbookBasicInformationSyncError(
                 f"Registered LTR row not found in workbook: {ltr.ltr_number}"
@@ -326,6 +340,13 @@ def _ensure_ready_preview(preview: LtrWorkbookBasicInformationSyncPreview) -> No
         raise LtrWorkbookBasicInformationSyncError("LTR workbook row data is missing.")
 
 
+def _ensure_preview_has_changes(preview: LtrWorkbookBasicInformationSyncPreview) -> None:
+    if not any(value.changed for value in preview.comparison_values):
+        raise LtrWorkbookBasicInformationSyncError(
+            "LTR workbook is already up to date."
+        )
+
+
 def _column_previews(
     row_data: LtrWorkbookRowData,
 ) -> tuple[LtrWorkbookWriteColumnPreview, ...]:
@@ -351,15 +372,85 @@ def _comparison_values(
         for index, field_name in enumerate(_LTR_ROW_FIELD_NAMES)
     }
     pending_by_field = {column.field_name: column.value for column in pending_columns}
-    return tuple(
-        LtrWorkbookBasicInformationSyncComparisonValue(
-            field_name=field_name,
-            label=label,
-            current_value=current_by_field.get(field_name),
-            pending_value=pending_by_field.get(field_name),
+    values: list[LtrWorkbookBasicInformationSyncComparisonValue] = []
+    for field_name, label in _LTR_SYNC_COMPARISON_FIELDS:
+        current_value = current_by_field.get(field_name)
+        pending_value = pending_by_field.get(field_name)
+        values.append(
+            LtrWorkbookBasicInformationSyncComparisonValue(
+                field_name=field_name,
+                label=label,
+                current_value=current_value,
+                pending_value=pending_value,
+                changed=_comparison_token(current_value) != _comparison_token(pending_value),
+            )
         )
-        for field_name, label in _LTR_SYNC_COMPARISON_FIELDS
-    )
+    return tuple(values)
+
+
+def _find_exact_ltr_number(
+    session,
+    *,
+    ltr_number: str,
+    sheet_names: tuple[str, ...],
+) -> LtrWorkbookExistingRow | None:
+    target = _ltr_lookup_token(ltr_number)
+    matches: list[LtrWorkbookExistingRow] = []
+    for sheet_name in sheet_names:
+        for index, row in enumerate(session.read_annual_sheet(sheet_name), start=2):
+            if len(row) >= 4 and _ltr_lookup_token(row[3]) == target:
+                matches.append(
+                    LtrWorkbookExistingRow(
+                        sheet_name=sheet_name,
+                        row_number=index,
+                        dl_number=_ltr_lookup_token(row[3]),
+                        values=row,
+                    )
+                )
+    if len(matches) > 1:
+        raise LtrWorkbookBasicInformationSyncError(
+            f"Duplicate exact LTR rows found in workbook: {ltr_number}"
+        )
+    return matches[0] if matches else None
+
+
+def _ltr_lookup_token(value: object) -> str:
+    return str(value or "").replace("\u00a0", " ").strip()
+
+
+_NUMERIC_COMPARISON_PATTERN = re.compile(r"^[+-]?(?:0|[1-9]\d*)(?:\.\d+)?$")
+
+
+def _comparison_token(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y/%m/%d")
+    if isinstance(value, date):
+        return value.strftime("%Y/%m/%d")
+    if isinstance(value, Number) and not isinstance(value, bool):
+        numeric_token = _numeric_comparison_token(str(value))
+        if numeric_token is not None:
+            return numeric_token
+    text = str(value).replace("\u00a0", " ")
+    normalized = " ".join(text.split()).strip()
+    if _NUMERIC_COMPARISON_PATTERN.fullmatch(normalized):
+        numeric_token = _numeric_comparison_token(normalized)
+        if numeric_token is not None:
+            return numeric_token
+    return normalized
+
+
+def _numeric_comparison_token(text: str) -> str | None:
+    try:
+        value = Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+    if not value.is_finite():
+        return None
+    if value == value.to_integral_value():
+        return str(int(value))
+    return format(value.normalize(), "f").rstrip("0").rstrip(".")
 
 
 def _annual_sheet_names(sheet_names: list[str]) -> tuple[str, ...]:
