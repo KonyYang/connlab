@@ -2436,7 +2436,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 12px;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .runtime-console-ltr-sync-heading strong {
@@ -2448,9 +2448,8 @@
   color: var(--color-ink-muted);
   font-size: 12px;
   font-weight: 700;
-  margin-left: auto;
   overflow-wrap: anywhere;
-  text-align: right;
+  text-align: left;
 }
 
 .runtime-console-ltr-sync-error {
@@ -2471,7 +2470,7 @@
 }
 
 .runtime-console-ltr-sync-context {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .runtime-console-ltr-sync-context div,
@@ -2485,6 +2484,32 @@
   color: var(--color-ink-muted);
   font-size: 11px;
   font-weight: 800;
+}
+
+.runtime-console-basic-information .runtime-console-ltr-sync-workbook-button {
+  justify-self: start;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #a8c7f1;
+  border-radius: 6px;
+  background: #eef5ff;
+  color: var(--color-brand-strong);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.runtime-console-basic-information .runtime-console-ltr-sync-workbook-button:not(:disabled):hover {
+  border-color: #75a7e8;
+  background: #e4f0ff;
+}
+
+.runtime-console-basic-information .runtime-console-ltr-sync-workbook-button:disabled {
+  border-color: var(--color-border);
+  background: #f5f7fb;
+  color: var(--color-ink-soft);
+  box-shadow: none;
 }
 
 .runtime-console-ltr-sync-values dt {

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_project_application_form_write_back_service
 from backend.application.project_application_form_write_back_service import (
@@ -30,6 +30,13 @@ class ApplicationFormWriteBackFieldResponse(BaseModel):
     location: str
 
 
+class ApplicationFormWriteBackTimingResponse(BaseModel):
+    """One Application Form write-back timing response."""
+
+    label: str
+    elapsed_ms: int
+
+
 class ApplicationFormWriteBackResponse(BaseModel):
     """Application Form write-back response."""
 
@@ -40,6 +47,8 @@ class ApplicationFormWriteBackResponse(BaseModel):
     unchanged_fields: list[ApplicationFormWriteBackFieldResponse]
     warnings: list[str]
     output_record_id: str | None
+    timings: list[ApplicationFormWriteBackTimingResponse] = Field(default_factory=list)
+    office_timings: list[ApplicationFormWriteBackTimingResponse] = Field(default_factory=list)
 
 
 @router.post("/write-back", response_model=ApplicationFormWriteBackResponse)
@@ -71,6 +80,8 @@ def _response(
         unchanged_fields=[_field(field) for field in result.unchanged_fields],
         warnings=list(result.warnings),
         output_record_id=result.output_record_id,
+        timings=[_timing(item) for item in result.timings],
+        office_timings=[_timing(item) for item in result.office_timings],
     )
 
 
@@ -81,4 +92,11 @@ def _field(field) -> ApplicationFormWriteBackFieldResponse:
         old_value=field.old_value,
         new_value=field.new_value,
         location=field.location,
+    )
+
+
+def _timing(item) -> ApplicationFormWriteBackTimingResponse:
+    return ApplicationFormWriteBackTimingResponse(
+        label=item.label,
+        elapsed_ms=item.elapsed_ms,
     )

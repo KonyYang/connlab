@@ -10,6 +10,7 @@ from backend.application.ltr_workbook_basic_information_sync_service import (
     CommitLtrWorkbookBasicInformationSyncCommand,
     LtrWorkbookBasicInformationSyncError,
     LtrWorkbookBasicInformationSyncService,
+    OpenLtrWorkbookBasicInformationReadonlyCommand,
     PreviewLtrWorkbookBasicInformationSyncCommand,
 )
 from backend.application.project_basic_information_output import (
@@ -75,6 +76,58 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert comparison_by_field["location"].current_value == "Suzhou"
     assert comparison_by_field["location"].pending_value == "Dongguan"
     assert session.appended == []
+
+
+def test_preview_locates_exact_ltr_by_dl_column_then_reads_target_row_only() -> None:
+    service, session = _service()
+
+    preview = service.preview(
+        PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1")
+    )
+
+    assert preview.status == "ready"
+    assert preview.target_row == 3
+    assert session.read_ltr_number_cells_calls == ["2026"]
+    assert session.read_registration_row_calls == [("2026", 3)]
+    assert session.read_annual_sheet_calls == []
+    assert session.find_calls == []
+
+
+def test_preview_reuses_cache_after_full_exact_dl_scan_and_validates_cached_cell() -> None:
+    service, session = _service()
+
+    first_preview = service.preview(
+        PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1")
+    )
+    second_preview = service.preview(
+        PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1")
+    )
+
+    assert first_preview.status == "ready"
+    assert second_preview.status == "ready"
+    assert session.read_ltr_number_cells_calls == ["2026"]
+    assert session.read_ltr_number_cell_calls == [("2026", 3)]
+    assert session.read_registration_row_calls == [("2026", 3), ("2026", 3)]
+    assert session.read_annual_sheet_calls == []
+
+
+def test_readonly_open_locates_row_without_building_full_preview() -> None:
+    readonly_open = _FakeReadonlyOpenGateway()
+    service, session, transaction = _service(
+        return_gateway=True,
+        readonly_open_gateway=readonly_open,
+    )
+
+    result = service.open_readonly_at_ltr(
+        OpenLtrWorkbookBasicInformationReadonlyCommand(project_id="P1")
+    )
+
+    assert result.selected_cell == "2026!D3"
+    assert transaction.read_only_open_count == 1
+    assert readonly_open.calls == [(Path("LTR_number.xls"), "2026", 3, 4)]
+    assert session.read_ltr_number_cells_calls == ["2026"]
+    assert session.read_registration_row_calls == []
+    assert session.read_annual_sheet_calls == []
 
 
 def test_preview_uses_sheet_test_type_without_application_form_fallback() -> None:
@@ -383,6 +436,7 @@ def _service(
     basic_information: ConfirmedBasicInformationSnapshot | None | object = "__default__",
     rows_by_sheet: dict[str, list[tuple[object, ...]]] | None = None,
     return_gateway: bool = False,
+    readonly_open_gateway=None,
 ):
     session = _FakeWorkbookSession(
         rows_by_sheet
@@ -418,6 +472,7 @@ def _service(
         ltr_store=_LtrStore(),
         basic_information_reader=_BasicInformationReader(snapshot),
         transaction_gateway=transaction_gateway,
+        readonly_open_gateway=readonly_open_gateway,
     )
     if return_gateway:
         return service, session, transaction_gateway
@@ -493,6 +548,10 @@ class _FakeWorkbookSession:
     def __init__(self, rows_by_sheet: dict[str, list[tuple[object, ...]]]) -> None:
         self.rows_by_sheet = rows_by_sheet
         self.find_calls: list[tuple[str, tuple[str, ...] | None]] = []
+        self.read_annual_sheet_calls: list[str] = []
+        self.read_ltr_number_cells_calls: list[str] = []
+        self.read_ltr_number_cell_calls: list[tuple[str, int]] = []
+        self.read_registration_row_calls: list[tuple[str, int]] = []
         self.replaced: list[LtrWorkbookRowPointer] = []
         self.appended: list[LtrWorkbookRowPointer] = []
         self.saved = False
@@ -501,7 +560,27 @@ class _FakeWorkbookSession:
         return list(self.rows_by_sheet)
 
     def read_annual_sheet(self, sheet_name):
+        self.read_annual_sheet_calls.append(sheet_name)
         return tuple(self.rows_by_sheet[sheet_name])
+
+    def read_ltr_number_cells(self, sheet_name):
+        self.read_ltr_number_cells_calls.append(sheet_name)
+        return tuple(
+            (index, row[3] if len(row) >= 4 else None)
+            for index, row in enumerate(self.rows_by_sheet[sheet_name], start=2)
+        )
+
+    def read_ltr_number_cell(self, sheet_name, row_number):
+        self.read_ltr_number_cell_calls.append((sheet_name, row_number))
+        row_index = row_number - 2
+        if row_index < 0 or row_index >= len(self.rows_by_sheet[sheet_name]):
+            return None
+        row = self.rows_by_sheet[sheet_name][row_index]
+        return row[3] if len(row) >= 4 else None
+
+    def read_registration_row(self, sheet_name, row_number):
+        self.read_registration_row_calls.append((sheet_name, row_number))
+        return self.rows_by_sheet[sheet_name][row_number - 2]
 
     def find_ltr_number(self, ltr_number: str, sheet_names=None):
         normalized_sheets = tuple(sheet_names) if sheet_names is not None else None
@@ -521,6 +600,15 @@ class _FakeWorkbookSession:
         pointer = LtrWorkbookRowPointer(sheet_name, 999, row_data.dl_number)
         self.appended.append(pointer)
         return pointer
+
+
+class _FakeReadonlyOpenGateway:
+    def __init__(self) -> None:
+        self.calls: list[tuple[Path, str, int, int]] = []
+
+    def open_at_cell(self, *, workbook_path, sheet_name, row_number, column_number):
+        self.calls.append((workbook_path, sheet_name, row_number, column_number))
+        return f"{sheet_name}!D{row_number}"
 
 
 def _basic_information(

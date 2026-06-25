@@ -129,6 +129,7 @@ class RequiredFormsStagingGenerator(Protocol):
         key: str,
         target_name: str,
         basic_information: ConfirmedBasicInformationSnapshot,
+        confirmed_fee: object,
     ) -> Path:
         """Generate one form into ConnLab-controlled staging."""
 
@@ -398,6 +399,8 @@ class ProjectFolderRequiredFormsService:
         _append_timing(timings, "required_forms.preview", preview_start)
         validate_start = perf_counter()
         self._validate_context(command, preview)
+        confirmed_fee = self._require_confirmed_fee(command.project_id)
+        self._validate_confirmed_fee_context(command, confirmed_fee)
         basic_information = self._require_basic_information(command.project_id)
         self._validate_basic_information_context(command, basic_information)
         _append_timing(timings, "required_forms.validate_context", validate_start)
@@ -441,6 +444,7 @@ class ProjectFolderRequiredFormsService:
                     command=command,
                     item=item,
                     basic_information=basic_information,
+                    confirmed_fee=confirmed_fee,
                     source_context=preview.source_context_signature,
                     timings=timings,
                 )
@@ -640,6 +644,32 @@ class ProjectFolderRequiredFormsService:
             )
         return snapshot
 
+    def _require_confirmed_fee(self, project_id: str) -> object:
+        """Return the current confirmed Fee version or raise a generation conflict."""
+        fee_result = self._fees.get_latest(project_id)
+        if getattr(fee_result, "status", None) != "current":
+            raise RequiredFormsConflictError(
+                "Confirm Fee before generating Required forms."
+            )
+        fee = getattr(fee_result, "latest_confirmed_fee", None)
+        if fee is None:
+            raise RequiredFormsConflictError("Confirmed Fee is missing.")
+        return fee
+
+    def _validate_confirmed_fee_context(
+        self,
+        command: GenerateRequiredFormsCommand,
+        fee: object,
+    ) -> None:
+        """Ensure generation uses the same confirmed Fee snapshot as preview."""
+        if (
+            _fee_id(fee) != command.expected_confirmed_fee_id
+            or _fee_revision(fee) != command.expected_confirmed_fee_revision
+            or str(getattr(fee, "pricing_draft_edit_id"))
+            != command.expected_confirmed_fee_pricing_draft_edit_id
+        ):
+            raise RequiredFormsContextMismatchError("Required forms preview is stale.")
+
     def _validate_basic_information_context(
         self,
         command: GenerateRequiredFormsCommand,
@@ -659,6 +689,7 @@ class ProjectFolderRequiredFormsService:
         command: GenerateRequiredFormsCommand,
         item: RequiredFormPreviewItem,
         basic_information: ConfirmedBasicInformationSnapshot,
+        confirmed_fee: object,
         source_context: str | None,
         timings: list[RequiredFormsTiming],
     ) -> Path:
@@ -683,6 +714,7 @@ class ProjectFolderRequiredFormsService:
             key=item.key,
             target_name=item.target_path.name if item.target_path else item.key,
             basic_information=basic_information,
+            confirmed_fee=confirmed_fee,
         )
         _append_timing(timings, f"{item.key}.generate", generate_start)
         return source

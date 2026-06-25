@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from "react";
 import {
   commitLtrWorkbookBasicInformationSync,
+  openLtrWorkbookBasicInformationSyncReadonly,
   previewLtrWorkbookBasicInformationSync,
   type LtrWorkbookBasicInformationSyncCommit,
   type LtrWorkbookBasicInformationSyncPreview,
@@ -29,6 +30,7 @@ export function ProjectBasicInformationSummaryCard({
     useState<LtrWorkbookBasicInformationSyncPreview | null>(null);
   const [ltrPreviewLoading, setLtrPreviewLoading] = useState(false);
   const [ltrCommitLoading, setLtrCommitLoading] = useState(false);
+  const [ltrOpenLoading, setLtrOpenLoading] = useState(false);
   const [ltrSyncError, setLtrSyncError] = useState<string | null>(null);
   const [ltrSyncResult, setLtrSyncResult] =
     useState<LtrWorkbookBasicInformationSyncCommit | null>(null);
@@ -93,6 +95,21 @@ export function ProjectBasicInformationSummaryCard({
     }
   }
 
+  async function handleOpenLtrWorkbookReadonly(): Promise<void> {
+    if (ltrPreview?.status !== "ready" || !ltrPreview.workbook_path) {
+      return;
+    }
+    setLtrOpenLoading(true);
+    setLtrSyncError(null);
+    try {
+      await openLtrWorkbookBasicInformationSyncReadonly(projectId);
+    } catch (openError) {
+      setLtrSyncError(toLtrSyncOperatorMessage(openError));
+    } finally {
+      setLtrOpenLoading(false);
+    }
+  }
+
   return (
     <section className="runtime-console-basic-information" aria-label="LTR Information">
       {showStatusBadge ? (
@@ -147,10 +164,12 @@ export function ProjectBasicInformationSummaryCard({
           preview={ltrPreview}
           previewLoading={ltrPreviewLoading}
           commitLoading={ltrCommitLoading}
+          openLoading={ltrOpenLoading}
           error={ltrSyncError}
           result={ltrSyncResult}
           canCommit={canCommitLtrPreview}
           onCommit={handleCommitLtrSync}
+          onOpenWorkbook={handleOpenLtrWorkbookReadonly}
           onCancel={() => {
             setLtrPreview(null);
             setLtrSyncError(null);
@@ -165,10 +184,12 @@ type LtrWorkbookSyncPanelProps = {
   preview: LtrWorkbookBasicInformationSyncPreview | null;
   previewLoading: boolean;
   commitLoading: boolean;
+  openLoading: boolean;
   error: string | null;
   result: LtrWorkbookBasicInformationSyncCommit | null;
   canCommit: boolean;
   onCommit: () => void;
+  onOpenWorkbook: () => void;
   onCancel: () => void;
 };
 
@@ -176,22 +197,21 @@ function LtrWorkbookSyncPanel({
   preview,
   previewLoading,
   commitLoading,
+  openLoading,
   error,
   result,
   canCommit,
   onCommit,
+  onOpenWorkbook,
   onCancel,
 }: LtrWorkbookSyncPanelProps): ReactElement | null {
   if (!previewLoading && !error && !preview && !result) {
     return null;
   }
 
-  const targetLabel =
-    preview?.target_sheet && preview.target_row
-      ? `${preview.target_sheet} row ${preview.target_row}`
-      : "-";
   const isBlocked = preview?.status !== "ready";
   const hasChanges = Boolean(preview?.comparison_values.some((value) => value.changed));
+  const canOpenWorkbook = preview?.status === "ready" && Boolean(preview.workbook_path);
 
   return (
     <div className="runtime-console-ltr-sync-panel" aria-live="polite">
@@ -216,12 +236,18 @@ function LtrWorkbookSyncPanel({
           </div>
           <dl className="runtime-console-ltr-sync-context">
             <div>
-              <dt>Workbook</dt>
+              <dt>
+                <button
+                  type="button"
+                  className="runtime-console-ltr-sync-workbook-button"
+                  onClick={onOpenWorkbook}
+                  disabled={!canOpenWorkbook || openLoading || commitLoading}
+                  title="Open the LTR workbook read-only and select this DL row."
+                >
+                  {openLoading ? "Opening read-only..." : "Open read-only workbook"}
+                </button>
+              </dt>
               <dd>{preview.workbook_path ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>Target row</dt>
-              <dd>{targetLabel}</dd>
             </div>
           </dl>
           {preview.blockers.length > 0 ? (
@@ -240,17 +266,12 @@ function LtrWorkbookSyncPanel({
           ) : null}
           {!isBlocked ? (
             <>
-              {!hasChanges ? (
-                <p className="runtime-console-ltr-sync-up-to-date">
-                  LTR workbook is already up to date.
-                </p>
-              ) : null}
               <table className="runtime-console-ltr-sync-comparison">
                 <thead>
                   <tr>
                     <th scope="col">Field</th>
-                    <th scope="col">Current LTR workbook</th>
-                    <th scope="col">Value to write</th>
+                    <th scope="col">LTR workbook</th>
+                    <th scope="col">LTR of Basic Info</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -305,6 +326,20 @@ function toLtrSyncOperatorMessage(error: unknown): string {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const message = rawMessage.toLowerCase();
 
+  if (message.includes("excel automation is not available")) {
+    return "Excel automation is not available on this workstation.";
+  }
+  if (
+    message.includes("read-only prompt") ||
+    message.includes("password") ||
+    message.includes("could not open") ||
+    message.includes("unable to open")
+  ) {
+    return (
+      "Excel could not open the LTR workbook read-only. Confirm any Excel read-only prompt, " +
+      "then retry. Check the setup workbook path and password if it still fails."
+    );
+  }
   if (
     message.includes("changed after preview") ||
     message.includes("stale") ||
@@ -315,11 +350,14 @@ function toLtrSyncOperatorMessage(error: unknown): string {
   }
   if (
     message.includes("locked") ||
+    message.includes("already open") ||
+    message.includes("unable to verify") ||
+    message.includes("excel automation") ||
     message.includes("permission denied") ||
     message.includes("being used") ||
     message.includes("access is denied")
   ) {
-    return "The LTR workbook appears to be open or locked. Close it and retry.";
+    return "The LTR workbook cannot be opened safely. Close Excel copies of the workbook and retry.";
   }
   if (message.includes("not found") || message.includes("registered ltr row")) {
     return "The registered LTR row was not found in the configured workbook.";

@@ -58,9 +58,13 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     assert output_store.commands
     assert str(target) == output_store.commands[-1].output_path
     assert output_store.commands[-1].source_context_signature == (
-        "application-form:F1|"
+        "application-form:F1@source:unknown|"
         "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+        "|application-form-output:lab_section_v1"
     )
+    assert output_store.commands[-1].status is ProjectOutputStatus.CURRENT
+    assert output_store.commands[-1].source is ProjectOutputSource.SYSTEM_GENERATED
+    assert any(item.label == "application_form.office_write" for item in result.timings)
 
 
 def test_application_form_write_back_blocks_without_confirmed_basic_information(
@@ -130,6 +134,112 @@ def test_application_form_write_back_blocks_user_changed_managed_target(
     else:
         raise AssertionError("Expected managed fingerprint blocker.")
     assert office.calls == 0
+
+
+def test_application_form_write_back_skips_current_matching_target(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    _write_docx(target)
+    target_sha = compute_sha256(target)
+    output_store = _OutputStore(
+        items=(
+            ProjectOutputStatusItem(
+                output_kind=ProjectOutputKind.SECTION2_WRITE_BACK,
+                status=ProjectOutputStatus.CURRENT,
+                output_path=str(target),
+                source=ProjectOutputSource.SYSTEM_GENERATED,
+                draft_id="D1",
+                draft_version=1,
+                reason="current",
+                updated_at="2026-06-20T00:00:00+00:00",
+                output_sha256=target_sha,
+                output_size_bytes=target.stat().st_size,
+                source_context_signature=_context(),
+            ),
+        )
+    )
+    office = _RejectingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=output_store,
+        office=office,
+    )
+
+    result = service.write_back("P1")
+
+    assert result.status == "current"
+    assert result.output_record_id is None
+    assert office.calls == 0
+    assert not output_store.commands
+    assert any(item.label == "application_form.total" for item in result.timings)
+    assert any(item.label == "application_form.reuse_lookup" for item in result.timings)
+
+
+def test_application_form_write_back_reuses_verified_artifact_without_office(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    reusable = tmp_path / "cache" / "application.docx"
+    _write_docx(target)
+    _write_docx(reusable)
+    source_sha = compute_sha256(target)
+    reusable_sha = compute_sha256(reusable)
+    output_store = _OutputStore()
+    artifact_store = _ReusableStore(reusable)
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        request_material_collection_store=_CollectionStore(target, source_sha),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=output_store,
+        office=_RejectingOffice(),
+        reusable_artifact_store=artifact_store,
+    )
+
+    result = service.write_back("P1")
+
+    assert result.status == "reused"
+    assert compute_sha256(target) == reusable_sha
+    assert artifact_store.find_calls == [("P1", _context(source_sha), target)]
+    assert output_store.commands[-1].source_context_signature == _context(source_sha)
+    assert any(item.label == "application_form.reuse_copy" for item in result.timings)
+
+
+def test_application_form_write_back_does_not_reuse_cache_when_source_hash_unknown(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "DL-001" / "DL-001 Connector Qualification test"
+    target = official / "Submitted Material" / "application.docx"
+    reusable = tmp_path / "cache" / "application.docx"
+    _write_docx(target)
+    _write_docx(reusable)
+    artifact_store = _ReusableStore(reusable)
+    office = _CapturingOffice()
+    service = ProjectApplicationFormWriteBackService(
+        project_store=_ProjectStore(),
+        workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(),
+        file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=_OutputStore(),
+        office=office,
+        reusable_artifact_store=artifact_store,
+    )
+
+    result = service.write_back("P1")
+
+    assert office.calls == 1
+    assert artifact_store.find_calls == []
+    assert any(item.label == "application_form.reuse_lookup" for item in result.timings)
 
 
 def test_application_form_write_back_uses_basic_information_without_project_fallback(
@@ -456,6 +566,37 @@ class _OutputStore:
         return _Record()
 
 
+class _ReusableStore:
+    def __init__(self, reusable: Path | None = None) -> None:
+        self.reusable = reusable
+        self.find_calls: list[tuple[str, str, Path]] = []
+        self.save_calls: list[tuple[str, str, Path, str]] = []
+
+    def find_current_artifact(
+        self,
+        *,
+        project_id: str,
+        source_context_signature: str,
+        final_target_path: Path,
+    ) -> Path | None:
+        self.find_calls.append(
+            (project_id, source_context_signature, final_target_path)
+        )
+        return self.reusable
+
+    def save_current_artifact(
+        self,
+        *,
+        project_id: str,
+        source_context_signature: str,
+        source_path: Path,
+        source_sha256: str,
+    ) -> None:
+        self.save_calls.append(
+            (project_id, source_context_signature, source_path, source_sha256)
+        )
+
+
 class _BasicInformationReader:
     def __init__(self, snapshot: ConfirmedBasicInformationSnapshot | None) -> None:
         self.snapshot = snapshot
@@ -549,6 +690,14 @@ def _basic_information() -> ConfirmedBasicInformationSnapshot:
         source_signature='{"dl_number":"DL-001"}',
         confirmed_at="2026-06-20T00:00:00+00:00",
         confirmed_by="Lab User",
+    )
+
+
+def _context(source_sha: str = "unknown") -> str:
+    return (
+        f"application-form:F1@source:{source_sha}|"
+        "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
+        "|application-form-output:lab_section_v1"
     )
 
 

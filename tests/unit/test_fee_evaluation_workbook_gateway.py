@@ -469,6 +469,7 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     assert sheet.formulas[(6, 9)] == "=D6*F6*(1-H6)+G6"
     assert sheet.comments[(6, 9)] == "discount approved"
     assert (7, 9) not in sheet.comments
+    assert sheet.comment_clear_calls == 0
     assert sheet.cells[(10, 2)] == "0.75"
     assert sheet.cells[(10, 4)] == "100"
     assert sheet.cells[(10, 5)] == "per report"
@@ -481,6 +482,10 @@ def test_fee_gateway_matrix_basic_fill_writes_edited_values_and_notes(
     assert sheet.formulas[(13, 9)] == "=D10"
     assert (13, 9) not in sheet.cells
     assert sheet.comments[(13, 4)] == "external tooling"
+    assert sheet.block_value_writes >= 1
+    assert sheet.formula_block_writes >= 1
+    assert sheet.row_value_writes <= 6
+    assert sheet.cell_value_writes <= 4
 
 
 def test_fee_gateway_matrix_basic_fill_warns_when_note_comment_fails(

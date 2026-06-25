@@ -23,6 +23,11 @@ def insert_rows(sheet: Any, row: int, count: int) -> None:
         return
     except Exception:
         pass
+    try:
+        sheet.Rows(row).Resize(count).Insert()
+        return
+    except Exception:
+        pass
     for _ in range(count):
         sheet.Rows(row).Insert()
 

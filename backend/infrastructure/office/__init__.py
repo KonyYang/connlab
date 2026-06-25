@@ -53,6 +53,11 @@ from backend.infrastructure.office.ltr_workbook_transaction_gateway import (
     LtrWorkbookTransactionContext,
     LtrWorkbookTransactionGateway,
 )
+from backend.infrastructure.office.ltr_workbook_readonly_open_gateway import (
+    ExcelComLtrWorkbookReadonlyOpenGateway,
+    LtrWorkbookReadonlyOpenError,
+    a1_address,
+)
 from backend.infrastructure.office.outlook_msg_gateway import (
     OutlookMsgAttachmentError,
     OutlookMsgImportError,
@@ -72,6 +77,7 @@ __all__ = [
     "ExcelTabularReadResult",
     "ExcelStructureProbeResult",
     "ExcelComLTRWorkbookGateway",
+    "ExcelComLtrWorkbookReadonlyOpenGateway",
     "LtrWorkbookFormat",
     "LtrWorkbookBackupError",
     "LtrWorkbookDropdownEnsureResult",
@@ -80,6 +86,7 @@ __all__ = [
     "LtrWorkbookGatewayError",
     "LtrWorkbookLockTimeoutError",
     "LtrWorkbookReadOnlyError",
+    "LtrWorkbookReadonlyOpenError",
     "LtrWorkbookRowData",
     "LtrWorkbookRowPointer",
     "LtrWorkbookTransactionConfig",
@@ -113,5 +120,6 @@ __all__ = [
     "TestRecordDocumentGateway",
     "FeeEvaluationWorkbookGateway",
     "CustomerFeedbackWorkbookGateway",
+    "a1_address",
     "probe_msg_samples",
 ]

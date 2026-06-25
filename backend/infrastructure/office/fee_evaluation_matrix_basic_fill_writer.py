@@ -111,7 +111,7 @@ def write_matrix_basic_fill(
                     units=sample_edit.units,
                     base_fee=sample_edit.base_fee,
                     discount=sample_edit.discount,
-                    testing_fee=sample_edit.testing_fee,
+                    description="Sample preparation",
                     notes=sample_edit.notes,
                     comment_warning=(
                         f"Sample preparation note for {group.group_label} "
@@ -127,16 +127,22 @@ def write_matrix_basic_fill(
             line = group_lines[line_index]
             edited_row = edited_lookup.get(basic_fill_line_identity(line))
             if edited_row is not None:
+                block_start = line_index
+                while line_index < len(group_lines):
+                    next_line = group_lines[line_index]
+                    if edited_lookup.get(basic_fill_line_identity(next_line)) is None:
+                        break
+                    line_index += 1
+                block_lines = group_lines[block_start:line_index]
                 warnings.extend(
-                    _write_matrix_detail_row(
+                    _write_edited_detail_rows(
                         sheet=sheet,
-                        row_index=row_index,
-                        line=line,
-                        edited_row=edited_row,
+                        start_row=row_index,
+                        lines=block_lines,
+                        edited_lookup=edited_lookup,
                     )
                 )
-                row_index += 1
-                line_index += 1
+                row_index += len(block_lines)
                 continue
             block_start = line_index
             while line_index < len(group_lines):
@@ -178,7 +184,7 @@ def write_matrix_basic_fill(
                 units=report_edit.units,
                 base_fee=report_edit.base_fee,
                 discount=report_edit.discount,
-                testing_fee=report_edit.testing_fee,
+                description="Report preparation",
                 notes=report_edit.notes,
                 comment_warning="Report preparation note was not exported because Excel comment creation failed.",
             )
@@ -230,44 +236,68 @@ def write_matrix_basic_fill(
     return tuple(warnings)
 
 
-def _write_matrix_detail_row(
+def _write_edited_detail_rows(
     *,
     sheet: Any,
-    row_index: int,
-    line: MatrixBasicFillLine,
-    edited_row: FeeEvaluationEditedExportRow | None,
+    start_row: int,
+    lines: tuple[MatrixBasicFillLine, ...],
+    edited_lookup: dict[str, FeeEvaluationEditedExportRow],
 ) -> tuple[str, ...]:
-    if edited_row is None:
-        _set_row_values(
-            sheet,
-            row_index,
-            1,
-            ("", "", line.test_item, "", "", "", "", ""),
-        )
-        _clear_cell_fill(sheet=sheet, row_index=row_index, column=2)
-        warnings: tuple[str, ...] = ()
-    else:
-        sheet.Cells(row_index, 1).Value = ""
-        sheet.Cells(row_index, 3).Value = line.test_item
-        _clear_cell_fill(sheet=sheet, row_index=row_index, column=2)
-        warnings = _write_edited_values_to_row(
+    """Write contiguous edited Matrix detail rows with batched COM operations."""
+    if not lines:
+        return ()
+    rows: list[tuple[str | None, ...]] = []
+    comments: list[tuple[int, MatrixBasicFillLine, FeeEvaluationEditedExportRow]] = []
+    for row_offset, line in enumerate(lines):
+        edited_row = edited_lookup[basic_fill_line_identity(line)]
+        rows.append(("", *_edited_value_cells(line, edited_row)))
+        if edited_row.notes.strip():
+            comments.append((start_row + row_offset, line, edited_row))
+    _set_block_values(sheet, start_row, 1, tuple(rows))
+    end_row = start_row + len(lines) - 1
+    _clear_cell_fill_range(
+        sheet=sheet,
+        start_row=start_row,
+        end_row=end_row,
+        column=2,
+    )
+    _set_formula_block(
+        sheet,
+        start_row,
+        9,
+        tuple(_detail_fee_formula(row) for row in range(start_row, end_row + 1)),
+    )
+    warnings: list[str] = []
+    for row_index, line, edited_row in comments:
+        warning = _set_cell_comment(
             sheet=sheet,
             row_index=row_index,
-            spend_time=edited_row.spend_time,
-            unit_price=edited_row.unit_price,
-            unit_type=edited_row.unit_type,
-            units=edited_row.units,
-            base_fee=edited_row.base_fee,
-            discount=edited_row.discount,
-            testing_fee=edited_row.testing_fee,
-            notes=edited_row.notes,
-            comment_warning=(
+            column=9,
+            text=edited_row.notes,
+            failure_warning=(
                 f"Fee row note for {line.group_label} step {_line_step_label(line)} "
                 "was not exported because Excel comment creation failed."
             ),
         )
-    _set_formula(sheet, row_index, 9, _detail_fee_formula(row_index))
-    return warnings
+        if warning:
+            warnings.append(warning)
+    return tuple(warnings)
+
+
+def _edited_value_cells(
+    line: MatrixBasicFillLine,
+    edited_row: FeeEvaluationEditedExportRow,
+) -> tuple[str, str, str, str, str, str, str]:
+    """Return B:H visible Testing Prices values for one edited Matrix line."""
+    return (
+        _numeric_cell_value(edited_row.spend_time, default="0"),
+        line.test_item,
+        _numeric_cell_value(edited_row.unit_price, default="0"),
+        _unit_type_text(edited_row.unit_type),
+        _numeric_cell_value(edited_row.units, default="1"),
+        _numeric_cell_value(edited_row.base_fee, default="0"),
+        _discount_fraction(edited_row.discount),
+    )
 
 
 def _write_unedited_detail_rows(
@@ -310,26 +340,25 @@ def _write_edited_values_to_row(
     units: str,
     base_fee: str,
     discount: str,
-    testing_fee: str,
+    description: str,
     notes: str,
     comment_warning: str,
+    first_column_value: str | None = None,
 ) -> tuple[str, ...]:
     """Write TASK_300 editable values to one Testing Prices row."""
-    sheet.Cells(row_index, 2).Value = _numeric_cell_value(spend_time, default="0")
-    _set_row_values(
-        sheet,
-        row_index,
-        4,
-        (
-            _numeric_cell_value(unit_price, default="0"),
-            _unit_type_text(unit_type),
-            _numeric_cell_value(units, default="1"),
-            _numeric_cell_value(base_fee, default="0"),
-            _discount_fraction(discount),
-        ),
+    values = (
+        _numeric_cell_value(spend_time, default="0"),
+        description,
+        _numeric_cell_value(unit_price, default="0"),
+        _unit_type_text(unit_type),
+        _numeric_cell_value(units, default="1"),
+        _numeric_cell_value(base_fee, default="0"),
+        _discount_fraction(discount),
     )
-    if not _supports_formula(sheet, row_index, 9):
-        sheet.Cells(row_index, 9).Value = _numeric_cell_value(testing_fee, default="0")
+    if first_column_value is None:
+        _set_row_values(sheet, row_index, 2, values)
+    else:
+        _set_row_values(sheet, row_index, 1, (first_column_value, *values))
     warning = _set_cell_comment(
         sheet=sheet,
         row_index=row_index,
@@ -432,10 +461,6 @@ def _set_formula(sheet: Any, row: int, column: int, formula: str) -> None:
     sheet.Cells(row, column).Formula = formula
 
 
-def _supports_formula(sheet: Any, row: int, column: int) -> bool:
-    return hasattr(sheet.Cells(row, column), "Formula")
-
-
 def _set_cell_comment(
     *,
     sheet: Any,
@@ -445,23 +470,23 @@ def _set_cell_comment(
     failure_warning: str,
 ) -> str | None:
     normalized = text.strip()
+    if not normalized:
+        return None
     if hasattr(sheet, "set_cell_comment"):
         try:
             sheet.set_cell_comment(row_index, column, normalized)
         except Exception:
-            return failure_warning if normalized else None
+            return failure_warning
         return None
     cell = sheet.Cells(row_index, column)
     try:
-        cell.ClearComments()
-    except Exception:
-        pass
-    if not normalized:
-        return None
-    try:
         cell.AddComment(normalized)
     except Exception:
-        return failure_warning
+        try:
+            cell.ClearComments()
+            cell.AddComment(normalized)
+        except Exception:
+            return failure_warning
     return None
 
 

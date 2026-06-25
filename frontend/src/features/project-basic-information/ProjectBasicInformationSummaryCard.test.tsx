@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectBasicInformationResponse } from "../../api/client";
 import {
   commitLtrWorkbookBasicInformationSync,
+  openLtrWorkbookBasicInformationSyncReadonly,
   previewLtrWorkbookBasicInformationSync,
 } from "../../api/client";
 import { ProjectBasicInformationSummaryCard } from "./ProjectBasicInformationSummaryCard";
@@ -14,6 +15,7 @@ vi.mock("../../api/client", async (importOriginal) => {
     ...actual,
     previewLtrWorkbookBasicInformationSync: vi.fn(),
     commitLtrWorkbookBasicInformationSync: vi.fn(),
+    openLtrWorkbookBasicInformationSyncReadonly: vi.fn(),
   };
 });
 
@@ -23,11 +25,15 @@ const previewLtrWorkbookBasicInformationSyncMock = vi.mocked(
 const commitLtrWorkbookBasicInformationSyncMock = vi.mocked(
   commitLtrWorkbookBasicInformationSync
 );
+const openLtrWorkbookBasicInformationSyncReadonlyMock = vi.mocked(
+  openLtrWorkbookBasicInformationSyncReadonly
+);
 
 describe("ProjectBasicInformationSummaryCard", () => {
   beforeEach(() => {
     previewLtrWorkbookBasicInformationSyncMock.mockReset();
     commitLtrWorkbookBasicInformationSyncMock.mockReset();
+    openLtrWorkbookBasicInformationSyncReadonlyMock.mockReset();
   });
 
   it("shows unconfirmed state without an inline edit action", () => {
@@ -251,6 +257,16 @@ describe("ProjectBasicInformationSummaryCard", () => {
       confirmed_basic_information_version: 1,
       confirmed_basic_information_source_signature_hash: "hash-1",
     });
+    openLtrWorkbookBasicInformationSyncReadonlyMock.mockResolvedValue({
+      project_id: "P1",
+      ltr_number: "DL-2026-05-011",
+      workbook_path: "P:\\LTR\\LTR.xlsx",
+      sheet_name: "2026",
+      row_number: 42,
+      column_number: 4,
+      selected_cell: "D42",
+      message: "LTR workbook opened read-only at D42.",
+    });
 
     const { container } = render(
       <ProjectBasicInformationSummaryCard
@@ -269,16 +285,18 @@ describe("ProjectBasicInformationSummaryCard", () => {
     const previewHeading = container.querySelector(".runtime-console-ltr-sync-heading");
     expect(previewHeading?.textContent).toContain("DL-2026-05-011");
     expect(screen.getByText("P:\\LTR\\LTR.xlsx")).toBeTruthy();
-    expect(screen.getByText("2026 row 42")).toBeTruthy();
+    expect(screen.queryByText("2026 row 42")).toBeNull();
     const contextLabels = Array.from(
       container.querySelectorAll(".runtime-console-ltr-sync-context dt")
     ).map((item) => item.textContent);
-    expect(contextLabels).toEqual(["Workbook", "Target row"]);
+    expect(contextLabels).toEqual(["Open read-only workbook"]);
+    await user.click(screen.getByRole("button", { name: "Open read-only workbook" }));
+    expect(openLtrWorkbookBasicInformationSyncReadonlyMock).toHaveBeenCalledWith("P1");
     expect(
       screen.queryByText("Review the current LTR workbook row before updating it.")
     ).toBeNull();
-    expect(screen.getByText("Current LTR workbook")).toBeTruthy();
-    expect(screen.getByText("Value to write")).toBeTruthy();
+    expect(screen.getByText("LTR workbook")).toBeTruthy();
+    expect(screen.getByText("LTR of Basic Info")).toBeTruthy();
     const previewFields = Array.from(
       container.querySelectorAll(".runtime-console-ltr-sync-comparison tbody th")
     ).map((item) => item.textContent);
@@ -391,7 +409,8 @@ describe("ProjectBasicInformationSummaryCard", () => {
 
     await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
-    expect(await screen.findByText("LTR workbook is already up to date.")).toBeTruthy();
+    expect(await screen.findByText("LTR workbook")).toBeTruthy();
+    expect(screen.queryByText("LTR workbook is already up to date.")).toBeNull();
     expect(screen.getByRole("button", { name: "Confirm update" }).hasAttribute("disabled")).toBe(true);
     expect(commitLtrWorkbookBasicInformationSyncMock).not.toHaveBeenCalled();
   });
@@ -414,7 +433,9 @@ describe("ProjectBasicInformationSummaryCard", () => {
     await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(
-      await screen.findByText("The LTR workbook appears to be open or locked. Close it and retry.")
+      await screen.findByText(
+        "The LTR workbook cannot be opened safely. Close Excel copies of the workbook and retry."
+      )
     ).toBeTruthy();
 
     previewLtrWorkbookBasicInformationSyncMock.mockResolvedValue({

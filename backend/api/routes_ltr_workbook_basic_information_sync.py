@@ -10,8 +10,10 @@ from backend.application.ltr_workbook_basic_information_sync_service import (
     CommitLtrWorkbookBasicInformationSyncCommand,
     LtrWorkbookBasicInformationSyncError,
     LtrWorkbookBasicInformationSyncPreview,
+    LtrWorkbookBasicInformationReadonlyOpenResult,
     LtrWorkbookBasicInformationSyncResult,
     LtrWorkbookBasicInformationSyncService,
+    OpenLtrWorkbookBasicInformationReadonlyCommand,
     PreviewLtrWorkbookBasicInformationSyncCommand,
 )
 from backend.infrastructure.office import LtrWorkbookLockTimeoutError
@@ -75,6 +77,19 @@ class LtrWorkbookBasicInformationSyncCommitResponse(BaseModel):
     row_number: int
     confirmed_basic_information_version: int
     confirmed_basic_information_source_signature_hash: str
+
+
+class LtrWorkbookBasicInformationReadonlyOpenResponse(BaseModel):
+    """Read-only workbook opener response."""
+
+    project_id: str
+    ltr_number: str
+    workbook_path: str
+    sheet_name: str
+    row_number: int
+    column_number: int
+    selected_cell: str
+    message: str
 
 
 @router.get(
@@ -144,10 +159,54 @@ def commit_ltr_workbook_basic_information_sync(
         raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
+@router.post(
+    "/api/projects/{project_id}/ltr-workbook/basic-information-sync/open-readonly",
+    response_model=LtrWorkbookBasicInformationReadonlyOpenResponse,
+)
+def open_ltr_workbook_basic_information_readonly(
+    project_id: str,
+    service: LtrWorkbookBasicInformationSyncService = Depends(
+        get_ltr_workbook_basic_information_sync_service
+    ),
+) -> LtrWorkbookBasicInformationReadonlyOpenResponse:
+    """Open the configured LTR workbook read-only at the exact registered DL row."""
+    try:
+        return _readonly_open_response(
+            service.open_readonly_at_ltr(
+                OpenLtrWorkbookBasicInformationReadonlyCommand(project_id=project_id)
+            )
+        )
+    except LtrWorkbookLockTimeoutError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except LtrWorkbookBasicInformationSyncError as exc:
+        detail = str(exc)
+        raise HTTPException(
+            status_code=_readonly_open_error_status(detail),
+            detail=detail,
+        ) from exc
+
+
 def _basic_information_sync_error_status(detail: str) -> int:
     if "Registered LTR is required" in detail:
         return 404
     return 400
+
+
+def _readonly_open_error_status(detail: str) -> int:
+    lower_detail = detail.lower()
+    if any(
+        token in lower_detail
+        for token in (
+            "already open",
+            "unable to verify",
+            "locked",
+            "permission denied",
+            "being used",
+            "access is denied",
+        )
+    ):
+        return 409
+    return _basic_information_sync_error_status(detail)
 
 
 def _preview_response(
@@ -201,4 +260,19 @@ def _commit_response(
         confirmed_basic_information_source_signature_hash=(
             result.confirmed_basic_information_source_signature_hash
         ),
+    )
+
+
+def _readonly_open_response(
+    result: LtrWorkbookBasicInformationReadonlyOpenResult,
+) -> LtrWorkbookBasicInformationReadonlyOpenResponse:
+    return LtrWorkbookBasicInformationReadonlyOpenResponse(
+        project_id=result.project_id,
+        ltr_number=result.ltr_number,
+        workbook_path=str(result.workbook_path),
+        sheet_name=result.sheet_name,
+        row_number=result.row_number,
+        column_number=result.column_number,
+        selected_cell=result.selected_cell,
+        message=result.message,
     )

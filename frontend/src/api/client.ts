@@ -194,6 +194,11 @@ export type ApplicationFormWriteBackField = {
   location: string;
 };
 
+export type ApplicationFormWriteBackTiming = {
+  label: string;
+  elapsed_ms: number;
+};
+
 export type ApplicationFormWriteBackResponse = {
   project_id: string;
   target_path: string;
@@ -202,6 +207,8 @@ export type ApplicationFormWriteBackResponse = {
   unchanged_fields: ApplicationFormWriteBackField[];
   warnings: string[];
   output_record_id?: string | null;
+  timings?: ApplicationFormWriteBackTiming[];
+  office_timings?: ApplicationFormWriteBackTiming[];
 };
 
 export type ProjectPackagePreviewStatus = "ready" | "blocked";
@@ -1685,6 +1692,17 @@ export type LtrWorkbookBasicInformationSyncCommit = {
   confirmed_basic_information_source_signature_hash: string;
 };
 
+export type LtrWorkbookBasicInformationReadonlyOpen = {
+  project_id: string;
+  ltr_number: string;
+  workbook_path: string;
+  sheet_name: string;
+  row_number: number;
+  column_number: number;
+  selected_cell: string;
+  message: string;
+};
+
 export type RuntimeProjectionValueCountItem = {
   value: string | null;
   count: number;
@@ -2632,6 +2650,15 @@ export function commitLtrWorkbookBasicInformationSync(
       method: "POST",
       body: JSON.stringify(input)
     }
+  );
+}
+
+export function openLtrWorkbookBasicInformationSyncReadonly(
+  projectId: string
+): Promise<LtrWorkbookBasicInformationReadonlyOpen> {
+  return requestJson<LtrWorkbookBasicInformationReadonlyOpen>(
+    `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/basic-information-sync/open-readonly`,
+    { method: "POST" }
   );
 }
 

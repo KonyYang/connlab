@@ -140,6 +140,7 @@ from backend.application.confirmed_fee_version_service import (
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftPersistenceService,
+    edited_values_from_json,
 )
 from backend.application.fee_evaluation_template_discovery import (
     discover_fee_evaluation_template,
@@ -242,8 +243,12 @@ from backend.infrastructure.files.public_drive_upload_gateway import (
 from backend.infrastructure.files.project_folder_required_forms_gateway import (
     ProjectFolderRequiredFormsFileGateway,
 )
+from backend.infrastructure.files.application_form_reusable_artifact_store import (
+    FileReusableApplicationFormArtifactStore,
+)
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
+    ExcelComLtrWorkbookReadonlyOpenGateway,
     FeeEvaluationWorkbookGateway,
     CustomerFeedbackWorkbookGateway,
     TestRecordDocumentGateway,
@@ -846,8 +851,10 @@ def get_project_request_material_collection_service(
 
 def get_project_application_form_write_back_service(
     session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
 ) -> ProjectApplicationFormWriteBackService:
     """Build the Project Folder Application Form write-back service."""
+    output_service = get_project_output_record_service(session)
     return ProjectApplicationFormWriteBackService(
         project_store=ProjectRepository(session),
         workspace_store=ProjectOfficialWorkspaceRepository(session),
@@ -859,7 +866,11 @@ def get_project_application_form_write_back_service(
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         ),
-        output_record_service=get_project_output_record_service(session),
+        output_record_service=output_service,
+        reusable_artifact_store=FileReusableApplicationFormArtifactStore(
+            output_service,
+            settings.data_dir / "application_form_write_back_cache",
+        ),
     )
 
 
@@ -981,9 +992,24 @@ class _FeeFormTemplateContextReader:
         self._templates_dir = templates_dir
 
     def preview_template_context(self, project_id: str) -> str:
-        """Return Fee Form template path and content hash context."""
+        """Return a stable Fee Form template context token."""
         template = discover_fee_evaluation_template(self._templates_dir)
-        return f"fee-template:{template.resolve()}@sha256:{compute_sha256(template)}"
+        return _fee_form_template_context(template)
+
+
+def _fee_form_template_context(template: Path) -> str:
+    """Return a stable template identity for Required Forms reuse checks.
+
+    Legacy `.xls` workbooks can have Office/OLE metadata rewritten by Excel even
+    when ConnLab only opens them as templates. Using a full-file SHA for those
+    files makes every preview look stale. The template filename carries the
+    controlled form number/revision, so use path + size as the stable identity
+    for `.xls` and keep content hashes for non-legacy workbooks.
+    """
+    resolved = template.resolve()
+    if template.suffix.lower() == ".xls":
+        return f"fee-template:{resolved}@legacy-xls-stable:size:{template.stat().st_size}"
+    return f"fee-template:{resolved}@sha256:{compute_sha256(template)}"
 
 
 class _RequiredFormsStagingGenerator:
@@ -1011,6 +1037,7 @@ class _RequiredFormsStagingGenerator:
         key: str,
         target_name: str,
         basic_information: ConfirmedBasicInformationSnapshot,
+        confirmed_fee: object,
     ) -> Path:
         """Generate one Required form into staging and return the staged file path."""
         output_dir = self._settings.data_dir / "staged_required_forms" / project_id
@@ -1027,6 +1054,14 @@ class _RequiredFormsStagingGenerator:
             )
             return _rename_staged_file(result.output_path, target_name)
         if key == "fee_form":
+            try:
+                edited_values = edited_values_from_json(
+                    str(getattr(confirmed_fee, "pricing_snapshot_json"))
+                )
+            except (AttributeError, KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Confirmed Fee pricing snapshot is not available for Fee Form generation."
+                ) from exc
             result = self._fee_export_service.export(
                 ExportConfirmedMatrixFeeEvaluationCommand(
                     project_id=project_id,
@@ -1038,6 +1073,7 @@ class _RequiredFormsStagingGenerator:
                     overwrite=True,
                     allow_review_required=True,
                     fill_mode="matrix_basic",
+                    edited_values=edited_values,
                     basic_information_values=fee_form_identity(
                         basic_information
                     ).as_dict(),
@@ -1591,6 +1627,9 @@ def get_ltr_workbook_basic_information_sync_service(
             ProjectBasicInformationRepository(session)
         ),
         transaction_gateway=transaction_gateway,
+        readonly_open_gateway=ExcelComLtrWorkbookReadonlyOpenGateway(
+            modify_password=settings.ltr_workbook.modify_password,
+        ),
     )
 
 

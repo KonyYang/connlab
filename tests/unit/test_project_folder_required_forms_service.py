@@ -9,12 +9,20 @@ from backend.application.official_project_workspace_service import OfficialWorks
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
 )
+from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedExportSummary,
+    FeeEvaluationEditedExportValues,
+)
+from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    edited_values_to_json,
+)
 from backend.application.project_folder_required_forms_service import (
     GenerateRequiredFormsCommand,
     ProjectFolderRequiredFormsService,
     RequiredFormsContextMismatchError,
     RequiredFormsGenerateTarget,
 )
+from backend.api.dependencies import _FeeFormTemplateContextReader
 from backend.application.project_output_record_service import ProjectOutputRecordError
 from backend.application.official_project_folder_check_service import (
     OfficialFolderCheckItem,
@@ -117,6 +125,23 @@ def test_preview_source_context_includes_fee_template_identity(tmp_path: Path) -
         "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe|"
         "fee-template:custom@sha256:abc|fee-output:matrix_basic_with_basic_information"
     )
+
+
+def test_xls_fee_template_context_is_stable_when_office_metadata_changes(
+    tmp_path: Path,
+) -> None:
+    templates_dir = tmp_path / "templates"
+    templates_dir.mkdir()
+    template = templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+    template.write_bytes(b"ole-metadata-version-1")
+    reader = _FeeFormTemplateContextReader(templates_dir)
+
+    first_context = reader.preview_template_context("P1")
+    template.write_bytes(b"ole-metadata-version-2")
+    second_context = reader.preview_template_context("P1")
+
+    assert first_context == second_context
+    assert "@sha256:" not in first_context
 
 
 def test_preview_places_test_record_under_submitted_material(tmp_path: Path) -> None:
@@ -289,6 +314,10 @@ def test_generate_passes_basic_information_to_staging_generator(tmp_path: Path) 
     assert (
         generator.basic_information_by_key["customer_feedback_form"]["project_leader"]
         == "Even Yang"
+    )
+    assert generator.confirmed_fee_by_key["fee_form"].confirmed_fee_id == "CF1"
+    assert generator.confirmed_fee_by_key["fee_form"].pricing_snapshot_json == (
+        _pricing_snapshot_json()
     )
 
 
@@ -643,6 +672,20 @@ def test_generate_reports_blocked_when_first_final_placement_fails(tmp_path: Pat
     assert output_store.latest(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM) is None
 
 
+def _pricing_snapshot_json() -> str:
+    return edited_values_to_json(
+        FeeEvaluationEditedExportValues(
+            rows=tuple(),
+            summary=FeeEvaluationEditedExportSummary(
+                condition_confirmation_spend_time="0",
+                external_cost="0",
+                external_cost_note="",
+                lab_manpower_hourly_rate="200",
+            ),
+        )
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _Matrix:
     confirmed_matrix_id: str = "CM1"
@@ -654,6 +697,7 @@ class _FeeVersion:
     confirmed_fee_id: str = "CF1"
     revision: int = 1
     pricing_draft_edit_id: str = "PD1"
+    pricing_snapshot_json: str = _pricing_snapshot_json()
 
 
 @dataclass(frozen=True, slots=True)
@@ -734,6 +778,7 @@ class _Generator:
     def __init__(self, tmp_path: Path) -> None:
         self.root = tmp_path / "stage"
         self.basic_information_by_key: dict[str, dict[str, str]] = {}
+        self.confirmed_fee_by_key: dict[str, object] = {}
 
     def generate(
         self,
@@ -742,8 +787,10 @@ class _Generator:
         key: str,
         target_name: str,
         basic_information: ConfirmedBasicInformationSnapshot,
+        confirmed_fee: object,
     ) -> Path:
         self.basic_information_by_key[key] = dict(basic_information.values)
+        self.confirmed_fee_by_key[key] = confirmed_fee
         path = self.root / project_id / target_name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"{key}:{target_name}", encoding="utf-8")

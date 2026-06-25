@@ -51,6 +51,20 @@ class LtrWorkbookTransactionGatewayPort(Protocol):
         """Run one locked write transaction and save after operation success."""
 
 
+class LtrWorkbookReadonlyOpenGatewayPort(Protocol):
+    """Read-only workbook viewer behavior required by Basic Information sync."""
+
+    def open_at_cell(
+        self,
+        *,
+        workbook_path: Path,
+        sheet_name: str,
+        row_number: int,
+        column_number: int,
+    ) -> str:
+        """Open a workbook read-only and select one cell."""
+
+
 @dataclass(frozen=True, slots=True)
 class PreviewLtrWorkbookBasicInformationSyncCommand:
     """Command for LTR workbook Basic Information sync preview."""
@@ -67,6 +81,13 @@ class CommitLtrWorkbookBasicInformationSyncCommand:
     preview_acknowledged: bool
     expected_confirmed_basic_information_version: int
     expected_confirmed_basic_information_source_signature_hash: str
+
+
+@dataclass(frozen=True, slots=True)
+class OpenLtrWorkbookBasicInformationReadonlyCommand:
+    """Command for opening the LTR workbook at the exact DL row."""
+
+    project_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +138,35 @@ class LtrWorkbookBasicInformationSyncResult:
     confirmed_basic_information_source_signature_hash: str
 
 
+@dataclass(frozen=True, slots=True)
+class LtrWorkbookBasicInformationReadonlyOpenResult:
+    """Result of opening one LTR workbook row read-only."""
+
+    project_id: str
+    ltr_number: str
+    workbook_path: Path
+    sheet_name: str
+    row_number: int
+    column_number: int
+    selected_cell: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class _WorkbookSignature:
+    path: str
+    size: int | None
+    modified_ns: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class _CachedExactLtrRow:
+    signature: _WorkbookSignature
+    sheet_name: str
+    row_number: int
+    ltr_number: str
+
+
 class LtrWorkbookBasicInformationSyncService:
     """Preview and commit existing LTR workbook row sync from Basic Information."""
 
@@ -126,11 +176,16 @@ class LtrWorkbookBasicInformationSyncService:
         ltr_store: LtrRecordStore,
         basic_information_reader: ConfirmedBasicInformationReader,
         transaction_gateway: LtrWorkbookTransactionGatewayPort,
+        readonly_open_gateway: LtrWorkbookReadonlyOpenGatewayPort | None = None,
     ) -> None:
         """Create the sync service."""
         self._ltrs = ltr_store
         self._basic_information = basic_information_reader
         self._transaction = transaction_gateway
+        self._readonly_open = readonly_open_gateway
+        self._exact_ltr_row_cache: dict[
+            tuple[str, str, str], _CachedExactLtrRow
+        ] = {}
 
     def preview(
         self, command: PreviewLtrWorkbookBasicInformationSyncCommand
@@ -204,6 +259,41 @@ class LtrWorkbookBasicInformationSyncService:
             confirmed_basic_information_source_signature_hash=basic.source_signature_hash,
         )
 
+    def open_readonly_at_ltr(
+        self, command: OpenLtrWorkbookBasicInformationReadonlyCommand
+    ) -> LtrWorkbookBasicInformationReadonlyOpenResult:
+        """Open the configured workbook read-only at the exact registered DL row."""
+        if self._readonly_open is None:
+            raise LtrWorkbookBasicInformationSyncError(
+                "LTR workbook read-only opener is not configured."
+            )
+        ltr = self._latest_registered_ltr(command.project_id)
+        with self._transaction.open_read_only_transaction() as context:
+            target_sheet, target_row = self._locate_exact_ltr_row(
+                ltr=ltr,
+                context=context,
+            )
+            workbook_path = context.workbook_path
+            try:
+                selected_cell = self._readonly_open.open_at_cell(
+                    workbook_path=workbook_path,
+                    sheet_name=target_sheet,
+                    row_number=target_row,
+                    column_number=_LTR_DL_COLUMN_NUMBER,
+                )
+            except Exception as exc:
+                raise LtrWorkbookBasicInformationSyncError(str(exc)) from exc
+        return LtrWorkbookBasicInformationReadonlyOpenResult(
+            project_id=command.project_id,
+            ltr_number=ltr.ltr_number,
+            workbook_path=workbook_path,
+            sheet_name=target_sheet,
+            row_number=target_row,
+            column_number=_LTR_DL_COLUMN_NUMBER,
+            selected_cell=selected_cell,
+            message=f"Opened LTR workbook read-only at {selected_cell}.",
+        )
+
     def _build_preview(
         self,
         *,
@@ -212,32 +302,31 @@ class LtrWorkbookBasicInformationSyncService:
         basic_information: ConfirmedBasicInformationSnapshot,
         context,
     ) -> LtrWorkbookBasicInformationSyncPreview:
-        sheet_names = _annual_sheet_names(context.session.list_sheets())
-        existing = _find_exact_ltr_number(
-            context.session,
-            ltr_number=ltr.ltr_number,
-            sheet_names=sheet_names,
+        target_sheet, target_row = self._locate_exact_ltr_row(
+            ltr=ltr,
+            context=context,
         )
-        if existing is None:
-            raise LtrWorkbookBasicInformationSyncError(
-                f"Registered LTR row not found in workbook: {ltr.ltr_number}"
-            )
+        current_row = _read_registration_row(
+            context.session,
+            sheet_name=target_sheet,
+            row_number=target_row,
+        )
         row_data = _row_data_from_basic_information(
             basic_information,
             ltr_number=ltr.ltr_number,
-            row_number=existing.row_number,
+            row_number=target_row,
         )
         columns = _column_previews(row_data)
         return LtrWorkbookBasicInformationSyncPreview(
             project_id=project_id,
             ltr_number=ltr.ltr_number,
             workbook_path=context.workbook_path,
-            target_sheet=existing.sheet_name,
-            target_row=existing.row_number,
+            target_sheet=target_sheet,
+            target_row=target_row,
             row_data=row_data,
             columns=columns,
             comparison_values=_comparison_values(
-                current_row=existing.values,
+                current_row=current_row,
                 pending_columns=columns,
             ),
             confirmed_basic_information_version=basic_information.version,
@@ -245,6 +334,50 @@ class LtrWorkbookBasicInformationSyncService:
                 basic_information.source_signature_hash
             ),
         )
+
+    def _locate_exact_ltr_row(self, *, ltr: LtrRecord, context) -> tuple[str, int]:
+        sheet_name = _target_sheet_name(ltr.ltr_number)
+        workbook_path = Path(context.workbook_path)
+        signature = _workbook_signature(workbook_path)
+        target = _ltr_lookup_token(ltr.ltr_number)
+        cache_key = (signature.path, sheet_name, target)
+        cached = self._exact_ltr_row_cache.get(cache_key)
+        if cached is not None and cached.signature == signature:
+            cached_cell = _read_ltr_number_cell(
+                context.session,
+                sheet_name=sheet_name,
+                row_number=cached.row_number,
+            )
+            if _ltr_lookup_token(cached_cell) == target:
+                return cached.sheet_name, cached.row_number
+            self._exact_ltr_row_cache.pop(cache_key, None)
+
+        matches = [
+            row_number
+            for row_number, value in _read_ltr_number_cells(
+                context.session,
+                sheet_name=sheet_name,
+            )
+            if _ltr_lookup_token(value) == target
+        ]
+        if len(matches) > 1:
+            self._exact_ltr_row_cache.pop(cache_key, None)
+            raise LtrWorkbookBasicInformationSyncError(
+                f"Duplicate exact LTR rows found in workbook: {ltr.ltr_number}"
+            )
+        if not matches:
+            self._exact_ltr_row_cache.pop(cache_key, None)
+            raise LtrWorkbookBasicInformationSyncError(
+                f"Registered LTR row not found in workbook: {ltr.ltr_number}"
+            )
+        row_number = matches[0]
+        self._exact_ltr_row_cache[cache_key] = _CachedExactLtrRow(
+            signature=signature,
+            sheet_name=sheet_name,
+            row_number=row_number,
+            ltr_number=target,
+        )
+        return sheet_name, row_number
 
     def _latest_registered_ltr(self, project_id: str) -> LtrRecord:
         records = [
@@ -388,6 +521,71 @@ def _comparison_values(
     return tuple(values)
 
 
+def _target_sheet_name(ltr_number: str) -> str:
+    parsed = _parse_ltr(ltr_number)
+    if parsed.year is None:
+        raise LtrWorkbookBasicInformationSyncError(
+            f"LTR number has no target year: {ltr_number}"
+        )
+    return str(parsed.year)
+
+
+def _workbook_signature(path: Path) -> _WorkbookSignature:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        resolved = path
+    try:
+        stat = resolved.stat()
+    except OSError:
+        return _WorkbookSignature(str(resolved), None, None)
+    return _WorkbookSignature(str(resolved), int(stat.st_size), int(stat.st_mtime_ns))
+
+
+def _read_ltr_number_cells(
+    session,
+    *,
+    sheet_name: str,
+) -> tuple[tuple[int, object], ...]:
+    if hasattr(session, "read_ltr_number_cells"):
+        return tuple(session.read_ltr_number_cells(sheet_name))
+    return tuple(
+        (index, row[3] if len(row) >= _LTR_DL_COLUMN_NUMBER else None)
+        for index, row in enumerate(session.read_annual_sheet(sheet_name), start=2)
+    )
+
+
+def _read_ltr_number_cell(
+    session,
+    *,
+    sheet_name: str,
+    row_number: int,
+) -> object:
+    if hasattr(session, "read_ltr_number_cell"):
+        return session.read_ltr_number_cell(sheet_name, row_number)
+    row = _read_registration_row(session, sheet_name=sheet_name, row_number=row_number)
+    if len(row) < _LTR_DL_COLUMN_NUMBER:
+        return None
+    return row[_LTR_DL_COLUMN_NUMBER - 1]
+
+
+def _read_registration_row(
+    session,
+    *,
+    sheet_name: str,
+    row_number: int,
+) -> tuple[object, ...]:
+    if hasattr(session, "read_registration_row"):
+        return tuple(session.read_registration_row(sheet_name, row_number))
+    rows = session.read_annual_sheet(sheet_name)
+    index = row_number - 2
+    if index < 0 or index >= len(rows):
+        raise LtrWorkbookBasicInformationSyncError(
+            f"LTR workbook target row cannot be read: {sheet_name} row {row_number}"
+        )
+    return tuple(rows[index])
+
+
 def _find_exact_ltr_number(
     session,
     *,
@@ -515,6 +713,8 @@ _LTR_ROW_FIELD_NAMES = (
     "test_fee",
     "remarks_po",
 )
+
+_LTR_DL_COLUMN_NUMBER = 4
 
 _LTR_SYNC_COMPARISON_FIELDS = (
     ("project_type", "Project Type"),

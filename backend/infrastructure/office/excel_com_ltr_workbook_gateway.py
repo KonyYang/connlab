@@ -242,6 +242,65 @@ class ExcelComLTRWorkbookWriteSession:
             if str(value or "").strip()
         )
 
+    def read_ltr_number_cells(self, sheet_name: str) -> tuple[tuple[int, object], ...]:
+        """Read column-D DL cells with worksheet row numbers."""
+        try:
+            sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+            last_row = int(sheet.UsedRange.Rows.Count)
+            if last_row < 2:
+                return ()
+            try:
+                values = sheet.Range(f"D2:D{last_row}").Value2
+            except Exception:
+                values = sheet.Range(f"D2:D{last_row}").Value
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                f"Unable to read LTR numbers from workbook sheet {sheet_name}. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
+        return tuple(
+            (row_number, value)
+            for row_number, value in enumerate(_tuple_column_values(values), start=2)
+        )
+
+    def read_ltr_number_cell(self, sheet_name: str, row_number: int) -> object:
+        """Read one column-D DL cell."""
+        if row_number < 2:
+            raise LtrWorkbookWriteError("LTR workbook read row must be 2 or greater.")
+        try:
+            sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+            try:
+                return sheet.Cells(row_number, 4).Value2
+            except Exception:
+                return sheet.Cells(row_number, 4).Value
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                f"Unable to read LTR cell from workbook sheet {sheet_name}. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
+
+    def read_registration_row(
+        self,
+        sheet_name: str,
+        row_number: int,
+    ) -> tuple[object, ...]:
+        """Read one existing A:Q registration row."""
+        if row_number < 2:
+            raise LtrWorkbookWriteError("LTR workbook read row must be 2 or greater.")
+        try:
+            sheet = self._handle.workbook.Worksheets.Item(sheet_name)
+            try:
+                values = sheet.Range(f"A{row_number}:Q{row_number}").Value2
+            except Exception:
+                values = sheet.Range(f"A{row_number}:Q{row_number}").Value
+        except Exception as exc:
+            raise LtrWorkbookWriteError(
+                f"Unable to read LTR workbook row {row_number} from sheet {sheet_name}. "
+                f"Excel error: {_exception_summary(exc)}"
+            ) from exc
+        rows = _tuple_rows(values)
+        return rows[0] if rows else ()
+
     def append_registration_row(
         self,
         sheet_name: str,

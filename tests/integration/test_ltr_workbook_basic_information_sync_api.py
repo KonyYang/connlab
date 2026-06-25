@@ -10,6 +10,7 @@ from backend.application.ltr_workbook_basic_information_sync_service import (
     LtrWorkbookBasicInformationSyncError,
     LtrWorkbookBasicInformationSyncComparisonValue,
     LtrWorkbookBasicInformationSyncPreview,
+    LtrWorkbookBasicInformationReadonlyOpenResult,
     LtrWorkbookBasicInformationSyncResult,
 )
 from backend.application.ltr_workbook_write_preview_service import (
@@ -161,6 +162,49 @@ def test_ltr_workbook_basic_information_sync_commit_api_maps_lock_timeout() -> N
         app.dependency_overrides.clear()
 
 
+def test_ltr_workbook_basic_information_sync_open_readonly_api_returns_selected_cell() -> None:
+    fake = _FakeSyncService()
+    app.dependency_overrides[get_ltr_workbook_basic_information_sync_service] = lambda: fake
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/api/projects/P1/ltr-workbook/basic-information-sync/open-readonly"
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["project_id"] == "P1"
+        assert payload["ltr_number"] == "DL-2026-05-011"
+        assert payload["workbook_path"] == "LTR_number.xls"
+        assert payload["sheet_name"] == "2026"
+        assert payload["row_number"] == 3
+        assert payload["column_number"] == 4
+        assert payload["selected_cell"] == "D3"
+        assert fake.open_command.project_id == "P1"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_ltr_workbook_basic_information_sync_open_readonly_api_maps_open_workbook_to_conflict() -> None:
+    app.dependency_overrides[get_ltr_workbook_basic_information_sync_service] = (
+        lambda: _FakeSyncService(
+            error="The LTR workbook is already open in Excel. Close it and retry."
+        )
+    )
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/api/projects/P1/ltr-workbook/basic-information-sync/open-readonly"
+        )
+
+        assert response.status_code == 409
+        assert "already open" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 class _FakeSyncService:
     def __init__(
         self,
@@ -173,6 +217,7 @@ class _FakeSyncService:
         self.blocked = blocked
         self.preview_project_id = ""
         self.commit_command = None
+        self.open_command = None
 
     def preview(self, command):
         self.preview_project_id = command.project_id
@@ -211,6 +256,23 @@ class _FakeSyncService:
             row_number=3,
             confirmed_basic_information_version=7,
             confirmed_basic_information_source_signature_hash="hash-7",
+        )
+
+    def open_readonly_at_ltr(self, command):
+        self.open_command = command
+        if self.lock_timeout:
+            raise LtrWorkbookLockTimeoutError("LTR workbook is locked: test.lock")
+        if self.error:
+            raise LtrWorkbookBasicInformationSyncError(self.error)
+        return LtrWorkbookBasicInformationReadonlyOpenResult(
+            project_id=command.project_id,
+            ltr_number="DL-2026-05-011",
+            workbook_path=Path("LTR_number.xls"),
+            sheet_name="2026",
+            row_number=3,
+            column_number=4,
+            selected_cell="D3",
+            message="Opened LTR workbook read-only at D3.",
         )
 
 
