@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.domain import Project, ProjectStatus
+from backend.domain import Project, ProjectClosureType, ProjectLifecycleState, ProjectStatus
 from backend.infrastructure.storage.models import ProjectModel
 
 
@@ -45,6 +45,18 @@ class ProjectRepository:
         row.status = project.status.value
         row.business_unit = project.business_unit
         row.created_on = project.created_on
+        row.lifecycle_state = project.lifecycle_state.value
+        row.closure_type = project.closure_type.value if project.closure_type else None
+        row.stopped_reason = project.stopped_reason
+        row.stopped_at = project.stopped_at
+        row.stopped_by = project.stopped_by
+        row.resumed_reason = project.resumed_reason
+        row.resumed_at = project.resumed_at
+        row.resumed_by = project.resumed_by
+        row.closed_reason = project.closed_reason
+        row.closed_at = project.closed_at
+        row.closed_by = project.closed_by
+        row.completion_summary_json = project.completion_summary_json
         self._session.flush()
         return project
 
@@ -68,6 +80,18 @@ def _to_model(project: Project) -> ProjectModel:
         status=project.status.value,
         business_unit=project.business_unit,
         created_on=project.created_on,
+        lifecycle_state=project.lifecycle_state.value,
+        closure_type=project.closure_type.value if project.closure_type else None,
+        stopped_reason=project.stopped_reason,
+        stopped_at=project.stopped_at,
+        stopped_by=project.stopped_by,
+        resumed_reason=project.resumed_reason,
+        resumed_at=project.resumed_at,
+        resumed_by=project.resumed_by,
+        closed_reason=project.closed_reason,
+        closed_at=project.closed_at,
+        closed_by=project.closed_by,
+        completion_summary_json=project.completion_summary_json,
     )
 
 
@@ -81,4 +105,16 @@ def _to_domain(row: ProjectModel) -> Project:
         status=ProjectStatus(row.status),
         business_unit=row.business_unit,
         created_on=row.created_on,
+        lifecycle_state=ProjectLifecycleState(row.lifecycle_state),
+        closure_type=ProjectClosureType(row.closure_type) if row.closure_type else None,
+        stopped_reason=row.stopped_reason,
+        stopped_at=row.stopped_at,
+        stopped_by=row.stopped_by,
+        resumed_reason=row.resumed_reason,
+        resumed_at=row.resumed_at,
+        resumed_by=row.resumed_by,
+        closed_reason=row.closed_reason,
+        closed_at=row.closed_at,
+        closed_by=row.closed_by,
+        completion_summary_json=row.completion_summary_json,
     )

@@ -18,6 +18,30 @@ class ProjectStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ProjectLifecycleState(StrEnum):
+    """Lifecycle overlay for project mutability."""
+
+    ACTIVE = "active"
+    STOPPED = "stopped"
+    CLOSED = "closed"
+
+
+class ProjectClosureType(StrEnum):
+    """Closure reason category for closed projects."""
+
+    COMPLETED = "completed"
+    ADMINISTRATIVE = "administrative"
+
+
+class ProjectLifecycleEventType(StrEnum):
+    """Audited lifecycle transition event type."""
+
+    STOP = "stop"
+    RESUME = "resume"
+    CLOSE_COMPLETED = "close_completed"
+    CLOSE_ADMINISTRATIVE = "close_administrative"
+
+
 class PrecheckStatus(StrEnum):
     """Overall deterministic precheck result status."""
 

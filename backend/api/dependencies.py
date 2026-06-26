@@ -87,6 +87,9 @@ from backend.application.project_lifecycle_service import ProjectLifecycleServic
 from backend.application.project_lifecycle_management_service import (
     ProjectLifecycleManagementService,
 )
+from backend.application.project_lifecycle_state_service import (
+    ProjectLifecycleStateService,
+)
 from backend.application.project_ltr_cleanup_audit_service import (
     ProjectLtrCleanupAuditService,
 )
@@ -277,6 +280,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectCleanupAuditRecordRepository,
     ProjectBasicInformationRepository,
     ProjectFolderRecordRepository,
+    ProjectLifecycleEventRepository,
     ProjectMatrixDraftRepository,
     MatrixFeePendingRebaseRepository,
     ProjectFolderRecordRepository,
@@ -383,6 +387,22 @@ def get_project_lifecycle_management_service(
         confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
         matrix_draft_store=ProjectMatrixDraftRepository(session),
         audit_store=ProjectCleanupAuditRecordRepository(session),
+    )
+
+
+def get_project_lifecycle_state_service(
+    session: Session = Depends(get_session),
+) -> ProjectLifecycleStateService:
+    """Build TASK_337A project lifecycle overlay service."""
+    return ProjectLifecycleStateService(
+        project_store=ProjectRepository(session),
+        ltr_store=LtrRecordRepository(session),
+        event_store=ProjectLifecycleEventRepository(session),
+        output_status_service=ProjectOutputRecordService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectTestPlanDraftRepository(session),
+            output_store=ProjectOutputRecordRepository(session),
+        ),
     )
 
 

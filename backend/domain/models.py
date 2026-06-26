@@ -19,6 +19,9 @@ from backend.domain.enums import (
     IssueLevel,
     LtrStatus,
     PrecheckStatus,
+    ProjectClosureType,
+    ProjectLifecycleEventType,
+    ProjectLifecycleState,
     ProjectStatus,
     ProjectTestPlanDraftStatus,
     ProjectOutputKind,
@@ -38,6 +41,18 @@ class Project:
     status: ProjectStatus = ProjectStatus.DRAFT
     business_unit: str | None = None
     created_on: date | None = None
+    lifecycle_state: ProjectLifecycleState = ProjectLifecycleState.ACTIVE
+    closure_type: ProjectClosureType | None = None
+    stopped_reason: str | None = None
+    stopped_at: str | None = None
+    stopped_by: str | None = None
+    resumed_reason: str | None = None
+    resumed_at: str | None = None
+    resumed_by: str | None = None
+    closed_reason: str | None = None
+    closed_at: str | None = None
+    closed_by: str | None = None
+    completion_summary_json: str | None = None
 
     def can_generate_folder(self) -> bool:
         """Return whether the project is ready for safe folder generation."""
@@ -46,6 +61,56 @@ class Project:
     def with_status(self, status: ProjectStatus) -> "Project":
         """Return a copy of the project with an updated lifecycle status."""
         return replace(self, status=status)
+
+    def with_lifecycle(
+        self,
+        *,
+        lifecycle_state: ProjectLifecycleState,
+        closure_type: ProjectClosureType | None = None,
+        stopped_reason: str | None = None,
+        stopped_at: str | None = None,
+        stopped_by: str | None = None,
+        resumed_reason: str | None = None,
+        resumed_at: str | None = None,
+        resumed_by: str | None = None,
+        closed_reason: str | None = None,
+        closed_at: str | None = None,
+        closed_by: str | None = None,
+        completion_summary_json: str | None = None,
+    ) -> "Project":
+        """Return a copy of the project with updated lifecycle overlay fields."""
+        return replace(
+            self,
+            lifecycle_state=lifecycle_state,
+            closure_type=closure_type,
+            stopped_reason=stopped_reason,
+            stopped_at=stopped_at,
+            stopped_by=stopped_by,
+            resumed_reason=resumed_reason,
+            resumed_at=resumed_at,
+            resumed_by=resumed_by,
+            closed_reason=closed_reason,
+            closed_at=closed_at,
+            closed_by=closed_by,
+            completion_summary_json=completion_summary_json,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectLifecycleEvent:
+    """Audited lifecycle transition for one project."""
+
+    event_id: str
+    project_id: str
+    event_type: ProjectLifecycleEventType
+    previous_lifecycle_state: ProjectLifecycleState
+    new_lifecycle_state: ProjectLifecycleState
+    previous_closure_type: ProjectClosureType | None
+    new_closure_type: ProjectClosureType | None
+    reason: str | None
+    operator: str | None
+    created_at: str
+    metadata_json: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -22,6 +22,22 @@ class ProjectModel(Base):
     status: Mapped[str] = mapped_column(String(64), nullable=False)
     business_unit: Mapped[str | None] = mapped_column(String(255))
     created_on: Mapped[date | None] = mapped_column(Date)
+    lifecycle_state: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="active",
+    )
+    closure_type: Mapped[str | None] = mapped_column(String(32))
+    stopped_reason: Mapped[str | None] = mapped_column(Text)
+    stopped_at: Mapped[str | None] = mapped_column(String(64))
+    stopped_by: Mapped[str | None] = mapped_column(String(255))
+    resumed_reason: Mapped[str | None] = mapped_column(Text)
+    resumed_at: Mapped[str | None] = mapped_column(String(64))
+    resumed_by: Mapped[str | None] = mapped_column(String(255))
+    closed_reason: Mapped[str | None] = mapped_column(Text)
+    closed_at: Mapped[str | None] = mapped_column(String(64))
+    closed_by: Mapped[str | None] = mapped_column(String(255))
+    completion_summary_json: Mapped[str | None] = mapped_column(Text)
 
 
 class ProjectTemporaryContextModel(Base):
@@ -163,6 +179,28 @@ class ProjectCleanupAuditRecordModel(Base):
     operator: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     details_json: Mapped[str | None] = mapped_column(Text)
+
+
+class ProjectLifecycleEventModel(Base):
+    """Database row for one audited project lifecycle transition."""
+
+    __tablename__ = "project_lifecycle_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    previous_lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    new_lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_closure_type: Mapped[str | None] = mapped_column(String(32))
+    new_closure_type: Mapped[str | None] = mapped_column(String(32))
+    reason: Mapped[str | None] = mapped_column(Text)
+    operator: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[str | None] = mapped_column(Text)
 
 
 class ProjectFolderRecordModel(Base):

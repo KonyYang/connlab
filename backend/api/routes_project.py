@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.dependencies import (
     get_project_lifecycle_management_service,
+    get_project_lifecycle_state_service,
     get_project_registry_summary_service,
     get_project_service,
 )
@@ -20,6 +21,16 @@ from backend.application.project_lifecycle_management_service import (
     ProjectStopResult,
     TemporaryProjectDeletePreview,
     TemporaryProjectDeleteResult,
+)
+from backend.application.project_lifecycle_state_service import (
+    CloseAdministrativeProjectCommand,
+    CloseCompletedProjectCommand,
+    ProjectLifecycleStateError,
+    ProjectLifecycleStateNotFoundError,
+    ProjectLifecycleStateService,
+    ProjectLifecycleView,
+    ResumeProjectLifecycleCommand,
+    StopProjectLifecycleCommand,
 )
 from backend.application.project_registry_summary_service import (
     ProjectRegistryRow,
@@ -120,6 +131,47 @@ class ProjectStopResponse(BaseModel):
     status_label: str
     reason: str
     audit_recorded: bool
+
+
+class ProjectLifecycleActionRequest(BaseModel):
+    """Request body for stop/resume lifecycle actions."""
+
+    reason: str | None = None
+    operator: str | None = None
+
+
+class ProjectLifecycleCloseCompletedRequest(BaseModel):
+    """Request body for completed project closure."""
+
+    close_note: str = Field(min_length=1)
+    manual_completion_confirmed: bool
+    output_summary_acknowledged: bool
+    operator: str | None = None
+
+
+class ProjectLifecycleCloseAdministrativeRequest(BaseModel):
+    """Request body for administrative project closure."""
+
+    reason: str = Field(min_length=1)
+    operator: str | None = None
+
+
+class ProjectLifecycleResponse(BaseModel):
+    """Typed lifecycle state response returned by TASK_337A APIs."""
+
+    project_id: str
+    lifecycle_state: str
+    closure_type: str | None = None
+    status: str
+    status_label: str
+    readonly: bool
+    allowed_actions: list[str]
+    stopped_at: str | None = None
+    stopped_reason: str | None = None
+    closed_at: str | None = None
+    closed_reason: str | None = None
+    completion_summary: dict[str, object] | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ProjectRegistryRowResponse(BaseModel):
@@ -270,6 +322,9 @@ def stop_project(
     service: ProjectLifecycleManagementService = Depends(
         get_project_lifecycle_management_service
     ),
+    lifecycle_service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
 ) -> ProjectStopResponse:
     """Stop a project while preserving history."""
     try:
@@ -280,9 +335,143 @@ def stop_project(
                 operator=request.operator,
             )
         )
+        if result.audit_recorded:
+            lifecycle_service.record_legacy_stop_result(
+                project_id=project_id,
+                previous_status=result.previous_status,
+                reason=result.reason,
+                operator=request.operator,
+            )
     except ProjectLifecycleManagementNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, lifecycle_service) from exc
     return _to_stop_response(result)
+
+
+@router.get("/{project_id}/lifecycle", response_model=ProjectLifecycleResponse)
+def get_project_lifecycle(
+    project_id: str,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Return TASK_337A lifecycle overlay state for one project."""
+    try:
+        view = service.get_lifecycle(project_id)
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _to_lifecycle_response(view)
+
+
+@router.post(
+    "/{project_id}/lifecycle/stop",
+    response_model=ProjectLifecycleResponse,
+)
+def stop_project_lifecycle(
+    project_id: str,
+    request: ProjectLifecycleActionRequest,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Stop a project through the lifecycle overlay API."""
+    try:
+        view = service.stop_project(
+            StopProjectLifecycleCommand(
+                project_id=project_id,
+                reason=request.reason,
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, service) from exc
+    return _to_lifecycle_response(view)
+
+
+@router.post(
+    "/{project_id}/lifecycle/resume",
+    response_model=ProjectLifecycleResponse,
+)
+def resume_project_lifecycle(
+    project_id: str,
+    request: ProjectLifecycleActionRequest,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Resume a stopped project through the lifecycle overlay API."""
+    try:
+        view = service.resume_project(
+            ResumeProjectLifecycleCommand(
+                project_id=project_id,
+                reason=request.reason,
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, service) from exc
+    return _to_lifecycle_response(view)
+
+
+@router.post(
+    "/{project_id}/lifecycle/close-completed",
+    response_model=ProjectLifecycleResponse,
+)
+def close_completed_project_lifecycle(
+    project_id: str,
+    request: ProjectLifecycleCloseCompletedRequest,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Close a formal project as completed."""
+    try:
+        view = service.close_completed_project(
+            CloseCompletedProjectCommand(
+                project_id=project_id,
+                close_note=request.close_note,
+                manual_completion_confirmed=request.manual_completion_confirmed,
+                output_summary_acknowledged=request.output_summary_acknowledged,
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, service) from exc
+    return _to_lifecycle_response(view)
+
+
+@router.post(
+    "/{project_id}/lifecycle/close-administrative",
+    response_model=ProjectLifecycleResponse,
+)
+def close_administrative_project_lifecycle(
+    project_id: str,
+    request: ProjectLifecycleCloseAdministrativeRequest,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Close any project administratively."""
+    try:
+        view = service.close_administrative_project(
+            CloseAdministrativeProjectCommand(
+                project_id=project_id,
+                reason=request.reason,
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, service) from exc
+    return _to_lifecycle_response(view)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -372,13 +561,51 @@ def _to_delete_response(
     )
 
 
-def _to_stop_response(result: ProjectStopResult) -> ProjectStopResponse:
+def _to_stop_response(result: ProjectStopResult | ProjectLifecycleView) -> ProjectStopResponse:
     """Convert stop result into an API response."""
     return ProjectStopResponse(
         project_id=result.project_id,
-        previous_status=result.previous_status,
+        previous_status=result.previous_status or result.status,
         status=result.status,
         status_label=result.status_label,
-        reason=result.reason,
+        reason=getattr(result, "reason", None) or result.stopped_reason or "",
         audit_recorded=result.audit_recorded,
+    )
+
+
+def _to_lifecycle_response(view: ProjectLifecycleView) -> ProjectLifecycleResponse:
+    """Convert lifecycle service view into an API response."""
+    return ProjectLifecycleResponse(
+        project_id=view.project_id,
+        lifecycle_state=view.lifecycle_state.value,
+        closure_type=view.closure_type.value if view.closure_type else None,
+        status=view.status,
+        status_label=view.status_label,
+        readonly=view.readonly,
+        allowed_actions=list(view.allowed_actions),
+        stopped_at=view.stopped_at,
+        stopped_reason=view.stopped_reason,
+        closed_at=view.closed_at,
+        closed_reason=view.closed_reason,
+        completion_summary=view.completion_summary,
+        warnings=list(view.warnings),
+    )
+
+
+def _lifecycle_conflict(
+    exc: ProjectLifecycleStateError,
+    project_id: str,
+    service: ProjectLifecycleStateService,
+) -> HTTPException:
+    view = service.get_lifecycle(project_id)
+    return HTTPException(
+        status_code=409,
+        detail={
+            "code": "project_lifecycle_conflict",
+            "project_id": project_id,
+            "lifecycle_state": view.lifecycle_state.value,
+            "closure_type": view.closure_type.value if view.closure_type else None,
+            "message": str(exc),
+            "allowed_actions": list(view.allowed_actions),
+        },
     )

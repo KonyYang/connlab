@@ -63,6 +63,7 @@ def init_db(engine: Engine) -> None:
     _migrate_source_matrix_import_preview_payload(engine)
     _migrate_source_matrix_row_detail_columns(engine)
     _migrate_project_basic_information_records_table(engine)
+    _migrate_project_lifecycle_columns(engine)
 
 
 def _migrate_project_no_optional(engine: Engine) -> None:
@@ -685,4 +686,76 @@ def _migrate_project_basic_information_records_table(engine: Engine) -> None:
         connection.exec_driver_sql(
             "CREATE INDEX ix_project_basic_information_records_status "
             "ON project_basic_information_records(status)"
+        )
+
+
+def _migrate_project_lifecycle_columns(engine: Engine) -> None:
+    """Add TASK_337A lifecycle overlay columns and backfill legacy project rows."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "projects" not in table_names:
+            return
+
+        columns = {
+            row[1] for row in connection.exec_driver_sql("PRAGMA table_info(projects)").all()
+        }
+        column_defs = {
+            "lifecycle_state": "VARCHAR(32)",
+            "closure_type": "VARCHAR(32)",
+            "stopped_reason": "TEXT",
+            "stopped_at": "VARCHAR(64)",
+            "stopped_by": "VARCHAR(255)",
+            "resumed_reason": "TEXT",
+            "resumed_at": "VARCHAR(64)",
+            "resumed_by": "VARCHAR(255)",
+            "closed_reason": "TEXT",
+            "closed_at": "VARCHAR(64)",
+            "closed_by": "VARCHAR(255)",
+            "completion_summary_json": "TEXT",
+        }
+        for column, definition in column_defs.items():
+            if column in columns:
+                continue
+            connection.exec_driver_sql(
+                f"ALTER TABLE projects ADD COLUMN {column} {definition}"
+            )
+
+        connection.exec_driver_sql(
+            """
+            UPDATE projects
+            SET lifecycle_state = 'stopped'
+            WHERE (lifecycle_state IS NULL OR lifecycle_state = '')
+                AND status = 'cancelled'
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            UPDATE projects
+            SET lifecycle_state = 'closed'
+            WHERE (lifecycle_state IS NULL OR lifecycle_state = '')
+                AND status = 'closed'
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            UPDATE projects
+            SET lifecycle_state = 'active'
+            WHERE lifecycle_state IS NULL OR lifecycle_state = ''
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            UPDATE projects
+            SET closure_type = 'administrative'
+            WHERE lifecycle_state = 'closed'
+                AND status = 'closed'
+                AND (closure_type IS NULL OR closure_type = '')
+            """
         )
