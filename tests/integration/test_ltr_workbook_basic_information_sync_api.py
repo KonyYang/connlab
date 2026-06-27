@@ -16,6 +16,11 @@ from backend.application.ltr_workbook_basic_information_sync_service import (
 from backend.application.ltr_workbook_write_preview_service import (
     LtrWorkbookWriteColumnPreview,
 )
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
+)
+from backend.domain import ProjectClosureType, ProjectLifecycleState
 from backend.infrastructure.office import LtrWorkbookLockTimeoutError, LtrWorkbookRowData
 
 
@@ -162,6 +167,87 @@ def test_ltr_workbook_basic_information_sync_commit_api_maps_lock_timeout() -> N
         app.dependency_overrides.clear()
 
 
+def test_ltr_workbook_basic_information_sync_commit_stopped_returns_structured_409_without_mutation() -> None:
+    service = _FakeSyncService(lifecycle_state=ProjectLifecycleState.STOPPED)
+    app.dependency_overrides[get_ltr_workbook_basic_information_sync_service] = lambda: service
+    client = TestClient(app, raise_server_exceptions=False)
+
+    try:
+        response = client.post(
+            "/api/projects/P1/ltr-workbook/basic-information-sync/commit",
+            json={
+                "operator_confirmed": True,
+                "preview_acknowledged": True,
+                "expected_confirmed_basic_information_version": 7,
+                "expected_confirmed_basic_information_source_signature_hash": "hash-7",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "stopped"
+    assert detail["closure_type"] is None
+    assert detail["allowed_actions"] == ["resume", "close"]
+    assert service.commit_command is None
+
+
+def test_ltr_workbook_basic_information_sync_commit_closed_returns_structured_409_without_mutation() -> None:
+    service = _FakeSyncService(
+        lifecycle_state=ProjectLifecycleState.CLOSED,
+        closure_type=ProjectClosureType.COMPLETED,
+    )
+    app.dependency_overrides[get_ltr_workbook_basic_information_sync_service] = lambda: service
+    client = TestClient(app, raise_server_exceptions=False)
+
+    try:
+        response = client.post(
+            "/api/projects/P1/ltr-workbook/basic-information-sync/commit",
+            json={
+                "operator_confirmed": True,
+                "preview_acknowledged": True,
+                "expected_confirmed_basic_information_version": 7,
+                "expected_confirmed_basic_information_source_signature_hash": "hash-7",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["lifecycle_state"] == "closed"
+    assert detail["closure_type"] == "completed"
+    assert detail["allowed_actions"] == []
+    assert service.commit_command is None
+
+
+def test_ltr_workbook_basic_information_sync_commit_lifecycle_guard_missing_maps_to_404() -> None:
+    service = _FakeSyncService(lifecycle_guard_not_found=True)
+    app.dependency_overrides[get_ltr_workbook_basic_information_sync_service] = lambda: service
+    client = TestClient(app, raise_server_exceptions=False)
+
+    try:
+        response = client.post(
+            "/api/projects/NOPE/ltr-workbook/basic-information-sync/commit",
+            json={
+                "operator_confirmed": True,
+                "preview_acknowledged": True,
+                "expected_confirmed_basic_information_version": 7,
+                "expected_confirmed_basic_information_source_signature_hash": "hash-7",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found: NOPE"
+    assert service.commit_command is None
+
+
 def test_ltr_workbook_basic_information_sync_open_readonly_api_returns_selected_cell() -> None:
     fake = _FakeSyncService()
     app.dependency_overrides[get_ltr_workbook_basic_information_sync_service] = lambda: fake
@@ -211,10 +297,16 @@ class _FakeSyncService:
         error: str | None = None,
         lock_timeout: bool = False,
         blocked: bool = False,
+        lifecycle_state: ProjectLifecycleState | None = None,
+        closure_type: ProjectClosureType | None = None,
+        lifecycle_guard_not_found: bool = False,
     ) -> None:
         self.error = error
         self.lock_timeout = lock_timeout
         self.blocked = blocked
+        self.lifecycle_state = lifecycle_state
+        self.closure_type = closure_type
+        self.lifecycle_guard_not_found = lifecycle_guard_not_found
         self.preview_project_id = ""
         self.commit_command = None
         self.open_command = None
@@ -242,11 +334,27 @@ class _FakeSyncService:
         return _preview(command.project_id)
 
     def commit(self, command):
-        self.commit_command = command
+        if self.lifecycle_guard_not_found:
+            raise ProjectLifecycleWriteGuardNotFoundError(
+                f"Project not found: {command.project_id}"
+            )
+        if self.lifecycle_state is not None:
+            raise ProjectLifecycleReadonlyError(
+                project_id=command.project_id,
+                lifecycle_state=self.lifecycle_state,
+                closure_type=self.closure_type,
+                message=_lifecycle_message(self.lifecycle_state, self.closure_type),
+                allowed_actions=(
+                    ("resume", "close")
+                    if self.lifecycle_state is ProjectLifecycleState.STOPPED
+                    else ()
+                ),
+            )
         if self.lock_timeout:
             raise LtrWorkbookLockTimeoutError("LTR workbook is locked: test.lock")
         if self.error:
             raise LtrWorkbookBasicInformationSyncError(self.error)
+        self.commit_command = command
         return LtrWorkbookBasicInformationSyncResult(
             project_id=command.project_id,
             ltr_number="DL-2026-05-011",
@@ -274,6 +382,17 @@ class _FakeSyncService:
             selected_cell="D3",
             message="Opened LTR workbook read-only at D3.",
         )
+
+
+def _lifecycle_message(
+    lifecycle_state: ProjectLifecycleState,
+    closure_type: ProjectClosureType | None,
+) -> str:
+    if lifecycle_state is ProjectLifecycleState.STOPPED:
+        return "This project is stopped. Resume it before making changes."
+    if closure_type is ProjectClosureType.COMPLETED:
+        return "This project is closed as completed and is readonly."
+    return "This project is closed and is readonly."
 
 
 def _preview(project_id: str) -> LtrWorkbookBasicInformationSyncPreview:

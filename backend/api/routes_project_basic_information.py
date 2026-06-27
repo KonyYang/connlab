@@ -6,6 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_project_basic_information_service
+from backend.api.lifecycle_errors import (
+    lifecycle_guard_not_found,
+    lifecycle_readonly_conflict,
+)
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
+)
 from backend.application.project_basic_information_service import (
     ConfirmProjectBasicInformationCommand,
     ProjectBasicInformationError,
@@ -95,6 +103,14 @@ def get_basic_information(
         return _response(service.get(project_id))
     except ProjectBasicInformationProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
 
 
 @router.put("/draft", response_model=ProjectBasicInformationResponse)
@@ -117,6 +133,10 @@ def save_basic_information_draft(
         )
     except ProjectBasicInformationProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
 
 
 @router.post("/confirm", response_model=ProjectBasicInformationResponse)
@@ -149,6 +169,10 @@ def confirm_basic_information(
         ) from exc
     except ProjectBasicInformationProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except ProjectBasicInformationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

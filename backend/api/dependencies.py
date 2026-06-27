@@ -90,6 +90,9 @@ from backend.application.project_lifecycle_management_service import (
 from backend.application.project_lifecycle_state_service import (
     ProjectLifecycleStateService,
 )
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleWriteGuard,
+)
 from backend.application.project_ltr_cleanup_audit_service import (
     ProjectLtrCleanupAuditService,
 )
@@ -367,7 +370,15 @@ def get_project_basic_information_service(
         sample_store=SampleInfoRepository(session),
         basic_information_store=ProjectBasicInformationRepository(session),
         clock=lambda: datetime.now(timezone.utc).isoformat(),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
+
+
+def get_project_lifecycle_write_guard(
+    session: Session = Depends(get_session),
+) -> ProjectLifecycleWriteGuard:
+    """Build a lifecycle write guard using Project lifecycle overlay state."""
+    return ProjectLifecycleWriteGuard(ProjectRepository(session))
 
 
 def get_project_lifecycle_management_service(
@@ -507,6 +518,7 @@ def get_fee_evaluation_pricing_draft_service(
             confirmed_store=ConfirmedMatrixAuthorityRepository(session),
         ),
         draft_store=FeeEvaluationPricingDraftEditRepository(session),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
 
 
@@ -520,6 +532,7 @@ def get_confirmed_fee_version_service(
                 confirmed_store=ConfirmedMatrixAuthorityRepository(session),
             ),
             draft_store=FeeEvaluationPricingDraftEditRepository(session),
+            lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
         ),
         confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
     )
@@ -650,6 +663,7 @@ def get_matrix_editor_session_service(
             confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
             rebase_service=MatrixFeeDraftRebaseService(),
         ),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
 
 
@@ -1182,6 +1196,7 @@ def get_project_folder_required_forms_service(
         file_gateway=ProjectFolderRequiredFormsFileGateway(),
         output_status_service=output_service,
         reusable_fee_form_reader=_ReusableFeeFormArtifactReader(output_service),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
 
 
@@ -1650,6 +1665,7 @@ def get_ltr_workbook_basic_information_sync_service(
         readonly_open_gateway=ExcelComLtrWorkbookReadonlyOpenGateway(
             modify_password=settings.ltr_workbook.modify_password,
         ),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
 
 

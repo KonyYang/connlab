@@ -8,6 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_project_folder_required_forms_service
+from backend.api.lifecycle_errors import (
+    lifecycle_guard_not_found,
+    lifecycle_readonly_conflict,
+)
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
+)
 from backend.application.project_folder_required_forms_service import (
     GenerateRequiredFormsCommand,
     ProjectFolderRequiredFormsService,
@@ -162,6 +170,10 @@ def generate_required_forms(
     )
     try:
         return _generate_response(service.generate(command))
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except RequiredFormsContextMismatchError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except RequiredFormsConflictError as exc:

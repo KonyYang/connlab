@@ -56,6 +56,10 @@ from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftRowInput,
     UpdateProjectMatrixDraftCommand,
 )
+from backend.application.project_lifecycle_write_guard import (
+    LifecycleWriteOperation,
+    ProjectLifecycleWriteGuard,
+)
 from backend.domain import (
     ConfirmedMatrixCell,
     ConfirmedMatrixGroup,
@@ -377,6 +381,7 @@ class MatrixEditorSessionService:
         pending_fee_rebase_service: PendingFeeRebaseService | None = None,
         fee_rebase_promotion_service: FeeRebasePromotionService | None = None,
         fee_rule_version_provider: Callable[[], str] | None = None,
+        lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
     ) -> None:
         self._projects = project_store
         self._confirmed = confirmed_store
@@ -393,6 +398,7 @@ class MatrixEditorSessionService:
         self._fee_rule_version_provider = (
             fee_rule_version_provider or _active_fee_rule_version_id
         )
+        self._lifecycle_write_guard = lifecycle_write_guard
 
     def get_seed(self, *, project_id: str) -> MatrixEditorSessionSeed:
         """Build one Matrix Editor seed from active authority and source snapshot lineage."""
@@ -488,6 +494,10 @@ class MatrixEditorSessionService:
         command: MatrixEditorSessionDraftSaveCommand,
     ) -> MatrixEditorSessionDraftSaveResult:
         """Autosave one Matrix Editor payload into the current non-authority draft."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.MATRIX_EDITOR_DRAFT_SAVE,
+        )
         self._require_project(command.project_id)
         active = self._confirmed.get_active_by_project(command.project_id)
         if active is None:
@@ -541,6 +551,10 @@ class MatrixEditorSessionService:
         command: MatrixEditorSessionDraftDiscardCommand,
     ) -> MatrixEditorSessionDraftDiscardResult:
         """Discard the current Matrix Editor non-authority draft."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.MATRIX_EDITOR_DRAFT_DISCARD,
+        )
         self._require_project(command.project_id)
         active = self._confirmed.get_active_by_project(command.project_id)
         if active is None:
@@ -603,6 +617,10 @@ class MatrixEditorSessionService:
         command: MatrixEditorSessionConfirmCommand,
     ) -> MatrixEditorSessionConfirmResult:
         """Confirm one temporary Matrix Editor session into active authority."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.MATRIX_EDITOR_CONFIRM,
+        )
         self._require_project(command.project_id)
         confirmed_by = command.confirmed_by.strip()
         if not confirmed_by:
@@ -1087,6 +1105,14 @@ class MatrixEditorSessionService:
         project = self._projects.get(project_id)
         if project is None:
             raise MatrixEditorSessionNotFoundError(f"Project not found: {project_id}")
+
+    def _require_write_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleWriteOperation,
+    ) -> None:
+        if self._lifecycle_write_guard is not None:
+            self._lifecycle_write_guard.require_write_allowed(project_id, operation)
 
 
 class _NullPendingFeeRebaseService:

@@ -18,6 +18,10 @@ from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationReader,
     ConfirmedBasicInformationSnapshot,
 )
+from backend.application.project_lifecycle_write_guard import (
+    LifecycleWriteOperation,
+    ProjectLifecycleWriteGuard,
+)
 from backend.domain import LtrRecord, LtrStatus
 from backend.infrastructure.office import (
     LtrWorkbookExistingRow,
@@ -177,12 +181,14 @@ class LtrWorkbookBasicInformationSyncService:
         basic_information_reader: ConfirmedBasicInformationReader,
         transaction_gateway: LtrWorkbookTransactionGatewayPort,
         readonly_open_gateway: LtrWorkbookReadonlyOpenGatewayPort | None = None,
+        lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
     ) -> None:
         """Create the sync service."""
         self._ltrs = ltr_store
         self._basic_information = basic_information_reader
         self._transaction = transaction_gateway
         self._readonly_open = readonly_open_gateway
+        self._lifecycle_write_guard = lifecycle_write_guard
         self._exact_ltr_row_cache: dict[
             tuple[str, str, str], _CachedExactLtrRow
         ] = {}
@@ -212,6 +218,10 @@ class LtrWorkbookBasicInformationSyncService:
         self, command: CommitLtrWorkbookBasicInformationSyncCommand
     ) -> LtrWorkbookBasicInformationSyncResult:
         """Write confirmed Basic Information to the existing workbook row."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.LTR_WORKBOOK_BASIC_INFORMATION_SYNC_COMMIT,
+        )
         if not command.preview_acknowledged:
             raise LtrWorkbookBasicInformationSyncError(
                 "LTR workbook Basic Information sync preview must be acknowledged."
@@ -258,6 +268,14 @@ class LtrWorkbookBasicInformationSyncService:
             confirmed_basic_information_version=basic.version,
             confirmed_basic_information_source_signature_hash=basic.source_signature_hash,
         )
+
+    def _require_write_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleWriteOperation,
+    ) -> None:
+        if self._lifecycle_write_guard is not None:
+            self._lifecycle_write_guard.require_write_allowed(project_id, operation)
 
     def open_readonly_at_ltr(
         self, command: OpenLtrWorkbookBasicInformationReadonlyCommand

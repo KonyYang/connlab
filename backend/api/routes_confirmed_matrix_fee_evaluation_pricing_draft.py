@@ -8,6 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_fee_evaluation_pricing_draft_service
+from backend.api.lifecycle_errors import (
+    lifecycle_guard_not_found,
+    lifecycle_readonly_conflict,
+)
 from backend.api.routes_confirmed_matrix_fee_evaluation_export import (
     ConfirmedMatrixFeeEvaluationEditedFileRequest,
     FeeEvaluationEditedManualRowExportRequest,
@@ -24,6 +28,10 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftLoadResult,
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
+)
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
 )
 
 
@@ -132,6 +140,10 @@ def save_fee_evaluation_pricing_draft(
             status_code=409,
             detail={"code": "fee_pricing_draft_conflict", "message": str(exc)},
         ) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except ConfirmedMatrixFeeTemplateBasicFillNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -165,6 +177,10 @@ def discard_fee_evaluation_pricing_draft(
             status_code=409,
             detail={"code": "fee_pricing_draft_conflict", "message": str(exc)},
         ) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except ConfirmedMatrixFeeTemplateBasicFillNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

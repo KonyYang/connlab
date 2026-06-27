@@ -21,6 +21,8 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
 )
+from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
+from backend.domain import ProjectClosureType, ProjectLifecycleState
 
 
 def test_pricing_draft_get_missing_returns_current_context() -> None:
@@ -142,6 +144,27 @@ def test_pricing_draft_put_maps_conflict_to_409() -> None:
         "code": "fee_pricing_draft_conflict",
         "message": "Pricing draft Matrix context changed before save.",
     }
+
+
+def test_pricing_draft_put_stopped_returns_structured_409_without_mutation() -> None:
+    service = _ReadonlyService(ProjectLifecycleState.STOPPED)
+    app.dependency_overrides[get_fee_evaluation_pricing_draft_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).put(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json=_payload(),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "stopped"
+    assert detail["closure_type"] is None
+    assert detail["allowed_actions"] == ["resume", "close"]
+    assert service.save_commands == []
 
 
 def test_pricing_draft_get_normalizes_historical_blank_unit_type() -> None:
@@ -322,6 +345,31 @@ def test_pricing_draft_delete_maps_conflict_to_409() -> None:
         "code": "fee_pricing_draft_conflict",
         "message": "Pricing draft changed before discard.",
     }
+
+
+def test_pricing_draft_delete_closed_returns_structured_409_without_mutation() -> None:
+    service = _ReadonlyService(
+        ProjectLifecycleState.CLOSED,
+        closure_type=ProjectClosureType.COMPLETED,
+    )
+    app.dependency_overrides[get_fee_evaluation_pricing_draft_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).request(
+            "DELETE",
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json={"expected_pricing_draft_edit_id": "fed-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "closed"
+    assert detail["closure_type"] == "completed"
+    assert detail["allowed_actions"] == []
+    assert service.discard_commands == []
 
 
 def test_pricing_draft_put_rejects_duplicate_row_identity() -> None:
@@ -508,6 +556,45 @@ class _Service:
         )
 
 
+class _ReadonlyService:
+    def __init__(
+        self,
+        lifecycle_state: ProjectLifecycleState,
+        *,
+        closure_type: ProjectClosureType | None = None,
+    ) -> None:
+        self.lifecycle_state = lifecycle_state
+        self.closure_type = closure_type
+        self.save_commands: list[SaveFeeEvaluationPricingDraftCommand] = []
+        self.discard_commands: list[DiscardFeeEvaluationPricingDraftCommand] = []
+
+    def load(self, project_id: str) -> FeeEvaluationPricingDraftLoadResult:
+        return _missing_result()
+
+    def save(
+        self, command: SaveFeeEvaluationPricingDraftCommand
+    ) -> FeeEvaluationPricingDraftLoadResult:
+        raise self._readonly(command.project_id)
+
+    def discard(
+        self, command: DiscardFeeEvaluationPricingDraftCommand
+    ) -> FeeEvaluationPricingDraftDiscardResult:
+        raise self._readonly(command.project_id)
+
+    def _readonly(self, project_id: str) -> ProjectLifecycleReadonlyError:
+        return ProjectLifecycleReadonlyError(
+            project_id=project_id,
+            lifecycle_state=self.lifecycle_state,
+            closure_type=self.closure_type,
+            message=_lifecycle_message(self.lifecycle_state, self.closure_type),
+            allowed_actions=(
+                ("resume", "close")
+                if self.lifecycle_state is ProjectLifecycleState.STOPPED
+                else ()
+            ),
+        )
+
+
 class _FailingService:
     def __init__(self, exc: Exception) -> None:
         self.exc = exc
@@ -524,3 +611,14 @@ class _FailingService:
         self, command: DiscardFeeEvaluationPricingDraftCommand
     ) -> FeeEvaluationPricingDraftDiscardResult:
         raise self.exc
+
+
+def _lifecycle_message(
+    lifecycle_state: ProjectLifecycleState,
+    closure_type: ProjectClosureType | None,
+) -> str:
+    if lifecycle_state is ProjectLifecycleState.STOPPED:
+        return "This project is stopped. Resume it before making changes."
+    if closure_type is ProjectClosureType.COMPLETED:
+        return "This project is closed as completed and is readonly."
+    return "This project is closed and is readonly."

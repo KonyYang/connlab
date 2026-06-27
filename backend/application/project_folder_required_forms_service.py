@@ -13,6 +13,10 @@ from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationReader,
     ConfirmedBasicInformationSnapshot,
 )
+from backend.application.project_lifecycle_write_guard import (
+    LifecycleWriteOperation,
+    ProjectLifecycleWriteGuard,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
     ProjectOutputRecordNotFoundError,
@@ -299,6 +303,7 @@ class ProjectFolderRequiredFormsService:
         file_gateway: RequiredFormsFileGateway,
         output_status_service: OutputStatusServicePort,
         reusable_fee_form_reader: ReusableFeeFormArtifactReader | None = None,
+        lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
     ) -> None:
         """Create the Required forms service with explicit ports."""
         self._workspaces = workspace_repository
@@ -315,6 +320,7 @@ class ProjectFolderRequiredFormsService:
         )
         self._files = file_gateway
         self._outputs = output_status_service
+        self._lifecycle_write_guard = lifecycle_write_guard
 
     def preview(self, project_id: str) -> RequiredFormsPreview:
         """Return the current Required forms preview."""
@@ -392,6 +398,10 @@ class ProjectFolderRequiredFormsService:
 
     def generate(self, command: GenerateRequiredFormsCommand) -> RequiredFormsGenerateResult:
         """Generate and place Required forms after rechecking the preview context."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.REQUIRED_FORMS_GENERATE,
+        )
         total_start = perf_counter()
         timings: list[RequiredFormsTiming] = []
         preview_start = perf_counter()
@@ -608,6 +618,14 @@ class ProjectFolderRequiredFormsService:
             or not target_context_matches
         ):
             raise RequiredFormsContextMismatchError("Required forms preview is stale.")
+
+    def _require_write_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleWriteOperation,
+    ) -> None:
+        if self._lifecycle_write_guard is not None:
+            self._lifecycle_write_guard.require_write_allowed(project_id, operation)
 
     def _register_output(
         self,

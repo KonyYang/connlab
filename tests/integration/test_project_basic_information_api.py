@@ -4,6 +4,10 @@ from fastapi.testclient import TestClient
 
 from backend.api.dependencies import get_project_basic_information_service
 from backend.api.main import app
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
+)
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationDraft,
     ProjectBasicInformationFieldSuggestion,
@@ -12,6 +16,7 @@ from backend.application.project_basic_information_service import (
     ProjectBasicInformationRecord,
     ProjectBasicInformationResult,
 )
+from backend.domain import ProjectLifecycleState
 
 
 def test_get_basic_information_returns_typed_unconfirmed_draft() -> None:
@@ -90,6 +95,42 @@ def test_get_basic_information_nonexistent_project_returns_404() -> None:
     assert response.json()["detail"] == "Project not found: NOPE"
 
 
+def test_lifecycle_readonly_draft_save_returns_structured_409_without_mutation() -> None:
+    service = _Service(lifecycle_readonly=True)
+    app.dependency_overrides[get_project_basic_information_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).put(
+            "/api/projects/P1/basic-information/draft",
+            json={"values": {"project_type": "PEX"}},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "stopped"
+    assert detail["closure_type"] is None
+    assert detail["allowed_actions"] == ["resume", "close"]
+    assert service.saved_values is None
+
+
+def test_lifecycle_guard_missing_project_maps_to_404() -> None:
+    service = _Service(lifecycle_guard_not_found=True)
+    app.dependency_overrides[get_project_basic_information_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).put(
+            "/api/projects/NOPE/basic-information/draft",
+            json={"values": {"project_type": "PEX"}},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found: NOPE"
+
+
 def _complete_values() -> dict[str, str]:
     return {
         "dl_number": "DL-2026-05-011",
@@ -103,9 +144,18 @@ def _complete_values() -> dict[str, str]:
 
 
 class _Service:
-    def __init__(self, *, missing: bool = False, not_found: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        missing: bool = False,
+        not_found: bool = False,
+        lifecycle_readonly: bool = False,
+        lifecycle_guard_not_found: bool = False,
+    ) -> None:
         self.missing = missing
         self.not_found = not_found
+        self.lifecycle_readonly = lifecycle_readonly
+        self.lifecycle_guard_not_found = lifecycle_guard_not_found
         self.saved_values: dict[str, str] | None = None
         self.confirmed_by: str | None = None
 
@@ -117,10 +167,30 @@ class _Service:
         return _result(project_id, status="unconfirmed")
 
     def save_draft(self, command) -> ProjectBasicInformationResult:
+        if self.lifecycle_guard_not_found:
+            raise ProjectLifecycleWriteGuardNotFoundError(
+                f"Project not found: {command.project_id}"
+            )
+        if self.lifecycle_readonly:
+            raise ProjectLifecycleReadonlyError(
+                project_id=command.project_id,
+                lifecycle_state=ProjectLifecycleState.STOPPED,
+                closure_type=None,
+                message="This project is stopped. Resume it before making changes.",
+                allowed_actions=("resume", "close"),
+            )
         self.saved_values = command.values
         return _result(command.project_id, status="unconfirmed", values=command.values)
 
     def confirm(self, command) -> ProjectBasicInformationResult:
+        if self.lifecycle_readonly:
+            raise ProjectLifecycleReadonlyError(
+                project_id=command.project_id,
+                lifecycle_state=ProjectLifecycleState.STOPPED,
+                closure_type=None,
+                message="This project is stopped. Resume it before making changes.",
+                allowed_actions=("resume", "close"),
+            )
         if self.missing:
             raise ProjectBasicInformationMissingRequiredError(
                 missing_fields=("project_type",),

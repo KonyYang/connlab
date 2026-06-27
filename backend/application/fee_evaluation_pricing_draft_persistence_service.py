@@ -23,6 +23,10 @@ from backend.application.fee_evaluation_edited_export_values import (
     edited_row_lookup,
     validate_supported_manual_rows,
 )
+from backend.application.project_lifecycle_write_guard import (
+    LifecycleWriteOperation,
+    ProjectLifecycleWriteGuard,
+)
 from backend.modules.fee_evaluation import load_active_fee_rule_library
 
 FeeEvaluationPricingDraftStatus = Literal["missing", "current", "stale"]
@@ -137,14 +141,20 @@ class FeeEvaluationPricingDraftPersistenceService:
         *,
         basic_fill_service: ConfirmedMatrixFeeTemplateBasicFillService,
         draft_store: FeeEvaluationPricingDraftStore,
+        lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
     ) -> None:
         self._basic_fill_service = basic_fill_service
         self._draft_store = draft_store
+        self._lifecycle_write_guard = lifecycle_write_guard
 
     def save(
         self, command: SaveFeeEvaluationPricingDraftCommand
     ) -> FeeEvaluationPricingDraftLoadResult:
         """Validate and persist one pricing draft for the current authority context."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.FEE_PRICING_DRAFT_SAVE,
+        )
         basic_fill = self._build_basic_fill(command.project_id)
         _validate_edited_values(command.edited_values, basic_fill)
         context = _context_from_basic_fill(basic_fill)
@@ -205,6 +215,10 @@ class FeeEvaluationPricingDraftPersistenceService:
         self, command: DiscardFeeEvaluationPricingDraftCommand
     ) -> FeeEvaluationPricingDraftDiscardResult:
         """Discard the saved pricing draft for the current authority context."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.FEE_PRICING_DRAFT_DISCARD,
+        )
         basic_fill = self._build_basic_fill(command.project_id)
         context = _context_from_basic_fill(basic_fill)
         snapshot = self._draft_store.get_by_context(
@@ -229,6 +243,14 @@ class FeeEvaluationPricingDraftPersistenceService:
             discarded=discarded,
             current_context=context,
         )
+
+    def _require_write_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleWriteOperation,
+    ) -> None:
+        if self._lifecycle_write_guard is not None:
+            self._lifecycle_write_guard.require_write_allowed(project_id, operation)
 
     def _build_basic_fill(self, project_id: str) -> MatrixBasicFillWorkbook:
         """Build current backend Matrix basic-fill rows for validation/context."""

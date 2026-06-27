@@ -6,6 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_ltr_workbook_basic_information_sync_service
+from backend.api.lifecycle_errors import (
+    lifecycle_guard_not_found,
+    lifecycle_readonly_conflict,
+)
 from backend.application.ltr_workbook_basic_information_sync_service import (
     CommitLtrWorkbookBasicInformationSyncCommand,
     LtrWorkbookBasicInformationSyncError,
@@ -15,6 +19,10 @@ from backend.application.ltr_workbook_basic_information_sync_service import (
     LtrWorkbookBasicInformationSyncService,
     OpenLtrWorkbookBasicInformationReadonlyCommand,
     PreviewLtrWorkbookBasicInformationSyncCommand,
+)
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
 )
 from backend.infrastructure.office import LtrWorkbookLockTimeoutError
 
@@ -111,6 +119,10 @@ def preview_ltr_workbook_basic_information_sync(
         )
     except LtrWorkbookLockTimeoutError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except LtrWorkbookBasicInformationSyncError as exc:
         detail = str(exc)
         raise HTTPException(
@@ -149,6 +161,10 @@ def commit_ltr_workbook_basic_information_sync(
         )
     except LtrWorkbookLockTimeoutError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except LtrWorkbookBasicInformationSyncError as exc:
         detail = str(exc)
         status_code = (

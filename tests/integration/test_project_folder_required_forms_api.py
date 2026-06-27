@@ -12,7 +12,8 @@ from backend.application.project_folder_required_forms_service import (
     RequiredFormsGenerateResult,
     RequiredFormsPreview,
 )
-from backend.domain import ProjectOutputKind
+from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
+from backend.domain import ProjectClosureType, ProjectLifecycleState, ProjectOutputKind
 
 
 def test_required_forms_preview_api_returns_project_folder_contract() -> None:
@@ -66,6 +67,50 @@ def test_required_forms_generate_api_passes_basic_information_context() -> None:
     )
 
 
+def test_required_forms_generate_stopped_returns_structured_409_without_mutation() -> None:
+    service = _Service(lifecycle_state=ProjectLifecycleState.STOPPED)
+    app.dependency_overrides[get_project_folder_required_forms_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).post(
+            "/api/projects/P1/project-folder/required-forms/generate",
+            json=_request_payload(),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "stopped"
+    assert detail["allowed_actions"] == ["resume", "close"]
+    assert service.last_command is None
+
+
+def test_required_forms_generate_closed_returns_structured_409_without_mutation() -> None:
+    service = _Service(
+        lifecycle_state=ProjectLifecycleState.CLOSED,
+        closure_type=ProjectClosureType.COMPLETED,
+    )
+    app.dependency_overrides[get_project_folder_required_forms_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).post(
+            "/api/projects/P1/project-folder/required-forms/generate",
+            json=_request_payload(),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "closed"
+    assert detail["closure_type"] == "completed"
+    assert detail["allowed_actions"] == []
+    assert service.last_command is None
+
+
 def test_no_old_project_package_execute_route() -> None:
     response = TestClient(app).post("/api/projects/P1/project-package/execute", json={})
 
@@ -73,17 +118,37 @@ def test_no_old_project_package_execute_route() -> None:
 
 
 class _Service:
-    def __init__(self, *, stale: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        stale: bool = False,
+        lifecycle_state: ProjectLifecycleState | None = None,
+        closure_type: ProjectClosureType | None = None,
+    ) -> None:
         self.stale = stale
+        self.lifecycle_state = lifecycle_state
+        self.closure_type = closure_type
         self.last_command = None
 
     def preview(self, project_id: str) -> RequiredFormsPreview:
         return _preview(project_id)
 
     def generate(self, command) -> RequiredFormsGenerateResult:
-        self.last_command = command
+        if self.lifecycle_state is not None:
+            raise ProjectLifecycleReadonlyError(
+                project_id=command.project_id,
+                lifecycle_state=self.lifecycle_state,
+                closure_type=self.closure_type,
+                message=_lifecycle_message(self.lifecycle_state, self.closure_type),
+                allowed_actions=(
+                    ("resume", "close")
+                    if self.lifecycle_state is ProjectLifecycleState.STOPPED
+                    else ()
+                ),
+            )
         if self.stale:
             raise RequiredFormsContextMismatchError("Required forms preview is stale.")
+        self.last_command = command
         return RequiredFormsGenerateResult(
             project_id=command.project_id,
             status="generated",
@@ -91,6 +156,17 @@ class _Service:
             items=tuple(),
             warnings=tuple(),
         )
+
+
+def _lifecycle_message(
+    lifecycle_state: ProjectLifecycleState,
+    closure_type: ProjectClosureType | None,
+) -> str:
+    if lifecycle_state is ProjectLifecycleState.STOPPED:
+        return "This project is stopped. Resume it before making changes."
+    if closure_type is ProjectClosureType.COMPLETED:
+        return "This project is closed as completed and is readonly."
+    return "This project is closed and is readonly."
 
 
 def _preview(project_id: str) -> RequiredFormsPreview:

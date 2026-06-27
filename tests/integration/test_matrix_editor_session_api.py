@@ -8,7 +8,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_session, get_settings
+from backend.api.dependencies import (
+    get_matrix_editor_session_service,
+    get_session,
+    get_settings,
+)
 from backend.api.main import app
 from backend.application.source_matrix_import_persistence_service import (
     PersistSourceMatrixImportCommand,
@@ -25,7 +29,13 @@ from backend.application.fee_evaluation_edited_export_values import (
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftSnapshot,
 )
-from backend.domain import Project, ProjectStatus
+from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
+from backend.domain import (
+    Project,
+    ProjectClosureType,
+    ProjectLifecycleState,
+    ProjectStatus,
+)
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -77,6 +87,71 @@ def test_matrix_editor_session_seed_handles_missing_source_snapshot(
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def test_matrix_editor_session_draft_save_stopped_returns_structured_409_without_mutation() -> None:
+    service = _ReadonlyMatrixEditorSessionService(ProjectLifecycleState.STOPPED)
+    app.dependency_overrides[get_matrix_editor_session_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json=_matrix_editor_payload(),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "stopped"
+    assert detail["closure_type"] is None
+    assert detail["allowed_actions"] == ["resume", "close"]
+    assert service.saved is False
+
+
+def test_matrix_editor_session_draft_discard_stopped_returns_structured_409_without_mutation() -> None:
+    service = _ReadonlyMatrixEditorSessionService(ProjectLifecycleState.STOPPED)
+    app.dependency_overrides[get_matrix_editor_session_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).request(
+            "DELETE",
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={"expected_editor_draft_id": "draft-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["lifecycle_state"] == "stopped"
+    assert detail["allowed_actions"] == ["resume", "close"]
+    assert service.discarded is False
+
+
+def test_matrix_editor_session_confirm_closed_returns_structured_409_without_mutation() -> None:
+    service = _ReadonlyMatrixEditorSessionService(
+        ProjectLifecycleState.CLOSED,
+        closure_type=ProjectClosureType.COMPLETED,
+    )
+    app.dependency_overrides[get_matrix_editor_session_service] = lambda: service
+    try:
+        response = TestClient(app, raise_server_exceptions=False).post(
+            "/api/projects/P1/matrix-editor/session/confirm",
+            json={**_matrix_editor_payload(), "confirmed_by": "operator"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "project_lifecycle_readonly"
+    assert detail["project_id"] == "P1"
+    assert detail["lifecycle_state"] == "closed"
+    assert detail["closure_type"] == "completed"
+    assert detail["allowed_actions"] == []
+    assert service.confirmed is False
 
 
 def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
@@ -776,6 +851,98 @@ def _seed_project(project_id: str, tmp_path: Path) -> None:
         )
         session.commit()
     engine.dispose()
+
+
+class _ReadonlyMatrixEditorSessionService:
+    def __init__(
+        self,
+        lifecycle_state: ProjectLifecycleState,
+        *,
+        closure_type: ProjectClosureType | None = None,
+    ) -> None:
+        self.lifecycle_state = lifecycle_state
+        self.closure_type = closure_type
+        self.saved = False
+        self.discarded = False
+        self.confirmed = False
+
+    def save_editor_draft(self, command):
+        raise self._readonly(command.project_id)
+
+    def discard_editor_draft(self, command):
+        raise self._readonly(command.project_id)
+
+    def confirm_session(self, command):
+        raise self._readonly(command.project_id)
+
+    def _readonly(self, project_id: str) -> ProjectLifecycleReadonlyError:
+        return ProjectLifecycleReadonlyError(
+            project_id=project_id,
+            lifecycle_state=self.lifecycle_state,
+            closure_type=self.closure_type,
+            message=_lifecycle_message(self.lifecycle_state, self.closure_type),
+            allowed_actions=(
+                ("resume", "close")
+                if self.lifecycle_state is ProjectLifecycleState.STOPPED
+                else ()
+            ),
+        )
+
+
+def _matrix_editor_payload() -> dict[str, object]:
+    return {
+        "expected_active_confirmed_matrix_id": "cmv-1",
+        "expected_active_confirmed_revision": 1,
+        "source_document_path": "C:/spec.docx",
+        "source_document_name": "spec.docx",
+        "source_format": ".docx",
+        "source_import_id": "source-1",
+        "source_snapshot_id": "snapshot-1",
+        "groups": [
+            {
+                "draft_group_id": "g1",
+                "source_group_snapshot_id": None,
+                "group_order": 1,
+                "group_key": "g1",
+                "group_label": "1",
+                "is_selected": True,
+                "sample_quantity_expression": "5",
+                "sample_note": None,
+            }
+        ],
+        "rows": [
+            {
+                "draft_row_id": "r1",
+                "source_row_snapshot_id": None,
+                "row_order": 1,
+                "test_item": "Visual Examination",
+                "source_section": "1.1",
+                "method": "EIA-364-18B",
+                "condition": "10x min magnification",
+                "requirement": "No detrimental condition",
+                "day_expression": "1",
+                "is_sample_row": False,
+            }
+        ],
+        "cells": [
+            {
+                "draft_row_id": "r1",
+                "draft_group_id": "g1",
+                "cell_value": "1",
+            }
+        ],
+    }
+
+
+def _lifecycle_message(
+    lifecycle_state: ProjectLifecycleState,
+    closure_type: ProjectClosureType | None,
+) -> str:
+    if lifecycle_state is ProjectLifecycleState.STOPPED:
+        return "This project is stopped. Resume it before making changes."
+    if closure_type is ProjectClosureType.COMPLETED:
+        return "This project is closed as completed and is readonly."
+    return "This project is closed and is readonly."
 
 
 def _seed_source_import(

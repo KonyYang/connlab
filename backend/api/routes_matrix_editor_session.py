@@ -6,9 +6,17 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_matrix_editor_session_service
+from backend.api.lifecycle_errors import (
+    lifecycle_guard_not_found,
+    lifecycle_readonly_conflict,
+)
 from backend.api.routes_project_matrix_drafts import (
     ConfirmedMatrixSnapshotResponse,
     _to_confirmed_response,
+)
+from backend.application.project_lifecycle_write_guard import (
+    ProjectLifecycleReadonlyError,
+    ProjectLifecycleWriteGuardNotFoundError,
 )
 from backend.application.matrix_editor_session_service import (
     MatrixEditorSessionActiveChangedError,
@@ -342,6 +350,10 @@ def save_matrix_editor_session_draft(
         )
     except MatrixEditorSessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except MatrixEditorSessionActiveChangedError as exc:
         raise HTTPException(
             status_code=409,
@@ -396,6 +408,10 @@ def discard_matrix_editor_session_draft(
         )
     except MatrixEditorSessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except MatrixEditorSessionDraftConflictError as exc:
         raise HTTPException(
             status_code=409,
@@ -445,6 +461,10 @@ def confirm_matrix_editor_session(
         )
     except MatrixEditorSessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleWriteGuardNotFoundError as exc:
+        raise lifecycle_guard_not_found(exc) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
     except MatrixEditorSessionActiveChangedError as exc:
         raise HTTPException(
             status_code=409,

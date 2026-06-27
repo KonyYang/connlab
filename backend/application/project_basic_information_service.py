@@ -11,6 +11,10 @@ from backend.application.project_identity import (
     select_registered_ltr,
     setup_payload_from_ltr_notes,
 )
+from backend.application.project_lifecycle_write_guard import (
+    LifecycleWriteOperation,
+    ProjectLifecycleWriteGuard,
+)
 from backend.application.sample_description import format_description_pn
 from backend.domain import ApplicationForm, LtrRecord, Project, SampleInfo
 
@@ -187,12 +191,14 @@ class ProjectBasicInformationService:
         basic_information_store: ProjectBasicInformationRepositoryPort,
         clock: Callable[[], str],
         id_factory: Callable[[], str] | None = None,
+        lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
     ) -> None:
         """Create the service with explicit persistence/source dependencies."""
         self._projects = project_store
         self._records = basic_information_store
         self._clock = clock
         self._id_factory = id_factory or (lambda: uuid4().hex)
+        self._lifecycle_write_guard = lifecycle_write_guard
         self._source_assembler = ProjectBasicInformationSourceAssembler(
             ltr_store=ltr_store,
             application_form_store=application_form_store,
@@ -231,6 +237,10 @@ class ProjectBasicInformationService:
         self, command: SaveProjectBasicInformationDraftCommand
     ) -> ProjectBasicInformationResult:
         """Persist an operator draft and return the updated read model."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.BASIC_INFORMATION_DRAFT,
+        )
         self._require_project(command.project_id)
         now = self._clock()
         existing = self._records.get_latest_draft(command.project_id)
@@ -255,6 +265,10 @@ class ProjectBasicInformationService:
         self, command: ConfirmProjectBasicInformationCommand
     ) -> ProjectBasicInformationResult:
         """Create a new confirmed Basic Information version."""
+        self._require_write_allowed(
+            command.project_id,
+            LifecycleWriteOperation.BASIC_INFORMATION_CONFIRM,
+        )
         self._require_project(command.project_id)
         values = _clean_values(command.values)
         missing_fields = _missing_required_fields(values)
@@ -284,6 +298,14 @@ class ProjectBasicInformationService:
             )
         )
         return self.get(command.project_id)
+
+    def _require_write_allowed(
+        self,
+        project_id: str,
+        operation: LifecycleWriteOperation,
+    ) -> None:
+        if self._lifecycle_write_guard is not None:
+            self._lifecycle_write_guard.require_write_allowed(project_id, operation)
 
     def _require_project(self, project_id: str) -> Project:
         project = self._projects.get(project_id)
