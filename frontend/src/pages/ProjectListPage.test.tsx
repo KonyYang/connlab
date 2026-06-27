@@ -82,8 +82,11 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     expect(await screen.findByText("DL-2026-06-010")).toBeTruthy();
     expect(screen.getByText("Closed: Completed")).toBeTruthy();
+    expect(screen.getByText("View readonly completed archive")).toBeTruthy();
     expect(screen.getByText("DL-2026-06-011")).toBeTruthy();
     expect(screen.getByText("Closed: Administrative")).toBeTruthy();
+    expect(screen.getByText("View readonly administrative archive")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Open archive/ })).toHaveLength(2);
   });
 
   it("keeps stopped temporary projects in Planning and stopped registered projects in On-going", async () => {
@@ -123,12 +126,16 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     expect(await screen.findByText("DL-2026-06-012")).toBeTruthy();
     expect(screen.queryByText("TMP-AABBCCDD")).toBeNull();
+    expect(screen.getByText("Review or resume in Workbench")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-012/ })).toBeTruthy();
 
     await user.selectOptions(screen.getByLabelText("Project view"), "planning");
 
     expect(await screen.findByText("TMP-AABBCCDD")).toBeTruthy();
     expect(screen.queryByText("DL-2026-06-012")).toBeNull();
     expect(screen.getByText("Stopped")).toBeTruthy();
+    expect(screen.getByText("Resume or administratively archive from Workbench")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Open Workbench.*TMP-AABBCCDD/ })).toBeTruthy();
   });
 
   it("does not render lifecycle write actions from the registry", async () => {
@@ -151,8 +158,47 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
-    expect(await screen.findByRole("button", { name: "Open" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Open Workbench/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Stop|Resume|Close|Delete/i })).toBeNull();
+  });
+
+  it("uses Workbench route copy for active planning and folder-created rows", async () => {
+    const user = userEvent.setup();
+    const onOpenProject = vi.fn();
+    mockRows([
+      registryRow({
+        project_id: "P-FOLDER",
+        display_project_id: "DL-2026-06-015",
+        status: "folder_created",
+      }),
+      registryRow({
+        project_id: "P-TMP",
+        display_project_id: "TMP-ROUTE01",
+        display_project_id_kind: "temporary",
+        has_registered_ltr: false,
+        ltr_number: null,
+        registered_ltr_number: null,
+      }),
+    ]);
+    mockLifecycle({
+      "P-FOLDER": lifecycle({ project_id: "P-FOLDER" }),
+      "P-TMP": lifecycle({ project_id: "P-TMP" }),
+    });
+
+    render(<ProjectListPage onOpenProject={onOpenProject} />);
+
+    expect(await screen.findByText("DL-2026-06-015")).toBeTruthy();
+    expect(screen.getByText("Folder Created")).toBeTruthy();
+    expect(screen.getByText("Continue setup in Workbench")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-015/ }));
+    expect(onOpenProject).toHaveBeenCalledWith("P-FOLDER");
+
+    await user.selectOptions(screen.getByLabelText("Project view"), "planning");
+
+    expect(await screen.findByText("TMP-ROUTE01")).toBeTruthy();
+    expect(screen.getByText("Continue planning in Workbench")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Open Workbench.*TMP-ROUTE01/ }));
+    expect(onOpenProject).toHaveBeenCalledWith("P-TMP");
   });
 
   it("keeps rows visible with compatibility labels when lifecycle overlay loading fails", async () => {
@@ -169,6 +215,7 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     expect(await screen.findByText("DL-2026-06-014")).toBeTruthy();
     expect(screen.getByText("Stopped")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-014/ })).toBeTruthy();
     expect(screen.getByText(/Lifecycle status unavailable/)).toBeTruthy();
     expect(screen.queryByText(/cancelled|lifecycle_state|closure_type|closed_completed|closed_administrative/)).toBeNull();
   });

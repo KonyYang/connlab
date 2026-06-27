@@ -13,6 +13,8 @@ import {
   filterRegistryRowsForView,
   registryLifecycleClassName,
   registryNextStepLabel,
+  registryRowActionAriaLabel,
+  registryRowActionLabel,
   registryStatusLabel,
   type ProjectRegistryLifecycleRow,
   type ProjectRegistryView,
@@ -311,9 +313,10 @@ export function ProjectListPage({
                       <button
                         className="row-action"
                         type="button"
+                        aria-label={registryRowActionAriaLabel(row, lifecycle)}
                         onClick={() => onOpenProject(row.project_id)}
                       >
-                        Open
+                        {registryRowActionLabel(row, lifecycle)}
                       </button>
                     </td>
                   </tr>

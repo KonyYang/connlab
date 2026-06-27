@@ -92,17 +92,38 @@ export function registryNextStepLabel(
   const state = registryLifecycleState(row, lifecycle);
   switch (state) {
     case "stopped":
-      return "Review or resume in Workbench";
+      return hasFormalProjectIdentity(row)
+        ? "Review or resume in Workbench"
+        : "Resume or administratively archive from Workbench";
     case "closed_completed":
-      return "Open completed archive";
+      return "View readonly completed archive";
     case "closed_administrative":
-      return "Open administrative archive";
+      return "View readonly administrative archive";
     case "closed":
-      return "Open archive";
+      return "View readonly archive";
     case "active":
     default:
       return operationalNextStepLabel(row);
   }
+}
+
+export function registryRowActionLabel(
+  row: ProjectRegistryRow,
+  lifecycle: ProjectLifecycleResponse | null
+): string {
+  return isClosedLifecycleState(registryLifecycleState(row, lifecycle))
+    ? "Open archive"
+    : "Open Workbench";
+}
+
+export function registryRowActionAriaLabel(
+  row: ProjectRegistryRow,
+  lifecycle: ProjectLifecycleResponse | null
+): string {
+  const action = registryRowActionLabel(row, lifecycle);
+  const state = registryLifecycleState(row, lifecycle);
+  const stateCopy = isClosedLifecycleState(state) ? "archived project" : "project workspace";
+  return `${action} for ${businessIdentifier(row)}, ${stateCopy}`;
 }
 
 export function registryLifecycleClassName(
@@ -161,7 +182,7 @@ function classifyOperationalQueue(row: ProjectRegistryRow): OperationalQueue {
 function operationalNextStepLabel(row: ProjectRegistryRow): string {
   switch (classifyOperationalQueue(row)) {
     case "planning":
-      return "Continue planning";
+      return "Continue planning in Workbench";
     case "matrix_needed":
       return "Open Matrix authority";
     case "ready_to_test":
@@ -169,9 +190,9 @@ function operationalNextStepLabel(row: ProjectRegistryRow): string {
     case "folder_blocked":
       return "Review request material";
     case "folder_created":
-      return "Open project folder";
+      return "Continue setup in Workbench";
     default:
-      return "Continue planning";
+      return "Continue planning in Workbench";
   }
 }
 
@@ -186,4 +207,8 @@ function hasFormalProjectIdentity(row: ProjectRegistryRow): boolean {
 
 function hasDisplayText(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
+}
+
+function businessIdentifier(row: ProjectRegistryRow): string {
+  return row.display_project_id;
 }

@@ -7,6 +7,8 @@ import {
   filterRegistryRowsForView,
   registryLifecycleLabel,
   registryNextStepLabel,
+  registryRowActionAriaLabel,
+  registryRowActionLabel,
   registryStatusLabel,
   registryViewForRow,
 } from "./projectRegistryLifecycleViews";
@@ -25,7 +27,8 @@ describe("project registry lifecycle views", () => {
 
     expect(registryViewForRow(row, lifecycle)).toBe("planning");
     expect(registryLifecycleLabel(row, lifecycle)).toBe("Stopped");
-    expect(registryNextStepLabel(row, lifecycle)).toBe("Review or resume in Workbench");
+    expect(registryNextStepLabel(row, lifecycle)).toBe("Resume or administratively archive from Workbench");
+    expect(registryRowActionLabel(row, lifecycle)).toBe("Open Workbench");
   });
 
   it("keeps stopped registered projects in On-going", () => {
@@ -39,6 +42,30 @@ describe("project registry lifecycle views", () => {
 
     expect(registryViewForRow(row, lifecycle)).toBe("ongoing");
     expect(registryStatusLabel(row, lifecycle)).toBe("Stopped");
+    expect(registryNextStepLabel(row, lifecycle)).toBe("Review or resume in Workbench");
+    expect(registryRowActionLabel(row, lifecycle)).toBe("Open Workbench");
+  });
+
+  it("routes active planning and folder-created rows to Workbench context", () => {
+    const planning = registryRow({
+      display_project_id: "TMP-AABBCCDD",
+      display_project_id_kind: "temporary",
+      has_registered_ltr: false,
+      ltr_number: null,
+      registered_ltr_number: null,
+    });
+    const folderCreated = registryRow({
+      display_project_id: "DL-2026-06-020",
+      status: "folder_created",
+    });
+
+    expect(registryViewForRow(planning, projectLifecycle())).toBe("planning");
+    expect(registryStatusLabel(planning, projectLifecycle())).toBe("Planning");
+    expect(registryNextStepLabel(planning, projectLifecycle())).toBe("Continue planning in Workbench");
+    expect(registryRowActionLabel(planning, projectLifecycle())).toBe("Open Workbench");
+    expect(registryStatusLabel(folderCreated, projectLifecycle())).toBe("Folder Created");
+    expect(registryNextStepLabel(folderCreated, projectLifecycle())).toBe("Continue setup in Workbench");
+    expect(registryRowActionLabel(folderCreated, projectLifecycle())).toBe("Open Workbench");
   });
 
   it("classifies closed completed and administrative projects as Closed", () => {
@@ -60,11 +87,35 @@ describe("project registry lifecycle views", () => {
       )
     ).toBe("Closed: Completed");
     expect(
+      registryNextStepLabel(
+        completed,
+        projectLifecycle({ lifecycle_state: "closed", closure_type: "completed" })
+      )
+    ).toBe("View readonly completed archive");
+    expect(
+      registryRowActionLabel(
+        completed,
+        projectLifecycle({ lifecycle_state: "closed", closure_type: "completed" })
+      )
+    ).toBe("Open archive");
+    expect(
       registryLifecycleLabel(
         administrative,
         projectLifecycle({ lifecycle_state: "closed", closure_type: "administrative" })
       )
     ).toBe("Closed: Administrative");
+    expect(
+      registryNextStepLabel(
+        administrative,
+        projectLifecycle({ lifecycle_state: "closed", closure_type: "administrative" })
+      )
+    ).toBe("View readonly administrative archive");
+    expect(
+      registryRowActionLabel(
+        administrative,
+        projectLifecycle({ lifecycle_state: "closed", closure_type: "administrative" })
+      )
+    ).toBe("Open archive");
     expect(
       filterRegistryRowsForView(
         [
@@ -88,6 +139,17 @@ describe("project registry lifecycle views", () => {
     expect(filterRegistryRowsForView([{ row, lifecycle: null }], "closed")).toEqual([]);
   });
 
+  it("uses archive copy for closed legacy fallback rows", () => {
+    const row = registryRow({
+      display_project_id: "DL-2026-06-005",
+      status: "closed",
+    });
+
+    expect(registryLifecycleLabel(row, null)).toBe("Closed");
+    expect(registryNextStepLabel(row, null)).toBe("View readonly archive");
+    expect(registryRowActionLabel(row, null)).toBe("Open archive");
+  });
+
   it("does not expose backend enum tokens in labels or next-step copy", () => {
     const row = registryRow({ status: "cancelled" });
     const completed = projectLifecycle({
@@ -99,6 +161,8 @@ describe("project registry lifecycle views", () => {
       registryLifecycleLabel(row, completed),
       registryStatusLabel(row, completed),
       registryNextStepLabel(row, completed),
+      registryRowActionLabel(row, completed),
+      registryRowActionAriaLabel(row, completed),
     ].join(" ");
 
     expect(copy).not.toMatch(/closed_completed|closed_administrative|cancelled|lifecycle_state|closure_type/);
