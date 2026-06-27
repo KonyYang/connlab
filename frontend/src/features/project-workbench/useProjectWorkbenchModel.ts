@@ -22,6 +22,7 @@ import {
   getProject,
   getProjectLifecycle,
   getProjectBasicInformation,
+  resumeProjectLifecycle,
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
   previewProjectTestPlanMatrixFromSourceCandidate,
@@ -34,6 +35,7 @@ import {
   previewApprovalPackage,
   previewEvidencePlacement,
   repairOfficialFolderStructure,
+  stopProjectLifecycle,
   syncProjectSection2FromConfirmedMatrix,
   updateProjectTestPlanMatrixDraft,
   uploadPublicDriveProjectFolder,
@@ -209,6 +211,8 @@ export type ProjectWorkbenchModel = {
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
   onRefreshLifecycle: () => Promise<void>;
+  onStopLifecycle: (reason?: string | null) => Promise<void>;
+  onResumeLifecycle: (reason?: string | null) => Promise<void>;
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: (
@@ -1016,6 +1020,48 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
+  async function onStopLifecycle(reason?: string | null): Promise<void> {
+    setLifecycleLoading(true);
+    try {
+      const nextLifecycle = await stopProjectLifecycle(projectId, {
+        reason: normalizeLifecycleReason(reason),
+        operator: null,
+      });
+      setLifecycle(nextLifecycle);
+      setProject(await getProject(projectId));
+      setLifecycleError(null);
+      setMessage("Project stopped. Review and preview actions remain available.");
+    } catch (err) {
+      setLifecycleError(
+        err instanceof Error ? err.message : "Failed to stop project lifecycle."
+      );
+      throw err;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  }
+
+  async function onResumeLifecycle(reason?: string | null): Promise<void> {
+    setLifecycleLoading(true);
+    try {
+      const nextLifecycle = await resumeProjectLifecycle(projectId, {
+        reason: normalizeLifecycleReason(reason),
+        operator: null,
+      });
+      setLifecycle(nextLifecycle);
+      setProject(await getProject(projectId));
+      setLifecycleError(null);
+      setMessage("Project resumed. Editing and project work are available again.");
+    } catch (err) {
+      setLifecycleError(
+        err instanceof Error ? err.message : "Failed to resume project lifecycle."
+      );
+      throw err;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  }
+
   async function onUploadPublicDriveProjectFolder(): Promise<void> {
     setPublicDriveUploading(true);
     try {
@@ -1453,6 +1499,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onConfirmMatrixDraft,
     onFolderCreated,
     onRefreshLifecycle,
+    onStopLifecycle,
+    onResumeLifecycle,
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
@@ -1928,6 +1976,11 @@ function uniquePaths(paths: string[]): string[] {
 
 function normalizeLines(lines: string[]): string {
   return lines.map((line) => line.trim()).filter(Boolean).join("\n");
+}
+
+function normalizeLifecycleReason(reason: string | null | undefined): string | null {
+  const normalized = reason?.trim();
+  return normalized ? normalized : null;
 }
 
 function cloneGroups(groups: ProjectTestPlanDraftGroup[] | undefined): ProjectTestPlanDraftGroup[] {

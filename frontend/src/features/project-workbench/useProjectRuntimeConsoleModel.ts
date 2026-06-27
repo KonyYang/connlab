@@ -67,6 +67,8 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "setRuntimeSelectedTokenReference"
   | "onFolderCreated"
   | "onRefreshLifecycle"
+  | "onStopLifecycle"
+  | "onResumeLifecycle"
   | "onRefreshPackagePreview"
   | "onRefreshOfficialWorkspacePreview"
   | "onCreateOfficialWorkspace"
@@ -150,6 +152,8 @@ export function selectProjectRuntimeConsoleModel(
     setRuntimeSelectedTokenReference: model.setRuntimeSelectedTokenReference,
     onFolderCreated: model.onFolderCreated,
     onRefreshLifecycle: model.onRefreshLifecycle,
+    onStopLifecycle: model.onStopLifecycle,
+    onResumeLifecycle: model.onResumeLifecycle,
     onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,

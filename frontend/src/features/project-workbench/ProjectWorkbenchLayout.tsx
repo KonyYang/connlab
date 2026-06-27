@@ -3,7 +3,6 @@ import {
   deleteTemporaryProject,
   type OfficialWorkspaceConflictStrategy,
   previewTemporaryProjectDelete,
-  stopProject,
   type Project,
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
@@ -28,6 +27,7 @@ import {
 } from "./projectFolderTaskSelectors";
 import {
   deriveProjectWorkbenchLifecycle,
+  deriveProjectWorkbenchLifecycleActions,
   type WorkbenchLifecycleMode,
 } from "./projectWorkbenchLifecycleSelectors";
 import {
@@ -98,6 +98,8 @@ export function ProjectWorkbenchLayout({
     publicDriveUploadError,
     onRefreshPublicDriveUploadPreview,
     onUploadPublicDriveProjectFolder,
+    onStopLifecycle,
+    onResumeLifecycle,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -148,6 +150,10 @@ export function ProjectWorkbenchLayout({
       lifecycleReadonlyView,
     },
     selectedLifecycleMode
+  );
+  const lifecycleActions = deriveProjectWorkbenchLifecycleActions(
+    runtimeModel.lifecycle,
+    lifecycleReadonlyView
   );
   const projectFolderTasks = deriveProjectFolderTasks({
     folderReady: effectiveFolderReady,
@@ -234,25 +240,23 @@ export function ProjectWorkbenchLayout({
     };
   }, [project.project_id, project.status, projectNumber]);
 
-  async function handleStopProject(): Promise<void> {
-    const reason = window.prompt(
-      "Reason for stopping this project",
-      "Project will not continue."
-    );
-    if (reason === null) {
-      return;
-    }
-    if (!window.confirm("Stop this project and keep its history for review?")) {
-      return;
-    }
+  async function handleStopProject(reason: string | null): Promise<void> {
     setLifecycleBusy(true);
     try {
-      await stopProject(project.project_id, {
-        reason,
-        operator: null,
-      });
+      await onStopLifecycle(reason);
       setLifecycleError(null);
-      onBack();
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+  async function handleResumeProject(reason: string | null): Promise<void> {
+    setLifecycleBusy(true);
+    try {
+      await onResumeLifecycle(reason);
+      setLifecycleError(null);
     } catch (err) {
       setLifecycleError((err as Error).message);
     } finally {
@@ -447,21 +451,33 @@ export function ProjectWorkbenchLayout({
           <p>{shellModel.primaryWorkspaceSummary}</p>
         </div>
         {isActiveMatrixWorkspace ? (
-          <ProjectWorkbenchActiveMatrixWorkspace
-            effectiveFolderReady={effectiveFolderReady}
-            officialWorkspaceStatus={officialWorkspacePreview?.status}
-            onProjectFolderTaskAction={handleProjectFolderTaskAction}
-            projectFolderTasks={projectFolderTasks}
-            projectId={project.project_id}
-            currentProjectFolderTaskKey={currentProjectFolderTaskKey}
-            runtimeProjectionSnapshot={runtimeProjectionSnapshot}
-            selectedProjectionToken={selectedProjectionToken}
-            setSelectedProjectionToken={setSelectedProjectionToken}
-            basicInformation={runtimeModel.basicInformation}
-            basicInformationLoading={runtimeModel.basicInformationLoading}
-            basicInformationError={runtimeModel.basicInformationError}
-            lifecycleReadonlyView={lifecycleReadonlyView}
-          />
+          <>
+            <ProjectWorkbenchActiveMatrixWorkspace
+              effectiveFolderReady={effectiveFolderReady}
+              officialWorkspaceStatus={officialWorkspacePreview?.status}
+              onProjectFolderTaskAction={handleProjectFolderTaskAction}
+              projectFolderTasks={projectFolderTasks}
+              projectId={project.project_id}
+              currentProjectFolderTaskKey={currentProjectFolderTaskKey}
+              runtimeProjectionSnapshot={runtimeProjectionSnapshot}
+              selectedProjectionToken={selectedProjectionToken}
+              setSelectedProjectionToken={setSelectedProjectionToken}
+              basicInformation={runtimeModel.basicInformation}
+              basicInformationLoading={runtimeModel.basicInformationLoading}
+              basicInformationError={runtimeModel.basicInformationError}
+              lifecycleReadonlyView={lifecycleReadonlyView}
+            />
+            <ProjectLifecycleManagementPanel
+              allowDelete={false}
+              deletePreview={null}
+              lifecycleActions={lifecycleActions}
+              lifecycleBusy={lifecycleBusy}
+              lifecycleError={lifecycleError}
+              onDeleteTemporaryProject={() => undefined}
+              onStopProject={(reason) => void handleStopProject(reason)}
+              onResumeProject={(reason) => void handleResumeProject(reason)}
+            />
+          </>
         ) : (
           <>
             <WorkbenchStageBanner
@@ -496,7 +512,9 @@ export function ProjectWorkbenchLayout({
                     "Same-project LTR registration is not wired yet. This temporary project stays intact; no duplicate project was created."
                   );
                 }}
-                onStopProject={() => void handleStopProject()}
+                lifecycleActions={lifecycleActions}
+                onStopProject={(reason) => void handleStopProject(reason)}
+                onResumeProject={(reason) => void handleResumeProject(reason)}
                 onDeleteTemporaryProject={() => void handleDeleteTemporaryProject()}
                 promotionMessage={temporaryPromotionMessage}
               />
@@ -509,16 +527,17 @@ export function ProjectWorkbenchLayout({
               />
             ) : null}
 
-            {!lifecycleReadonlyView.readonly &&
-            lifecycle.mode !== "temporary_planning" &&
-            project.status !== "cancelled" ? (
+            {(lifecycleActions.canStop || lifecycleActions.canResume) &&
+            lifecycle.mode !== "temporary_planning" ? (
               <ProjectLifecycleManagementPanel
                 allowDelete={false}
                 deletePreview={null}
+                lifecycleActions={lifecycleActions}
                 lifecycleBusy={lifecycleBusy}
                 lifecycleError={lifecycleError}
                 onDeleteTemporaryProject={() => undefined}
-                onStopProject={() => void handleStopProject()}
+                onStopProject={(reason) => void handleStopProject(reason)}
+                onResumeProject={(reason) => void handleResumeProject(reason)}
               />
             ) : null}
           </>

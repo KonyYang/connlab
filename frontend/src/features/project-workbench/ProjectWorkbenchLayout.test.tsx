@@ -121,11 +121,47 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { status: "cancelled" }
     );
 
-    expect(screen.getByText("Stopped project")).toBeTruthy();
-    expect(screen.getByText("No action")).toBeTruthy();
+    expect(screen.getAllByText("Project stopped").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Read-only project").length).toBeGreaterThan(0);
     expect(screen.queryByText("Temporary Planning")).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Convert to Formal Project" })).toBeNull();
+  });
+
+  it("opens an inline Stop confirmation and keeps the operator in the Workbench", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const onStopLifecycle = vi.fn().mockResolvedValue(undefined);
+
+    renderWorkbench(
+      {
+        lifecycle: lifecycleResponse({ allowed_actions: ["stop", "close"] }),
+        onStopLifecycle,
+      },
+      {},
+      { onBack }
+    );
+
+    await user.click(screen.getByRole("button", { name: "Stop project" }));
+
+    expect(screen.getAllByText("Confirm stop project").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Confirm stop project" }));
+
+    expect(onStopLifecycle).toHaveBeenCalledWith(null);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
+  });
+
+  it("hides Stop when an active registered project does not allow stop", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      matrixAuthorityDraft: null,
+      matrixCandidateDraft: testPlanDraft,
+      lifecycle: lifecycleResponse({ allowed_actions: ["close"] }),
+    });
+
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
   });
 
   it("uses lifecycle readonly state to block active Matrix write actions", async () => {
@@ -341,6 +377,39 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
+  });
+
+  it("opens an inline Resume confirmation for stopped projects when resume is allowed", async () => {
+    const user = userEvent.setup();
+    const onResumeLifecycle = vi.fn().mockResolvedValue(undefined);
+
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: null,
+      matrixAuthorityDraft: null,
+      matrixCandidateDraft: testPlanDraft,
+      packagePreview: null,
+      onResumeLifecycle,
+      lifecycle: lifecycleResponse({
+        lifecycle_state: "stopped",
+        status: "cancelled",
+        status_label: "Stopped",
+        stopped_at: "2026-06-26T08:00:00Z",
+        stopped_reason: "Customer requested pause.",
+        allowed_actions: ["resume", "close"],
+        readonly: true,
+      }),
+    });
+
+    expect(screen.getAllByText(/Customer requested pause/).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Resume project" }));
+
+    expect(screen.getAllByText("Confirm resume project").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Confirm resume project" }));
+
+    expect(onResumeLifecycle).toHaveBeenCalledWith(null);
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
   });
 
   it("renders closed completed projects as readonly archives without lifecycle writes", () => {
@@ -760,6 +829,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         planned_paths: [],
       },
       officialWorkspaceCreating: false,
+      lifecycle: lifecycleResponse({ allowed_actions: [] }),
       onCreateOfficialWorkspace,
     });
 
@@ -1123,11 +1193,26 @@ function buildRuntimeModel(
     requestMaterialLoading: false,
     requestMaterialCollecting: false,
     requestMaterialError: null,
+    lifecycle:
+      currentProject.status === "cancelled"
+        ? lifecycleResponse({
+            lifecycle_state: "stopped",
+            status: "cancelled",
+            status_label: "Stopped",
+            readonly: true,
+            allowed_actions: [],
+          })
+        : lifecycleResponse(),
+    lifecycleLoading: false,
+    lifecycleError: null,
     basicInformation: null,
     basicInformationLoading: false,
     basicInformationError: null,
     setRuntimeSelectedTokenReference: vi.fn(),
     onFolderCreated: vi.fn(),
+    onRefreshLifecycle: vi.fn(),
+    onStopLifecycle: vi.fn(),
+    onResumeLifecycle: vi.fn(),
     onRefreshPackagePreview: vi.fn(),
     onRefreshOfficialWorkspacePreview: vi.fn(),
     onCreateOfficialWorkspace: vi.fn(),

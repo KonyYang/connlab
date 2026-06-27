@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveProjectWorkbenchLifecycleActions,
   deriveProjectWorkbenchLifecycle,
   type WorkbenchLifecycleInput,
 } from "./projectWorkbenchLifecycleSelectors";
+import type { ProjectLifecycleResponse } from "../../api/client";
 import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 
 describe("deriveProjectWorkbenchLifecycle", () => {
@@ -298,6 +300,75 @@ describe("deriveProjectWorkbenchLifecycle", () => {
   });
 });
 
+describe("deriveProjectWorkbenchLifecycleActions", () => {
+  it("allows Stop only for active projects with an explicit stop action", () => {
+    expect(
+      deriveProjectWorkbenchLifecycleActions(
+        lifecycleResponse({ allowed_actions: ["stop", "close"] }),
+        baseInput.lifecycleReadonlyView
+      )
+    ).toMatchObject({
+      primaryAction: "stop",
+      canStop: true,
+      canResume: false,
+    });
+
+    expect(
+      deriveProjectWorkbenchLifecycleActions(
+        lifecycleResponse({ allowed_actions: ["close"] }),
+        baseInput.lifecycleReadonlyView
+      )
+    ).toMatchObject({
+      primaryAction: "none",
+      canStop: false,
+      canResume: false,
+    });
+  });
+
+  it("allows Resume for stopped projects without exposing Close", () => {
+    const actions = deriveProjectWorkbenchLifecycleActions(
+      lifecycleResponse({
+        lifecycle_state: "stopped",
+        status: "cancelled",
+        status_label: "Stopped",
+        readonly: true,
+        allowed_actions: ["resume", "close"],
+      }),
+      stoppedReadonlyView
+    );
+
+    expect(actions).toMatchObject({
+      primaryAction: "resume",
+      canStop: false,
+      canResume: true,
+      canClose: false,
+      readonlyReason:
+        "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed.",
+    });
+  });
+
+  it("does not offer lifecycle write actions for closed projects", () => {
+    expect(
+      deriveProjectWorkbenchLifecycleActions(
+        lifecycleResponse({
+          lifecycle_state: "closed",
+          closure_type: "completed",
+          status: "closed",
+          status_label: "Closed",
+          readonly: true,
+          allowed_actions: [],
+        }),
+        closedCompletedReadonlyView
+      )
+    ).toMatchObject({
+      primaryAction: "none",
+      canStop: false,
+      canResume: false,
+      canClose: false,
+    });
+  });
+});
+
 const baseInput: WorkbenchLifecycleInput = {
   hasLtr: false,
   isCancelled: false,
@@ -359,3 +430,24 @@ const closedCompletedReadonlyView: ProjectLifecycleReadonlyView = {
   canWriteBusinessData: false,
   canUseReadonlyPreview: true,
 };
+
+function lifecycleResponse(
+  overrides: Partial<ProjectLifecycleResponse> = {}
+): ProjectLifecycleResponse {
+  return {
+    project_id: "project-1",
+    lifecycle_state: "active",
+    closure_type: null,
+    status_label: "Active",
+    readonly: false,
+    allowed_actions: ["stop"],
+    status: "active",
+    stopped_at: null,
+    stopped_reason: null,
+    closed_at: null,
+    closed_reason: null,
+    completion_summary: null,
+    warnings: [],
+    ...overrides,
+  };
+}

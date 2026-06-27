@@ -1,6 +1,7 @@
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import type { TemporaryProjectDeletePreview } from "../../api/client";
 import type {
+  WorkbenchLifecycleActionsViewModel,
   WorkbenchLifecycleMode,
   WorkbenchLifecycleTab,
   WorkbenchLifecycleViewModel,
@@ -160,8 +161,10 @@ export function TemporaryPlanningMode({
   onOpenFeeEvaluation,
   onStartPromotion,
   onStopProject,
+  onResumeProject,
   onDeleteTemporaryProject,
   promotionMessage,
+  lifecycleActions,
 }: {
   deletePreview: TemporaryProjectDeletePreview | null;
   lifecycleError: string | null;
@@ -170,9 +173,11 @@ export function TemporaryPlanningMode({
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
   onStartPromotion: () => void;
-  onStopProject: () => void;
+  onStopProject: (reason: string | null) => void;
+  onResumeProject: (reason: string | null) => void;
   onDeleteTemporaryProject: () => void;
   promotionMessage: string | null;
+  lifecycleActions: WorkbenchLifecycleActionsViewModel;
 }): ReactElement {
   return (
     <section className="runtime-console-mode-surface" aria-label="Temporary planning">
@@ -223,10 +228,12 @@ export function TemporaryPlanningMode({
       <ProjectLifecycleManagementPanel
         allowDelete
         deletePreview={deletePreview}
+        lifecycleActions={lifecycleActions}
         lifecycleBusy={lifecycleBusy}
         lifecycleError={lifecycleError}
         onDeleteTemporaryProject={onDeleteTemporaryProject}
         onStopProject={onStopProject}
+        onResumeProject={onResumeProject}
       />
     </section>
   );
@@ -235,38 +242,92 @@ export function TemporaryPlanningMode({
 export function ProjectLifecycleManagementPanel({
   allowDelete,
   deletePreview,
+  lifecycleActions,
   lifecycleBusy,
   lifecycleError,
   onDeleteTemporaryProject,
   onStopProject,
+  onResumeProject,
 }: {
   allowDelete: boolean;
   deletePreview: TemporaryProjectDeletePreview | null;
+  lifecycleActions: WorkbenchLifecycleActionsViewModel;
   lifecycleBusy: boolean;
   lifecycleError: string | null;
   onDeleteTemporaryProject: () => void;
-  onStopProject: () => void;
-}): ReactElement {
+  onStopProject: (reason: string | null) => void;
+  onResumeProject: (reason: string | null) => void;
+}): ReactElement | null {
+  const [pendingAction, setPendingAction] =
+    useState<WorkbenchLifecycleActionsViewModel["primaryAction"]>("none");
+  const [reason, setReason] = useState("");
   const blockers = deletePreview?.blockers ?? [];
+  const hasLifecycleAction = lifecycleActions.canStop || lifecycleActions.canResume;
+  const hasPanelContent =
+    hasLifecycleAction ||
+    allowDelete ||
+    blockers.length > 0 ||
+    Boolean(lifecycleError);
+
+  if (!hasPanelContent) {
+    return null;
+  }
+
+  function handleConfirmAction(): void {
+    const normalizedReason = reason.trim() || null;
+    if (pendingAction === "stop") {
+      onStopProject(normalizedReason);
+    }
+    if (pendingAction === "resume") {
+      onResumeProject(normalizedReason);
+    }
+    setPendingAction("none");
+    setReason("");
+  }
+
+  function handleCancelAction(): void {
+    setPendingAction("none");
+    setReason("");
+  }
+
   return (
     <section className="runtime-console-lifecycle-management" aria-label="Project lifecycle">
       <div>
         <p className="eyebrow">Project lifecycle</p>
         <strong>
-          {allowDelete
-            ? "Stop or safely remove this temporary record"
-            : "Stop this project lifecycle"}
+          {lifecycleActions.canResume
+            ? "Resume this project lifecycle"
+            : allowDelete
+              ? "Stop or safely remove this temporary record"
+              : "Stop this project lifecycle"}
         </strong>
         <p>
-          {allowDelete
-            ? "Stop keeps the project for review. Delete is only available for mistaken or duplicate temporary records with no formal or temporary workspace blockers."
-            : "Stop keeps the project for review when business work should not continue."}
+          {lifecycleActions.canResume
+            ? "Resume restores editing and project work after the stopped state is cleared."
+            : allowDelete
+              ? "Stop keeps the project for review. Delete is only available for mistaken or duplicate temporary records with no formal or temporary workspace blockers."
+              : "Stop keeps the project for review when business work should not continue."}
         </p>
       </div>
       <div className="runtime-console-lifecycle-actions">
-        <button type="button" disabled={lifecycleBusy} onClick={onStopProject}>
-          Stop project
-        </button>
+        {lifecycleActions.canStop ? (
+          <button
+            type="button"
+            disabled={lifecycleBusy}
+            onClick={() => setPendingAction("stop")}
+          >
+            Stop project
+          </button>
+        ) : null}
+        {lifecycleActions.canResume ? (
+          <button
+            type="button"
+            disabled={lifecycleBusy}
+            onClick={() => setPendingAction("resume")}
+          >
+            Resume project
+          </button>
+        ) : null}
         {allowDelete ? (
           <button
             type="button"
@@ -277,6 +338,42 @@ export function ProjectLifecycleManagementPanel({
           </button>
         ) : null}
       </div>
+      {pendingAction !== "none" ? (
+        <div className="runtime-console-lifecycle-confirmation">
+          <strong>
+            {pendingAction === "stop"
+              ? "Confirm stop project"
+              : "Confirm resume project"}
+          </strong>
+          <label>
+            <span>Reason optional</span>
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={3}
+            />
+          </label>
+          <div className="runtime-console-lifecycle-confirm-actions">
+            <button
+              type="button"
+              disabled={lifecycleBusy}
+              onClick={handleConfirmAction}
+            >
+              {pendingAction === "stop"
+                ? "Confirm stop project"
+                : "Confirm resume project"}
+            </button>
+            <button type="button" disabled={lifecycleBusy} onClick={handleCancelAction}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {lifecycleActions.readonlyReason ? (
+        <p className="runtime-console-readonly-note">
+          {lifecycleActions.readonlyReason}
+        </p>
+      ) : null}
       {blockers.length > 0 ? (
         <ul className="runtime-console-blocker-list">
           {blockers.map((blocker) => (

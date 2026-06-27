@@ -1,3 +1,4 @@
+import type { ProjectLifecycleResponse } from "../../api/client";
 import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 
 export type WorkbenchLifecycleMode =
@@ -87,6 +88,16 @@ export type WorkbenchLifecycleViewModel = {
   stageSummary: string;
   nextAction: WorkbenchNextAction;
   tabs: WorkbenchLifecycleTab[];
+};
+
+export type WorkbenchLifecycleActionPrimary = "stop" | "resume" | "none";
+
+export type WorkbenchLifecycleActionsViewModel = {
+  primaryAction: WorkbenchLifecycleActionPrimary;
+  canStop: boolean;
+  canResume: boolean;
+  canClose: false;
+  readonlyReason: string | null;
 };
 
 const ACTIVE_MATRIX_TABS: WorkbenchLifecycleTab[] = [
@@ -191,6 +202,29 @@ export function deriveProjectWorkbenchLifecycle(
     stageSummary: "Finish the project folder files.",
     nextAction: buildProjectFolderNextAction(input),
     tabs: ACTIVE_MATRIX_TABS,
+  };
+}
+
+export function deriveProjectWorkbenchLifecycleActions(
+  lifecycle: ProjectLifecycleResponse | null,
+  readonlyView?: ProjectLifecycleReadonlyView
+): WorkbenchLifecycleActionsViewModel {
+  const readonlyReason = readonlyView?.readonly ? readonlyView.message : null;
+  const allowedActions = lifecycle?.allowed_actions ?? [];
+  const canStop =
+    lifecycle?.lifecycle_state === "active" &&
+    !lifecycle.readonly &&
+    allowedActions.includes("stop");
+  const canResume =
+    lifecycle?.lifecycle_state === "stopped" &&
+    allowedActions.includes("resume");
+
+  return {
+    primaryAction: canStop ? "stop" : canResume ? "resume" : "none",
+    canStop,
+    canResume,
+    canClose: false,
+    readonlyReason,
   };
 }
 

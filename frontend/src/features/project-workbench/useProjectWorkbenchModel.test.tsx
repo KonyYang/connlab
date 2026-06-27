@@ -33,6 +33,8 @@ const apiMocks = vi.hoisted(() => ({
   getConfirmedFeeLatest: vi.fn(),
   getLatestProjectFolder: vi.fn(),
   getProject: vi.fn(),
+  getProjectBasicInformation: vi.fn(),
+  getProjectLifecycle: vi.fn(),
   getProjectOutputStatusSummary: vi.fn(),
   getProjectTestPlanDraft: vi.fn(),
   getRuntimeProjectionReadOnlySnapshot: vi.fn(),
@@ -46,6 +48,8 @@ const apiMocks = vi.hoisted(() => ({
   previewProjectTestPlanMatrixFromPath: vi.fn(),
   previewProjectTestPlanMatrixFromSourceCandidate: vi.fn(),
   repairOfficialFolderStructure: vi.fn(),
+  resumeProjectLifecycle: vi.fn(),
+  stopProjectLifecycle: vi.fn(),
   syncProjectSection2FromConfirmedMatrix: vi.fn(),
   updateProjectTestPlanMatrixDraft: vi.fn(),
   uploadPublicDriveProjectFolder: vi.fn(),
@@ -68,6 +72,29 @@ describe("useProjectWorkbenchModel", () => {
       requestor: "Lab User",
       status: "active",
     });
+    apiMocks.getProjectBasicInformation.mockResolvedValue({
+      project_id: "project-1",
+      status: "empty",
+      draft: null,
+      latest_confirmed: null,
+      field_suggestions: {},
+      changed_source_fields: [],
+      missing_required_fields: [],
+      missing_required_labels: [],
+      blockers: [],
+      warnings: [],
+    });
+    apiMocks.getProjectLifecycle.mockResolvedValue(lifecycleResponse());
+    apiMocks.stopProjectLifecycle.mockResolvedValue(
+      lifecycleResponse({
+        lifecycle_state: "stopped",
+        status: "cancelled",
+        status_label: "Stopped",
+        readonly: true,
+        allowed_actions: ["resume", "close"],
+      })
+    );
+    apiMocks.resumeProjectLifecycle.mockResolvedValue(lifecycleResponse());
     apiMocks.listProjectLtrs.mockResolvedValue([]);
     apiMocks.listExternalResources.mockResolvedValue([]);
     apiMocks.getLatestProjectFolder.mockResolvedValue({
@@ -289,6 +316,68 @@ describe("useProjectWorkbenchModel", () => {
     ]);
     expect(apiMocks.syncProjectSection2FromConfirmedMatrix).not.toHaveBeenCalled();
   });
+
+  it("stops lifecycle in place and refreshes lifecycle plus project status", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    apiMocks.getProject.mockResolvedValueOnce({
+      project_id: "project-1",
+      product_name: "Connector Sample",
+      requestor: "Lab User",
+      status: "cancelled",
+    });
+
+    await act(async () => {
+      await result.current.onStopLifecycle("");
+    });
+
+    expect(apiMocks.stopProjectLifecycle).toHaveBeenCalledWith("project-1", {
+      reason: null,
+      operator: null,
+    });
+    expect(apiMocks.getProject).toHaveBeenCalledTimes(2);
+    expect(result.current.project?.status).toBe("cancelled");
+    expect(result.current.lifecycle?.lifecycle_state).toBe("stopped");
+  });
+
+  it("resumes lifecycle in place and refreshes legacy cancelled project status", async () => {
+    apiMocks.getProject.mockResolvedValueOnce({
+      project_id: "project-1",
+      product_name: "Connector Sample",
+      requestor: "Lab User",
+      status: "cancelled",
+    });
+    apiMocks.getProjectLifecycle.mockResolvedValueOnce(
+      lifecycleResponse({
+        lifecycle_state: "stopped",
+        status: "cancelled",
+        status_label: "Stopped",
+        readonly: true,
+        allowed_actions: ["resume", "close"],
+      })
+    );
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(result.current.project?.status).toBe("cancelled"));
+    apiMocks.getProject.mockResolvedValueOnce({
+      project_id: "project-1",
+      product_name: "Connector Sample",
+      requestor: "Lab User",
+      status: "active",
+    });
+
+    await act(async () => {
+      await result.current.onResumeLifecycle("");
+    });
+
+    expect(apiMocks.resumeProjectLifecycle).toHaveBeenCalledWith("project-1", {
+      reason: null,
+      operator: null,
+    });
+    expect(result.current.project?.status).toBe("active");
+    expect(result.current.lifecycle?.lifecycle_state).toBe("active");
+  });
 });
 
 const blockedRequiredFormsPreview = {
@@ -323,6 +412,25 @@ const requiredFormsPreviewContext = {
   blockers: [],
   warnings: [],
 };
+
+function lifecycleResponse(overrides = {}) {
+  return {
+    project_id: "project-1",
+    lifecycle_state: "active",
+    closure_type: null,
+    status_label: "Active",
+    readonly: false,
+    allowed_actions: ["stop", "close"],
+    status: "active",
+    stopped_at: null,
+    stopped_reason: null,
+    closed_at: null,
+    closed_reason: null,
+    completion_summary: null,
+    warnings: [],
+    ...overrides,
+  };
+}
 
 const readyRequiredFormsPreview = {
   ...requiredFormsPreviewContext,

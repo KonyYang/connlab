@@ -2954,6 +2954,40 @@
   color: var(--color-danger);
 }
 
+.runtime-console-lifecycle-confirmation {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  padding: 10px;
+}
+
+.runtime-console-lifecycle-confirmation label {
+  display: grid;
+  gap: 6px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.runtime-console-lifecycle-confirmation textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.runtime-console-lifecycle-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.runtime-console-readonly-note {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  padding: 8px 10px;
+}
+
 .runtime-console-summary {
   display: grid;
   grid-template-columns: minmax(240px, 1.2fr) repeat(5, minmax(112px, 0.7fr));
