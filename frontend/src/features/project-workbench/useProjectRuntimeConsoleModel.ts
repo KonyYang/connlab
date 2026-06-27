@@ -25,6 +25,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "matrixDraftError"
   | "matrixDraftLoading"
   | "message"
+  | "outputStatusSummary"
   | "packagePreview"
   | "packagePreviewError"
   | "packagePreviewLoading"
@@ -69,6 +70,8 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshLifecycle"
   | "onStopLifecycle"
   | "onResumeLifecycle"
+  | "onCloseCompletedLifecycle"
+  | "onCloseAdministrativeLifecycle"
   | "onRefreshPackagePreview"
   | "onRefreshOfficialWorkspacePreview"
   | "onCreateOfficialWorkspace"
@@ -110,6 +113,7 @@ export function selectProjectRuntimeConsoleModel(
     matrixDraftError: model.matrixDraftError,
     matrixDraftLoading: model.matrixDraftLoading,
     message: model.message,
+    outputStatusSummary: model.outputStatusSummary,
     packagePreview: model.packagePreview,
     packagePreviewError: model.packagePreviewError,
     packagePreviewLoading: model.packagePreviewLoading,
@@ -154,6 +158,8 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshLifecycle: model.onRefreshLifecycle,
     onStopLifecycle: model.onStopLifecycle,
     onResumeLifecycle: model.onResumeLifecycle,
+    onCloseCompletedLifecycle: model.onCloseCompletedLifecycle,
+    onCloseAdministrativeLifecycle: model.onCloseAdministrativeLifecycle,
     onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,

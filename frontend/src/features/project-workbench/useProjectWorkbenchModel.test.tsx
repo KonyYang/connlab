@@ -16,6 +16,8 @@ const MockApiRequestError = vi.hoisted(
 
 const apiMocks = vi.hoisted(() => ({
   collectRequestMaterial: vi.fn(),
+  closeProjectAdministrativeLifecycle: vi.fn(),
+  closeProjectCompletedLifecycle: vi.fn(),
   confirmProjectTestPlanMatrixDraft: vi.fn(),
   createProjectTestPlanDraft: vi.fn(),
   executeApprovalPackage: vi.fn(),
@@ -95,6 +97,26 @@ describe("useProjectWorkbenchModel", () => {
       })
     );
     apiMocks.resumeProjectLifecycle.mockResolvedValue(lifecycleResponse());
+    apiMocks.closeProjectCompletedLifecycle.mockResolvedValue(
+      lifecycleResponse({
+        lifecycle_state: "closed",
+        closure_type: "completed",
+        status: "closed",
+        status_label: "Closed",
+        readonly: true,
+        allowed_actions: [],
+      })
+    );
+    apiMocks.closeProjectAdministrativeLifecycle.mockResolvedValue(
+      lifecycleResponse({
+        lifecycle_state: "closed",
+        closure_type: "administrative",
+        status: "closed",
+        status_label: "Closed",
+        readonly: true,
+        allowed_actions: [],
+      })
+    );
     apiMocks.listProjectLtrs.mockResolvedValue([]);
     apiMocks.listExternalResources.mockResolvedValue([]);
     apiMocks.getLatestProjectFolder.mockResolvedValue({
@@ -102,8 +124,9 @@ describe("useProjectWorkbenchModel", () => {
     });
     apiMocks.getProjectOutputStatusSummary.mockResolvedValue({
       project_id: "project-1",
+      active_draft_id: null,
+      active_draft_version: null,
       items: [],
-      has_stale_outputs: false,
     });
     apiMocks.getConfirmedFeeLatest.mockResolvedValue({
       status: "current",
@@ -377,6 +400,97 @@ describe("useProjectWorkbenchModel", () => {
     });
     expect(result.current.project?.status).toBe("active");
     expect(result.current.lifecycle?.lifecycle_state).toBe("active");
+  });
+
+  it("closes a completed project with required note and refreshes Workbench state", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    apiMocks.getProject.mockResolvedValueOnce({
+      project_id: "project-1",
+      product_name: "Connector Sample",
+      requestor: "Lab User",
+      status: "closed",
+    });
+    apiMocks.getProjectOutputStatusSummary.mockResolvedValueOnce({
+      project_id: "project-1",
+      active_draft_id: "draft-1",
+      active_draft_version: 2,
+      items: [],
+    });
+
+    await act(async () => {
+      await result.current.onCloseCompletedLifecycle("  Outputs reviewed.  ");
+    });
+
+    expect(apiMocks.closeProjectCompletedLifecycle).toHaveBeenCalledWith("project-1", {
+      close_note: "Outputs reviewed.",
+      manual_completion_confirmed: true,
+      output_summary_acknowledged: true,
+      operator: null,
+    });
+    expect(apiMocks.getProject).toHaveBeenCalledTimes(2);
+    expect(apiMocks.getProjectOutputStatusSummary).toHaveBeenCalledTimes(2);
+    expect(result.current.project?.status).toBe("closed");
+    expect(result.current.lifecycle?.lifecycle_state).toBe("closed");
+    expect(result.current.lifecycle?.closure_type).toBe("completed");
+  });
+
+  it("rejects blank completed close notes before calling the close API", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+
+    await expect(
+      act(async () => {
+        await result.current.onCloseCompletedLifecycle("   ");
+      })
+    ).rejects.toThrow("Close note is required.");
+
+    expect(apiMocks.closeProjectCompletedLifecycle).not.toHaveBeenCalled();
+  });
+
+  it("closes a project administratively with required reason and refreshes Workbench state", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    apiMocks.getProject.mockResolvedValueOnce({
+      project_id: "project-1",
+      product_name: "Connector Sample",
+      requestor: "Lab User",
+      status: "closed",
+    });
+
+    await act(async () => {
+      await result.current.onCloseAdministrativeLifecycle("  Duplicate request.  ");
+    });
+
+    expect(apiMocks.closeProjectAdministrativeLifecycle).toHaveBeenCalledWith(
+      "project-1",
+      {
+        reason: "Duplicate request.",
+        operator: null,
+      }
+    );
+    expect(apiMocks.getProject).toHaveBeenCalledTimes(2);
+    expect(apiMocks.getProjectOutputStatusSummary).toHaveBeenCalledTimes(2);
+    expect(result.current.project?.status).toBe("closed");
+    expect(result.current.lifecycle?.lifecycle_state).toBe("closed");
+    expect(result.current.lifecycle?.closure_type).toBe("administrative");
+  });
+
+  it("rejects blank administrative close reasons before calling the close API", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+
+    await expect(
+      act(async () => {
+        await result.current.onCloseAdministrativeLifecycle("   ");
+      })
+    ).rejects.toThrow("Administrative close reason is required.");
+
+    expect(apiMocks.closeProjectAdministrativeLifecycle).not.toHaveBeenCalled();
   });
 });
 

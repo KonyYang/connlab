@@ -2954,6 +2954,29 @@
   color: var(--color-danger);
 }
 
+.runtime-console-close-actions {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface-muted) 64%, var(--color-surface));
+  padding: 10px;
+}
+
+.runtime-console-close-actions-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.runtime-console-close-actions-heading p {
+  max-width: 72ch;
+}
+
+.runtime-console-close-action:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-danger) 44%, var(--color-border));
+  color: var(--color-danger);
+}
+
 .runtime-console-lifecycle-confirmation {
   display: grid;
   gap: 8px;
@@ -2968,6 +2991,17 @@
   gap: 6px;
   color: var(--color-ink-muted);
   font-size: 12px;
+}
+
+.runtime-console-lifecycle-confirmation .runtime-console-lifecycle-check {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  color: var(--color-ink);
+  font-size: 13px;
+}
+
+.runtime-console-lifecycle-check input {
+  margin-top: 2px;
 }
 
 .runtime-console-lifecycle-confirmation textarea {
@@ -2986,6 +3020,37 @@
   border-radius: 8px;
   background: var(--color-surface-muted);
   padding: 8px 10px;
+}
+
+.runtime-console-output-status-summary {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 10px;
+}
+
+.runtime-console-output-status-summary ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.runtime-console-output-status-summary li {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto;
+  gap: 4px 10px;
+  align-items: start;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  padding: 8px;
+}
+
+.runtime-console-output-status-summary li p {
+  grid-column: 1 / -1;
 }
 
 .runtime-console-summary {

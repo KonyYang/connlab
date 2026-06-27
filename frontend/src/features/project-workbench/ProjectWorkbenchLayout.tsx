@@ -100,6 +100,9 @@ export function ProjectWorkbenchLayout({
     onUploadPublicDriveProjectFolder,
     onStopLifecycle,
     onResumeLifecycle,
+    onCloseCompletedLifecycle,
+    onCloseAdministrativeLifecycle,
+    outputStatusSummary,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -153,7 +156,8 @@ export function ProjectWorkbenchLayout({
   );
   const lifecycleActions = deriveProjectWorkbenchLifecycleActions(
     runtimeModel.lifecycle,
-    lifecycleReadonlyView
+    lifecycleReadonlyView,
+    { hasRegisteredProject: Boolean(projectNumber) }
   );
   const projectFolderTasks = deriveProjectFolderTasks({
     folderReady: effectiveFolderReady,
@@ -256,6 +260,30 @@ export function ProjectWorkbenchLayout({
     setLifecycleBusy(true);
     try {
       await onResumeLifecycle(reason);
+      setLifecycleError(null);
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+  async function handleCloseCompletedProject(closeNote: string): Promise<void> {
+    setLifecycleBusy(true);
+    try {
+      await onCloseCompletedLifecycle(closeNote);
+      setLifecycleError(null);
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+  async function handleCloseAdministrativeProject(reason: string): Promise<void> {
+    setLifecycleBusy(true);
+    try {
+      await onCloseAdministrativeLifecycle(reason);
       setLifecycleError(null);
     } catch (err) {
       setLifecycleError((err as Error).message);
@@ -473,9 +501,18 @@ export function ProjectWorkbenchLayout({
               lifecycleActions={lifecycleActions}
               lifecycleBusy={lifecycleBusy}
               lifecycleError={lifecycleError}
+              outputStatusSummary={outputStatusSummary}
               onDeleteTemporaryProject={() => undefined}
               onStopProject={(reason) => void handleStopProject(reason)}
               onResumeProject={(reason) => void handleResumeProject(reason)}
+              onCloseCompletedProject={(closeNote) =>
+                void handleCloseCompletedProject(closeNote)
+              }
+              onCloseAdministrativeProject={(reason) =>
+                void handleCloseAdministrativeProject(reason)
+              }
+              projectIdentity={titleParts.join(" ")}
+              projectReference={projectNumber}
             />
           </>
         ) : (
@@ -513,8 +550,17 @@ export function ProjectWorkbenchLayout({
                   );
                 }}
                 lifecycleActions={lifecycleActions}
+                outputStatusSummary={outputStatusSummary}
+                projectIdentity={titleParts.join(" ")}
+                projectReference={projectNumber}
                 onStopProject={(reason) => void handleStopProject(reason)}
                 onResumeProject={(reason) => void handleResumeProject(reason)}
+                onCloseCompletedProject={(closeNote) =>
+                  void handleCloseCompletedProject(closeNote)
+                }
+                onCloseAdministrativeProject={(reason) =>
+                  void handleCloseAdministrativeProject(reason)
+                }
                 onDeleteTemporaryProject={() => void handleDeleteTemporaryProject()}
                 promotionMessage={temporaryPromotionMessage}
               />
@@ -535,9 +581,18 @@ export function ProjectWorkbenchLayout({
                 lifecycleActions={lifecycleActions}
                 lifecycleBusy={lifecycleBusy}
                 lifecycleError={lifecycleError}
+                outputStatusSummary={outputStatusSummary}
                 onDeleteTemporaryProject={() => undefined}
                 onStopProject={(reason) => void handleStopProject(reason)}
                 onResumeProject={(reason) => void handleResumeProject(reason)}
+                onCloseCompletedProject={(closeNote) =>
+                  void handleCloseCompletedProject(closeNote)
+                }
+                onCloseAdministrativeProject={(reason) =>
+                  void handleCloseAdministrativeProject(reason)
+                }
+                projectIdentity={titleParts.join(" ")}
+                projectReference={projectNumber}
               />
             ) : null}
           </>

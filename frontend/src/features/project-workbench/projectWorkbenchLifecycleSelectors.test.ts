@@ -305,12 +305,17 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
     expect(
       deriveProjectWorkbenchLifecycleActions(
         lifecycleResponse({ allowed_actions: ["stop", "close"] }),
-        baseInput.lifecycleReadonlyView
+        baseInput.lifecycleReadonlyView,
+        { hasRegisteredProject: true }
       )
     ).toMatchObject({
       primaryAction: "stop",
       canStop: true,
       canResume: false,
+      canClose: true,
+      canCloseCompleted: true,
+      canCloseAdministrative: true,
+      preferredClosePath: "completed",
     });
 
     expect(
@@ -322,10 +327,14 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
       primaryAction: "none",
       canStop: false,
       canResume: false,
+      canClose: true,
+      canCloseCompleted: false,
+      canCloseAdministrative: true,
+      preferredClosePath: "administrative",
     });
   });
 
-  it("allows Resume for stopped projects without exposing Close", () => {
+  it("allows Resume and completed/admin close for stopped registered projects", () => {
     const actions = deriveProjectWorkbenchLifecycleActions(
       lifecycleResponse({
         lifecycle_state: "stopped",
@@ -334,16 +343,36 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
         readonly: true,
         allowed_actions: ["resume", "close"],
       }),
-      stoppedReadonlyView
+      stoppedReadonlyView,
+      { hasRegisteredProject: true }
     );
 
     expect(actions).toMatchObject({
       primaryAction: "resume",
       canStop: false,
       canResume: true,
-      canClose: false,
+      canClose: true,
+      canCloseCompleted: true,
+      canCloseAdministrative: true,
+      preferredClosePath: "completed",
       readonlyReason:
         "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed.",
+    });
+  });
+
+  it("defaults temporary no-DL projects to administrative close", () => {
+    const actions = deriveProjectWorkbenchLifecycleActions(
+      lifecycleResponse({ allowed_actions: ["stop", "close"] }),
+      baseInput.lifecycleReadonlyView,
+      { hasRegisteredProject: false }
+    );
+
+    expect(actions).toMatchObject({
+      canStop: true,
+      canClose: true,
+      canCloseCompleted: false,
+      canCloseAdministrative: true,
+      preferredClosePath: "administrative",
     });
   });
 
@@ -365,7 +394,24 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
       canStop: false,
       canResume: false,
       canClose: false,
+      canCloseCompleted: false,
+      canCloseAdministrative: false,
+      preferredClosePath: null,
     });
+  });
+
+  it("does not expose raw lifecycle enum copy in close action labels", () => {
+    const actions = deriveProjectWorkbenchLifecycleActions(
+      lifecycleResponse({ allowed_actions: ["stop", "close"] }),
+      baseInput.lifecycleReadonlyView,
+      { hasRegisteredProject: true }
+    );
+
+    expect(JSON.stringify(actions)).not.toMatch(
+      /lifecycle_state|closure_type|closed_completed|closed_administrative|cancelled/
+    );
+    expect(actions.completedCloseLabel).toBe("Close as completed");
+    expect(actions.administrativeCloseLabel).toBe("Close administratively");
   });
 });
 

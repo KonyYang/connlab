@@ -13,6 +13,7 @@ import type {
   RequestMaterialPreview,
   ProjectLifecycleResponse,
   ProjectTestPlanDraft,
+  ProjectOutputStatusSummary,
 } from "../../api/client";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -412,6 +413,68 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
   });
 
+  it("opens completed close confirmation for active formal projects when close is allowed", async () => {
+    const user = userEvent.setup();
+    const onCloseCompletedLifecycle = vi.fn().mockResolvedValue(undefined);
+
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: true,
+      outputStatusSummary,
+      onCloseCompletedLifecycle,
+      lifecycle: lifecycleResponse({
+        allowed_actions: ["stop", "close"],
+      }),
+    });
+
+    await user.click(screen.getByRole("button", { name: "Close as completed" }));
+
+    expect(screen.getByText("Output status summary")).toBeTruthy();
+    expect(screen.getByText("Test Record")).toBeTruthy();
+    await user.type(screen.getByLabelText("Close note"), "Outputs reviewed.");
+    await user.click(
+      screen.getByLabelText(
+        "I manually confirm this project is ready to archive as completed."
+      )
+    );
+    await user.click(
+      screen.getByLabelText("I reviewed the available output status summary.")
+    );
+    await user.click(screen.getByRole("button", { name: "Confirm completed close" }));
+
+    expect(onCloseCompletedLifecycle).toHaveBeenCalledWith("Outputs reviewed.");
+  });
+
+  it("uses administrative close as the temporary no-LTR close path", async () => {
+    const user = userEvent.setup();
+    const onCloseAdministrativeLifecycle = vi.fn().mockResolvedValue(undefined);
+
+    renderWorkbench({
+      latestLtr: null,
+      matrixAuthorityDraft: null,
+      packagePreview: null,
+      onCloseAdministrativeLifecycle,
+      lifecycle: lifecycleResponse({
+        allowed_actions: ["stop", "close"],
+      }),
+    });
+
+    expect(screen.queryByRole("button", { name: "Close as completed" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Close administratively" }));
+    expect(screen.getByText(/without marking testing complete/)).toBeTruthy();
+
+    await user.type(screen.getByLabelText("Administrative reason"), "Duplicate request.");
+    await user.click(
+      screen.getByRole("button", { name: "Confirm administrative close" })
+    );
+
+    expect(onCloseAdministrativeLifecycle).toHaveBeenCalledWith("Duplicate request.");
+  });
+
   it("renders closed completed projects as readonly archives without lifecycle writes", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
@@ -437,8 +500,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "Read-only archive"
     );
     expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resume project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close as completed" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close administratively" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
@@ -1213,6 +1279,9 @@ function buildRuntimeModel(
     onRefreshLifecycle: vi.fn(),
     onStopLifecycle: vi.fn(),
     onResumeLifecycle: vi.fn(),
+    onCloseCompletedLifecycle: vi.fn(),
+    onCloseAdministrativeLifecycle: vi.fn(),
+    outputStatusSummary: null,
     onRefreshPackagePreview: vi.fn(),
     onRefreshOfficialWorkspacePreview: vi.fn(),
     onCreateOfficialWorkspace: vi.fn(),
@@ -1629,6 +1698,24 @@ const readyPublicDriveUploadPreview: PublicDriveUploadPreview = {
     deferred: 0,
   },
   next_action: "upload",
+};
+
+const outputStatusSummary: ProjectOutputStatusSummary = {
+  project_id: project.project_id,
+  active_draft_id: "draft-1",
+  active_draft_version: 3,
+  items: [
+    {
+      output_kind: "test_record_form",
+      status: "current",
+      output_path: "D:/Projects/DL-2026-06-001/Test Record.docx",
+      source: "system_generated",
+      draft_id: "draft-1",
+      draft_version: 3,
+      reason: "Generated from active Matrix.",
+      updated_at: "2026-06-27T08:00:00Z",
+    },
+  ],
 };
 
 const confirmedMatrixSnapshot: ConfirmedMatrixSnapshot = {

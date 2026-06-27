@@ -91,13 +91,23 @@ export type WorkbenchLifecycleViewModel = {
 };
 
 export type WorkbenchLifecycleActionPrimary = "stop" | "resume" | "none";
+export type WorkbenchLifecycleClosePath = "completed" | "administrative";
 
 export type WorkbenchLifecycleActionsViewModel = {
   primaryAction: WorkbenchLifecycleActionPrimary;
   canStop: boolean;
   canResume: boolean;
-  canClose: false;
+  canClose: boolean;
+  canCloseCompleted: boolean;
+  canCloseAdministrative: boolean;
+  preferredClosePath: WorkbenchLifecycleClosePath | null;
+  completedCloseLabel: string;
+  administrativeCloseLabel: string;
   readonlyReason: string | null;
+};
+
+export type WorkbenchLifecycleActionOptions = {
+  hasRegisteredProject?: boolean;
 };
 
 const ACTIVE_MATRIX_TABS: WorkbenchLifecycleTab[] = [
@@ -207,7 +217,8 @@ export function deriveProjectWorkbenchLifecycle(
 
 export function deriveProjectWorkbenchLifecycleActions(
   lifecycle: ProjectLifecycleResponse | null,
-  readonlyView?: ProjectLifecycleReadonlyView
+  readonlyView?: ProjectLifecycleReadonlyView,
+  options: WorkbenchLifecycleActionOptions = {}
 ): WorkbenchLifecycleActionsViewModel {
   const readonlyReason = readonlyView?.readonly ? readonlyView.message : null;
   const allowedActions = lifecycle?.allowed_actions ?? [];
@@ -218,12 +229,28 @@ export function deriveProjectWorkbenchLifecycleActions(
   const canResume =
     lifecycle?.lifecycle_state === "stopped" &&
     allowedActions.includes("resume");
+  const canClose =
+    (lifecycle?.lifecycle_state === "active" ||
+      lifecycle?.lifecycle_state === "stopped") &&
+    allowedActions.includes("close");
+  const canCloseCompleted = canClose && Boolean(options.hasRegisteredProject);
+  const canCloseAdministrative = canClose;
+  const preferredClosePath = canCloseCompleted
+    ? "completed"
+    : canCloseAdministrative
+      ? "administrative"
+      : null;
 
   return {
     primaryAction: canStop ? "stop" : canResume ? "resume" : "none",
     canStop,
     canResume,
-    canClose: false,
+    canClose,
+    canCloseCompleted,
+    canCloseAdministrative,
+    preferredClosePath,
+    completedCloseLabel: "Close as completed",
+    administrativeCloseLabel: "Close administratively",
     readonlyReason,
   };
 }

@@ -22,6 +22,8 @@ import {
   getProject,
   getProjectLifecycle,
   getProjectBasicInformation,
+  closeProjectAdministrativeLifecycle,
+  closeProjectCompletedLifecycle,
   resumeProjectLifecycle,
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
@@ -116,6 +118,7 @@ export type ProjectWorkbenchModel = {
   };
   latestLtr: string | null;
   message: string | null;
+  outputStatusSummary: ProjectOutputStatusSummary | null;
   lifecycle: ProjectLifecycleResponse | null;
   lifecycleLoading: boolean;
   lifecycleError: string | null;
@@ -213,6 +216,8 @@ export type ProjectWorkbenchModel = {
   onRefreshLifecycle: () => Promise<void>;
   onStopLifecycle: (reason?: string | null) => Promise<void>;
   onResumeLifecycle: (reason?: string | null) => Promise<void>;
+  onCloseCompletedLifecycle: (closeNote: string) => Promise<void>;
+  onCloseAdministrativeLifecycle: (reason: string) => Promise<void>;
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: (
@@ -1062,6 +1067,54 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
+  async function onCloseCompletedLifecycle(closeNote: string): Promise<void> {
+    const normalizedCloseNote = normalizeRequiredLifecycleText(
+      closeNote,
+      "Close note is required."
+    );
+    setLifecycleLoading(true);
+    try {
+      const nextLifecycle = await closeProjectCompletedLifecycle(projectId, {
+        close_note: normalizedCloseNote,
+        manual_completion_confirmed: true,
+        output_summary_acknowledged: true,
+        operator: null,
+      });
+      setLifecycle(nextLifecycle);
+      setProject(await getProject(projectId));
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      setLifecycleError(null);
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+      throw err;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  }
+
+  async function onCloseAdministrativeLifecycle(reason: string): Promise<void> {
+    const normalizedReason = normalizeRequiredLifecycleText(
+      reason,
+      "Administrative close reason is required."
+    );
+    setLifecycleLoading(true);
+    try {
+      const nextLifecycle = await closeProjectAdministrativeLifecycle(projectId, {
+        reason: normalizedReason,
+        operator: null,
+      });
+      setLifecycle(nextLifecycle);
+      setProject(await getProject(projectId));
+      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      setLifecycleError(null);
+    } catch (err) {
+      setLifecycleError((err as Error).message);
+      throw err;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  }
+
   async function onUploadPublicDriveProjectFolder(): Promise<void> {
     setPublicDriveUploading(true);
     try {
@@ -1411,6 +1464,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     folderResources,
     latestLtr,
     message,
+    outputStatusSummary,
     lifecycle,
     lifecycleLoading,
     lifecycleError,
@@ -1501,6 +1555,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshLifecycle,
     onStopLifecycle,
     onResumeLifecycle,
+    onCloseCompletedLifecycle,
+    onCloseAdministrativeLifecycle,
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
@@ -1981,6 +2037,14 @@ function normalizeLines(lines: string[]): string {
 function normalizeLifecycleReason(reason: string | null | undefined): string | null {
   const normalized = reason?.trim();
   return normalized ? normalized : null;
+}
+
+function normalizeRequiredLifecycleText(value: string, message: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error(message);
+  }
+  return normalized;
 }
 
 function cloneGroups(groups: ProjectTestPlanDraftGroup[] | undefined): ProjectTestPlanDraftGroup[] {

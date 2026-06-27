@@ -1,5 +1,9 @@
 import { useState, type ReactElement } from "react";
-import type { TemporaryProjectDeletePreview } from "../../api/client";
+import type {
+  ProjectOutputStatusSummary,
+  TemporaryProjectDeletePreview,
+} from "../../api/client";
+import { ProjectWorkbenchCloseConfirmation } from "./ProjectWorkbenchCloseConfirmation";
 import type {
   WorkbenchLifecycleActionsViewModel,
   WorkbenchLifecycleMode,
@@ -162,9 +166,14 @@ export function TemporaryPlanningMode({
   onStartPromotion,
   onStopProject,
   onResumeProject,
+  onCloseCompletedProject,
+  onCloseAdministrativeProject,
   onDeleteTemporaryProject,
   promotionMessage,
   lifecycleActions,
+  outputStatusSummary,
+  projectIdentity,
+  projectReference,
 }: {
   deletePreview: TemporaryProjectDeletePreview | null;
   lifecycleError: string | null;
@@ -175,9 +184,14 @@ export function TemporaryPlanningMode({
   onStartPromotion: () => void;
   onStopProject: (reason: string | null) => void;
   onResumeProject: (reason: string | null) => void;
+  onCloseCompletedProject: (closeNote: string) => void;
+  onCloseAdministrativeProject: (reason: string) => void;
   onDeleteTemporaryProject: () => void;
   promotionMessage: string | null;
   lifecycleActions: WorkbenchLifecycleActionsViewModel;
+  outputStatusSummary: ProjectOutputStatusSummary | null;
+  projectIdentity: string;
+  projectReference: string | null;
 }): ReactElement {
   return (
     <section className="runtime-console-mode-surface" aria-label="Temporary planning">
@@ -231,9 +245,14 @@ export function TemporaryPlanningMode({
         lifecycleActions={lifecycleActions}
         lifecycleBusy={lifecycleBusy}
         lifecycleError={lifecycleError}
+        outputStatusSummary={outputStatusSummary}
         onDeleteTemporaryProject={onDeleteTemporaryProject}
         onStopProject={onStopProject}
         onResumeProject={onResumeProject}
+        onCloseCompletedProject={onCloseCompletedProject}
+        onCloseAdministrativeProject={onCloseAdministrativeProject}
+        projectIdentity={projectIdentity}
+        projectReference={projectReference}
       />
     </section>
   );
@@ -245,24 +264,35 @@ export function ProjectLifecycleManagementPanel({
   lifecycleActions,
   lifecycleBusy,
   lifecycleError,
+  outputStatusSummary,
   onDeleteTemporaryProject,
   onStopProject,
   onResumeProject,
+  onCloseCompletedProject,
+  onCloseAdministrativeProject,
+  projectIdentity,
+  projectReference,
 }: {
   allowDelete: boolean;
   deletePreview: TemporaryProjectDeletePreview | null;
   lifecycleActions: WorkbenchLifecycleActionsViewModel;
   lifecycleBusy: boolean;
   lifecycleError: string | null;
+  outputStatusSummary: ProjectOutputStatusSummary | null;
   onDeleteTemporaryProject: () => void;
   onStopProject: (reason: string | null) => void;
   onResumeProject: (reason: string | null) => void;
+  onCloseCompletedProject: (closeNote: string) => void;
+  onCloseAdministrativeProject: (reason: string) => void;
+  projectIdentity: string;
+  projectReference: string | null;
 }): ReactElement | null {
   const [pendingAction, setPendingAction] =
     useState<WorkbenchLifecycleActionsViewModel["primaryAction"]>("none");
   const [reason, setReason] = useState("");
   const blockers = deletePreview?.blockers ?? [];
-  const hasLifecycleAction = lifecycleActions.canStop || lifecycleActions.canResume;
+  const hasLifecycleAction =
+    lifecycleActions.canStop || lifecycleActions.canResume || lifecycleActions.canClose;
   const hasPanelContent =
     hasLifecycleAction ||
     allowDelete ||
@@ -338,6 +368,15 @@ export function ProjectLifecycleManagementPanel({
           </button>
         ) : null}
       </div>
+      <ProjectWorkbenchCloseConfirmation
+        lifecycleActions={lifecycleActions}
+        lifecycleBusy={lifecycleBusy}
+        onCloseAdministrativeProject={onCloseAdministrativeProject}
+        onCloseCompletedProject={onCloseCompletedProject}
+        outputStatusSummary={outputStatusSummary}
+        projectIdentity={projectIdentity}
+        projectReference={projectReference}
+      />
       {pendingAction !== "none" ? (
         <div className="runtime-console-lifecycle-confirmation">
           <strong>
