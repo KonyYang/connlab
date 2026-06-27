@@ -30,6 +30,11 @@ import {
   deriveProjectWorkbenchLifecycle,
   type WorkbenchLifecycleMode,
 } from "./projectWorkbenchLifecycleSelectors";
+import {
+  deriveProjectWorkbenchShellModel,
+  type ProjectWorkbenchShellHistoryEntry,
+  type ProjectWorkbenchShellOutputEntry,
+} from "./projectWorkbenchShellModel";
 import { deriveProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import {
   buildProjectIdentityLine,
@@ -161,6 +166,23 @@ export function ProjectWorkbenchLayout({
   const currentProjectFolderTaskKey = selectCurrentProjectFolderTaskKey(projectFolderTasks);
   const isActiveMatrixWorkspace =
     Boolean(projectNumber) && activeMatrixAuthorityReady;
+  const shellModel = deriveProjectWorkbenchShellModel({
+    projectIdentity: titleParts.join(" "),
+    hasRegisteredProject: Boolean(projectNumber),
+    latestLtr: projectNumber,
+    hasActiveMatrix: activeMatrixAuthorityReady,
+    hasCandidateMatrix: Boolean(matrixCandidateDraft ?? matrixDraft),
+    folderReady: effectiveFolderReady,
+    basicInformationStatus: deriveBasicInformationShellStatus(
+      runtimeModel.basicInformation
+    ),
+    packageStatus: packagePreview?.status ?? null,
+    requiredFormsStatus: requiredFormsPreview?.status ?? null,
+    confirmedFeeStatus: confirmedFeeLatest?.status ?? null,
+    publicDriveStatus: publicDriveUploadPreview?.status ?? null,
+    lifecycle: runtimeModel.lifecycle,
+    lifecycleReadonlyView,
+  });
   const activeMatrixFolderCommand = deriveActiveMatrixFolderCommand({
     activeMatrixAuthorityReady,
     confirmedFeeLatest,
@@ -338,16 +360,33 @@ export function ProjectWorkbenchLayout({
             <UiIcon name="project-overview" />
           </button>
         </div>
-        <div className="runtime-console-project-title">
-          <h2 className="runtime-console-project-identity">
-            {titleParts.join(" ")}
-          </h2>
-        </div>
+        <section className="runtime-console-project-state" aria-label="Project State">
+          <div className="runtime-console-project-title">
+            <p className="eyebrow">Project State</p>
+            <h2 className="runtime-console-project-identity">
+              {shellModel.projectIdentity}
+            </h2>
+          </div>
+          <div className="runtime-console-shell-badges" aria-label="Workbench state">
+            <span className="runtime-console-shell-badge is-lifecycle">
+              {shellModel.lifecycleLabel}
+            </span>
+            <span>{shellModel.formalIdentityLabel}</span>
+            <span>{shellModel.matrixAuthorityLabel}</span>
+          </div>
+          {shellModel.timestampLine || shellModel.reasonLine ? (
+            <p className="runtime-console-state-context">
+              {[shellModel.timestampLine, shellModel.reasonLine].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
+        </section>
         {isActiveMatrixWorkspace ? (
           <div className="runtime-console-commandbar-actions" aria-label="Project Workbench actions">
-            <button type="button" onClick={onOpenMatrixEditor}>
-              Matrix Editor
-            </button>
+            {!lifecycleReadonlyView.readonly ? (
+              <button type="button" onClick={onOpenMatrixEditor}>
+                Matrix Editor
+              </button>
+            ) : null}
             <button
               type="button"
               className={feeEvaluationButtonState.className}
@@ -369,17 +408,7 @@ export function ProjectWorkbenchLayout({
               {visibleActiveMatrixFolderCommand.label}
             </button>
           </div>
-        ) : (
-          <div className="runtime-console-last-update">
-            <button
-              type="button"
-              disabled
-              title="Activity history is a planned future surface."
-            >
-              View activity history
-            </button>
-          </div>
-        )}
+        ) : null}
       </header>
 
       {officialWorkspaceError ? (
@@ -389,90 +418,115 @@ export function ProjectWorkbenchLayout({
         </div>
       ) : null}
 
-      {lifecycleReadonlyView.readonly ? (
-        <div className="runtime-console-workflow-alert" role="status">
-          <strong>{lifecycleReadonlyView.title}</strong>
-          <span>{lifecycleReadonlyView.message}</span>
+      <section
+        className={`runtime-console-shell-banner ${
+          lifecycleReadonlyView.readonly ? "is-readonly" : "is-active"
+        }`}
+        aria-label="Lifecycle state"
+        role={lifecycleReadonlyView.readonly ? "status" : undefined}
+      >
+        <div>
+          <p className="eyebrow">Lifecycle</p>
+          <h3>{shellModel.bannerTitle}</h3>
+          <p>{shellModel.bannerMessage}</p>
         </div>
-      ) : null}
+        <div className="runtime-console-shell-next-action">
+          <span>Primary action</span>
+          <strong>{shellModel.primaryActionLabel}</strong>
+          <p>{shellModel.primaryWorkspaceSummary}</p>
+        </div>
+      </section>
 
-      {isActiveMatrixWorkspace ? (
-        <ProjectWorkbenchActiveMatrixWorkspace
-          effectiveFolderReady={effectiveFolderReady}
-          officialWorkspaceStatus={officialWorkspacePreview?.status}
-          onProjectFolderTaskAction={handleProjectFolderTaskAction}
-          projectFolderTasks={projectFolderTasks}
-          projectId={project.project_id}
-          currentProjectFolderTaskKey={currentProjectFolderTaskKey}
-          runtimeProjectionSnapshot={runtimeProjectionSnapshot}
-          selectedProjectionToken={selectedProjectionToken}
-          setSelectedProjectionToken={setSelectedProjectionToken}
-          basicInformation={runtimeModel.basicInformation}
-          basicInformationLoading={runtimeModel.basicInformationLoading}
-          basicInformationError={runtimeModel.basicInformationError}
-          lifecycleReadonlyView={lifecycleReadonlyView}
-        />
-      ) : (
-        <>
-          <WorkbenchStageBanner
-            lifecycle={lifecycle}
-            onOpenMatrixEditor={onOpenMatrixEditor}
-            onOpenFeeEvaluation={onOpenFeeEvaluation}
-            onRefreshPackagePreview={onRefreshPackagePreview}
-            onCollectRequestMaterial={onCollectRequestMaterial}
-            onRefreshOfficialFolderCheck={onRefreshOfficialFolderCheck}
-            onRepairOfficialFolderStructure={onRepairOfficialFolderStructure}
-            onRefreshPublicDriveUploadPreview={onRefreshPublicDriveUploadPreview}
-            onUploadPublicDriveProjectFolder={onUploadPublicDriveProjectFolder}
-            onOpenSettings={onOpenSettings}
+      <section
+        className={`runtime-console-shell-primary workspace-${shellModel.primaryWorkspace}`}
+        aria-label="Matrix"
+      >
+        <div className="runtime-console-region-heading">
+          <p className="eyebrow">Matrix</p>
+          <h3>{shellModel.primaryWorkspaceLabel}</h3>
+          <p>{shellModel.primaryWorkspaceSummary}</p>
+        </div>
+        {isActiveMatrixWorkspace ? (
+          <ProjectWorkbenchActiveMatrixWorkspace
+            effectiveFolderReady={effectiveFolderReady}
+            officialWorkspaceStatus={officialWorkspacePreview?.status}
+            onProjectFolderTaskAction={handleProjectFolderTaskAction}
+            projectFolderTasks={projectFolderTasks}
+            projectId={project.project_id}
+            currentProjectFolderTaskKey={currentProjectFolderTaskKey}
+            runtimeProjectionSnapshot={runtimeProjectionSnapshot}
+            selectedProjectionToken={selectedProjectionToken}
+            setSelectedProjectionToken={setSelectedProjectionToken}
+            basicInformation={runtimeModel.basicInformation}
+            basicInformationLoading={runtimeModel.basicInformationLoading}
+            basicInformationError={runtimeModel.basicInformationError}
+            lifecycleReadonlyView={lifecycleReadonlyView}
           />
-
-          <WorkbenchModeTabs
-            activeMode={lifecycle.mode}
-            tabs={lifecycle.tabs}
-            onSelect={setSelectedLifecycleMode}
-          />
-
-          {!lifecycleReadonlyView.readonly && lifecycle.mode === "temporary_planning" ? (
-            <TemporaryPlanningMode
-              deletePreview={deletePreview}
-              lifecycleBusy={lifecycleBusy}
-              lifecycleError={lifecycleError}
-              feePlanningAvailable={Boolean(matrixCandidateDraft ?? matrixDraft)}
+        ) : (
+          <>
+            <WorkbenchStageBanner
+              lifecycle={lifecycle}
               onOpenMatrixEditor={onOpenMatrixEditor}
               onOpenFeeEvaluation={onOpenFeeEvaluation}
-              onStartPromotion={() => {
-                setTemporaryPromotionMessage(
-                  "Same-project LTR registration is not wired yet. This temporary project stays intact; no duplicate project was created."
-                );
-              }}
-              onStopProject={() => void handleStopProject()}
-              onDeleteTemporaryProject={() => void handleDeleteTemporaryProject()}
-              promotionMessage={temporaryPromotionMessage}
+              onRefreshPackagePreview={onRefreshPackagePreview}
+              onCollectRequestMaterial={onCollectRequestMaterial}
+              onRefreshOfficialFolderCheck={onRefreshOfficialFolderCheck}
+              onRepairOfficialFolderStructure={onRepairOfficialFolderStructure}
+              onRefreshPublicDriveUploadPreview={onRefreshPublicDriveUploadPreview}
+              onUploadPublicDriveProjectFolder={onUploadPublicDriveProjectFolder}
+              onOpenSettings={onOpenSettings}
             />
-          ) : null}
 
-          {!lifecycleReadonlyView.readonly && lifecycle.mode === "registered_setup" ? (
-            <RegisteredSetupMode
-              hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
-              onOpenMatrixEditor={onOpenMatrixEditor}
+            <WorkbenchModeTabs
+              activeMode={lifecycle.mode}
+              tabs={lifecycle.tabs}
+              onSelect={setSelectedLifecycleMode}
             />
-          ) : null}
 
-          {!lifecycleReadonlyView.readonly &&
-          lifecycle.mode !== "temporary_planning" &&
-          project.status !== "cancelled" ? (
-            <ProjectLifecycleManagementPanel
-              allowDelete={false}
-              deletePreview={null}
-              lifecycleBusy={lifecycleBusy}
-              lifecycleError={lifecycleError}
-              onDeleteTemporaryProject={() => undefined}
-              onStopProject={() => void handleStopProject()}
-            />
-          ) : null}
-        </>
-      )}
+            {!lifecycleReadonlyView.readonly && lifecycle.mode === "temporary_planning" ? (
+              <TemporaryPlanningMode
+                deletePreview={deletePreview}
+                lifecycleBusy={lifecycleBusy}
+                lifecycleError={lifecycleError}
+                feePlanningAvailable={Boolean(matrixCandidateDraft ?? matrixDraft)}
+                onOpenMatrixEditor={onOpenMatrixEditor}
+                onOpenFeeEvaluation={onOpenFeeEvaluation}
+                onStartPromotion={() => {
+                  setTemporaryPromotionMessage(
+                    "Same-project LTR registration is not wired yet. This temporary project stays intact; no duplicate project was created."
+                  );
+                }}
+                onStopProject={() => void handleStopProject()}
+                onDeleteTemporaryProject={() => void handleDeleteTemporaryProject()}
+                promotionMessage={temporaryPromotionMessage}
+              />
+            ) : null}
+
+            {!lifecycleReadonlyView.readonly && lifecycle.mode === "registered_setup" ? (
+              <RegisteredSetupMode
+                hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
+                onOpenMatrixEditor={onOpenMatrixEditor}
+              />
+            ) : null}
+
+            {!lifecycleReadonlyView.readonly &&
+            lifecycle.mode !== "temporary_planning" &&
+            project.status !== "cancelled" ? (
+              <ProjectLifecycleManagementPanel
+                allowDelete={false}
+                deletePreview={null}
+                lifecycleBusy={lifecycleBusy}
+                lifecycleError={lifecycleError}
+                onDeleteTemporaryProject={() => undefined}
+                onStopProject={() => void handleStopProject()}
+              />
+            ) : null}
+          </>
+        )}
+      </section>
+
+      <WorkbenchShellOutputs entries={shellModel.outputEntries} />
+      <WorkbenchShellHistory entries={shellModel.historyEntries} />
       {showFolderConflictDialog ? (
         <ProjectFolderConflictDialog
           conflictPaths={officialWorkspaceConflictPaths}
@@ -488,6 +542,57 @@ export function ProjectWorkbenchLayout({
   );
 }
 
+function WorkbenchShellOutputs({
+  entries,
+}: {
+  entries: ProjectWorkbenchShellOutputEntry[];
+}): ReactElement {
+  return (
+    <section className="runtime-console-shell-outputs" aria-label="Outputs">
+      <div className="runtime-console-region-heading">
+        <p className="eyebrow">Outputs</p>
+        <h3>Current output readiness</h3>
+        <p>Current-feature status only; Matrix remains the authority workspace.</p>
+      </div>
+      <div className="runtime-console-shell-output-grid">
+        {entries.map((entry) => (
+          <article className={`runtime-console-shell-output status-${entry.status}`} key={entry.key}>
+            <span>{entry.label}</span>
+            <strong>{entry.statusLabel}</strong>
+            <p>{entry.summary}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WorkbenchShellHistory({
+  entries,
+}: {
+  entries: ProjectWorkbenchShellHistoryEntry[];
+}): ReactElement | null {
+  if (entries.length === 0) {
+    return null;
+  }
+  return (
+    <section className="runtime-console-shell-history" aria-label="History">
+      <div className="runtime-console-region-heading">
+        <p className="eyebrow">History</p>
+        <h3>Current lifecycle evidence</h3>
+      </div>
+      <dl>
+        {entries.map((entry) => (
+          <div key={`${entry.label}:${entry.value}`}>
+            <dt>{entry.label}</dt>
+            <dd>{entry.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 function isProjectFolderWriteAction(actionTarget: ProjectFolderTaskActionTarget): boolean {
   if (!actionTarget) {
     return false;
@@ -499,6 +604,21 @@ function isProjectFolderWriteAction(actionTarget: ProjectFolderTaskActionTarget)
     "official_folder_repair",
     "public_drive_upload",
   ].includes(actionTarget);
+}
+
+function deriveBasicInformationShellStatus(
+  basicInformation: ProjectRuntimeConsoleModel["basicInformation"]
+): "confirmed" | "draft" | "missing" | "unknown" {
+  if (!basicInformation) {
+    return "missing";
+  }
+  if (basicInformation.latest_confirmed) {
+    return "confirmed";
+  }
+  if (basicInformation.draft) {
+    return "draft";
+  }
+  return "unknown";
 }
 
 function deriveOfficialWorkspaceConflictPaths(

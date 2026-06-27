@@ -11,6 +11,7 @@ import type {
   PublicDriveUploadPreview,
   ProjectFolderRequiredFormsPreview,
   RequestMaterialPreview,
+  ProjectLifecycleResponse,
   ProjectTestPlanDraft,
 } from "../../api/client";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
@@ -231,7 +232,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: null,
     });
 
-    expect(screen.getByText("Matrix authority setup")).toBeTruthy();
+    expect(screen.getAllByText("Matrix authority setup").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Confirm Matrix authority" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
@@ -280,6 +281,130 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
   });
 
+  it("renders the Workbench shell regions with Matrix before Outputs", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: true,
+      basicInformation: confirmedBasicInformation,
+      requiredFormsPreview: readyRequiredFormsPreview,
+      publicDriveUploadPreview: readyPublicDriveUploadPreview,
+    });
+
+    const projectState = screen.getByRole("region", { name: "Project State" });
+    const matrix = screen.getByRole("region", { name: "Matrix" });
+    const outputs = screen.getByRole("region", { name: "Outputs" });
+
+    expect(projectState.textContent).toContain("Active");
+    expect(projectState.textContent).toContain("Registered project");
+    expect(projectState.textContent).toContain("Active Matrix");
+    expect(
+      Boolean(
+        matrix.compareDocumentPosition(outputs) &
+          globalThis.Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+    expect(outputs.textContent).toContain("Basic Information");
+    expect(outputs.textContent).toContain("Fee Evaluation");
+    expect(screen.queryByText("View activity history")).toBeNull();
+  });
+
+  it("keeps stopped no-active-Matrix projects readable without write actions", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: null,
+      matrixAuthorityDraft: null,
+      matrixCandidateDraft: testPlanDraft,
+      packagePreview: null,
+      lifecycle: lifecycleResponse({
+        lifecycle_state: "stopped",
+        status: "cancelled",
+        status_label: "Stopped",
+        stopped_at: "2026-06-26T08:00:00Z",
+        stopped_reason: "Customer requested pause.",
+        allowed_actions: ["resume", "close"],
+        readonly: true,
+      }),
+    });
+
+    const projectState = screen.getByRole("region", { name: "Project State" });
+    expect(projectState.textContent).toContain("Stopped");
+    expect(projectState.textContent).toContain("Customer requested pause.");
+    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
+      "Matrix authority setup"
+    );
+    expect(screen.getByRole("region", { name: "Outputs" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
+  });
+
+  it("renders closed completed projects as readonly archives without lifecycle writes", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      lifecycle: lifecycleResponse({
+        lifecycle_state: "closed",
+        closure_type: "completed",
+        status: "closed",
+        status_label: "Closed",
+        closed_at: "2026-06-27T09:00:00Z",
+        closed_reason: "All outputs accepted.",
+        allowed_actions: [],
+        readonly: true,
+      }),
+    });
+
+    expect(screen.getByRole("region", { name: "Project State" }).textContent).toContain(
+      "Closed: Completed"
+    );
+    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
+      "Read-only archive"
+    );
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
+  });
+
+  it("renders closed administrative projects without raw enum or future-scope copy", () => {
+    const { container } = renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: null,
+      matrixAuthorityDraft: null,
+      matrixCandidateDraft: null,
+      packagePreview: null,
+      lifecycle: lifecycleResponse({
+        lifecycle_state: "closed",
+        closure_type: "administrative",
+        status: "closed",
+        status_label: "Closed",
+        closed_at: "2026-06-27T09:00:00Z",
+        closed_reason: "Administrative close.",
+        allowed_actions: [],
+        readonly: true,
+      }),
+    });
+
+    expect(screen.getByRole("region", { name: "Project State" }).textContent).toContain(
+      "Closed: Administrative"
+    );
+    expect(container.textContent).not.toMatch(
+      /closed_completed|closed_administrative|lifecycle_state|closure_type/
+    );
+    expect(container.textContent).not.toMatch(
+      /Report generation|StepInstance|AI|permissions|LAN|multi-user/
+    );
+  });
+
   it("shows the on-demand LTR Information update card after Folder Action", () => {
     const { container } = renderWorkbench({
       latestLtr: "DL-2026-06-001",
@@ -300,7 +425,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
           globalThis.Node.DOCUMENT_POSITION_FOLLOWING
       )
     ).toBe(true);
-    expect(screen.queryByText("Confirmed")).toBeNull();
+    expect(basicInformationCard.textContent).not.toContain("Confirmed");
     const summaryLabels = Array.from(
       container.querySelectorAll(".runtime-console-basic-information-list.is-summary dt")
     ).map((item) => item.textContent);
@@ -1029,6 +1154,27 @@ const project: Project = {
   requestor: "Lab User",
   status: "active",
 };
+
+function lifecycleResponse(
+  overrides: Partial<ProjectLifecycleResponse> = {}
+): ProjectLifecycleResponse {
+  return {
+    project_id: project.project_id,
+    lifecycle_state: "active",
+    closure_type: null,
+    status_label: "Active",
+    readonly: false,
+    allowed_actions: ["stop", "close"],
+    status: "active",
+    stopped_at: null,
+    stopped_reason: null,
+    closed_at: null,
+    closed_reason: null,
+    completion_summary: null,
+    warnings: [],
+    ...overrides,
+  };
+}
 
 const confirmedBasicInformation: ProjectBasicInformationResponse = {
   project_id: "P1",
