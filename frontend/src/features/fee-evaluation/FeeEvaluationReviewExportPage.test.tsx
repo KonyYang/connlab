@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   confirmFeeVersion: vi.fn(),
   getConfirmedFeeLatest: vi.fn(),
   getFeeEvaluationPricingDraft: vi.fn(),
+  getProjectLifecycle: vi.fn(),
   getProject: vi.fn(),
   listProjectLtrs: vi.fn(),
   discardFeeEvaluationPricingDraft: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock("../../api/client", async (importOriginal) => {
       apiMocks.generateConfirmedMatrixFeeFileDownload,
     getConfirmedFeeLatest: apiMocks.getConfirmedFeeLatest,
     getFeeEvaluationPricingDraft: apiMocks.getFeeEvaluationPricingDraft,
+    getProjectLifecycle: apiMocks.getProjectLifecycle,
     getProject: apiMocks.getProject,
     listProjectLtrs: apiMocks.listProjectLtrs,
     discardFeeEvaluationPricingDraft: apiMocks.discardFeeEvaluationPricingDraft,
@@ -797,6 +799,41 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps closed projects read-only and blocks Fee writes", async () => {
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse(),
+      lifecycle: lifecycleResponse({
+        lifecycle_state: "closed",
+        closure_type: "completed",
+        status: "closed",
+        readonly: true,
+        allowed_actions: [],
+      }),
+    });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+
+    render(
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText("Project closed as completed")).toBeTruthy();
+    expect(
+      screen
+        .getAllByLabelText("Unit Price for Visual Examination")
+        .every((input) => (input as HTMLInputElement).disabled)
+    ).toBe(true);
+    const updateButton = screen.getByRole("button", { name: "Update Fee" });
+    expect(updateButton).toHaveProperty("disabled", true);
+    fireEvent.click(updateButton);
+    fireEvent.click(screen.getByRole("button", { name: "Fee Form" }));
+    expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+  });
+
   it("restores the entry baseline before leaving when autosave already saved edits", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
@@ -1054,6 +1091,7 @@ function arrangeSuccessfulContext(
     folderPath?: string | null;
     pricingDraft?: Record<string, unknown>;
     confirmedFee?: Record<string, unknown>;
+    lifecycle?: Record<string, unknown>;
   } = {}
 ): void {
   apiMocks.getProject.mockResolvedValue({
@@ -1066,6 +1104,9 @@ function arrangeSuccessfulContext(
     status: "folder_created",
   });
   apiMocks.listProjectLtrs.mockResolvedValue([{ ltr_number: "DL-2026-001" }]);
+  apiMocks.getProjectLifecycle.mockResolvedValue(
+    input.lifecycle ?? lifecycleResponse()
+  );
   apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(
     input.pricingDraft ?? {
       status: "missing",
@@ -1080,6 +1121,23 @@ function arrangeSuccessfulContext(
   apiMocks.getConfirmedFeeLatest.mockResolvedValue(
     input.confirmedFee ?? createConfirmedFeeLatest({ status: "missing" })
   );
+}
+
+function lifecycleResponse(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    project_id: "P1",
+    lifecycle_state: "active",
+    closure_type: null,
+    status: "folder_created",
+    previous_project_status: null,
+    stopped_at: null,
+    closed_at: null,
+    updated_at: "2026-06-27T09:00:00Z",
+    allowed_actions: ["stop"],
+    readonly: false,
+    warnings: [],
+    ...overrides,
+  };
 }
 
 function currentPricingDraftResponse(

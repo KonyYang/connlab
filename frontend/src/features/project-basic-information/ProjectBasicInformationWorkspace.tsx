@@ -34,6 +34,7 @@ export function ProjectBasicInformationWorkspace({
     model.loading ||
     model.confirming ||
     model.saving ||
+    model.lifecycleReadonlyView.readonly ||
     missingLabels.length > 0 ||
     dateValidation.messages.length > 0;
   const panelIdentity = model.values.dl_number?.trim() || model.identityLabel;
@@ -49,6 +50,12 @@ export function ProjectBasicInformationWorkspace({
           {model.error ? (
             <div className="basic-information-alert is-danger" role="alert">
               {model.error}
+            </div>
+          ) : null}
+          {model.lifecycleReadonlyView.readonly ? (
+            <div className="basic-information-alert" role="status">
+              <strong>{model.lifecycleReadonlyView.title}</strong>
+              <span>{model.lifecycleReadonlyView.message}</span>
             </div>
           ) : null}
           {changedSourceLabels.length > 0 ? (
@@ -81,6 +88,7 @@ export function ProjectBasicInformationWorkspace({
                     missingLabels={missingLabels}
                     missingDateLabels={dateValidation.missingLabels}
                     invalidDateLabels={dateValidation.invalidLabels}
+                    readOnly={model.lifecycleReadonlyView.readonly}
                     testTypeInSheetOptions={model.testTypeInSheetOptions}
                     onChange={model.updateValue}
                   />
@@ -132,6 +140,7 @@ function BasicInformationFieldGroupView({
   missingLabels,
   missingDateLabels,
   invalidDateLabels,
+  readOnly,
   testTypeInSheetOptions,
   onChange,
 }: {
@@ -140,6 +149,7 @@ function BasicInformationFieldGroupView({
   missingLabels: string[];
   missingDateLabels: string[];
   invalidDateLabels: string[];
+  readOnly: boolean;
   testTypeInSheetOptions: string[];
   onChange: (key: string, value: string) => void;
 }): ReactElement {
@@ -174,6 +184,7 @@ function BasicInformationFieldGroupView({
             missingRequired={missingLabelSet.has(field.label)}
             missingDate={missingDateLabelSet.has(field.label)}
             invalidDateSequence={invalidDateLabelSet.has(field.label)}
+            readOnly={readOnly}
             testTypeInSheetOptions={testTypeInSheetOptions}
             onChange={onChange}
           />
@@ -189,6 +200,7 @@ function BasicInformationField({
   missingRequired,
   missingDate,
   invalidDateSequence,
+  readOnly,
   testTypeInSheetOptions,
   onChange,
 }: {
@@ -197,6 +209,7 @@ function BasicInformationField({
   missingRequired: boolean;
   missingDate: boolean;
   invalidDateSequence: boolean;
+  readOnly: boolean;
   testTypeInSheetOptions: string[];
   onChange: (key: string, value: string) => void;
 }): ReactElement {
@@ -244,6 +257,7 @@ function BasicInformationField({
         <textarea
           ref={textareaRef}
           aria-label={field.label}
+          disabled={readOnly}
           rows={1}
           value={value}
           onChange={(event) => onChange(field.key, event.target.value)}
@@ -264,6 +278,7 @@ function BasicInformationField({
         <span>{label}</span>
         <select
           aria-label={field.label}
+          disabled={readOnly}
           value={selectValue}
           onChange={(event) => onChange(field.key, event.target.value)}
         >
@@ -297,6 +312,7 @@ function BasicInformationField({
                 name={field.key}
                 value={option}
                 checked={value === option}
+                disabled={readOnly}
                 onChange={(event) => onChange(field.key, event.target.value)}
               />
               <span>{option}</span>
@@ -313,6 +329,7 @@ function BasicInformationField({
         aria-label={field.label}
         type={field.kind === "date" ? "date" : "text"}
         value={displayValue}
+        disabled={readOnly}
         readOnly={field.kind === "readonly"}
         onChange={(event) => onChange(field.key, event.target.value)}
       />

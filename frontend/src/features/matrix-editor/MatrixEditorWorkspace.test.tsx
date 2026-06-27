@@ -14,6 +14,22 @@ const apiMocks = vi.hoisted(() => ({
   matrixPreviewPdfUrl: vi.fn((token: string) => `/api/pdf/${token}`),
 }));
 
+const runtimeModelState = vi.hoisted(() => ({
+  lifecycle: {
+    project_id: "P1",
+    lifecycle_state: "active",
+    closure_type: null as string | null,
+    status: "active",
+    previous_project_status: null,
+    stopped_at: null,
+    closed_at: null,
+    updated_at: "2026-06-27T09:00:00Z",
+    allowed_actions: ["stop"],
+    readonly: false,
+    warnings: [],
+  },
+}));
+
 vi.mock("../../api/client", () => {
   class MockApiRequestError extends Error {
     status: number;
@@ -35,6 +51,10 @@ vi.mock("../../api/client", () => {
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
     commitMatrixImport: apiMocks.commitMatrixImport,
     matrixPreviewPdfUrl: apiMocks.matrixPreviewPdfUrl,
+    isProjectLifecycleReadonlyErrorDetail: (detail: unknown) =>
+      Boolean(detail) &&
+      typeof detail === "object" &&
+      (detail as { code?: unknown }).code === "project_lifecycle_readonly",
   };
 });
 
@@ -53,6 +73,7 @@ vi.mock("../project-workbench/useProjectRuntimeConsoleModel", () => ({
       projectionMatrixReference: "matrix-ref-1",
       authorityVersion: { confirmed_revision: 1 },
     },
+    lifecycle: runtimeModelState.lifecycle,
     error: null,
   }),
 }));
@@ -149,6 +170,19 @@ function buildSessionSeed() {
 describe("MatrixEditorWorkspace TASK_279 flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runtimeModelState.lifecycle = {
+      project_id: "P1",
+      lifecycle_state: "active",
+      closure_type: null as string | null,
+      status: "active",
+      previous_project_status: null,
+      stopped_at: null,
+      closed_at: null,
+      updated_at: "2026-06-27T09:00:00Z",
+      allowed_actions: ["stop"],
+      readonly: false,
+      warnings: [],
+    };
     apiMocks.fetchMatrixEditorSession.mockResolvedValue(buildSessionSeed());
     apiMocks.saveMatrixEditorSessionDraft.mockResolvedValue({
       editor_draft_id: "editor-draft-1",
@@ -842,6 +876,30 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       "Sample quantity is required for selected groups."
     );
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(0));
+  });
+
+  it("keeps closed projects read-only and blocks Matrix confirmation", async () => {
+    runtimeModelState.lifecycle = {
+      ...runtimeModelState.lifecycle,
+      lifecycle_state: "closed",
+      closure_type: "completed",
+      status: "closed",
+      allowed_actions: [],
+      readonly: true,
+    };
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    expect(await screen.findByText("Project closed as completed")).toBeTruthy();
+    expect(screen.getByLabelText("Row 1 test item")).toHaveProperty(
+      "disabled",
+      true
+    );
+    const confirmButton = screen.getByRole("button", { name: "Confirm Matrix" });
+    expect(confirmButton).toHaveProperty("disabled", true);
+    fireEvent.click(confirmButton);
+    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
   });
 
   it("keeps transient autosave progress out of the Matrix grid layout", async () => {

@@ -1,3 +1,5 @@
+import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
+
 export type WorkbenchLifecycleMode =
   | "overview"
   | "temporary_planning"
@@ -10,6 +12,7 @@ export type WorkbenchLifecycleTone = "ready" | "blocked" | "warning" | "neutral"
 export type WorkbenchLifecycleInput = {
   hasLtr: boolean;
   isCancelled: boolean;
+  lifecycleReadonlyView?: ProjectLifecycleReadonlyView;
   hasActiveMatrix: boolean;
   hasCandidateMatrix: boolean;
   folderReady: boolean;
@@ -95,6 +98,29 @@ export function deriveProjectWorkbenchLifecycle(
   input: WorkbenchLifecycleInput,
   requestedMode: WorkbenchLifecycleMode | null = null
 ): WorkbenchLifecycleViewModel {
+  if (input.lifecycleReadonlyView?.readonly) {
+    const baseLifecycle = deriveProjectWorkbenchLifecycle(
+      {
+        ...input,
+        isCancelled: false,
+        lifecycleReadonlyView: undefined,
+      },
+      requestedMode
+    );
+    return {
+      ...baseLifecycle,
+      mode: input.hasActiveMatrix ? baseLifecycle.mode : "overview",
+      stageLabel: input.lifecycleReadonlyView.title,
+      stageSummary: input.lifecycleReadonlyView.message,
+      nextAction: {
+        title: "Read-only project",
+        reason: input.lifecycleReadonlyView.message,
+        tone: "neutral",
+      },
+      tabs: baseLifecycle.tabs,
+    };
+  }
+
   if (input.isCancelled) {
     return {
       mode: "overview",

@@ -127,6 +127,79 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Convert to Formal Project" })).toBeNull();
   });
 
+  it("uses lifecycle readonly state to block active Matrix write actions", async () => {
+    const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
+    renderWorkbench({
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      lifecycle: {
+        project_id: "2cd4b0e7ff6f4df99448c9ffdd78629f",
+        lifecycle_state: "closed",
+        closure_type: "completed",
+        status: "closed",
+        status_label: "Closed",
+        stopped_at: null,
+        closed_at: "2026-06-27T09:00:00Z",
+        allowed_actions: [],
+        readonly: true,
+        warnings: [],
+      },
+      matrixAuthorityDraft: testPlanDraft,
+      officialWorkspacePreview: {
+        project_id: "2cd4b0e7ff6f4df99448c9ffdd78629f",
+        status: "ready",
+        official_project_folder_path: "D:/ConnLab/Projects/DL-2026-06-001",
+        blockers: [],
+        warnings: [],
+        planned_paths: [],
+        conflict_paths: [],
+      },
+      onCreateOfficialWorkspace,
+    });
+
+    expect(screen.getAllByText("Project closed as completed").length).toBeGreaterThan(0);
+    const folderButton = screen.getByRole("button", {
+      name: "Generate project folder",
+    });
+    expect(folderButton).toHaveProperty("disabled", true);
+    await user.click(folderButton);
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("hides lifecycle write controls for closed projects without active Matrix authority", () => {
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: null,
+      matrixAuthorityDraft: null,
+      matrixCandidateDraft: testPlanDraft,
+      packagePreview: null,
+      lifecycle: {
+        project_id: "2cd4b0e7ff6f4df99448c9ffdd78629f",
+        lifecycle_state: "closed",
+        closure_type: "completed",
+        status: "closed",
+        status_label: "Closed",
+        stopped_at: null,
+        closed_at: "2026-06-27T09:00:00Z",
+        allowed_actions: [],
+        readonly: true,
+        warnings: [],
+      },
+    });
+
+    expect(screen.getAllByText("Project closed as completed").length).toBeGreaterThan(0);
+    expect(screen.getByText("Read-only project")).toBeTruthy();
+    expect(
+      screen.getAllByText(
+        "This project is archived as completed. Project data is read-only."
+      ).length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
+    expect(screen.queryByText("Project lifecycle")).toBeNull();
+  });
+
   it("uses project_no as DL fallback when latest LTR lookup is unavailable", () => {
     renderWorkbench(
       {

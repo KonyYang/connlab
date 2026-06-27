@@ -30,6 +30,7 @@ import {
   deriveProjectWorkbenchLifecycle,
   type WorkbenchLifecycleMode,
 } from "./projectWorkbenchLifecycleSelectors";
+import { deriveProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import {
   buildProjectIdentityLine,
   deriveRegisteredProjectReference,
@@ -109,6 +110,7 @@ export function ProjectWorkbenchLayout({
   } = runtimeModel;
 
   const projectNumber = deriveRegisteredProjectReference(latestLtr, project.project_no);
+  const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(runtimeModel.lifecycle);
   const activeMatrixAuthorityReady = Boolean(activeConfirmedMatrixSnapshot);
   const effectiveFolderReady =
     folderReady || officialWorkspacePreview?.status === "completed";
@@ -138,6 +140,7 @@ export function ProjectWorkbenchLayout({
       hasPublicDrivePreviewError: Boolean(publicDriveUploadError),
       section2Status: section2SyncPreview?.status ?? null,
       hasPackagePreviewError: Boolean(packagePreviewError),
+      lifecycleReadonlyView,
     },
     selectedLifecycleMode
   );
@@ -169,6 +172,13 @@ export function ProjectWorkbenchLayout({
       effectiveFolderReady
     ),
   });
+  const visibleActiveMatrixFolderCommand = lifecycleReadonlyView.readonly
+    ? {
+        ...activeMatrixFolderCommand,
+        disabled: true,
+        disabledReason: lifecycleReadonlyView.message,
+      }
+    : activeMatrixFolderCommand;
   const feeEvaluationButtonState = deriveFeeEvaluationButtonState(confirmedFeeLatest);
   const officialWorkspaceConflictPaths =
     deriveOfficialWorkspaceConflictPaths(officialWorkspacePreview);
@@ -254,6 +264,10 @@ export function ProjectWorkbenchLayout({
   function handleProjectFolderTaskAction(
     actionTarget: ProjectFolderTaskActionTarget
   ): void {
+    if (lifecycleReadonlyView.readonly && isProjectFolderWriteAction(actionTarget)) {
+      setLifecycleError(lifecycleReadonlyView.message);
+      return;
+    }
     if (actionTarget === "folder") {
       handleProjectFolderCreateClick();
       return;
@@ -292,6 +306,10 @@ export function ProjectWorkbenchLayout({
   }
 
   function handleProjectFolderCreateClick(): void {
+    if (lifecycleReadonlyView.readonly) {
+      setLifecycleError(lifecycleReadonlyView.message);
+      return;
+    }
     if (hasOfficialWorkspaceConflict) {
       setShowFolderConflictDialog(true);
       return;
@@ -344,11 +362,11 @@ export function ProjectWorkbenchLayout({
             <button
               type="button"
               className="is-primary"
-              disabled={activeMatrixFolderCommand.disabled}
-              title={activeMatrixFolderCommand.disabledReason}
+              disabled={visibleActiveMatrixFolderCommand.disabled}
+              title={visibleActiveMatrixFolderCommand.disabledReason}
               onClick={handleProjectFolderCreateClick}
             >
-              {activeMatrixFolderCommand.label}
+              {visibleActiveMatrixFolderCommand.label}
             </button>
           </div>
         ) : (
@@ -371,6 +389,13 @@ export function ProjectWorkbenchLayout({
         </div>
       ) : null}
 
+      {lifecycleReadonlyView.readonly ? (
+        <div className="runtime-console-workflow-alert" role="status">
+          <strong>{lifecycleReadonlyView.title}</strong>
+          <span>{lifecycleReadonlyView.message}</span>
+        </div>
+      ) : null}
+
       {isActiveMatrixWorkspace ? (
         <ProjectWorkbenchActiveMatrixWorkspace
           effectiveFolderReady={effectiveFolderReady}
@@ -385,6 +410,7 @@ export function ProjectWorkbenchLayout({
           basicInformation={runtimeModel.basicInformation}
           basicInformationLoading={runtimeModel.basicInformationLoading}
           basicInformationError={runtimeModel.basicInformationError}
+          lifecycleReadonlyView={lifecycleReadonlyView}
         />
       ) : (
         <>
@@ -407,7 +433,7 @@ export function ProjectWorkbenchLayout({
             onSelect={setSelectedLifecycleMode}
           />
 
-          {lifecycle.mode === "temporary_planning" ? (
+          {!lifecycleReadonlyView.readonly && lifecycle.mode === "temporary_planning" ? (
             <TemporaryPlanningMode
               deletePreview={deletePreview}
               lifecycleBusy={lifecycleBusy}
@@ -426,14 +452,16 @@ export function ProjectWorkbenchLayout({
             />
           ) : null}
 
-          {lifecycle.mode === "registered_setup" ? (
+          {!lifecycleReadonlyView.readonly && lifecycle.mode === "registered_setup" ? (
             <RegisteredSetupMode
               hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
               onOpenMatrixEditor={onOpenMatrixEditor}
             />
           ) : null}
 
-          {lifecycle.mode !== "temporary_planning" && project.status !== "cancelled" ? (
+          {!lifecycleReadonlyView.readonly &&
+          lifecycle.mode !== "temporary_planning" &&
+          project.status !== "cancelled" ? (
             <ProjectLifecycleManagementPanel
               allowDelete={false}
               deletePreview={null}
@@ -458,6 +486,19 @@ export function ProjectWorkbenchLayout({
       ) : null}
     </section>
   );
+}
+
+function isProjectFolderWriteAction(actionTarget: ProjectFolderTaskActionTarget): boolean {
+  if (!actionTarget) {
+    return false;
+  }
+  return [
+    "folder",
+    "request_material",
+    "required_forms_generate",
+    "official_folder_repair",
+    "public_drive_upload",
+  ].includes(actionTarget);
 }
 
 function deriveOfficialWorkspaceConflictPaths(

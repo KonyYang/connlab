@@ -4,12 +4,20 @@ import {
   getNewProjectCompletionOptions,
   getProject,
   getProjectBasicInformation,
+  getProjectLifecycle,
+  isProjectLifecycleReadonlyErrorDetail,
   listProjectLtrs,
   saveProjectBasicInformationDraft,
   type NewProjectCompletionOptions,
   type Project,
   type ProjectBasicInformationResponse,
+  type ProjectLifecycleResponse,
 } from "../../api/client";
+import {
+  deriveProjectLifecycleReadonlyView,
+  deriveReadonlyApiErrorMessage,
+  type ProjectLifecycleReadonlyView,
+} from "../project-lifecycle/projectLifecycleReadonlyModel";
 import { buildProjectIdentityLine } from "../projectIdentity";
 import { getBasicInformationConfirmedBy } from "./currentUserDisplay";
 import { normalizeBasicInformationFieldValues } from "./basicInformationFieldConfig";
@@ -28,6 +36,7 @@ export type ProjectBasicInformationModel = {
   confirming: boolean;
   error: string | null;
   savedMessage: string | null;
+  lifecycleReadonlyView: ProjectLifecycleReadonlyView;
   updateValue: (key: string, value: string) => void;
   confirm: () => Promise<void>;
   cancel: () => void;
@@ -44,6 +53,7 @@ export function useProjectBasicInformationModel({
   const [values, setValues] = useState<Record<string, string>>({});
   const [completionOptions, setCompletionOptions] =
     useState<NewProjectCompletionOptions | null>(null);
+  const [lifecycle, setLifecycle] = useState<ProjectLifecycleResponse | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [latestLtr, setLatestLtr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,13 +71,15 @@ export function useProjectBasicInformationModel({
     setError(null);
     void Promise.all([
       getProjectBasicInformation(projectId),
+      getProjectLifecycle(projectId),
       getNewProjectCompletionOptions(),
     ])
-      .then(([nextResponse, nextCompletionOptions]) => {
+      .then(([nextResponse, nextLifecycle, nextCompletionOptions]) => {
         if (cancelled) {
           return;
         }
         setResponse(nextResponse);
+        setLifecycle(nextLifecycle);
         setCompletionOptions(nextCompletionOptions);
         setValues(normalizeBasicInformationFieldValues(nextResponse.draft.values));
         setDraftDirty(false);
@@ -109,6 +121,9 @@ export function useProjectBasicInformationModel({
   }, [projectId]);
 
   useEffect(() => {
+    if (lifecycle?.readonly) {
+      return;
+    }
     if (!draftDirty) {
       return;
     }
@@ -131,7 +146,7 @@ export function useProjectBasicInformationModel({
         })
         .catch((err) => {
           if (autosaveRevisionRef.current === revision) {
-            setError(err instanceof Error ? err.message : "Failed to save Basic Information draft.");
+            setError(readonlyAwareErrorMessage(err, "Failed to save Basic Information draft."));
           }
         })
         .finally(() => {
@@ -145,9 +160,12 @@ export function useProjectBasicInformationModel({
         clearTimeout(autosaveTimerRef.current);
       }
     };
-  }, [draftDirty, projectId, values]);
+  }, [draftDirty, lifecycle, projectId, values]);
 
   function updateValue(key: string, value: string): void {
+    if (lifecycle?.readonly) {
+      return;
+    }
     setSavedMessage(null);
     autosaveRevisionRef.current += 1;
     setValues((previous) => ({ ...previous, [key]: value }));
@@ -155,6 +173,10 @@ export function useProjectBasicInformationModel({
   }
 
   async function confirm(): Promise<void> {
+    if (lifecycle?.readonly) {
+      setError(deriveProjectLifecycleReadonlyView(lifecycle).message);
+      return;
+    }
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
     }
@@ -171,7 +193,7 @@ export function useProjectBasicInformationModel({
       setValues(normalizeBasicInformationFieldValues(nextResponse.draft.values));
       onBackToWorkbench({ refreshBasicInformation: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to confirm Basic Information.");
+      setError(readonlyAwareErrorMessage(err, "Failed to confirm Basic Information."));
     } finally {
       setConfirming(false);
     }
@@ -196,10 +218,24 @@ export function useProjectBasicInformationModel({
     confirming,
     error,
     savedMessage,
+    lifecycleReadonlyView: deriveProjectLifecycleReadonlyView(lifecycle),
     updateValue,
     confirm,
     cancel,
   };
+}
+
+function readonlyAwareErrorMessage(err: unknown, fallback: string): string {
+  const detail =
+    err && typeof err === "object" && "detail" in err
+      ? (err as { detail: unknown }).detail
+      : null;
+  if (
+    isProjectLifecycleReadonlyErrorDetail(detail)
+  ) {
+    return deriveReadonlyApiErrorMessage(detail);
+  }
+  return err instanceof Error ? err.message : fallback;
 }
 
 function buildBasicInformationIdentityLabel({

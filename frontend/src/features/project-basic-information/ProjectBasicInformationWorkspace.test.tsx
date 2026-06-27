@@ -1,13 +1,24 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProjectBasicInformationResponse } from "../../api/client";
+import type {
+  ProjectBasicInformationResponse,
+  ProjectLifecycleResponse,
+} from "../../api/client";
 import { ProjectBasicInformationWorkspace } from "./ProjectBasicInformationWorkspace";
 
 const api = vi.hoisted(() => ({
   getProject: vi.fn(),
   getProjectBasicInformation: vi.fn(),
+  getProjectLifecycle: vi.fn(),
   getNewProjectCompletionOptions: vi.fn(),
+  isProjectLifecycleReadonlyErrorDetail: vi.fn((detail: unknown) => {
+    return (
+      Boolean(detail) &&
+      typeof detail === "object" &&
+      (detail as { code?: unknown }).code === "project_lifecycle_readonly"
+    );
+  }),
   listProjectLtrs: vi.fn(),
   saveProjectBasicInformationDraft: vi.fn(),
   confirmProjectBasicInformation: vi.fn(),
@@ -19,6 +30,7 @@ describe("ProjectBasicInformationWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.getProject.mockResolvedValue(project());
+    api.getProjectLifecycle.mockResolvedValue(lifecycleResponse());
     api.getNewProjectCompletionOptions.mockResolvedValue(completionOptions());
     api.listProjectLtrs.mockResolvedValue([{ ltr_number: "DL-2026-05-011" }]);
   });
@@ -893,6 +905,37 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(laboratoryPanel.textContent).toContain("Test Type in sheet");
     expect(laboratoryPanel.textContent).toContain("Estimated Completion");
   });
+
+  it("keeps closed projects readable while blocking Basic Information writes", async () => {
+    const user = userEvent.setup();
+    api.getProjectBasicInformation.mockResolvedValue(response());
+    api.getProjectLifecycle.mockResolvedValue(
+      lifecycleResponse({
+        lifecycle_state: "closed",
+        closure_type: "completed",
+        status: "closed",
+        readonly: true,
+        allowed_actions: [],
+      })
+    );
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText("Project closed as completed")).toBeTruthy();
+    const projectLeader = screen.getByLabelText("Project Leader");
+    expect(projectLeader).toHaveProperty("disabled", true);
+    await user.type(projectLeader, "Blocked");
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+    const confirmButton = screen.getByRole("button", { name: "Confirm" });
+    expect(confirmButton).toHaveProperty("disabled", true);
+    await user.click(confirmButton);
+    expect(api.confirmProjectBasicInformation).not.toHaveBeenCalled();
+  });
 });
 
 function completionOptions() {
@@ -983,5 +1026,23 @@ function project() {
     test_item: "Qualification Testing",
     requestor: "MP Cao",
     status: "ltr_registered",
+  };
+}
+
+function lifecycleResponse(
+  overrides: Partial<ProjectLifecycleResponse> = {}
+): ProjectLifecycleResponse {
+  return {
+    project_id: "P1",
+    lifecycle_state: "active",
+    closure_type: null,
+    status: "ltr_registered",
+    status_label: "Active",
+    stopped_at: null,
+    closed_at: null,
+    allowed_actions: ["stop", "close_completed", "close_administrative"],
+    readonly: false,
+    warnings: [],
+    ...overrides,
   };
 }

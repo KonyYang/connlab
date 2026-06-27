@@ -10,6 +10,9 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "folderReady"
   | "folderResources"
   | "latestLtr"
+  | "lifecycle"
+  | "lifecycleLoading"
+  | "lifecycleError"
   | "activeConfirmedMatrixSnapshot"
   | "activeConfirmedMatrixLoading"
   | "basicInformation"
@@ -63,6 +66,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "section2SyncSyncing"
   | "setRuntimeSelectedTokenReference"
   | "onFolderCreated"
+  | "onRefreshLifecycle"
   | "onRefreshPackagePreview"
   | "onRefreshOfficialWorkspacePreview"
   | "onCreateOfficialWorkspace"
@@ -89,6 +93,9 @@ export function selectProjectRuntimeConsoleModel(
     folderReady: model.folderReady,
     folderResources: model.folderResources,
     latestLtr: model.latestLtr,
+    lifecycle: model.lifecycle,
+    lifecycleLoading: model.lifecycleLoading,
+    lifecycleError: model.lifecycleError,
     activeConfirmedMatrixSnapshot: model.activeConfirmedMatrixSnapshot,
     activeConfirmedMatrixLoading: model.activeConfirmedMatrixLoading,
     basicInformation: model.basicInformation,
@@ -142,6 +149,7 @@ export function selectProjectRuntimeConsoleModel(
     section2SyncSyncing: model.section2SyncSyncing,
     setRuntimeSelectedTokenReference: model.setRuntimeSelectedTokenReference,
     onFolderCreated: model.onFolderCreated,
+    onRefreshLifecycle: model.onRefreshLifecycle,
     onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,

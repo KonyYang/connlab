@@ -19,6 +19,8 @@ type FeeEvaluationPreviewTableProps = {
   identityLine: string;
   downloadState: FeeFileDownloadState;
   generateDisabledReason: string | null;
+  readOnly?: boolean;
+  readOnlyReason?: string;
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
   onGenerateFeeFile: () => void;
   onGroupFilterChange: (value: string) => void;
@@ -73,6 +75,8 @@ export function FeeEvaluationPreviewTable({
   identityLine,
   downloadState,
   generateDisabledReason,
+  readOnly = false,
+  readOnlyReason,
   onCostPreviewChange,
   onGenerateFeeFile,
   onGroupFilterChange,
@@ -97,6 +101,7 @@ export function FeeEvaluationPreviewTable({
               <span className="fee-evaluation-sr-only">Preview group</span>
               <select
                 value={groupFilter}
+                disabled={readOnly}
                 onChange={(event) => onGroupFilterChange(event.currentTarget.value)}
               >
                 <option value="all">All Group</option>
@@ -116,7 +121,8 @@ export function FeeEvaluationPreviewTable({
             className="fee-evaluation-file-button"
             type="button"
             onClick={onGenerateFeeFile}
-            disabled={Boolean(generateDisabledReason) || downloadState.kind === "running"}
+            disabled={readOnly || Boolean(generateDisabledReason) || downloadState.kind === "running"}
+            title={readOnly ? readOnlyReason : undefined}
           >
             {downloadState.kind === "running" ? "Generating..." : "Fee Form"}
           </button>
@@ -151,6 +157,7 @@ export function FeeEvaluationPreviewTable({
               id="fee-evaluation-condition-confirmation-spend-time"
               aria-label="Condition confirmation spend time"
               inputMode="decimal"
+              disabled={readOnly}
               placeholder="Spend Time"
               value={costPreviewValues.conditionConfirmationSpendTime}
               onChange={(event) =>
@@ -179,6 +186,7 @@ export function FeeEvaluationPreviewTable({
               id="fee-evaluation-lab-manpower-hourly-rate"
               aria-label="Lab manpower hourly rate"
               inputMode="decimal"
+              disabled={readOnly}
               placeholder="200"
               value={costPreviewValues.labManpowerHourlyRate}
               onChange={(event) =>
@@ -205,6 +213,7 @@ export function FeeEvaluationPreviewTable({
               id="fee-evaluation-external-cost"
               aria-label="External Cost preview"
               inputMode="decimal"
+              disabled={readOnly}
               placeholder={totals.externalCost}
               value={costPreviewValues.externalCost}
               onChange={(event) =>
@@ -214,6 +223,7 @@ export function FeeEvaluationPreviewTable({
             <input
               id="fee-evaluation-external-cost-note"
               aria-label="External Cost note"
+              disabled={readOnly}
               placeholder="Cost note"
               value={costPreviewValues.externalCostNote}
               onChange={(event) =>
@@ -283,6 +293,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Spend Time for group ${row.groupLabel || "manual"} step ${row.stepToken}`}
+                      disabled={readOnly}
                       value={row.spendTime}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "spendTime", value)
@@ -295,6 +306,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Unit Price for ${row.description}`}
+                      disabled={readOnly}
                       value={row.unitPrice}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "unitPrice", value)
@@ -303,6 +315,7 @@ export function FeeEvaluationPreviewTable({
                   </td>
                   <td>
                     <EditableUnitTypeSelect
+                      disabled={readOnly}
                       value={row.unitType}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "unitType", value)
@@ -312,6 +325,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Units for ${row.description}`}
+                      disabled={readOnly}
                       value={row.units}
                       onChange={(value) => onRowEditChange(row.lineId, "units", value)}
                     />
@@ -319,6 +333,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Base Fee for ${row.description}`}
+                      disabled={readOnly}
                       value={row.baseFee}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "baseFee", value)
@@ -328,6 +343,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Discount for ${row.description}`}
+                      disabled={readOnly}
                       value={row.discount}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "discount", value)
@@ -338,6 +354,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Notes for ${row.description}`}
+                      disabled={readOnly}
                       inputMode="text"
                       placeholder=""
                       value={row.notes}
@@ -383,12 +400,14 @@ function previewRowClassName(row: FeeEvaluationPreviewRow): string {
 
 function EditablePreviewInput({
   ariaLabel,
+  disabled = false,
   inputMode = "decimal",
   onChange,
   placeholder = "Pending",
   value,
 }: {
   ariaLabel: string;
+  disabled?: boolean;
   inputMode?: "decimal" | "text";
   onChange: (value: string) => void;
   placeholder?: string;
@@ -398,6 +417,7 @@ function EditablePreviewInput({
     <input
       aria-label={ariaLabel}
       className="fee-evaluation-preview-cell-input"
+      disabled={disabled}
       inputMode={inputMode}
       placeholder={placeholder}
       value={editableInputValue(value)}
@@ -407,9 +427,11 @@ function EditablePreviewInput({
 }
 
 function EditableUnitTypeSelect({
+  disabled = false,
   onChange,
   value,
 }: {
+  disabled?: boolean;
   onChange: (value: string) => void;
   value: string;
 }): ReactElement {
@@ -421,6 +443,7 @@ function EditableUnitTypeSelect({
     <select
       aria-label="Unit Type"
       className="fee-evaluation-preview-cell-select"
+      disabled={disabled}
       value={normalizedValue}
       onChange={(event) => onChange(event.currentTarget.value)}
     >

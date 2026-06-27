@@ -73,9 +73,15 @@ Integrator restored the missing required input files on 2026-06-27:
 - `tasks/TASK_336_PROJECT_LIFECYCLE_AND_UNIFIED_WORKBENCH_CONTRACT.md`
 - `docs/task_336_project_lifecycle_and_unified_workbench_contract_plan.md`
 
-The required-input file gap is closed, but this plan still requires review after the Frontend Developer rereads those restored inputs. If the accepted contract changes any frontend readonly rule, this plan must be updated before implementation approval.
+The required-input file gap is closed. The Frontend Developer reread the restored inputs on 2026-06-27 and confirmed the plan remains aligned with TASK_336 lifecycle/workbench contract rules:
 
-Frontend implementation remains blocked until this plan is reviewed and explicitly approved after the restored-input reread.
+- stopped and closed projects are readonly
+- stopped projects may expose Resume and Close actions
+- closed projects must not expose Resume
+- read and non-mutating preview surfaces remain available
+- lifecycle readonly UI stays within the existing Project Workbench and does not implement the TASK_340 shell
+
+The restored-input reread closure was accepted for implementation, and the Developer implementation was subsequently reviewed. Reviewer latest conclusion: `Reviewer gate: pass`; Integrator packaging/readiness gate accepted the implemented lane on 2026-06-27.
 
 ### Existing Frontend Reality
 
@@ -322,6 +328,12 @@ Do not render raw backend JSON.
   - Expose lifecycle response, loading, error, and refresh helper.
   - Normalize TASK_338 readonly errors from required forms, folder, public-drive, and related write actions.
 
+- `frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts`
+  - Carry the lifecycle response through the existing runtime console model so Workbench, Matrix, and derived output surfaces consume the same readonly source.
+
+- `frontend/src/features/project-workbench/ProjectWorkbenchActiveMatrixWorkspace.tsx`
+  - Apply the Workbench readonly state to the existing active Matrix workspace folder action while keeping read-only Matrix display available.
+
 - `frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.ts`
   - Accept lifecycle readonly input and derive stopped/closed readonly modes from TASK_337A lifecycle fields.
 
@@ -349,6 +361,9 @@ Do not render raw backend JSON.
   - Disable editing, autosave, import commit, discard, confirm, and generated write actions.
   - Keep Matrix session display available.
 
+- `frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx`
+  - Accept the Matrix Editor readonly state so schedule/planning inputs cannot mutate stopped or closed projects while the schedule display remains visible.
+
 - `frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx`
   - Assert stopped/closed readonly disables write controls and active mode remains editable.
 
@@ -356,6 +371,9 @@ Do not render raw backend JSON.
   - Fetch lifecycle in page context.
   - Disable pricing draft edits/autosave/discard, confirm, and file generation writes when readonly.
   - Preserve read-only preview.
+
+- `frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx`
+  - Accept the Fee Evaluation readonly state so pricing cells and Fee Form generation controls are disabled while preview rows stay visible.
 
 - `frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx`
   - Assert readonly disables write actions and maps TASK_338 readonly error.
@@ -501,7 +519,9 @@ Expected: tests pass.
 **Files:**
 
 - Modify: `frontend/src/features/project-workbench/useProjectWorkbenchModel.ts`
+- Modify: `frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts`
 - Modify: `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`
+- Modify: `frontend/src/features/project-workbench/ProjectWorkbenchActiveMatrixWorkspace.tsx`
 - Modify: `frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.ts`
 - Modify: `frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.test.ts`
 - Modify: `frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx`
@@ -596,6 +616,7 @@ Expected: tests pass.
 **Files:**
 
 - Modify: `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`
+- Modify: `frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx`
 - Modify: `frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx`
 
 **Interfaces:**
@@ -632,6 +653,7 @@ Expected: tests pass.
 **Files:**
 
 - Modify: `frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx`
+- Modify: `frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx`
 - Modify: `frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx`
 
 **Interfaces:**
@@ -680,7 +702,7 @@ npm run build
 - [ ] Run whitespace check:
 
 ```powershell
-git diff --check -- frontend/src/api/client.ts frontend/src/features/project-lifecycle/projectLifecycleReadonlyModel.ts frontend/src/features/project-lifecycle/projectLifecycleReadonlyModel.test.ts frontend/src/features/project-workbench/useProjectWorkbenchModel.ts frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.ts frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.test.ts frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx frontend/src/workbench.css docs/lane_evidence/TASK_339A_frontend-readonly-model_developer.md
+git diff --check -- frontend/src/api/client.ts frontend/src/features/project-lifecycle/projectLifecycleReadonlyModel.ts frontend/src/features/project-lifecycle/projectLifecycleReadonlyModel.test.ts frontend/src/features/project-workbench/useProjectWorkbenchModel.ts frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx frontend/src/features/project-workbench/ProjectWorkbenchActiveMatrixWorkspace.tsx frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.ts frontend/src/features/project-workbench/projectWorkbenchLifecycleSelectors.test.ts frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx frontend/src/workbench.css docs/task_339a_project_lifecycle_frontend_readonly_model_plan.md docs/lane_evidence/TASK_339A_frontend-readonly-model_developer.md
 ```
 
 - [ ] Confirm forbidden surfaces unchanged:

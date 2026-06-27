@@ -83,6 +83,52 @@ export type ProjectStopResponse = {
   audit_recorded: boolean;
 };
 
+export type ProjectLifecycleState = "active" | "stopped" | "closed";
+
+export type ProjectClosureType = "completed" | "administrative";
+
+export type ProjectLifecycleResponse = {
+  project_id: string;
+  lifecycle_state: ProjectLifecycleState;
+  closure_type: ProjectClosureType | null;
+  status_label: string;
+  readonly: boolean;
+  allowed_actions: string[];
+  status: string;
+  stopped_at?: string | null;
+  stopped_reason?: string | null;
+  closed_at?: string | null;
+  closed_reason?: string | null;
+  completion_summary?: Record<string, unknown> | null;
+  warnings: string[];
+};
+
+export type ProjectLifecycleActionRequest = {
+  reason?: string | null;
+  operator?: string | null;
+};
+
+export type ProjectLifecycleCloseCompletedRequest = {
+  close_note: string;
+  operator?: string | null;
+  manual_completion_confirmed: boolean;
+  output_summary_acknowledged: boolean;
+};
+
+export type ProjectLifecycleCloseAdministrativeRequest = {
+  reason: string;
+  operator?: string | null;
+};
+
+export type ProjectLifecycleReadonlyErrorDetail = {
+  code: "project_lifecycle_readonly";
+  project_id: string;
+  lifecycle_state: ProjectLifecycleState;
+  closure_type: ProjectClosureType | null;
+  message: string;
+  allowed_actions: string[];
+};
+
 export type ProjectBasicInformationStatus =
   | "unconfirmed"
   | "confirmed"
@@ -2123,6 +2169,32 @@ export class ApiRequestError extends Error {
   }
 }
 
+export function isProjectLifecycleReadonlyErrorDetail(
+  detail: unknown
+): detail is ProjectLifecycleReadonlyErrorDetail {
+  if (!detail || typeof detail !== "object") {
+    return false;
+  }
+  const value = detail as Record<string, unknown>;
+  return (
+    value.code === "project_lifecycle_readonly" &&
+    typeof value.project_id === "string" &&
+    isProjectLifecycleState(value.lifecycle_state) &&
+    (value.closure_type === null || isProjectClosureType(value.closure_type)) &&
+    typeof value.message === "string" &&
+    Array.isArray(value.allowed_actions) &&
+    value.allowed_actions.every((action) => typeof action === "string")
+  );
+}
+
+function isProjectLifecycleState(value: unknown): value is ProjectLifecycleState {
+  return value === "active" || value === "stopped" || value === "closed";
+}
+
+function isProjectClosureType(value: unknown): value is ProjectClosureType {
+  return value === "completed" || value === "administrative";
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -2256,6 +2328,64 @@ export function stopProject(
 ): Promise<ProjectStopResponse> {
   return requestJson<ProjectStopResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/stop`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function getProjectLifecycle(projectId: string): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle`
+  );
+}
+
+export function stopProjectLifecycle(
+  projectId: string,
+  input: ProjectLifecycleActionRequest
+): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle/stop`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function resumeProjectLifecycle(
+  projectId: string,
+  input: ProjectLifecycleActionRequest
+): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle/resume`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function closeProjectCompletedLifecycle(
+  projectId: string,
+  input: ProjectLifecycleCloseCompletedRequest
+): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle/close-completed`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function closeProjectAdministrativeLifecycle(
+  projectId: string,
+  input: ProjectLifecycleCloseAdministrativeRequest
+): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle/close-administrative`,
     {
       method: "POST",
       body: JSON.stringify(input)

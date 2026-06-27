@@ -10,6 +10,7 @@ type MatrixSchedulePlanningCardProps = {
   plan: MatrixSchedulePlan;
   groups: MatrixScheduleGroupInput[];
   calculation: MatrixScheduleCalculation;
+  readOnly?: boolean;
   onChange: (plan: MatrixSchedulePlan) => void;
 };
 
@@ -31,12 +32,16 @@ export function MatrixSchedulePlanningCard({
   plan,
   groups,
   calculation,
+  readOnly = false,
   onChange,
 }: MatrixSchedulePlanningCardProps): ReactElement {
   const selectedGroups = groups.filter((group) => group.isSelected);
   const criticalGroup = selectedGroups.find((group) => group.id === calculation.criticalGroupId) ?? null;
   const criticalLabel = criticalGroup ? criticalGroup.name || criticalGroup.id : "No group";
   const updateField = (field: keyof MatrixSchedulePlan, value: string): void => {
+    if (readOnly) {
+      return;
+    }
     const normalizedValue = isDateField(field) ? normalizeDateInput(value) : value;
     onChange(applyScheduleDateDefaults({ ...plan, [field]: normalizedValue }, field, calculation));
   };
@@ -70,6 +75,7 @@ export function MatrixSchedulePlanningCard({
           </span>
           <input
             className={calculation.bufferErrors.postTestBufferDays ? "is-invalid" : undefined}
+            disabled={readOnly}
             inputMode="decimal"
             value={plan.postTestBufferDays}
             aria-label="Post-test buffer"
@@ -82,6 +88,7 @@ export function MatrixSchedulePlanningCard({
             className={`matrix-editor-schedule-date-input ${dateInputClass("sampleReceivedDate") ?? ""}`.trim()}
             aria-invalid={dateAriaInvalid("sampleReceivedDate")}
             aria-label="Sample received"
+            disabled={readOnly}
             type="date"
             value={plan.sampleReceivedDate}
             onChange={(event) => updateField("sampleReceivedDate", event.target.value)}
@@ -93,6 +100,7 @@ export function MatrixSchedulePlanningCard({
             className={`matrix-editor-schedule-date-input ${dateInputClass("plannedTestStartDate") ?? ""}`.trim()}
             aria-invalid={dateAriaInvalid("plannedTestStartDate")}
             aria-label="Planned start"
+            disabled={readOnly}
             type="date"
             value={plan.plannedTestStartDate}
             onChange={(event) => updateField("plannedTestStartDate", event.target.value)}
@@ -104,6 +112,7 @@ export function MatrixSchedulePlanningCard({
             className={`matrix-editor-schedule-date-input ${dateInputClass("plannedTestCompleteDate") ?? ""}`.trim()}
             aria-invalid={dateAriaInvalid("plannedTestCompleteDate")}
             aria-label="Test complete"
+            disabled={readOnly}
             type="date"
             value={plan.plannedTestCompleteDate}
             onChange={(event) => updateField("plannedTestCompleteDate", event.target.value)}
@@ -115,6 +124,7 @@ export function MatrixSchedulePlanningCard({
             className={`matrix-editor-schedule-date-input ${dateInputClass("estimatedCompletionDate") ?? ""}`.trim()}
             aria-invalid={dateAriaInvalid("estimatedCompletionDate")}
             aria-label="Estimated completion"
+            disabled={readOnly}
             type="date"
             value={plan.estimatedCompletionDate}
             onChange={(event) => updateField("estimatedCompletionDate", event.target.value)}

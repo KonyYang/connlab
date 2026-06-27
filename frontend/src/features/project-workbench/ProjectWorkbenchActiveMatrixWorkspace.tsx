@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { ProjectBasicInformationSummaryCard } from "../project-basic-information/ProjectBasicInformationSummaryCard";
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
+import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import type {
   ProjectFolderTaskActionTarget,
   ProjectFolderTaskKey,
@@ -19,6 +20,7 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   basicInformation: ProjectRuntimeConsoleModel["basicInformation"];
   basicInformationLoading: ProjectRuntimeConsoleModel["basicInformationLoading"];
   basicInformationError: ProjectRuntimeConsoleModel["basicInformationError"];
+  lifecycleReadonlyView: ProjectLifecycleReadonlyView;
   runtimeProjectionSnapshot: ProjectRuntimeConsoleModel["runtimeProjectionSnapshot"];
   selectedProjectionToken: MatrixProjectionTokenCell | null;
   setSelectedProjectionToken: (token: MatrixProjectionTokenCell | null) => void;
@@ -34,6 +36,7 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   basicInformation,
   basicInformationLoading,
   basicInformationError,
+  lifecycleReadonlyView,
   runtimeProjectionSnapshot,
   selectedProjectionToken,
   setSelectedProjectionToken,
@@ -69,8 +72,14 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
                 <FolderTaskMessages task={currentFolderTask} />
                 {currentFolderTask.actionLabel && currentFolderTask.actionTarget ? (
                   <button
+                    disabled={lifecycleReadonlyView.readonly}
+                    title={lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined}
                     type="button"
-                    onClick={() => onProjectFolderTaskAction(currentFolderTask.actionTarget ?? null)}
+                    onClick={() => {
+                      if (currentFolderTask.actionTarget) {
+                        onProjectFolderTaskAction(currentFolderTask.actionTarget);
+                      }
+                    }}
                   >
                     {currentFolderTask.actionLabel}
                   </button>

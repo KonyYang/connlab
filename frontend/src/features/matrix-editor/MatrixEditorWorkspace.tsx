@@ -2,12 +2,17 @@
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
 import { buildProjectIdentityLine } from "../projectIdentity";
 import {
+  deriveProjectLifecycleReadonlyView,
+  deriveReadonlyApiErrorMessage,
+} from "../project-lifecycle/projectLifecycleReadonlyModel";
+import {
   ApiRequestError,
   commitMatrixImport,
   confirmMatrixEditorSession,
   discardMatrixEditorSessionDraft,
   fetchMatrixEditorSession,
   generateMatrixEditorTestRecordDraftDownload,
+  isProjectLifecycleReadonlyErrorDetail,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromUpload,
   saveMatrixEditorSessionDraft,
@@ -124,6 +129,7 @@ type MatrixAutoGrowTextareaProps = {
   className?: string;
   errorMessage?: string;
   value: string;
+  disabled?: boolean;
   onFocus?: () => void;
   onChange: (value: string) => void;
 };
@@ -941,6 +947,15 @@ function schedulePlanFromProjectMatrixDraft(draft: ProjectMatrixDraft): MatrixSc
 }
 
 function parseRequestError(error: unknown, fallback: string): string {
+  const detail =
+    error && typeof error === "object" && "detail" in error
+      ? (error as { detail: unknown }).detail
+      : null;
+  if (
+    isProjectLifecycleReadonlyErrorDetail(detail)
+  ) {
+    return deriveReadonlyApiErrorMessage(detail);
+  }
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
@@ -1519,6 +1534,7 @@ function MatrixAutoGrowTextarea({
   className,
   errorMessage,
   value,
+  disabled = false,
   onFocus,
   onChange
 }: MatrixAutoGrowTextareaProps): ReactElement {
@@ -1539,6 +1555,7 @@ function MatrixAutoGrowTextarea({
       aria-label={ariaLabel}
       className={className ? `matrix-editor-inline-textarea ${className}` : "matrix-editor-inline-textarea"}
       rows={1}
+      disabled={disabled}
       title={errorMessage || undefined}
       value={value}
       onFocus={onFocus}
@@ -1565,6 +1582,8 @@ export function MatrixEditorWorkspace({
   onBackToWorkbench,
 }: MatrixEditorWorkspaceProps): ReactElement {
   const model = useProjectRuntimeConsoleModel(projectId);
+  const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(model.lifecycle);
+  const isLifecycleReadonly = lifecycleReadonlyView.readonly;
   const [editableRows, setEditableRows] = useState<EditableMatrixRow[]>(() => buildInitialMatrixRows());
   const [groupColumns, setGroupColumns] = useState<GroupColumn[]>(() => buildInitialGroupColumns());
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -1972,6 +1991,7 @@ export function MatrixEditorWorkspace({
       !hasUnsavedChanges ||
       !hasProjectId ||
       draftLoading ||
+      isLifecycleReadonly ||
       cancellingRef.current ||
       isCancelling
     ) {
@@ -2047,6 +2067,7 @@ export function MatrixEditorWorkspace({
     hasUnsavedChanges,
     importPreview,
     isCancelling,
+    isLifecycleReadonly,
     projectId,
     sessionSourceImportId,
     sessionSourceSnapshotId,
@@ -2109,7 +2130,9 @@ export function MatrixEditorWorkspace({
       saveState === "error" ||
       Boolean(savedEditorDraftId));
   const publishDisabledReason =
-    !hasProjectId
+    isLifecycleReadonly
+      ? lifecycleReadonlyView.message
+      : !hasProjectId
       ? "No project id."
       : hasMatrixValidationError
         ? groupNameErrorMessage || stepTokenErrorMessage
@@ -2156,6 +2179,10 @@ export function MatrixEditorWorkspace({
   };
 
   const onChangeSourceMatrix = (): void => {
+    if (isLifecycleReadonly) {
+      setImportError(lifecycleReadonlyView.message);
+      return;
+    }
     const warning = hasUnsavedChanges
       ? "Import Matrix will replace the current source session. Unsaved edits will be lost. Continue?"
       : "Import Matrix will replace the current source session. Continue?";
@@ -2166,6 +2193,10 @@ export function MatrixEditorWorkspace({
   };
 
   const markUnsaved = (): void => {
+    if (isLifecycleReadonly) {
+      setConfirmActiveMessage(lifecycleReadonlyView.message);
+      return;
+    }
     setActiveAuthorityConfirmed(false);
     if (saveState !== "saving") {
       setSaveState("dirty");
@@ -2183,6 +2214,10 @@ export function MatrixEditorWorkspace({
   };
 
   const applyImportedMatrixDirectly = async (): Promise<void> => {
+    if (isLifecycleReadonly) {
+      setImportError(lifecycleReadonlyView.message);
+      return;
+    }
     if (!importPreview || importPreview.groups.length === 0) {
       setImportError("No valid matrix found from import.");
       return;
@@ -2221,6 +2256,10 @@ export function MatrixEditorWorkspace({
   const onImportFileChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = event.target.files?.[0];
     event.target.value = "";
+    if (isLifecycleReadonly) {
+      setImportError(lifecycleReadonlyView.message);
+      return;
+    }
     if (!file) {
       return;
     }
@@ -2267,6 +2306,10 @@ export function MatrixEditorWorkspace({
   };
 
   const reparseImportPreview = async (): Promise<void> => {
+    if (isLifecycleReadonly) {
+      setImportError(lifecycleReadonlyView.message);
+      return;
+    }
     if (!importFile) {
       return;
     }
@@ -2643,6 +2686,10 @@ export function MatrixEditorWorkspace({
 
   const openRowContextMenu = (event: MouseEvent, rowIndex: number): void => {
     event.preventDefault();
+    if (isLifecycleReadonly) {
+      setConfirmActiveMessage(lifecycleReadonlyView.message);
+      return;
+    }
     setSelectedRowId(editableRows[rowIndex].id);
     setSelectedGroupId(null);
     setContextMenu({ kind: "row", rowIndex, x: event.clientX, y: event.clientY });
@@ -2650,12 +2697,21 @@ export function MatrixEditorWorkspace({
 
   const openGroupContextMenu = (event: MouseEvent, groupId: string): void => {
     event.preventDefault();
+    if (isLifecycleReadonly) {
+      setConfirmActiveMessage(lifecycleReadonlyView.message);
+      return;
+    }
     setSelectedGroupId(groupId);
     setSelectedRowId(null);
     setContextMenu({ kind: "group", groupId, x: event.clientX, y: event.clientY });
   };
 
   const runContextAction = (action: () => void): void => {
+    if (isLifecycleReadonly) {
+      setConfirmActiveMessage(lifecycleReadonlyView.message);
+      setContextMenu(null);
+      return;
+    }
     action();
     setContextMenu(null);
   };
@@ -2692,6 +2748,10 @@ export function MatrixEditorWorkspace({
     };
 
   const onCancelEditing = async (): Promise<void> => {
+    if (isLifecycleReadonly) {
+      onBackToWorkbench();
+      return;
+    }
     if (hasUnsavedChanges || savedEditorDraftId) {
       const shouldDiscard = window.confirm(
         "Discard current Matrix edits and return to Workbench?"
@@ -2731,6 +2791,11 @@ export function MatrixEditorWorkspace({
   };
 
   const onGenerateTestRecordPreview = async (): Promise<void> => {
+    if (isLifecycleReadonly) {
+      setTestRecordState("error");
+      setTestRecordMessage(lifecycleReadonlyView.message);
+      return;
+    }
     if (!canGenerateTestRecord) {
       setTestRecordState("error");
       setTestRecordMessage(
@@ -2762,6 +2827,10 @@ export function MatrixEditorWorkspace({
   };
 
   const onConfirmMatrix = async (): Promise<void> => {
+    if (isLifecycleReadonly) {
+      setConfirmActiveMessage(lifecycleReadonlyView.message);
+      return;
+    }
     if (!canPublishActiveMatrix) {
       if (
         publishDisabledReason &&
@@ -2864,18 +2933,33 @@ export function MatrixEditorWorkspace({
               {currentSourceDocumentName}
             </span>
           ) : null}
-          <button type="button" onClick={() => void onChangeSourceMatrix()}>
+          <button
+            type="button"
+            disabled={isLifecycleReadonly}
+            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
+            onClick={() => void onChangeSourceMatrix()}
+          >
             Import Matrix
           </button>
           <button
             type="button"
-            disabled={!canGenerateTestRecord || testRecordState === "loading"}
+            disabled={
+              isLifecycleReadonly || !canGenerateTestRecord || testRecordState === "loading"
+            }
+            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
             onClick={() => void onGenerateTestRecordPreview()}
           >
             {testRecordState === "loading" ? "Generating..." : "Test record"}
           </button>
         </div>
       </section>
+
+      {isLifecycleReadonly ? (
+        <div className="matrix-editor-state-banner" role="status">
+          <strong>{lifecycleReadonlyView.title}</strong>
+          <span>{lifecycleReadonlyView.message}</span>
+        </div>
+      ) : null}
 
       {testRecordMessage ? (
         <section
@@ -2889,6 +2973,7 @@ export function MatrixEditorWorkspace({
       <input
         ref={fileInputRef}
         accept=".docx"
+        disabled={isLifecycleReadonly}
         style={{ display: "none" }}
         type="file"
         onChange={(event) => void onImportFileChange(event)}
@@ -2916,18 +3001,18 @@ export function MatrixEditorWorkspace({
                 <div className="matrix-editor-import-controls-row">
                   <label>
                     <span>Page</span>
-                    <input value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
+                    <input disabled={isLifecycleReadonly} value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
                   </label>
                   <label>
                     <span>Table on page</span>
-                    <input value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
+                    <input disabled={isLifecycleReadonly} value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
                   </label>
                 </div>
                 <label>
                   <span>Table Title / Content Keyword</span>
-                  <input value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
+                  <input disabled={isLifecycleReadonly} value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
                 </label>
-                <button className="matrix-editor-import-reparse-button" type="button" onClick={() => void reparseImportPreview()} disabled={importingPreview || !importFile}>
+                <button className="matrix-editor-import-reparse-button" type="button" onClick={() => void reparseImportPreview()} disabled={isLifecycleReadonly || importingPreview || !importFile}>
                   {importingPreview ? "Reparsing..." : "Reparse"}
                 </button>
                 {importingPreview ? <p>Reparsing...</p> : null}
@@ -2942,7 +3027,7 @@ export function MatrixEditorWorkspace({
                   <button
                     className="matrix-editor-import-commit-button"
                     type="button"
-                    disabled={importingPreview || !importPreview || importPreview.groups.length === 0}
+                    disabled={isLifecycleReadonly || importingPreview || !importPreview || importPreview.groups.length === 0}
                     onClick={() => void applyImportedMatrixDirectly()}
                   >
                     Replace
@@ -2969,6 +3054,7 @@ export function MatrixEditorWorkspace({
                   aria-label="Show selected groups only"
                   type="checkbox"
                   checked={showSelectedGroupsOnly}
+                  disabled={isLifecycleReadonly}
                   onChange={(event) => setShowSelectedGroupsOnly(event.target.checked)}
                 />
                 Show selected groups only
@@ -3003,6 +3089,7 @@ export function MatrixEditorWorkspace({
                               aria-label={`Include group ${group.name || group.groupKey}`}
                               type="checkbox"
                               checked={group.isSelected}
+                              disabled={isLifecycleReadonly}
                               onChange={(event) => {
                                 event.stopPropagation();
                                 toggleGroupIncluded(group.id, event.target.checked);
@@ -3012,6 +3099,7 @@ export function MatrixEditorWorkspace({
                         ) : null}
                         <input
                           className={`matrix-editor-group-name-input${group.name.trim() === "" ? " is-empty" : ""}${duplicateGroupIds.has(group.id) ? " is-duplicate" : ""}`}
+                          disabled={isLifecycleReadonly}
                           type="text"
                           value={group.name}
                           onClick={(event) => {
@@ -3058,6 +3146,7 @@ export function MatrixEditorWorkspace({
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} test item`}
                             className={!row.isSampleRow && row.item.trim() === "" ? "is-empty-required" : undefined}
+                            disabled={isLifecycleReadonly}
                             value={row.item}
                             onChange={(value) => updateTextField(rowIndex, "item", value)}
                           />
@@ -3065,6 +3154,7 @@ export function MatrixEditorWorkspace({
                         <td>
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} section`}
+                            disabled={isLifecycleReadonly}
                             value={row.section}
                             onChange={(value) => updateTextField(rowIndex, "section", value)}
                           />
@@ -3073,6 +3163,7 @@ export function MatrixEditorWorkspace({
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} method`}
                             className={!row.isSampleRow && row.method.trim() === "" ? "is-empty-required" : undefined}
+                            disabled={isLifecycleReadonly}
                             value={row.method}
                             onChange={(value) => updateTextField(rowIndex, "method", value)}
                           />
@@ -3081,6 +3172,7 @@ export function MatrixEditorWorkspace({
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} condition`}
                             className={!row.isSampleRow && row.condition.trim() === "" ? "is-empty-required" : undefined}
+                            disabled={isLifecycleReadonly}
                             value={row.condition}
                             onChange={(value) => updateTextField(rowIndex, "condition", value)}
                           />
@@ -3089,6 +3181,7 @@ export function MatrixEditorWorkspace({
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} requirement`}
                             className={!row.isSampleRow && row.requirement.trim() === "" ? "is-empty-required" : undefined}
+                            disabled={isLifecycleReadonly}
                             value={row.requirement}
                             onChange={(value) => updateTextField(rowIndex, "requirement", value)}
                           />
@@ -3097,6 +3190,7 @@ export function MatrixEditorWorkspace({
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} day`}
                             className={scheduleCalculation.rowErrors[row.id] ? "is-invalid" : undefined}
+                            disabled={isLifecycleReadonly}
                             errorMessage={scheduleCalculation.rowErrors[row.id]}
                             value={row.dayExpression}
                             onChange={(value) => updateTextField(rowIndex, "dayExpression", value)}
@@ -3118,6 +3212,7 @@ export function MatrixEditorWorkspace({
                               <MatrixAutoGrowTextarea
                                 ariaLabel={`Row ${rowIndex + 1} ${group.name || "Group"}`}
                                 className={groupCellClass}
+                                disabled={isLifecycleReadonly}
                                 errorMessage={cellErrorMessage}
                                 value={row.groups[group.id] ?? ""}
                                 onFocus={() => {
@@ -3151,6 +3246,7 @@ export function MatrixEditorWorkspace({
                       <MatrixAutoGrowTextarea
                         ariaLabel={`Samples ${group.name || "group"}`}
                         className={`matrix-editor-sample-textarea${invalidSelectedSampleGroupIds.has(group.id) ? " is-invalid" : ""}`}
+                        disabled={isLifecycleReadonly}
                         value={sampleValues[group.id] ?? ""}
                         onFocus={() => {
                           setSelectedGroupId(group.id);
@@ -3294,6 +3390,7 @@ export function MatrixEditorWorkspace({
               isSelected: group.isSelected,
             }))}
             calculation={scheduleCalculation}
+            readOnly={isLifecycleReadonly}
             onChange={(nextPlan) => {
               markUnsaved();
               setSchedulePlan(nextPlan);
@@ -3329,6 +3426,7 @@ export function MatrixEditorWorkspace({
                         <MatrixAutoGrowTextarea
                           ariaLabel={`Step ${row.stepNo} requirement`}
                           className="matrix-editor-step-output-textarea"
+                          disabled={isLifecycleReadonly}
                           value={row.requirementValue}
                           onChange={(value) => updateStepOutputOverride(row.key, "requirement", value)}
                         />
@@ -3337,6 +3435,7 @@ export function MatrixEditorWorkspace({
                         <MatrixAutoGrowTextarea
                           ariaLabel={`Step ${row.stepNo} description`}
                           className="matrix-editor-step-output-textarea"
+                          disabled={isLifecycleReadonly}
                           value={row.descriptionValue}
                           onChange={(value) => updateStepOutputOverride(row.key, "description", value)}
                         />
@@ -3362,6 +3461,7 @@ export function MatrixEditorWorkspace({
                   <h4>Samples</h4>
                   <input
                     className="matrix-editor-inline-input matrix-editor-samples-inline-input"
+                    disabled={isLifecycleReadonly}
                     value={selectedGroupSamplesValue}
                     onChange={(event) => {
                       if (!selectedGroup) {
@@ -3400,6 +3500,7 @@ export function MatrixEditorWorkspace({
           <button
             className="matrix-editor-primary-action"
             disabled={!canPublishActiveMatrix}
+            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
             type="button"
             onClick={() => void onConfirmMatrix()}
           >

@@ -13,6 +13,8 @@ import {
   getConfirmedFeeLatest,
   getFeeEvaluationPricingDraft,
   getProject,
+  getProjectLifecycle,
+  isProjectLifecycleReadonlyErrorDetail,
   listProjectLtrs,
   saveFeeEvaluationPricingDraft,
   type ConfirmedFeeLatestResponse,
@@ -22,8 +24,13 @@ import {
   type FeeEvaluationPricingDraftResponse,
   type FeeEvaluationPricingDraftSaveRequest,
   type Project,
+  type ProjectLifecycleResponse,
 } from "../../api/client";
 import { buildProjectIdentityLine } from "../projectIdentity";
+import {
+  deriveProjectLifecycleReadonlyView,
+  deriveReadonlyApiErrorMessage,
+} from "../project-lifecycle/projectLifecycleReadonlyModel";
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
 import {
   buildFeeEvaluationCostRisk,
@@ -110,6 +117,7 @@ export function FeeEvaluationReviewExportPage({
   const [contextState, setContextState] = useState<FeePageContextState>({
     kind: "loading",
   });
+  const [lifecycle, setLifecycle] = useState<ProjectLifecycleResponse | null>(null);
   const [draftState, setDraftState] = useState<DraftLoadState>({ kind: "loading" });
   const [previewGroupFilter, setPreviewGroupFilter] = useState("all");
   const [previewEdits, setPreviewEdits] = useState<FeeEvaluationPreviewEditState>({});
@@ -167,6 +175,24 @@ export function FeeEvaluationReviewExportPage({
                 ? error.message
                 : "Unable to load project fee context.",
           });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    let active = true;
+    void getProjectLifecycle(projectId)
+      .then((nextLifecycle) => {
+        if (active) {
+          setLifecycle(nextLifecycle);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLifecycle(null);
         }
       });
     return () => {
@@ -500,17 +526,23 @@ export function FeeEvaluationReviewExportPage({
     () => Array.from(new Set(lines.map((line) => line.group_label))).sort(),
     [lines]
   );
-  const confirmFeeDisabledReason = confirmFeeBlocker({
-    draftState,
-    confirmedFeeState,
-    isCancellingPricingSession,
-    latestSavedPricingDraftId,
-    pricingDraftLoadStatus,
-    saveState,
-    savedLocalPricingSignature,
-    currentPricingDraftSignature,
-  });
-  const generateDisabledReason = feeFileDownloadBlocker(draftState);
+  const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(lifecycle);
+  const isLifecycleReadonly = lifecycleReadonlyView.readonly;
+  const confirmFeeDisabledReason = isLifecycleReadonly
+    ? lifecycleReadonlyView.message
+    : confirmFeeBlocker({
+        draftState,
+        confirmedFeeState,
+        isCancellingPricingSession,
+        latestSavedPricingDraftId,
+        pricingDraftLoadStatus,
+        saveState,
+        savedLocalPricingSignature,
+        currentPricingDraftSignature,
+      });
+  const generateDisabledReason = isLifecycleReadonly
+    ? lifecycleReadonlyView.message
+    : feeFileDownloadBlocker(draftState);
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
@@ -551,6 +583,7 @@ export function FeeEvaluationReviewExportPage({
     if (
       draftState.kind !== "ready" ||
       (!hasPricingDraftLocalChanges && !needsInitialSeedSave) ||
+      isLifecycleReadonly ||
       cancellingRef.current ||
       isCancellingPricingSession
     ) {
@@ -585,10 +618,10 @@ export function FeeEvaluationReviewExportPage({
             }
             setSaveState({
               kind: "error",
-              message:
-                error instanceof ApiRequestError
-                  ? error.message
-                  : "Unable to save pricing draft.",
+              message: readonlyAwareErrorMessage(
+                error,
+                "Unable to save pricing draft."
+              ),
             });
           }
           return null;
@@ -611,12 +644,17 @@ export function FeeEvaluationReviewExportPage({
     currentPricingDraftSignature,
     draftState.kind,
     hasPricingDraftLocalChanges,
+    isLifecycleReadonly,
     isCancellingPricingSession,
     needsInitialSeedSave,
     projectId,
   ]);
 
   async function handleGenerateFeeFile(): Promise<void> {
+    if (isLifecycleReadonly) {
+      setDownloadState({ kind: "error", message: lifecycleReadonlyView.message });
+      return;
+    }
     if (generateDisabledReason || downloadState.kind === "running") {
       return;
     }
@@ -651,6 +689,13 @@ export function FeeEvaluationReviewExportPage({
   }
 
   async function handleConfirmFee(): Promise<void> {
+    if (isLifecycleReadonly) {
+      setConfirmFeeActionState({
+        kind: "error",
+        message: lifecycleReadonlyView.message,
+      });
+      return;
+    }
     if (
       draftState.kind !== "ready" ||
       confirmFeeActionState.kind === "confirming" ||
@@ -684,8 +729,7 @@ export function FeeEvaluationReviewExportPage({
       setConfirmFeeActionState({ kind: "success", message: "Fee updated." });
       onBackToWorkbench();
     } catch (error: unknown) {
-      const message =
-        error instanceof ApiRequestError ? error.message : "Unable to update Fee.";
+      const message = readonlyAwareErrorMessage(error, "Unable to update Fee.");
       setConfirmFeeActionState({ kind: "error", message });
       setSaveState({ kind: "error", message });
     }
@@ -695,6 +739,13 @@ export function FeeEvaluationReviewExportPage({
     field: keyof typeof costPreviewValues,
     value: string
   ): void {
+    if (isLifecycleReadonly) {
+      setConfirmFeeActionState({
+        kind: "error",
+        message: lifecycleReadonlyView.message,
+      });
+      return;
+    }
     setCostPreviewValues((current) => ({ ...current, [field]: value }));
     markPricingDraftDirty();
   }
@@ -704,6 +755,13 @@ export function FeeEvaluationReviewExportPage({
     field: FeeEvaluationEditableField,
     value: string
   ): void {
+    if (isLifecycleReadonly) {
+      setConfirmFeeActionState({
+        kind: "error",
+        message: lifecycleReadonlyView.message,
+      });
+      return;
+    }
     setPreviewEdits((current) => ({
       ...current,
       [lineId]: {
@@ -715,6 +773,9 @@ export function FeeEvaluationReviewExportPage({
   }
 
   function markPricingDraftDirty(): void {
+    if (isLifecycleReadonly) {
+      return;
+    }
     hasSessionEditedPricingDraftRef.current = true;
     setHasUserEditedPricingDraft(true);
     setNeedsInitialSeedSave(false);
@@ -729,6 +790,10 @@ export function FeeEvaluationReviewExportPage({
   }
 
   async function handleBackToWorkbench(): Promise<void> {
+    if (isLifecycleReadonly) {
+      onBackToWorkbench();
+      return;
+    }
     const baselinePayload = baselinePricingPayloadRef.current;
     const baselineContext = baselinePricingContextRef.current;
     const hasSessionChanges =
@@ -805,6 +870,12 @@ export function FeeEvaluationReviewExportPage({
 
   return (
     <section className="fee-evaluation-page" aria-label="Fee Evaluation review and export">
+      {isLifecycleReadonly ? (
+        <div className="fee-evaluation-confirm-error" role="status">
+          <strong>{lifecycleReadonlyView.title}</strong>
+          <span>{lifecycleReadonlyView.message}</span>
+        </div>
+      ) : null}
       <FeeEvaluationPreviewTable
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
@@ -821,6 +892,8 @@ export function FeeEvaluationReviewExportPage({
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
+        readOnly={isLifecycleReadonly}
+        readOnlyReason={lifecycleReadonlyView.message}
         saveState={saveState}
         scopeFeeLabel={selectedPreviewTotal}
         rows={visiblePreviewRows}
@@ -981,6 +1054,19 @@ function pricingDraftSignature(payload: FeeEvaluationEditedFileExportRequest): s
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function readonlyAwareErrorMessage(error: unknown, fallback: string): string {
+  const detail =
+    error && typeof error === "object" && "detail" in error
+      ? (error as { detail: unknown }).detail
+      : null;
+  if (
+    isProjectLifecycleReadonlyErrorDetail(detail)
+  ) {
+    return deriveReadonlyApiErrorMessage(detail);
+  }
+  return error instanceof ApiRequestError ? error.message : fallback;
 }
 
 type AutosaveSettlement =

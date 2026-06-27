@@ -20,6 +20,7 @@ import {
   fetchProjectSection2SyncPreview,
   getProjectTestPlanDraft,
   getProject,
+  getProjectLifecycle,
   getProjectBasicInformation,
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
@@ -53,6 +54,7 @@ import {
   type MatrixValidationSummary,
   type Project,
   type ProjectBasicInformationResponse,
+  type ProjectLifecycleResponse,
   type ProjectPackagePreview,
   type ProjectFolderRequiredFormsGenerateRequest,
   type ProjectFolderRequiredFormsGenerateResponse,
@@ -112,6 +114,9 @@ export type ProjectWorkbenchModel = {
   };
   latestLtr: string | null;
   message: string | null;
+  lifecycle: ProjectLifecycleResponse | null;
+  lifecycleLoading: boolean;
+  lifecycleError: string | null;
   activeConfirmedMatrixSnapshot: ConfirmedMatrixSnapshot | null;
   activeConfirmedMatrixLoading: boolean;
   basicInformation: ProjectBasicInformationResponse | null;
@@ -203,6 +208,7 @@ export type ProjectWorkbenchModel = {
   onValidateMatrixDraft: () => Promise<void>;
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
+  onRefreshLifecycle: () => Promise<void>;
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: (
@@ -303,6 +309,9 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [latestProjectFolderPath, setLatestProjectFolderPath] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lifecycle, setLifecycle] = useState<ProjectLifecycleResponse | null>(null);
+  const [lifecycleLoading, setLifecycleLoading] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [activeConfirmedMatrixSnapshot, setActiveConfirmedMatrixSnapshot] =
     useState<ConfirmedMatrixSnapshot | null>(null);
   const [activeConfirmedMatrixLoading, setActiveConfirmedMatrixLoading] = useState(true);
@@ -381,6 +390,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshOfficialFolderCheck();
     void onRefreshPublicDriveUploadPreview();
     void onRefreshBasicInformation();
+    void onRefreshLifecycle();
     void loadMatrixSourceCandidates(
       projectId,
       setMatrixSourceCandidates,
@@ -990,6 +1000,22 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
+  async function onRefreshLifecycle(): Promise<void> {
+    setLifecycleLoading(true);
+    try {
+      const nextLifecycle = await getProjectLifecycle(projectId);
+      setLifecycle(nextLifecycle);
+      setLifecycleError(null);
+    } catch (err) {
+      setLifecycle(null);
+      setLifecycleError(
+        err instanceof Error ? err.message : "Failed to load project lifecycle."
+      );
+    } finally {
+      setLifecycleLoading(false);
+    }
+  }
+
   async function onUploadPublicDriveProjectFolder(): Promise<void> {
     setPublicDriveUploading(true);
     try {
@@ -1339,6 +1365,9 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     folderResources,
     latestLtr,
     message,
+    lifecycle,
+    lifecycleLoading,
+    lifecycleError,
     activeConfirmedMatrixSnapshot,
     activeConfirmedMatrixLoading,
     basicInformation,
@@ -1423,6 +1452,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onValidateMatrixDraft,
     onConfirmMatrixDraft,
     onFolderCreated,
+    onRefreshLifecycle,
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,

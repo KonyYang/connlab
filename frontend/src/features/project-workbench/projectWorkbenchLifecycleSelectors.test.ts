@@ -3,6 +3,7 @@ import {
   deriveProjectWorkbenchLifecycle,
   type WorkbenchLifecycleInput,
 } from "./projectWorkbenchLifecycleSelectors";
+import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 
 describe("deriveProjectWorkbenchLifecycle", () => {
   it("keeps projects without a DL number in temporary planning", () => {
@@ -79,15 +80,51 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
       hasLtr: false,
-      isCancelled: true,
+      lifecycleReadonlyView: stoppedReadonlyView,
       hasActiveMatrix: false,
     });
 
     expect(lifecycle.mode).toBe("overview");
-    expect(lifecycle.stageLabel).toBe("Stopped project");
-    expect(lifecycle.nextAction.title).toBe("No action");
+    expect(lifecycle.stageLabel).toBe("Project stopped");
+    expect(lifecycle.nextAction.title).toBe("Read-only project");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
-    expect(lifecycle.tabs).toEqual([]);
+    expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual(["temporary_planning"]);
+  });
+
+  it("uses lifecycle readonly state instead of legacy cancelled status", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      isCancelled: false,
+      lifecycleReadonlyView: closedCompletedReadonlyView,
+      hasActiveMatrix: true,
+    });
+
+    expect(lifecycle.mode).toBe("package_preparation");
+    expect(lifecycle.stageLabel).toBe("Project closed as completed");
+    expect(lifecycle.nextAction.title).toBe("Read-only project");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
+    expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual([
+      "package_preparation",
+      "execution_console",
+    ]);
+  });
+
+  it("keeps registered setup readable for closed projects without active Matrix authority", () => {
+    const lifecycle = deriveProjectWorkbenchLifecycle({
+      ...baseInput,
+      hasLtr: true,
+      isCancelled: false,
+      lifecycleReadonlyView: closedCompletedReadonlyView,
+      hasActiveMatrix: false,
+      hasCandidateMatrix: true,
+    });
+
+    expect(lifecycle.mode).toBe("overview");
+    expect(lifecycle.stageLabel).toBe("Project closed as completed");
+    expect(lifecycle.nextAction.title).toBe("Read-only project");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
+    expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual(["registered_setup"]);
   });
 
   it("routes missing folder structure to repair action", () => {
@@ -264,6 +301,17 @@ describe("deriveProjectWorkbenchLifecycle", () => {
 const baseInput: WorkbenchLifecycleInput = {
   hasLtr: false,
   isCancelled: false,
+  lifecycleReadonlyView: {
+    mode: "active",
+    readonly: false,
+    title: "Project active",
+    message: "",
+    allowedActions: [],
+    canResume: false,
+    canClose: true,
+    canWriteBusinessData: true,
+    canUseReadonlyPreview: true,
+  },
   hasActiveMatrix: false,
   hasCandidateMatrix: false,
   folderReady: false,
@@ -285,4 +333,29 @@ const baseInput: WorkbenchLifecycleInput = {
   publicDrivePreviewBlockers: [],
   publicDrivePreviewWarnings: [],
   hasPublicDrivePreviewError: false,
+};
+
+const stoppedReadonlyView: ProjectLifecycleReadonlyView = {
+  mode: "stopped_readonly",
+  readonly: true,
+  title: "Project stopped",
+  message:
+    "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed.",
+  allowedActions: ["resume", "close"],
+  canResume: true,
+  canClose: true,
+  canWriteBusinessData: false,
+  canUseReadonlyPreview: true,
+};
+
+const closedCompletedReadonlyView: ProjectLifecycleReadonlyView = {
+  mode: "closed_completed_readonly",
+  readonly: true,
+  title: "Project closed as completed",
+  message: "This project is archived as completed. Project data is read-only.",
+  allowedActions: [],
+  canResume: false,
+  canClose: false,
+  canWriteBusinessData: false,
+  canUseReadonlyPreview: true,
 };
