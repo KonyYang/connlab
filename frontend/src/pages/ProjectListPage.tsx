@@ -1,12 +1,22 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
+  getProjectLifecycle,
   listProjectRegistryRows,
+  type ProjectLifecycleResponse,
   type ProjectRegistryRow
 } from "../api/client";
 import { EmptyState } from "../components/common/EmptyState";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
 import { UiIcon } from "../components/common/UiIcon";
+import {
+  filterRegistryRowsForView,
+  registryLifecycleClassName,
+  registryNextStepLabel,
+  registryStatusLabel,
+  type ProjectRegistryLifecycleRow,
+  type ProjectRegistryView,
+} from "../features/projects-registry/projectRegistryLifecycleViews";
 import "../project-dashboard.css";
 
 type ProjectListPageProps = {
@@ -15,14 +25,7 @@ type ProjectListPageProps = {
 
 type RegistryRow = ProjectRegistryRow;
 
-type QueueName =
-  | "planning"
-  | "matrix_needed"
-  | "ready_to_test"
-  | "folder_blocked"
-  | "completed";
-type ClassifiedQueueName = QueueName;
-type RegistryView = "ongoing" | "planning" | "completed" | "all";
+type RegistryView = ProjectRegistryView;
 type ProjectIdSortDirection = "asc" | "desc";
 type ProjectRegistryViewState = {
   search: string;
@@ -30,26 +33,22 @@ type ProjectRegistryViewState = {
   projectIdSort: ProjectIdSortDirection;
   currentPage: number;
 };
+type ProjectLifecycleOverlay = {
+  lifecycle: ProjectLifecycleResponse | null;
+  error: string | null;
+};
 
 const VIEW_LABELS: Record<RegistryView, string> = {
   all: "All",
   planning: "Planning",
-  completed: "Completed",
+  closed: "Closed",
   ongoing: "On-going",
-};
-
-const STATUS_LABELS: Record<ClassifiedQueueName, string> = {
-  planning: "Planning",
-  matrix_needed: "Matrix Needed",
-  ready_to_test: "Ready to Test",
-  folder_blocked: "Folder Blocked",
-  completed: "Completed",
 };
 
 const VIEW_ORDER: RegistryView[] = [
   "ongoing",
   "planning",
-  "completed",
+  "closed",
   "all",
 ];
 const PROJECT_REGISTRY_STATE_STORAGE_KEY = "connlab.projectRegistry.viewState";
@@ -60,6 +59,7 @@ export function ProjectListPage({
   const initialViewState = useMemo(loadProjectRegistryViewState, []);
   const didHydrateViewState = useRef(false);
   const [rows, setRows] = useState<RegistryRow[]>([]);
+  const [lifecycleByProjectId, setLifecycleByProjectId] = useState<Record<string, ProjectLifecycleOverlay>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialViewState.search);
@@ -92,9 +92,25 @@ export function ProjectListPage({
     });
   }, [search, selectedView, projectIdSort, currentPage]);
 
+  const lifecycleRows = useMemo<ProjectRegistryLifecycleRow[]>(
+    () =>
+      rows.map((row) => {
+        const overlay = lifecycleByProjectId[row.project_id];
+        return {
+          row,
+          lifecycle: overlay?.lifecycle ?? null,
+          lifecycleError: overlay?.error ?? null,
+        };
+      }),
+    [rows, lifecycleByProjectId]
+  );
+  const lifecycleOverlayErrorCount = useMemo(
+    () => lifecycleRows.filter((entry) => entry.lifecycleError).length,
+    [lifecycleRows]
+  );
   const viewRows = useMemo(
-    () => rowsForView(rows, selectedView),
-    [rows, selectedView]
+    () => filterRegistryRowsForView(lifecycleRows, selectedView),
+    [lifecycleRows, selectedView]
   );
   const filteredRows = useMemo(
     () => filterRows(viewRows, deferredSearch),
@@ -114,13 +130,36 @@ export function ProjectListPage({
   async function refreshProjects(): Promise<void> {
     setLoading(true);
     try {
-      setRows(await listProjectRegistryRows());
+      const nextRows = await listProjectRegistryRows();
+      setRows(nextRows);
+      setLifecycleByProjectId({});
       setError(null);
+      void refreshLifecycleOverlays(nextRows);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshLifecycleOverlays(registryRows: RegistryRow[]): Promise<void> {
+    const entries = await Promise.all(
+      registryRows.map(async (row) => {
+        try {
+          const lifecycle = await getProjectLifecycle(row.project_id);
+          return [row.project_id, { lifecycle, error: null }] as const;
+        } catch (err) {
+          return [
+            row.project_id,
+            {
+              lifecycle: null,
+              error: (err as Error).message || "Lifecycle status unavailable",
+            },
+          ] as const;
+        }
+      })
+    );
+    setLifecycleByProjectId(Object.fromEntries(entries));
   }
 
   function toggleProjectIdSort(): void {
@@ -188,6 +227,19 @@ export function ProjectListPage({
         </div>
         {loading && <LoadingState label="Loading project registry..." />}
         {error && <ErrorMessage message={error} />}
+        {!loading && !error && lifecycleOverlayErrorCount > 0 ? (
+          <div className="registry-result-banner registry-lifecycle-warning" role="status" aria-live="polite">
+            <div className="registry-result-banner-text">
+              <strong>
+                Lifecycle status unavailable for {lifecycleOverlayErrorCount}{" "}
+                {lifecycleOverlayErrorCount === 1 ? "project" : "projects"}
+              </strong>
+              <span>
+                Showing base registry information with compatibility labels. Refresh the registry before making lifecycle decisions.
+              </span>
+            </div>
+          </div>
+        ) : null}
         {!loading && !error && rows.length === 0 && (
           <EmptyState
             title="No projects yet"
@@ -239,7 +291,7 @@ export function ProjectListPage({
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map((row) => (
+                {pagedRows.map(({ row, lifecycle }) => (
                   <tr key={row.project_id}>
                     <td className="project-no">
                       {businessIdentifier(row)}
@@ -249,8 +301,12 @@ export function ProjectListPage({
                     </td>
                     <td>{displayText(row.sample_description, "Not recorded")}</td>
                     <td className="registry-test-item-column">{displayText(row.test_item, "Not recorded")}</td>
-                    <td className="registry-status-text">{registryStatusLabel(row)}</td>
-                    <td className="registry-next-step">{nextStepLabel(row)}</td>
+                    <td className="registry-status-text">
+                      <span className={`registry-lifecycle-badge ${registryLifecycleClassName(row, lifecycle)}`}>
+                        {registryStatusLabel(row, lifecycle)}
+                      </span>
+                    </td>
+                    <td className="registry-next-step">{registryNextStepLabel(row, lifecycle)}</td>
                     <td>
                       <button
                         className="row-action"
@@ -338,8 +394,11 @@ function normalizeRegistryView(value: unknown): RegistryView | null {
   if (isRegistryView(value)) {
     return value;
   }
+  if (value === "completed") {
+    return "closed";
+  }
   if (value === "stopped") {
-    return "completed";
+    return "ongoing";
   }
   if (value === "matrix_needed" || value === "ready_to_test" || value === "folder_blocked") {
     return "ongoing";
@@ -355,17 +414,18 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
-function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
+function filterRows(rows: ProjectRegistryLifecycleRow[], search: string): ProjectRegistryLifecycleRow[] {
   const query = search.trim().toLowerCase();
   if (!query) {
     return rows;
   }
-  return rows.filter((row) =>
+  return rows.filter(({ row, lifecycle }) =>
     [
       businessIdentifier(row),
       row.sample_description ?? "",
       row.test_item ?? "",
-      row.status,
+      registryStatusLabel(row, lifecycle),
+      registryNextStepLabel(row, lifecycle),
       row.notes ?? ""
     ]
       .join(" ")
@@ -374,10 +434,13 @@ function filterRows(rows: RegistryRow[], search: string): RegistryRow[] {
   );
 }
 
-function sortRowsByProjectId(rows: RegistryRow[], direction: ProjectIdSortDirection): RegistryRow[] {
+function sortRowsByProjectId(
+  rows: ProjectRegistryLifecycleRow[],
+  direction: ProjectIdSortDirection
+): ProjectRegistryLifecycleRow[] {
   const directionFactor = direction === "asc" ? 1 : -1;
   return rows
-    .map((row, index) => ({ row, index, key: projectIdSortKey(row) }))
+    .map((entry, index) => ({ entry, index, key: projectIdSortKey(entry.row) }))
     .sort((left, right) => {
       const comparison = compareProjectIdSortKeys(left.key, right.key);
       if (comparison !== 0) {
@@ -385,7 +448,7 @@ function sortRowsByProjectId(rows: RegistryRow[], direction: ProjectIdSortDirect
       }
       return left.index - right.index;
     })
-    .map((item) => item.row);
+    .map((item) => item.entry);
 }
 
 type ProjectIdSortKey = {
@@ -452,46 +515,6 @@ function compareProjectIdSortKeys(left: ProjectIdSortKey, right: ProjectIdSortKe
   return left.original.localeCompare(right.original);
 }
 
-function rowsForView(rows: RegistryRow[], view: RegistryView): RegistryRow[] {
-  if (view === "all") {
-    return rows;
-  }
-  if (view === "completed") {
-    return rows.filter((row) => row.status === "cancelled" || classifyQueue(row) === "completed");
-  }
-  if (view === "planning") {
-    return rows.filter(
-      (row) => row.status !== "cancelled" && classifyQueue(row) !== "completed" && !hasRegisteredLtr(row)
-    );
-  }
-  if (view === "ongoing") {
-    return rows.filter(
-      (row) => row.status !== "cancelled" && classifyQueue(row) !== "completed" && hasRegisteredLtr(row)
-    );
-  }
-  return rows;
-}
-
-function classifyQueue(row: RegistryRow): ClassifiedQueueName | null {
-  if (["closed", "folder_created"].includes(row.status)) {
-    return "completed";
-  }
-  if (row.status === "ltr_registered") {
-    return "matrix_needed";
-  }
-  if (!hasRegisteredLtr(row)) {
-    return "planning";
-  }
-  // TASK_317B follow-up: current registry rows do not expose active Matrix or
-  // formal folder readiness fields. Use the safest registered-project queue
-  // rather than inferring Ready to Test or Folder Blocked from generic status.
-  return "matrix_needed";
-}
-
-function hasRegisteredLtr(row: RegistryRow): boolean {
-  return row.has_registered_ltr || hasDisplayText(row.ltr_number);
-}
-
 function businessIdentifier(row: RegistryRow): string {
   return row.display_project_id;
 }
@@ -501,35 +524,6 @@ function footerProjectLabel(view: RegistryView): string {
     return "projects";
   }
   return `${VIEW_LABELS[view]} projects`;
-}
-
-function registryStatusLabel(row: RegistryRow): string {
-  if (row.status === "cancelled") {
-    return "Stopped";
-  }
-  const queue = classifyQueue(row);
-  return queue ? STATUS_LABELS[queue] : "Planning";
-}
-
-function nextStepLabel(row: RegistryRow): string {
-  if (row.status === "cancelled") {
-    return "No action";
-  }
-  const queue = classifyQueue(row);
-  switch (queue) {
-    case "planning":
-      return "Continue planning";
-    case "matrix_needed":
-      return "Open Matrix authority";
-    case "ready_to_test":
-      return "Open Execution map";
-    case "folder_blocked":
-      return "Review request material";
-    case "completed":
-      return "No action";
-    default:
-      return "Continue planning";
-  }
 }
 
 function displayText(value: string | null | undefined, fallback: string): string {
