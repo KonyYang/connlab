@@ -108,13 +108,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "disabled",
       true
     );
-    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
-      "No active Matrix"
-    );
-    expect(screen.getByText(/Open Matrix Editor to prepare the authority map/)).toBeTruthy();
+    expect(screen.getByRole("region", { name: "No active Matrix workspace" })).toBeTruthy();
+    expect(screen.getByText("Visual Examination")).toBeTruthy();
+    expect(screen.getByText("EIA-364-18B")).toBeTruthy();
+    expect(screen.queryByText(/Open Matrix Editor to prepare the authority map/)).toBeNull();
     expect(screen.queryByText("Temporary Planning")).toBeNull();
     expect(screen.queryByText(/This project has no registered LTR Number yet/)).toBeNull();
-    expect(screen.getByText("Project lifecycle")).toBeTruthy();
+    expect(screen.queryByText("Project lifecycle")).toBeNull();
     expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete temporary project" })).toBeTruthy();
     expect(onOpenFeeEvaluation).not.toHaveBeenCalled();
@@ -124,7 +124,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
-    expect(screen.queryByLabelText("Step workspace")).toBeNull();
+    expect(screen.getByLabelText("Step workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
   });
 
   it("keeps temporary no-Matrix lifecycle copy coherent when delete is unavailable", async () => {
@@ -142,18 +143,22 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: null,
     });
 
-    expect(screen.getByText("Temporary project before LTR registration")).toBeTruthy();
+    expect(screen.getByText("Visual Examination")).toBeTruthy();
 
     await waitFor(() => {
-      expect(screen.getByText(/Temporary deletion is unavailable here/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Delete temporary project" })).toHaveProperty(
+        "disabled",
+        true
+      );
     });
 
     expect(screen.queryByText("Stop or safely remove this temporary record")).toBeNull();
     expect(screen.queryByText("Project is not a temporary planning project.")).toBeNull();
-    expect(screen.getByText("Stop this temporary project lifecycle")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete temporary project" })).toHaveProperty(
-      "disabled",
-      true
+    expect(screen.queryByText("Stop this temporary project lifecycle")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Delete temporary project" }).getAttribute("title")
+    ).toBe(
+      "Temporary deletion is unavailable here. Stop the project if work should not continue."
     );
   });
 
@@ -330,7 +335,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       matrixAuthorityDraft: null,
-      matrixCandidateDraft: testPlanDraft,
+      matrixCandidateDraft: noMatrixPreviewDraft,
       packagePreview: null,
     });
 
@@ -349,16 +354,19 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const folderButton = screen.getByRole("button", { name: "Create project folder" });
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toMatch(/active Matrix authority/i);
-    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
-      "No active Matrix"
-    );
-    expect(screen.getByText(/Open Matrix Editor to prepare the authority map/)).toBeTruthy();
+    expect(screen.getByRole("region", { name: "No active Matrix workspace" })).toBeTruthy();
+    expect(screen.getByText("Visual Examination")).toBeTruthy();
+    expect(screen.getByText("EIA-364-18B")).toBeTruthy();
+    expect(screen.getByText("10x min magnification")).toBeTruthy();
+    expect(screen.getByText("No detrimental condition")).toBeTruthy();
+    expect(screen.queryByText(/Open Matrix Editor to prepare the authority map/)).toBeNull();
     expect(screen.queryByText("Matrix authority missing")).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
     expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
-    expect(screen.queryByLabelText("Step workspace")).toBeNull();
+    expect(screen.getByLabelText("Step workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
   });
 
   it("uses header actions and Matrix workspace once active Matrix exists", async () => {
@@ -1514,6 +1522,32 @@ const testPlanDraft: ProjectTestPlanDraft = {
   created_at: "2026-06-11T00:00:00Z",
   updated_at: "2026-06-11T00:00:00Z",
   reviewed_at: null,
+};
+
+const noMatrixPreviewDraft: ProjectTestPlanDraft = {
+  ...testPlanDraft,
+  draft_id: "draft-preview-1",
+  payload: {
+    groups: [
+      {
+        group_key: "group-1",
+        group_label: "1",
+        sample_size: 1,
+        steps: [
+          {
+            raw_token: "1",
+            sequence: 1,
+            test_item: "Visual Examination",
+            method_summary: "EIA-364-18B",
+            condition_summary: "10x min magnification",
+            judgement_criteria: "No detrimental condition",
+          },
+        ],
+      },
+    ],
+    warnings: [],
+    blockers: [],
+  },
 };
 
 const readyPackagePreview: ProjectPackagePreview = {

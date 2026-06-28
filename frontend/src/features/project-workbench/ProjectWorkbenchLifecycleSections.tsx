@@ -1,6 +1,9 @@
 import { useState, type ReactElement } from "react";
 import type {
   ProjectOutputStatusSummary,
+  ProjectTestPlanDraft,
+  ProjectTestPlanDraftGroup,
+  ProjectTestPlanDraftStep,
   TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { ProjectWorkbenchCloseConfirmation } from "./ProjectWorkbenchCloseConfirmation";
@@ -489,45 +492,206 @@ function getTemporaryDeleteBlockerCopy(blocker: string, allowDelete: boolean): s
 }
 
 export function NoMatrixWorkspaceEmptyState({
-  hasCandidateMatrix,
-  hasRegisteredProject,
+  currentFolderTask,
+  matrixDraft,
 }: {
-  hasCandidateMatrix: boolean;
-  hasRegisteredProject: boolean;
+  currentFolderTask: ProjectFolderTaskRow;
+  matrixDraft: ProjectTestPlanDraft | null;
 }): ReactElement {
+  const draftPreview = buildNoMatrixDraftPreview(matrixDraft);
   return (
     <section
       className="runtime-console-no-matrix-empty"
       aria-label="No active Matrix workspace"
     >
-      <div>
-        <p className="eyebrow">Matrix workspace</p>
-        <h3>No active Matrix</h3>
-        <p>
-          Open Matrix Editor to prepare the authority map. The Workbench layout stays
-          available while Matrix authority is being prepared.
-        </p>
+      <div className="runtime-console-no-matrix-main">
+        <table className="runtime-console-no-matrix-table">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Test Item</th>
+              <th>Section</th>
+              <th>Method</th>
+              <th>Condition</th>
+              <th>Requirement</th>
+              <th>Day</th>
+              {draftPreview.groupLabels.map((label, index) => (
+                <th key={`${label}:${index}`}>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {draftPreview.rows.map((row, index) => (
+              <tr key={row.key}>
+                <td>
+                  <span className="runtime-console-no-matrix-index">{index + 1}</span>
+                </td>
+                <th scope="row">{row.testItem}</th>
+                <td>{row.section || ""}</td>
+                <td>{row.method}</td>
+                <td>{row.condition}</td>
+                <td>{row.requirement}</td>
+                <td>{row.day || ""}</td>
+                {draftPreview.groupLabels.map((label, index) => (
+                  <td key={`${row.key}:${label}:${index}`}>
+                    {row.tokensByGroup[label] ? (
+                      <span className="runtime-console-no-matrix-token">
+                        {row.tokensByGroup[label]}
+                      </span>
+                    ) : (
+                      <span className="runtime-console-matrix-empty-cell">-</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <dl>
-        <div>
-          <dt>Project setup</dt>
-          <dd>
-            {hasRegisteredProject
-              ? "Registered project"
-              : "Temporary project before LTR registration"}
-          </dd>
-        </div>
-        <div>
-          <dt>Matrix draft</dt>
-          <dd>{hasCandidateMatrix ? "Draft available" : "No draft active"}</dd>
-        </div>
-        <div>
-          <dt>Downstream outputs</dt>
-          <dd>Available after active Matrix authority is confirmed.</dd>
-        </div>
-      </dl>
+      <div className="runtime-console-no-matrix-side">
+        <aside className="runtime-console-step-workspace" aria-label="Step workspace">
+          <header>
+            <div>
+              <p className="eyebrow">Step Workspace</p>
+              <p className="runtime-console-step-breadcrumb">Matrix authority pending</p>
+            </div>
+          </header>
+          <section className="runtime-console-step-status-card runtime-console-step-status-compact">
+            <div>
+              <span>Lifecycle status</span>
+              <strong className="runtime-console-step-status-empty">Not available</strong>
+            </div>
+          </section>
+        </aside>
+        <section className="runtime-console-folder-inspector" aria-label="Folder Action">
+          <p className="eyebrow">Folder Action</p>
+          <h3>{currentFolderTask.title}</h3>
+          <strong
+            className={`runtime-console-folder-inspector-status status-${currentFolderTask.status}`}
+          >
+            {currentFolderTask.statusLabel}
+          </strong>
+        </section>
+      </div>
     </section>
   );
+}
+
+type NoMatrixDraftPreviewRow = {
+  key: string;
+  testItem: string;
+  section: string;
+  method: string;
+  condition: string;
+  requirement: string;
+  day: string;
+  tokensByGroup: Record<string, string>;
+};
+
+function buildNoMatrixDraftPreview(
+  matrixDraft: ProjectTestPlanDraft | null
+): { groupLabels: string[]; rows: NoMatrixDraftPreviewRow[] } {
+  const groups = matrixDraft?.payload.groups ?? [];
+  if (groups.length === 0 || !groups.some((group) => (group.steps ?? []).length > 0)) {
+    return buildStarterNoMatrixDraftPreview();
+  }
+
+  const groupLabels = groups.map((group, index) =>
+    normalizeNoMatrixGroupLabel(group, `${index + 1}`)
+  );
+  const rowsByKey = new Map<string, NoMatrixDraftPreviewRow>();
+  groups.forEach((group, groupIndex) => {
+    const groupLabel = groupLabels[groupIndex];
+    (group.steps ?? []).forEach((step, stepIndex) => {
+      const row = toNoMatrixDraftRow(step, stepIndex);
+      const existing = rowsByKey.get(row.key) ?? row;
+      existing.tokensByGroup[groupLabel] = normalizeNoMatrixToken(step, stepIndex);
+      rowsByKey.set(row.key, existing);
+    });
+  });
+  const rows = Array.from(rowsByKey.values());
+  return rows.length > 0 ? { groupLabels, rows } : buildStarterNoMatrixDraftPreview();
+}
+
+function buildStarterNoMatrixDraftPreview(): {
+  groupLabels: string[];
+  rows: NoMatrixDraftPreviewRow[];
+} {
+  return {
+    groupLabels: ["1"],
+    rows: [
+      {
+        key: "starter-visual-examination",
+        testItem: "Visual Examination",
+        section: "",
+        method: "EIA-364-18B",
+        condition: "10x min magnification",
+        requirement: "No detrimental condition",
+        day: "",
+        tokensByGroup: { "1": "1" },
+      },
+    ],
+  };
+}
+
+function toNoMatrixDraftRow(
+  step: ProjectTestPlanDraftStep,
+  stepIndex: number
+): NoMatrixDraftPreviewRow {
+  const testItem = normalizeNoMatrixCell(step.test_item ?? step.step_label, "Untitled test");
+  const method = normalizeNoMatrixCell(step.method_summary ?? step.reference_standard, "-");
+  const condition = normalizeNoMatrixCell(step.condition_summary, "-");
+  const requirement = normalizeNoMatrixCell(step.judgement_criteria, "-");
+  const day = normalizeNoMatrixCell(
+    step.duration_hint ??
+      step.estimated_duration_hint ??
+      step.duration_days?.toString() ??
+      step.estimated_duration_days?.toString(),
+    ""
+  );
+  return {
+    key: [
+      testItem,
+      step.source_section ?? "",
+      method,
+      condition,
+      requirement,
+      day,
+      step.sequence?.toString() ?? stepIndex.toString(),
+    ].join("|"),
+    testItem,
+    section: normalizeNoMatrixCell(step.source_section, ""),
+    method,
+    condition,
+    requirement,
+    day,
+    tokensByGroup: {},
+  };
+}
+
+function normalizeNoMatrixGroupLabel(
+  group: ProjectTestPlanDraftGroup,
+  fallback: string
+): string {
+  const label = (group.group_label ?? group.group_key ?? "").trim();
+  const withoutPrefix = label.replace(/^group[\s_-]*/i, "").trim();
+  return withoutPrefix || fallback;
+}
+
+function normalizeNoMatrixToken(step: ProjectTestPlanDraftStep, stepIndex: number): string {
+  return (
+    step.raw_token?.trim() ||
+    step.sequence?.toString() ||
+    `${stepIndex + 1}`
+  );
+}
+
+function normalizeNoMatrixCell(
+  value: string | number | null | undefined,
+  fallback: string
+): string {
+  const text = value === null || value === undefined ? "" : `${value}`.trim();
+  return text || fallback;
 }
 
 export function PackagePreparationMode({

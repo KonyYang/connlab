@@ -518,11 +518,15 @@ export function ProjectWorkbenchLayout({
         ) : isNoMatrixUnifiedWorkspace ? (
           <>
             <NoMatrixWorkspaceEmptyState
-              hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
-              hasRegisteredProject={Boolean(projectNumber)}
+              currentFolderTask={
+                projectFolderTasks.find((task) => task.key === currentProjectFolderTaskKey) ??
+                projectFolderTasks[0]
+              }
+              matrixDraft={matrixCandidateDraft ?? matrixDraft ?? null}
             />
             <ProjectLifecycleManagementPanel
               allowDelete={lifecycle.mode === "temporary_planning"}
+              compactBottom
               deletePreview={lifecycle.mode === "temporary_planning" ? deletePreview : null}
               lifecycleActions={lifecycleActions}
               lifecycleBusy={lifecycleBusy}

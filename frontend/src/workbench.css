@@ -2916,49 +2916,84 @@
 
 .runtime-console-no-matrix-empty {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, 34%);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 25%);
   gap: 18px;
   align-items: start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.runtime-console-no-matrix-main {
+  min-width: 0;
+}
+
+.runtime-console-no-matrix-table {
+  width: 100%;
   border: 1px solid var(--color-border);
+  border-collapse: separate;
+  border-spacing: 0;
   border-radius: 10px;
-  background: var(--color-surface-muted);
-  padding: 18px;
-}
-
-.runtime-console-no-matrix-empty h3,
-.runtime-console-no-matrix-empty p {
-  margin: 0;
-}
-
-.runtime-console-no-matrix-empty > div:first-child {
-  display: grid;
-  gap: 8px;
-}
-
-.runtime-console-no-matrix-empty dl {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-}
-
-.runtime-console-no-matrix-empty dl div {
-  display: grid;
-  gap: 3px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  overflow: hidden;
   background: var(--color-surface);
-  padding: 10px;
+  color: var(--color-ink);
+  font-size: 13px;
 }
 
-.runtime-console-no-matrix-empty dt {
-  color: var(--color-ink-muted);
-  font-size: 0.78rem;
+.runtime-console-no-matrix-table th,
+.runtime-console-no-matrix-table td {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.runtime-console-no-matrix-table thead th {
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.runtime-console-no-matrix-table tbody th {
+  width: 18%;
   font-weight: 700;
 }
 
-.runtime-console-no-matrix-empty dd {
-  margin: 0;
+.runtime-console-no-matrix-table th:last-child,
+.runtime-console-no-matrix-table td:last-child {
+  border-right: 0;
+}
+
+.runtime-console-no-matrix-table tbody tr:last-child th,
+.runtime-console-no-matrix-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.runtime-console-no-matrix-index,
+.runtime-console-no-matrix-token {
+  display: inline-flex;
+  min-width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-surface-muted);
   color: var(--color-ink);
+  font-weight: 800;
+}
+
+.runtime-console-no-matrix-token {
+  border-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+  color: var(--color-primary-strong);
+}
+
+.runtime-console-no-matrix-side {
+  display: grid;
+  gap: 10px;
 }
 
 .runtime-console-inline-warning {
