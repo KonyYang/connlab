@@ -75,7 +75,8 @@ def test_init_db_backfills_lifecycle_columns_for_legacy_projects(
         rows = {
             row.project_id: row
             for row in connection.exec_driver_sql(
-                "SELECT project_id, status, lifecycle_state, closure_type FROM projects"
+                "SELECT project_id, status, lifecycle_state, closure_type, "
+                "close_reason_category FROM projects"
             ).all()
         }
         table_names = {
@@ -87,10 +88,13 @@ def test_init_db_backfills_lifecycle_columns_for_legacy_projects(
 
     assert rows["P-ACTIVE"].lifecycle_state == "active"
     assert rows["P-ACTIVE"].closure_type is None
+    assert rows["P-ACTIVE"].close_reason_category is None
     assert rows["P-STOPPED"].status == "cancelled"
     assert rows["P-STOPPED"].lifecycle_state == "stopped"
     assert rows["P-STOPPED"].closure_type is None
+    assert rows["P-STOPPED"].close_reason_category is None
     assert rows["P-CLOSED"].status == "closed"
     assert rows["P-CLOSED"].lifecycle_state == "closed"
     assert rows["P-CLOSED"].closure_type == "administrative"
+    assert rows["P-CLOSED"].close_reason_category == "other"
     assert "project_lifecycle_events" in table_names

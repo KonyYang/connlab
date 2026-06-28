@@ -1,8 +1,8 @@
 # TASK_345B Project Lifecycle Activation Model API
 
-Status: planned - planning-first backend/API contract draft, not approved for implementation
+Status: approved - Developer implementation authorized after Reviewer readiness callback and user approval; implementation pending
 Lane: project-lifecycle-activation-model-api
-Owner Role: Planner / Reviewer plan gate
+Owner Role: Developer implementation / Reviewer / QA / Integrator
 Created: 2026-06-28
 
 ## Purpose
@@ -17,7 +17,14 @@ This lane defines the implementation contract for replacing the old permanent-re
 - user-facing product semantics must not expose `administrative`;
 - audit/history preserves close and activate time, reason, operator, and previous close information.
 
-This task is a planning-first lane only. It must not implement backend, frontend, test, schema, public-drive LTR workbook authority, Office, StepInstance, Report, AI, permissions, LAN/server, or multi-user product code.
+This task has completed planning-first preparation. Per Planner reconciliation on 2026-06-28, implementation is authorized after:
+
+- Reviewer plan gate passed;
+- Developer planning-first completed;
+- Reviewer implementation-readiness gate passed via conversational callback;
+- user explicitly approved the Developer implementation pass.
+
+Developer implementation must stay inside the backend/API/audit scope and the May Touch list below.
 
 ## Upstream Facts
 
@@ -32,7 +39,7 @@ This task is a planning-first lane only. It must not implement backend, frontend
 
 ## Scope To Plan
 
-TASK_345B must plan the backend/API/audit contract for:
+TASK_345B implements the backend/API/audit contract for:
 
 - unified close request/response semantics;
 - close reason taxonomy: `Completed`, `Failed`, `Cancelled`, `Cannot test`, `Duplicate`, `Other`;
@@ -43,9 +50,8 @@ TASK_345B must plan the backend/API/audit contract for:
 - migration/backfill strategy if the implementation requires enum, column, or metadata changes;
 - focused backend test scope.
 
-## Non-Goals
+## Non-Goals / Forbidden Scope
 
-- Do not implement product code in this Planner pass.
 - Do not change frontend Workbench, Projects registry, or API client behavior.
 - Do not update write guards; that belongs to a later TASK_345C lane.
 - Do not implement Temporary Apply/Register LTR UI or public-drive LTR workbook authority writes.
@@ -54,16 +60,36 @@ TASK_345B must plan the backend/API/audit contract for:
 
 ## May Touch
 
+Developer implementation may touch only:
+
+- `backend/domain/enums.py`
+- `backend/domain/models.py`
+- `backend/domain/__init__.py`
+- `backend/application/project_lifecycle_state_service.py`
+- `backend/api/routes_project.py`
+- `backend/api/dependencies.py`
+- `backend/api/lifecycle_errors.py`
+- `backend/infrastructure/storage/database.py`
+- `backend/infrastructure/storage/models.py`
+- `backend/infrastructure/storage/repositories/project.py`
+- `backend/infrastructure/storage/repositories/project_lifecycle_event.py`
+- `tests/unit/test_project_lifecycle_state_service.py`
+- `tests/integration/test_project_lifecycle_api.py`
+- `tests/integration/test_project_lifecycle_migration.py`
+- `tests/integration/test_project_registry_summary_api.py`
+- `tests/unit/test_project_lifecycle_write_guard.py` only for baseline assertions that must remain unchanged until TASK_345C
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_developer.md`
+
+Planner/board reconciliation may touch only:
+
 - `tasks/TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API.md`
 - `docs/task_345b_project_lifecycle_activation_model_api_plan.md`
 - `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_planner.md`
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_reconciliation_planner.md`
 - `docs/task_board.md` planned lane row and next-step text only
-
-Future implementation after Reviewer/user approval may propose backend/API/test paths in its own Developer plan, but those paths are locked during this Planner pass.
 
 ## Must Not Touch
 
-- `backend/`
 - `frontend/`
 - `tests/`
 - `frontend/src/api/client.ts`
@@ -75,35 +101,41 @@ Future implementation after Reviewer/user approval may propose backend/API/test 
 - `docs/project_management/`
 - unrelated governance/orchestration residuals
 
+`tests/` is generally locked except for the specific TASK_345B backend test files named in May Touch.
+
 ## Locked Paths
 
-- All product implementation paths are locked for this Planner lane.
-- Backend/API/schema/test files are candidate future implementation paths only; they are not editable until TASK_345B passes Reviewer plan gate and receives explicit implementation approval.
+- All frontend, API-client, Projects registry, public-drive LTR authority, Office, Matrix, Fee, Folder, Basic Information, Required Forms, Approval Package, Public Drive, StepInstance, Report, AI, permissions, LAN/server, and multi-user paths are locked.
+- Backend/API/schema/test paths outside the TASK_345B May Touch list are locked.
 - Existing dirty workspace residuals remain outside this lane and must not be packaged with TASK_345B.
 
-## Evidence File
+## Evidence Files
 
 - `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_planner.md`
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_developer.md`
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_reconciliation_planner.md`
 
-## Validation Gate
+## Developer Validation Gate
 
-- TASK_345B task, plan, evidence, and board row exist.
-- Lane status remains `planned`, not approved implementation.
-- May Touch, Must Not Touch, Locked Paths, Evidence, Validation Gate, and Merge Gate are explicit.
-- Plan names downstream dependencies: write guard, Workbench UI, Projects registry, Temporary Apply/Register LTR entrypoint, QA/integration.
-- `git diff --check` passes for TASK_345B planning files and board update.
-- Status check records any existing dirty product paths as outside this Planner package.
+- Focused backend lifecycle state service tests pass.
+- Focused lifecycle API tests pass.
+- Lifecycle migration tests pass.
+- Registry summary lifecycle compatibility tests pass when affected.
+- `tests/unit/test_project_lifecycle_write_guard.py` remains unchanged in behavior except baseline assertions explicitly needed to preserve TASK_345C boundary.
+- `git diff --check` passes for TASK_345B changed files.
+- Status check proves no frontend/API-client/public-drive LTR authority/future-scope files are included.
 
 ## Merge Gate
 
-- Reviewer plan gate must pass before TASK_345B can be accepted as a backend/API implementation plan.
-- User approval is required before any Developer implementation may start.
-- Orchestrator must not route Developer from this planned lane.
+- Developer evidence reaches `ready_for_review`.
+- Reviewer implementation gate passes with no blocking findings.
+- QA gate is required if Reviewer or Integrator determines migration/API smoke needs independent validation; otherwise Integrator may package after Reviewer pass and focused backend validation.
+- Integrator confirms no frontend/API-client/public-drive LTR authority/future-scope files are included.
 
 ## Recommended Next Role
 
-Reviewer plan gate for `TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API`.
+Developer implementation pass for `TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API`.
 
 ## Stop Point
 
-Stop after creating/updating this task, plan, Planner evidence, and planned board row. Do not route Developer implementation.
+Stop after Developer implementation evidence reaches `ready_for_review`. Do not implement TASK_345C write guards, frontend UI, Projects registry, Temporary LTR authority, or future scope in this task.

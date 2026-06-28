@@ -20,6 +20,7 @@ from backend.domain.enums import (
     LtrStatus,
     PrecheckStatus,
     ProjectClosureType,
+    ProjectCloseReasonCategory,
     ProjectLifecycleEventType,
     ProjectLifecycleState,
     ProjectStatus,
@@ -43,6 +44,7 @@ class Project:
     created_on: date | None = None
     lifecycle_state: ProjectLifecycleState = ProjectLifecycleState.ACTIVE
     closure_type: ProjectClosureType | None = None
+    close_reason_category: ProjectCloseReasonCategory | None = None
     stopped_reason: str | None = None
     stopped_at: str | None = None
     stopped_by: str | None = None
@@ -67,6 +69,7 @@ class Project:
         *,
         lifecycle_state: ProjectLifecycleState,
         closure_type: ProjectClosureType | None = None,
+        close_reason_category: ProjectCloseReasonCategory | None = None,
         stopped_reason: str | None = None,
         stopped_at: str | None = None,
         stopped_by: str | None = None,
@@ -83,6 +86,7 @@ class Project:
             self,
             lifecycle_state=lifecycle_state,
             closure_type=closure_type,
+            close_reason_category=close_reason_category,
             stopped_reason=stopped_reason,
             stopped_at=stopped_at,
             stopped_by=stopped_by,

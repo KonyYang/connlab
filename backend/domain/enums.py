@@ -27,10 +27,21 @@ class ProjectLifecycleState(StrEnum):
 
 
 class ProjectClosureType(StrEnum):
-    """Closure reason category for closed projects."""
+    """Legacy closure compatibility category for closed projects."""
 
     COMPLETED = "completed"
     ADMINISTRATIVE = "administrative"
+
+
+class ProjectCloseReasonCategory(StrEnum):
+    """Business close reason category exposed by lifecycle APIs."""
+
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    CANNOT_TEST = "cannot_test"
+    DUPLICATE = "duplicate"
+    OTHER = "other"
 
 
 class ProjectLifecycleEventType(StrEnum):
@@ -38,6 +49,8 @@ class ProjectLifecycleEventType(StrEnum):
 
     STOP = "stop"
     RESUME = "resume"
+    CLOSE = "close"
+    ACTIVATE = "activate"
     CLOSE_COMPLETED = "close_completed"
     CLOSE_ADMINISTRATIVE = "close_administrative"
 

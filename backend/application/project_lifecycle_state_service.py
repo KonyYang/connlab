@@ -12,6 +12,7 @@ from uuid import uuid4
 from backend.domain import (
     LtrRecord,
     Project,
+    ProjectCloseReasonCategory,
     ProjectClosureType,
     ProjectLifecycleEvent,
     ProjectLifecycleEventType,
@@ -93,12 +94,34 @@ class CloseAdministrativeProjectCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class CloseProjectLifecycleCommand:
+    """Command for unified business project closure."""
+
+    project_id: str
+    reason_category: ProjectCloseReasonCategory | str
+    note: str
+    operator: str | None = None
+    compatibility_metadata: dict[str, object] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ActivateProjectLifecycleCommand:
+    """Command for activating stopped or closed project work."""
+
+    project_id: str
+    reason: str
+    operator: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectLifecycleView:
     """API-facing lifecycle state view."""
 
     project_id: str
     lifecycle_state: ProjectLifecycleState
     closure_type: ProjectClosureType | None
+    close_reason_category: ProjectCloseReasonCategory | None
+    close_reason_label: str | None
     status: str
     status_label: str
     readonly: bool
@@ -255,6 +278,7 @@ class ProjectLifecycleStateService:
             project.with_status(previous_status),
             lifecycle_state=ProjectLifecycleState.ACTIVE,
             closure_type=None,
+            close_reason_category=None,
             resumed_reason=reason,
             resumed_at=now,
             resumed_by=command.operator,
@@ -281,30 +305,15 @@ class ProjectLifecycleStateService:
         self,
         command: CloseCompletedProjectCommand,
     ) -> ProjectLifecycleView:
-        """Close a formal project as completed with explicit manual confirmation."""
+        """Compatibility wrapper for completed closure."""
         project = self._get_project(command.project_id)
-        if project.lifecycle_state is ProjectLifecycleState.CLOSED:
-            raise ProjectLifecycleStateError("Project is already closed.")
         close_note = _required_text(command.close_note, "Close completed note")
-        if not command.manual_completion_confirmed:
-            raise ProjectLifecycleStateError(
-                "Manual completion confirmation is required."
-            )
-        if not command.output_summary_acknowledged:
-            raise ProjectLifecycleStateError(
-                "Output summary acknowledgement is required."
-            )
-        if not self._has_formal_identity(project):
-            raise ProjectLifecycleStateError(
-                "Completed closure requires a formal or registered project."
-            )
-
         ltrs = list(self._ltr_store.list_by_project(project.project_id))
         output_summary = self._output_status_summary(project.project_id)
         summary = {
             "close_note": close_note,
-            "manual_completion_confirmed": True,
-            "output_summary_acknowledged": True,
+            "manual_completion_confirmed": command.manual_completion_confirmed,
+            "output_summary_acknowledged": command.output_summary_acknowledged,
             "signals": {
                 "project_identity": project.project_no or _first_ltr_identity(ltrs),
                 "registered_ltr": bool(ltrs),
@@ -316,56 +325,147 @@ class ProjectLifecycleStateService:
                 "StepInstance does not exist."
             ),
         }
-        now = self._clock()
-        updated = project.with_status(ProjectStatus.CLOSED).with_lifecycle(
-            lifecycle_state=ProjectLifecycleState.CLOSED,
-            closure_type=ProjectClosureType.COMPLETED,
-            closed_reason=close_note,
-            closed_at=now,
-            closed_by=command.operator,
-            completion_summary_json=json.dumps(summary, ensure_ascii=False),
-        )
-        self._project_store.update(updated)
-        self._event_store.create(
-            self._event(
-                project=project,
-                event_type=ProjectLifecycleEventType.CLOSE_COMPLETED,
-                new_state=ProjectLifecycleState.CLOSED,
-                new_closure_type=ProjectClosureType.COMPLETED,
-                reason=close_note,
+        return self.close_project(
+            CloseProjectLifecycleCommand(
+                project_id=command.project_id,
+                reason_category=ProjectCloseReasonCategory.COMPLETED,
+                note=close_note,
                 operator=command.operator,
-                metadata=summary,
-                created_at=now,
+                compatibility_metadata={
+                    **summary,
+                    "legacy_route": "close_completed",
+                },
             )
         )
-        return self._view(updated, audit_recorded=True)
 
     def close_administrative_project(
         self,
         command: CloseAdministrativeProjectCommand,
     ) -> ProjectLifecycleView:
-        """Close any project administratively with a required reason."""
+        """Compatibility wrapper for legacy administrative closure."""
+        reason = _required_text(command.reason, "Close reason")
+        return self.close_project(
+            CloseProjectLifecycleCommand(
+                project_id=command.project_id,
+                reason_category=ProjectCloseReasonCategory.OTHER,
+                note=reason,
+                operator=command.operator,
+                compatibility_metadata={"legacy_route": "close_administrative"},
+            )
+        )
+
+    def close_project(
+        self,
+        command: CloseProjectLifecycleCommand,
+    ) -> ProjectLifecycleView:
+        """Close a project with one business close reason category."""
         project = self._get_project(command.project_id)
         if project.lifecycle_state is ProjectLifecycleState.CLOSED:
             raise ProjectLifecycleStateError("Project is already closed.")
-        reason = _required_text(command.reason, "Administrative closure reason")
+
+        reason_category = _coerce_close_reason_category(command.reason_category)
+        note = _required_text(command.note, "Close note")
         now = self._clock()
+        legacy_closure_type = _legacy_closure_type(reason_category)
+        previous_project_status = (
+            self._latest_previous_status(project.project_id)
+            if project.lifecycle_state is ProjectLifecycleState.STOPPED
+            else project.status
+        )
+        if previous_project_status is None:
+            previous_project_status = project.status
+        metadata = {
+            "previous_project_status": previous_project_status.value,
+            "close_reason_category": reason_category.value,
+            "close_reason_label": _close_reason_label(reason_category),
+            "close_note": note,
+            "legacy_closure_type": legacy_closure_type.value,
+        }
+        if command.compatibility_metadata:
+            metadata.update(command.compatibility_metadata)
+        completion_summary = (
+            json.dumps(metadata, ensure_ascii=False)
+            if reason_category is ProjectCloseReasonCategory.COMPLETED
+            and command.compatibility_metadata
+            else None
+        )
         updated = project.with_status(ProjectStatus.CLOSED).with_lifecycle(
             lifecycle_state=ProjectLifecycleState.CLOSED,
-            closure_type=ProjectClosureType.ADMINISTRATIVE,
-            closed_reason=reason,
+            closure_type=legacy_closure_type,
+            close_reason_category=reason_category,
+            closed_reason=note,
             closed_at=now,
             closed_by=command.operator,
+            completion_summary_json=completion_summary,
         )
         self._project_store.update(updated)
         self._event_store.create(
             self._event(
                 project=project,
-                event_type=ProjectLifecycleEventType.CLOSE_ADMINISTRATIVE,
+                event_type=ProjectLifecycleEventType.CLOSE,
                 new_state=ProjectLifecycleState.CLOSED,
-                new_closure_type=ProjectClosureType.ADMINISTRATIVE,
+                new_closure_type=legacy_closure_type,
+                reason=note,
+                operator=command.operator,
+                metadata=metadata,
+                created_at=now,
+            )
+        )
+        return self._view(updated, audit_recorded=True)
+
+    def activate_project(
+        self,
+        command: ActivateProjectLifecycleCommand,
+    ) -> ProjectLifecycleView:
+        """Activate stopped or closed project work using recorded prior status."""
+        project = self._get_project(command.project_id)
+        if project.lifecycle_state is ProjectLifecycleState.ACTIVE:
+            raise ProjectLifecycleStateError("Project is already active.")
+
+        previous_status = self._latest_restorable_status(project.project_id)
+        if previous_status is None:
+            raise ProjectLifecycleStateError(
+                "Cannot activate project because previous project status is unavailable."
+            )
+
+        now = self._clock()
+        reason = _required_text(command.reason, "Activation reason")
+        metadata = {
+            "previous_project_status": previous_status.value,
+            "restored_project_status": previous_status.value,
+            "previous_lifecycle_state": project.lifecycle_state.value,
+            "previous_close_reason_category": _optional_enum_value(
+                project.close_reason_category
+            ),
+            "previous_closed_note": project.closed_reason,
+            "previous_closure_type": _optional_enum_value(project.closure_type),
+            "activation_reason": reason,
+        }
+        updated = replace(
+            project.with_status(previous_status),
+            lifecycle_state=ProjectLifecycleState.ACTIVE,
+            closure_type=None,
+            close_reason_category=None,
+            stopped_reason=None,
+            stopped_at=None,
+            stopped_by=None,
+            resumed_reason=reason,
+            resumed_at=now,
+            resumed_by=command.operator,
+            closed_reason=None,
+            closed_at=None,
+            closed_by=None,
+            completion_summary_json=None,
+        )
+        self._project_store.update(updated)
+        self._event_store.create(
+            self._event(
+                project=project,
+                event_type=ProjectLifecycleEventType.ACTIVATE,
+                new_state=ProjectLifecycleState.ACTIVE,
                 reason=reason,
                 operator=command.operator,
+                metadata=metadata,
                 created_at=now,
             )
         )
@@ -439,6 +539,18 @@ class ProjectLifecycleStateService:
                     return None
         return None
 
+    def _latest_restorable_status(self, project_id: str) -> ProjectStatus | None:
+        for event in reversed(list(self._event_store.list_by_project(project_id))):
+            payload = _metadata(event.metadata_json)
+            for key in ("previous_project_status", "restored_project_status"):
+                value = payload.get(key)
+                if isinstance(value, str):
+                    try:
+                        return ProjectStatus(value)
+                    except ValueError:
+                        return None
+        return None
+
     def _event(
         self,
         *,
@@ -478,6 +590,12 @@ class ProjectLifecycleStateService:
             project_id=project.project_id,
             lifecycle_state=project.lifecycle_state,
             closure_type=project.closure_type,
+            close_reason_category=project.close_reason_category,
+            close_reason_label=(
+                _close_reason_label(project.close_reason_category)
+                if project.close_reason_category
+                else None
+            ),
             status=project.status.value,
             status_label=_status_label(project),
             readonly=project.lifecycle_state is not ProjectLifecycleState.ACTIVE,
@@ -496,7 +614,7 @@ class ProjectLifecycleStateService:
 def _required_text(value: str | None, label: str) -> str:
     text = (value or "").strip()
     if not text:
-        if label == "Administrative closure reason":
+        if label == "Close reason":
             raise ProjectLifecycleStateError("reason is required.")
         raise ProjectLifecycleStateError(f"{label} is required.")
     return text
@@ -530,21 +648,57 @@ def _first_ltr_identity(ltrs: Sequence[object]) -> str | None:
     return getattr(ltrs[0], "ltr_number", None)
 
 
+def _coerce_close_reason_category(
+    value: ProjectCloseReasonCategory | str,
+) -> ProjectCloseReasonCategory:
+    try:
+        return (
+            value
+            if isinstance(value, ProjectCloseReasonCategory)
+            else ProjectCloseReasonCategory(str(value))
+        )
+    except ValueError as exc:
+        raise ProjectLifecycleStateError("Unsupported close reason category.") from exc
+
+
+def _legacy_closure_type(
+    reason_category: ProjectCloseReasonCategory,
+) -> ProjectClosureType:
+    if reason_category is ProjectCloseReasonCategory.COMPLETED:
+        return ProjectClosureType.COMPLETED
+    return ProjectClosureType.ADMINISTRATIVE
+
+
+def _close_reason_label(reason_category: ProjectCloseReasonCategory) -> str:
+    labels = {
+        ProjectCloseReasonCategory.COMPLETED: "Completed",
+        ProjectCloseReasonCategory.FAILED: "Failed",
+        ProjectCloseReasonCategory.CANCELLED: "Cancelled",
+        ProjectCloseReasonCategory.CANNOT_TEST: "Cannot test",
+        ProjectCloseReasonCategory.DUPLICATE: "Duplicate",
+        ProjectCloseReasonCategory.OTHER: "Other",
+    }
+    return labels[reason_category]
+
+
 def _status_label(project: Project) -> str:
     if project.lifecycle_state is ProjectLifecycleState.STOPPED:
         return "Stopped"
-    if project.closure_type is ProjectClosureType.COMPLETED:
-        return "Closed: Completed"
-    if project.closure_type is ProjectClosureType.ADMINISTRATIVE:
-        return "Closed: Administrative"
+    if project.lifecycle_state is ProjectLifecycleState.CLOSED:
+        reason_category = project.close_reason_category
+        if reason_category is None and project.closure_type is ProjectClosureType.COMPLETED:
+            reason_category = ProjectCloseReasonCategory.COMPLETED
+        if reason_category is None:
+            reason_category = ProjectCloseReasonCategory.OTHER
+        return f"Closed: {_close_reason_label(reason_category)}"
     return "Active"
 
 
 def _allowed_actions(project: Project) -> tuple[str, ...]:
     if project.lifecycle_state is ProjectLifecycleState.CLOSED:
-        return ()
+        return ("activate",)
     if project.lifecycle_state is ProjectLifecycleState.STOPPED:
-        return ("resume", "close")
+        return ("activate", "resume", "close")
     return ("stop", "close")
 
 

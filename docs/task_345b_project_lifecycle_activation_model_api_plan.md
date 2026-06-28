@@ -1,23 +1,25 @@
 # TASK_345B Project Lifecycle Activation Model API Plan
 
-Status: planned - ready for Reviewer plan gate, not approved for implementation
+Status: implementation authorized - pending Developer implementation
 Task: `TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API`
 Lane: `project-lifecycle-activation-model-api`
-Role: Planner
+Role: Planner / Developer planning-first
 Date: 2026-06-28
 
 ## 1. Current Phase And Permission
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
 
-Current active implementation lane: none.
+Current active implementation lane: `TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API` is authorized for Developer implementation after Planner reconciliation.
 
 Why Planner is allowed:
 
 - TASK_345A contract passed Reviewer plan gate per the current Orchestrator/User delegation.
 - The user explicitly replied `批准` for downstream lane creation.
-- The requested legal action is limited to creating/activating the first downstream formal planning-first lane.
-- Product code edits and Developer implementation routing are explicitly forbidden.
+- Developer planning-first completed and this plan now contains the implementation strategy.
+- Reviewer implementation-readiness passed via conversational callback, but no separate Reviewer evidence/checkpoint file exists in the repository.
+- The user explicitly approved the Developer implementation pass after readiness.
+- Planner reconciliation created source-of-truth evidence for that authorization gap. Product code edits are still forbidden during Planner reconciliation, but Developer implementation may proceed after Orchestrator routing.
 
 ## 2. Evidence Read
 
@@ -81,22 +83,171 @@ The future implementation plan should define:
 - migration/backfill strategy;
 - focused tests and integration/API checks.
 
-## 6. API Shape Questions For Reviewer Gate
+## 6. Developer Planning-First API Strategy
 
-Reviewer should confirm the plan can leave these as implementation details or should force a specific answer before Developer implementation:
+Developer planning inspection resolved the earlier API shape questions into the following concrete implementation strategy. This is still planning only; no backend/API/schema/test product code is changed by this pass.
 
-- Whether the implementation should introduce new endpoint paths such as `POST /api/projects/{project_id}/lifecycle/close` and `POST /api/projects/{project_id}/lifecycle/activate`, while preserving old split routes as compatibility wrappers.
-- Whether `ProjectClosureType` should be replaced, extended, or compatibility-mapped to a new close reason enum/value object.
-- Whether activation reason/note is required or optional in backend v1.
+### 6.1 Unified Close Endpoint And Compatibility
 
-These are not blockers for creating TASK_345B as a planned lane, because they are exactly what Reviewer plan gate should evaluate before any Developer implementation starts.
+Implement the new product contract through:
 
-## 7. Future Implementation Candidate Paths
+- `POST /api/projects/{project_id}/lifecycle/close`
+- request fields:
+  - `reason_category`: one of `completed`, `failed`, `cancelled`, `cannot_test`, `duplicate`, `other`;
+  - `note`: required non-empty operator note for every reason category;
+  - `operator`: optional operator identity.
+- response: the normal lifecycle response with business close reason fields and no user-facing `administrative` value.
 
-These are not editable in this Planner pass. They are candidate paths for a later Developer implementation only after Reviewer plan gate and explicit user approval:
+Preserve the existing split routes only as compatibility wrappers:
+
+- `POST /api/projects/{project_id}/lifecycle/close-completed` maps to the unified close service with `reason_category="completed"` and `note=close_note`. Existing confirmation/ack fields may be preserved in event metadata when supplied, but the unified endpoint does not require a special completed-only acknowledgement.
+- `POST /api/projects/{project_id}/lifecycle/close-administrative` maps to the unified close service with `reason_category="other"` and `note=reason`, plus compatibility metadata such as `legacy_route="close_administrative"`.
+- Compatibility wrapper responses must not expose `administrative` as the API-facing business close reason. `administrative` remains storage/legacy compatibility only.
+
+### 6.2 Close Reason Compatibility Model And Migration
+
+Add a new business close reason concept, for example `ProjectCloseReasonCategory`, with values:
+
+- `completed`
+- `failed`
+- `cancelled`
+- `cannot_test`
+- `duplicate`
+- `other`
+
+Add a persisted project-level close reason category field, for example `close_reason_category VARCHAR(32)`, rather than overloading `closed_reason`, because `closed_reason` currently stores the operator note.
+
+Compatibility rules:
+
+- Existing `closure_type="completed"` rows backfill `close_reason_category="completed"`.
+- Existing `closure_type="administrative"` rows backfill `close_reason_category="other"`.
+- Existing rows with `lifecycle_state="closed"` and no closure type backfill `close_reason_category="other"`.
+- `ProjectClosureType` remains available internally for migration/read compatibility, but product/API semantics use the new close reason category.
+- For compatibility only, completed reason may keep `closure_type="completed"` and all non-completed reasons may keep `closure_type="administrative"` until a later cleanup lane removes the legacy field.
+
+The lifecycle API response should add business fields such as:
+
+- `close_reason_category`
+- `close_reason_label`
+- `closed_note` or keep `closed_reason` as the note field with clear docs
+
+It may keep the legacy `closure_type` field temporarily to avoid breaking older clients, but it must not return `administrative` as business meaning. If retained, the response should either return `completed` for completed rows and `null` for non-completed rows, or mark `closure_type` as compatibility-only while the new business fields drive all user-facing logic.
+
+### 6.3 Activate Endpoint Semantics
+
+Implement:
+
+- `POST /api/projects/{project_id}/lifecycle/activate`
+- request fields:
+  - `reason`: required non-empty activation reason/note;
+  - `operator`: optional operator identity.
+
+Activation is allowed from:
+
+- `stopped`
+- `closed`, including rows whose close reason category is `completed`
+
+Activation is rejected from:
+
+- `active`, with a structured `409 project_lifecycle_conflict`.
+- closed legacy rows where no recoverable previous project status exists in audit metadata or new persisted compatibility metadata. The implementation must not guess a project progress status such as `draft` or `ltr_registered`.
+
+Activation result:
+
+- sets `lifecycle_state="active"`;
+- clears close overlay fields that should no longer describe the current state, while preserving close history in `project_lifecycle_events`;
+- restores `Project.status` from a recorded previous project status;
+- records `resumed_*` fields for compatibility or introduces explicit `activated_*` API aliases, but the public action vocabulary is `activate`.
+
+### 6.4 Activation Reason Requiredness
+
+Activation reason/note is required in v1.
+
+Reason:
+
+- TASK_345A requires close/activate audit history to preserve reasons, operator, time, and previous close information.
+- A required note avoids ambiguous activation from closed Completed or other business-close reasons.
+- Frontend lanes can later provide concise inline validation around this backend rule.
+
+### 6.5 Audit / Event Ledger Metadata
+
+Add new event type(s):
+
+- `close`
+- `activate`
+
+Keep existing `stop`, `resume`, `close_completed`, and `close_administrative` readable for legacy history.
+
+New close events must record:
+
+- previous lifecycle state;
+- new lifecycle state;
+- previous project status;
+- close reason category;
+- close note;
+- operator;
+- timestamp;
+- legacy closure type mapping when applicable;
+- any compatibility route metadata.
+
+New activate events must record:
+
+- previous lifecycle state;
+- previous project status;
+- restored project status;
+- previous close reason category;
+- previous close note;
+- previous closure type when present;
+- activation reason;
+- operator;
+- timestamp.
+
+`project_lifecycle_events.metadata_json` is sufficient for these metadata fields in v1. A new event table is not planned.
+
+### 6.6 Error Contract
+
+Lifecycle action errors should keep the structured 409 shape:
+
+- `code`
+- `project_id`
+- `lifecycle_state`
+- `message`
+- `allowed_actions`
+
+Add business close/activation fields where useful:
+
+- `close_reason_category`
+- `close_reason_label`
+- `can_activate`
+
+Do not expose `administrative` in error `message` or business fields. If legacy `closure_type` remains in error details for compatibility, it must not be used as user-facing guidance.
+
+### 6.7 Tests And Migration Checks
+
+Future implementation tests should cover:
+
+- unified close endpoint closes active formal/registered projects with each reason category;
+- unified close endpoint can close temporary projects only when the accepted business contract allows it, without public-drive LTR authority side effects;
+- completed close no longer requires a special completed-only API path;
+- compatibility `close-completed` wrapper maps to `reason_category="completed"`;
+- compatibility `close-administrative` wrapper maps to `reason_category="other"` and does not return `administrative` as business reason;
+- stopped activation restores previous project status from stop event metadata;
+- closed activation restores previous project status from close event metadata;
+- closed completed activation is allowed when previous status is recoverable;
+- legacy closed without recoverable previous status returns a structured conflict instead of guessing;
+- activation requires a non-empty reason;
+- event ledger stores close and activate metadata, including previous close type/reason;
+- migration backfills `close_reason_category` for completed/admin/unknown legacy closed rows;
+- old lifecycle baseline tests are updated from `resume`/split close expectations to `activate`/unified close expectations;
+- write guards are not changed in TASK_345B except where lifecycle response allowed action metadata is required for the new API. Full write guard rule changes remain TASK_345C.
+
+## 7. Future Implementation File List
+
+These files are not editable in this Developer planning-first pass. They are the exact future implementation candidate list after Reviewer implementation-readiness gate and explicit implementation routing:
 
 - `backend/domain/enums.py`
 - `backend/domain/models.py`
+- `backend/domain/__init__.py`
 - `backend/application/project_lifecycle_state_service.py`
 - `backend/api/routes_project.py`
 - `backend/api/dependencies.py`
@@ -109,6 +260,9 @@ These are not editable in this Planner pass. They are candidate paths for a late
 - `tests/integration/test_project_lifecycle_api.py`
 - `tests/integration/test_project_lifecycle_migration.py`
 - `tests/integration/test_project_registry_summary_api.py`
+- `tests/unit/test_project_lifecycle_write_guard.py` only for baseline assertions that must remain unchanged until TASK_345C
+
+Implementation should not modify frontend files, `frontend/src/api/client.ts`, Projects registry files, public-drive LTR workbook authority code, or write-guard behavior beyond necessary response compatibility.
 
 ## 8. Downstream Lane Dependencies
 
@@ -122,28 +276,45 @@ TASK_345B is serially before:
 
 TASK_345G public-drive LTR workbook authority writing remains separate and later; it must not be pulled into TASK_345B.
 
-## 9. Proposed Lane Definition
+## 9. Developer Planning-First Lane Boundary
 
 Lane: `project-lifecycle-activation-model-api`
 
 Task: `TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API`
 
-Status: `planned`
+Status: `approved - implementation authorized, pending Developer implementation`
 
-Owner Role: Planner, then Reviewer plan gate
+Owner Role: Developer implementation, then Reviewer/QA/Integrator gates
 
 Depends On:
 
 - TASK_345A accepted contract;
 - user approval for downstream lane creation;
+- Reviewer plan gate pass from the current Orchestrator/User delegation;
+- Developer planning-first completion;
+- Reviewer implementation-readiness callback pass;
+- user approval for Developer implementation;
 - current repository lifecycle state/API evidence.
 
-May Touch:
+May Touch For Developer Implementation:
 
-- `tasks/TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API.md`
-- `docs/task_345b_project_lifecycle_activation_model_api_plan.md`
-- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_planner.md`
-- `docs/task_board.md` planned lane row and next-step text only
+- `backend/domain/enums.py`
+- `backend/domain/models.py`
+- `backend/domain/__init__.py`
+- `backend/application/project_lifecycle_state_service.py`
+- `backend/api/routes_project.py`
+- `backend/api/dependencies.py`
+- `backend/api/lifecycle_errors.py`
+- `backend/infrastructure/storage/database.py`
+- `backend/infrastructure/storage/models.py`
+- `backend/infrastructure/storage/repositories/project.py`
+- `backend/infrastructure/storage/repositories/project_lifecycle_event.py`
+- `tests/unit/test_project_lifecycle_state_service.py`
+- `tests/integration/test_project_lifecycle_api.py`
+- `tests/integration/test_project_lifecycle_migration.py`
+- `tests/integration/test_project_registry_summary_api.py`
+- `tests/unit/test_project_lifecycle_write_guard.py` only for baseline assertions that must remain unchanged until TASK_345C
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_developer.md`
 
 Must Not Touch:
 
@@ -161,40 +332,46 @@ Must Not Touch:
 
 Locked Paths:
 
-- All product implementation paths are locked for this Planner lane.
-- Candidate backend/API/test files listed above are future implementation paths only.
+- All frontend, API-client, Projects registry, public-drive LTR authority, Office, Matrix, Fee, Folder, Basic Information, Required Forms, Approval Package, Public Drive, StepInstance, Report, AI, permissions, LAN/server, and multi-user paths are locked.
+- Backend/API/schema/test paths outside the implementation May Touch list are locked.
 - Existing dirty product/governance residuals remain excluded unless a future approved lane names them.
 
-Evidence File:
+Evidence Files:
 
 - `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_planner.md`
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_developer.md`
+- `docs/lane_evidence/TASK_345B_project-lifecycle-activation-model-api_reconciliation_planner.md`
 
 Validation Gate:
 
-- `git diff --check` over TASK_345B planning files and `docs/task_board.md`.
-- Static status check records any backend/frontend/tests dirty paths as outside this Planner package.
-- Keyword checks find planned status, no implementation approval, Reviewer plan gate, Activate, unified close, audit/history, downstream lanes, Must Not Touch, and Locked Paths.
+- Focused backend lifecycle state service tests pass.
+- Focused lifecycle API tests pass.
+- Lifecycle migration tests pass.
+- Registry summary lifecycle compatibility tests pass when affected.
+- `tests/unit/test_project_lifecycle_write_guard.py` remains behaviorally scoped to baseline preservation until TASK_345C.
+- `git diff --check` over TASK_345B changed files.
+- Static targeted status check records no frontend/API-client/public-drive LTR authority/future-scope files changed by TASK_345B.
 
 Merge Gate:
 
-- Reviewer plan gate pass.
-- User approval required before any Developer implementation may be routed.
-- Orchestrator must not route Developer from this `planned` lane.
+- Developer evidence reaches `ready_for_review`.
+- Reviewer implementation gate passes with no blocking findings.
+- QA gate is required if Reviewer or Integrator determines migration/API smoke needs independent validation; otherwise Integrator may package after Reviewer pass and focused backend validation.
+- Integrator confirms only allowed TASK_345B backend/API/test/evidence/board files are included.
 
-## 10. Reviewer Plan Gate Focus
+## 10. Implementation Authorization Reconciliation
 
-The first object ready for Reviewer plan gate is:
+Planner reconciliation on 2026-06-28 records:
+
+- Reviewer implementation-readiness passed via conversational callback, but no separate Reviewer checkpoint file exists.
+- User explicitly approved the Developer implementation pass after that callback.
+- Developer implementation legality check correctly blocked because repository source-of-truth still showed `planned`.
+- The reconciliation evidence file closes that source mismatch and updates the task/plan/board to implementation authorized.
+
+The object ready for the next implementation route is:
 
 `TASK_345B_PROJECT_LIFECYCLE_ACTIVATION_MODEL_API` / lane `project-lifecycle-activation-model-api`.
 
-Reviewer should check:
-
-- Whether TASK_345B correctly depends on TASK_345A and does not reopen business-model decisions.
-- Whether backend/API/audit candidate paths are complete enough for a later Developer plan.
-- Whether old `administrative`/split-close semantics are treated as compatibility only.
-- Whether activation from closed/stopped is properly auditable and testable.
-- Whether public-drive LTR workbook authority, frontend UI, Projects registry, write guards, and future scope stay excluded.
-
 ## 11. Stop Point
 
-Stop after this plan, task file, Planner evidence, and planned board row are created. Do not route Developer implementation.
+Stop after Developer implementation evidence reaches `ready_for_review`. Do not implement TASK_345C write guards, frontend UI, Projects registry, Temporary LTR authority, or future scope in this task.

@@ -23,8 +23,10 @@ from backend.application.project_lifecycle_management_service import (
     TemporaryProjectDeleteResult,
 )
 from backend.application.project_lifecycle_state_service import (
+    ActivateProjectLifecycleCommand,
     CloseAdministrativeProjectCommand,
     CloseCompletedProjectCommand,
+    CloseProjectLifecycleCommand,
     ProjectLifecycleStateError,
     ProjectLifecycleStateNotFoundError,
     ProjectLifecycleStateService,
@@ -156,12 +158,22 @@ class ProjectLifecycleCloseAdministrativeRequest(BaseModel):
     operator: str | None = None
 
 
+class ProjectLifecycleCloseRequest(BaseModel):
+    """Request body for unified project closure."""
+
+    reason_category: str = Field(min_length=1)
+    note: str = Field(min_length=1)
+    operator: str | None = None
+
+
 class ProjectLifecycleResponse(BaseModel):
     """Typed lifecycle state response returned by TASK_337A APIs."""
 
     project_id: str
     lifecycle_state: str
     closure_type: str | None = None
+    close_reason_category: str | None = None
+    close_reason_label: str | None = None
     status: str
     status_label: str
     readonly: bool
@@ -419,6 +431,61 @@ def resume_project_lifecycle(
 
 
 @router.post(
+    "/{project_id}/lifecycle/activate",
+    response_model=ProjectLifecycleResponse,
+)
+def activate_project_lifecycle(
+    project_id: str,
+    request: ProjectLifecycleActionRequest,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Activate a stopped or closed project through the lifecycle overlay API."""
+    try:
+        view = service.activate_project(
+            ActivateProjectLifecycleCommand(
+                project_id=project_id,
+                reason=request.reason or "",
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, service) from exc
+    return _to_lifecycle_response(view)
+
+
+@router.post(
+    "/{project_id}/lifecycle/close",
+    response_model=ProjectLifecycleResponse,
+)
+def close_project_lifecycle(
+    project_id: str,
+    request: ProjectLifecycleCloseRequest,
+    service: ProjectLifecycleStateService = Depends(
+        get_project_lifecycle_state_service
+    ),
+) -> ProjectLifecycleResponse:
+    """Close a project with one business close reason category."""
+    try:
+        view = service.close_project(
+            CloseProjectLifecycleCommand(
+                project_id=project_id,
+                reason_category=request.reason_category,
+                note=request.note,
+                operator=request.operator,
+            )
+        )
+    except ProjectLifecycleStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleStateError as exc:
+        raise _lifecycle_conflict(exc, project_id, service) from exc
+    return _to_lifecycle_response(view)
+
+
+@router.post(
     "/{project_id}/lifecycle/close-completed",
     response_model=ProjectLifecycleResponse,
 )
@@ -578,7 +645,11 @@ def _to_lifecycle_response(view: ProjectLifecycleView) -> ProjectLifecycleRespon
     return ProjectLifecycleResponse(
         project_id=view.project_id,
         lifecycle_state=view.lifecycle_state.value,
-        closure_type=view.closure_type.value if view.closure_type else None,
+        closure_type=_api_closure_type(view),
+        close_reason_category=(
+            view.close_reason_category.value if view.close_reason_category else None
+        ),
+        close_reason_label=view.close_reason_label,
         status=view.status,
         status_label=view.status_label,
         readonly=view.readonly,
@@ -604,8 +675,22 @@ def _lifecycle_conflict(
             "code": "project_lifecycle_conflict",
             "project_id": project_id,
             "lifecycle_state": view.lifecycle_state.value,
-            "closure_type": view.closure_type.value if view.closure_type else None,
+            "closure_type": _api_closure_type(view),
+            "close_reason_category": (
+                view.close_reason_category.value if view.close_reason_category else None
+            ),
+            "close_reason_label": view.close_reason_label,
+            "can_activate": "activate" in view.allowed_actions,
             "message": str(exc),
             "allowed_actions": list(view.allowed_actions),
         },
     )
+
+
+def _api_closure_type(view: ProjectLifecycleView) -> str | None:
+    """Return legacy closure type without exposing administrative as business data."""
+    if view.close_reason_category and view.close_reason_category.value == "completed":
+        return "completed"
+    if view.closure_type and view.closure_type.value == "completed":
+        return "completed"
+    return None

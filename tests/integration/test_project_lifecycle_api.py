@@ -52,27 +52,30 @@ def test_lifecycle_stop_resume_and_close_administrative_api(tmp_path: Path) -> N
         assert stopped.status_code == 200
         assert stopped.json()["lifecycle_state"] == "stopped"
         assert stopped.json()["readonly"] is True
-        assert stopped.json()["allowed_actions"] == ["resume", "close"]
+        assert stopped.json()["allowed_actions"] == ["activate", "resume", "close"]
         assert legacy_detail.json()["status"] == "cancelled"
         assert resumed.status_code == 200
         assert resumed.json()["lifecycle_state"] == "active"
         assert resumed.json()["status"] == "draft"
         assert closed.status_code == 200
         assert closed.json()["lifecycle_state"] == "closed"
-        assert closed.json()["closure_type"] == "administrative"
+        assert closed.json()["closure_type"] is None
+        assert closed.json()["close_reason_category"] == "other"
+        assert closed.json()["close_reason_label"] == "Other"
         assert resume_closed.status_code == 409
         detail = resume_closed.json()["detail"]
         assert detail["code"] == "project_lifecycle_conflict"
         assert detail["project_id"] == project_id
         assert detail["lifecycle_state"] == "closed"
-        assert detail["closure_type"] == "administrative"
-        assert detail["allowed_actions"] == []
+        assert detail["closure_type"] is None
+        assert detail["close_reason_category"] == "other"
+        assert detail["allowed_actions"] == ["activate"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
 
 
-def test_close_completed_requires_formal_or_registered_project_api(
+def test_close_completed_compatibility_allows_temporary_project_api(
     tmp_path: Path,
 ) -> None:
     client, engine = _client(tmp_path)
@@ -94,9 +97,12 @@ def test_close_completed_requires_formal_or_registered_project_api(
             },
         )
 
-        assert response.status_code == 409
-        assert response.json()["detail"]["code"] == "project_lifecycle_conflict"
-        assert "formal or registered" in response.json()["detail"]["message"]
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["lifecycle_state"] == "closed"
+        assert payload["closure_type"] == "completed"
+        assert payload["close_reason_category"] == "completed"
+        assert payload["allowed_actions"] == ["activate"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -107,6 +113,10 @@ def test_close_completed_requires_confirmation_and_note_api(tmp_path: Path) -> N
     try:
         project_id = _create_project(client, project_no="DL-2026-06-011")
         _register_manual_output(engine, project_id)
+        project_id_ack = _create_project(client, project_no="DL-2026-06-012")
+        _register_manual_output(engine, project_id_ack, output_record_id="OUT2")
+        project_id_closed = _create_project(client, project_no="DL-2026-06-013")
+        _register_manual_output(engine, project_id_closed, output_record_id="OUT3")
 
         missing_note = client.post(
             f"/api/projects/{project_id}/lifecycle/close-completed",
@@ -117,7 +127,7 @@ def test_close_completed_requires_confirmation_and_note_api(tmp_path: Path) -> N
             },
         )
         missing_ack = client.post(
-            f"/api/projects/{project_id}/lifecycle/close-completed",
+            f"/api/projects/{project_id_ack}/lifecycle/close-completed",
             json={
                 "close_note": "Done.",
                 "manual_completion_confirmed": True,
@@ -125,7 +135,7 @@ def test_close_completed_requires_confirmation_and_note_api(tmp_path: Path) -> N
             },
         )
         closed = client.post(
-            f"/api/projects/{project_id}/lifecycle/close-completed",
+            f"/api/projects/{project_id_closed}/lifecycle/close-completed",
             json={
                 "close_note": "Done.",
                 "manual_completion_confirmed": True,
@@ -136,22 +146,63 @@ def test_close_completed_requires_confirmation_and_note_api(tmp_path: Path) -> N
 
         assert missing_note.status_code == 409
         assert "Close completed note is required" in missing_note.json()["detail"]["message"]
-        assert missing_ack.status_code == 409
-        assert "Output summary acknowledgement is required" in missing_ack.json()["detail"]["message"]
+        assert missing_ack.status_code == 200
+        assert missing_ack.json()["completion_summary"]["output_summary_acknowledged"] is False
         assert closed.status_code == 200
         payload = closed.json()
         assert payload["lifecycle_state"] == "closed"
         assert payload["closure_type"] == "completed"
+        assert payload["close_reason_category"] == "completed"
         assert payload["completion_summary"]["manual_completion_confirmed"] is True
         assert payload["completion_summary"]["signals"] == {
-            "project_identity": "DL-2026-06-011",
+            "project_identity": "DL-2026-06-013",
             "registered_ltr": False,
             "output_status_summary_available": True,
         }
         output_summary = payload["completion_summary"]["output_status_summary"]
-        assert output_summary["project_id"] == project_id
+        assert output_summary["project_id"] == project_id_closed
         assert output_summary["items"][0]["output_kind"] == "section2_write_back"
         assert output_summary["items"][0]["status"] == "manual"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_unified_close_and_activate_closed_project_api(tmp_path: Path) -> None:
+    client, engine = _client(tmp_path)
+    try:
+        project_id = _create_project(client, project_no="DL-2026-06-012")
+
+        closed = client.post(
+            f"/api/projects/{project_id}/lifecycle/close",
+            json={
+                "reason_category": "failed",
+                "note": "Qualification failed.",
+                "operator": "Lab User",
+            },
+        )
+        active_conflict = client.post(
+            f"/api/projects/{project_id}/lifecycle/activate",
+            json={"reason": " "},
+        )
+        activated = client.post(
+            f"/api/projects/{project_id}/lifecycle/activate",
+            json={"reason": "Retest approved.", "operator": "Lab User"},
+        )
+
+        assert closed.status_code == 200
+        assert closed.json()["lifecycle_state"] == "closed"
+        assert closed.json()["closure_type"] is None
+        assert closed.json()["close_reason_category"] == "failed"
+        assert closed.json()["close_reason_label"] == "Failed"
+        assert closed.json()["allowed_actions"] == ["activate"]
+        assert active_conflict.status_code == 409
+        assert "Activation reason is required" in active_conflict.json()["detail"]["message"]
+        assert activated.status_code == 200
+        assert activated.json()["lifecycle_state"] == "active"
+        assert activated.json()["status"] == "draft"
+        assert activated.json()["closure_type"] is None
+        assert activated.json()["close_reason_category"] is None
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -195,12 +246,17 @@ def _create_project(client: TestClient, *, project_no: str) -> str:
     return response.json()["project_id"]
 
 
-def _register_manual_output(engine, project_id: str) -> None:
+def _register_manual_output(
+    engine,
+    project_id: str,
+    *,
+    output_record_id: str = "OUT1",
+) -> None:
     session_factory = create_session_factory(engine)
     with session_factory() as session:
         ProjectOutputRecordRepository(session).create(
             ProjectOutputRecord(
-                output_record_id="OUT1",
+                output_record_id=output_record_id,
                 project_id=project_id,
                 draft_id=None,
                 draft_version=None,

@@ -5,7 +5,13 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.domain import Project, ProjectClosureType, ProjectLifecycleState, ProjectStatus
+from backend.domain import (
+    Project,
+    ProjectCloseReasonCategory,
+    ProjectClosureType,
+    ProjectLifecycleState,
+    ProjectStatus,
+)
 from backend.infrastructure.storage.models import ProjectModel
 
 
@@ -47,6 +53,9 @@ class ProjectRepository:
         row.created_on = project.created_on
         row.lifecycle_state = project.lifecycle_state.value
         row.closure_type = project.closure_type.value if project.closure_type else None
+        row.close_reason_category = (
+            project.close_reason_category.value if project.close_reason_category else None
+        )
         row.stopped_reason = project.stopped_reason
         row.stopped_at = project.stopped_at
         row.stopped_by = project.stopped_by
@@ -82,6 +91,9 @@ def _to_model(project: Project) -> ProjectModel:
         created_on=project.created_on,
         lifecycle_state=project.lifecycle_state.value,
         closure_type=project.closure_type.value if project.closure_type else None,
+        close_reason_category=(
+            project.close_reason_category.value if project.close_reason_category else None
+        ),
         stopped_reason=project.stopped_reason,
         stopped_at=project.stopped_at,
         stopped_by=project.stopped_by,
@@ -107,6 +119,11 @@ def _to_domain(row: ProjectModel) -> Project:
         created_on=row.created_on,
         lifecycle_state=ProjectLifecycleState(row.lifecycle_state),
         closure_type=ProjectClosureType(row.closure_type) if row.closure_type else None,
+        close_reason_category=(
+            ProjectCloseReasonCategory(row.close_reason_category)
+            if row.close_reason_category
+            else None
+        ),
         stopped_reason=row.stopped_reason,
         stopped_at=row.stopped_at,
         stopped_by=row.stopped_by,

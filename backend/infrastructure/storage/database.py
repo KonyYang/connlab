@@ -709,6 +709,7 @@ def _migrate_project_lifecycle_columns(engine: Engine) -> None:
         column_defs = {
             "lifecycle_state": "VARCHAR(32)",
             "closure_type": "VARCHAR(32)",
+            "close_reason_category": "VARCHAR(32)",
             "stopped_reason": "TEXT",
             "stopped_at": "VARCHAR(64)",
             "stopped_by": "VARCHAR(255)",
@@ -757,5 +758,25 @@ def _migrate_project_lifecycle_columns(engine: Engine) -> None:
             WHERE lifecycle_state = 'closed'
                 AND status = 'closed'
                 AND (closure_type IS NULL OR closure_type = '')
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            UPDATE projects
+            SET close_reason_category = 'completed'
+            WHERE lifecycle_state = 'closed'
+                AND closure_type = 'completed'
+                AND (close_reason_category IS NULL OR close_reason_category = '')
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            UPDATE projects
+            SET close_reason_category = 'other'
+            WHERE lifecycle_state = 'closed'
+                AND (closure_type = 'administrative'
+                    OR closure_type IS NULL
+                    OR closure_type = '')
+                AND (close_reason_category IS NULL OR close_reason_category = '')
             """
         )

@@ -28,6 +28,7 @@ class ProjectModel(Base):
         default="active",
     )
     closure_type: Mapped[str | None] = mapped_column(String(32))
+    close_reason_category: Mapped[str | None] = mapped_column(String(32))
     stopped_reason: Mapped[str | None] = mapped_column(Text)
     stopped_at: Mapped[str | None] = mapped_column(String(64))
     stopped_by: Mapped[str | None] = mapped_column(String(255))

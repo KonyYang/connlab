@@ -6,8 +6,10 @@ from datetime import date
 import pytest
 
 from backend.application.project_lifecycle_state_service import (
+    ActivateProjectLifecycleCommand,
     CloseAdministrativeProjectCommand,
     CloseCompletedProjectCommand,
+    CloseProjectLifecycleCommand,
     ProjectLifecycleStateError,
     ProjectLifecycleStateService,
     ResumeProjectLifecycleCommand,
@@ -19,6 +21,8 @@ from backend.application.project_output_record_service import (
 )
 from backend.domain import (
     Project,
+    ProjectCloseReasonCategory,
+    ProjectClosureType,
     ProjectLifecycleState,
     ProjectOutputKind,
     ProjectOutputSource,
@@ -37,7 +41,7 @@ def test_stop_sets_stopped_overlay_cancelled_compatibility_and_event() -> None:
 
     assert result.lifecycle_state is ProjectLifecycleState.STOPPED
     assert result.readonly is True
-    assert result.allowed_actions == ("resume", "close")
+    assert result.allowed_actions == ("activate", "resume", "close")
     assert stores.projects.project.status is ProjectStatus.CANCELLED
     assert stores.events.items[-1].event_type == "stop"
     assert '"previous_project_status": "ltr_registered"' in stores.events.items[-1].metadata_json
@@ -82,18 +86,20 @@ def test_resume_legacy_stopped_without_previous_status_is_blocked() -> None:
         service.resume_project(ResumeProjectLifecycleCommand(project_id="P1"))
 
 
-def test_close_completed_requires_formal_or_registered_project() -> None:
+def test_unified_close_completed_allows_temporary_project() -> None:
     service = _Stores(project=_project(project_no=None), ltrs=[]).service()
 
-    with pytest.raises(ProjectLifecycleStateError, match="formal or registered"):
-        service.close_completed(
-            CloseCompletedProjectCommand(
-                project_id="P1",
-                close_note="All deliverables accepted.",
-                manual_completion_confirmed=True,
-                output_summary_acknowledged=True,
-            )
+    result = service.close_project(
+        CloseProjectLifecycleCommand(
+            project_id="P1",
+            reason_category=ProjectCloseReasonCategory.COMPLETED,
+            note="Completed without formal LTR.",
         )
+    )
+
+    assert result.lifecycle_state is ProjectLifecycleState.CLOSED
+    assert result.close_reason_category is ProjectCloseReasonCategory.COMPLETED
+    assert result.allowed_actions == ("activate",)
 
 
 def test_close_completed_records_manual_summary_for_formal_project() -> None:
@@ -112,8 +118,9 @@ def test_close_completed_records_manual_summary_for_formal_project() -> None:
 
     assert result.lifecycle_state is ProjectLifecycleState.CLOSED
     assert result.closure_type == "completed"
+    assert result.close_reason_category == "completed"
     assert result.readonly is True
-    assert result.allowed_actions == ()
+    assert result.allowed_actions == ("activate",)
     assert result.completion_summary is not None
     assert result.completion_summary["manual_completion_confirmed"] is True
     assert result.completion_summary["signals"] == {
@@ -125,7 +132,79 @@ def test_close_completed_records_manual_summary_for_formal_project() -> None:
     assert output_summary["active_draft_id"] == "DRAFT1"
     assert output_summary["items"][0]["output_kind"] == "approval_package"
     assert output_summary["items"][0]["status"] == "current"
-    assert stores.events.items[-1].event_type == "close_completed"
+    assert stores.events.items[-1].event_type == "close"
+
+
+def test_activate_closed_project_restores_previous_status_and_preserves_close_metadata() -> None:
+    project = _project(status=ProjectStatus.CLOSED).with_lifecycle(
+        lifecycle_state=ProjectLifecycleState.CLOSED,
+        closure_type=ProjectClosureType.COMPLETED,
+        close_reason_category=ProjectCloseReasonCategory.COMPLETED,
+        closed_reason="Finished.",
+        closed_at="2026-06-27T01:00:00+00:00",
+        closed_by="Lab User",
+    )
+    stores = _Stores(
+        project=project,
+        events=[
+            _event(
+                event_type="close",
+                previous_lifecycle_state="active",
+                new_lifecycle_state="closed",
+                metadata_json='{"previous_project_status": "ltr_registered", '
+                '"close_reason_category": "completed", "close_note": "Finished."}',
+            )
+        ],
+    )
+    service = stores.service()
+
+    result = service.activate_project(
+        ActivateProjectLifecycleCommand(
+            project_id="P1",
+            reason="Customer requested continuation.",
+            operator="Lab User",
+        )
+    )
+
+    assert result.lifecycle_state is ProjectLifecycleState.ACTIVE
+    assert stores.projects.project.status is ProjectStatus.LTR_REGISTERED
+    assert stores.events.items[-1].event_type == "activate"
+    assert '"previous_close_reason_category": "completed"' in (
+        stores.events.items[-1].metadata_json or ""
+    )
+
+
+def test_close_stopped_project_preserves_original_status_for_activation() -> None:
+    project = _project(status=ProjectStatus.CANCELLED).with_lifecycle(
+        lifecycle_state=ProjectLifecycleState.STOPPED,
+        stopped_reason="Paused.",
+    )
+    stores = _Stores(
+        project=project,
+        events=[
+            _event(
+                event_type="stop",
+                previous_lifecycle_state="active",
+                new_lifecycle_state="stopped",
+                metadata_json='{"previous_project_status": "ltr_registered"}',
+            )
+        ],
+    )
+    service = stores.service()
+
+    service.close_project(
+        CloseProjectLifecycleCommand(
+            project_id="P1",
+            reason_category=ProjectCloseReasonCategory.FAILED,
+            note="Cannot continue.",
+        )
+    )
+    result = service.activate_project(
+        ActivateProjectLifecycleCommand(project_id="P1", reason="Retest approved.")
+    )
+
+    assert result.lifecycle_state is ProjectLifecycleState.ACTIVE
+    assert stores.projects.project.status is ProjectStatus.LTR_REGISTERED
 
 
 def test_close_administrative_requires_reason() -> None:
