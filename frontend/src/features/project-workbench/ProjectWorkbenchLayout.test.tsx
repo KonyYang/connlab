@@ -1,5 +1,6 @@
 ﻿import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ConfirmedMatrixSnapshot,
@@ -15,6 +16,7 @@ import type {
   ProjectTestPlanDraft,
   ProjectOutputStatusSummary,
 } from "../../api/client";
+import { previewTemporaryProjectDelete } from "../../api/client";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
@@ -55,6 +57,17 @@ vi.mock("../../api/client", () => ({
   }),
 }));
 
+function getWorkbenchActionButton(name: string): HTMLButtonElement {
+  const actionBar = screen.getByLabelText("Project Workbench actions");
+  const button = Array.from(actionBar.querySelectorAll("button")).find(
+    (candidate) => candidate.textContent?.trim() === name
+  );
+  if (!button) {
+    throw new Error(`Project Workbench action button not found: ${name}`);
+  }
+  return button;
+}
+
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
   it("labels the topbar back button as the Projects overview navigation", async () => {
     const user = userEvent.setup();
@@ -69,32 +82,79 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("shows temporary planning without formal package or execution surfaces", () => {
+  it("shows temporary projects in the unified no-Matrix Workbench shell", async () => {
+    const user = userEvent.setup();
     const onOpenFeeEvaluation = vi.fn();
+    const onOpenMatrixEditor = vi.fn();
     renderWorkbench({
       latestLtr: null,
       matrixAuthorityDraft: null,
       packagePreview: null,
-    }, undefined, { onOpenFeeEvaluation });
+    }, undefined, { onOpenFeeEvaluation, onOpenMatrixEditor });
 
-    expect(screen.getByText("Temporary Planning")).toBeTruthy();
-    expect(screen.getByText("Plan Matrix and fee before DL registration")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Fee Evaluation" })).toHaveProperty(
+    const actionBar = screen.getByLabelText("Project Workbench actions");
+    expect(actionBar.textContent).toMatch(
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Create project folder/
+    );
+    expect(screen.getByRole("button", { name: "Matrix Editor" })).toHaveProperty(
+      "disabled",
+      false
+    );
+    expect(screen.getByRole("button", { name: "Fee Evaluation" })).toHaveProperty(
       "disabled",
       true
     );
-    expect(screen.getByText(/This project has no registered LTR Number yet/)).toBeTruthy();
-    expect(screen.getByText(/Official package actions require LTR registration/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create project folder" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
+      "No active Matrix"
+    );
+    expect(screen.getByText(/Open Matrix Editor to prepare the authority map/)).toBeTruthy();
+    expect(screen.queryByText("Temporary Planning")).toBeNull();
+    expect(screen.queryByText(/This project has no registered LTR Number yet/)).toBeNull();
     expect(screen.getByText("Project lifecycle")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete temporary project" })).toBeTruthy();
     expect(onOpenFeeEvaluation).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Matrix Editor" }));
+    expect(onOpenMatrixEditor).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Folder setup panel")).toBeNull();
     expect(screen.queryByText("Section 2 dates panel")).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.queryByLabelText("Step workspace")).toBeNull();
+  });
+
+  it("keeps temporary no-Matrix lifecycle copy coherent when delete is unavailable", async () => {
+    vi.mocked(previewTemporaryProjectDelete).mockResolvedValueOnce({
+      project_id: "2cd4b0e7ff6f4df99448c9ffdd78629f",
+      can_delete: false,
+      blockers: ["Project is not a temporary planning project."],
+      warnings: [],
+      recommended_action: "stop",
+    });
+
+    renderWorkbench({
+      latestLtr: null,
+      matrixAuthorityDraft: null,
+      packagePreview: null,
+    });
+
+    expect(screen.getByText("Temporary project before LTR registration")).toBeTruthy();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Temporary deletion is unavailable here/)).toBeTruthy();
+    });
+
+    expect(screen.queryByText("Stop or safely remove this temporary record")).toBeNull();
+    expect(screen.queryByText("Project is not a temporary planning project.")).toBeNull();
+    expect(screen.getByText("Stop this temporary project lifecycle")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete temporary project" })).toHaveProperty(
+      "disabled",
+      true
+    );
   });
 
   it("enables temporary Fee planning only when a Matrix draft exists", async () => {
@@ -106,7 +166,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: null,
     }, undefined, { onOpenFeeEvaluation });
 
-    const feeButton = screen.getByRole("button", { name: "Open Fee Evaluation" });
+    const feeButton = screen.getByRole("button", { name: "Fee Evaluation" });
     expect(feeButton).toHaveProperty("disabled", false);
     await user.click(feeButton);
     expect(onOpenFeeEvaluation).toHaveBeenCalledTimes(1);
@@ -195,11 +255,16 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onCreateOfficialWorkspace,
     });
 
-    expect(screen.getAllByText("Project closed as completed").length).toBeGreaterThan(0);
-    const folderButton = screen.getByRole("button", {
-      name: "Generate project folder",
-    });
+    const projectState = screen.getByRole("region", { name: "Project State" });
+    expect(projectState.textContent).toContain("DL-2026-06-001");
+    expect(screen.queryByLabelText("Workbench state")).toBeNull();
+    expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
+    const folderButton = getWorkbenchActionButton("Create project folder");
     expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toBe(
+      "This project is archived as completed. Project data is read-only."
+    );
     await user.click(folderButton);
     expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
   });
@@ -261,7 +326,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Temporary planning")).toBeNull();
   });
 
-  it("focuses DL projects without active Matrix authority on Matrix setup", () => {
+  it("shows registered no-Matrix projects in the unified no-Matrix Workbench shell", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       matrixAuthorityDraft: null,
@@ -269,9 +334,27 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: null,
     });
 
-    expect(screen.getAllByText("Matrix authority setup").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Confirm Matrix authority" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Matrix" })).toBeTruthy();
+    const actionBar = screen.getByLabelText("Project Workbench actions");
+    expect(actionBar.textContent).toMatch(
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Create project folder/
+    );
+    expect(screen.getByRole("button", { name: "Matrix Editor" })).toHaveProperty(
+      "disabled",
+      false
+    );
+    expect(screen.getByRole("button", { name: "Fee Evaluation" })).toHaveProperty(
+      "disabled",
+      false
+    );
+    const folderButton = screen.getByRole("button", { name: "Create project folder" });
+    expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toMatch(/active Matrix authority/i);
+    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
+      "No active Matrix"
+    );
+    expect(screen.getByText(/Open Matrix Editor to prepare the authority map/)).toBeTruthy();
+    expect(screen.queryByText("Matrix authority missing")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
     expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
@@ -318,7 +401,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
   });
 
-  it("renders the Workbench shell regions with Matrix before Outputs", () => {
+  it("renders the active Matrix workspace without duplicate shell summary regions", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -333,19 +416,18 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     const projectState = screen.getByRole("region", { name: "Project State" });
     const matrix = screen.getByRole("region", { name: "Matrix" });
-    const outputs = screen.getByRole("region", { name: "Outputs" });
 
-    expect(projectState.textContent).toContain("Active");
-    expect(projectState.textContent).toContain("Registered project");
-    expect(projectState.textContent).toContain("Active Matrix");
     expect(
-      Boolean(
-        matrix.compareDocumentPosition(outputs) &
-          globalThis.Node.DOCUMENT_POSITION_FOLLOWING
-      )
-    ).toBe(true);
-    expect(outputs.textContent).toContain("Basic Information");
-    expect(outputs.textContent).toContain("Fee Evaluation");
+      projectState.querySelector(".runtime-console-project-title .eyebrow")
+    ).toBeNull();
+    expect(projectState.textContent).toContain("DL-2026-06-001");
+    expect(screen.queryByLabelText("Workbench state")).toBeNull();
+    expect(matrix.textContent).toContain("Matrix projection panel");
+    expect(matrix.textContent).not.toContain("Active Matrix workspace");
+    expect(matrix.querySelector(".runtime-console-region-heading")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Outputs" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "History" })).toBeNull();
     expect(screen.queryByText("View activity history")).toBeNull();
   });
 
@@ -368,12 +450,15 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     const projectState = screen.getByRole("region", { name: "Project State" });
-    expect(projectState.textContent).toContain("Stopped");
-    expect(projectState.textContent).toContain("Customer requested pause.");
+    expect(projectState.textContent).toContain("DL-2026-06-001");
+    expect(screen.queryByLabelText("Workbench state")).toBeNull();
+    expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
     expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
       "Matrix authority setup"
     );
-    expect(screen.getByRole("region", { name: "Outputs" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Outputs" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "History" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
@@ -402,7 +487,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }),
     });
 
-    expect(screen.getAllByText(/Customer requested pause/).length).toBeGreaterThan(0);
+    const projectState = screen.getByRole("region", { name: "Project State" });
+    expect(projectState.textContent).toContain("DL-2026-06-001");
+    expect(screen.queryByLabelText("Workbench state")).toBeNull();
+    expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Resume project" }));
 
     expect(screen.getAllByText("Confirm resume project").length).toBeGreaterThan(0);
@@ -430,6 +518,16 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         allowed_actions: ["stop", "close"],
       }),
     });
+
+    const lifecycleDock = screen.getByRole("region", { name: "Project lifecycle" });
+    expect(lifecycleDock.classList.contains("is-compact-bottom")).toBe(true);
+    expect(screen.queryByText("Project lifecycle")).toBeNull();
+    expect(screen.queryByText("Stop this project lifecycle")).toBeNull();
+    expect(screen.queryByText("Archive project")).toBeNull();
+    expect(screen.queryByText(/Close archives this project as read-only/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Stop project" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close as completed" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close administratively" })).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Close as completed" }));
 
@@ -493,12 +591,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }),
     });
 
-    expect(screen.getByRole("region", { name: "Project State" }).textContent).toContain(
-      "Closed: Completed"
-    );
+    const projectState = screen.getByRole("region", { name: "Project State" });
+    expect(projectState.textContent).toContain("DL-2026-06-001");
+    expect(screen.queryByLabelText("Workbench state")).toBeNull();
     expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
       "Read-only archive"
     );
+    expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Resume project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
@@ -529,9 +628,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }),
     });
 
-    expect(screen.getByRole("region", { name: "Project State" }).textContent).toContain(
-      "Closed: Administrative"
-    );
+    const projectState = screen.getByRole("region", { name: "Project State" });
+    expect(projectState.textContent).toContain("DL-2026-06-001");
+    expect(screen.queryByLabelText("Workbench state")).toBeNull();
     expect(container.textContent).not.toMatch(
       /closed_completed|closed_administrative|lifecycle_state|closure_type/
     );
@@ -663,7 +762,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { onOpenSettings }
     );
 
-    expect(screen.getByRole("button", { name: "Generate project folder" })).toHaveProperty(
+    expect(getWorkbenchActionButton("Create project folder")).toHaveProperty(
       "disabled",
       false
     );
@@ -899,7 +998,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onCreateOfficialWorkspace,
     });
 
-    expect(screen.getByRole("button", { name: "Generate project folder" })).toBeTruthy();
+    expect(getWorkbenchActionButton("Create project folder")).toBeTruthy();
     expect(
       screen.getAllByText("Create the official project folder from the standard template.").length
     ).toBeTruthy();
@@ -908,7 +1007,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Generate project folder" }));
+    await user.click(getWorkbenchActionButton("Create project folder"));
 
     expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
@@ -955,7 +1054,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onCreateOfficialWorkspace,
     });
 
-    await user.click(screen.getByRole("button", { name: "Generate project folder" }));
+    await user.click(getWorkbenchActionButton("Create project folder"));
 
     expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
@@ -991,7 +1090,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onCreateOfficialWorkspace,
     });
 
-    const folderButton = screen.getByRole("button", { name: "Generate project folder" });
+    const folderButton = getWorkbenchActionButton("Create project folder");
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "Update Fee before generating the project folder."
@@ -1031,7 +1130,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
-    const folderButton = screen.getByRole("button", { name: "Generate project folder" });
+    const folderButton = getWorkbenchActionButton("Create project folder");
     expect(folderButton).toHaveProperty("disabled", false);
     expect(folderButton.getAttribute("title")).toBeNull();
     expect(
@@ -1041,7 +1140,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     ).toBeGreaterThan(0);
     expect(screen.queryByText("Configure workspace paths")).toBeNull();
     expect(screen.queryByText("Project default save location is not configured.")).toBeNull();
-    expect(screen.queryAllByRole("button", { name: "Create project folder" })).toHaveLength(0);
+    expect(
+      screen
+        .getByLabelText("Folder Action")
+        .querySelectorAll("button")
+    ).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
     await user.click(folderButton);

@@ -6,6 +6,7 @@ import type {
 } from "./projectWorkbenchLifecycleSelectors";
 
 type ProjectWorkbenchCloseConfirmationProps = {
+  compact?: boolean;
   lifecycleActions: WorkbenchLifecycleActionsViewModel;
   lifecycleBusy: boolean;
   outputStatusSummary: ProjectOutputStatusSummary | null;
@@ -16,6 +17,7 @@ type ProjectWorkbenchCloseConfirmationProps = {
 };
 
 export function ProjectWorkbenchCloseConfirmation({
+  compact = false,
   lifecycleActions,
   lifecycleBusy,
   outputStatusSummary,
@@ -74,14 +76,19 @@ export function ProjectWorkbenchCloseConfirmation({
   }
 
   return (
-    <section className="runtime-console-close-actions" aria-label="Project close actions">
-      <div className="runtime-console-close-actions-heading">
-        <strong>Archive project</strong>
-        <p>
-          Close archives this project as read-only. Use completed close only after
-          reviewing available output status.
-        </p>
-      </div>
+    <section
+      className={`runtime-console-close-actions${compact ? " is-compact" : ""}`}
+      aria-label="Project close actions"
+    >
+      {compact ? null : (
+        <div className="runtime-console-close-actions-heading">
+          <strong>Archive project</strong>
+          <p>
+            Close archives this project as read-only. Use completed close only after
+            reviewing available output status.
+          </p>
+        </div>
+      )}
       <div className="runtime-console-lifecycle-actions">
         {lifecycleActions.canCloseCompleted ? (
           <button

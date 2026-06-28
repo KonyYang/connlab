@@ -260,6 +260,7 @@ export function TemporaryPlanningMode({
 
 export function ProjectLifecycleManagementPanel({
   allowDelete,
+  compactBottom = false,
   deletePreview,
   lifecycleActions,
   lifecycleBusy,
@@ -274,6 +275,7 @@ export function ProjectLifecycleManagementPanel({
   projectReference,
 }: {
   allowDelete: boolean;
+  compactBottom?: boolean;
   deletePreview: TemporaryProjectDeletePreview | null;
   lifecycleActions: WorkbenchLifecycleActionsViewModel;
   lifecycleBusy: boolean;
@@ -291,6 +293,27 @@ export function ProjectLifecycleManagementPanel({
     useState<WorkbenchLifecycleActionsViewModel["primaryAction"]>("none");
   const [reason, setReason] = useState("");
   const blockers = deletePreview?.blockers ?? [];
+  const deleteAvailable = allowDelete && deletePreview?.can_delete === true;
+  const deleteUnavailable = allowDelete && deletePreview?.can_delete === false;
+  const visibleBlockers = blockers.map((blocker) =>
+    getTemporaryDeleteBlockerCopy(blocker, allowDelete)
+  );
+  const deleteUnavailableCopy =
+    "Temporary deletion is unavailable here. Stop the project if work should not continue.";
+  const lifecycleTitle = lifecycleActions.canResume
+    ? "Resume this project lifecycle"
+    : deleteAvailable
+      ? "Stop or safely remove this temporary record"
+      : allowDelete
+        ? "Stop this temporary project lifecycle"
+        : "Stop this project lifecycle";
+  const lifecycleDescription = lifecycleActions.canResume
+    ? "Resume restores editing and project work after the stopped state is cleared."
+    : deleteAvailable
+      ? "Stop keeps the project for review. Delete is only available for mistaken or duplicate temporary records with no formal or temporary workspace blockers."
+      : allowDelete
+        ? deleteUnavailableCopy
+        : "Stop keeps the project for review when business work should not continue.";
   const hasLifecycleAction =
     lifecycleActions.canStop || lifecycleActions.canResume || lifecycleActions.canClose;
   const hasPanelContent =
@@ -321,24 +344,19 @@ export function ProjectLifecycleManagementPanel({
   }
 
   return (
-    <section className="runtime-console-lifecycle-management" aria-label="Project lifecycle">
-      <div>
-        <p className="eyebrow">Project lifecycle</p>
-        <strong>
-          {lifecycleActions.canResume
-            ? "Resume this project lifecycle"
-            : allowDelete
-              ? "Stop or safely remove this temporary record"
-              : "Stop this project lifecycle"}
-        </strong>
-        <p>
-          {lifecycleActions.canResume
-            ? "Resume restores editing and project work after the stopped state is cleared."
-            : allowDelete
-              ? "Stop keeps the project for review. Delete is only available for mistaken or duplicate temporary records with no formal or temporary workspace blockers."
-              : "Stop keeps the project for review when business work should not continue."}
-        </p>
-      </div>
+    <section
+      className={`runtime-console-lifecycle-management${
+        compactBottom ? " is-compact-bottom" : ""
+      }`}
+      aria-label="Project lifecycle"
+    >
+      {compactBottom ? null : (
+        <div>
+          <p className="eyebrow">Project lifecycle</p>
+          <strong>{lifecycleTitle}</strong>
+          <p>{lifecycleDescription}</p>
+        </div>
+      )}
       <div className="runtime-console-lifecycle-actions">
         {lifecycleActions.canStop ? (
           <button
@@ -362,6 +380,7 @@ export function ProjectLifecycleManagementPanel({
           <button
             type="button"
             disabled={lifecycleBusy || !deletePreview?.can_delete}
+            title={deleteUnavailable ? deleteUnavailableCopy : undefined}
             onClick={onDeleteTemporaryProject}
           >
             Delete temporary project
@@ -369,6 +388,7 @@ export function ProjectLifecycleManagementPanel({
         ) : null}
       </div>
       <ProjectWorkbenchCloseConfirmation
+        compact={compactBottom}
         lifecycleActions={lifecycleActions}
         lifecycleBusy={lifecycleBusy}
         onCloseAdministrativeProject={onCloseAdministrativeProject}
@@ -408,14 +428,14 @@ export function ProjectLifecycleManagementPanel({
           </div>
         </div>
       ) : null}
-      {lifecycleActions.readonlyReason ? (
+      {!compactBottom && lifecycleActions.readonlyReason ? (
         <p className="runtime-console-readonly-note">
           {lifecycleActions.readonlyReason}
         </p>
       ) : null}
-      {blockers.length > 0 ? (
+      {!compactBottom && visibleBlockers.length > 0 ? (
         <ul className="runtime-console-blocker-list">
-          {blockers.map((blocker) => (
+          {visibleBlockers.map((blocker) => (
             <li key={blocker}>{blocker}</li>
           ))}
         </ul>
@@ -457,6 +477,55 @@ export function RegisteredSetupMode({
           Confirm Matrix authority
         </button>
       </div>
+    </section>
+  );
+}
+
+function getTemporaryDeleteBlockerCopy(blocker: string, allowDelete: boolean): string {
+  if (allowDelete && blocker === "Project is not a temporary planning project.") {
+    return "Temporary deletion is unavailable here. Stop the project if work should not continue.";
+  }
+  return blocker;
+}
+
+export function NoMatrixWorkspaceEmptyState({
+  hasCandidateMatrix,
+  hasRegisteredProject,
+}: {
+  hasCandidateMatrix: boolean;
+  hasRegisteredProject: boolean;
+}): ReactElement {
+  return (
+    <section
+      className="runtime-console-no-matrix-empty"
+      aria-label="No active Matrix workspace"
+    >
+      <div>
+        <p className="eyebrow">Matrix workspace</p>
+        <h3>No active Matrix</h3>
+        <p>
+          Open Matrix Editor to prepare the authority map. The Workbench layout stays
+          available while Matrix authority is being prepared.
+        </p>
+      </div>
+      <dl>
+        <div>
+          <dt>Project setup</dt>
+          <dd>
+            {hasRegisteredProject
+              ? "Registered project"
+              : "Temporary project before LTR registration"}
+          </dd>
+        </div>
+        <div>
+          <dt>Matrix draft</dt>
+          <dd>{hasCandidateMatrix ? "Draft available" : "No draft active"}</dd>
+        </div>
+        <div>
+          <dt>Downstream outputs</dt>
+          <dd>Available after active Matrix authority is confirmed.</dd>
+        </div>
+      </dl>
     </section>
   );
 }

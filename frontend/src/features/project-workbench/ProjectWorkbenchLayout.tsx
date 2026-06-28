@@ -12,6 +12,7 @@ import {
   ProjectWorkbenchActiveMatrixWorkspace,
 } from "./ProjectWorkbenchActiveMatrixWorkspace";
 import {
+  NoMatrixWorkspaceEmptyState,
   ProjectLifecycleManagementPanel,
   RegisteredSetupMode,
   TemporaryPlanningMode,
@@ -32,8 +33,6 @@ import {
 } from "./projectWorkbenchLifecycleSelectors";
 import {
   deriveProjectWorkbenchShellModel,
-  type ProjectWorkbenchShellHistoryEntry,
-  type ProjectWorkbenchShellOutputEntry,
 } from "./projectWorkbenchShellModel";
 import { deriveProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import {
@@ -219,6 +218,35 @@ export function ProjectWorkbenchLayout({
     officialWorkspaceConflictPaths.length > 0 ||
     officialWorkspacePreview?.status === "exists" ||
     officialWorkspacePreview?.status === "completed";
+  const isNoMatrixUnifiedWorkspace =
+    !lifecycleReadonlyView.readonly &&
+    (shellModel.primaryWorkspace === "matrix_setup" ||
+      shellModel.primaryWorkspace === "temporary_planning");
+  const showWorkbenchActionBar = isActiveMatrixWorkspace || isNoMatrixUnifiedWorkspace;
+  const hasMatrixDraftForPlanning =
+    activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
+  const visibleFeeEvaluationButtonState =
+    !isActiveMatrixWorkspace && !hasMatrixDraftForPlanning
+      ? {
+          className: feeEvaluationButtonState.className,
+          disabled: true,
+          title: "Create or import a Matrix draft before opening Fee Evaluation.",
+        }
+      : {
+          ...feeEvaluationButtonState,
+          disabled: false,
+        };
+  const visibleWorkbenchFolderCommand = isActiveMatrixWorkspace
+    ? visibleActiveMatrixFolderCommand
+    : {
+        label:
+          effectiveFolderReady || officialWorkspacePreview?.status === "completed"
+            ? "Update project folder"
+            : "Create project folder",
+        disabled: true,
+        disabledReason:
+          "Active Matrix authority is required before project folder outputs can be prepared.",
+      };
 
   useEffect(() => {
     let cancelled = false;
@@ -394,25 +422,12 @@ export function ProjectWorkbenchLayout({
         </div>
         <section className="runtime-console-project-state" aria-label="Project State">
           <div className="runtime-console-project-title">
-            <p className="eyebrow">Project State</p>
             <h2 className="runtime-console-project-identity">
               {shellModel.projectIdentity}
             </h2>
           </div>
-          <div className="runtime-console-shell-badges" aria-label="Workbench state">
-            <span className="runtime-console-shell-badge is-lifecycle">
-              {shellModel.lifecycleLabel}
-            </span>
-            <span>{shellModel.formalIdentityLabel}</span>
-            <span>{shellModel.matrixAuthorityLabel}</span>
-          </div>
-          {shellModel.timestampLine || shellModel.reasonLine ? (
-            <p className="runtime-console-state-context">
-              {[shellModel.timestampLine, shellModel.reasonLine].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
         </section>
-        {isActiveMatrixWorkspace ? (
+        {showWorkbenchActionBar ? (
           <div className="runtime-console-commandbar-actions" aria-label="Project Workbench actions">
             {!lifecycleReadonlyView.readonly ? (
               <button type="button" onClick={onOpenMatrixEditor}>
@@ -421,8 +436,9 @@ export function ProjectWorkbenchLayout({
             ) : null}
             <button
               type="button"
-              className={feeEvaluationButtonState.className}
-              title={feeEvaluationButtonState.title}
+              className={visibleFeeEvaluationButtonState.className}
+              disabled={visibleFeeEvaluationButtonState.disabled}
+              title={visibleFeeEvaluationButtonState.title}
               onClick={onOpenFeeEvaluation}
             >
               Fee Evaluation
@@ -433,11 +449,11 @@ export function ProjectWorkbenchLayout({
             <button
               type="button"
               className="is-primary"
-              disabled={visibleActiveMatrixFolderCommand.disabled}
-              title={visibleActiveMatrixFolderCommand.disabledReason}
+              disabled={visibleWorkbenchFolderCommand.disabled}
+              title={visibleWorkbenchFolderCommand.disabledReason}
               onClick={handleProjectFolderCreateClick}
             >
-              {visibleActiveMatrixFolderCommand.label}
+              {visibleWorkbenchFolderCommand.label}
             </button>
           </div>
         ) : null}
@@ -451,33 +467,16 @@ export function ProjectWorkbenchLayout({
       ) : null}
 
       <section
-        className={`runtime-console-shell-banner ${
-          lifecycleReadonlyView.readonly ? "is-readonly" : "is-active"
-        }`}
-        aria-label="Lifecycle state"
-        role={lifecycleReadonlyView.readonly ? "status" : undefined}
-      >
-        <div>
-          <p className="eyebrow">Lifecycle</p>
-          <h3>{shellModel.bannerTitle}</h3>
-          <p>{shellModel.bannerMessage}</p>
-        </div>
-        <div className="runtime-console-shell-next-action">
-          <span>Primary action</span>
-          <strong>{shellModel.primaryActionLabel}</strong>
-          <p>{shellModel.primaryWorkspaceSummary}</p>
-        </div>
-      </section>
-
-      <section
         className={`runtime-console-shell-primary workspace-${shellModel.primaryWorkspace}`}
         aria-label="Matrix"
       >
-        <div className="runtime-console-region-heading">
-          <p className="eyebrow">Matrix</p>
-          <h3>{shellModel.primaryWorkspaceLabel}</h3>
-          <p>{shellModel.primaryWorkspaceSummary}</p>
-        </div>
+        {shellModel.primaryWorkspace === "active_matrix" ? null : (
+          <div className="runtime-console-region-heading">
+            <p className="eyebrow">Matrix</p>
+            <h3>{shellModel.primaryWorkspaceLabel}</h3>
+            <p>{shellModel.primaryWorkspaceSummary}</p>
+          </div>
+        )}
         {isActiveMatrixWorkspace ? (
           <>
             <ProjectWorkbenchActiveMatrixWorkspace
@@ -497,12 +496,43 @@ export function ProjectWorkbenchLayout({
             />
             <ProjectLifecycleManagementPanel
               allowDelete={false}
+              compactBottom
               deletePreview={null}
               lifecycleActions={lifecycleActions}
               lifecycleBusy={lifecycleBusy}
               lifecycleError={lifecycleError}
               outputStatusSummary={outputStatusSummary}
               onDeleteTemporaryProject={() => undefined}
+              onStopProject={(reason) => void handleStopProject(reason)}
+              onResumeProject={(reason) => void handleResumeProject(reason)}
+              onCloseCompletedProject={(closeNote) =>
+                void handleCloseCompletedProject(closeNote)
+              }
+              onCloseAdministrativeProject={(reason) =>
+                void handleCloseAdministrativeProject(reason)
+              }
+              projectIdentity={titleParts.join(" ")}
+              projectReference={projectNumber}
+            />
+          </>
+        ) : isNoMatrixUnifiedWorkspace ? (
+          <>
+            <NoMatrixWorkspaceEmptyState
+              hasCandidateMatrix={Boolean(matrixCandidateDraft ?? matrixDraft)}
+              hasRegisteredProject={Boolean(projectNumber)}
+            />
+            <ProjectLifecycleManagementPanel
+              allowDelete={lifecycle.mode === "temporary_planning"}
+              deletePreview={lifecycle.mode === "temporary_planning" ? deletePreview : null}
+              lifecycleActions={lifecycleActions}
+              lifecycleBusy={lifecycleBusy}
+              lifecycleError={lifecycleError}
+              outputStatusSummary={outputStatusSummary}
+              onDeleteTemporaryProject={
+                lifecycle.mode === "temporary_planning"
+                  ? () => void handleDeleteTemporaryProject()
+                  : () => undefined
+              }
               onStopProject={(reason) => void handleStopProject(reason)}
               onResumeProject={(reason) => void handleResumeProject(reason)}
               onCloseCompletedProject={(closeNote) =>
@@ -599,8 +629,6 @@ export function ProjectWorkbenchLayout({
         )}
       </section>
 
-      <WorkbenchShellOutputs entries={shellModel.outputEntries} />
-      <WorkbenchShellHistory entries={shellModel.historyEntries} />
       {showFolderConflictDialog ? (
         <ProjectFolderConflictDialog
           conflictPaths={officialWorkspaceConflictPaths}
@@ -612,57 +640,6 @@ export function ProjectWorkbenchLayout({
       {officialWorkspaceCreating ? (
         <ProjectFolderProgressDialog currentStep={officialWorkspaceProgressLabel} />
       ) : null}
-    </section>
-  );
-}
-
-function WorkbenchShellOutputs({
-  entries,
-}: {
-  entries: ProjectWorkbenchShellOutputEntry[];
-}): ReactElement {
-  return (
-    <section className="runtime-console-shell-outputs" aria-label="Outputs">
-      <div className="runtime-console-region-heading">
-        <p className="eyebrow">Outputs</p>
-        <h3>Current output readiness</h3>
-        <p>Current-feature status only; Matrix remains the authority workspace.</p>
-      </div>
-      <div className="runtime-console-shell-output-grid">
-        {entries.map((entry) => (
-          <article className={`runtime-console-shell-output status-${entry.status}`} key={entry.key}>
-            <span>{entry.label}</span>
-            <strong>{entry.statusLabel}</strong>
-            <p>{entry.summary}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function WorkbenchShellHistory({
-  entries,
-}: {
-  entries: ProjectWorkbenchShellHistoryEntry[];
-}): ReactElement | null {
-  if (entries.length === 0) {
-    return null;
-  }
-  return (
-    <section className="runtime-console-shell-history" aria-label="History">
-      <div className="runtime-console-region-heading">
-        <p className="eyebrow">History</p>
-        <h3>Current lifecycle evidence</h3>
-      </div>
-      <dl>
-        {entries.map((entry) => (
-          <div key={`${entry.label}:${entry.value}`}>
-            <dt>{entry.label}</dt>
-            <dd>{entry.value}</dd>
-          </div>
-        ))}
-      </dl>
     </section>
   );
 }

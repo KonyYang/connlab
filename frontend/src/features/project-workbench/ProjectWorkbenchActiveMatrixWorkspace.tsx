@@ -152,7 +152,7 @@ export function deriveActiveMatrixFolderCommand({
   const label =
     effectiveFolderReady || officialWorkspaceStatus === "completed"
       ? "Update project folder"
-      : "Generate project folder";
+      : "Create project folder";
   if (creatingFolder) {
     return {
       disabled: true,

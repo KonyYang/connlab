@@ -2914,6 +2914,53 @@
   padding: 12px;
 }
 
+.runtime-console-no-matrix-empty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 34%);
+  gap: 18px;
+  align-items: start;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+  padding: 18px;
+}
+
+.runtime-console-no-matrix-empty h3,
+.runtime-console-no-matrix-empty p {
+  margin: 0;
+}
+
+.runtime-console-no-matrix-empty > div:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.runtime-console-no-matrix-empty dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.runtime-console-no-matrix-empty dl div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 10px;
+}
+
+.runtime-console-no-matrix-empty dt {
+  color: var(--color-ink-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.runtime-console-no-matrix-empty dd {
+  margin: 0;
+  color: var(--color-ink);
+}
+
 .runtime-console-inline-warning {
   border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
   border-radius: 6px;
@@ -2929,6 +2976,28 @@
   border-radius: 8px;
   background: var(--color-surface);
   padding: 12px;
+}
+
+.runtime-console-lifecycle-management.is-compact-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(244, 247, 251, 0), var(--color-canvas) 34%);
+  padding: 12px 0 0;
+}
+
+.runtime-console-lifecycle-management.is-compact-bottom
+  .runtime-console-lifecycle-confirmation,
+.runtime-console-lifecycle-management.is-compact-bottom .runtime-console-error {
+  flex-basis: 100%;
 }
 
 .runtime-console-lifecycle-management p {
@@ -2961,6 +3030,10 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-surface-muted) 64%, var(--color-surface));
   padding: 10px;
+}
+
+.runtime-console-close-actions.is-compact {
+  display: contents;
 }
 
 .runtime-console-close-actions-heading {
