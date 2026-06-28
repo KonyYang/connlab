@@ -294,22 +294,28 @@ export function ProjectListPage({
               </thead>
               <tbody>
                 {pagedRows.map(({ row, lifecycle }) => (
-                  <tr key={row.project_id}>
-                    <td className="project-no">
+                  <tr className="project-registry-row" key={row.project_id}>
+                    <td className="project-no registry-project-id-cell" data-label="Project ID">
                       {businessIdentifier(row)}
                       {row.display_project_id_kind === "temporary" ? (
                         <span className="registry-temp-badge">Temporary Planning</span>
                       ) : null}
                     </td>
-                    <td>{displayText(row.sample_description, "Not recorded")}</td>
-                    <td className="registry-test-item-column">{displayText(row.test_item, "Not recorded")}</td>
-                    <td className="registry-status-text">
+                    <td className="registry-sample-cell" data-label="Sample Description">
+                      {displayText(row.sample_description, "Not recorded")}
+                    </td>
+                    <td className="registry-test-item-column registry-test-item-cell" data-label="Test Item">
+                      {displayText(row.test_item, "Not recorded")}
+                    </td>
+                    <td className="registry-status-text registry-status-cell" data-label="Status">
                       <span className={`registry-lifecycle-badge ${registryLifecycleClassName(row, lifecycle)}`}>
                         {registryStatusLabel(row, lifecycle)}
                       </span>
                     </td>
-                    <td className="registry-next-step">{registryNextStepLabel(row, lifecycle)}</td>
-                    <td>
+                    <td className="registry-next-step registry-next-step-cell" data-label="Next Step">
+                      {registryNextStepLabel(row, lifecycle)}
+                    </td>
+                    <td className="registry-action-cell" data-label="Action">
                       <button
                         className="row-action"
                         type="button"

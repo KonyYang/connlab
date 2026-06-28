@@ -162,6 +162,50 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.queryByRole("button", { name: /Stop|Resume|Close|Delete/i })).toBeNull();
   });
 
+  it("exposes priority row markers for narrow-width status next step and action visibility", async () => {
+    const onOpenProject = vi.fn();
+    mockRows([
+      registryRow({
+        project_id: "P-NARROW",
+        display_project_id: "DL-2026-06-020",
+        status: "folder_created",
+      }),
+    ]);
+    mockLifecycle({
+      "P-NARROW": lifecycle({ project_id: "P-NARROW" }),
+    });
+
+    render(<ProjectListPage onOpenProject={onOpenProject} />);
+
+    expect(await screen.findByText("DL-2026-06-020")).toBeTruthy();
+    const actionButton = screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-020/ });
+    const row = actionButton.closest("tr");
+    expect(row).not.toBeNull();
+    expect(row?.classList.contains("project-registry-row")).toBe(true);
+
+    const labels = Array.from(row?.querySelectorAll("td") ?? []).map((cell) =>
+      cell.getAttribute("data-label")
+    );
+    expect(labels).toEqual([
+      "Project ID",
+      "Sample Description",
+      "Test Item",
+      "Status",
+      "Next Step",
+      "Action",
+    ]);
+
+    expect(row?.querySelector(".registry-project-id-cell")?.getAttribute("data-label")).toBe("Project ID");
+    expect(row?.querySelector(".registry-status-cell")?.getAttribute("data-label")).toBe("Status");
+    expect(row?.querySelector(".registry-next-step-cell")?.getAttribute("data-label")).toBe("Next Step");
+    expect(row?.querySelector(".registry-action-cell")?.getAttribute("data-label")).toBe("Action");
+    expect(row?.querySelector(".registry-action-cell .row-action")).toBe(actionButton);
+    expect(screen.queryByRole("button", { name: /Stop|Resume|Close|Delete/i })).toBeNull();
+
+    await userEvent.click(actionButton);
+    expect(onOpenProject).toHaveBeenCalledWith("P-NARROW");
+  });
+
   it("uses Workbench route copy for active planning and folder-created rows", async () => {
     const user = userEvent.setup();
     const onOpenProject = vi.fn();
