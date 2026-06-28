@@ -13,6 +13,7 @@ from backend.application.project_lifecycle_write_guard import (
 )
 from backend.domain import (
     Project,
+    ProjectCloseReasonCategory,
     ProjectClosureType,
     ProjectLifecycleState,
     ProjectStatus,
@@ -25,7 +26,7 @@ def test_active_project_write_is_allowed() -> None:
     guard.require_write_allowed("P1", LifecycleWriteOperation.BASIC_INFORMATION_DRAFT)
 
 
-def test_stopped_project_write_is_blocked_with_resume_and_close_actions() -> None:
+def test_stopped_project_write_is_blocked_with_activate_action() -> None:
     guard = ProjectLifecycleWriteGuard(
         _ProjectStore(_project(lifecycle_state=ProjectLifecycleState.STOPPED))
     )
@@ -40,11 +41,13 @@ def test_stopped_project_write_is_blocked_with_resume_and_close_actions() -> Non
     assert exc.project_id == "P1"
     assert exc.lifecycle_state is ProjectLifecycleState.STOPPED
     assert exc.closure_type is None
-    assert exc.allowed_actions == ("resume", "close")
-    assert exc.message == "This project is stopped. Resume it before making changes."
+    assert exc.close_reason_category is None
+    assert exc.close_reason_label is None
+    assert exc.allowed_actions == ("activate",)
+    assert exc.message == "This project is stopped. Activate it before making changes."
 
 
-def test_closed_completed_project_write_is_blocked_as_readonly_archive() -> None:
+def test_closed_completed_project_write_is_blocked_with_activate_action() -> None:
     guard = ProjectLifecycleWriteGuard(
         _ProjectStore(
             _project(
@@ -62,14 +65,15 @@ def test_closed_completed_project_write_is_blocked_as_readonly_archive() -> None
 
     assert exc_info.value.lifecycle_state is ProjectLifecycleState.CLOSED
     assert exc_info.value.closure_type is ProjectClosureType.COMPLETED
-    assert exc_info.value.allowed_actions == ()
-    assert (
-        exc_info.value.message
-        == "This project is closed as completed and is readonly."
+    assert exc_info.value.close_reason_category is ProjectCloseReasonCategory.COMPLETED
+    assert exc_info.value.close_reason_label == "Completed"
+    assert exc_info.value.allowed_actions == ("activate",)
+    assert exc_info.value.message == (
+        "This project is closed. Activate it before making changes."
     )
 
 
-def test_closed_administrative_project_write_is_blocked_as_readonly_archive() -> None:
+def test_closed_legacy_administrative_project_write_uses_business_reason() -> None:
     guard = ProjectLifecycleWriteGuard(
         _ProjectStore(
             _project(
@@ -86,8 +90,11 @@ def test_closed_administrative_project_write_is_blocked_as_readonly_archive() ->
         )
 
     assert exc_info.value.closure_type is ProjectClosureType.ADMINISTRATIVE
+    assert exc_info.value.close_reason_category is ProjectCloseReasonCategory.OTHER
+    assert exc_info.value.close_reason_label == "Other"
+    assert exc_info.value.allowed_actions == ("activate",)
     assert exc_info.value.message == (
-        "This project is closed administratively and is readonly."
+        "This project is closed. Activate it before making changes."
     )
 
 

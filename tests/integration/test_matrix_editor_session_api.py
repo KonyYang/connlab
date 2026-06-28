@@ -106,7 +106,10 @@ def test_matrix_editor_session_draft_save_stopped_returns_structured_409_without
     assert detail["project_id"] == "P1"
     assert detail["lifecycle_state"] == "stopped"
     assert detail["closure_type"] is None
-    assert detail["allowed_actions"] == ["resume", "close"]
+    assert detail["close_reason_category"] is None
+    assert detail["close_reason_label"] is None
+    assert detail["message"] == "This project is stopped. Activate it before making changes."
+    assert detail["allowed_actions"] == ["activate"]
     assert service.saved is False
 
 
@@ -126,7 +129,7 @@ def test_matrix_editor_session_draft_discard_stopped_returns_structured_409_with
     detail = response.json()["detail"]
     assert detail["code"] == "project_lifecycle_readonly"
     assert detail["lifecycle_state"] == "stopped"
-    assert detail["allowed_actions"] == ["resume", "close"]
+    assert detail["allowed_actions"] == ["activate"]
     assert service.discarded is False
 
 
@@ -150,7 +153,10 @@ def test_matrix_editor_session_confirm_closed_returns_structured_409_without_mut
     assert detail["project_id"] == "P1"
     assert detail["lifecycle_state"] == "closed"
     assert detail["closure_type"] == "completed"
-    assert detail["allowed_actions"] == []
+    assert detail["close_reason_category"] == "completed"
+    assert detail["close_reason_label"] == "Completed"
+    assert detail["message"] == "This project is closed. Activate it before making changes."
+    assert detail["allowed_actions"] == ["activate"]
     assert service.confirmed is False
 
 
@@ -882,8 +888,8 @@ class _ReadonlyMatrixEditorSessionService:
             closure_type=self.closure_type,
             message=_lifecycle_message(self.lifecycle_state, self.closure_type),
             allowed_actions=(
-                ("resume", "close")
-                if self.lifecycle_state is ProjectLifecycleState.STOPPED
+                ("activate",)
+                if self.lifecycle_state is not ProjectLifecycleState.ACTIVE
                 else ()
             ),
         )
@@ -939,10 +945,8 @@ def _lifecycle_message(
     closure_type: ProjectClosureType | None,
 ) -> str:
     if lifecycle_state is ProjectLifecycleState.STOPPED:
-        return "This project is stopped. Resume it before making changes."
-    if closure_type is ProjectClosureType.COMPLETED:
-        return "This project is closed as completed and is readonly."
-    return "This project is closed and is readonly."
+        return "This project is stopped. Activate it before making changes."
+    return "This project is closed. Activate it before making changes."
 
 
 def _seed_source_import(

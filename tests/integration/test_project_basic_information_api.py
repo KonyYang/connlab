@@ -112,7 +112,10 @@ def test_lifecycle_readonly_draft_save_returns_structured_409_without_mutation()
     assert detail["project_id"] == "P1"
     assert detail["lifecycle_state"] == "stopped"
     assert detail["closure_type"] is None
-    assert detail["allowed_actions"] == ["resume", "close"]
+    assert detail["close_reason_category"] is None
+    assert detail["close_reason_label"] is None
+    assert detail["message"] == "This project is stopped. Activate it before making changes."
+    assert detail["allowed_actions"] == ["activate"]
     assert service.saved_values is None
 
 
@@ -176,8 +179,8 @@ class _Service:
                 project_id=command.project_id,
                 lifecycle_state=ProjectLifecycleState.STOPPED,
                 closure_type=None,
-                message="This project is stopped. Resume it before making changes.",
-                allowed_actions=("resume", "close"),
+                message="This project is stopped. Activate it before making changes.",
+                allowed_actions=("activate",),
             )
         self.saved_values = command.values
         return _result(command.project_id, status="unconfirmed", values=command.values)
@@ -188,8 +191,8 @@ class _Service:
                 project_id=command.project_id,
                 lifecycle_state=ProjectLifecycleState.STOPPED,
                 closure_type=None,
-                message="This project is stopped. Resume it before making changes.",
-                allowed_actions=("resume", "close"),
+                message="This project is stopped. Activate it before making changes.",
+                allowed_actions=("activate",),
             )
         if self.missing:
             raise ProjectBasicInformationMissingRequiredError(

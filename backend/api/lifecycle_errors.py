@@ -25,7 +25,15 @@ def lifecycle_readonly_conflict(exc: ProjectLifecycleReadonlyError) -> HTTPExcep
             "code": "project_lifecycle_readonly",
             "project_id": exc.project_id,
             "lifecycle_state": exc.lifecycle_state.value,
-            "closure_type": exc.closure_type.value if exc.closure_type else None,
+            "closure_type": (
+                exc.closure_type.value
+                if exc.closure_type and exc.closure_type.value == "completed"
+                else None
+            ),
+            "close_reason_category": (
+                exc.close_reason_category.value if exc.close_reason_category else None
+            ),
+            "close_reason_label": exc.close_reason_label,
             "message": exc.message,
             "allowed_actions": list(exc.allowed_actions),
         },

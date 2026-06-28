@@ -163,7 +163,10 @@ def test_pricing_draft_put_stopped_returns_structured_409_without_mutation() -> 
     assert detail["project_id"] == "P1"
     assert detail["lifecycle_state"] == "stopped"
     assert detail["closure_type"] is None
-    assert detail["allowed_actions"] == ["resume", "close"]
+    assert detail["close_reason_category"] is None
+    assert detail["close_reason_label"] is None
+    assert detail["message"] == "This project is stopped. Activate it before making changes."
+    assert detail["allowed_actions"] == ["activate"]
     assert service.save_commands == []
 
 
@@ -368,7 +371,10 @@ def test_pricing_draft_delete_closed_returns_structured_409_without_mutation() -
     assert detail["project_id"] == "P1"
     assert detail["lifecycle_state"] == "closed"
     assert detail["closure_type"] == "completed"
-    assert detail["allowed_actions"] == []
+    assert detail["close_reason_category"] == "completed"
+    assert detail["close_reason_label"] == "Completed"
+    assert detail["message"] == "This project is closed. Activate it before making changes."
+    assert detail["allowed_actions"] == ["activate"]
     assert service.discard_commands == []
 
 
@@ -588,8 +594,8 @@ class _ReadonlyService:
             closure_type=self.closure_type,
             message=_lifecycle_message(self.lifecycle_state, self.closure_type),
             allowed_actions=(
-                ("resume", "close")
-                if self.lifecycle_state is ProjectLifecycleState.STOPPED
+                ("activate",)
+                if self.lifecycle_state is not ProjectLifecycleState.ACTIVE
                 else ()
             ),
         )
@@ -618,7 +624,5 @@ def _lifecycle_message(
     closure_type: ProjectClosureType | None,
 ) -> str:
     if lifecycle_state is ProjectLifecycleState.STOPPED:
-        return "This project is stopped. Resume it before making changes."
-    if closure_type is ProjectClosureType.COMPLETED:
-        return "This project is closed as completed and is readonly."
-    return "This project is closed and is readonly."
+        return "This project is stopped. Activate it before making changes."
+    return "This project is closed. Activate it before making changes."
