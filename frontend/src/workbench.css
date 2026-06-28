@@ -2926,9 +2926,11 @@
 
 .runtime-console-no-matrix-main {
   min-width: 0;
+  overflow-x: auto;
 }
 
 .runtime-console-no-matrix-table {
+  min-width: 760px;
   width: 100%;
   border: 1px solid var(--color-border);
   border-collapse: separate;
@@ -2989,6 +2991,22 @@
 .runtime-console-no-matrix-token {
   border-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
   color: var(--color-primary-strong);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.runtime-console-no-matrix-token:hover,
+.runtime-console-no-matrix-token:focus-visible,
+.runtime-console-no-matrix-token.is-selected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  color: var(--color-primary-strong);
+  outline: none;
+}
+
+.runtime-console-no-matrix-token.is-selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 .runtime-console-no-matrix-side {
@@ -8115,7 +8133,8 @@
   }
 
   .runtime-console-commandbar,
-  .runtime-console-active-matrix .runtime-console-workspace {
+  .runtime-console-active-matrix .runtime-console-workspace,
+  .runtime-console-no-matrix-empty {
     grid-template-columns: 1fr;
   }
 

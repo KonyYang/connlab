@@ -499,6 +499,12 @@ export function NoMatrixWorkspaceEmptyState({
   matrixDraft: ProjectTestPlanDraft | null;
 }): ReactElement {
   const draftPreview = buildNoMatrixDraftPreview(matrixDraft);
+  const [selectedTokenReference, setSelectedTokenReference] = useState<string | null>(
+    null
+  );
+  const selectedStep =
+    findNoMatrixDraftPreviewToken(draftPreview, selectedTokenReference) ??
+    findFirstNoMatrixDraftPreviewToken(draftPreview);
   return (
     <section
       className="runtime-console-no-matrix-empty"
@@ -515,8 +521,8 @@ export function NoMatrixWorkspaceEmptyState({
               <th>Condition</th>
               <th>Requirement</th>
               <th>Day</th>
-              {draftPreview.groupLabels.map((label, index) => (
-                <th key={`${label}:${index}`}>{label}</th>
+              {draftPreview.groupColumns.map((group) => (
+                <th key={group.key}>{group.label}</th>
               ))}
             </tr>
           </thead>
@@ -532,17 +538,28 @@ export function NoMatrixWorkspaceEmptyState({
                 <td>{row.condition}</td>
                 <td>{row.requirement}</td>
                 <td>{row.day || ""}</td>
-                {draftPreview.groupLabels.map((label, index) => (
-                  <td key={`${row.key}:${label}:${index}`}>
-                    {row.tokensByGroup[label] ? (
-                      <span className="runtime-console-no-matrix-token">
-                        {row.tokensByGroup[label]}
-                      </span>
-                    ) : (
-                      <span className="runtime-console-matrix-empty-cell">-</span>
-                    )}
-                  </td>
-                ))}
+                {draftPreview.groupColumns.map((group) => {
+                  const token = row.tokensByGroupKey[group.key];
+                  return (
+                    <td key={`${row.key}:${group.key}`}>
+                      {token ? (
+                        <button
+                          className={`runtime-console-no-matrix-token${
+                            selectedStep?.tokenReference === token.tokenReference
+                              ? " is-selected"
+                              : ""
+                          }`}
+                          type="button"
+                          onClick={() => setSelectedTokenReference(token.tokenReference)}
+                        >
+                          {token.rawToken}
+                        </button>
+                      ) : (
+                        <span className="runtime-console-matrix-empty-cell">-</span>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -553,15 +570,35 @@ export function NoMatrixWorkspaceEmptyState({
           <header>
             <div>
               <p className="eyebrow">Step Workspace</p>
-              <p className="runtime-console-step-breadcrumb">Matrix authority pending</p>
+              <p className="runtime-console-step-breadcrumb">
+                {selectedStep
+                  ? `Group ${selectedStep.groupLabel} Step ${selectedStep.rawToken}: ${selectedStep.row.testItem}`
+                  : "Select a Matrix step from the table"}
+              </p>
             </div>
           </header>
           <section className="runtime-console-step-status-card runtime-console-step-status-compact">
             <div>
-              <span>Lifecycle status</span>
-              <strong className="runtime-console-step-status-empty">Not available</strong>
+              <span>Authority status</span>
+              <strong className="runtime-console-step-status-empty">Draft preview</strong>
             </div>
           </section>
+          {selectedStep ? (
+            <dl className="runtime-console-step-facts">
+              <div>
+                <dt>Method</dt>
+                <dd>{selectedStep.row.method}</dd>
+              </div>
+              <div>
+                <dt>Condition</dt>
+                <dd>{selectedStep.row.condition}</dd>
+              </div>
+              <div>
+                <dt>Requirement</dt>
+                <dd>{selectedStep.row.requirement}</dd>
+              </div>
+            </dl>
+          ) : null}
         </aside>
         <section className="runtime-console-folder-inspector" aria-label="Folder Action">
           <p className="eyebrow">Folder Action</p>
@@ -585,40 +622,61 @@ type NoMatrixDraftPreviewRow = {
   condition: string;
   requirement: string;
   day: string;
-  tokensByGroup: Record<string, string>;
+  tokensByGroupKey: Record<string, NoMatrixDraftPreviewToken>;
+};
+
+type NoMatrixDraftPreviewGroupColumn = {
+  key: string;
+  label: string;
+};
+
+type NoMatrixDraftPreviewToken = {
+  groupKey: string;
+  groupLabel: string;
+  rawToken: string;
+  tokenReference: string;
 };
 
 function buildNoMatrixDraftPreview(
   matrixDraft: ProjectTestPlanDraft | null
-): { groupLabels: string[]; rows: NoMatrixDraftPreviewRow[] } {
+): {
+  groupColumns: NoMatrixDraftPreviewGroupColumn[];
+  rows: NoMatrixDraftPreviewRow[];
+} {
   const groups = matrixDraft?.payload.groups ?? [];
   if (groups.length === 0 || !groups.some((group) => (group.steps ?? []).length > 0)) {
     return buildStarterNoMatrixDraftPreview();
   }
 
-  const groupLabels = groups.map((group, index) =>
-    normalizeNoMatrixGroupLabel(group, `${index + 1}`)
+  const groupColumns = groups.map((group, index) =>
+    toNoMatrixPreviewGroupColumn(group, index)
   );
   const rowsByKey = new Map<string, NoMatrixDraftPreviewRow>();
   groups.forEach((group, groupIndex) => {
-    const groupLabel = groupLabels[groupIndex];
+    const groupColumn = groupColumns[groupIndex];
     (group.steps ?? []).forEach((step, stepIndex) => {
       const row = toNoMatrixDraftRow(step, stepIndex);
       const existing = rowsByKey.get(row.key) ?? row;
-      existing.tokensByGroup[groupLabel] = normalizeNoMatrixToken(step, stepIndex);
+      const rawToken = normalizeNoMatrixToken(step, stepIndex);
+      existing.tokensByGroupKey[groupColumn.key] = {
+        groupKey: groupColumn.key,
+        groupLabel: groupColumn.label,
+        rawToken,
+        tokenReference: `${row.key}:${groupColumn.key}:${rawToken}`,
+      };
       rowsByKey.set(row.key, existing);
     });
   });
   const rows = Array.from(rowsByKey.values());
-  return rows.length > 0 ? { groupLabels, rows } : buildStarterNoMatrixDraftPreview();
+  return rows.length > 0 ? { groupColumns, rows } : buildStarterNoMatrixDraftPreview();
 }
 
 function buildStarterNoMatrixDraftPreview(): {
-  groupLabels: string[];
+  groupColumns: NoMatrixDraftPreviewGroupColumn[];
   rows: NoMatrixDraftPreviewRow[];
 } {
   return {
-    groupLabels: ["1"],
+    groupColumns: [{ key: "starter-group-1", label: "1" }],
     rows: [
       {
         key: "starter-visual-examination",
@@ -628,7 +686,14 @@ function buildStarterNoMatrixDraftPreview(): {
         condition: "10x min magnification",
         requirement: "No detrimental condition",
         day: "",
-        tokensByGroup: { "1": "1" },
+        tokensByGroupKey: {
+          "starter-group-1": {
+            groupKey: "starter-group-1",
+            groupLabel: "1",
+            rawToken: "1",
+            tokenReference: "starter-visual-examination:starter-group-1:1",
+          },
+        },
       },
     ],
   };
@@ -665,17 +730,21 @@ function toNoMatrixDraftRow(
     condition,
     requirement,
     day,
-    tokensByGroup: {},
+    tokensByGroupKey: {},
   };
 }
 
-function normalizeNoMatrixGroupLabel(
+function toNoMatrixPreviewGroupColumn(
   group: ProjectTestPlanDraftGroup,
-  fallback: string
-): string {
+  index: number
+): NoMatrixDraftPreviewGroupColumn {
+  const fallback = `${index + 1}`;
   const label = (group.group_label ?? group.group_key ?? "").trim();
   const withoutPrefix = label.replace(/^group[\s_-]*/i, "").trim();
-  return withoutPrefix || fallback;
+  return {
+    key: `${group.group_key?.trim() || "group"}:${index}`,
+    label: withoutPrefix || fallback,
+  };
 }
 
 function normalizeNoMatrixToken(step: ProjectTestPlanDraftStep, stepIndex: number): string {
@@ -692,6 +761,42 @@ function normalizeNoMatrixCell(
 ): string {
   const text = value === null || value === undefined ? "" : `${value}`.trim();
   return text || fallback;
+}
+
+function findNoMatrixDraftPreviewToken(
+  draftPreview: {
+    groupColumns: NoMatrixDraftPreviewGroupColumn[];
+    rows: NoMatrixDraftPreviewRow[];
+  },
+  tokenReference: string | null
+): { row: NoMatrixDraftPreviewRow } & NoMatrixDraftPreviewToken | null {
+  if (!tokenReference) {
+    return null;
+  }
+  for (const row of draftPreview.rows) {
+    for (const group of draftPreview.groupColumns) {
+      const token = row.tokensByGroupKey[group.key];
+      if (token?.tokenReference === tokenReference) {
+        return { ...token, row };
+      }
+    }
+  }
+  return null;
+}
+
+function findFirstNoMatrixDraftPreviewToken(draftPreview: {
+  groupColumns: NoMatrixDraftPreviewGroupColumn[];
+  rows: NoMatrixDraftPreviewRow[];
+}): ({ row: NoMatrixDraftPreviewRow } & NoMatrixDraftPreviewToken) | null {
+  for (const row of draftPreview.rows) {
+    for (const group of draftPreview.groupColumns) {
+      const token = row.tokensByGroupKey[group.key];
+      if (token) {
+        return { ...token, row };
+      }
+    }
+  }
+  return null;
 }
 
 export function PackagePreparationMode({

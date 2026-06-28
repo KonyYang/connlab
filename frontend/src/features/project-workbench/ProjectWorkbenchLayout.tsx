@@ -219,14 +219,19 @@ export function ProjectWorkbenchLayout({
     officialWorkspacePreview?.status === "exists" ||
     officialWorkspacePreview?.status === "completed";
   const isNoMatrixUnifiedWorkspace =
-    !lifecycleReadonlyView.readonly &&
-    (shellModel.primaryWorkspace === "matrix_setup" ||
-      shellModel.primaryWorkspace === "temporary_planning");
+    shellModel.primaryWorkspace === "matrix_setup" ||
+    shellModel.primaryWorkspace === "temporary_planning";
   const showWorkbenchActionBar = isActiveMatrixWorkspace || isNoMatrixUnifiedWorkspace;
   const hasMatrixDraftForPlanning =
     activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
   const visibleFeeEvaluationButtonState =
-    !isActiveMatrixWorkspace && !hasMatrixDraftForPlanning
+    lifecycleReadonlyView.readonly
+      ? {
+          className: feeEvaluationButtonState.className,
+          disabled: true,
+          title: lifecycleReadonlyView.message,
+        }
+      : !isActiveMatrixWorkspace && !hasMatrixDraftForPlanning
       ? {
           className: feeEvaluationButtonState.className,
           disabled: true,
@@ -470,7 +475,8 @@ export function ProjectWorkbenchLayout({
         className={`runtime-console-shell-primary workspace-${shellModel.primaryWorkspace}`}
         aria-label="Matrix"
       >
-        {shellModel.primaryWorkspace === "active_matrix" ? null : (
+        {shellModel.primaryWorkspace === "active_matrix" ||
+        isNoMatrixUnifiedWorkspace ? null : (
           <div className="runtime-console-region-heading">
             <p className="eyebrow">Matrix</p>
             <h3>{shellModel.primaryWorkspaceLabel}</h3>

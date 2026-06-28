@@ -1,4 +1,4 @@
-﻿# ConnLab Parallel Execution Model
+# ConnLab Parallel Execution Model
 
 Last Updated: 2026-06-25
 Status: active governance policy after TASK_335
@@ -35,6 +35,7 @@ Planner owns task decomposition and lane readiness.
 
 Allowed:
 
+- run Planner Discovery Gate before task/lane proposal or approval
 - update planned lane definitions in `docs/task_board.md`
 - split work into lane-sized tasks
 - define dependencies, conflict scope, `May Touch`, `Must Not Touch`, `Locked Paths`, evidence file, validation gate, and merge gate
@@ -43,8 +44,11 @@ Allowed:
 Forbidden:
 
 - implement product code
+- convert a short or ambiguous user request directly into an approved lane without Discovery Gate
 - silently convert a proposed task into an executable lane
 - bypass required task files or explicit approval
+
+Planner readiness is governed by `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`. A lane may be `approved` only when the Planner Definition of Ready is satisfied. If user goal, evidence, dependencies, ownership, validation, or non-goals are unclear, Planner must keep the lane `proposed`/`planned` and ask for clarification instead of routing to Developer.
 
 ### Developer
 
@@ -257,3 +261,27 @@ Stop immediately when:
 - validation fails and requires Developer repair
 - merge gates are not satisfied
 - the user requests product scope outside the active lane
+## 11. Automated Handoff Orchestration
+
+ConnLab may use a dedicated orchestrator skill to reduce manual role-to-role prompting:
+
+- `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+- `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
+- `docs/project_management/ROLE_THREAD_REGISTRY.md`
+
+The orchestrator is a router, not a replacement for role authority. It may inspect the board/evidence and send the next valid role a standard prompt, but it must not approve planned lanes, implement product code, override Reviewer/QA findings, or merge before the merge gate is satisfied.
+
+Typical automated chain:
+
+```text
+Planner approved lane
+  -> Orchestrator sends Developer start prompt
+  -> Developer writes ready_for_review evidence
+  -> Orchestrator sends Reviewer gate prompt
+  -> Reviewer pass/fail evidence
+  -> blocking findings return to Developer fix pass
+  -> passing gate goes to QA or Integrator
+  -> Integrator merges only after merge gate is satisfied
+```
+
+If thread tools are unavailable, the orchestrator must print the exact prompt for the user to paste into the target Chinese role thread.

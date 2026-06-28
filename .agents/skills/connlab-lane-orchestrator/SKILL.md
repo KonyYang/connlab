@@ -1,0 +1,223 @@
+---
+name: connlab-lane-orchestrator
+description: Orchestrate ConnLab approved task lanes across role-specific Codex threads. Use when the user asks to 自动推进, 自动接力, 编排, orchestrate, hand off, route Planner/Developer/Reviewer/QA/Integrator work, advance an approved TASK lane, or reduce manual role-to-role prompting in ConnLab.
+---
+
+# ConnLab Lane Orchestrator
+
+## Purpose
+
+Use this skill to turn ConnLab's controlled parallel model into a repeatable handoff workflow. The orchestrator does not replace Planner, Developer, Reviewer, QA, or Integrator authority; it reads the board/evidence, decides the next valid role, and sends that role a standard prompt.
+
+## Required Context
+
+Before sending any role prompt, read:
+
+- `AGENTS.md`
+- `docs/task_board.md`
+- `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` when routing to Planner or creating/activating a future lane
+- `docs/project_management/PARALLEL_EXECUTION_MODEL.md`
+- `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
+- `docs/project_management/ROLE_THREAD_REGISTRY.md`
+- the task file declared by the lane
+- the lane evidence file declared by the board
+
+If any file is missing or contradicts the board, stop and report the mismatch.
+
+## Core Safety Rules
+
+- Orchestrate only lanes whose board status is `approved`, `in_progress`, `review`, `qa`, `integration`, or `blocked_waiting_fix`.
+- Never start implementation from `proposed` or `planned`.
+- Never ask Planner to approve a missing or ambiguous future lane without a Discovery Gate and Definition of Ready.
+- Never expand lane scope, `May Touch`, `Must Not Touch`, or `Locked Paths`.
+- Never merge a lane with unresolved blocking Reviewer/QA findings.
+- Never use chat memory as the source of truth when evidence files or board state disagree.
+- Prefer role threads in `ROLE_THREAD_REGISTRY.md`; create or rename threads only when the user explicitly asks.
+- If the current thread has access to `send_message_to_thread`, use it for handoffs. If not, produce the exact prompt the user should paste into the target role thread.
+
+## Orchestration Loop
+
+1. Identify the lane from the user's request or from `docs/task_board.md`.
+2. Verify lane readiness: formal task file, approved status, branch/worktree, evidence path, validation gate, merge gate.
+3. Determine next role:
+   - `approved` -> Developer
+   - `in_progress` with developer evidence `ready_for_review` -> Reviewer
+   - Reviewer evidence has blocking findings -> Developer fix pass
+   - Reviewer evidence `pass` and QA required -> QA
+   - Reviewer/QA gates passed -> Integrator
+   - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
+4. Send one standard prompt to the next role thread.
+5. Ask the target role to update its evidence file and stop at its declared gate.
+6. After the target thread completes, re-read board/evidence before sending the next prompt.
+
+Run at most one full Developer->Reviewer->Developer-fix cycle without asking the user for confirmation. Continue beyond that only when the user explicitly requests automatic continuation.
+
+
+## Full-Auto Heartbeat Mode
+
+Use full-auto mode when the user explicitly asks to `实现全自动编排`, `全自动推进`, `自动轮询`, or `持续自动接力`.
+
+Full-auto mode means the orchestrator wakes periodically, re-reads board/evidence/thread status, and sends the next legal role prompt without waiting for the user to type `继续自动编排`.
+
+Full-auto mode may automatically:
+
+- wait while a target role thread is still running or has not produced required evidence
+- send Developer start prompts for approved lanes
+- send Reviewer gate prompts after Developer evidence is `ready_for_review`
+- send Developer fix-pass prompts for Reviewer/QA blocking findings that are clearly implementation-scoped
+- send QA gate prompts after Reviewer pass when QA is required
+- send Integrator readiness-check prompts after Reviewer/QA gates pass
+
+Full-auto mode must stop and report to the user before:
+
+- approving a `planned` or `proposed` lane
+- changing task/lane scope
+- resolving ambiguous or cross-lane conflicts
+- retrying the same blocking fix cycle more than once
+- merging into `master`/main or pushing remote branches, unless the user explicitly pre-authorized that exact merge action
+- deleting, resetting, or reverting work
+
+Each heartbeat run should do only one routing action, then stop. This prevents duplicate prompts and keeps role evidence as the durable handoff record.
+
+
+## Event-Driven Completion Callback
+
+Use completion callbacks to reduce heartbeat latency. A role thread that reaches its declared stop gate should notify the Orchestrator thread immediately, then stop.
+
+Callback rules:
+
+- Include the Orchestrator thread ID from `ROLE_THREAD_REGISTRY.md` or the current delegation `source_thread_id`.
+- Send a callback only after evidence/checkpoint state changed; do not send duplicate callbacks for the same evidence status.
+- The callback never authorizes the next gate by itself. The Orchestrator must still re-read board/evidence/thread status and perform at most one legal routing action.
+- If `send_message_to_thread` is unavailable, print the exact callback message for the user to paste; the heartbeat remains the fallback.
+- Do not callback while still actively editing, testing, reviewing, or integrating.
+
+Callback message shape:
+
+```text
+立即执行一次全自动编排扫描。
+来源角色：<ROLE>
+完成状态：<ready_for_review | reviewer_pass | reviewer_blocked | qa_pass | qa_fail | integrator_accepted | integrator_blocked | checkpoint>
+任务：<TASK_ID>
+lane：<LANE_ID>
+evidence：<EVIDENCE_PATH>
+建议下一角色：<Planner | Developer | Reviewer | QA | Integrator | User>
+阻塞摘要：<none 或最小阻塞事实>
+按 TASK_339-TASK_342 编排规则只执行一个合法路由动作。
+```
+## Lifecycle Series Mode
+
+Use lifecycle series mode when the user asks to complete the ConnLab lifecycle/workbench series around `TASK_339` through `TASK_342`.
+
+Series source of truth:
+
+- `tasks/TASK_336_PROJECT_LIFECYCLE_AND_UNIFIED_WORKBENCH_CONTRACT.md`
+- `docs/task_336_project_lifecycle_and_unified_workbench_contract_plan.md`
+- `docs/task_board.md`
+
+Expected sequence:
+
+1. `TASK_339A_PROJECT_LIFECYCLE_FRONTEND_READONLY_MODEL`
+2. `TASK_339B_PROJECTS_REGISTRY_LIFECYCLE_VIEWS`
+3. `TASK_340_UNIFIED_PROJECT_WORKBENCH_SHELL_PLAN` (planning output only; already may be complete)
+4. `TASK_341_UNIFIED_PROJECT_WORKBENCH_SHELL_IMPLEMENTATION`
+5. `TASK_342_LIFECYCLE_INTEGRATION_QA_AND_BOARD_CLOSEOUT`
+
+Full-auto may ask Planner to create/activate the next missing formal lane after the previous lane has Integrator acceptance. If a task file/plan/evidence does not exist yet, the next action is Planner Discovery Gate and lane preparation, not Developer implementation.
+
+Never skip directly from an accepted lane to an implementation for a missing future task. Each missing future task still needs Discovery Gate, Definition of Ready, formal task file, evidence file, lane row, May Touch/Must Not Touch/Locked Paths, validation gate, and merge gate.
+
+### Planner Discovery Prompt
+
+```text
+你是 ConnLab｜总计划者 Planner。
+请对下一步需求执行 Planner Discovery Gate，不要直接创建 approved lane。
+必须读取 AGENTS.md、docs/task_board.md、docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md、docs/project_management/PARALLEL_EXECUTION_MODEL.md，以及与该需求相关的 task/plan/evidence/code 文档。
+输出：当前 phase/lane/role、用户目标复述、已确认事实、仓库证据、Planner 推断、未确认信息、最多 3 个阻塞澄清问题、是否满足 Definition of Ready、建议保持 proposed/planned/approved 的理由。
+禁止写产品代码，禁止把推断当作用户批准，禁止跳过 Developer/Reviewer/QA/Integrator gate。
+```
+
+## Human Intervention Controls
+
+Honor these commands immediately:
+
+- `暂停全自动编排` / `pause auto orchestration`: pause the heartbeat automation or stop sending new role prompts.
+- `恢复全自动编排` / `resume auto orchestration`: resume from board/evidence state, not chat memory.
+- `停止当前角色任务`: send a stop/checkpoint request to the currently active role thread and wait for evidence.
+- `改为人工确认`: stop after every gate and print the next prompt instead of sending it.
+- `回退到 Planner`: stop routing and ask Planner to reconcile board/evidence/scope.
+- `重新读取事实`: re-read board, task files, evidence, and recent target thread summaries before taking any next action.
+
+If the user corrects direction, treat the newest user instruction as controlling, then update the next heartbeat prompt or pause the automation before further routing.
+## Standard Role Prompts
+
+### Developer Start
+
+```text
+你是 ConnLab｜开发执行者 Developer。
+请执行 lane: <LANE_ID> / task: <TASK_ID>。
+必须先读取 AGENTS.md、docs/task_board.md、任务文件、方案文件、并行模型和 evidence 文件。
+只允许修改该 lane 的 May Touch 范围，禁止触碰 Must Not Touch / Locked Paths。
+完成实现和验证后，更新 developer evidence，状态写为 ready_for_review，并停止等待 Reviewer。
+不要合并，不要替 Reviewer/Integrator 更新全局完成状态。
+```
+
+### Reviewer Gate
+
+```text
+你是 ConnLab｜质量评审员 Reviewer。
+请评审 lane: <LANE_ID> / task: <TASK_ID>。
+读取 AGENTS.md、docs/task_board.md、任务文件、developer evidence、当前 diff。
+按 docs/project_management/TASK_REVIEW_CHECKLIST.md 给出 blocking / non-blocking 结论，写入 reviewer evidence。
+不要直接修代码，不要合并。若有 blocking findings，请给 Developer 可执行修复清单并停止。
+```
+
+### Developer Fix Pass
+
+```text
+你是 ConnLab｜开发执行者 Developer。
+请只处理 Reviewer 对 lane: <LANE_ID> / task: <TASK_ID> 提出的 blocking findings。
+禁止扩展需求或触碰 lane 范围外文件。
+修复后运行相关验证，更新 developer evidence 的 fix-pass 记录，并停止等待 Reviewer 复审。
+```
+
+### QA Gate
+
+```text
+你是 ConnLab｜验证测试员 QA。
+请对 lane: <LANE_ID> / task: <TASK_ID> 执行声明的 smoke / integration 验证。
+记录环境、命令、输入、输出、失败或通过结论到 QA evidence。
+不要修改产品代码，不要合并。
+```
+
+### Integrator Merge Gate
+
+```text
+你是 ConnLab｜集成负责人 Integrator。
+请检查 lane: <LANE_ID> / task: <TASK_ID> 是否满足 merge gate。
+必须确认 Reviewer/QA blocking findings 已关闭、分支/工作区清晰、允许合并范围明确。
+如可合并，执行受控合并和集成验证，并更新 docs/task_board.md 与 integration evidence。
+如不可合并，写明阻塞原因和下一角色。
+```
+
+
+### Completion Callback Footer
+
+Append this footer to every role prompt when automatic orchestration is active:
+
+```text
+完成本角色 gate 后，请先更新对应 evidence/checkpoint，然后如果你可以使用 send_message_to_thread，请向 ConnLab｜全自动编排 Orchestrator 发送 completion callback，内容包含：来源角色、完成状态、TASK_ID、lane、evidence 路径、建议下一角色、阻塞摘要，并要求“立即执行一次全自动编排扫描，只执行一个合法路由动作”。发送 callback 后停止。
+如果当前线程没有 send_message_to_thread，请在最终答复中输出同样的 callback 文本，供用户粘贴；不要继续代替下一角色执行。
+```
+## Output Format
+
+When orchestrating, report:
+
+- lane and task
+- current board status
+- next role
+- target thread title/id if available
+- prompt sent or prompt to paste
+- evidence file expected from the target role
+- stop condition
+

@@ -311,3 +311,40 @@ AI 角色：
 * 执行者（不是架构师）
 * 必须服从 Task
 * 必须服从 AGENTS.md
+---
+
+## 16. ConnLab Lane Orchestration
+
+当用户要求“自动推进”“自动接力”“编排 lane”“把 Planner/Developer/Reviewer/QA/Integrator 串起来”时，默认使用项目 skill：
+
+- `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+- `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
+- `docs/project_management/ROLE_THREAD_REGISTRY.md`
+
+自动编排只能转发和接力已批准 lane，不得绕过以下规则：
+
+- proposed/planned 不能执行
+- Developer 只能修改 lane 允许范围
+- Reviewer/QA blocking finding 必须回到 Developer 修复
+- Integrator 只能在 merge gate 满足后合并
+- evidence 文件和 `docs/task_board.md` 优先于聊天记忆
+
+如果当前环境没有线程发送工具，则输出可复制到目标中文角色对话框的完整命令。
+
+## 17. ConnLab Planner Discovery
+
+当用户要求“规划”“拆任务”“创建/激活 lane”“下一阶段怎么做”“把需求整理成任务”时，默认使用项目 Planner skill：
+
+- `.agents/skills/connlab-planner/SKILL.md`
+- `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`
+
+Planner 不得把简短或模糊的用户请求直接转换成 approved task/lane。进入任务或 lane 规划前，必须先执行 Discovery Gate，至少区分：
+
+- 用户已明确确认的目标
+- 仓库文件已证明的事实
+- Planner 自己的推断
+- 仍未确认且会影响范围、依赖、验收或文件边界的信息
+
+如果缺失信息会影响 `May Touch`、`Must Not Touch`、`Locked Paths`、验证口径、API/data ownership、UX 行为或串并行顺序，Planner 必须先提出最多 3 个阻塞澄清问题，或将 lane 保持为 `proposed/planned`，不得标记为 `approved`。
+
+Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 Definition of Ready 满足后，才能在用户明确批准下创建或激活 approved lane。

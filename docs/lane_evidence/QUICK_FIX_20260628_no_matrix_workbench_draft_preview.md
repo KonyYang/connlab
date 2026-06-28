@@ -102,3 +102,50 @@ Integrator validation:
 - Trailing whitespace and forbidden-scope checks passed.
 
 Stop point: local controlled quick-fix commit only. Remote push intentionally not performed.
+
+## Quick Fix Follow-up Checkpoint
+
+Status: `quick_fix_followup_verified`
+Date: 2026-06-28
+
+Reason:
+
+- User observed that no-Matrix Matrix step tokens looked like steps but were not clickable, so the right Step workspace did not respond.
+- Quick Fixer self-review also identified readonly action guard and narrow-table residual risks.
+
+Follow-up changes:
+
+- Converted no-Matrix preview tokens from static text to selectable buttons.
+- Selecting a token updates the right `Step workspace` with group/step context plus method, condition, and requirement.
+- Default selection now uses the first visible preview token so the right rail is not inert.
+- `Fee Evaluation` is disabled when lifecycle readonly is active, including no-Matrix projects with a draft.
+- no-Matrix preview group columns now use stable internal keys to avoid label collisions.
+- Added horizontal overflow protection for the no-Matrix preview table and single-column stacking at narrow widths.
+
+Validation:
+
+- `npm test -- ProjectWorkbenchLayout.test.tsx`
+  - result: pass, `40` tests
+- `npm test -- ProjectWorkbenchLayout.test.tsx ProjectWorkbenchCloseConfirmation.test.tsx ProjectWorkbenchMatrixProjectionPanel.test.tsx`
+  - result: pass, `3` files / `51` tests
+  - note: expected console error remains in the Matrix projection error-state test.
+- `npm run build`
+  - result: pass
+  - note: existing Vite chunk-size warning only.
+- `git diff --check -- frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx frontend/src/workbench.css`
+  - result: pass with CRLF working-copy warnings only.
+
+Residual risk:
+
+- Browser smoke was rerun after the follow-up at:
+  - registered/no-Matrix fixture `7c55618e2acc41bd9973b7e4eaaf7e0f`
+  - temporary/no-LTR fixture `c4f39233742949febda453a428bd5e42`
+- Both browser smoke paths confirmed:
+  - no-Matrix preview table is visible
+  - `Step workspace` is visible
+  - `Folder Action` is visible
+  - long Matrix helper copy is absent
+  - preview token `1` is clickable and remains selected
+  - right `Step workspace` shows `EIA-364-18B`, `10x min magnification`, and `No detrimental condition`
+- The original project URL `72fbbfa290294da9a507344b68ff900f` currently renders an active Matrix projection, not a readonly no-Matrix shell, so it was not a valid browser fixture for the no-Matrix readonly guard. The readonly Fee guard remains covered by focused regression tests.
+- This remains display-only no-Matrix preview behavior. Real StepInstance editing is still future scope and was not implemented.

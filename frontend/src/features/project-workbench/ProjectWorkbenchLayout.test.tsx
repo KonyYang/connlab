@@ -1,4 +1,4 @@
-﻿import { render, screen } from "@testing-library/react";
+﻿import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -110,7 +110,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
     expect(screen.getByRole("region", { name: "No active Matrix workspace" })).toBeTruthy();
     expect(screen.getByText("Visual Examination")).toBeTruthy();
-    expect(screen.getByText("EIA-364-18B")).toBeTruthy();
+    expect(screen.getAllByText("EIA-364-18B").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Open Matrix Editor to prepare the authority map/)).toBeNull();
     expect(screen.queryByText("Temporary Planning")).toBeNull();
     expect(screen.queryByText(/This project has no registered LTR Number yet/)).toBeNull();
@@ -126,6 +126,31 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
     expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+  });
+
+  it("selects no-Matrix preview steps and updates the Step workspace", async () => {
+    const user = userEvent.setup();
+    renderWorkbench({
+      latestLtr: null,
+      matrixDraft: noMatrixInteractiveDraft,
+      packagePreview: null,
+    });
+
+    const noMatrixWorkspace = screen.getByRole("region", {
+      name: "No active Matrix workspace",
+    });
+    const stepWorkspace = screen.getByLabelText("Step workspace");
+    expect(stepWorkspace.textContent).toContain(
+      "Group 1 Step 1: Visual Examination"
+    );
+
+    await user.click(within(noMatrixWorkspace).getByRole("button", { name: "2" }));
+
+    expect(stepWorkspace.textContent).toContain(
+      "Group 1 Step 2: Contact Resistance"
+    );
+    expect(within(stepWorkspace).getByText("EIA-364-23")).toBeTruthy();
+    expect(within(stepWorkspace).getByText("100 mOhm max")).toBeTruthy();
   });
 
   it("keeps temporary no-Matrix lifecycle copy coherent when delete is unavailable", async () => {
@@ -177,7 +202,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onOpenFeeEvaluation).toHaveBeenCalledTimes(1);
   });
 
-  it("does not offer temporary planning or promotion for cancelled no-DL projects", () => {
+  it("keeps cancelled no-DL projects in the unified shell without planning writes", () => {
     renderWorkbench(
       {
         latestLtr: null,
@@ -187,10 +212,18 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { status: "cancelled" }
     );
 
-    expect(screen.getAllByText("Project stopped").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Read-only project").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Project Workbench actions")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
+      "Visual Examination"
+    );
+    expect(screen.getByLabelText("Step workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
     expect(screen.queryByText("Temporary Planning")).toBeNull();
+    expect(screen.queryByText("Temporary planning")).toBeNull();
+    expect(screen.queryByText("Read-only project")).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Convert to Formal Project" })).toBeNull();
   });
 
@@ -356,9 +389,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(folderButton.getAttribute("title")).toMatch(/active Matrix authority/i);
     expect(screen.getByRole("region", { name: "No active Matrix workspace" })).toBeTruthy();
     expect(screen.getByText("Visual Examination")).toBeTruthy();
-    expect(screen.getByText("EIA-364-18B")).toBeTruthy();
-    expect(screen.getByText("10x min magnification")).toBeTruthy();
-    expect(screen.getByText("No detrimental condition")).toBeTruthy();
+    expect(screen.getAllByText("EIA-364-18B").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("10x min magnification").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("No detrimental condition").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Open Matrix Editor to prepare the authority map/)).toBeNull();
     expect(screen.queryByText("Matrix authority missing")).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
@@ -439,7 +472,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("View activity history")).toBeNull();
   });
 
-  it("keeps stopped no-active-Matrix projects readable without write actions", () => {
+  it("keeps stopped no-active-Matrix projects in the unified shell without write actions", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: null,
@@ -461,14 +494,30 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(projectState.textContent).toContain("DL-2026-06-001");
     expect(screen.queryByLabelText("Workbench state")).toBeNull();
     expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
-    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
-      "Matrix authority setup"
+    const actionBar = screen.getByLabelText("Project Workbench actions");
+    expect(actionBar.textContent).toMatch(
+      /Fee Evaluation\s*Basic Information\s*Create project folder/
     );
+    expect(actionBar.textContent).not.toContain("Matrix Editor");
+    expect(screen.getByRole("button", { name: "Fee Evaluation" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(screen.getByRole("button", { name: "Fee Evaluation" }).getAttribute("title")).toBe(
+      "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed."
+    );
+    expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
+      "Visual Examination"
+    );
+    expect(screen.queryByText("Matrix authority setup")).toBeNull();
+    expect(screen.getByLabelText("Step workspace")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Outputs" })).toBeNull();
     expect(screen.queryByRole("region", { name: "History" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Matrix Editor" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
   });
@@ -1541,6 +1590,40 @@ const noMatrixPreviewDraft: ProjectTestPlanDraft = {
             method_summary: "EIA-364-18B",
             condition_summary: "10x min magnification",
             judgement_criteria: "No detrimental condition",
+          },
+        ],
+      },
+    ],
+    warnings: [],
+    blockers: [],
+  },
+};
+
+const noMatrixInteractiveDraft: ProjectTestPlanDraft = {
+  ...noMatrixPreviewDraft,
+  draft_id: "draft-preview-interactive",
+  payload: {
+    groups: [
+      {
+        group_key: "group-1",
+        group_label: "1",
+        sample_size: 1,
+        steps: [
+          {
+            raw_token: "1",
+            sequence: 1,
+            test_item: "Visual Examination",
+            method_summary: "EIA-364-18B",
+            condition_summary: "10x min magnification",
+            judgement_criteria: "No detrimental condition",
+          },
+          {
+            raw_token: "2",
+            sequence: 2,
+            test_item: "Contact Resistance",
+            method_summary: "EIA-364-23",
+            condition_summary: "Low level signal",
+            judgement_criteria: "100 mOhm max",
           },
         ],
       },

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ConnLab Lane Orchestrator"
+  short_description: "自动编排 ConnLab 已批准任务 lane 的角色接力。"
+  default_prompt: "自动推进 ConnLab 已批准 lane，按 Planner、Developer、Reviewer、QA、Integrator 的规则完成接力。"
