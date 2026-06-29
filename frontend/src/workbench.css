@@ -3098,9 +3098,19 @@
   max-width: 72ch;
 }
 
-.runtime-console-close-action:not(:disabled) {
-  border-color: color-mix(in srgb, var(--color-danger) 44%, var(--color-border));
-  color: var(--color-danger);
+.runtime-console-lifecycle-actions button.runtime-console-close-action:not(:disabled),
+.runtime-console-lifecycle-actions button.runtime-console-activate-action:not(:disabled) {
+  border-color: var(--color-primary-strong);
+  background: var(--color-primary-strong);
+  color: var(--color-surface);
+  font-weight: 800;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary-strong) 18%, transparent);
+}
+
+.runtime-console-lifecycle-actions button.runtime-console-close-action:not(:disabled):hover,
+.runtime-console-lifecycle-actions button.runtime-console-activate-action:not(:disabled):hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
 .runtime-console-lifecycle-confirmation {
@@ -3139,6 +3149,29 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.runtime-console-lifecycle-confirm-actions button {
+  border: 1px solid color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-primary-strong);
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 8px 12px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.runtime-console-lifecycle-confirm-actions button:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+}
+
+.runtime-console-lifecycle-confirm-actions button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  box-shadow: none;
 }
 
 .runtime-console-readonly-note {
@@ -3543,6 +3576,101 @@
   margin: 8px 0 0;
   color: var(--color-ink-muted);
   font-size: 12px;
+}
+
+.runtime-console-folder-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  padding: 12px;
+}
+
+.runtime-console-folder-actions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.runtime-console-folder-actions-header p {
+  margin: 0;
+}
+
+.runtime-console-folder-operation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtime-console-folder-operation {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 78%, var(--color-sidebar));
+  padding: 10px;
+}
+
+.runtime-console-folder-operation-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.runtime-console-folder-operation-copy h3,
+.runtime-console-folder-operation-copy p,
+.runtime-console-folder-operation-blocker {
+  margin: 0;
+}
+
+.runtime-console-folder-operation-copy h3 {
+  color: var(--color-ink);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.runtime-console-folder-operation-copy p,
+.runtime-console-folder-operation-blocker {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.runtime-console-folder-operation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.runtime-console-folder-operation-controls button {
+  border: 1px solid color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
+  color: var(--color-primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 7px 10px;
+}
+
+.runtime-console-folder-operation-controls button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+
+.runtime-console-folder-auto-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .runtime-console-project-folder-flow {

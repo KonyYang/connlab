@@ -5,9 +5,9 @@ import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjecti
 import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import type {
   ProjectFolderTaskActionTarget,
-  ProjectFolderTaskKey,
   ProjectFolderTaskRow,
 } from "./projectFolderTaskSelectors";
+import { ProjectFolderActionsSurface } from "./ProjectFolderTaskList";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 type ProjectWorkbenchActiveMatrixWorkspaceProps = {
@@ -16,7 +16,6 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   onProjectFolderTaskAction: (actionTarget: ProjectFolderTaskActionTarget) => void;
   projectFolderTasks: ProjectFolderTaskRow[];
   projectId: string;
-  currentProjectFolderTaskKey: ProjectFolderTaskKey;
   basicInformation: ProjectRuntimeConsoleModel["basicInformation"];
   basicInformationLoading: ProjectRuntimeConsoleModel["basicInformationLoading"];
   basicInformationError: ProjectRuntimeConsoleModel["basicInformationError"];
@@ -32,7 +31,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   onProjectFolderTaskAction,
   projectFolderTasks,
   projectId,
-  currentProjectFolderTaskKey,
   basicInformation,
   basicInformationLoading,
   basicInformationError,
@@ -49,9 +47,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
     !effectiveFolderReady && !canGenerateFolder
       ? withoutUnavailableFolderAction(projectFolderTasks)
       : projectFolderTasks;
-  const currentFolderTask =
-    visibleProjectFolderTasks.find((task) => task.key === currentProjectFolderTaskKey) ??
-    visibleProjectFolderTasks[0];
   return (
     <section className="runtime-console-active-matrix" aria-label="Test Execution Workspace">
       <section className="runtime-console-workbench-canvas">
@@ -62,29 +57,13 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
           setSelectedProjectionToken={setSelectedProjectionToken}
           sideColumnAfter={
             <>
-              <section className="runtime-console-folder-inspector" aria-label="Folder Action">
-                <p className="eyebrow">Folder Action</p>
-                <h3>{currentFolderTask.title}</h3>
-                <strong className={`runtime-console-folder-inspector-status status-${currentFolderTask.status}`}>
-                  {currentFolderTask.statusLabel}
-                </strong>
-                <p>{currentFolderTask.summary}</p>
-                <FolderTaskMessages task={currentFolderTask} />
-                {currentFolderTask.actionLabel && currentFolderTask.actionTarget ? (
-                  <button
-                    disabled={lifecycleReadonlyView.readonly}
-                    title={lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined}
-                    type="button"
-                    onClick={() => {
-                      if (currentFolderTask.actionTarget) {
-                        onProjectFolderTaskAction(currentFolderTask.actionTarget);
-                      }
-                    }}
-                  >
-                    {currentFolderTask.actionLabel}
-                  </button>
-                ) : null}
-              </section>
+              <ProjectFolderActionsSurface
+                tasks={visibleProjectFolderTasks}
+                onTaskAction={onProjectFolderTaskAction}
+                readonlyReason={
+                  lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
+                }
+              />
               <ProjectBasicInformationSummaryCard
                 projectId={projectId}
                 basicInformation={basicInformation}
@@ -103,29 +82,15 @@ function withoutUnavailableFolderAction(
   tasks: ProjectFolderTaskRow[]
 ): ProjectFolderTaskRow[] {
   return tasks.map((task) =>
-    task.key === "local_project_folder"
+    task.key === "project_folder"
       ? {
           ...task,
           actionLabel: undefined,
           actionTarget: undefined,
           summary:
-            "Project folder generation is unavailable until the template and target path are ready.",
+            "Project folder access is unavailable until the template and target path are ready.",
         }
       : task
-  );
-}
-
-function FolderTaskMessages({ task }: { task: ProjectFolderTaskRow }): ReactElement | null {
-  const messages = [...task.blockers, ...task.warnings].slice(0, 2);
-  if (messages.length === 0) {
-    return null;
-  }
-  return (
-    <ul className="runtime-console-inspector-messages">
-      {messages.map((message) => (
-        <li key={message}>{message}</li>
-      ))}
-    </ul>
   );
 }
 

@@ -14,7 +14,10 @@ import type {
   WorkbenchLifecycleTab,
   WorkbenchLifecycleViewModel,
 } from "./projectWorkbenchLifecycleSelectors";
-import { ProjectFolderTaskList } from "./ProjectFolderTaskList";
+import {
+  ProjectFolderActionsSurface,
+  ProjectFolderTaskList,
+} from "./ProjectFolderTaskList";
 import type {
   ProjectFolderTaskActionTarget,
   ProjectFolderTaskKey,
@@ -356,6 +359,7 @@ export function ProjectLifecycleManagementPanel({
         {lifecycleActions.canActivate ? (
           <button
             type="button"
+            className="runtime-console-activate-action"
             disabled={lifecycleBusy}
             onClick={() => setPendingAction("activate")}
           >
@@ -469,10 +473,10 @@ function getTemporaryDeleteBlockerCopy(blocker: string, allowDelete: boolean): s
 }
 
 export function NoMatrixWorkspaceEmptyState({
-  currentFolderTask,
+  projectFolderTasks,
   matrixDraft,
 }: {
-  currentFolderTask: ProjectFolderTaskRow;
+  projectFolderTasks: ProjectFolderTaskRow[];
   matrixDraft: ProjectTestPlanDraft | null;
 }): ReactElement {
   const draftPreview = buildNoMatrixDraftPreview(matrixDraft);
@@ -577,15 +581,7 @@ export function NoMatrixWorkspaceEmptyState({
             </dl>
           ) : null}
         </aside>
-        <section className="runtime-console-folder-inspector" aria-label="Folder Action">
-          <p className="eyebrow">Folder Action</p>
-          <h3>{currentFolderTask.title}</h3>
-          <strong
-            className={`runtime-console-folder-inspector-status status-${currentFolderTask.status}`}
-          >
-            {currentFolderTask.statusLabel}
-          </strong>
-        </section>
+        <ProjectFolderActionsSurface tasks={projectFolderTasks} />
       </div>
     </section>
   );

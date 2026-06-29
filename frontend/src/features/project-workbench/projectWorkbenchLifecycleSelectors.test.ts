@@ -51,8 +51,8 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.mode).toBe("package_preparation");
     expect(lifecycle.stageLabel).toBe("Project Folder preparation");
     expect(lifecycle.nextAction.tone).toBe("neutral");
-    expect(lifecycle.nextAction.title).toBe("Collect request material");
-    expect(lifecycle.nextAction.actionTarget).toBe("request_material");
+    expect(lifecycle.nextAction.title).toBe("Use Folder Actions");
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
     expect(lifecycle.tabs.map((tab) => tab.label)).toEqual([
       "Project Folder",
       "Execution",
@@ -158,7 +158,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.actionTarget).toBe("official_folder_refresh");
   });
 
-  it("shows upload to public drive when public-drive preview is ready", () => {
+  it("routes public working copy readiness to Folder Actions", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
       hasLtr: true,
@@ -170,9 +170,10 @@ describe("deriveProjectWorkbenchLifecycle", () => {
       publicDrivePreviewStatus: "ready",
     });
 
-    expect(lifecycle.nextAction.title).toBe("Upload Project Folder to public drive");
-    expect(lifecycle.nextAction.actionLabel).toBe("Upload to public drive");
-    expect(lifecycle.nextAction.actionTarget).toBe("public_drive_upload");
+    expect(lifecycle.nextAction.title).toBe("Use Folder Actions");
+    expect(lifecycle.nextAction.reason).toContain("Sync and submit workflows");
+    expect(lifecycle.nextAction.actionLabel).toBeUndefined();
+    expect(lifecycle.nextAction.actionTarget).toBeUndefined();
   });
 
   it("does not show public-drive upload before project folder readiness is loaded", () => {
@@ -191,7 +192,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     expect(lifecycle.nextAction.actionTarget).toBe("package");
   });
 
-  it("blocks public-drive upload when preview reports conflict", () => {
+  it("keeps public working copy conflicts as Folder Actions blockers", () => {
     const lifecycle = deriveProjectWorkbenchLifecycle({
       ...baseInput,
       hasLtr: true,
@@ -201,11 +202,11 @@ describe("deriveProjectWorkbenchLifecycle", () => {
       officialFolderCheckStatus: "ready",
       packageStatus: "ready",
       publicDrivePreviewStatus: "conflict",
-      publicDrivePreviewBlockers: ["Resolve public-drive conflicts before upload."],
+      publicDrivePreviewBlockers: ["Resolve the public working copy conflict."],
     });
 
-    expect(lifecycle.nextAction.title).toBe("Review public-drive conflict");
-    expect(lifecycle.nextAction.reason).toBe("Resolve public-drive conflicts before upload.");
+    expect(lifecycle.nextAction.title).toBe("Review Folder Actions");
+    expect(lifecycle.nextAction.reason).toBe("Resolve the public working copy conflict.");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
   });
 
@@ -222,7 +223,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
       publicDrivePreviewBlockers: ["Public Project locations is not configured."],
     });
 
-    expect(lifecycle.nextAction.title).toBe("Public-drive upload is not ready");
+    expect(lifecycle.nextAction.title).toBe("Review Folder Actions");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
   });
 
@@ -239,7 +240,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     });
 
     expect(lifecycle.nextAction.tone).toBe("warning");
-    expect(lifecycle.nextAction.title).toBe("Review request material");
+    expect(lifecycle.nextAction.title).toBe("Review Folder Actions");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
   });
 

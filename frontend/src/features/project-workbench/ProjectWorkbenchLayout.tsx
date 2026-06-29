@@ -469,7 +469,6 @@ export function ProjectWorkbenchLayout({
               onProjectFolderTaskAction={handleProjectFolderTaskAction}
               projectFolderTasks={projectFolderTasks}
               projectId={project.project_id}
-              currentProjectFolderTaskKey={currentProjectFolderTaskKey}
               runtimeProjectionSnapshot={runtimeProjectionSnapshot}
               selectedProjectionToken={selectedProjectionToken}
               setSelectedProjectionToken={setSelectedProjectionToken}
@@ -498,10 +497,7 @@ export function ProjectWorkbenchLayout({
         ) : isNoMatrixUnifiedWorkspace ? (
           <>
             <NoMatrixWorkspaceEmptyState
-              currentFolderTask={
-                projectFolderTasks.find((task) => task.key === currentProjectFolderTaskKey) ??
-                projectFolderTasks[0]
-              }
+              projectFolderTasks={projectFolderTasks}
               matrixDraft={matrixCandidateDraft ?? matrixDraft ?? null}
             />
             <ProjectLifecycleManagementPanel

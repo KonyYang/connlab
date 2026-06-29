@@ -125,7 +125,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Matrix projection panel")).toBeNull();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
   });
 
   it("selects no-Matrix preview steps and updates the Step workspace", async () => {
@@ -215,7 +215,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "Visual Examination"
     );
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
     expect(screen.queryByText("Temporary Planning")).toBeNull();
     expect(screen.queryByText("Temporary planning")).toBeNull();
     expect(screen.queryByText("Read-only project")).toBeNull();
@@ -401,7 +401,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
   });
 
   it("uses header actions and Matrix workspace once active Matrix exists", async () => {
@@ -436,7 +436,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Folder generated")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
     expect(screen.queryByText("Project folder details")).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Folder setup panel")).toBeNull();
@@ -513,7 +513,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
     expect(screen.queryByText("Matrix authority setup")).toBeNull();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Outputs" })).toBeNull();
     expect(screen.queryByRole("region", { name: "History" })).toBeNull();
@@ -709,7 +709,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       basicInformation: confirmedBasicInformation,
     });
 
-    const folderActionCard = screen.getByLabelText("Folder Action");
+    const folderActionCard = screen.getByLabelText("Folder Actions");
     const basicInformationCard = screen.getByLabelText("LTR Information");
     expect(basicInformationCard).toBeTruthy();
     expect(
@@ -755,7 +755,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("tab", { name: "Project Folder" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
-    expect(screen.getByLabelText("Folder Action").textContent).toContain("Required forms");
+    expect(screen.getByLabelText("Folder Actions").textContent).toContain("Project folder");
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
@@ -777,14 +777,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(folderButton.getAttribute("title")).toBe(
       "Confirm Basic Information before generating Project Folder outputs."
     );
-    const folderAction = screen.getByLabelText("Folder Action");
-    expect(folderAction.textContent).toContain("Required forms");
-    expect(folderAction.textContent).toContain(
-      "Confirm Basic Information before generating Required forms."
-    );
-    expect(folderAction.textContent).toContain(
-      "Confirm Basic Information before generating Project Folder outputs."
-    );
+    const folderAction = screen.getByLabelText("Folder Actions");
+    expect(folderAction.textContent).toContain("Project folder");
+    expect(folderAction.textContent).not.toContain("Required forms");
   });
 
   it("keeps Update project folder disabled when an earlier folder task masks the Required forms blocker", () => {
@@ -798,7 +793,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
     });
 
-    expect(screen.getByLabelText("Folder Action").textContent).toContain(
+    expect(screen.getByLabelText("Folder Actions").textContent).toContain(
+      "Public working copy"
+    );
+    expect(screen.getByLabelText("Folder Actions").textContent).not.toContain(
       "Request material"
     );
     const folderButton = screen.getByRole("button", { name: "Update project folder" });
@@ -861,12 +859,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
-    expect(screen.getAllByText("Request material").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Request material")).toBeNull();
     expect(screen.queryByLabelText("Project Folder progress")).toBeNull();
     expect(screen.queryByText("Project folder details")).toBeNull();
-    expect(
-      screen.getAllByRole("button", { name: "Collect request material" }).length
-    ).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Collect request material" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByText("Secondary links")).toBeNull();
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
@@ -914,10 +910,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         confirmedFeeLatest: item.confirmedFeeLatest,
       });
 
-      expect(screen.getByLabelText("Folder Action").textContent).toContain(
+      expect(screen.getByLabelText("Folder Actions").textContent).toContain(
+        "Approval package"
+      );
+      expect(screen.getByLabelText("Folder Actions").textContent).not.toContain(
         item.selectedTask
       );
-      expect(screen.getAllByText(item.expectedStatus).length).toBeGreaterThan(0);
+      expect(screen.queryByText(item.expectedStatus)).toBeNull();
       const feeButton = screen.getByRole("button", { name: "Fee Evaluation" });
       if (item.confirmedFeeLatest.status !== "current") {
         expect(screen.queryByRole("button", { name: "Generate required forms" })).toBeNull();
@@ -926,9 +925,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       } else {
         expect(feeButton.className).not.toContain("is-review-required");
         expect(feeButton.getAttribute("title")).toBeNull();
-        expect(
-          screen.getAllByRole("button", { name: "Generate required forms" }).length
-        ).toBeGreaterThan(0);
+        expect(screen.queryByRole("button", { name: "Generate required forms" })).toBeNull();
       }
       unmount();
     }
@@ -967,8 +964,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(alert.textContent).toContain("Official project folder is missing.");
   });
 
-  it("shows folder structure repair as the single next action", async () => {
-    const user = userEvent.setup();
+  it("keeps folder structure repair out of the default Folder Actions surface", () => {
     const onRepairOfficialFolderStructure = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
@@ -981,12 +977,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onRepairOfficialFolderStructure,
     });
 
-    expect(screen.getAllByText("Local project folder").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Needs repair").length).toBeGreaterThan(0);
-
-    await user.click(screen.getAllByRole("button", { name: "Repair folder structure" })[0]);
-
-    expect(onRepairOfficialFolderStructure).toHaveBeenCalledTimes(1);
+    const folderActions = screen.getByLabelText("Folder Actions");
+    expect(folderActions.textContent).toContain("Project folder");
+    expect(folderActions.textContent).not.toContain("Local project folder");
+    expect(folderActions.textContent).not.toContain("Needs repair");
+    expect(screen.queryByRole("button", { name: "Repair folder structure" })).toBeNull();
+    expect(onRepairOfficialFolderStructure).not.toHaveBeenCalled();
   });
 
   it("does not use package preview Customer Feedback as the Project Folder source", () => {
@@ -1000,8 +996,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       folderReady: true,
     });
 
-    expect(screen.getAllByText("Required forms").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Deferred").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Required forms")).toBeNull();
+    expect(screen.queryByText("Deferred")).toBeNull();
     expect(screen.queryByText("Customer Feedback form")).toBeNull();
     expect(screen.queryByText("Customer Feedback form ready from package preview")).toBeNull();
   });
@@ -1026,7 +1022,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       )
     ).toBeNull();
     expect(screen.queryByText("Submitted Material/application.docx")).toBeNull();
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
   });
 
   it("shows one local project folder creation action before package preparation", async () => {
@@ -1059,8 +1055,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     expect(getWorkbenchActionButton("Create project folder")).toBeTruthy();
     expect(
-      screen.getAllByText("Create the official project folder from the standard template.").length
-    ).toBeTruthy();
+      screen.queryByText("Create the official project folder from the standard template.")
+    ).toBeNull();
+    expect(screen.getByLabelText("Folder Actions").textContent).toContain("Project folder");
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(screen.queryByText("Project package panel")).toBeNull();
@@ -1194,16 +1191,16 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(folderButton.getAttribute("title")).toBeNull();
     expect(
       screen.getAllByText(
-        "Project folder generation is unavailable until the template and target path are ready."
+        "Project folder access is unavailable until the template and target path are ready."
       ).length
     ).toBeGreaterThan(0);
     expect(screen.queryByText("Configure workspace paths")).toBeNull();
     expect(screen.queryByText("Project default save location is not configured.")).toBeNull();
     expect(
       screen
-        .getByLabelText("Folder Action")
+        .getByLabelText("Folder Actions")
         .querySelectorAll("button")
-    ).toHaveLength(0);
+    ).toHaveLength(3);
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
     await user.click(folderButton);
@@ -1254,7 +1251,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
 
     expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate");
-    expect(screen.getByLabelText("Folder Action")).toBeTruthy();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
   });
 
   it("asks before updating a recorded project folder while preview is still loading", async () => {

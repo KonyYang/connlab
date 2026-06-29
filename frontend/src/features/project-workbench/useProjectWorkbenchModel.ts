@@ -578,7 +578,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       },
       { title: "Project folder", value: folderReady ? "Created" : "Not recorded" },
       {
-        title: "Source materials",
+        title: "Folder inputs",
         value: folderReady ? "Evidence placement available" : "Available after folder creation"
       }
     ],
@@ -915,10 +915,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setRequestMaterialError(null);
       setMessage(
         result.status === "review_required"
-          ? "Request material collected. Review undecided attachments before Submitted Material placement."
+          ? "Folder inputs collected. Review undecided attachments before controlled placement."
           : result.status === "partial"
-          ? "Request material partially collected. Review missing request material."
-          : "Request material collected."
+          ? "Folder inputs partially collected. Review missing files."
+          : "Folder inputs collected."
       );
       await onRefreshPackagePreview();
       await onRefreshOfficialFolderCheck();

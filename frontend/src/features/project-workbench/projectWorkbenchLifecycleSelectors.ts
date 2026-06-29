@@ -272,30 +272,28 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
 
   if (input.hasRequestMaterialPreviewError) {
     return {
-      title: "Refresh request material",
-      reason: "Request material could not be loaded. Refresh before copying source files.",
+      title: "Review Folder Actions",
+      reason: "Folder action status could not be loaded.",
       tone: "blocked",
-      actionLabel: "Refresh request material",
-      actionTarget: "request_material",
     };
   }
 
   if (input.requestMaterialStatus === "blocked" || input.requestMaterialStatus === "conflict") {
     return {
-      title: "Review request material",
+      title: "Review Folder Actions",
       reason:
         input.requestMaterialBlockers[0] ??
-        "Request material needs review before ConnLab can copy source files.",
+        "Review the folder action blocker before continuing.",
       tone: "blocked",
     };
   }
 
   if (input.requestMaterialStatus === "review_required") {
     return {
-      title: "Review request material",
+      title: "Review Folder Actions",
       reason:
         input.requestMaterialWarnings[0] ??
-        "Available request files are collected. Review undecided attachments before placing them in Submitted Material.",
+        "Review folder action warnings before continuing.",
       tone: "warning",
     };
   }
@@ -350,13 +348,11 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
     input.requestMaterialStatus === "partial"
   ) {
     return {
-      title: "Collect request material",
+      title: "Use Folder Actions",
       reason:
         input.requestMaterialWarnings[0] ??
-        "Copy original request files into Source Book and controlled copies into the official project folder.",
+        "Open, sync, submit, and pull controls are collected in Folder Actions.",
       tone: input.requestMaterialStatus === "partial" ? "warning" : "neutral",
-      actionLabel: "Collect request material",
-      actionTarget: "request_material",
     };
   }
 
@@ -408,72 +404,62 @@ function buildProjectFolderNextAction(input: WorkbenchLifecycleInput): Workbench
 function buildPublicDriveNextAction(input: WorkbenchLifecycleInput): WorkbenchNextAction {
   if (input.hasPublicDrivePreviewError) {
     return {
-      title: "Refresh public-drive preview",
-      reason: "Public-drive upload preview could not be loaded.",
+      title: "Review Folder Actions",
+      reason: "Public working copy status could not be loaded.",
       tone: "blocked",
-      actionLabel: "Refresh public-drive preview",
-      actionTarget: "public_drive_refresh",
     };
   }
 
   if (input.publicDrivePreviewStatus === "conflict") {
     return {
-      title: "Review public-drive conflict",
+      title: "Review Folder Actions",
       reason:
         input.publicDrivePreviewBlockers[0] ??
-        "Resolve public-drive conflicts before upload.",
+        "Resolve the public working copy conflict before continuing.",
       tone: "blocked",
     };
   }
 
   if (input.publicDrivePreviewStatus === "blocked") {
     return {
-      title: "Public-drive upload is not ready",
+      title: "Review Folder Actions",
       reason:
         input.publicDrivePreviewBlockers[0] ??
-        "Review the public-drive upload blocker before submitting the Project Folder.",
+        "Review the public working copy blocker before continuing.",
       tone: "blocked",
     };
   }
 
   if (input.publicDrivePreviewStatus === "ready") {
     return {
-      title: "Upload Project Folder to public drive",
-      reason: "Preview is ready. Upload the local Project Folder to the configured public location.",
-      tone: "ready",
-      actionLabel: "Upload to public drive",
-      actionTarget: "public_drive_upload",
+      title: "Use Folder Actions",
+      reason: "Sync and submit workflows are shown in Folder Actions and remain locked until workflow wiring is connected.",
+      tone: "neutral",
     };
   }
 
   if (input.publicDrivePreviewStatus === "warning") {
     return {
-      title: "Review public-drive upload warnings",
+      title: "Review Folder Actions",
       reason:
         input.publicDrivePreviewWarnings[0] ??
-        "Public-drive preview has warnings that should be reviewed before upload.",
+        "Review the public working copy warning before continuing.",
       tone: "warning",
-      actionLabel: "Upload to public drive",
-      actionTarget: "public_drive_upload",
     };
   }
 
   if (input.publicDrivePreviewStatus === "current") {
     return {
-      title: "Public-drive folder is current",
-      reason: "The public Project Folder already matches the local Project Folder.",
-      tone: "ready",
-      actionLabel: "Refresh public-drive preview",
-      actionTarget: "public_drive_refresh",
+      title: "Use Folder Actions",
+      reason: "Open, sync, submit, and pull controls are collected in Folder Actions.",
+      tone: "neutral",
     };
   }
 
   return {
-    title: "Preview public-drive upload",
-    reason: "Review public-drive add, update, already-current, and conflict items before upload.",
+    title: "Use Folder Actions",
+    reason: "Sync and submit workflows are shown in Folder Actions and remain locked until workflow wiring is connected.",
     tone: "neutral",
-    actionLabel: "Preview public-drive upload",
-    actionTarget: "public_drive_refresh",
   };
 }
 
