@@ -86,15 +86,18 @@ describe("deriveProjectWorkbenchShellModel", () => {
     expect(shell.primaryWorkspace).toBe("active_matrix");
   });
 
-  it("maps closed completed projects to readonly archives without write actions", () => {
+  it("maps closed completed projects to closed review without archive copy", () => {
     const lifecycle = lifecycleResponse({
       lifecycle_state: "closed",
       closure_type: "completed",
+      close_reason_category: "completed",
+      close_reason_label: "Completed",
       status: "closed",
       status_label: "Closed",
       closed_at: "2026-06-27T09:00:00Z",
       closed_reason: "All outputs accepted.",
       readonly: true,
+      allowed_actions: ["activate"],
     });
     const shell = deriveProjectWorkbenchShellModel(
       shellInput({
@@ -108,18 +111,31 @@ describe("deriveProjectWorkbenchShellModel", () => {
     expect(shell.lifecycleLabel).toBe("Closed: Completed");
     expect(shell.primaryWorkspace).toBe("readonly_archive");
     expect(shell.allowedLifecycleActions).toEqual([]);
-    expect(shell.primaryActionLabel).toBe("Read-only archive");
+    expect(shell.primaryActionLabel).toBe("Review closed project");
+    expect(shell.primaryWorkspaceLabel).toBe("Closed project review");
+    const userFacingCopy = [
+      shell.lifecycleLabel,
+      shell.bannerTitle,
+      shell.bannerMessage,
+      shell.primaryWorkspaceLabel,
+      shell.primaryWorkspaceSummary,
+      shell.primaryActionLabel,
+    ].join(" ");
+    expect(userFacingCopy).not.toMatch(/archive/i);
   });
 
-  it("maps closed administrative projects to readonly archives without raw enum copy", () => {
+  it("maps closed non-completed projects without raw enum copy", () => {
     const lifecycle = lifecycleResponse({
       lifecycle_state: "closed",
       closure_type: "administrative",
+      close_reason_category: "other",
+      close_reason_label: "Other",
       status: "closed",
       status_label: "Closed",
       closed_at: "2026-06-27T09:00:00Z",
-      closed_reason: "Administrative close by business owner.",
+      closed_reason: "Business owner closed the project.",
       readonly: true,
+      allowed_actions: ["activate"],
     });
     const shell = deriveProjectWorkbenchShellModel(
       shellInput({
@@ -130,11 +146,20 @@ describe("deriveProjectWorkbenchShellModel", () => {
       })
     );
 
-    expect(shell.lifecycleLabel).toBe("Closed: Administrative");
+    expect(shell.lifecycleLabel).toBe("Closed: Other");
     expect(shell.primaryWorkspace).toBe("readonly_archive");
     expect(JSON.stringify(shell)).not.toMatch(
       /cancelled|closed_completed|closed_administrative|lifecycle_state|closure_type/
     );
+    const userFacingCopy = [
+      shell.lifecycleLabel,
+      shell.bannerTitle,
+      shell.bannerMessage,
+      shell.primaryWorkspaceLabel,
+      shell.primaryWorkspaceSummary,
+      shell.primaryActionLabel,
+    ].join(" ");
+    expect(userFacingCopy).not.toMatch(/administrative|archive/i);
   });
 
   it("keeps the output rail current-feature only", () => {

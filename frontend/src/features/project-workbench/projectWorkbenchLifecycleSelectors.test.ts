@@ -103,7 +103,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     });
 
     expect(lifecycle.mode).toBe("package_preparation");
-    expect(lifecycle.stageLabel).toBe("Project closed as completed");
+    expect(lifecycle.stageLabel).toBe("Project closed: Completed");
     expect(lifecycle.nextAction.title).toBe("Read-only project");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
     expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual([
@@ -123,7 +123,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
     });
 
     expect(lifecycle.mode).toBe("overview");
-    expect(lifecycle.stageLabel).toBe("Project closed as completed");
+    expect(lifecycle.stageLabel).toBe("Project closed: Completed");
     expect(lifecycle.nextAction.title).toBe("Read-only project");
     expect(lifecycle.nextAction.actionTarget).toBeUndefined();
     expect(lifecycle.tabs.map((tab) => tab.mode)).toEqual(["registered_setup"]);
@@ -301,7 +301,7 @@ describe("deriveProjectWorkbenchLifecycle", () => {
 });
 
 describe("deriveProjectWorkbenchLifecycleActions", () => {
-  it("allows Stop only for active projects with an explicit stop action", () => {
+  it("uses Close as the active project primary lifecycle action", () => {
     expect(
       deriveProjectWorkbenchLifecycleActions(
         lifecycleResponse({ allowed_actions: ["stop", "close"] }),
@@ -309,13 +309,13 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
         { hasRegisteredProject: true }
       )
     ).toMatchObject({
-      primaryAction: "stop",
-      canStop: true,
+      primaryAction: "close",
+      canStop: false,
       canResume: false,
       canClose: true,
-      canCloseCompleted: true,
-      canCloseAdministrative: true,
-      preferredClosePath: "completed",
+      canActivate: false,
+      closeActionLabel: "Close project",
+      defaultCloseReasonCategory: "completed",
     });
 
     expect(
@@ -324,43 +324,41 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
         baseInput.lifecycleReadonlyView
       )
     ).toMatchObject({
-      primaryAction: "none",
+      primaryAction: "close",
       canStop: false,
       canResume: false,
       canClose: true,
-      canCloseCompleted: false,
-      canCloseAdministrative: true,
-      preferredClosePath: "administrative",
+      canActivate: false,
+      defaultCloseReasonCategory: "other",
     });
   });
 
-  it("allows Resume and completed/admin close for stopped registered projects", () => {
+  it("uses Activate for stopped registered projects even when resume compatibility remains", () => {
     const actions = deriveProjectWorkbenchLifecycleActions(
       lifecycleResponse({
         lifecycle_state: "stopped",
         status: "cancelled",
         status_label: "Stopped",
         readonly: true,
-        allowed_actions: ["resume", "close"],
+        allowed_actions: ["activate", "resume", "close"],
       }),
       stoppedReadonlyView,
       { hasRegisteredProject: true }
     );
 
     expect(actions).toMatchObject({
-      primaryAction: "resume",
+      primaryAction: "activate",
       canStop: false,
-      canResume: true,
-      canClose: true,
-      canCloseCompleted: true,
-      canCloseAdministrative: true,
-      preferredClosePath: "completed",
+      canResume: false,
+      canClose: false,
+      canActivate: true,
+      activateActionLabel: "Activate project",
       readonlyReason:
-        "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed.",
+        "This project is stopped. Activate it before making changes. Review and preview actions remain available.",
     });
   });
 
-  it("defaults temporary no-DL projects to administrative close", () => {
+  it("defaults temporary no-DL close to Other", () => {
     const actions = deriveProjectWorkbenchLifecycleActions(
       lifecycleResponse({ allowed_actions: ["stop", "close"] }),
       baseInput.lifecycleReadonlyView,
@@ -368,39 +366,39 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
     );
 
     expect(actions).toMatchObject({
-      canStop: true,
+      canStop: false,
       canClose: true,
-      canCloseCompleted: false,
-      canCloseAdministrative: true,
-      preferredClosePath: "administrative",
+      canActivate: false,
+      defaultCloseReasonCategory: "other",
     });
   });
 
-  it("does not offer lifecycle write actions for closed projects", () => {
+  it("uses Activate for closed projects when backend allows activation", () => {
     expect(
       deriveProjectWorkbenchLifecycleActions(
         lifecycleResponse({
           lifecycle_state: "closed",
           closure_type: "completed",
+          close_reason_category: "completed",
+          close_reason_label: "Completed",
           status: "closed",
           status_label: "Closed",
           readonly: true,
-          allowed_actions: [],
+          allowed_actions: ["activate"],
         }),
         closedCompletedReadonlyView
       )
     ).toMatchObject({
-      primaryAction: "none",
+      primaryAction: "activate",
       canStop: false,
       canResume: false,
       canClose: false,
-      canCloseCompleted: false,
-      canCloseAdministrative: false,
-      preferredClosePath: null,
+      canActivate: true,
+      closeReasonLabel: "Completed",
     });
   });
 
-  it("does not expose raw lifecycle enum copy in close action labels", () => {
+  it("does not expose raw lifecycle enum copy in action labels", () => {
     const actions = deriveProjectWorkbenchLifecycleActions(
       lifecycleResponse({ allowed_actions: ["stop", "close"] }),
       baseInput.lifecycleReadonlyView,
@@ -410,8 +408,8 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
     expect(JSON.stringify(actions)).not.toMatch(
       /lifecycle_state|closure_type|closed_completed|closed_administrative|cancelled/
     );
-    expect(actions.completedCloseLabel).toBe("Close as completed");
-    expect(actions.administrativeCloseLabel).toBe("Close administratively");
+    expect(actions.closeActionLabel).toBe("Close project");
+    expect(actions.activateActionLabel).toBe("Activate project");
   });
 });
 
@@ -457,20 +455,20 @@ const stoppedReadonlyView: ProjectLifecycleReadonlyView = {
   readonly: true,
   title: "Project stopped",
   message:
-    "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed.",
-  allowedActions: ["resume", "close"],
-  canResume: true,
+    "This project is stopped. Activate it before making changes. Review and preview actions remain available.",
+  allowedActions: ["activate", "resume", "close"],
+  canResume: false,
   canClose: true,
   canWriteBusinessData: false,
   canUseReadonlyPreview: true,
 };
 
 const closedCompletedReadonlyView: ProjectLifecycleReadonlyView = {
-  mode: "closed_completed_readonly",
+  mode: "closed_readonly",
   readonly: true,
-  title: "Project closed as completed",
-  message: "This project is archived as completed. Project data is read-only.",
-  allowedActions: [],
+  title: "Project closed: Completed",
+  message: "This project is closed with reason Completed. Activate it before making changes.",
+  allowedActions: ["activate"],
   canResume: false,
   canClose: false,
   canWriteBusinessData: false,

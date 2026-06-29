@@ -91,7 +91,7 @@ export function deriveProjectWorkbenchShellModel(
     primaryWorkspaceSummary: derivePrimaryWorkspaceSummary(primaryWorkspace, input),
     primaryActionLabel: input.lifecycleReadonlyView.readonly
       ? input.lifecycle?.lifecycle_state === "closed"
-        ? "Read-only archive"
+        ? "Review closed project"
         : "Read-only project"
       : derivePrimaryActionLabel(primaryWorkspace),
     allowedLifecycleActions: input.lifecycleReadonlyView.readonly
@@ -112,11 +112,8 @@ function deriveLifecycleLabel(
   if (lifecycle.lifecycle_state === "stopped") {
     return "Stopped";
   }
-  if (readonlyView.mode === "closed_completed_readonly") {
-    return "Closed: Completed";
-  }
-  if (readonlyView.mode === "closed_administrative_readonly") {
-    return "Closed: Administrative";
+  if (lifecycle.lifecycle_state === "closed" && lifecycle.close_reason_label) {
+    return `Closed: ${lifecycle.close_reason_label}`;
   }
   return "Closed";
 }
@@ -156,7 +153,7 @@ function derivePrimaryWorkspaceLabel(
     return "Matrix authority setup";
   }
   if (workspace === "readonly_archive") {
-    return "Read-only archive";
+    return "Closed project review";
   }
   return "Temporary planning";
 }
@@ -176,7 +173,7 @@ function derivePrimaryWorkspaceSummary(
       : "Register or confirm the Matrix authority before downstream outputs.";
   }
   if (workspace === "readonly_archive") {
-    return "This project is archived for review from current stored data.";
+    return "This project is closed for now. Review current data or activate the project before making changes.";
   }
   return "Shape Matrix and fee planning before formal LTR registration.";
 }
@@ -191,7 +188,7 @@ function derivePrimaryActionLabel(
     return "Confirm Matrix authority";
   }
   if (workspace === "readonly_archive") {
-    return "Read-only archive";
+    return "Review closed project";
   }
   return "Plan Matrix";
 }

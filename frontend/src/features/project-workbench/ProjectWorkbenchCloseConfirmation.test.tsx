@@ -6,98 +6,89 @@ import { ProjectWorkbenchCloseConfirmation } from "./ProjectWorkbenchCloseConfir
 import type { WorkbenchLifecycleActionsViewModel } from "./projectWorkbenchLifecycleSelectors";
 
 describe("ProjectWorkbenchCloseConfirmation", () => {
-  it("requires close note and acknowledgements before completed close", async () => {
+  it("uses one business close form with required note", async () => {
     const user = userEvent.setup();
-    const onCloseCompletedProject = vi.fn();
+    const onCloseProject = vi.fn();
 
     render(
       <ProjectWorkbenchCloseConfirmation
         lifecycleActions={registeredCloseActions}
         lifecycleBusy={false}
-        onCloseAdministrativeProject={vi.fn()}
-        onCloseCompletedProject={onCloseCompletedProject}
+        onCloseProject={onCloseProject}
         outputStatusSummary={outputStatusSummary}
         projectIdentity="DL-2026-06-001 Connector Sample"
         projectReference="DL-2026-06-001"
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Close as completed" }));
+    await user.click(screen.getByRole("button", { name: "Close project" }));
 
     expect(screen.getByText("Output status summary")).toBeTruthy();
     expect(screen.getByText("Test Record")).toBeTruthy();
     expect(screen.getByText("Current")).toBeTruthy();
+    expect(screen.getByLabelText("Close reason")).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Completed" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Failed" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Cannot test" })).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "Confirm completed close" }));
-    expect(screen.getByText("Close note is required.")).toBeTruthy();
-    expect(onCloseCompletedProject).not.toHaveBeenCalled();
+    expect(
+      (screen.getByRole("button", { name: "Confirm close project" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+    expect(onCloseProject).not.toHaveBeenCalled();
 
-    await user.type(screen.getByLabelText("Close note"), "Outputs reviewed.");
-    await user.click(
-      screen.getByLabelText(
-        "I manually confirm this project is ready to archive as completed."
-      )
-    );
-    await user.click(
-      screen.getByLabelText("I reviewed the available output status summary.")
-    );
-    await user.click(screen.getByRole("button", { name: "Confirm completed close" }));
+    await user.selectOptions(screen.getByLabelText("Close reason"), "failed");
+    await user.type(screen.getByLabelText("Close note"), "Testing cannot continue.");
+    await user.click(screen.getByRole("button", { name: "Confirm close project" }));
 
-    expect(onCloseCompletedProject).toHaveBeenCalledWith("Outputs reviewed.");
+    expect(onCloseProject).toHaveBeenCalledWith("failed", "Testing cannot continue.");
   });
 
-  it("defaults temporary/no-DL close UX to administrative close only", async () => {
+  it("defaults temporary close to Other without split close copy", async () => {
     const user = userEvent.setup();
-    const onCloseAdministrativeProject = vi.fn();
+    const onCloseProject = vi.fn();
 
     render(
       <ProjectWorkbenchCloseConfirmation
         lifecycleActions={temporaryCloseActions}
         lifecycleBusy={false}
-        onCloseAdministrativeProject={onCloseAdministrativeProject}
-        onCloseCompletedProject={vi.fn()}
+        onCloseProject={onCloseProject}
         outputStatusSummary={null}
         projectIdentity="Temporary project project-1"
         projectReference={null}
       />
     );
 
-    expect(screen.queryByRole("button", { name: "Close as completed" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Close administratively" }));
-    expect(screen.getByText(/archives the project without marking testing complete/)).toBeTruthy();
+    expect(screen.queryByText("Close as completed")).toBeNull();
+    expect(screen.queryByText("Close administratively")).toBeNull();
 
-    await user.click(
-      screen.getByRole("button", { name: "Confirm administrative close" })
-    );
-    expect(screen.getByText("Administrative close reason is required.")).toBeTruthy();
-    expect(onCloseAdministrativeProject).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Close project" }));
+    expect((screen.getByLabelText("Close reason") as HTMLSelectElement).value).toBe("other");
+    expect(screen.queryByText("Administrative reason")).toBeNull();
 
-    await user.type(screen.getByLabelText("Administrative reason"), "Duplicate request.");
-    await user.click(
-      screen.getByRole("button", { name: "Confirm administrative close" })
-    );
+    await user.type(screen.getByLabelText("Close note"), "Duplicate request.");
+    await user.click(screen.getByRole("button", { name: "Confirm close project" }));
 
-    expect(onCloseAdministrativeProject).toHaveBeenCalledWith("Duplicate request.");
+    expect(onCloseProject).toHaveBeenCalledWith("other", "Duplicate request.");
   });
 });
 
 const registeredCloseActions: WorkbenchLifecycleActionsViewModel = {
-  primaryAction: "stop",
-  canStop: true,
+  primaryAction: "close",
+  canStop: false,
   canResume: false,
   canClose: true,
-  canCloseCompleted: true,
-  canCloseAdministrative: true,
-  preferredClosePath: "completed",
-  completedCloseLabel: "Close as completed",
-  administrativeCloseLabel: "Close administratively",
+  canActivate: false,
+  closeActionLabel: "Close project",
+  activateActionLabel: "Activate project",
+  defaultCloseReasonCategory: "completed",
+  closeReasonLabel: null,
   readonlyReason: null,
 };
 
 const temporaryCloseActions: WorkbenchLifecycleActionsViewModel = {
   ...registeredCloseActions,
-  canCloseCompleted: false,
-  preferredClosePath: "administrative",
+  defaultCloseReasonCategory: "other",
 };
 
 const outputStatusSummary: ProjectOutputStatusSummary = {

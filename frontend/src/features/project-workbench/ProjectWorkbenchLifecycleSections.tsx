@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from "react";
 import type {
+  ProjectCloseReasonCategory,
   ProjectOutputStatusSummary,
   ProjectTestPlanDraft,
   ProjectTestPlanDraftGroup,
@@ -167,10 +168,8 @@ export function TemporaryPlanningMode({
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
   onStartPromotion,
-  onStopProject,
-  onResumeProject,
-  onCloseCompletedProject,
-  onCloseAdministrativeProject,
+  onActivateProject,
+  onCloseProject,
   onDeleteTemporaryProject,
   promotionMessage,
   lifecycleActions,
@@ -185,10 +184,8 @@ export function TemporaryPlanningMode({
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
   onStartPromotion: () => void;
-  onStopProject: (reason: string | null) => void;
-  onResumeProject: (reason: string | null) => void;
-  onCloseCompletedProject: (closeNote: string) => void;
-  onCloseAdministrativeProject: (reason: string) => void;
+  onActivateProject: (reason: string) => void;
+  onCloseProject: (reasonCategory: ProjectCloseReasonCategory, note: string) => void;
   onDeleteTemporaryProject: () => void;
   promotionMessage: string | null;
   lifecycleActions: WorkbenchLifecycleActionsViewModel;
@@ -250,10 +247,8 @@ export function TemporaryPlanningMode({
         lifecycleError={lifecycleError}
         outputStatusSummary={outputStatusSummary}
         onDeleteTemporaryProject={onDeleteTemporaryProject}
-        onStopProject={onStopProject}
-        onResumeProject={onResumeProject}
-        onCloseCompletedProject={onCloseCompletedProject}
-        onCloseAdministrativeProject={onCloseAdministrativeProject}
+        onActivateProject={onActivateProject}
+        onCloseProject={onCloseProject}
         projectIdentity={projectIdentity}
         projectReference={projectReference}
       />
@@ -270,10 +265,8 @@ export function ProjectLifecycleManagementPanel({
   lifecycleError,
   outputStatusSummary,
   onDeleteTemporaryProject,
-  onStopProject,
-  onResumeProject,
-  onCloseCompletedProject,
-  onCloseAdministrativeProject,
+  onActivateProject,
+  onCloseProject,
   projectIdentity,
   projectReference,
 }: {
@@ -285,10 +278,8 @@ export function ProjectLifecycleManagementPanel({
   lifecycleError: string | null;
   outputStatusSummary: ProjectOutputStatusSummary | null;
   onDeleteTemporaryProject: () => void;
-  onStopProject: (reason: string | null) => void;
-  onResumeProject: (reason: string | null) => void;
-  onCloseCompletedProject: (closeNote: string) => void;
-  onCloseAdministrativeProject: (reason: string) => void;
+  onActivateProject: (reason: string) => void;
+  onCloseProject: (reasonCategory: ProjectCloseReasonCategory, note: string) => void;
   projectIdentity: string;
   projectReference: string | null;
 }): ReactElement | null {
@@ -302,23 +293,26 @@ export function ProjectLifecycleManagementPanel({
     getTemporaryDeleteBlockerCopy(blocker, allowDelete)
   );
   const deleteUnavailableCopy =
-    "Temporary deletion is unavailable here. Stop the project if work should not continue.";
-  const lifecycleTitle = lifecycleActions.canResume
-    ? "Resume this project lifecycle"
+    "Temporary deletion is unavailable for this project state.";
+  const lifecycleTitle = lifecycleActions.canActivate
+    ? "Activate project"
+    : lifecycleActions.canClose
+      ? "Close project"
     : deleteAvailable
-      ? "Stop or safely remove this temporary record"
+      ? "Remove temporary record"
       : allowDelete
-        ? "Stop this temporary project lifecycle"
-        : "Stop this project lifecycle";
-  const lifecycleDescription = lifecycleActions.canResume
-    ? "Resume restores editing and project work after the stopped state is cleared."
+        ? "Temporary project controls"
+        : "Project lifecycle";
+  const lifecycleDescription = lifecycleActions.canActivate
+    ? "Activate restores editing and project work when business work should continue."
+    : lifecycleActions.canClose
+      ? "Close records a business reason and keeps the project traceable for later activation."
     : deleteAvailable
-      ? "Stop keeps the project for review. Delete is only available for mistaken or duplicate temporary records with no formal or temporary workspace blockers."
+      ? "Delete is only available for mistaken temporary records with no formal or workspace blockers."
       : allowDelete
         ? deleteUnavailableCopy
-        : "Stop keeps the project for review when business work should not continue.";
-  const hasLifecycleAction =
-    lifecycleActions.canStop || lifecycleActions.canResume || lifecycleActions.canClose;
+        : "No lifecycle action is currently available.";
+  const hasLifecycleAction = lifecycleActions.canActivate || lifecycleActions.canClose;
   const hasPanelContent =
     hasLifecycleAction ||
     allowDelete ||
@@ -330,13 +324,11 @@ export function ProjectLifecycleManagementPanel({
   }
 
   function handleConfirmAction(): void {
-    const normalizedReason = reason.trim() || null;
-    if (pendingAction === "stop") {
-      onStopProject(normalizedReason);
+    const normalizedReason = reason.trim();
+    if (!normalizedReason || pendingAction !== "activate") {
+      return;
     }
-    if (pendingAction === "resume") {
-      onResumeProject(normalizedReason);
-    }
+    onActivateProject(normalizedReason);
     setPendingAction("none");
     setReason("");
   }
@@ -361,22 +353,13 @@ export function ProjectLifecycleManagementPanel({
         </div>
       )}
       <div className="runtime-console-lifecycle-actions">
-        {lifecycleActions.canStop ? (
+        {lifecycleActions.canActivate ? (
           <button
             type="button"
             disabled={lifecycleBusy}
-            onClick={() => setPendingAction("stop")}
+            onClick={() => setPendingAction("activate")}
           >
-            Stop project
-          </button>
-        ) : null}
-        {lifecycleActions.canResume ? (
-          <button
-            type="button"
-            disabled={lifecycleBusy}
-            onClick={() => setPendingAction("resume")}
-          >
-            Resume project
+            {lifecycleActions.activateActionLabel}
           </button>
         ) : null}
         {allowDelete ? (
@@ -394,21 +377,17 @@ export function ProjectLifecycleManagementPanel({
         compact={compactBottom}
         lifecycleActions={lifecycleActions}
         lifecycleBusy={lifecycleBusy}
-        onCloseAdministrativeProject={onCloseAdministrativeProject}
-        onCloseCompletedProject={onCloseCompletedProject}
+        onCloseProject={onCloseProject}
         outputStatusSummary={outputStatusSummary}
         projectIdentity={projectIdentity}
         projectReference={projectReference}
       />
       {pendingAction !== "none" ? (
         <div className="runtime-console-lifecycle-confirmation">
-          <strong>
-            {pendingAction === "stop"
-              ? "Confirm stop project"
-              : "Confirm resume project"}
-          </strong>
+          <strong>Confirm activate project</strong>
+          <p>Record why project work should continue before editing is restored.</p>
           <label>
-            <span>Reason optional</span>
+            <span>Activation note</span>
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -418,12 +397,10 @@ export function ProjectLifecycleManagementPanel({
           <div className="runtime-console-lifecycle-confirm-actions">
             <button
               type="button"
-              disabled={lifecycleBusy}
+              disabled={lifecycleBusy || !reason.trim()}
               onClick={handleConfirmAction}
             >
-              {pendingAction === "stop"
-                ? "Confirm stop project"
-                : "Confirm resume project"}
+              Confirm activate project
             </button>
             <button type="button" disabled={lifecycleBusy} onClick={handleCancelAction}>
               Cancel
@@ -486,7 +463,7 @@ export function RegisteredSetupMode({
 
 function getTemporaryDeleteBlockerCopy(blocker: string, allowDelete: boolean): string {
   if (allowDelete && blocker === "Project is not a temporary planning project.") {
-    return "Temporary deletion is unavailable here. Stop the project if work should not continue.";
+    return "Temporary deletion is unavailable for this project state.";
   }
   return blocker;
 }

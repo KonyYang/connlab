@@ -22,9 +22,8 @@ import {
   getProject,
   getProjectLifecycle,
   getProjectBasicInformation,
-  closeProjectAdministrativeLifecycle,
-  closeProjectCompletedLifecycle,
-  resumeProjectLifecycle,
+  activateProjectLifecycle,
+  closeProjectLifecycle,
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
   previewProjectTestPlanMatrixFromSourceCandidate,
@@ -37,7 +36,6 @@ import {
   previewApprovalPackage,
   previewEvidencePlacement,
   repairOfficialFolderStructure,
-  stopProjectLifecycle,
   syncProjectSection2FromConfirmedMatrix,
   updateProjectTestPlanMatrixDraft,
   uploadPublicDriveProjectFolder,
@@ -49,6 +47,7 @@ import {
   type ConfirmedFeeLatestResponse,
   type EvidencePlacementPlan,
   type EvidencePlacementResult,
+  type ProjectCloseReasonCategory,
   type ExternalResource,
   type FolderGeneration,
   type LtrRecord,
@@ -214,10 +213,11 @@ export type ProjectWorkbenchModel = {
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
   onRefreshLifecycle: () => Promise<void>;
-  onStopLifecycle: (reason?: string | null) => Promise<void>;
-  onResumeLifecycle: (reason?: string | null) => Promise<void>;
-  onCloseCompletedLifecycle: (closeNote: string) => Promise<void>;
-  onCloseAdministrativeLifecycle: (reason: string) => Promise<void>;
+  onActivateLifecycle: (reason: string) => Promise<void>;
+  onCloseLifecycle: (
+    reasonCategory: ProjectCloseReasonCategory,
+    note: string
+  ) => Promise<void>;
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: (
@@ -1025,88 +1025,51 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function onStopLifecycle(reason?: string | null): Promise<void> {
-    setLifecycleLoading(true);
-    try {
-      const nextLifecycle = await stopProjectLifecycle(projectId, {
-        reason: normalizeLifecycleReason(reason),
-        operator: null,
-      });
-      setLifecycle(nextLifecycle);
-      setProject(await getProject(projectId));
-      setLifecycleError(null);
-      setMessage("Project stopped. Review and preview actions remain available.");
-    } catch (err) {
-      setLifecycleError(
-        err instanceof Error ? err.message : "Failed to stop project lifecycle."
-      );
-      throw err;
-    } finally {
-      setLifecycleLoading(false);
-    }
-  }
-
-  async function onResumeLifecycle(reason?: string | null): Promise<void> {
-    setLifecycleLoading(true);
-    try {
-      const nextLifecycle = await resumeProjectLifecycle(projectId, {
-        reason: normalizeLifecycleReason(reason),
-        operator: null,
-      });
-      setLifecycle(nextLifecycle);
-      setProject(await getProject(projectId));
-      setLifecycleError(null);
-      setMessage("Project resumed. Editing and project work are available again.");
-    } catch (err) {
-      setLifecycleError(
-        err instanceof Error ? err.message : "Failed to resume project lifecycle."
-      );
-      throw err;
-    } finally {
-      setLifecycleLoading(false);
-    }
-  }
-
-  async function onCloseCompletedLifecycle(closeNote: string): Promise<void> {
-    const normalizedCloseNote = normalizeRequiredLifecycleText(
-      closeNote,
-      "Close note is required."
-    );
-    setLifecycleLoading(true);
-    try {
-      const nextLifecycle = await closeProjectCompletedLifecycle(projectId, {
-        close_note: normalizedCloseNote,
-        manual_completion_confirmed: true,
-        output_summary_acknowledged: true,
-        operator: null,
-      });
-      setLifecycle(nextLifecycle);
-      setProject(await getProject(projectId));
-      await refreshOutputStatus(projectId, setOutputStatusSummary);
-      setLifecycleError(null);
-    } catch (err) {
-      setLifecycleError((err as Error).message);
-      throw err;
-    } finally {
-      setLifecycleLoading(false);
-    }
-  }
-
-  async function onCloseAdministrativeLifecycle(reason: string): Promise<void> {
+  async function onActivateLifecycle(reason: string): Promise<void> {
     const normalizedReason = normalizeRequiredLifecycleText(
       reason,
-      "Administrative close reason is required."
+      "Activation note is required."
     );
     setLifecycleLoading(true);
     try {
-      const nextLifecycle = await closeProjectAdministrativeLifecycle(projectId, {
+      const nextLifecycle = await activateProjectLifecycle(projectId, {
         reason: normalizedReason,
         operator: null,
       });
       setLifecycle(nextLifecycle);
       setProject(await getProject(projectId));
+      setLifecycleError(null);
+      setMessage("Project activated. Editing and project work are available again.");
+    } catch (err) {
+      setLifecycleError(
+        err instanceof Error ? err.message : "Failed to activate project lifecycle."
+      );
+      throw err;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  }
+
+  async function onCloseLifecycle(
+    reasonCategory: ProjectCloseReasonCategory,
+    note: string
+  ): Promise<void> {
+    const normalizedNote = normalizeRequiredLifecycleText(
+      note,
+      "Close note is required."
+    );
+    setLifecycleLoading(true);
+    try {
+      const nextLifecycle = await closeProjectLifecycle(projectId, {
+        reason_category: reasonCategory,
+        note: normalizedNote,
+        operator: null,
+      });
+      setLifecycle(nextLifecycle);
+      setProject(await getProject(projectId));
       await refreshOutputStatus(projectId, setOutputStatusSummary);
       setLifecycleError(null);
+      setMessage("Project closed with a business reason. Activate it if work should continue later.");
     } catch (err) {
       setLifecycleError((err as Error).message);
       throw err;
@@ -1553,10 +1516,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onConfirmMatrixDraft,
     onFolderCreated,
     onRefreshLifecycle,
-    onStopLifecycle,
-    onResumeLifecycle,
-    onCloseCompletedLifecycle,
-    onCloseAdministrativeLifecycle,
+    onActivateLifecycle,
+    onCloseLifecycle,
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
@@ -2032,11 +1993,6 @@ function uniquePaths(paths: string[]): string[] {
 
 function normalizeLines(lines: string[]): string {
   return lines.map((line) => line.trim()).filter(Boolean).join("\n");
-}
-
-function normalizeLifecycleReason(reason: string | null | undefined): string | null {
-  const normalized = reason?.trim();
-  return normalized ? normalized : null;
 }
 
 function normalizeRequiredLifecycleText(value: string, message: string): string {

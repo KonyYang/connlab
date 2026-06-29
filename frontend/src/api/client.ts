@@ -87,10 +87,20 @@ export type ProjectLifecycleState = "active" | "stopped" | "closed";
 
 export type ProjectClosureType = "completed" | "administrative";
 
+export type ProjectCloseReasonCategory =
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "cannot_test"
+  | "duplicate"
+  | "other";
+
 export type ProjectLifecycleResponse = {
   project_id: string;
   lifecycle_state: ProjectLifecycleState;
   closure_type: ProjectClosureType | null;
+  close_reason_category?: ProjectCloseReasonCategory | null;
+  close_reason_label?: string | null;
   status_label: string;
   readonly: boolean;
   allowed_actions: string[];
@@ -120,11 +130,20 @@ export type ProjectLifecycleCloseAdministrativeRequest = {
   operator?: string | null;
 };
 
+export type ProjectLifecycleCloseRequest = {
+  reason_category: ProjectCloseReasonCategory;
+  note: string;
+  operator?: string | null;
+};
+
 export type ProjectLifecycleReadonlyErrorDetail = {
   code: "project_lifecycle_readonly";
   project_id: string;
   lifecycle_state: ProjectLifecycleState;
   closure_type: ProjectClosureType | null;
+  close_reason_category?: ProjectCloseReasonCategory | null;
+  close_reason_label?: string | null;
+  can_activate?: boolean;
   message: string;
   allowed_actions: string[];
 };
@@ -2360,6 +2379,32 @@ export function resumeProjectLifecycle(
 ): Promise<ProjectLifecycleResponse> {
   return requestJson<ProjectLifecycleResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/lifecycle/resume`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function activateProjectLifecycle(
+  projectId: string,
+  input: ProjectLifecycleActionRequest
+): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle/activate`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function closeProjectLifecycle(
+  projectId: string,
+  input: ProjectLifecycleCloseRequest
+): Promise<ProjectLifecycleResponse> {
+  return requestJson<ProjectLifecycleResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/lifecycle/close`,
     {
       method: "POST",
       body: JSON.stringify(input)

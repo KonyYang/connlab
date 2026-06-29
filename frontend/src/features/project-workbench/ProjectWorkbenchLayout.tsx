@@ -3,6 +3,7 @@ import {
   deleteTemporaryProject,
   type OfficialWorkspaceConflictStrategy,
   previewTemporaryProjectDelete,
+  type ProjectCloseReasonCategory,
   type Project,
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
@@ -97,10 +98,8 @@ export function ProjectWorkbenchLayout({
     publicDriveUploadError,
     onRefreshPublicDriveUploadPreview,
     onUploadPublicDriveProjectFolder,
-    onStopLifecycle,
-    onResumeLifecycle,
-    onCloseCompletedLifecycle,
-    onCloseAdministrativeLifecycle,
+    onActivateLifecycle,
+    onCloseLifecycle,
     outputStatusSummary,
     requestMaterialPreview,
     requestMaterialLoading,
@@ -277,10 +276,10 @@ export function ProjectWorkbenchLayout({
     };
   }, [project.project_id, project.status, projectNumber]);
 
-  async function handleStopProject(reason: string | null): Promise<void> {
+  async function handleActivateProject(reason: string): Promise<void> {
     setLifecycleBusy(true);
     try {
-      await onStopLifecycle(reason);
+      await onActivateLifecycle(reason);
       setLifecycleError(null);
     } catch (err) {
       setLifecycleError((err as Error).message);
@@ -289,34 +288,13 @@ export function ProjectWorkbenchLayout({
     }
   }
 
-  async function handleResumeProject(reason: string | null): Promise<void> {
+  async function handleCloseProject(
+    reasonCategory: ProjectCloseReasonCategory,
+    note: string
+  ): Promise<void> {
     setLifecycleBusy(true);
     try {
-      await onResumeLifecycle(reason);
-      setLifecycleError(null);
-    } catch (err) {
-      setLifecycleError((err as Error).message);
-    } finally {
-      setLifecycleBusy(false);
-    }
-  }
-
-  async function handleCloseCompletedProject(closeNote: string): Promise<void> {
-    setLifecycleBusy(true);
-    try {
-      await onCloseCompletedLifecycle(closeNote);
-      setLifecycleError(null);
-    } catch (err) {
-      setLifecycleError((err as Error).message);
-    } finally {
-      setLifecycleBusy(false);
-    }
-  }
-
-  async function handleCloseAdministrativeProject(reason: string): Promise<void> {
-    setLifecycleBusy(true);
-    try {
-      await onCloseAdministrativeLifecycle(reason);
+      await onCloseLifecycle(reasonCategory, note);
       setLifecycleError(null);
     } catch (err) {
       setLifecycleError((err as Error).message);
@@ -509,13 +487,9 @@ export function ProjectWorkbenchLayout({
               lifecycleError={lifecycleError}
               outputStatusSummary={outputStatusSummary}
               onDeleteTemporaryProject={() => undefined}
-              onStopProject={(reason) => void handleStopProject(reason)}
-              onResumeProject={(reason) => void handleResumeProject(reason)}
-              onCloseCompletedProject={(closeNote) =>
-                void handleCloseCompletedProject(closeNote)
-              }
-              onCloseAdministrativeProject={(reason) =>
-                void handleCloseAdministrativeProject(reason)
+              onActivateProject={(reason) => void handleActivateProject(reason)}
+              onCloseProject={(reasonCategory, note) =>
+                void handleCloseProject(reasonCategory, note)
               }
               projectIdentity={titleParts.join(" ")}
               projectReference={projectNumber}
@@ -543,13 +517,9 @@ export function ProjectWorkbenchLayout({
                   ? () => void handleDeleteTemporaryProject()
                   : () => undefined
               }
-              onStopProject={(reason) => void handleStopProject(reason)}
-              onResumeProject={(reason) => void handleResumeProject(reason)}
-              onCloseCompletedProject={(closeNote) =>
-                void handleCloseCompletedProject(closeNote)
-              }
-              onCloseAdministrativeProject={(reason) =>
-                void handleCloseAdministrativeProject(reason)
+              onActivateProject={(reason) => void handleActivateProject(reason)}
+              onCloseProject={(reasonCategory, note) =>
+                void handleCloseProject(reasonCategory, note)
               }
               projectIdentity={titleParts.join(" ")}
               projectReference={projectNumber}
@@ -593,13 +563,9 @@ export function ProjectWorkbenchLayout({
                 outputStatusSummary={outputStatusSummary}
                 projectIdentity={titleParts.join(" ")}
                 projectReference={projectNumber}
-                onStopProject={(reason) => void handleStopProject(reason)}
-                onResumeProject={(reason) => void handleResumeProject(reason)}
-                onCloseCompletedProject={(closeNote) =>
-                  void handleCloseCompletedProject(closeNote)
-                }
-                onCloseAdministrativeProject={(reason) =>
-                  void handleCloseAdministrativeProject(reason)
+                onActivateProject={(reason) => void handleActivateProject(reason)}
+                onCloseProject={(reasonCategory, note) =>
+                  void handleCloseProject(reasonCategory, note)
                 }
                 onDeleteTemporaryProject={() => void handleDeleteTemporaryProject()}
                 promotionMessage={temporaryPromotionMessage}
@@ -613,7 +579,7 @@ export function ProjectWorkbenchLayout({
               />
             ) : null}
 
-            {(lifecycleActions.canStop || lifecycleActions.canResume) &&
+            {(lifecycleActions.canClose || lifecycleActions.canActivate) &&
             lifecycle.mode !== "temporary_planning" ? (
               <ProjectLifecycleManagementPanel
                 allowDelete={false}
@@ -623,13 +589,9 @@ export function ProjectWorkbenchLayout({
                 lifecycleError={lifecycleError}
                 outputStatusSummary={outputStatusSummary}
                 onDeleteTemporaryProject={() => undefined}
-                onStopProject={(reason) => void handleStopProject(reason)}
-                onResumeProject={(reason) => void handleResumeProject(reason)}
-                onCloseCompletedProject={(closeNote) =>
-                  void handleCloseCompletedProject(closeNote)
-                }
-                onCloseAdministrativeProject={(reason) =>
-                  void handleCloseAdministrativeProject(reason)
+                onActivateProject={(reason) => void handleActivateProject(reason)}
+                onCloseProject={(reasonCategory, note) =>
+                  void handleCloseProject(reasonCategory, note)
                 }
                 projectIdentity={titleParts.join(" ")}
                 projectReference={projectNumber}

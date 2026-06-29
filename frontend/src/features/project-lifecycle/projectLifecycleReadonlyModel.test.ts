@@ -22,58 +22,64 @@ describe("project lifecycle readonly model", () => {
     expect(view.canUseReadonlyPreview).toBe(true);
   });
 
-  it("marks stopped projects readonly with resume guidance", () => {
+  it("marks stopped projects readonly with activate guidance", () => {
     const view = deriveProjectLifecycleReadonlyView({
       project_id: "P1",
       lifecycle_state: "stopped",
       closure_type: null,
       status_label: "Stopped",
       readonly: true,
-      allowed_actions: ["resume", "close"],
+      allowed_actions: ["activate", "resume", "close"],
       status: "cancelled",
       warnings: [],
     });
 
     expect(view.mode).toBe("stopped_readonly");
-    expect(view.canResume).toBe(true);
+    expect(view.canResume).toBe(false);
     expect(view.canClose).toBe(true);
     expect(view.canWriteBusinessData).toBe(false);
-    expect(view.message).toContain("paused");
+    expect(view.message).toContain("Activate it before making changes");
   });
 
-  it("marks completed close as archived readonly", () => {
+  it("marks completed close as activatable readonly", () => {
     const view = deriveProjectLifecycleReadonlyView({
       project_id: "P1",
       lifecycle_state: "closed",
       closure_type: "completed",
+      close_reason_category: "completed",
+      close_reason_label: "Completed",
       status_label: "Closed",
       readonly: true,
-      allowed_actions: [],
+      allowed_actions: ["activate"],
       status: "closed",
       warnings: [],
     });
 
-    expect(view.mode).toBe("closed_completed_readonly");
+    expect(view.mode).toBe("closed_readonly");
     expect(view.canResume).toBe(false);
     expect(view.canClose).toBe(false);
-    expect(view.title).toBe("Project closed as completed");
+    expect(view.title).toBe("Project closed: Completed");
+    expect(view.message).toContain("Activate it before making changes");
   });
 
-  it("marks administrative close as archived readonly", () => {
+  it("maps legacy non-completed close to business readonly copy", () => {
     const view = deriveProjectLifecycleReadonlyView({
       project_id: "P1",
       lifecycle_state: "closed",
       closure_type: "administrative",
+      close_reason_category: "other",
+      close_reason_label: "Other",
       status_label: "Closed",
       readonly: true,
-      allowed_actions: [],
+      allowed_actions: ["activate"],
       status: "closed",
       warnings: [],
     });
 
-    expect(view.mode).toBe("closed_administrative_readonly");
+    expect(view.mode).toBe("closed_readonly");
     expect(view.canResume).toBe(false);
-    expect(view.title).toBe("Project closed administratively");
+    expect(view.title).toBe("Project closed: Other");
+    expect(view.message).not.toMatch(/administrative|archived/i);
   });
 
   it("maps TASK_338 readonly detail to business copy", () => {
@@ -83,9 +89,11 @@ describe("project lifecycle readonly model", () => {
         project_id: "P1",
         lifecycle_state: "closed",
         closure_type: "administrative",
+        close_reason_category: "other",
+        close_reason_label: "Other",
         message: "This project is closed administratively and is readonly.",
-        allowed_actions: [],
+        allowed_actions: ["activate"],
       })
-    ).toBe("This project is closed administratively and is read-only.");
+    ).toBe("This project is closed. Activate it before making changes.");
   });
 });

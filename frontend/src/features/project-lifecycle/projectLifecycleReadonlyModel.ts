@@ -6,8 +6,6 @@ import type {
 export type ProjectLifecycleReadonlyMode =
   | "active"
   | "stopped_readonly"
-  | "closed_completed_readonly"
-  | "closed_administrative_readonly"
   | "closed_readonly";
 
 export type ProjectLifecycleReadonlyView = {
@@ -46,34 +44,34 @@ export function deriveProjectLifecycleReadonlyView(
       readonly: true,
       title: "Project stopped",
       message:
-        "This project is paused. Review and preview actions remain available; editing resumes after the project is resumed.",
+        "This project is stopped. Activate it before making changes. Review and preview actions remain available.",
       allowedActions: lifecycle.allowed_actions,
-      canResume: lifecycle.allowed_actions.includes("resume"),
+      canResume: false,
       canClose: lifecycle.allowed_actions.includes("close"),
       canWriteBusinessData: false,
       canUseReadonlyPreview: true,
     };
   }
-  if (lifecycle.closure_type === "completed") {
+  if (lifecycle.close_reason_category === "completed" || lifecycle.closure_type === "completed") {
     return closedView(
-      "closed_completed_readonly",
-      "Project closed as completed",
-      "This project is archived as completed. Project data is read-only.",
+      "closed_readonly",
+      "Project closed: Completed",
+      "This project is closed with reason Completed. Activate it before making changes.",
       lifecycle.allowed_actions
     );
   }
-  if (lifecycle.closure_type === "administrative") {
+  if (lifecycle.close_reason_label) {
     return closedView(
-      "closed_administrative_readonly",
-      "Project closed administratively",
-      "This project is archived administratively. Project data is read-only.",
+      "closed_readonly",
+      `Project closed: ${lifecycle.close_reason_label}`,
+      "This project is closed. Activate it before making changes.",
       lifecycle.allowed_actions
     );
   }
   return closedView(
     "closed_readonly",
     "Project closed",
-    "This project is archived. Project data is read-only.",
+    "This project is closed. Activate it before making changes.",
     lifecycle.allowed_actions
   );
 }
@@ -82,13 +80,10 @@ export function deriveReadonlyApiErrorMessage(
   detail: ProjectLifecycleReadonlyErrorDetail
 ): string {
   if (detail.lifecycle_state === "stopped") {
-    return "This project is stopped. Resume it before making changes.";
+    return "This project is stopped. Activate it before making changes.";
   }
-  if (detail.closure_type === "completed") {
-    return "This project is closed as completed and is read-only.";
-  }
-  if (detail.closure_type === "administrative") {
-    return "This project is closed administratively and is read-only.";
+  if (detail.lifecycle_state === "closed") {
+    return "This project is closed. Activate it before making changes.";
   }
   return detail.message.replace("readonly", "read-only");
 }

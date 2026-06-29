@@ -1,4 +1,7 @@
-import type { ProjectLifecycleResponse } from "../../api/client";
+import type {
+  ProjectCloseReasonCategory,
+  ProjectLifecycleResponse,
+} from "../../api/client";
 import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
 
 export type WorkbenchLifecycleMode =
@@ -90,19 +93,18 @@ export type WorkbenchLifecycleViewModel = {
   tabs: WorkbenchLifecycleTab[];
 };
 
-export type WorkbenchLifecycleActionPrimary = "stop" | "resume" | "none";
-export type WorkbenchLifecycleClosePath = "completed" | "administrative";
+export type WorkbenchLifecycleActionPrimary = "close" | "activate" | "none";
 
 export type WorkbenchLifecycleActionsViewModel = {
   primaryAction: WorkbenchLifecycleActionPrimary;
   canStop: boolean;
   canResume: boolean;
   canClose: boolean;
-  canCloseCompleted: boolean;
-  canCloseAdministrative: boolean;
-  preferredClosePath: WorkbenchLifecycleClosePath | null;
-  completedCloseLabel: string;
-  administrativeCloseLabel: string;
+  canActivate: boolean;
+  closeActionLabel: string;
+  activateActionLabel: string;
+  defaultCloseReasonCategory: ProjectCloseReasonCategory;
+  closeReasonLabel: string | null;
   readonlyReason: string | null;
 };
 
@@ -222,35 +224,27 @@ export function deriveProjectWorkbenchLifecycleActions(
 ): WorkbenchLifecycleActionsViewModel {
   const readonlyReason = readonlyView?.readonly ? readonlyView.message : null;
   const allowedActions = lifecycle?.allowed_actions ?? [];
-  const canStop =
+  const canStop = false;
+  const canResume = false;
+  const canClose =
     lifecycle?.lifecycle_state === "active" &&
     !lifecycle.readonly &&
-    allowedActions.includes("stop");
-  const canResume =
-    lifecycle?.lifecycle_state === "stopped" &&
-    allowedActions.includes("resume");
-  const canClose =
-    (lifecycle?.lifecycle_state === "active" ||
-      lifecycle?.lifecycle_state === "stopped") &&
     allowedActions.includes("close");
-  const canCloseCompleted = canClose && Boolean(options.hasRegisteredProject);
-  const canCloseAdministrative = canClose;
-  const preferredClosePath = canCloseCompleted
-    ? "completed"
-    : canCloseAdministrative
-      ? "administrative"
-      : null;
+  const canActivate =
+    (lifecycle?.lifecycle_state === "stopped" ||
+      lifecycle?.lifecycle_state === "closed") &&
+    allowedActions.includes("activate");
 
   return {
-    primaryAction: canStop ? "stop" : canResume ? "resume" : "none",
+    primaryAction: canClose ? "close" : canActivate ? "activate" : "none",
     canStop,
     canResume,
     canClose,
-    canCloseCompleted,
-    canCloseAdministrative,
-    preferredClosePath,
-    completedCloseLabel: "Close as completed",
-    administrativeCloseLabel: "Close administratively",
+    canActivate,
+    closeActionLabel: "Close project",
+    activateActionLabel: "Activate project",
+    defaultCloseReasonCategory: options.hasRegisteredProject ? "completed" : "other",
+    closeReasonLabel: lifecycle?.close_reason_label ?? null,
     readonlyReason,
   };
 }
