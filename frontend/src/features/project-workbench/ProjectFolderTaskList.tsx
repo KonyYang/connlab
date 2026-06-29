@@ -4,6 +4,7 @@ import type {
   PublicDriveUploadPreview,
   RequestMaterialPreview,
 } from "../../api/client";
+import { UiIcon } from "../../components/common/UiIcon";
 import type {
   ProjectFolderTaskActionTarget,
   ProjectFolderTaskKey,
@@ -41,12 +42,13 @@ export function ProjectFolderActionsSurface({
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
   readonlyReason?: string;
 }): ReactElement {
+  const panelBlocker = readonlyReason ?? selectPanelBlocker(tasks);
   return (
     <section className="runtime-console-folder-actions" aria-label="Folder Actions">
       <header className="runtime-console-folder-actions-header">
         <p className="eyebrow">Folder Actions</p>
       </header>
-      <div className="runtime-console-folder-operation-grid">
+      <div className="runtime-console-folder-operation-list">
         {tasks.map((task) => (
           <FolderOperation
             key={task.key}
@@ -56,6 +58,9 @@ export function ProjectFolderActionsSurface({
           />
         ))}
       </div>
+      {panelBlocker ? (
+        <p className="runtime-console-folder-actions-blocker">{panelBlocker}</p>
+      ) : null}
     </section>
   );
 }
@@ -73,9 +78,13 @@ function FolderOperation({
   const disabled = Boolean(readonlyReason || !task.actionTarget);
   return (
     <article className="runtime-console-folder-operation">
+      <span className="runtime-console-folder-operation-icon">
+        <UiIcon name={task.iconName} />
+      </span>
       <div className="runtime-console-folder-operation-copy">
         <h3>{task.title}</h3>
         <p>{task.summary}</p>
+        <small>{task.context}</small>
       </div>
       <div className="runtime-console-folder-operation-controls">
         {task.key === "public_working_copy" ? (
@@ -99,7 +108,11 @@ function FolderOperation({
           </button>
         ) : null}
       </div>
-      {blocker ? <p className="runtime-console-folder-operation-blocker">{blocker}</p> : null}
     </article>
   );
+}
+
+function selectPanelBlocker(tasks: ProjectFolderTaskRow[]): string | null {
+  const directBlocker = tasks.flatMap((task) => task.blockers)[0];
+  return directBlocker ?? null;
 }

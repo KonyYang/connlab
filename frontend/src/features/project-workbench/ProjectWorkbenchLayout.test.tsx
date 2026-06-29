@@ -742,7 +742,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   });
 
   it("does not show mode tabs when the active Matrix workspace is the main task", () => {
-    renderWorkbench({
+    const { container } = renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
       matrixAuthorityDraft: testPlanDraft,
@@ -756,6 +756,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("tab", { name: "Execution" })).toBeNull();
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Folder Actions").textContent).toContain("Project folder");
+    expect(container.querySelector(".runtime-console-folder-operation-list")).toBeTruthy();
+    expect(container.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(4);
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();

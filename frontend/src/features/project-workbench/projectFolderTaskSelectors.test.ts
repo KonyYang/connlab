@@ -23,6 +23,18 @@ describe("deriveProjectFolderTasks", () => {
       "Submit",
       "Pull",
     ]);
+    expect(tasks.map((task) => task.iconName)).toEqual([
+      "folder",
+      "refresh",
+      "package",
+      "copy",
+    ]);
+    expect(tasks.map((task) => task.context)).toEqual([
+      "Open is not connected yet.",
+      "Sync workflow placeholder.",
+      "Moves Open package to Closed after confirmation.",
+      "Closed package · keep local history.",
+    ]);
     expect(selectCurrentProjectFolderTaskKey(tasks)).toBe("project_folder");
   });
 
@@ -65,6 +77,7 @@ describe("deriveProjectFolderTasks", () => {
     });
 
     expect(tasks[0].title).toBe("Project folder");
+    expect(tasks[0].context).toBe("Folder setup is not available yet.");
     expect(tasks[0].blockers[0]).toBe("Project folder is not available yet.");
   });
 });

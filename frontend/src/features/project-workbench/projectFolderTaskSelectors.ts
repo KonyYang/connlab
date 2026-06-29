@@ -15,6 +15,8 @@ export type ProjectFolderTaskKey =
 
 export type ProjectFolderTaskStatus = "neutral" | "blocked";
 
+export type ProjectFolderTaskIconName = "folder" | "refresh" | "package" | "copy";
+
 export type ProjectFolderTaskActionTarget =
   | "folder"
   | "request_material"
@@ -30,9 +32,11 @@ export type ProjectFolderTaskActionTarget =
 export type ProjectFolderTaskRow = {
   key: ProjectFolderTaskKey;
   title: string;
+  iconName: ProjectFolderTaskIconName;
   statusLabel: string;
   status: ProjectFolderTaskStatus;
   summary: string;
+  context: string;
   actionLabel?: string;
   actionTarget?: ProjectFolderTaskActionTarget;
   blockers: string[];
@@ -62,9 +66,13 @@ export function deriveProjectFolderTasks(
     {
       key: "project_folder",
       title: "Project folder",
+      iconName: "folder",
       statusLabel: "Open",
       status: "neutral",
       summary: "Folder access.",
+      context: input.folderReady
+        ? "Open is not connected yet."
+        : "Folder setup is not available yet.",
       actionLabel: "Open",
       actionTarget: null,
       blockers: [
@@ -78,9 +86,11 @@ export function deriveProjectFolderTasks(
     {
       key: "public_working_copy",
       title: "Public working copy",
+      iconName: "refresh",
       statusLabel: "Sync",
       status: "neutral",
-      summary: "Keep the lab working copy aligned when the sync workflow is connected.",
+      summary: "Keep the lab working copy aligned.",
+      context: "Sync workflow placeholder.",
       actionLabel: "Sync now",
       actionTarget: null,
       blockers: ["Sync workflow is not connected yet."],
@@ -89,9 +99,11 @@ export function deriveProjectFolderTasks(
     {
       key: "approval_package",
       title: "Approval package",
+      iconName: "package",
       statusLabel: "Submit",
       status: "neutral",
-      summary: "Submit controlled output after package workflow checks are connected.",
+      summary: "Submit controlled output.",
+      context: "Moves Open package to Closed after confirmation.",
       actionLabel: "Submit",
       actionTarget: null,
       blockers: ["Submit workflow is not connected yet."],
@@ -100,9 +112,11 @@ export function deriveProjectFolderTasks(
     {
       key: "approved_folder",
       title: "Approved folder",
+      iconName: "copy",
       statusLabel: "Pull",
       status: "neutral",
-      summary: "Bring approved public results back after pull workflow wiring exists.",
+      summary: "Bring approved public results back.",
+      context: "Closed package · keep local history.",
       actionLabel: "Pull",
       actionTarget: null,
       blockers: ["Pull workflow is not connected yet."],

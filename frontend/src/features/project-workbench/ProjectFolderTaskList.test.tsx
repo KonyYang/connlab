@@ -10,9 +10,17 @@ import type {
 
 describe("ProjectFolderTaskList", () => {
   it("renders the quiet four-operation Folder Actions surface", () => {
-    render(<ProjectFolderTaskListHarness />);
+    const { container } = render(<ProjectFolderTaskListHarness />);
 
     expect(screen.getByRole("region", { name: "Folder Actions" })).toBeTruthy();
+    expect(container.querySelector(".runtime-console-folder-operation-list")).toBeTruthy();
+    expect(container.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(4);
+    expect(
+      Array.from(container.querySelectorAll(".runtime-console-folder-operation h3")).map(
+        (item) => item.textContent
+      )
+    ).toEqual(["Project folder", "Public working copy", "Approval package", "Approved folder"]);
+    expect(screen.getByText("Closed package · keep local history.")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(true);
     expect(
       (screen.getByRole("checkbox", {
@@ -53,7 +61,7 @@ describe("ProjectFolderTaskList", () => {
       />
     );
 
-    expect(screen.getAllByText("Activate project before editing is restored.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Activate project before editing is restored.")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Open" }).getAttribute("title")).toBe(
       "Activate project before editing is restored."
     );
@@ -89,9 +97,11 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "project_folder",
     title: "Project folder",
+    iconName: "folder",
     statusLabel: "Open",
     status: "neutral",
     summary: "Folder access.",
+    context: "Open is not connected yet.",
     actionLabel: "Open",
     actionTarget: null,
     blockers: ["Project folder open is not connected yet."],
@@ -100,9 +110,11 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "public_working_copy",
     title: "Public working copy",
+    iconName: "refresh",
     statusLabel: "Sync",
     status: "neutral",
-    summary: "Keep the lab working copy aligned when the sync workflow is connected.",
+    summary: "Keep the lab working copy aligned.",
+    context: "Sync workflow placeholder.",
     actionLabel: "Sync now",
     actionTarget: null,
     blockers: ["Sync workflow is not connected yet."],
@@ -111,9 +123,11 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "approval_package",
     title: "Approval package",
+    iconName: "package",
     statusLabel: "Submit",
     status: "neutral",
-    summary: "Submit controlled output after package workflow checks are connected.",
+    summary: "Submit controlled output.",
+    context: "Moves Open package to Closed after confirmation.",
     actionLabel: "Submit",
     actionTarget: null,
     blockers: ["Submit workflow is not connected yet."],
@@ -122,9 +136,11 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "approved_folder",
     title: "Approved folder",
+    iconName: "copy",
     statusLabel: "Pull",
     status: "neutral",
-    summary: "Bring approved public results back after pull workflow wiring exists.",
+    summary: "Bring approved public results back.",
+    context: "Closed package · keep local history.",
     actionLabel: "Pull",
     actionTarget: null,
     blockers: ["Pull workflow is not connected yet."],

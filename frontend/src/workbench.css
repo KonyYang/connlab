@@ -3599,31 +3599,51 @@
   margin: 0;
 }
 
-.runtime-console-folder-operation-grid {
+.runtime-console-folder-operation-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 0;
 }
 
 .runtime-console-folder-operation {
   display: grid;
-  align-content: start;
-  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
-  border: 1px solid var(--color-border);
+  padding: 11px 0;
+}
+
+.runtime-console-folder-operation + .runtime-console-folder-operation {
+  border-top: 1px solid var(--color-border);
+}
+
+.runtime-console-folder-operation-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-surface) 78%, var(--color-sidebar));
-  padding: 10px;
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+  color: var(--color-primary-strong);
+}
+
+.runtime-console-folder-operation-icon .ui-icon {
+  width: 15px;
+  height: 15px;
 }
 
 .runtime-console-folder-operation-copy {
   display: grid;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .runtime-console-folder-operation-copy h3,
 .runtime-console-folder-operation-copy p,
-.runtime-console-folder-operation-blocker {
+.runtime-console-folder-operation-copy small,
+.runtime-console-folder-actions-blocker {
   margin: 0;
 }
 
@@ -3634,16 +3654,22 @@
 }
 
 .runtime-console-folder-operation-copy p,
-.runtime-console-folder-operation-blocker {
+.runtime-console-folder-operation-copy small,
+.runtime-console-folder-actions-blocker {
   color: var(--color-ink-muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.runtime-console-folder-operation-copy small {
+  display: block;
 }
 
 .runtime-console-folder-operation-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -3671,6 +3697,10 @@
   color: var(--color-ink-muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.runtime-console-folder-actions-blocker {
+  padding-top: 2px;
 }
 
 .runtime-console-project-folder-flow {
