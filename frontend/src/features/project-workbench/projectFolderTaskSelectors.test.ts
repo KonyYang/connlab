@@ -31,23 +31,26 @@ describe("deriveProjectFolderTasks", () => {
     ]);
     expect(tasks.map((task) => task.context)).toEqual([
       "Open is not connected yet.",
-      "Sync workflow placeholder.",
-      "Moves Open package to Closed after confirmation.",
-      "Closed package · keep local history.",
+      "Public Open working copy.",
+      "Preview moves Open output to Closed after confirmation.",
+      "Closed output can be pulled without overwriting local history.",
     ]);
     expect(selectCurrentProjectFolderTaskKey(tasks)).toBe("project_folder");
   });
 
-  it("keeps backend-dependent operations as non-executing placeholders", () => {
+  it("wires workflow operations as preview-first actions", () => {
     const tasks = deriveProjectFolderTasks(readyInput());
 
-    expect(tasks.every((task) => task.actionTarget === null)).toBe(true);
-    expect(tasks.map((task) => task.blockers[0])).toEqual([
-      "Project folder open is not connected yet.",
-      "Sync workflow is not connected yet.",
-      "Submit workflow is not connected yet.",
-      "Pull workflow is not connected yet.",
+    expect(tasks.map((task) => task.actionTarget)).toEqual([
+      null,
+      "public_folder_workflow_sync",
+      "public_folder_workflow_submit",
+      "public_folder_workflow_pull",
     ]);
+    expect(tasks[1].autoSync).toMatchObject({
+      checked: true,
+      disabled: false,
+    });
   });
 
   it("does not expose old readiness or public upload vocabulary", () => {
@@ -91,6 +94,31 @@ function readyInput() {
     requestMaterialError: null,
     publicDriveUploadPreview: null,
     publicDriveUploadError: null,
+    publicFolderWorkflowContext: {
+      project_id: "project-1",
+      auto_sync_enabled: true,
+      sync_locked: false,
+      submitted_at: null,
+      public_root: "D:/PublicProject",
+      public_root_class: "open",
+      public_folder_year: 2026,
+      year_source: "project",
+      year_evidence: "created_on",
+      local_official_folder_path: "D:/Test Project/DL-2026-06-001",
+      public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
+      public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
+      blockers: [],
+      warnings: [],
+    },
+    publicFolderWorkflowContextLoading: false,
+    publicFolderWorkflowContextError: null,
+    publicFolderWorkflowPreviews: { sync: null, submit: null, pull: null },
+    publicFolderWorkflowResults: { sync: null, submit: null, pull: null },
+    publicFolderWorkflowBusyOperation: null,
+    publicFolderWorkflowConfirmingOperation: null,
+    publicFolderWorkflowError: null,
+    publicFolderWorkflowMessage: null,
+    publicFolderWorkflowAutoSyncBusy: false,
     requiredFormsPreview: currentRequiredFormsPreview,
     requiredFormsError: null,
     section2SyncPreview: null,

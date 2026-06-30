@@ -22,6 +22,9 @@ const apiMocks = vi.hoisted(() => ({
   closeProjectCompletedLifecycle: vi.fn(),
   confirmProjectTestPlanMatrixDraft: vi.fn(),
   createProjectTestPlanDraft: vi.fn(),
+  executePublicFolderWorkflowPull: vi.fn(),
+  executePublicFolderWorkflowSubmit: vi.fn(),
+  executePublicFolderWorkflowSync: vi.fn(),
   executeApprovalPackage: vi.fn(),
   fetchActiveConfirmedMatrixSnapshot: vi.fn(),
   fetchConfirmedMatrixRuntimeProjectionSnapshot: vi.fn(),
@@ -41,6 +44,7 @@ const apiMocks = vi.hoisted(() => ({
   getProjectLifecycle: vi.fn(),
   getProjectOutputStatusSummary: vi.fn(),
   getProjectTestPlanDraft: vi.fn(),
+  getPublicFolderWorkflowContext: vi.fn(),
   getRuntimeProjectionReadOnlySnapshot: vi.fn(),
   listExternalResources: vi.fn(),
   listProjectLtrs: vi.fn(),
@@ -51,10 +55,14 @@ const apiMocks = vi.hoisted(() => ({
   previewEvidencePlacement: vi.fn(),
   previewProjectTestPlanMatrixFromPath: vi.fn(),
   previewProjectTestPlanMatrixFromSourceCandidate: vi.fn(),
+  previewPublicFolderWorkflowPull: vi.fn(),
+  previewPublicFolderWorkflowSubmit: vi.fn(),
+  previewPublicFolderWorkflowSync: vi.fn(),
   repairOfficialFolderStructure: vi.fn(),
   resumeProjectLifecycle: vi.fn(),
   stopProjectLifecycle: vi.fn(),
   syncProjectSection2FromConfirmedMatrix: vi.fn(),
+  setPublicFolderWorkflowAutoSync: vi.fn(),
   updateProjectTestPlanMatrixDraft: vi.fn(),
   uploadPublicDriveProjectFolder: vi.fn(),
   validateProjectTestPlanMatrixDraft: vi.fn(),
@@ -190,6 +198,38 @@ describe("useProjectWorkbenchModel", () => {
       blockers: [],
       warnings: [],
     });
+    apiMocks.getPublicFolderWorkflowContext.mockResolvedValue(
+      publicFolderWorkflowContext()
+    );
+    apiMocks.setPublicFolderWorkflowAutoSync.mockResolvedValue({
+      project_id: "project-1",
+      auto_sync_enabled: true,
+      sync_locked: false,
+      submitted_at: null,
+      submit_operation_id: null,
+      last_sync_operation_id: null,
+      last_pull_operation_id: null,
+      created_at: "2026-06-30T00:00:00Z",
+      updated_at: "2026-06-30T00:00:00Z",
+    });
+    apiMocks.previewPublicFolderWorkflowSync.mockResolvedValue(
+      publicFolderWorkflowPreview("sync")
+    );
+    apiMocks.previewPublicFolderWorkflowSubmit.mockResolvedValue(
+      publicFolderWorkflowPreview("submit")
+    );
+    apiMocks.previewPublicFolderWorkflowPull.mockResolvedValue(
+      publicFolderWorkflowPreview("pull")
+    );
+    apiMocks.executePublicFolderWorkflowSync.mockResolvedValue(
+      publicFolderWorkflowResult("sync")
+    );
+    apiMocks.executePublicFolderWorkflowSubmit.mockResolvedValue(
+      publicFolderWorkflowResult("submit")
+    );
+    apiMocks.executePublicFolderWorkflowPull.mockResolvedValue(
+      publicFolderWorkflowResult("pull")
+    );
     apiMocks.fetchProjectBasicInformation.mockResolvedValue({
       project_id: "project-1",
       status: "unconfirmed",
@@ -241,6 +281,76 @@ describe("useProjectWorkbenchModel", () => {
       warnings: [],
       output_record_id: "application-form-output-1",
     });
+  });
+
+  it("loads and saves backend-owned public folder Auto sync state", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() =>
+      expect(result.current.publicFolderWorkflowContext?.auto_sync_enabled).toBe(false)
+    );
+
+    await act(async () => {
+      await result.current.onSetPublicFolderWorkflowAutoSync(true);
+    });
+
+    expect(apiMocks.setPublicFolderWorkflowAutoSync).toHaveBeenCalledWith(
+      "project-1",
+      true
+    );
+    expect(result.current.publicFolderWorkflowMessage).toBe("Auto sync enabled.");
+  });
+
+  it("uses preview-first Submit before executing with the preview hash", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.onPreviewPublicFolderWorkflowOperation("submit");
+    });
+
+    expect(apiMocks.previewPublicFolderWorkflowSubmit).toHaveBeenCalledWith("project-1");
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBe("submit");
+    expect(apiMocks.executePublicFolderWorkflowSubmit).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.onConfirmPublicFolderWorkflowOperation("submit");
+    });
+
+    expect(apiMocks.executePublicFolderWorkflowSubmit).toHaveBeenCalledWith(
+      "project-1",
+      {
+        preview_hash: "submit-preview-hash",
+        confirmed: true,
+        confirm_directory_creation: true,
+        operator: null,
+      }
+    );
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowMessage).toBe("Submit completed.");
+  });
+
+  it("does not execute when a workflow preview reports conflicts", async () => {
+    apiMocks.previewPublicFolderWorkflowSubmit.mockResolvedValueOnce(
+      publicFolderWorkflowPreview("submit", {
+        status: "conflict",
+        conflicts: ["Unmanaged public files require review."],
+      })
+    );
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.onPreviewPublicFolderWorkflowOperation("submit");
+    });
+
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowMessage).toBe(
+      "Unmanaged public files require review."
+    );
+    expect(apiMocks.executePublicFolderWorkflowSubmit).not.toHaveBeenCalled();
   });
 
   it("stops the one-click project folder chain when Required forms preview is blocked", async () => {
@@ -445,6 +555,70 @@ const requiredFormsPreviewContext = {
   blockers: [],
   warnings: [],
 };
+
+function publicFolderWorkflowContext(overrides = {}) {
+  return {
+    project_id: "project-1",
+    auto_sync_enabled: false,
+    sync_locked: false,
+    submitted_at: null,
+    public_root: "D:/PublicProject",
+    public_root_class: "open",
+    public_folder_year: 2026,
+    year_source: "project_created_on",
+    year_evidence: "2026-06-30",
+    local_official_folder_path: "D:/Projects/DL-2026-06-001/Official",
+    public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
+    public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
+    blockers: [],
+    warnings: [],
+    ...overrides,
+  };
+}
+
+function publicFolderWorkflowPreview(operation: "sync" | "submit" | "pull", overrides = {}) {
+  return {
+    project_id: "project-1",
+    operation_type: operation,
+    status: "ready",
+    local_official_folder_path: "D:/Projects/DL-2026-06-001/Official",
+    public_root: "D:/PublicProject",
+    public_root_class: "open",
+    public_folder_year: 2026,
+    year_source: "project_created_on",
+    year_evidence: "2026-06-30",
+    public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
+    public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
+    target_path:
+      operation === "pull"
+        ? "D:/Projects/DL-2026-06-001/Official"
+        : "D:/PublicProject/Open/2026/DL-2026-06-001",
+    items: [],
+    blockers: [],
+    warnings: [],
+    conflicts: [],
+    required_confirmations:
+      operation === "submit" ? ["create_missing_public_directories"] : [],
+    counts: {},
+    preview_hash: `${operation}-preview-hash`,
+    next_action: operation,
+    auto_sync_enabled: false,
+    sync_locked: false,
+    ...overrides,
+  };
+}
+
+function publicFolderWorkflowResult(operation: "sync" | "submit" | "pull") {
+  return {
+    project_id: "project-1",
+    operation_id: "operation-12",
+    operation_type: operation,
+    status: "completed",
+    counts: {},
+    errors: [],
+    preview: publicFolderWorkflowPreview(operation),
+  };
+}
 
 function lifecycleResponse(overrides = {}) {
   return {

@@ -3665,6 +3665,17 @@
   display: block;
 }
 
+.runtime-console-folder-operation-details {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .runtime-console-folder-operation-controls {
   display: flex;
   flex-wrap: wrap;
@@ -3688,6 +3699,13 @@
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-ink-muted);
+}
+
+.runtime-console-folder-operation-confirmation {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .runtime-console-folder-auto-sync {

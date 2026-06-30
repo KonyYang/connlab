@@ -526,6 +526,98 @@ export type PublicDriveUploadResult = {
   preview: PublicDriveUploadPreview;
 };
 
+export type PublicFolderWorkflowOperationType = "sync" | "submit" | "pull";
+
+export type PublicFolderWorkflowStatus =
+  | "ready"
+  | "blocked"
+  | "conflict"
+  | "completed"
+  | "failed";
+
+export type PublicFolderWorkflowRootClass = "missing" | "open" | "closed" | "invalid";
+
+export type PublicFolderWorkflowItem = {
+  kind: string;
+  relative_path: string;
+  local_path: string | null;
+  public_path: string | null;
+  action: string;
+  status: string;
+  message: string | null;
+};
+
+export type PublicFolderWorkflowPreview = {
+  project_id: string;
+  operation_type: PublicFolderWorkflowOperationType;
+  status: PublicFolderWorkflowStatus;
+  local_official_folder_path: string | null;
+  public_root: string | null;
+  public_root_class: PublicFolderWorkflowRootClass | string | null;
+  public_folder_year: number | null;
+  year_source: string | null;
+  year_evidence: string | null;
+  public_open_path: string | null;
+  public_closed_path: string | null;
+  target_path: string | null;
+  items: PublicFolderWorkflowItem[];
+  blockers: string[];
+  warnings: string[];
+  conflicts: string[];
+  required_confirmations: string[];
+  counts: Record<string, number>;
+  preview_hash: string | null;
+  next_action: string | null;
+  auto_sync_enabled: boolean;
+  sync_locked: boolean;
+};
+
+export type PublicFolderWorkflowContext = {
+  project_id: string;
+  auto_sync_enabled: boolean;
+  sync_locked: boolean;
+  submitted_at: string | null;
+  public_root: string | null;
+  public_root_class: PublicFolderWorkflowRootClass | string | null;
+  public_folder_year: number | null;
+  year_source: string | null;
+  year_evidence: string | null;
+  local_official_folder_path: string | null;
+  public_open_path: string | null;
+  public_closed_path: string | null;
+  blockers: string[];
+  warnings: string[];
+};
+
+export type PublicFolderWorkflowState = {
+  project_id: string;
+  auto_sync_enabled: boolean;
+  sync_locked: boolean;
+  submitted_at: string | null;
+  submit_operation_id: string | null;
+  last_sync_operation_id: string | null;
+  last_pull_operation_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type PublicFolderWorkflowExecuteInput = {
+  preview_hash: string;
+  confirmed: boolean;
+  confirm_directory_creation?: boolean;
+  operator?: string | null;
+};
+
+export type PublicFolderWorkflowResult = {
+  project_id: string;
+  operation_id: string;
+  operation_type: PublicFolderWorkflowOperationType;
+  status: PublicFolderWorkflowStatus;
+  counts: Record<string, number>;
+  errors: string[];
+  preview: PublicFolderWorkflowPreview;
+};
+
 export type ProjectFolderRequiredFormsStatus =
   | "blocked"
   | "ready"
@@ -3284,6 +3376,101 @@ export function uploadPublicDriveProjectFolder(
   return requestJson<PublicDriveUploadResult>(
     `/api/projects/${encodeURIComponent(projectId)}/public-drive/upload`,
     { method: "POST" }
+  );
+}
+
+function publicFolderWorkflowPath(
+  projectId: string,
+  suffix: string
+): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/public-folder-workflow${suffix}`;
+}
+
+export function getPublicFolderWorkflowContext(
+  projectId: string
+): Promise<PublicFolderWorkflowContext> {
+  return requestJson<PublicFolderWorkflowContext>(
+    publicFolderWorkflowPath(projectId, "/context"),
+    { cache: "no-store" }
+  );
+}
+
+export function setPublicFolderWorkflowAutoSync(
+  projectId: string,
+  autoSyncEnabled: boolean
+): Promise<PublicFolderWorkflowState> {
+  return requestJson<PublicFolderWorkflowState>(
+    publicFolderWorkflowPath(projectId, "/auto-sync"),
+    {
+      method: "PUT",
+      body: JSON.stringify({ auto_sync_enabled: autoSyncEnabled }),
+    }
+  );
+}
+
+export function previewPublicFolderWorkflowSync(
+  projectId: string
+): Promise<PublicFolderWorkflowPreview> {
+  return requestJson<PublicFolderWorkflowPreview>(
+    publicFolderWorkflowPath(projectId, "/sync/preview"),
+    { method: "POST" }
+  );
+}
+
+export function executePublicFolderWorkflowSync(
+  projectId: string,
+  input: PublicFolderWorkflowExecuteInput
+): Promise<PublicFolderWorkflowResult> {
+  return requestJson<PublicFolderWorkflowResult>(
+    publicFolderWorkflowPath(projectId, "/sync/execute"),
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function previewPublicFolderWorkflowSubmit(
+  projectId: string
+): Promise<PublicFolderWorkflowPreview> {
+  return requestJson<PublicFolderWorkflowPreview>(
+    publicFolderWorkflowPath(projectId, "/submit/preview"),
+    { method: "POST" }
+  );
+}
+
+export function executePublicFolderWorkflowSubmit(
+  projectId: string,
+  input: PublicFolderWorkflowExecuteInput
+): Promise<PublicFolderWorkflowResult> {
+  return requestJson<PublicFolderWorkflowResult>(
+    publicFolderWorkflowPath(projectId, "/submit/execute"),
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function previewPublicFolderWorkflowPull(
+  projectId: string
+): Promise<PublicFolderWorkflowPreview> {
+  return requestJson<PublicFolderWorkflowPreview>(
+    publicFolderWorkflowPath(projectId, "/pull/preview"),
+    { method: "POST" }
+  );
+}
+
+export function executePublicFolderWorkflowPull(
+  projectId: string,
+  input: PublicFolderWorkflowExecuteInput
+): Promise<PublicFolderWorkflowResult> {
+  return requestJson<PublicFolderWorkflowResult>(
+    publicFolderWorkflowPath(projectId, "/pull/execute"),
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
   );
 }
 

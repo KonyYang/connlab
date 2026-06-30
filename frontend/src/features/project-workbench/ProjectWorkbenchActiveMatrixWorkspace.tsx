@@ -3,6 +3,7 @@ import { ProjectBasicInformationSummaryCard } from "../project-basic-information
 import { ProjectWorkbenchExecutionConsole } from "./ProjectWorkbenchExecutionConsole";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectLifecycleReadonlyView } from "../project-lifecycle/projectLifecycleReadonlyModel";
+import type { PublicFolderWorkflowOperationType } from "../../api/client";
 import type {
   ProjectFolderTaskActionTarget,
   ProjectFolderTaskRow,
@@ -14,6 +15,9 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   effectiveFolderReady: boolean;
   officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
   onProjectFolderTaskAction: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onProjectFolderTaskConfirm: (operation: PublicFolderWorkflowOperationType) => void;
+  onProjectFolderTaskCancel: (operation: PublicFolderWorkflowOperationType) => void;
+  onPublicFolderAutoSyncChange: (enabled: boolean) => void;
   projectFolderTasks: ProjectFolderTaskRow[];
   projectId: string;
   basicInformation: ProjectRuntimeConsoleModel["basicInformation"];
@@ -29,6 +33,9 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   effectiveFolderReady,
   officialWorkspaceStatus,
   onProjectFolderTaskAction,
+  onProjectFolderTaskConfirm,
+  onProjectFolderTaskCancel,
+  onPublicFolderAutoSyncChange,
   projectFolderTasks,
   projectId,
   basicInformation,
@@ -60,6 +67,9 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
               <ProjectFolderActionsSurface
                 tasks={visibleProjectFolderTasks}
                 onTaskAction={onProjectFolderTaskAction}
+                onTaskConfirm={onProjectFolderTaskConfirm}
+                onTaskCancel={onProjectFolderTaskCancel}
+                onAutoSyncChange={onPublicFolderAutoSyncChange}
                 readonlyReason={
                   lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
                 }

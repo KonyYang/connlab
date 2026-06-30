@@ -5,6 +5,7 @@ import type {
   ProjectTestPlanDraft,
   ProjectTestPlanDraftGroup,
   ProjectTestPlanDraftStep,
+  PublicFolderWorkflowOperationType,
   TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { ProjectWorkbenchCloseConfirmation } from "./ProjectWorkbenchCloseConfirmation";
@@ -475,9 +476,19 @@ function getTemporaryDeleteBlockerCopy(blocker: string, allowDelete: boolean): s
 export function NoMatrixWorkspaceEmptyState({
   projectFolderTasks,
   matrixDraft,
+  onProjectFolderTaskAction,
+  onProjectFolderTaskConfirm,
+  onProjectFolderTaskCancel,
+  onPublicFolderAutoSyncChange,
+  readonlyReason,
 }: {
   projectFolderTasks: ProjectFolderTaskRow[];
   matrixDraft: ProjectTestPlanDraft | null;
+  onProjectFolderTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onProjectFolderTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
+  onProjectFolderTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
+  onPublicFolderAutoSyncChange?: (enabled: boolean) => void;
+  readonlyReason?: string;
 }): ReactElement {
   const draftPreview = buildNoMatrixDraftPreview(matrixDraft);
   const [selectedTokenReference, setSelectedTokenReference] = useState<string | null>(
@@ -581,7 +592,14 @@ export function NoMatrixWorkspaceEmptyState({
             </dl>
           ) : null}
         </aside>
-        <ProjectFolderActionsSurface tasks={projectFolderTasks} />
+        <ProjectFolderActionsSurface
+          tasks={projectFolderTasks}
+          onTaskAction={onProjectFolderTaskAction}
+          onTaskConfirm={onProjectFolderTaskConfirm}
+          onTaskCancel={onProjectFolderTaskCancel}
+          onAutoSyncChange={onPublicFolderAutoSyncChange}
+          readonlyReason={readonlyReason}
+        />
       </div>
     </section>
   );
@@ -778,6 +796,9 @@ export function PackagePreparationMode({
   selectedProjectFolderTaskKey,
   onSelectProjectFolderTask,
   onProjectFolderTaskAction,
+  onProjectFolderTaskConfirm,
+  onProjectFolderTaskCancel,
+  onPublicFolderAutoSyncChange,
   requestMaterialPreview,
   requestMaterialError,
   requestMaterialLoading,
@@ -793,6 +814,9 @@ export function PackagePreparationMode({
   selectedProjectFolderTaskKey: ProjectFolderTaskKey;
   onSelectProjectFolderTask: (taskKey: ProjectFolderTaskKey) => void;
   onProjectFolderTaskAction: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onProjectFolderTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
+  onProjectFolderTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
+  onPublicFolderAutoSyncChange?: (enabled: boolean) => void;
   requestMaterialPreview: ProjectRuntimeConsoleModel["requestMaterialPreview"];
   requestMaterialError: string | null;
   requestMaterialLoading: boolean;
@@ -811,6 +835,9 @@ export function PackagePreparationMode({
         selectedTaskKey={selectedProjectFolderTaskKey}
         onSelectTask={onSelectProjectFolderTask}
         onTaskAction={onProjectFolderTaskAction}
+        onTaskConfirm={onProjectFolderTaskConfirm}
+        onTaskCancel={onProjectFolderTaskCancel}
+        onAutoSyncChange={onPublicFolderAutoSyncChange}
         requestMaterialPreview={requestMaterialPreview}
         requestMaterialError={requestMaterialError}
         requestMaterialLoading={requestMaterialLoading}

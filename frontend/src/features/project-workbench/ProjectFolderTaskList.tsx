@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import type {
   ProjectFolderRequiredFormsPreview,
+  PublicFolderWorkflowOperationType,
   PublicDriveUploadPreview,
   RequestMaterialPreview,
 } from "../../api/client";
@@ -14,12 +15,18 @@ import type {
 export function ProjectFolderTaskList({
   tasks,
   onTaskAction,
+  onTaskConfirm,
+  onTaskCancel,
+  onAutoSyncChange,
 }: {
   tasks: ProjectFolderTaskRow[];
   currentTaskKey: ProjectFolderTaskKey;
   selectedTaskKey: ProjectFolderTaskKey;
   onSelectTask: (taskKey: ProjectFolderTaskKey) => void;
   onTaskAction: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
+  onTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
+  onAutoSyncChange?: (enabled: boolean) => void;
   requestMaterialPreview: RequestMaterialPreview | null;
   requestMaterialError: string | null;
   requestMaterialLoading: boolean;
@@ -30,16 +37,30 @@ export function ProjectFolderTaskList({
   publicDriveUploadError: string | null;
   publicDriveUploadLoading: boolean;
 }): ReactElement {
-  return <ProjectFolderActionsSurface tasks={tasks} onTaskAction={onTaskAction} />;
+  return (
+    <ProjectFolderActionsSurface
+      tasks={tasks}
+      onTaskAction={onTaskAction}
+      onTaskConfirm={onTaskConfirm}
+      onTaskCancel={onTaskCancel}
+      onAutoSyncChange={onAutoSyncChange}
+    />
+  );
 }
 
 export function ProjectFolderActionsSurface({
   tasks,
   onTaskAction,
+  onTaskConfirm,
+  onTaskCancel,
+  onAutoSyncChange,
   readonlyReason,
 }: {
   tasks: ProjectFolderTaskRow[];
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
+  onTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
+  onAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
 }): ReactElement {
   const panelBlocker = readonlyReason ?? selectPanelBlocker(tasks);
@@ -54,6 +75,9 @@ export function ProjectFolderActionsSurface({
             key={task.key}
             task={task}
             onTaskAction={onTaskAction}
+            onTaskConfirm={onTaskConfirm}
+            onTaskCancel={onTaskCancel}
+            onAutoSyncChange={onAutoSyncChange}
             readonlyReason={readonlyReason}
           />
         ))}
@@ -68,10 +92,16 @@ export function ProjectFolderActionsSurface({
 function FolderOperation({
   task,
   onTaskAction,
+  onTaskConfirm,
+  onTaskCancel,
+  onAutoSyncChange,
   readonlyReason,
 }: {
   task: ProjectFolderTaskRow;
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
+  onTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
+  onAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
 }): ReactElement {
   const blocker = readonlyReason ?? task.blockers[0] ?? null;
@@ -85,15 +115,44 @@ function FolderOperation({
         <h3>{task.title}</h3>
         <p>{task.summary}</p>
         <small>{task.context}</small>
+        {task.detailMessages && task.detailMessages.length > 0 ? (
+          <ul className="runtime-console-folder-operation-details">
+            {task.detailMessages.slice(0, 2).map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
-        {task.key === "public_working_copy" ? (
+        {task.autoSync ? (
           <label className="runtime-console-folder-auto-sync">
-            <input type="checkbox" disabled aria-label="Auto sync public working copy" />
+            <input
+              type="checkbox"
+              checked={task.autoSync.checked}
+              disabled={readonlyReason ? true : task.autoSync.disabled}
+              aria-label="Auto sync public working copy"
+              title={task.autoSync.blocker ?? undefined}
+              onChange={(event) => onAutoSyncChange?.(event.currentTarget.checked)}
+            />
             <span>Auto sync</span>
           </label>
         ) : null}
-        {task.actionLabel ? (
+        {task.confirming && task.operation ? (
+          <div className="runtime-console-folder-operation-confirmation">
+            <button
+              type="button"
+              onClick={() => onTaskConfirm?.(task.operation as PublicFolderWorkflowOperationType)}
+            >
+              {task.confirmLabel ?? "Confirm"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onTaskCancel?.(task.operation as PublicFolderWorkflowOperationType)}
+            >
+              {task.cancelLabel ?? "Cancel"}
+            </button>
+          </div>
+        ) : task.actionLabel ? (
           <button
             type="button"
             disabled={disabled}

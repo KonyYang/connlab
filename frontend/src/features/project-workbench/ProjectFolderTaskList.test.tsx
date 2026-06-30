@@ -20,16 +20,18 @@ describe("ProjectFolderTaskList", () => {
         (item) => item.textContent
       )
     ).toEqual(["Project folder", "Public working copy", "Approval package", "Approved folder"]);
-    expect(screen.getByText("Closed package · keep local history.")).toBeTruthy();
+    expect(
+      screen.getByText("Closed output can be pulled without overwriting local history.")
+    ).toBeTruthy();
     expect((screen.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(true);
     expect(
       (screen.getByRole("checkbox", {
         name: "Auto sync public working copy",
       }) as HTMLInputElement).disabled
-    ).toBe(true);
-    expect((screen.getByRole("button", { name: "Sync now" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Submit" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Pull" }) as HTMLButtonElement).disabled).toBe(true);
+    ).toBe(false);
+    expect((screen.getByRole("button", { name: "Sync now" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Submit" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Pull" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("does not render old readiness task details", () => {
@@ -41,16 +43,55 @@ describe("ProjectFolderTaskList", () => {
     );
   });
 
-  it("does not route disabled placeholder actions", async () => {
+  it("routes preview-first actions and Auto sync changes", async () => {
     const user = userEvent.setup();
     const onTaskAction = vi.fn();
-    render(<ProjectFolderTaskListHarness onTaskAction={onTaskAction} />);
+    const onAutoSyncChange = vi.fn();
+    render(
+      <ProjectFolderTaskListHarness
+        onTaskAction={onTaskAction}
+        onAutoSyncChange={onAutoSyncChange}
+      />
+    );
 
     await user.click(screen.getByRole("button", { name: "Sync now" }));
     await user.click(screen.getByRole("button", { name: "Submit" }));
     await user.click(screen.getByRole("button", { name: "Pull" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Auto sync public working copy" })
+    );
 
-    expect(onTaskAction).not.toHaveBeenCalled();
+    expect(onTaskAction).toHaveBeenCalledWith("public_folder_workflow_sync");
+    expect(onTaskAction).toHaveBeenCalledWith("public_folder_workflow_submit");
+    expect(onTaskAction).toHaveBeenCalledWith("public_folder_workflow_pull");
+    expect(onAutoSyncChange).toHaveBeenCalledWith(false);
+  });
+
+  it("renders operation confirmation controls", async () => {
+    const user = userEvent.setup();
+    const onTaskConfirm = vi.fn();
+    const onTaskCancel = vi.fn();
+    render(
+      <ProjectFolderActionsSurface
+        tasks={[
+          {
+            ...tasks[2],
+            confirming: true,
+            operation: "submit",
+            confirmLabel: "Confirm submit",
+            cancelLabel: "Cancel",
+          },
+        ]}
+        onTaskConfirm={onTaskConfirm}
+        onTaskCancel={onTaskCancel}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Confirm submit" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onTaskConfirm).toHaveBeenCalledWith("submit");
+    expect(onTaskCancel).toHaveBeenCalledWith("submit");
   });
 
   it("applies readonly reasons to the shared surface", () => {
@@ -70,8 +111,10 @@ describe("ProjectFolderTaskList", () => {
 
 function ProjectFolderTaskListHarness({
   onTaskAction = vi.fn(),
+  onAutoSyncChange = vi.fn(),
 }: {
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
+  onAutoSyncChange?: (enabled: boolean) => void;
 }) {
   return (
     <ProjectFolderTaskList
@@ -80,6 +123,7 @@ function ProjectFolderTaskListHarness({
       selectedTaskKey="project_folder"
       onSelectTask={vi.fn() as (taskKey: ProjectFolderTaskKey) => void}
       onTaskAction={onTaskAction}
+      onAutoSyncChange={onAutoSyncChange}
       requestMaterialPreview={null}
       requestMaterialError={null}
       requestMaterialLoading={false}
@@ -114,11 +158,17 @@ const tasks: ProjectFolderTaskRow[] = [
     statusLabel: "Sync",
     status: "neutral",
     summary: "Keep the lab working copy aligned.",
-    context: "Sync workflow placeholder.",
+    context: "Public Open working copy.",
     actionLabel: "Sync now",
-    actionTarget: null,
-    blockers: ["Sync workflow is not connected yet."],
+    actionTarget: "public_folder_workflow_sync",
+    blockers: [],
     warnings: [],
+    operation: "sync",
+    autoSync: {
+      checked: true,
+      disabled: false,
+      busy: false,
+    },
   },
   {
     key: "approval_package",
@@ -127,11 +177,12 @@ const tasks: ProjectFolderTaskRow[] = [
     statusLabel: "Submit",
     status: "neutral",
     summary: "Submit controlled output.",
-    context: "Moves Open package to Closed after confirmation.",
+    context: "Preview moves Open output to Closed after confirmation.",
     actionLabel: "Submit",
-    actionTarget: null,
-    blockers: ["Submit workflow is not connected yet."],
+    actionTarget: "public_folder_workflow_submit",
+    blockers: [],
     warnings: [],
+    operation: "submit",
   },
   {
     key: "approved_folder",
@@ -140,10 +191,11 @@ const tasks: ProjectFolderTaskRow[] = [
     statusLabel: "Pull",
     status: "neutral",
     summary: "Bring approved public results back.",
-    context: "Closed package · keep local history.",
+    context: "Closed output can be pulled without overwriting local history.",
     actionLabel: "Pull",
-    actionTarget: null,
-    blockers: ["Pull workflow is not connected yet."],
+    actionTarget: "public_folder_workflow_pull",
+    blockers: [],
     warnings: [],
+    operation: "pull",
   },
 ];

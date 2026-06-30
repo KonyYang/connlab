@@ -3,6 +3,7 @@ import {
   deleteTemporaryProject,
   type OfficialWorkspaceConflictStrategy,
   previewTemporaryProjectDelete,
+  type PublicFolderWorkflowOperationType,
   type ProjectCloseReasonCategory,
   type Project,
   type TemporaryProjectDeletePreview,
@@ -98,6 +99,20 @@ export function ProjectWorkbenchLayout({
     publicDriveUploadError,
     onRefreshPublicDriveUploadPreview,
     onUploadPublicDriveProjectFolder,
+    publicFolderWorkflowContext,
+    publicFolderWorkflowContextLoading,
+    publicFolderWorkflowContextError,
+    publicFolderWorkflowPreviews,
+    publicFolderWorkflowResults,
+    publicFolderWorkflowBusyOperation,
+    publicFolderWorkflowConfirmingOperation,
+    publicFolderWorkflowError,
+    publicFolderWorkflowMessage,
+    publicFolderWorkflowAutoSyncBusy,
+    onSetPublicFolderWorkflowAutoSync,
+    onPreviewPublicFolderWorkflowOperation,
+    onConfirmPublicFolderWorkflowOperation,
+    onCancelPublicFolderWorkflowOperation,
     onActivateLifecycle,
     onCloseLifecycle,
     outputStatusSummary,
@@ -163,13 +178,24 @@ export function ProjectWorkbenchLayout({
     officialFolderCheckPreview,
     requestMaterialPreview,
     requestMaterialError,
-    publicDriveUploadPreview,
-    publicDriveUploadError,
+    publicFolderWorkflowContext,
+    publicFolderWorkflowContextLoading,
+    publicFolderWorkflowContextError,
+    publicFolderWorkflowPreviews,
+    publicFolderWorkflowResults,
+    publicFolderWorkflowBusyOperation,
+    publicFolderWorkflowConfirmingOperation,
+    publicFolderWorkflowError,
+    publicFolderWorkflowMessage,
+    publicFolderWorkflowAutoSyncBusy,
     requiredFormsPreview,
     requiredFormsError,
     section2SyncPreview,
     versionStatus: runtimeModel.versionStatus,
     confirmedFeeAuthorityStatus: deriveConfirmedFeeAuthorityStatus(confirmedFeeLatest),
+    lifecycleReadonlyReason: lifecycleReadonlyView.readonly
+      ? lifecycleReadonlyView.message
+      : null,
   });
   const currentProjectFolderTaskKey = selectCurrentProjectFolderTaskKey(projectFolderTasks);
   const isActiveMatrixWorkspace =
@@ -361,13 +387,29 @@ export function ProjectWorkbenchLayout({
       void onRefreshOfficialFolderCheck();
       return;
     }
-    if (actionTarget === "public_drive_refresh") {
-      void onRefreshPublicDriveUploadPreview();
+    if (actionTarget === "public_folder_workflow_sync") {
+      void onPreviewPublicFolderWorkflowOperation("sync");
       return;
     }
-    if (actionTarget === "public_drive_upload") {
-      void onUploadPublicDriveProjectFolder();
+    if (actionTarget === "public_folder_workflow_submit") {
+      void onPreviewPublicFolderWorkflowOperation("submit");
+      return;
     }
+    if (actionTarget === "public_folder_workflow_pull") {
+      void onPreviewPublicFolderWorkflowOperation("pull");
+    }
+  }
+
+  function handleProjectFolderTaskConfirm(
+    operation: PublicFolderWorkflowOperationType
+  ): void {
+    void onConfirmPublicFolderWorkflowOperation(operation);
+  }
+
+  function handleProjectFolderTaskCancel(
+    operation: PublicFolderWorkflowOperationType
+  ): void {
+    onCancelPublicFolderWorkflowOperation(operation);
   }
 
   function handleProjectFolderCreateClick(): void {
@@ -467,6 +509,11 @@ export function ProjectWorkbenchLayout({
               effectiveFolderReady={effectiveFolderReady}
               officialWorkspaceStatus={officialWorkspacePreview?.status}
               onProjectFolderTaskAction={handleProjectFolderTaskAction}
+              onProjectFolderTaskConfirm={handleProjectFolderTaskConfirm}
+              onProjectFolderTaskCancel={handleProjectFolderTaskCancel}
+              onPublicFolderAutoSyncChange={(enabled) =>
+                void onSetPublicFolderWorkflowAutoSync(enabled)
+              }
               projectFolderTasks={projectFolderTasks}
               projectId={project.project_id}
               runtimeProjectionSnapshot={runtimeProjectionSnapshot}
@@ -499,6 +546,15 @@ export function ProjectWorkbenchLayout({
             <NoMatrixWorkspaceEmptyState
               projectFolderTasks={projectFolderTasks}
               matrixDraft={matrixCandidateDraft ?? matrixDraft ?? null}
+              onProjectFolderTaskAction={handleProjectFolderTaskAction}
+              onProjectFolderTaskConfirm={handleProjectFolderTaskConfirm}
+              onProjectFolderTaskCancel={handleProjectFolderTaskCancel}
+              onPublicFolderAutoSyncChange={(enabled) =>
+                void onSetPublicFolderWorkflowAutoSync(enabled)
+              }
+              readonlyReason={
+                lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
+              }
             />
             <ProjectLifecycleManagementPanel
               allowDelete={lifecycle.mode === "temporary_planning"}
@@ -621,7 +677,9 @@ function isProjectFolderWriteAction(actionTarget: ProjectFolderTaskActionTarget)
     "request_material",
     "required_forms_generate",
     "official_folder_repair",
-    "public_drive_upload",
+    "public_folder_workflow_sync",
+    "public_folder_workflow_submit",
+    "public_folder_workflow_pull",
   ].includes(actionTarget);
 }
 

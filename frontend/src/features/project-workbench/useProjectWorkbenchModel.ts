@@ -5,6 +5,9 @@ import {
   confirmProjectTestPlanMatrixDraft,
   createProjectTestPlanDraft,
   executeApprovalPackage,
+  executePublicFolderWorkflowPull,
+  executePublicFolderWorkflowSubmit,
+  executePublicFolderWorkflowSync,
   fetchActiveConfirmedMatrixSnapshot,
   fetchConfirmedMatrixRuntimeProjectionSnapshot,
   fetchOfficialFolderCheck,
@@ -15,6 +18,7 @@ import {
   fetchRequestMaterialPreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
+  getPublicFolderWorkflowContext,
   getConfirmedFeeLatest,
   generateProjectFolderRequiredForms,
   fetchProjectSection2SyncPreview,
@@ -35,7 +39,11 @@ import {
   placeEvidence,
   previewApprovalPackage,
   previewEvidencePlacement,
+  previewPublicFolderWorkflowPull,
+  previewPublicFolderWorkflowSubmit,
+  previewPublicFolderWorkflowSync,
   repairOfficialFolderStructure,
+  setPublicFolderWorkflowAutoSync,
   syncProjectSection2FromConfirmedMatrix,
   updateProjectTestPlanMatrixDraft,
   uploadPublicDriveProjectFolder,
@@ -69,6 +77,11 @@ import {
   type OfficialWorkspacePreview,
   type PublicDriveUploadPreview,
   type PublicDriveUploadResult,
+  type PublicFolderWorkflowExecuteInput,
+  type PublicFolderWorkflowContext,
+  type PublicFolderWorkflowOperationType,
+  type PublicFolderWorkflowPreview,
+  type PublicFolderWorkflowResult,
   type RequestMaterialPreview,
   type ProjectSection2SyncRequest,
   type ProjectSection2SyncResponse,
@@ -99,6 +112,11 @@ type ProjectFolderBusinessFlowResult =
   | { status: "blocked"; message: string };
 
 type RequiredFormsTargetKey = ProjectFolderRequiredFormsPreview["items"][number]["key"];
+
+type PublicFolderWorkflowOperationMap<T> = Record<
+  PublicFolderWorkflowOperationType,
+  T
+>;
 
 export type ProjectWorkbenchModel = {
   approvalInput: ApprovalPackageRequest;
@@ -146,6 +164,20 @@ export type ProjectWorkbenchModel = {
   publicDriveUploading: boolean;
   publicDriveUploadError: string | null;
   publicDriveUploadResult: PublicDriveUploadResult | null;
+  publicFolderWorkflowContext: PublicFolderWorkflowContext | null;
+  publicFolderWorkflowContextLoading: boolean;
+  publicFolderWorkflowContextError: string | null;
+  publicFolderWorkflowPreviews: PublicFolderWorkflowOperationMap<
+    PublicFolderWorkflowPreview | null
+  >;
+  publicFolderWorkflowResults: PublicFolderWorkflowOperationMap<
+    PublicFolderWorkflowResult | null
+  >;
+  publicFolderWorkflowBusyOperation: PublicFolderWorkflowOperationType | null;
+  publicFolderWorkflowConfirmingOperation: PublicFolderWorkflowOperationType | null;
+  publicFolderWorkflowError: string | null;
+  publicFolderWorkflowMessage: string | null;
+  publicFolderWorkflowAutoSyncBusy: boolean;
   requestMaterialPreview: RequestMaterialPreview | null;
   requestMaterialLoading: boolean;
   requestMaterialCollecting: boolean;
@@ -226,6 +258,17 @@ export type ProjectWorkbenchModel = {
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
   onRefreshPublicDriveUploadPreview: () => Promise<void>;
+  onRefreshPublicFolderWorkflowContext: () => Promise<void>;
+  onSetPublicFolderWorkflowAutoSync: (enabled: boolean) => Promise<void>;
+  onPreviewPublicFolderWorkflowOperation: (
+    operation: PublicFolderWorkflowOperationType
+  ) => Promise<void>;
+  onConfirmPublicFolderWorkflowOperation: (
+    operation: PublicFolderWorkflowOperationType
+  ) => Promise<void>;
+  onCancelPublicFolderWorkflowOperation: (
+    operation: PublicFolderWorkflowOperationType
+  ) => void;
   onRefreshBasicInformation: () => Promise<void>;
   onUploadPublicDriveProjectFolder: () => Promise<void>;
   onRefreshRequestMaterial: () => Promise<void>;
@@ -356,6 +399,32 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [publicDriveUploadError, setPublicDriveUploadError] = useState<string | null>(null);
   const [publicDriveUploadResult, setPublicDriveUploadResult] =
     useState<PublicDriveUploadResult | null>(null);
+  const [publicFolderWorkflowContext, setPublicFolderWorkflowContext] =
+    useState<PublicFolderWorkflowContext | null>(null);
+  const [publicFolderWorkflowContextLoading, setPublicFolderWorkflowContextLoading] =
+    useState(false);
+  const [publicFolderWorkflowContextError, setPublicFolderWorkflowContextError] =
+    useState<string | null>(null);
+  const [publicFolderWorkflowPreviews, setPublicFolderWorkflowPreviews] =
+    useState<PublicFolderWorkflowOperationMap<PublicFolderWorkflowPreview | null>>(
+      createPublicFolderWorkflowOperationMap(null)
+    );
+  const [publicFolderWorkflowResults, setPublicFolderWorkflowResults] =
+    useState<PublicFolderWorkflowOperationMap<PublicFolderWorkflowResult | null>>(
+      createPublicFolderWorkflowOperationMap(null)
+    );
+  const [publicFolderWorkflowBusyOperation, setPublicFolderWorkflowBusyOperation] =
+    useState<PublicFolderWorkflowOperationType | null>(null);
+  const [
+    publicFolderWorkflowConfirmingOperation,
+    setPublicFolderWorkflowConfirmingOperation,
+  ] = useState<PublicFolderWorkflowOperationType | null>(null);
+  const [publicFolderWorkflowError, setPublicFolderWorkflowError] =
+    useState<string | null>(null);
+  const [publicFolderWorkflowMessage, setPublicFolderWorkflowMessage] =
+    useState<string | null>(null);
+  const [publicFolderWorkflowAutoSyncBusy, setPublicFolderWorkflowAutoSyncBusy] =
+    useState(false);
   const [requestMaterialPreview, setRequestMaterialPreview] =
     useState<RequestMaterialPreview | null>(null);
   const [requestMaterialLoading, setRequestMaterialLoading] = useState(false);
@@ -398,6 +467,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     void onRefreshRequiredForms();
     void onRefreshOfficialFolderCheck();
     void onRefreshPublicDriveUploadPreview();
+    void onRefreshPublicFolderWorkflowContext();
     void onRefreshBasicInformation();
     void onRefreshLifecycle();
     void loadMatrixSourceCandidates(
@@ -924,6 +994,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       await onRefreshOfficialFolderCheck();
       await onRefreshRequiredForms();
       await onRefreshPublicDriveUploadPreview();
+      await onRefreshPublicFolderWorkflowContext();
     } catch (err) {
       setRequestMaterialError((err as Error).message);
     } finally {
@@ -971,6 +1042,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       await refreshOutputStatus(projectId, setOutputStatusSummary);
       await onRefreshOfficialFolderCheck();
       await onRefreshPublicDriveUploadPreview();
+      await onRefreshPublicFolderWorkflowContext();
       await onRefreshPackagePreview();
     } catch (err) {
       setRequiredFormsError((err as Error).message);
@@ -991,6 +1063,140 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     } finally {
       setPublicDriveUploadLoading(false);
     }
+  }
+
+  async function onRefreshPublicFolderWorkflowContext(): Promise<void> {
+    setPublicFolderWorkflowContextLoading(true);
+    try {
+      const context = await getPublicFolderWorkflowContext(projectId);
+      setPublicFolderWorkflowContext(context);
+      setPublicFolderWorkflowContextError(null);
+    } catch (err) {
+      setPublicFolderWorkflowContext(null);
+      setPublicFolderWorkflowContextError(
+        err instanceof Error ? err.message : "Failed to load public folder workflow."
+      );
+    } finally {
+      setPublicFolderWorkflowContextLoading(false);
+    }
+  }
+
+  async function onSetPublicFolderWorkflowAutoSync(enabled: boolean): Promise<void> {
+    setPublicFolderWorkflowAutoSyncBusy(true);
+    try {
+      const state = await setPublicFolderWorkflowAutoSync(projectId, enabled);
+      setPublicFolderWorkflowContext((previous) =>
+        previous
+          ? {
+              ...previous,
+              auto_sync_enabled: state.auto_sync_enabled,
+              sync_locked: state.sync_locked,
+              submitted_at: state.submitted_at,
+            }
+          : previous
+      );
+      setPublicFolderWorkflowError(null);
+      setPublicFolderWorkflowMessage(
+        state.auto_sync_enabled ? "Auto sync enabled." : "Auto sync disabled."
+      );
+      await onRefreshPublicFolderWorkflowContext();
+    } catch (err) {
+      setPublicFolderWorkflowError(
+        err instanceof Error ? err.message : "Failed to update Auto sync."
+      );
+    } finally {
+      setPublicFolderWorkflowAutoSyncBusy(false);
+    }
+  }
+
+  async function onPreviewPublicFolderWorkflowOperation(
+    operation: PublicFolderWorkflowOperationType
+  ): Promise<void> {
+    setPublicFolderWorkflowBusyOperation(operation);
+    setPublicFolderWorkflowConfirmingOperation(null);
+    setPublicFolderWorkflowError(null);
+    setPublicFolderWorkflowMessage(null);
+    try {
+      const preview = await previewPublicFolderWorkflowOperation(projectId, operation);
+      setPublicFolderWorkflowPreviews((previous) => ({
+        ...previous,
+        [operation]: preview,
+      }));
+      setPublicFolderWorkflowResults((previous) => ({
+        ...previous,
+        [operation]: null,
+      }));
+      const issue = selectPublicFolderWorkflowPreviewIssue(preview);
+      if (preview.status !== "ready" || issue || !preview.preview_hash) {
+        setPublicFolderWorkflowMessage(
+          issue ?? "Preview cannot be confirmed yet."
+        );
+        return;
+      }
+      setPublicFolderWorkflowConfirmingOperation(operation);
+      setPublicFolderWorkflowMessage("Preview can be confirmed.");
+    } catch (err) {
+      setPublicFolderWorkflowPreviews((previous) => ({
+        ...previous,
+        [operation]: null,
+      }));
+      setPublicFolderWorkflowError(
+        err instanceof Error ? err.message : `Failed to preview ${operation}.`
+      );
+    } finally {
+      setPublicFolderWorkflowBusyOperation(null);
+    }
+  }
+
+  async function onConfirmPublicFolderWorkflowOperation(
+    operation: PublicFolderWorkflowOperationType
+  ): Promise<void> {
+    const preview = publicFolderWorkflowPreviews[operation];
+    if (!preview?.preview_hash) {
+      setPublicFolderWorkflowError("Refresh preview before confirming.");
+      return;
+    }
+    setPublicFolderWorkflowBusyOperation(operation);
+    setPublicFolderWorkflowError(null);
+    setPublicFolderWorkflowMessage(null);
+    try {
+      const result = await executePublicFolderWorkflowOperation(projectId, operation, {
+        preview_hash: preview.preview_hash,
+        confirmed: true,
+        confirm_directory_creation: preview.required_confirmations.includes(
+          "create_missing_public_directories"
+        ),
+        operator: null,
+      });
+      setPublicFolderWorkflowResults((previous) => ({
+        ...previous,
+        [operation]: result,
+      }));
+      setPublicFolderWorkflowPreviews((previous) => ({
+        ...previous,
+        [operation]: result.preview,
+      }));
+      setPublicFolderWorkflowConfirmingOperation(null);
+      setPublicFolderWorkflowMessage(`${publicFolderWorkflowOperationLabel(operation)} completed.`);
+      await onRefreshPublicFolderWorkflowContext();
+      await onRefreshOfficialFolderCheck();
+      await onRefreshPackagePreview();
+    } catch (err) {
+      setPublicFolderWorkflowError(
+        err instanceof Error ? err.message : `Failed to execute ${operation}.`
+      );
+    } finally {
+      setPublicFolderWorkflowBusyOperation(null);
+    }
+  }
+
+  function onCancelPublicFolderWorkflowOperation(
+    operation: PublicFolderWorkflowOperationType
+  ): void {
+    setPublicFolderWorkflowConfirmingOperation((previous) =>
+      previous === operation ? null : previous
+    );
+    setPublicFolderWorkflowMessage(null);
   }
 
   async function onRefreshBasicInformation(): Promise<void> {
@@ -1456,6 +1662,16 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     publicDriveUploading,
     publicDriveUploadError,
     publicDriveUploadResult,
+    publicFolderWorkflowContext,
+    publicFolderWorkflowContextLoading,
+    publicFolderWorkflowContextError,
+    publicFolderWorkflowPreviews,
+    publicFolderWorkflowResults,
+    publicFolderWorkflowBusyOperation,
+    publicFolderWorkflowConfirmingOperation,
+    publicFolderWorkflowError,
+    publicFolderWorkflowMessage,
+    publicFolderWorkflowAutoSyncBusy,
     requestMaterialPreview,
     requestMaterialLoading,
     requestMaterialCollecting,
@@ -1524,6 +1740,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview,
+    onRefreshPublicFolderWorkflowContext,
+    onSetPublicFolderWorkflowAutoSync,
+    onPreviewPublicFolderWorkflowOperation,
+    onConfirmPublicFolderWorkflowOperation,
+    onCancelPublicFolderWorkflowOperation,
     onRefreshBasicInformation,
     onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial,
@@ -1870,6 +2091,61 @@ function formatRequiredFormsPreviewBlocker(
     preview.items.find((item) => item.status === "blocked")?.message ??
     "Resolve Required forms blockers before generating controlled files."
   );
+}
+
+function createPublicFolderWorkflowOperationMap<T>(
+  value: T
+): PublicFolderWorkflowOperationMap<T> {
+  return {
+    sync: value,
+    submit: value,
+    pull: value,
+  };
+}
+
+function previewPublicFolderWorkflowOperation(
+  projectId: string,
+  operation: PublicFolderWorkflowOperationType
+): Promise<PublicFolderWorkflowPreview> {
+  if (operation === "sync") {
+    return previewPublicFolderWorkflowSync(projectId);
+  }
+  if (operation === "submit") {
+    return previewPublicFolderWorkflowSubmit(projectId);
+  }
+  return previewPublicFolderWorkflowPull(projectId);
+}
+
+function executePublicFolderWorkflowOperation(
+  projectId: string,
+  operation: PublicFolderWorkflowOperationType,
+  input: PublicFolderWorkflowExecuteInput
+): Promise<PublicFolderWorkflowResult> {
+  if (operation === "sync") {
+    return executePublicFolderWorkflowSync(projectId, input);
+  }
+  if (operation === "submit") {
+    return executePublicFolderWorkflowSubmit(projectId, input);
+  }
+  return executePublicFolderWorkflowPull(projectId, input);
+}
+
+function selectPublicFolderWorkflowPreviewIssue(
+  preview: PublicFolderWorkflowPreview
+): string | null {
+  return preview.blockers[0] ?? preview.conflicts[0] ?? null;
+}
+
+function publicFolderWorkflowOperationLabel(
+  operation: PublicFolderWorkflowOperationType
+): string {
+  if (operation === "sync") {
+    return "Sync";
+  }
+  if (operation === "submit") {
+    return "Submit";
+  }
+  return "Pull";
 }
 
 function deriveApprovalInputAutofill(input: {

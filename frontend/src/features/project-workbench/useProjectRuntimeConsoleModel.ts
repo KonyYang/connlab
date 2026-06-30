@@ -45,6 +45,16 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "publicDriveUploading"
   | "publicDriveUploadError"
   | "publicDriveUploadResult"
+  | "publicFolderWorkflowContext"
+  | "publicFolderWorkflowContextLoading"
+  | "publicFolderWorkflowContextError"
+  | "publicFolderWorkflowPreviews"
+  | "publicFolderWorkflowResults"
+  | "publicFolderWorkflowBusyOperation"
+  | "publicFolderWorkflowConfirmingOperation"
+  | "publicFolderWorkflowError"
+  | "publicFolderWorkflowMessage"
+  | "publicFolderWorkflowAutoSyncBusy"
   | "requestMaterialPreview"
   | "requestMaterialLoading"
   | "requestMaterialCollecting"
@@ -76,6 +86,11 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshOfficialFolderCheck"
   | "onRepairOfficialFolderStructure"
   | "onRefreshPublicDriveUploadPreview"
+  | "onRefreshPublicFolderWorkflowContext"
+  | "onSetPublicFolderWorkflowAutoSync"
+  | "onPreviewPublicFolderWorkflowOperation"
+  | "onConfirmPublicFolderWorkflowOperation"
+  | "onCancelPublicFolderWorkflowOperation"
   | "onRefreshBasicInformation"
   | "onUploadPublicDriveProjectFolder"
   | "onRefreshRequestMaterial"
@@ -131,6 +146,17 @@ export function selectProjectRuntimeConsoleModel(
     publicDriveUploading: model.publicDriveUploading,
     publicDriveUploadError: model.publicDriveUploadError,
     publicDriveUploadResult: model.publicDriveUploadResult,
+    publicFolderWorkflowContext: model.publicFolderWorkflowContext,
+    publicFolderWorkflowContextLoading: model.publicFolderWorkflowContextLoading,
+    publicFolderWorkflowContextError: model.publicFolderWorkflowContextError,
+    publicFolderWorkflowPreviews: model.publicFolderWorkflowPreviews,
+    publicFolderWorkflowResults: model.publicFolderWorkflowResults,
+    publicFolderWorkflowBusyOperation: model.publicFolderWorkflowBusyOperation,
+    publicFolderWorkflowConfirmingOperation:
+      model.publicFolderWorkflowConfirmingOperation,
+    publicFolderWorkflowError: model.publicFolderWorkflowError,
+    publicFolderWorkflowMessage: model.publicFolderWorkflowMessage,
+    publicFolderWorkflowAutoSyncBusy: model.publicFolderWorkflowAutoSyncBusy,
     requestMaterialPreview: model.requestMaterialPreview,
     requestMaterialLoading: model.requestMaterialLoading,
     requestMaterialCollecting: model.requestMaterialCollecting,
@@ -162,6 +188,14 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshOfficialFolderCheck: model.onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure: model.onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview: model.onRefreshPublicDriveUploadPreview,
+    onRefreshPublicFolderWorkflowContext: model.onRefreshPublicFolderWorkflowContext,
+    onSetPublicFolderWorkflowAutoSync: model.onSetPublicFolderWorkflowAutoSync,
+    onPreviewPublicFolderWorkflowOperation:
+      model.onPreviewPublicFolderWorkflowOperation,
+    onConfirmPublicFolderWorkflowOperation:
+      model.onConfirmPublicFolderWorkflowOperation,
+    onCancelPublicFolderWorkflowOperation:
+      model.onCancelPublicFolderWorkflowOperation,
     onRefreshBasicInformation: model.onRefreshBasicInformation,
     onUploadPublicDriveProjectFolder: model.onUploadPublicDriveProjectFolder,
     onRefreshRequestMaterial: model.onRefreshRequestMaterial,
