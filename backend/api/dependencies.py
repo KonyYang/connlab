@@ -185,6 +185,8 @@ from backend.application.official_project_folder_check_service import (
     OfficialProjectFolderCheckService,
 )
 from backend.application.public_drive_upload_service import PublicDriveUploadService
+from backend.application.public_folder_workflow_service import PublicFolderWorkflowService
+from backend.application.public_folder_year_resolver import PublicFolderYearResolver
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
 )
@@ -246,6 +248,9 @@ from backend.infrastructure.files.official_project_folder_repair_gateway import 
 from backend.infrastructure.files.public_drive_upload_gateway import (
     PublicDriveUploadGateway,
 )
+from backend.infrastructure.files.public_folder_workflow_gateway import (
+    PublicFolderWorkflowGateway,
+)
 from backend.infrastructure.files.project_folder_required_forms_gateway import (
     ProjectFolderRequiredFormsFileGateway,
 )
@@ -255,9 +260,11 @@ from backend.infrastructure.files.application_form_reusable_artifact_store impor
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.infrastructure.office import (
     ExcelComLtrWorkbookReadonlyOpenGateway,
+    ExcelComLTRWorkbookGateway,
     FeeEvaluationWorkbookGateway,
     CustomerFeedbackWorkbookGateway,
     TestRecordDocumentGateway,
+    LtrWorkbookWriteConfig,
     LtrWorkbookTransactionConfig,
     LtrWorkbookTransactionGateway,
     OfficeFacade,
@@ -294,6 +301,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectTestPlanDraftRepository,
     ProjectRequestMaterialCollectionRepository,
     PublicDriveUploadRepository,
+    PublicFolderWorkflowRepository,
     SourceMatrixImportRepository,
     SampleInfoRepository,
 )
@@ -936,6 +944,61 @@ def get_public_drive_upload_service(
         folder_check_service=get_official_project_folder_check_service(session),
         upload_repository=PublicDriveUploadRepository(session),
         gateway=PublicDriveUploadGateway(),
+    )
+
+
+def get_public_folder_workflow_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> PublicFolderWorkflowService:
+    """Build the TASK_346C public folder workflow service."""
+    resources = ExternalResourceRepository(session)
+    project_repository = ProjectRepository(session)
+    ltr_repository = LtrRecordRepository(session)
+    return PublicFolderWorkflowService(
+        project_repository=project_repository,
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        year_resolver=PublicFolderYearResolver(
+            project_repository=project_repository,
+            ltr_repository=ltr_repository,
+            workbook_lookup=_readonly_ltr_sheet_lookup(settings),
+        ),
+        workflow_repository=PublicFolderWorkflowRepository(session),
+        folder_check_service=get_official_project_folder_check_service(session),
+        public_root=_active_resource_path(
+            resources,
+            ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
+        ),
+        gateway=PublicFolderWorkflowGateway(),
+    )
+
+
+class _ReadonlyLtrSheetLookup:
+    """Adapter for exact DL-to-sheet lookup through read-only workbook sessions."""
+
+    def __init__(self, gateway: ExcelComLTRWorkbookGateway) -> None:
+        self._gateway = gateway
+
+    def find_sheet_name(self, ltr_number: str) -> str | None:
+        """Return the sheet name containing an exact DL number."""
+        with self._gateway.open_read_session() as session:
+            row = session.find_ltr_number(ltr_number)
+        return row.sheet_name if row else None
+
+
+def _readonly_ltr_sheet_lookup(settings: Settings):
+    """Return optional read-only LTR workbook lookup when configured."""
+    if settings.ltr_workbook.path is None:
+        return None
+    return _ReadonlyLtrSheetLookup(
+        ExcelComLTRWorkbookGateway(
+            OfficeFacade(),
+            LtrWorkbookWriteConfig(
+                path=settings.ltr_workbook.path,
+                write_enabled=False,
+                modify_password=None,
+            ),
+        )
     )
 
 

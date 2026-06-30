@@ -325,6 +325,76 @@ class PublicDriveUploadFileRecordModel(Base):
     operation_id: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class ProjectPublicFolderWorkflowStateModel(Base):
+    """Database row for one project's public folder workflow state."""
+
+    __tablename__ = "project_public_folder_workflow_states"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        primary_key=True,
+    )
+    auto_sync_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sync_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    submitted_at: Mapped[str | None] = mapped_column(String(64))
+    submit_operation_id: Mapped[str | None] = mapped_column(String(64))
+    last_sync_operation_id: Mapped[str | None] = mapped_column(String(64))
+    last_pull_operation_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[str | None] = mapped_column(String(64))
+
+
+class ProjectPublicFolderWorkflowOperationModel(Base):
+    """Database row for one public folder workflow operation."""
+
+    __tablename__ = "project_public_folder_workflow_operations"
+
+    operation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        nullable=False,
+        index=True,
+    )
+    operation_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    preview_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    started_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    completed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    operator: Mapped[str | None] = mapped_column(String(255))
+    public_root: Mapped[str | None] = mapped_column(String(1024))
+    public_root_class: Mapped[str | None] = mapped_column(String(64))
+    public_folder_year: Mapped[int | None] = mapped_column(Integer)
+    year_source: Mapped[str | None] = mapped_column(String(64))
+    local_official_folder_path: Mapped[str | None] = mapped_column(String(1024))
+    public_open_path: Mapped[str | None] = mapped_column(String(1024))
+    public_closed_path: Mapped[str | None] = mapped_column(String(1024))
+    target_path: Mapped[str | None] = mapped_column(String(1024))
+    counts_json: Mapped[str] = mapped_column(Text, nullable=False)
+    blockers_json: Mapped[str | None] = mapped_column(Text)
+    warnings_json: Mapped[str | None] = mapped_column(Text)
+    conflicts_json: Mapped[str | None] = mapped_column(Text)
+    snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    metadata_json: Mapped[str | None] = mapped_column(Text)
+
+
+class ProjectPublicFolderWorkflowFileRecordModel(Base):
+    """Database row for one ConnLab-managed public workflow file."""
+
+    __tablename__ = "project_public_folder_workflow_file_records"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id"),
+        primary_key=True,
+    )
+    relative_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
+    public_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    local_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    public_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class IntakePackageModel(Base):
     """Database row for a pre-project intake package."""
 

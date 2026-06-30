@@ -58,6 +58,9 @@ from backend.infrastructure.storage.repositories.request_material_collection imp
 from backend.infrastructure.storage.repositories.public_drive_upload import (
     PublicDriveUploadRepository,
 )
+from backend.infrastructure.storage.repositories.public_folder_workflow import (
+    PublicFolderWorkflowRepository,
+)
 from backend.infrastructure.storage.repositories.fee_evaluation_pricing_draft_edit import (
     FeeEvaluationPricingDraftEditRepository,
 )
@@ -98,6 +101,7 @@ __all__ = [
     "ProjectRequestMaterialCollectionRepository",
     "ProjectTestPlanDraftRepository",
     "PublicDriveUploadRepository",
+    "PublicFolderWorkflowRepository",
     "SourceMatrixImportRepository",
     "SampleInfoRepository",
 ]
