@@ -1,0 +1,101 @@
+{
+  "checks": {
+    "api_happy_path": {
+      "pull_execute": [
+        200,
+        "completed"
+      ],
+      "pull_operation_id_type": "str",
+      "pull_preview": [
+        200,
+        "ready"
+      ],
+      "submit_execute": [
+        200,
+        "completed"
+      ],
+      "submit_operation_id_type": "str",
+      "submit_preview": [
+        200,
+        "ready"
+      ],
+      "sync_execute": [
+        200,
+        "completed"
+      ],
+      "sync_operation_id_type": "str",
+      "sync_preview": [
+        200,
+        "ready"
+      ]
+    },
+    "api_unmanaged_public_open_conflict": {
+      "closed_folder_exists": false,
+      "open_folder_preserved": true,
+      "submit_execute": [
+        409,
+        "Public Open file is not managed by ConnLab; remove or sync through ConnLab before Submit."
+      ],
+      "submit_preview": [
+        200,
+        "conflict"
+      ]
+    },
+    "missing_public_root_blocker": {
+      "error": "Public Project locations must be an existing directory.",
+      "missing_root_created": false
+    },
+    "service_happy_path": {
+      "closed_file_exists_after_submit": true,
+      "closed_file_text": "v1",
+      "local_current_preserved": "local current preserved",
+      "open_file_exists_after_sync": true,
+      "open_file_text_after_sync": "v1",
+      "open_folder_exists_after_submit": false,
+      "operation_ids_are_strings": [
+        true,
+        true,
+        true
+      ],
+      "operation_sequence": [
+        "sync",
+        "submit",
+        "pull"
+      ],
+      "pull_execute_status": "completed",
+      "pull_operation_target_path": "C:\\Users\\White\\AppData\\Local\\Temp\\connlab_task346e_qa_w4p7fxl9\\service_happy\\local\\DL-2026-06-001 Product - Pull Closed",
+      "pull_preview_status": "ready",
+      "pull_preview_target_path": "C:\\Users\\White\\AppData\\Local\\Temp\\connlab_task346e_qa_w4p7fxl9\\service_happy\\local\\DL-2026-06-001 Product - Pull Closed",
+      "submit_execute_status": "completed",
+      "submit_preview_status": "ready",
+      "sync_after_submit_blockers": [
+        "Sync is locked after Submit."
+      ],
+      "sync_execute_status": "completed",
+      "sync_locked": true,
+      "sync_preview_status": "ready"
+    },
+    "stale_preview_hash": {
+      "closed_folder_exists": false,
+      "execute_error": "Public folder preview is stale.",
+      "extra_file_preserved": true,
+      "open_folder_preserved": true,
+      "original_submit_preview_status": "ready"
+    },
+    "unmanaged_public_open_conflict": {
+      "closed_folder_exists": false,
+      "conflicts": [
+        "Public Open file is not managed by ConnLab; remove or sync through ConnLab before Submit."
+      ],
+      "execute_error": "Public Open file is not managed by ConnLab; remove or sync through ConnLab before Submit.",
+      "extra_file_preserved": "outside ConnLab",
+      "open_folder_preserved": true,
+      "submit_preview_next_action": "none",
+      "submit_preview_status": "conflict"
+    }
+  },
+  "os_temp": "C:\\Users\\White\\AppData\\Local\\Temp",
+  "temp_root": "C:\\Users\\White\\AppData\\Local\\Temp\\connlab_task346e_qa_w4p7fxl9",
+  "temp_root_contained_in_os_temp": true,
+  "temp_root_exists_after_context": false
+}
