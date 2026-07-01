@@ -85,6 +85,16 @@ export function NewProjectCompletionDock({
         </div>
       </div>
 
+      {completionLoading ? (
+        <div className="new-project-ltr-busy-notice" role="status" aria-live="polite">
+          <span className="new-project-ltr-busy-spinner" aria-hidden="true" />
+          <span>
+            <strong>Applying LTR number</strong>
+            <span>ConnLab may open and update the LTR workbook. Keep this page open.</span>
+          </span>
+        </div>
+      ) : null}
+
       <div className="new-project-dock-summary">
         <span className="new-project-required-count">
           <UiIcon name="clock" />

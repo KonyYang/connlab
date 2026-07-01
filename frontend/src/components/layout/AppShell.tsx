@@ -6,6 +6,8 @@ type AppShellProps = {
   activeRoute: string;
   topBarTitle?: string;
   children: ReactNode;
+  interactionLocked?: boolean;
+  interactionLockedReason?: string;
   onNavigate?: (path: string) => void;
 };
 
@@ -18,6 +20,8 @@ export function AppShell({
   activeRoute,
   topBarTitle,
   children,
+  interactionLocked = false,
+  interactionLockedReason,
   onNavigate = navigate
 }: AppShellProps): ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -34,6 +38,8 @@ export function AppShell({
       <Sidebar
         activeRoute={activeRoute}
         collapsed={sidebarCollapsed}
+        interactionLocked={interactionLocked}
+        interactionLockedReason={interactionLockedReason}
         onNavigate={onNavigate}
         onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
       />

@@ -6,6 +6,8 @@ import type { IntakeAttachmentViewModel, IntakeAttachmentKind } from "./intakeSe
 
 type AttachmentListProps = {
   attachments: IntakeAttachmentViewModel[];
+  disabled?: boolean;
+  disabledReason?: string;
   duplicateDraft?: DraftDuplicateCheck | null;
   importingAssetId?: string | null;
   resolvingDuplicateAction?: string | null;
@@ -18,6 +20,8 @@ type AttachmentListProps = {
 
 export function AttachmentList({
   attachments,
+  disabled = false,
+  disabledReason = "Applying LTR number. Keep this page open.",
   duplicateDraft,
   importingAssetId,
   resolvingDuplicateAction,
@@ -34,6 +38,8 @@ export function AttachmentList({
       </div>
       {duplicateDraft && onDuplicateAction ? (
         <DraftDuplicateResolution
+          disabled={disabled}
+          disabledReason={disabledReason}
           duplicate={duplicateDraft}
           resolvingAction={resolvingDuplicateAction ?? null}
           onAction={onDuplicateAction}
@@ -45,12 +51,22 @@ export function AttachmentList({
             <div
               className={attachment.selected ? "attachment-row attachment-row-active" : "attachment-row"}
               key={attachment.asset.asset_id}
-              onDoubleClick={() => onOpen?.(attachment)}
+              onDoubleClick={() => {
+                if (!disabled) {
+                  onOpen?.(attachment);
+                }
+              }}
             >
               <button
                 className="attachment-select-button"
+                disabled={disabled}
+                title={disabled ? disabledReason : undefined}
                 type="button"
-                onClick={() => onSelect(attachment)}
+                onClick={() => {
+                  if (!disabled) {
+                    onSelect(attachment);
+                  }
+                }}
               >
                 <span className={`file-chip file-chip-${attachment.kind}`}>
                   {fileChipIcon(attachment.kind)}
@@ -62,9 +78,14 @@ export function AttachmentList({
               {attachment.word && onImport ? (
                 <button
                   className="attachment-import-button"
-                  disabled={importingAssetId === attachment.asset.asset_id}
+                  disabled={disabled || importingAssetId === attachment.asset.asset_id}
+                  title={disabled ? disabledReason : undefined}
                   type="button"
-                  onClick={() => onImport?.(attachment)}
+                  onClick={() => {
+                    if (!disabled) {
+                      onImport?.(attachment);
+                    }
+                  }}
                   aria-label="Import into editor"
                 >
                   <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,12 +108,16 @@ export function AttachmentList({
 }
 
 type DraftDuplicateResolutionProps = {
+  disabled: boolean;
+  disabledReason: string;
   duplicate: DraftDuplicateCheck;
   resolvingAction: string | null;
   onAction: (action: DraftDuplicateAction) => void;
 };
 
 function DraftDuplicateResolution({
+  disabled,
+  disabledReason,
   duplicate,
   resolvingAction,
   onAction,
@@ -112,17 +137,27 @@ function DraftDuplicateResolution({
       <div className="email-duplicate-actions">
         <button
           className="new-project-secondary-action ui-secondary-action"
-          disabled={Boolean(resolvingAction) || !canReplace}
+          disabled={disabled || Boolean(resolvingAction) || !canReplace}
+          title={disabled ? disabledReason : undefined}
           type="button"
-          onClick={() => onAction("replace_existing")}
+          onClick={() => {
+            if (!disabled) {
+              onAction("replace_existing");
+            }
+          }}
         >
           {resolvingAction === "replace_existing" ? "Reinitializing..." : "Reinitialize"}
         </button>
         <button
           className="new-project-primary-action ui-primary-action"
-          disabled={Boolean(resolvingAction) || !canOpen}
+          disabled={disabled || Boolean(resolvingAction) || !canOpen}
+          title={disabled ? disabledReason : undefined}
           type="button"
-          onClick={() => onAction("open_existing")}
+          onClick={() => {
+            if (!disabled) {
+              onAction("open_existing");
+            }
+          }}
         >
           {resolvingAction === "open_existing" ? "Loading..." : "Load existing"}
         </button>

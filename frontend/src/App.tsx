@@ -98,6 +98,7 @@ export default function App(): ReactElement {
     const initialRoute = parseRoute(window.location.pathname);
     return isProjectWorkspaceRoute(initialRoute) ? window.location.pathname : null;
   });
+  const [intakeInteractionLockReason, setIntakeInteractionLockReason] = useState<string | null>(null);
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(window.location.pathname));
@@ -115,7 +116,16 @@ export default function App(): ReactElement {
     }
   }, [route]);
 
+  useEffect(() => {
+    if (route.name !== "intake" && intakeInteractionLockReason) {
+      setIntakeInteractionLockReason(null);
+    }
+  }, [intakeInteractionLockReason, route.name]);
+
   function handleShellNavigate(path: string): void {
+    if (intakeInteractionLockReason && route.name === "intake") {
+      return;
+    }
     if (path === "/projects" && route.name !== "projects" && lastProjectRoute) {
       navigate(lastProjectRoute);
       return;
@@ -149,6 +159,8 @@ export default function App(): ReactElement {
   return (
     <AppShell
       activeRoute={activeRoute}
+      interactionLocked={Boolean(intakeInteractionLockReason)}
+      interactionLockedReason={intakeInteractionLockReason ?? undefined}
       topBarTitle={topBarTitle}
       onNavigate={handleShellNavigate}
     >
@@ -170,6 +182,7 @@ export default function App(): ReactElement {
             setIntakeSession(EMPTY_INTAKE_SESSION);
             navigate(`/projects/${encodeURIComponent(projectId)}`);
           }}
+          onInteractionLockChange={setIntakeInteractionLockReason}
           onSessionChange={setIntakeSession}
         />
       )}

@@ -74,6 +74,7 @@ type IntakeInboxPageProps = {
   session: IntakeSessionState;
   onSessionChange: (session: IntakeSessionState) => void;
   onExit: () => void;
+  onInteractionLockChange?: (reason: string | null) => void;
   onProjectCreated: (projectId: string) => void;
 };
 
@@ -91,6 +92,7 @@ type DuplicateDecisionMemo = {
 
 export function IntakeInboxPage({
   session,
+  onInteractionLockChange,
   onSessionChange,
   onProjectCreated
 }: IntakeInboxPageProps): ReactElement {
@@ -202,6 +204,9 @@ export function IntakeInboxPage({
       onProjectCreated(projectId);
     }
   });
+  const ltrApplyBusy = completionLoading;
+  const ltrApplyBusyReason = "Applying LTR number. Keep this page open.";
+  const importPausedReason = "Applying LTR number. Import is paused.";
   const displayedCompletionError = completionError ?? completionSetupError;
   const completionDisabled =
     editorLoading
@@ -209,6 +214,11 @@ export function IntakeInboxPage({
     || Boolean(activeCase?.confirmed_project_id)
     || requiredState.missingCount > 0
     || setupMissingKeys.size > 0;
+
+  useEffect(() => {
+    onInteractionLockChange?.(ltrApplyBusy ? ltrApplyBusyReason : null);
+    return () => onInteractionLockChange?.(null);
+  }, [ltrApplyBusy, onInteractionLockChange]);
   const importedFormDisplayName = useMemo(() => {
     if (!packageImport) {
       return null;
@@ -522,6 +532,7 @@ export function IntakeInboxPage({
   async function handleMsgFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
+    if (ltrApplyBusy) return;
     if (!file) return;
     setImporting(true);
     setImportError(null);
@@ -541,6 +552,9 @@ export function IntakeInboxPage({
   }
 
   async function handleResolveDuplicateDraft(action: DraftDuplicateAction): Promise<void> {
+    if (ltrApplyBusy) {
+      return;
+    }
     if (!duplicateDraft) {
       return;
     }
@@ -639,6 +653,7 @@ export function IntakeInboxPage({
   async function handleDirectWordChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
+    if (ltrApplyBusy) return;
     if (!file) return;
     setImporting(true);
     setImportError(null);
@@ -679,6 +694,9 @@ export function IntakeInboxPage({
   }
 
   async function handleImportApplicationForm(asset: IntakeAsset): Promise<void> {
+    if (ltrApplyBusy) {
+      return;
+    }
     if (!packageImport) {
       return;
     }
@@ -723,6 +741,9 @@ export function IntakeInboxPage({
   }
 
   async function handleOpenAttachment(attachment: IntakeAttachmentViewModel): Promise<void> {
+    if (ltrApplyBusy) {
+      return;
+    }
     try {
       const blob = await downloadIntakeAsset(attachment.asset.asset_id);
       const objectUrl = window.URL.createObjectURL(blob);
@@ -741,6 +762,9 @@ export function IntakeInboxPage({
   }
 
   async function handleCreateTemporaryProject(): Promise<void> {
+    if (ltrApplyBusy) {
+      return;
+    }
     setTemporaryCreating(true);
     setTemporaryError(null);
     try {
@@ -773,16 +797,24 @@ export function IntakeInboxPage({
             directWordName={directWordName}
             importError={importError}
             importing={importing}
+            interactionLocked={ltrApplyBusy}
+            interactionLockedReason={importPausedReason}
             msgInputRef={msgInputRef}
             packageImport={packageImport}
             sourceMode={sourceMode}
             wordInputRef={wordInputRef}
             onDirectWordChange={(event) => void handleDirectWordChange(event)}
             onMsgFileChange={(event) => void handleMsgFileChange(event)}
-            onSelectSourceMode={(mode) => onSessionChange({ ...session, sourceMode: mode })}
+            onSelectSourceMode={(mode) => {
+              if (!ltrApplyBusy) {
+                onSessionChange({ ...session, sourceMode: mode });
+              }
+            }}
           />
           <AttachmentList
             attachments={attachmentViewModels}
+            disabled={ltrApplyBusy}
+            disabledReason={ltrApplyBusyReason}
             duplicateDraft={duplicateDraft?.check ?? null}
             importingAssetId={importingAssetId}
             packageLoaded={Boolean(packageImport)}
@@ -791,6 +823,9 @@ export function IntakeInboxPage({
             onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
             onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {
+              if (ltrApplyBusy) {
+                return;
+              }
               setDuplicateDraft(null);
               onSessionChange({
                 ...session,
@@ -826,6 +861,7 @@ export function IntakeInboxPage({
               autoSaveError={autoSaveError}
               disabled={
                 editorLoading ||
+                completionLoading ||
                 Boolean(activeCase.confirmed_project_id) ||
                 Boolean(activeCase.base_editing_frozen)
               }

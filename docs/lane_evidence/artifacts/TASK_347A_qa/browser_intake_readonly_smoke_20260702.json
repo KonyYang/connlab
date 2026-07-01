@@ -1,0 +1,158 @@
+{
+  "intakeSmoke347A": {
+    "buttons": [
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "rect": {
+          "height": 40,
+          "width": 39,
+          "x": 12,
+          "y": 16
+        },
+        "text": "",
+        "title": "Open sidebar"
+      },
+      {
+        "ariaDisabled": "true",
+        "disabled": true,
+        "rect": {
+          "height": 40,
+          "width": 40,
+          "x": 12,
+          "y": 76
+        },
+        "text": "Dashboard",
+        "title": "Dashboard"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "rect": {
+          "height": 40,
+          "width": 40,
+          "x": 12,
+          "y": 120
+        },
+        "text": "New Project",
+        "title": "New Project"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "rect": {
+          "height": 40,
+          "width": 40,
+          "x": 12,
+          "y": 164
+        },
+        "text": "Projects",
+        "title": "Projects"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "rect": {
+          "height": 40,
+          "width": 40,
+          "x": 12,
+          "y": 428
+        },
+        "text": "Settings",
+        "title": "Settings"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "rect": {
+          "height": 42,
+          "width": 103.9921875,
+          "x": 275.0078125,
+          "y": 106
+        },
+        "text": "Import",
+        "title": null
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "rect": {
+          "height": 42,
+          "width": 1166,
+          "x": 74,
+          "y": 678
+        },
+        "text": "Create Temporary Project",
+        "title": null
+      }
+    ],
+    "fakeProgressTermsAtRest": [],
+    "hasApplyLtr": false,
+    "hasBusyCopyAtRest": false,
+    "hasIntakeHeading": true,
+    "inputs": [
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "Search ConnLab",
+        "tag": "INPUT",
+        "type": null
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "INPUT",
+        "type": "file"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "INPUT",
+        "type": "file"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "INPUT",
+        "type": "text"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "INPUT",
+        "type": "text"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "SELECT",
+        "type": null
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "INPUT",
+        "type": "text"
+      },
+      {
+        "ariaDisabled": null,
+        "disabled": false,
+        "label": "",
+        "tag": "SELECT",
+        "type": null
+      }
+    ],
+    "statusRegions": [],
+    "title": "ConnLab",
+    "url": "http://localhost:5173/intake"
+  },
+  "logs347A": [],
+  "screenshot": "D:\\PythonProject\\connlab\\docs\\lane_evidence\\artifacts\\TASK_347A_qa\\browser_intake_readonly_smoke_20260702.png",
+  "safetyNote": "QA did not click Apply LTR Number because the live complete-new-project path may mutate authoritative LTR workbook data without a mocked/delayed harness."
+}

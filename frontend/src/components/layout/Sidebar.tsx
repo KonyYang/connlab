@@ -4,6 +4,8 @@ import { UiIcon, type UiIconName } from "../common/UiIcon";
 type SidebarProps = {
   activeRoute: string;
   collapsed?: boolean;
+  interactionLocked?: boolean;
+  interactionLockedReason?: string;
   onNavigate?: (path: string) => void;
   onToggleCollapsed?: () => void;
 };
@@ -31,6 +33,8 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar({
   activeRoute,
   collapsed,
+  interactionLocked = false,
+  interactionLockedReason = "Current operation is running. Keep this page open.",
   onNavigate,
   onToggleCollapsed
 }: SidebarProps): ReactElement {
@@ -42,9 +46,14 @@ export function Sidebar({
         <button
           aria-label={collapsed ? "Open sidebar" : "Collapse sidebar"}
           className="sidebar-toggle"
-          title={collapsed ? "Open sidebar" : "Collapse sidebar"}
+          disabled={interactionLocked}
+          title={interactionLocked ? interactionLockedReason : collapsed ? "Open sidebar" : "Collapse sidebar"}
           type="button"
-          onClick={onToggleCollapsed}
+          onClick={() => {
+            if (!interactionLocked) {
+              onToggleCollapsed?.();
+            }
+          }}
         >
           <UiIcon name="columns" />
         </button>
@@ -52,19 +61,21 @@ export function Sidebar({
       <nav className="sidebar-nav">
         {NAV_ITEMS.map((item) => {
           const active = item.route === activeRoute;
+          const disabled = Boolean(item.disabled) || interactionLocked;
           return (
             <button
-              aria-disabled={item.disabled ? true : undefined}
+              aria-disabled={disabled ? true : undefined}
               aria-current={active ? "page" : undefined}
-              className={`nav-item${active ? " nav-item-active" : ""}${item.disabled ? " nav-item-disabled" : ""}`}
+              className={`nav-item${active ? " nav-item-active" : ""}${disabled ? " nav-item-disabled" : ""}`}
+              disabled={disabled}
               key={item.route}
               onClick={() => {
-                if (!item.disabled) {
+                if (!disabled) {
                   onNavigate?.(`/${item.route}`);
                 }
               }}
-              tabIndex={item.disabled ? -1 : undefined}
-              title={item.label}
+              tabIndex={disabled ? -1 : undefined}
+              title={interactionLocked ? interactionLockedReason : item.label}
               type="button"
             >
               <span className="nav-icon"><UiIcon name={item.icon} /></span>
