@@ -332,6 +332,7 @@ class _FakeSheet:
         self.Name = "2026"
         self.UsedRange = _FakeUsedRange()
         self.last_written_rows: list[list[object]] = []
+        self.row_autofit_calls: list[int] = []
         self._cells = {
             (2, 1): "Apr",
             (2, 2): 30,
@@ -344,6 +345,9 @@ class _FakeSheet:
 
     def Cells(self, row: int, column: int):
         return _FakeCell(self, row, column)
+
+    def Rows(self, row: int):
+        return _FakeSheetRow(self, row)
 
 
 class _FakeUsedRange:
@@ -380,6 +384,23 @@ class _FakeRange:
 
     def UnMerge(self) -> None:
         return None
+
+    @property
+    def WrapText(self) -> bool:
+        return False
+
+    @WrapText.setter
+    def WrapText(self, value: bool) -> None:
+        return None
+
+
+class _FakeSheetRow:
+    def __init__(self, sheet: _FakeSheet, row: int) -> None:
+        self._sheet = sheet
+        self._row = row
+
+    def AutoFit(self) -> None:
+        self._sheet.row_autofit_calls.append(self._row)
 
 
 class _FakeCell:

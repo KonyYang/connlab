@@ -669,7 +669,10 @@ def _validation_formula(cell) -> str | None:
     validation = getattr(cell, "Validation", None)
     if validation is None:
         return None
-    text = str(getattr(validation, "Formula1", "") or "").strip()
+    try:
+        text = str(getattr(validation, "Formula1", "") or "").strip()
+    except Exception:
+        return None
     return text or None
 
 

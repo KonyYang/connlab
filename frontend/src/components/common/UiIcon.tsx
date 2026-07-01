@@ -4,12 +4,16 @@ export type UiIconName =
   | "bell"
   | "chevron-down"
   | "clock"
+  | "cloud-sync"
   | "columns"
   | "dashboard"
+  | "download"
   | "copy"
   | "edit"
+  | "file"
   | "filter"
   | "folder"
+  | "folder-move"
   | "grid"
   | "help"
   | "hourglass"
@@ -49,6 +53,15 @@ const PATHS: Record<UiIconName, ReactElement> = {
       <path d="M12 7v5l3 2" />
     </>
   ),
+  "cloud-sync": (
+    <>
+      <path d="M17 18h1.5a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.4-2A4.5 4.5 0 0 0 6.5 18H7" />
+      <path d="M10 15a3 3 0 0 1 5-2.2l1 1" />
+      <path d="M16 11v3h-3" />
+      <path d="M14 18a3 3 0 0 1-5 2.2l-1-1" />
+      <path d="M8 22v-3h3" />
+    </>
+  ),
   columns: (
     <>
       <path d="M4 5h16v14H4z" />
@@ -61,6 +74,13 @@ const PATHS: Record<UiIconName, ReactElement> = {
       <rect x="14" y="3" width="7" height="7" rx="1" />
       <rect x="3" y="14" width="7" height="7" rx="1" />
       <rect x="14" y="14" width="7" height="7" rx="1" />
+    </>
+  ),
+  download: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v9" />
+      <path d="m8.5 12.5 3.5 3.5 3.5-3.5" />
     </>
   ),
   copy: (
@@ -76,8 +96,23 @@ const PATHS: Record<UiIconName, ReactElement> = {
     </>
   ),
   filter: <path d="M4 5h16l-6 7v5l-4 2v-7z" />,
+  file: (
+    <>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6" />
+      <path d="M8 13h8M8 17h5" />
+    </>
+  ),
   folder: (
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  ),
+  "folder-move": (
+    <>
+      <path d="M3 7v10a2 2 0 0 0 2 2h8" />
+      <path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v4" />
+      <path d="M14 17h7" />
+      <path d="m18 14 3 3-3 3" />
+    </>
   ),
   grid: (
     <>

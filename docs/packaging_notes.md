@@ -1,6 +1,6 @@
 # ConnLab Packaging Notes
 
-Status: MVP local-development runbook only.
+Status: MVP local-development runbook plus RELEASE_001 portable desktop release path and RELEASE_003 local browser release path.
 
 ## Current Supported Mode
 
@@ -9,7 +9,12 @@ ConnLab currently runs as two local development processes:
 - FastAPI backend on `http://127.0.0.1:8000`.
 - Vite React frontend with `/api` proxied to the backend.
 
-This is intentional for MVP validation. There is no installer, Windows service, PyInstaller bundle, or PyWebView shell yet.
+This is intentional for MVP validation. The regular development workflow still uses
+separate backend and frontend processes. RELEASE_001 adds a portable desktop release
+path, and RELEASE_003 adds a local browser release path. There is still no MSI
+installer, Windows service, auto-updater, LAN deployment, permissions system, or
+multi-user deployment.
+In short: no installer is provided yet; these are portable folder releases.
 
 ## Local Startup Scripts
 
@@ -17,6 +22,90 @@ This is intentional for MVP validation. There is no installer, Windows service, 
 - `scripts\run_backend.ps1`: starts the FastAPI backend with `uvicorn`.
 - `scripts\run_frontend.ps1`: installs frontend dependencies if missing, then starts Vite.
 - `scripts\run_mvp_dev.ps1`: opens backend and frontend scripts in separate PowerShell windows.
+
+## Portable Desktop Release
+
+RELEASE_001 produces a copyable Windows desktop release folder for non-programmer
+operators.
+
+Developer setup for release builds:
+
+```powershell
+py -m pip install -e .[dev,release]
+Set-Location frontend
+npm install
+Set-Location ..
+```
+
+Build a release from the repository root:
+
+```powershell
+.\scripts\build_windows_desktop_release.ps1
+```
+
+Expected output:
+
+```text
+dist_release\
+  ConnLab_YYYYMMDDHHMM_v0.1.0\
+    ConnLab_YYYYMMDDHHMM_v0.1.0.exe
+    ConnLab.exe
+    README_FOR_OPERATOR.md
+    RELEASE_NOTES.md
+    _internal\
+```
+
+Copy the whole `ConnLab_YYYYMMDDHHMM_v...` folder to the operator computer and run
+`ConnLab.exe`. The target computer does not need Python, Node, npm, Vite, or
+manual backend/frontend startup. Microsoft Office and Edge/WebView2 are expected.
+
+Smoke-check the latest release folder:
+
+```powershell
+.\scripts\smoke_windows_desktop_release.ps1
+```
+
+Optionally launch it for manual smoke:
+
+```powershell
+.\scripts\smoke_windows_desktop_release.ps1 -Launch
+```
+
+## Portable Browser Release
+
+RELEASE_003 produces a copyable Windows local-browser release folder for
+non-programmer operators. It starts ConnLab on `http://127.0.0.1:8765/` and opens
+the browser, without changing LTR registration, Settings, Project Workbench, or
+workbook behavior.
+
+Build a browser release from the repository root:
+
+```powershell
+.\scripts\build_windows_browser_release.ps1
+```
+
+Expected output:
+
+```text
+dist_release\
+  ConnLab_Web_YYYYMMDDHHMM_v0.1.0\
+    Start_ConnLab.bat
+    ConnLab_Server.exe
+    README_FOR_OPERATOR.md
+    RELEASE_NOTES.md
+    _internal\
+```
+
+Copy the whole `ConnLab_Web_YYYYMMDDHHMM_v...` folder to the operator computer and
+run `Start_ConnLab.bat`. The target computer does not need Python, Node, npm,
+Vite, or manual backend/frontend startup. Microsoft Office and a browser such as
+Microsoft Edge are expected.
+
+Smoke-check the latest browser release folder:
+
+```powershell
+.\scripts\smoke_windows_browser_release.ps1
+```
 
 ## Runtime Assumptions
 
@@ -28,7 +117,7 @@ This is intentional for MVP validation. There is no installer, Windows service, 
 
 ## Data Locations
 
-Default paths from repository root:
+Default development paths from repository root:
 
 - `data\connlab.sqlite3`
 - `projects\`
@@ -42,6 +131,18 @@ Environment overrides:
 - `CONNLAB_TEMPLATES_DIR`
 - `CONNLAB_DATABASE_PATH`
 - `CONNLAB_LOG_LEVEL`
+
+Packaged desktop mode uses `%LOCALAPPDATA%\ConnLab` for mutable operator data:
+
+- `%LOCALAPPDATA%\ConnLab\data\connlab.sqlite3`
+- `%LOCALAPPDATA%\ConnLab\projects\`
+- `%LOCALAPPDATA%\ConnLab\templates\`
+- `%LOCALAPPDATA%\ConnLab\logs\`
+- `%LOCALAPPDATA%\ConnLab\config\connlab.local.toml`
+
+The release folder is application code. Do not store operator data in the release
+folder. New release folders must not overwrite an operator's existing local
+database, logs, project files, or configured paths.
 
 ## Local Secret And Workbook Settings Policy
 
@@ -64,7 +165,8 @@ Rules:
 
 ## Future Packaging Placeholder
 
-PyWebView or PyInstaller packaging can be considered after MVP validation, but should be implemented as a separate task. Before that task, define:
+RELEASE_001 covers the first PyWebView + PyInstaller portable folder path.
+Before moving beyond that into a full installer or managed deployment, define:
 
 - frontend build output location
 - backend process ownership

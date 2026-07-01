@@ -1058,6 +1058,12 @@ export type ExternalResourcePickResult = {
   path: string | null;
 };
 
+export type LtrWorkbookPasswordStatus = {
+  configured: boolean;
+  overridden_by_environment: boolean;
+  password?: string | null;
+};
+
 export type ConfirmIntakeCase = {
   case_id: string;
   project_id: string;
@@ -2791,6 +2797,22 @@ export function pickExternalResourcePath(
     `/api/external-resources/${encodeURIComponent(resourceType)}/pick`,
     { method: "POST" }
   );
+}
+
+export function getLtrWorkbookPasswordStatus(): Promise<LtrWorkbookPasswordStatus> {
+  return requestJson<LtrWorkbookPasswordStatus>("/api/settings/ltr-workbook-password");
+}
+
+export function updateLtrWorkbookPassword(
+  password: string
+): Promise<LtrWorkbookPasswordStatus> {
+  return requestJson<LtrWorkbookPasswordStatus>("/api/settings/ltr-workbook-password", {
+    method: "PUT",
+    body: JSON.stringify({
+      password,
+      operator_confirmed: true
+    })
+  });
 }
 
 export function confirmIntakeCase(caseId: string): Promise<ConfirmIntakeCase> {

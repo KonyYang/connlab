@@ -62,6 +62,9 @@ from backend.application.ltr_workbook_write_commit_service import (
 from backend.application.ltr_workbook_basic_information_sync_service import (
     LtrWorkbookBasicInformationSyncService,
 )
+from backend.application.ltr_workbook_local_config_service import (
+    LtrWorkbookLocalConfigService,
+)
 from backend.application.ltr_readiness_service import LtrReadinessService
 from backend.application.ltr_service import LtrService
 from backend.application.lookup_options_service import LookupOptionService
@@ -1325,6 +1328,11 @@ def get_external_resource_service(
 ) -> ExternalResourceService:
     """Build the external resource registry service."""
     return ExternalResourceService(ExternalResourceRepository(session))
+
+
+def get_ltr_workbook_local_config_service() -> LtrWorkbookLocalConfigService:
+    """Build the local config synchronizer for LTR workbook settings."""
+    return LtrWorkbookLocalConfigService()
 
 
 def get_external_excel_read_service(

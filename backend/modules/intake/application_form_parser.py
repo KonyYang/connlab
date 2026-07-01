@@ -200,7 +200,7 @@ def _extract_sample_rows(document) -> list[ParsedSampleInfo]:
     """Extract sample rows from tables with recognizable sample headers."""
     samples: list[ParsedSampleInfo] = []
     for table in _iter_document_tables(document):
-        rows = [_dedupe_cells([_clean(cell.text) for cell in row.cells]) for row in table.rows]
+        rows = [[_clean(cell.text) for cell in row.cells] for row in table.rows]
         for index, row in enumerate(rows):
             header = [_canonical_label(cell, SAMPLE_ALIASES) for cell in row]
             if not _is_sample_header(header) or index + 1 >= len(rows):
@@ -347,9 +347,10 @@ def _merge_content_control_values(values: dict[str, str], document) -> None:
             None,
         )
         value = _clean("".join(control.xpath('./*[local-name()="sdtContent"]//*[local-name()="t"]/text()')))
-        if not value or _is_placeholder_value(value):
+        is_placeholder = not value or _is_placeholder_value(value)
+        ordered_values.append("" if is_placeholder else value)
+        if is_placeholder:
             continue
-        ordered_values.append(value)
         if key:
             values[key] = value
     _merge_ordered_section1_content_controls(values, ordered_values)

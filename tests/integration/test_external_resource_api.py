@@ -95,6 +95,32 @@ def test_external_resource_api_records_invalid_excel_path(tmp_path: Path) -> Non
         engine.dispose()
 
 
+def test_external_resource_api_syncs_ltr_workbook_local_config(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "ConnLab" / "config" / "connlab.local.toml"
+    workbook_path = tmp_path / "LTR_updated.xlsx"
+    workbook_path.write_bytes(b"placeholder")
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(config_path))
+    client, engine = _client(tmp_path)
+    try:
+        response = client.put(
+            "/api/external-resources/ltr_workbook",
+            json={"path": str(workbook_path), "active": True},
+        )
+
+        assert response.status_code == 200
+        source = config_path.read_text(encoding="utf-8")
+        assert f'path = "{workbook_path.as_posix()}"' in source
+        assert "write_enabled = true" in source
+        assert 'mode = "excel_com"' in source
+        assert "modify_password" not in source
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_external_resource_api_returns_404_for_missing_registration(
     tmp_path: Path,
 ) -> None:

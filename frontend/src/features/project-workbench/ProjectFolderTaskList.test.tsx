@@ -180,7 +180,7 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "public_working_copy",
     title: "Public working copy",
-    iconName: "refresh",
+    iconName: "cloud-sync",
     statusLabel: "Sync",
     status: "neutral",
     summary: "Keep the lab working copy aligned.",
@@ -199,7 +199,7 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "approval_package",
     title: "Approval package",
-    iconName: "package",
+    iconName: "folder-move",
     statusLabel: "Submit",
     status: "neutral",
     summary: "Submit controlled output.",
@@ -213,7 +213,7 @@ const tasks: ProjectFolderTaskRow[] = [
   {
     key: "approved_folder",
     title: "Approved folder",
-    iconName: "copy",
+    iconName: "download",
     statusLabel: "Pull",
     status: "neutral",
     summary: "Bring approved public results back.",

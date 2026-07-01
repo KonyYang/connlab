@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactElement } from "react";
+import type { ReactElement } from "react";
 import type {
   ProjectFolderRequiredFormsPreview,
   PublicFolderWorkflowOperationType,
@@ -115,23 +115,44 @@ function FolderOperation({
     }
   }
 
-  function handleTaskActionKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-    event.preventDefault();
-    activateTaskAction();
-  }
-
   return (
     <article className="runtime-console-folder-operation">
-      <span className="runtime-console-folder-operation-icon">
-        <UiIcon name={task.iconName} />
-      </span>
+      {task.actionLabel ? (
+        <button
+          className="runtime-console-folder-operation-icon runtime-console-folder-operation-icon-button"
+          type="button"
+          aria-label={task.actionLabel}
+          disabled={disabled}
+          title={blocker ?? undefined}
+          onClick={activateTaskAction}
+        >
+          <UiIcon name={task.iconName} />
+        </button>
+      ) : (
+        <span className="runtime-console-folder-operation-icon" aria-hidden="true">
+          <UiIcon name={task.iconName} />
+        </span>
+      )}
       <div className="runtime-console-folder-operation-copy">
-        <h3>{task.title}</h3>
-        <p>{task.summary}</p>
-        <small>{task.context}</small>
+        <div className="runtime-console-folder-operation-title">
+          <h3>{task.title}</h3>
+          {task.autoSync ? (
+            <label className="runtime-console-folder-auto-sync">
+              <input
+                type="checkbox"
+                checked={task.autoSync.checked}
+                disabled={readonlyReason ? true : task.autoSync.disabled}
+                aria-label="Auto sync public working copy"
+                title={task.autoSync.blocker ?? undefined}
+                onChange={(event) => onAutoSyncChange?.(event.currentTarget.checked)}
+              />
+              <span>Auto sync</span>
+              <span className="runtime-console-folder-auto-sync-track" aria-hidden="true" />
+            </label>
+          ) : null}
+        </div>
+        {task.summary ? <p>{task.summary}</p> : null}
+        {task.context ? <small>{task.context}</small> : null}
         {task.detailMessages && task.detailMessages.length > 0 ? (
           <ul className="runtime-console-folder-operation-details">
             {task.detailMessages.slice(0, 2).map((message) => (
@@ -141,19 +162,6 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
-        {task.autoSync ? (
-          <label className="runtime-console-folder-auto-sync">
-            <input
-              type="checkbox"
-              checked={task.autoSync.checked}
-              disabled={readonlyReason ? true : task.autoSync.disabled}
-              aria-label="Auto sync public working copy"
-              title={task.autoSync.blocker ?? undefined}
-              onChange={(event) => onAutoSyncChange?.(event.currentTarget.checked)}
-            />
-            <span>Auto sync</span>
-          </label>
-        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button
@@ -169,16 +177,6 @@ function FolderOperation({
               {task.cancelLabel ?? "Cancel"}
             </button>
           </div>
-        ) : task.actionLabel ? (
-          <button
-            type="button"
-            disabled={disabled}
-            title={blocker ?? undefined}
-            onClick={activateTaskAction}
-            onKeyDown={handleTaskActionKeyDown}
-          >
-            {task.actionLabel}
-          </button>
         ) : null}
       </div>
     </article>

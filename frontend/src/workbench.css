@@ -3621,22 +3621,54 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  color: var(--color-ink-muted);
+}
+
+.runtime-console-folder-operation-icon-button {
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+  background: transparent;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.runtime-console-folder-operation-icon-button:hover:not(:disabled),
+.runtime-console-folder-operation-icon-button:focus-visible {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
   color: var(--color-primary-strong);
 }
 
+.runtime-console-folder-operation-icon-button:focus-visible {
+  outline: 3px solid rgba(31, 102, 209, 0.16);
+  outline-offset: 2px;
+}
+
+.runtime-console-folder-operation-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .runtime-console-folder-operation-icon .ui-icon {
-  width: 15px;
-  height: 15px;
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.7;
 }
 
 .runtime-console-folder-operation-copy {
   display: grid;
   gap: 3px;
+  min-width: 0;
+}
+
+.runtime-console-folder-operation-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -3651,6 +3683,7 @@
   color: var(--color-ink);
   font-size: 13px;
   line-height: 1.25;
+  flex: 0 0 auto;
 }
 
 .runtime-console-folder-operation-copy p,
@@ -3663,6 +3696,9 @@
 
 .runtime-console-folder-operation-copy small {
   display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .runtime-console-folder-operation-details {
@@ -3678,7 +3714,7 @@
 
 .runtime-console-folder-operation-controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
@@ -3709,12 +3745,71 @@
 }
 
 .runtime-console-folder-auto-sync {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex: 0 0 auto;
   color: var(--color-ink-muted);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.runtime-console-folder-auto-sync input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.runtime-console-folder-auto-sync-track {
+  position: relative;
+  display: inline-flex;
+  width: 36px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--color-ink-muted) 30%, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.runtime-console-folder-auto-sync-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  transition: transform 120ms ease;
+}
+
+.runtime-console-folder-auto-sync input:checked ~ .runtime-console-folder-auto-sync-track {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.runtime-console-folder-auto-sync input:checked ~ .runtime-console-folder-auto-sync-track::after {
+  transform: translateX(16px);
+}
+
+.runtime-console-folder-auto-sync input:disabled ~ span {
+  opacity: 0.62;
+}
+
+.runtime-console-folder-auto-sync input:focus-visible ~ .runtime-console-folder-auto-sync-track {
+  outline: 3px solid rgba(31, 102, 209, 0.18);
+  outline-offset: 2px;
 }
 
 .runtime-console-folder-actions-blocker {

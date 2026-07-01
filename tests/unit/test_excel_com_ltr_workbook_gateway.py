@@ -325,6 +325,33 @@ def test_excel_com_write_session_updates_validation_via_modify_when_formula1_set
     assert validation.Formula1 == "=$AB$1:$AB$4"
 
 
+def test_excel_com_write_session_falls_back_when_target_validation_formula_read_fails() -> None:
+    """Broken target-row validation is treated as absent and falls back to row 2."""
+    office = _FakeOfficeFacade()
+    sheet = office.handle.workbook.Worksheets.Item("2026")
+    sheet._cells[(2, 4)] = "DL-2026-04-030"
+    sheet._validations[(3, 10)] = _FakeValidation(
+        "=$BROKEN$1:$BROKEN$1",
+        formula_gettable=False,
+    )
+    gateway = ExcelComLTRWorkbookGateway(
+        office,
+        LtrWorkbookWriteConfig(
+            path=Path("ltr.xls"),
+            write_enabled=True,
+            modify_password="operator-secret",
+        ),
+    )
+
+    with gateway.open_write_session() as session:
+        result = session.ensure_location_dropdown_value("2026", "Dongguan")
+
+    assert result.appended is True
+    assert result.source_range_before == "=$AB$1:$AB$3"
+    assert result.source_range_after == "=$AB$1:$AB$4"
+    assert sheet._cells[(4, 28)] == "Dongguan"
+
+
 def test_excel_com_write_session_prepares_sheet_by_clearing_active_filter() -> None:
     """Preparation clears active filters for full-range workbook operations."""
     office = _FakeOfficeFacade(filter_mode=True)
@@ -685,9 +712,16 @@ class _FakeSheetRow:
 
 
 class _FakeValidation:
-    def __init__(self, formula1: str, *, formula_settable: bool = True) -> None:
+    def __init__(
+        self,
+        formula1: str,
+        *,
+        formula_settable: bool = True,
+        formula_gettable: bool = True,
+    ) -> None:
         self._formula1 = formula1
         self._formula_settable = formula_settable
+        self._formula_gettable = formula_gettable
         self.Formula2 = ""
         self.Type = 3
         self.AlertStyle = 1
@@ -696,6 +730,8 @@ class _FakeValidation:
 
     @property
     def Formula1(self) -> str:
+        if not self._formula_gettable:
+            raise RuntimeError("Property '<unknown>.Formula1' can not be read.")
         return self._formula1
 
     @Formula1.setter

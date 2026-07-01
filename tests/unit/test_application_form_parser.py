@@ -84,6 +84,50 @@ def test_application_form_parser_extracts_fields_and_sample_row(tmp_path: Path) 
     assert parsed.samples[0].quantity == "12"
 
 
+def test_application_form_parser_preserves_repeated_sample_placeholder_columns(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "sample-repeated-placeholders.docx"
+    document = Document()
+    sample_table = document.add_table(rows=3, cols=8)
+    headers = [
+        "Product Name",
+        "Part Number / Revision",
+        "Traceability Manufacturing Lot Info",
+        "Contact Base Material",
+        "Contact Plating",
+        "Contact Lubricant",
+        "Housing Material",
+        "Quantity",
+    ]
+    first_row = ["EK340", "10178799-001LF", "/", "C10070", "Silver Over Ni", "/", "PA9T", "36"]
+    repeated_placeholder_row = [
+        "MATING BUSBAR",
+        "10158889-32",
+        "/",
+        "C1100R-1/2H",
+        "Silver Over Ni",
+        "/",
+        "/",
+        "5",
+    ]
+    for column, header in enumerate(headers):
+        sample_table.cell(0, column).text = header
+        sample_table.cell(1, column).text = first_row[column]
+        sample_table.cell(2, column).text = repeated_placeholder_row[column]
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert len(parsed.samples) == 2
+    assert parsed.samples[0].lubricant == "/"
+    assert parsed.samples[0].housing_material == "PA9T"
+    assert parsed.samples[0].quantity == "36"
+    assert parsed.samples[1].lubricant == "/"
+    assert parsed.samples[1].housing_material == "/"
+    assert parsed.samples[1].quantity == "5"
+
+
 def test_application_form_parser_tolerates_missing_optional_fields(
     tmp_path: Path,
 ) -> None:
@@ -291,6 +335,48 @@ def test_application_form_parser_calibrates_section1_content_controls(
     assert parsed.results_format == "Formal Report (Customer)"
     assert parsed.requested_completion_date == "11/15/2024"
     assert parsed.sample_status == "Production"
+    assert parsed.project_type == "New Product Development"
+    assert parsed.post_testing_disposition == "Keep in the Lab"
+
+
+def test_application_form_parser_keeps_section1_placeholders_in_content_control_order(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "section1-placeholder-content-controls.docx"
+    document = Document()
+    _add_key_value_table(
+        document,
+        [
+            ("Date:", ""),
+            ("Business Unit:", "Mfg. Site:"),
+            ("Results Format:", "Requested Testing Completion Date:"),
+        ],
+    )
+    for value in [
+        "Click here to enter a date.",
+        "Power Solutions",
+        "Dongguan",
+        "Formal Report (Internal)",
+        "4/23/2025",
+        "Product/Process Qualification",
+        "Pre-production",
+        "New Product Development",
+        "Keep in the Lab",
+        "No",
+        "Yes",
+    ]:
+        _add_content_control_paragraph(document, value)
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.request_date is None
+    assert parsed.business_unit == "Power Solutions"
+    assert parsed.manufacturing_site == "Dongguan"
+    assert parsed.results_format == "Formal Report (Internal)"
+    assert parsed.requested_completion_date == "4/23/2025"
+    assert parsed.test_type == "Product/Process Qualification"
+    assert parsed.sample_status == "Pre-production"
     assert parsed.project_type == "New Product Development"
     assert parsed.post_testing_disposition == "Keep in the Lab"
 

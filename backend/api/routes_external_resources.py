@@ -9,11 +9,15 @@ from pydantic import BaseModel, Field
 
 from backend.api.dependencies import (
     get_external_resource_service,
+    get_ltr_workbook_local_config_service,
     get_local_path_picker_service,
 )
 from backend.application.external_resource_service import (
     ExternalResourceNotFoundError,
     ExternalResourceService,
+)
+from backend.application.ltr_workbook_local_config_service import (
+    LtrWorkbookLocalConfigService,
 )
 from backend.application.local_path_picker_service import LocalPathPickerService
 from backend.domain import ExternalResource, ExternalResourceType
@@ -66,9 +70,14 @@ def upsert_external_resource(
     resource_type: ExternalResourceType,
     request: ExternalResourceUpsertRequest,
     service: ExternalResourceService = Depends(get_external_resource_service),
+    ltr_config: LtrWorkbookLocalConfigService = Depends(
+        get_ltr_workbook_local_config_service
+    ),
 ) -> ExternalResourceResponse:
     """Register or update an external resource path."""
     resource = service.upsert_resource(resource_type, Path(request.path), request.active)
+    if resource_type is ExternalResourceType.LTR_WORKBOOK:
+        ltr_config.sync_workbook_path(resource.path)
     return _to_response(resource)
 
 

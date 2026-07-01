@@ -18,7 +18,11 @@ export type ProjectFolderTaskKey =
 
 export type ProjectFolderTaskStatus = "neutral" | "blocked";
 
-export type ProjectFolderTaskIconName = "folder" | "refresh" | "package" | "copy";
+export type ProjectFolderTaskIconName =
+  | "folder"
+  | "cloud-sync"
+  | "folder-move"
+  | "download";
 
 export type ProjectFolderTaskActionTarget =
   | "folder"
@@ -109,9 +113,9 @@ export function deriveProjectFolderTasks(
       iconName: "folder",
       statusLabel: "Open",
       status: projectFolderOpenAvailable ? "neutral" : "blocked",
-      summary: "Folder access.",
+      summary: "",
       context: projectFolderOpenAvailable
-        ? "Local folder available."
+        ? localProjectFolderPath
         : "Project folder is not available yet.",
       actionLabel: "Open",
       actionTarget: projectFolderOpenAvailable ? "project_folder_open" : null,
@@ -231,9 +235,9 @@ function workflowDefinition(operation: PublicFolderWorkflowOperationType): {
     return {
       key: "public_working_copy",
       title: "Public working copy",
-      iconName: "refresh",
+      iconName: "cloud-sync",
       statusLabel: "Sync",
-      summary: "Keep the lab working copy aligned.",
+      summary: "",
       actionLabel: "Sync now",
       busyLabel: "Checking...",
       confirmLabel: "Confirm sync",
@@ -244,9 +248,9 @@ function workflowDefinition(operation: PublicFolderWorkflowOperationType): {
     return {
       key: "approval_package",
       title: "Approval package",
-      iconName: "package",
+      iconName: "folder-move",
       statusLabel: "Submit",
-      summary: "Submit controlled output.",
+      summary: "Moves Open package to Closed after confirmation.",
       actionLabel: "Submit",
       busyLabel: "Checking...",
       confirmLabel: "Confirm submit",
@@ -256,9 +260,9 @@ function workflowDefinition(operation: PublicFolderWorkflowOperationType): {
   return {
     key: "approved_folder",
     title: "Approved folder",
-    iconName: "copy",
+    iconName: "download",
     statusLabel: "Pull",
-    summary: "Bring approved public results back.",
+    summary: "",
     actionLabel: "Pull",
     busyLabel: "Checking...",
     confirmLabel: "Confirm pull",
@@ -281,17 +285,17 @@ function workflowContextCopy(
       return "Submitted package is locked.";
     }
     return context.public_open_path
-      ? "Public Open working copy."
+      ? context.public_open_path
       : "Public Open location will be prepared after preview.";
   }
   if (operation === "submit") {
     if (context.sync_locked) {
       return "Approval package has already been submitted.";
     }
-    return "Preview moves Open output to Closed after confirmation.";
+    return "Preview required before moving the package.";
   }
   return context.public_closed_path
-    ? "Closed output can be pulled without overwriting local history."
+    ? `${context.public_closed_path} · keep local history`
     : "Closed output is available after approval package submission.";
 }
 

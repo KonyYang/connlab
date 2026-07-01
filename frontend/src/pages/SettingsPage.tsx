@@ -1,9 +1,12 @@
 import { useEffect, useState, type ReactElement } from "react";
 import {
+  getLtrWorkbookPasswordStatus,
   listExternalResources,
   saveExternalResource,
+  updateLtrWorkbookPassword,
   validateExternalResource,
   type ExternalResource,
+  type LtrWorkbookPasswordStatus,
   type ExternalResourceType
 } from "../api/client";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -20,6 +23,8 @@ export function SettingsPage(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingType, setSavingType] = useState<ExternalResourceType | null>(null);
+  const [passwordStatus, setPasswordStatus] = useState<LtrWorkbookPasswordStatus | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [pathValidationMessages, setPathValidationMessages] = useState<
     Record<ExternalResourceType, string | null>
   >({} as Record<ExternalResourceType, string | null>);
@@ -31,8 +36,12 @@ export function SettingsPage(): ReactElement {
   async function refreshResources(): Promise<void> {
     setLoading(true);
     try {
-      const currentResources = await listExternalResources();
+      const [currentResources, currentPasswordStatus] = await Promise.all([
+        listExternalResources(),
+        getLtrWorkbookPasswordStatus()
+      ]);
       setResources(currentResources);
+      setPasswordStatus(currentPasswordStatus);
       setPathValidationMessages((current) => {
         const next: Record<ExternalResourceType, string | null> = {
           ...current
@@ -89,6 +98,24 @@ export function SettingsPage(): ReactElement {
     }
   }
 
+  async function handlePasswordSave(password: string): Promise<void> {
+    if (password.trim().length === 0) {
+      setError("Please enter the LTR workbook password.");
+      return;
+    }
+    setSavingPassword(true);
+    setError(null);
+    try {
+      const nextStatus = await updateLtrWorkbookPassword(password.trim());
+      setPasswordStatus(nextStatus);
+    } catch (err) {
+      setError((err as Error).message);
+      throw err;
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
   function upsertResource(next: ExternalResource): void {
     setResources((current) => {
       const exists = current.some((item) => item.resource_type === next.resource_type);
@@ -126,7 +153,10 @@ export function SettingsPage(): ReactElement {
         <SettingsExternalResourcesPanel
           resources={resources}
           savingType={savingType}
+          passwordStatus={passwordStatus}
+          savingPassword={savingPassword}
           onSave={handleSave}
+          onPasswordSave={handlePasswordSave}
           browseEnabled={hasDesktopPathPickerBridge()}
           onBrowse={handleBrowse}
           pathValidationMessages={pathValidationMessages}
