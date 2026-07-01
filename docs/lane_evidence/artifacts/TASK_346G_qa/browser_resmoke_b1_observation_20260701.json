@@ -1,0 +1,160 @@
+{
+  "task": "TASK_346G_WORKBENCH_PROJECT_FOLDER_OPEN_ACTION_WIRING",
+  "lane": "workbench-project-folder-open-action-wiring",
+  "url": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "hitTestBefore": {
+    "closeProject": {
+      "disabled": false,
+      "rect": {
+        "height": 27.5,
+        "width": 118.15625,
+        "x": 1108.84375,
+        "y": 692.5
+      },
+      "text": "Close project"
+    },
+    "confirmCloseVisible": false,
+    "folderText": "Project folder\n\nFolder access.\n\nLocal folder available.",
+    "hit": {
+      "className": "",
+      "closestButtonText": "Open",
+      "isOpenButton": true,
+      "tag": "BUTTON",
+      "text": "Open"
+    },
+    "open": {
+      "center": {
+        "x": 1187,
+        "y": 708
+      },
+      "disabled": false,
+      "rect": {
+        "height": 30.3984375,
+        "width": 53.125,
+        "x": 1160.875,
+        "y": 692.3046875
+      },
+      "text": "Open"
+    },
+    "openCount": 1
+  },
+  "closeConfirmationAttempt": {
+    "semanticCloseClickError": null,
+    "semanticCloseCount": 1,
+    "confirmCloseVisibleAfterAttempts": false,
+    "note": "Close confirmation could not be expanded in this live state; sticky Close project control remained visually colocated with Folder Actions but side column owned the Open hit target."
+  },
+  "coordinateClick": {
+    "firstObservation": {
+      "bannedWorkflowHints": [],
+      "bodyHints": [
+        "Local folder available."
+      ],
+      "hitAfter": {
+        "closestButtonText": "Open",
+        "tag": "BUTTON",
+        "text": "Open"
+      },
+      "oldCreateUpdateInFolderActions": []
+    },
+    "secondCoordinateHit": {
+      "center": {
+        "x": 1187,
+        "y": 360
+      },
+      "hit": {
+        "closestButtonText": "Open",
+        "isOpenButton": true,
+        "tag": "BUTTON",
+        "text": "Open"
+      }
+    },
+    "secondObservation": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open"
+      },
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    },
+    "openLocalPostCountAfterSecondCoordinate": 2
+  },
+  "semanticClickAndKeyboard": {
+    "semanticClickError": null,
+    "enterLocatorPressError": null,
+    "afterSemanticEnter": {
+      "activeElement": {
+        "tag": "BUTTON",
+        "text": "Open"
+      },
+      "bannedWorkflowHints": [],
+      "bodyHints": [
+        "Project folder opened",
+        "Local folder available."
+      ],
+      "openStillEnabled": true
+    },
+    "keyboardDiagnostics": {
+      "activeText": "Open",
+      "ariaDisabled": null,
+      "className": "",
+      "disabled": false,
+      "hasFocus": true,
+      "tabIndex": 0,
+      "tag": "BUTTON",
+      "type": "button"
+    },
+    "spaceAfter": {
+      "activeText": "Open",
+      "hasFocus": true,
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    },
+    "cuaEnter": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open"
+      },
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    },
+    "cuaEnterNamed": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open"
+      },
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    },
+    "visibleEnterOnly": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open"
+      },
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    },
+    "openLocalPostCountAfterVisibleEnterOnly": 3,
+    "keyboardFinding": "Focused Open button did not produce an additional open-local POST from Enter-only activation."
+  },
+  "consoleWarningsErrors": [],
+  "artifacts": {
+    "before": "D:\\PythonProject\\connlab\\docs\\lane_evidence\\artifacts\\TASK_346G_qa\\browser_resmoke_b1_before_open_20260701.png",
+    "after": "D:\\PythonProject\\connlab\\docs\\lane_evidence\\artifacts\\TASK_346G_qa\\browser_resmoke_b1_after_open_attempts_20260701.png",
+    "backendLog": "D:\\PythonProject\\connlab\\docs\\lane_evidence\\artifacts\\TASK_346G_qa\\backend_uvicorn_resmoke_20260701_214038.out.log"
+  }
+}

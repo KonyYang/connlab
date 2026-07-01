@@ -92,7 +92,7 @@ function withoutUnavailableFolderAction(
   tasks: ProjectFolderTaskRow[]
 ): ProjectFolderTaskRow[] {
   return tasks.map((task) =>
-    task.key === "project_folder"
+    task.key === "project_folder" && task.actionTarget !== "project_folder_open"
       ? {
           ...task,
           actionLabel: undefined,

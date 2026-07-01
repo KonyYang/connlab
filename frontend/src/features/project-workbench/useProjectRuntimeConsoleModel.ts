@@ -88,6 +88,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshPublicDriveUploadPreview"
   | "onRefreshPublicFolderWorkflowContext"
   | "onSetPublicFolderWorkflowAutoSync"
+  | "onOpenLocalProjectFolder"
   | "onPreviewPublicFolderWorkflowOperation"
   | "onConfirmPublicFolderWorkflowOperation"
   | "onCancelPublicFolderWorkflowOperation"
@@ -190,6 +191,7 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshPublicDriveUploadPreview: model.onRefreshPublicDriveUploadPreview,
     onRefreshPublicFolderWorkflowContext: model.onRefreshPublicFolderWorkflowContext,
     onSetPublicFolderWorkflowAutoSync: model.onSetPublicFolderWorkflowAutoSync,
+    onOpenLocalProjectFolder: model.onOpenLocalProjectFolder,
     onPreviewPublicFolderWorkflowOperation:
       model.onPreviewPublicFolderWorkflowOperation,
     onConfirmPublicFolderWorkflowOperation:

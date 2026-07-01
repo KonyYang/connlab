@@ -50,6 +50,7 @@ const apiMocks = vi.hoisted(() => ({
   listProjectLtrs: vi.fn(),
   listProjectTestPlanDrafts: vi.fn(),
   listProjectTestPlanSourceCandidates: vi.fn(),
+  openLocalProjectFolder: vi.fn(),
   placeEvidence: vi.fn(),
   previewApprovalPackage: vi.fn(),
   previewEvidencePlacement: vi.fn(),
@@ -351,6 +352,47 @@ describe("useProjectWorkbenchModel", () => {
       "Unmanaged public files require review."
     );
     expect(apiMocks.executePublicFolderWorkflowSubmit).not.toHaveBeenCalled();
+  });
+
+  it("opens the backend-resolved local project folder", async () => {
+    apiMocks.openLocalProjectFolder.mockResolvedValueOnce({
+      project_id: "project-1",
+      status: "opened",
+      message: "Project folder opened.",
+      local_official_folder_path: "D:/Projects/DL-2026-06-001/Official",
+    });
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.onOpenLocalProjectFolder();
+    });
+
+    expect(apiMocks.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
+    expect(result.current.publicFolderWorkflowMessage).toBe("Project folder opened.");
+    expect(result.current.publicFolderWorkflowError).toBeNull();
+  });
+
+  it("shows the local folder path fallback when the open bridge is blocked", async () => {
+    apiMocks.openLocalProjectFolder.mockResolvedValueOnce({
+      project_id: "project-1",
+      status: "blocked",
+      message: "Project folder is not available yet.",
+      local_official_folder_path: "D:/Projects/DL-2026-06-001/Official",
+    });
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.onOpenLocalProjectFolder();
+    });
+
+    expect(result.current.publicFolderWorkflowMessage).toBe(
+      "Project folder is not available yet. D:/Projects/DL-2026-06-001/Official"
+    );
+    expect(result.current.publicFolderWorkflowError).toBeNull();
   });
 
   it("stops the one-click project folder chain when Required forms preview is blocked", async () => {

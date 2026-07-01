@@ -30,7 +30,7 @@ describe("deriveProjectFolderTasks", () => {
       "copy",
     ]);
     expect(tasks.map((task) => task.context)).toEqual([
-      "Open is not connected yet.",
+      "Local folder available.",
       "Public Open working copy.",
       "Preview moves Open output to Closed after confirmation.",
       "Closed output can be pulled without overwriting local history.",
@@ -42,7 +42,7 @@ describe("deriveProjectFolderTasks", () => {
     const tasks = deriveProjectFolderTasks(readyInput());
 
     expect(tasks.map((task) => task.actionTarget)).toEqual([
-      null,
+      "project_folder_open",
       "public_folder_workflow_sync",
       "public_folder_workflow_submit",
       "public_folder_workflow_pull",
@@ -77,11 +77,47 @@ describe("deriveProjectFolderTasks", () => {
     const tasks = deriveProjectFolderTasks({
       ...readyInput(),
       folderReady: false,
+      publicFolderWorkflowContext: {
+        ...readyInput().publicFolderWorkflowContext,
+        local_official_folder_path: null,
+      },
     });
 
     expect(tasks[0].title).toBe("Project folder");
-    expect(tasks[0].context).toBe("Folder setup is not available yet.");
+    expect(tasks[0].context).toBe("Project folder is not available yet.");
     expect(tasks[0].blockers[0]).toBe("Project folder is not available yet.");
+  });
+
+  it("does not require legacy folderReady for project folder Open", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      folderReady: false,
+    });
+
+    expect(tasks[0]).toMatchObject({
+      title: "Project folder",
+      context: "Local folder available.",
+      actionLabel: "Open",
+      actionTarget: "project_folder_open",
+      blockers: [],
+    });
+  });
+
+  it("disables project folder Open when workflow context has no local path", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      publicFolderWorkflowContext: {
+        ...readyInput().publicFolderWorkflowContext,
+        local_official_folder_path: null,
+      },
+    });
+
+    expect(tasks[0]).toMatchObject({
+      title: "Project folder",
+      context: "Project folder is not available yet.",
+      actionTarget: null,
+      blockers: ["Project folder is not available yet."],
+    });
   });
 });
 

@@ -110,6 +110,7 @@ export function ProjectWorkbenchLayout({
     publicFolderWorkflowMessage,
     publicFolderWorkflowAutoSyncBusy,
     onSetPublicFolderWorkflowAutoSync,
+    onOpenLocalProjectFolder,
     onPreviewPublicFolderWorkflowOperation,
     onConfirmPublicFolderWorkflowOperation,
     onCancelPublicFolderWorkflowOperation,
@@ -361,6 +362,10 @@ export function ProjectWorkbenchLayout({
     }
     if (actionTarget === "folder") {
       handleProjectFolderCreateClick();
+      return;
+    }
+    if (actionTarget === "project_folder_open") {
+      void onOpenLocalProjectFolder();
       return;
     }
     if (actionTarget === "request_material") {

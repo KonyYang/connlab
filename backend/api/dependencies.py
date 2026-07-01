@@ -186,6 +186,7 @@ from backend.application.official_project_folder_check_service import (
 )
 from backend.application.public_drive_upload_service import PublicDriveUploadService
 from backend.application.public_folder_workflow_service import PublicFolderWorkflowService
+from backend.application.project_folder_open_service import ProjectFolderOpenService
 from backend.application.public_folder_year_resolver import PublicFolderYearResolver
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
@@ -250,6 +251,9 @@ from backend.infrastructure.files.public_drive_upload_gateway import (
 )
 from backend.infrastructure.files.public_folder_workflow_gateway import (
     PublicFolderWorkflowGateway,
+)
+from backend.infrastructure.files.local_folder_open_gateway import (
+    LocalFolderOpenGateway,
 )
 from backend.infrastructure.files.project_folder_required_forms_gateway import (
     ProjectFolderRequiredFormsFileGateway,
@@ -970,6 +974,18 @@ def get_public_folder_workflow_service(
             ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
         ),
         gateway=PublicFolderWorkflowGateway(),
+    )
+
+
+def get_project_folder_open_service(
+    workflow_service: PublicFolderWorkflowService = Depends(
+        get_public_folder_workflow_service
+    ),
+) -> ProjectFolderOpenService:
+    """Build the non-mutating local project-folder open service."""
+    return ProjectFolderOpenService(
+        workflow_service=workflow_service,
+        gateway=LocalFolderOpenGateway(),
     )
 
 

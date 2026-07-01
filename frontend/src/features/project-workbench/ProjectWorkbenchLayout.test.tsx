@@ -987,6 +987,55 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onRepairOfficialFolderStructure).not.toHaveBeenCalled();
   });
 
+  it("routes Project folder Open without triggering create/update folder", async () => {
+    const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
+    const onOpenLocalProjectFolder = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: false,
+      onCreateOfficialWorkspace,
+      onOpenLocalProjectFolder,
+    });
+
+    const folderActions = screen.getByLabelText("Folder Actions");
+    expect(folderActions.textContent).toContain("Local folder available.");
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(onOpenLocalProjectFolder).toHaveBeenCalledTimes(1);
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("keeps Project folder Open actionable while close confirmation is expanded", async () => {
+    const user = userEvent.setup();
+    const onCreateOfficialWorkspace = vi.fn();
+    const onOpenLocalProjectFolder = vi.fn();
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      packagePreview: readyPackagePreview,
+      requestMaterialPreview: collectedRequestMaterialPreview,
+      folderReady: false,
+      onCreateOfficialWorkspace,
+      onOpenLocalProjectFolder,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Close project" }));
+    expect(screen.getAllByText("Confirm close project").length).toBeGreaterThan(0);
+
+    const folderActions = screen.getByLabelText("Folder Actions");
+    await user.click(within(folderActions).getByRole("button", { name: "Open" }));
+
+    expect(onOpenLocalProjectFolder).toHaveBeenCalledTimes(1);
+    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+  });
+
   it("does not use package preview Customer Feedback as the Project Folder source", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
@@ -1182,6 +1231,22 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
           ],
           warnings: [],
           planned_paths: [],
+        },
+        publicFolderWorkflowContext: {
+          project_id: project.project_id,
+          auto_sync_enabled: false,
+          sync_locked: false,
+          submitted_at: null,
+          public_root: "D:/PublicProject",
+          public_root_class: "open",
+          public_folder_year: 2026,
+          year_source: "project",
+          year_evidence: "created_on",
+          local_official_folder_path: null,
+          public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
+          public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
+          blockers: [],
+          warnings: [],
         },
         officialWorkspaceCreating: false,
         onCreateOfficialWorkspace,
@@ -1474,6 +1539,7 @@ function buildRuntimeModel(
     onRefreshPublicDriveUploadPreview: vi.fn(),
     onRefreshPublicFolderWorkflowContext: vi.fn(),
     onSetPublicFolderWorkflowAutoSync: vi.fn(),
+    onOpenLocalProjectFolder: vi.fn(),
     onPreviewPublicFolderWorkflowOperation: vi.fn(),
     onConfirmPublicFolderWorkflowOperation: vi.fn(),
     onCancelPublicFolderWorkflowOperation: vi.fn(),

@@ -23,7 +23,7 @@ describe("ProjectFolderTaskList", () => {
     expect(
       screen.getByText("Closed output can be pulled without overwriting local history.")
     ).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(false);
     expect(
       (screen.getByRole("checkbox", {
         name: "Auto sync public working copy",
@@ -43,7 +43,7 @@ describe("ProjectFolderTaskList", () => {
     );
   });
 
-  it("routes preview-first actions and Auto sync changes", async () => {
+  it("routes Open, preview-first actions, and Auto sync changes", async () => {
     const user = userEvent.setup();
     const onTaskAction = vi.fn();
     const onAutoSyncChange = vi.fn();
@@ -54,6 +54,7 @@ describe("ProjectFolderTaskList", () => {
       />
     );
 
+    await user.click(screen.getByRole("button", { name: "Open" }));
     await user.click(screen.getByRole("button", { name: "Sync now" }));
     await user.click(screen.getByRole("button", { name: "Submit" }));
     await user.click(screen.getByRole("button", { name: "Pull" }));
@@ -61,10 +62,31 @@ describe("ProjectFolderTaskList", () => {
       screen.getByRole("checkbox", { name: "Auto sync public working copy" })
     );
 
+    expect(onTaskAction).toHaveBeenCalledWith("project_folder_open");
     expect(onTaskAction).toHaveBeenCalledWith("public_folder_workflow_sync");
     expect(onTaskAction).toHaveBeenCalledWith("public_folder_workflow_submit");
     expect(onTaskAction).toHaveBeenCalledWith("public_folder_workflow_pull");
     expect(onAutoSyncChange).toHaveBeenCalledWith(false);
+  });
+
+  it("routes Project folder Open from keyboard Enter and Space activation", async () => {
+    const user = userEvent.setup();
+    const onTaskAction = vi.fn();
+    render(<ProjectFolderTaskListHarness onTaskAction={onTaskAction} />);
+
+    const openButton = screen.getByRole("button", { name: "Open" });
+
+    openButton.focus();
+    expect(document.activeElement).toBe(openButton);
+    await user.keyboard("{Enter}");
+
+    expect(onTaskAction).toHaveBeenCalledTimes(1);
+    expect(onTaskAction).toHaveBeenLastCalledWith("project_folder_open");
+
+    await user.keyboard(" ");
+
+    expect(onTaskAction).toHaveBeenCalledTimes(2);
+    expect(onTaskAction).toHaveBeenLastCalledWith("project_folder_open");
   });
 
   it("renders operation confirmation controls", async () => {
@@ -103,7 +125,11 @@ describe("ProjectFolderTaskList", () => {
     );
 
     expect(screen.getAllByText("Activate project before editing is restored.")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Open" }).getAttribute("title")).toBe(
+    expect(screen.getByRole("button", { name: "Open" }).getAttribute("title")).toBeNull();
+    expect((screen.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(
+      false
+    );
+    expect(screen.getByRole("button", { name: "Sync now" }).getAttribute("title")).toBe(
       "Activate project before editing is restored."
     );
   });
@@ -147,8 +173,8 @@ const tasks: ProjectFolderTaskRow[] = [
     summary: "Folder access.",
     context: "Open is not connected yet.",
     actionLabel: "Open",
-    actionTarget: null,
-    blockers: ["Project folder open is not connected yet."],
+    actionTarget: "project_folder_open",
+    blockers: [],
     warnings: [],
   },
   {

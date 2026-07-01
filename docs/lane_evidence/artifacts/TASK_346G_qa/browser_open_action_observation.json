@@ -1,0 +1,115 @@
+{
+  "beforeOpen346g": {
+    "bannedVisible": [],
+    "folderActionsFound": true,
+    "folderText": "Folder ActionsProject folderFolder access.Local folder available.OpenPublic working copyKeep the lab working copy aligned.Public Open working copy.Auto syncSync nowApproval packageSubmit controlled output.Preview moves Open output to Closed after confirmation.SubmitApproved folderBring approved public results back.Closed output can be pulled without overwriting local history.Pull",
+    "href": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f",
+    "localFolderAvailableCopy": true,
+    "openButton": {
+      "disabled": false,
+      "rect": {
+        "centerX": 1187.4375,
+        "centerY": 707.50390625,
+        "height": 30.3984375,
+        "width": 53.125,
+        "x": 1160.875,
+        "y": 692.3046875
+      },
+      "text": "Open",
+      "title": null
+    },
+    "pathVisible": false,
+    "projectRowText": "Project folderFolder access.Local folder available.Open",
+    "pullButton": {
+      "disabled": false,
+      "title": null
+    },
+    "submitButton": {
+      "disabled": false,
+      "title": null
+    },
+    "syncButton": {
+      "disabled": false,
+      "title": null
+    },
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    }
+  },
+  "clickTarget346g": {
+    "buttonContainsHit": false,
+    "folderRect": {
+      "height": 442.59375,
+      "width": 360,
+      "x": 867,
+      "y": 110.1875
+    },
+    "hitIsButton": false,
+    "hitTag": "STRONG",
+    "hitText": "Current",
+    "openButton": {
+      "disabled": false,
+      "rect": {
+        "centerX": 1187.4375,
+        "centerY": 187.50390625,
+        "height": 30.3984375,
+        "width": 53.125,
+        "x": 1160.875,
+        "y": 172.3046875
+      },
+      "text": "Open"
+    },
+    "rowText": "Project folderFolder access.Local folder available.Open",
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    }
+  },
+  "afterOpen346g": {
+    "bodyContainsOpenEndpointMessage": false,
+    "buttons": [
+      {
+        "disabled": false,
+        "text": "Open",
+        "title": null
+      },
+      {
+        "disabled": false,
+        "text": "Sync now",
+        "title": null
+      },
+      {
+        "disabled": false,
+        "text": "Submit",
+        "title": null
+      },
+      {
+        "disabled": false,
+        "text": "Pull",
+        "title": null
+      }
+    ],
+    "folderText": "Folder ActionsProject folderFolder access.Local folder available.OpenPublic working copyKeep the lab working copy aligned.Public Open working copy.Auto syncSync nowApproval packageSubmit controlled output.Preview moves Open output to Closed after confirmation.SubmitApproved folderBring approved public results back.Closed output can be pulled without overwriting local history.Pull",
+    "href": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f",
+    "oldActionHints": [
+      "Update project folder"
+    ],
+    "successHints": [],
+    "workflowExecuteHints": []
+  },
+  "afterLocatorClick346g": {
+    "folderText": "Folder ActionsProject folderFolder access.Local folder available.OpenPublic working copyKeep the lab working copy aligned.Public Open working copy.Auto syncSync nowApproval packageSubmit controlled output.Preview moves Open output to Closed after confirmation.SubmitApproved folderBring approved public results back.Closed output can be pulled without overwriting local history.Pull",
+    "href": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f",
+    "oldActionHints": [],
+    "successHints": [],
+    "workflowExecuteHints": []
+  },
+  "afterEnter346g": {
+    "href": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f",
+    "successHints": [],
+    "workflowExecuteHints": []
+  },
+  "logsAfterLocatorClick346g": [],
+  "logsAfterEnter346g": []
+}

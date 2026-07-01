@@ -618,6 +618,13 @@ export type PublicFolderWorkflowResult = {
   preview: PublicFolderWorkflowPreview;
 };
 
+export type ProjectFolderOpenResponse = {
+  project_id: string;
+  status: "opened" | "blocked" | "unsupported";
+  message: string;
+  local_official_folder_path: string | null;
+};
+
 export type ProjectFolderRequiredFormsStatus =
   | "blocked"
   | "ready"
@@ -2952,6 +2959,15 @@ export function generateFolder(
 export function getLatestProjectFolder(projectId: string): Promise<ProjectFolderRecord> {
   return requestJson<ProjectFolderRecord>(
     `/api/projects/${encodeURIComponent(projectId)}/folder/latest`
+  );
+}
+
+export function openLocalProjectFolder(
+  projectId: string
+): Promise<ProjectFolderOpenResponse> {
+  return requestJson<ProjectFolderOpenResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/folder/open-local`,
+    { method: "POST" }
   );
 }
 

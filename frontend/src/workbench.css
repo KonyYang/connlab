@@ -4181,6 +4181,8 @@
 .runtime-console-side-column {
   display: grid;
   gap: 8px;
+  position: relative;
+  z-index: 6;
 }
 
 .runtime-console-main,

@@ -1,0 +1,122 @@
+{
+  "task": "TASK_346G_WORKBENCH_PROJECT_FOLDER_OPEN_ACTION_WIRING",
+  "lane": "workbench-project-folder-open-action-wiring",
+  "url": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "initial": {
+    "folderActionsText": "FOLDER ACTIONS\n\nProject folder\n\nFolder access.\n\nLocal folder available.\nOpen\nPublic working copy\n\nKeep the lab working copy aligned.\n\nPublic Open working copy.\nAuto sync\nSync now\nApproval package\n\nSubmit controlled output.\n\nPreview moves Open output to Closed after confirmation.\nSubmit\nApproved folder\n\nBring approved public results back.\n\nClosed output can be pulled without overwriting local history.\nPull",
+    "hit": {
+      "closestButtonText": "Open",
+      "isOpenButton": true,
+      "tag": "BUTTON",
+      "text": "Open"
+    },
+    "open": {
+      "center": {
+        "x": 1187,
+        "y": 708
+      },
+      "disabled": false,
+      "rect": {
+        "height": 30.3984375,
+        "width": 53.125,
+        "x": 1160.875,
+        "y": 692.3046875
+      },
+      "tabIndex": 0,
+      "tag": "BUTTON",
+      "text": "Open",
+      "type": "button"
+    },
+    "openCount": 1,
+    "url": "http://localhost:5173/projects/72fbbfa290294da9a507344b68ff900f"
+  },
+  "endpointCountSequence": {
+    "baseline": 0,
+    "afterCoordinateClick": 1,
+    "afterSemanticClick": 2,
+    "afterEnter": 3,
+    "afterSpace": 4
+  },
+  "coordinateClick": {
+    "active": {
+      "tag": "BUTTON",
+      "text": "Open"
+    },
+    "forbiddenVisibleHints": [
+      "Update project folder"
+    ],
+    "hints": [
+      "Project folder opened",
+      "Local folder available."
+    ]
+  },
+  "semanticClick": {
+    "active": {
+      "tag": "BUTTON",
+      "text": "Open"
+    },
+    "hints": [
+      "Project folder opened",
+      "Local folder available."
+    ]
+  },
+  "enter": {
+    "before": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open",
+        "type": "button"
+      }
+    },
+    "error": null,
+    "after": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open",
+        "type": "button"
+      },
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    }
+  },
+  "space": {
+    "before": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open",
+        "type": "button"
+      }
+    },
+    "error": null,
+    "after": {
+      "active": {
+        "tag": "BUTTON",
+        "text": "Open",
+        "type": "button"
+      },
+      "hints": [
+        "Project folder opened",
+        "Local folder available."
+      ]
+    }
+  },
+  "consoleWarningsErrors": {
+    "afterCoordinate": [],
+    "afterSemantic": [],
+    "afterEnter": [],
+    "afterSpace": []
+  },
+  "artifacts": {
+    "beforeScreenshot": "D:\\PythonProject\\connlab\\docs\\lane_evidence\\artifacts\\TASK_346G_qa\\browser_keyboard_resmoke_before_20260701.png",
+    "afterScreenshot": "D:\\PythonProject\\connlab\\docs\\lane_evidence\\artifacts\\TASK_346G_qa\\browser_keyboard_resmoke_after_20260701.png",
+    "backendLog": "docs/lane_evidence/artifacts/TASK_346G_qa/backend_uvicorn_keyboard_resmoke_20260701_215756.out.log",
+    "frontendLog": "docs/lane_evidence/artifacts/TASK_346G_qa/frontend_vite_keyboard_resmoke_20260701_215828.out.log"
+  },
+  "conclusion": "pass: pointer, semantic click, Enter, and Space each produced exactly one open-local POST; no console warning/error observed."
+}

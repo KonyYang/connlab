@@ -26,6 +26,7 @@ import {
   getProject,
   getProjectLifecycle,
   getProjectBasicInformation,
+  openLocalProjectFolder,
   activateProjectLifecycle,
   closeProjectLifecycle,
   getRuntimeProjectionReadOnlySnapshot,
@@ -82,6 +83,7 @@ import {
   type PublicFolderWorkflowOperationType,
   type PublicFolderWorkflowPreview,
   type PublicFolderWorkflowResult,
+  type ProjectFolderOpenResponse,
   type RequestMaterialPreview,
   type ProjectSection2SyncRequest,
   type ProjectSection2SyncResponse,
@@ -263,6 +265,7 @@ export type ProjectWorkbenchModel = {
   onPreviewPublicFolderWorkflowOperation: (
     operation: PublicFolderWorkflowOperationType
   ) => Promise<void>;
+  onOpenLocalProjectFolder: () => Promise<void>;
   onConfirmPublicFolderWorkflowOperation: (
     operation: PublicFolderWorkflowOperationType
   ) => Promise<void>;
@@ -1109,6 +1112,28 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
+  async function onOpenLocalProjectFolder(): Promise<void> {
+    setPublicFolderWorkflowError(null);
+    setPublicFolderWorkflowMessage(null);
+    try {
+      const result = await openLocalProjectFolder(projectId);
+      setPublicFolderWorkflowMessage(
+        await projectFolderOpenMessage(result, publicFolderWorkflowContext)
+      );
+    } catch (err) {
+      const fallbackPath = publicFolderWorkflowContext?.local_official_folder_path ?? null;
+      if (fallbackPath) {
+        setPublicFolderWorkflowMessage(
+          await projectFolderOpenFallbackMessage(fallbackPath)
+        );
+      } else {
+        setPublicFolderWorkflowError(
+          err instanceof Error ? err.message : "Project folder is not available yet."
+        );
+      }
+    }
+  }
+
   async function onPreviewPublicFolderWorkflowOperation(
     operation: PublicFolderWorkflowOperationType
   ): Promise<void> {
@@ -1742,6 +1767,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshPublicDriveUploadPreview,
     onRefreshPublicFolderWorkflowContext,
     onSetPublicFolderWorkflowAutoSync,
+    onOpenLocalProjectFolder,
     onPreviewPublicFolderWorkflowOperation,
     onConfirmPublicFolderWorkflowOperation,
     onCancelPublicFolderWorkflowOperation,
@@ -2128,6 +2154,50 @@ function executePublicFolderWorkflowOperation(
     return executePublicFolderWorkflowSubmit(projectId, input);
   }
   return executePublicFolderWorkflowPull(projectId, input);
+}
+
+async function projectFolderOpenMessage(
+  result: ProjectFolderOpenResponse,
+  context: PublicFolderWorkflowContext | null
+): Promise<string> {
+  if (result.status === "opened") {
+    return result.message || "Project folder opened.";
+  }
+  const path =
+    result.local_official_folder_path ??
+    context?.local_official_folder_path ??
+    null;
+  if (result.status === "unsupported" && path) {
+    return projectFolderOpenFallbackMessage(path);
+  }
+  return appendProjectFolderPath(
+    result.message || "Project folder is not available yet.",
+    path
+  );
+}
+
+async function projectFolderOpenFallbackMessage(path: string): Promise<string> {
+  if (await copyProjectFolderPath(path)) {
+    return "Project folder path copied. Open it in File Explorer.";
+  }
+  return appendProjectFolderPath("Copy this path from the folder context.", path);
+}
+
+async function copyProjectFolderPath(path: string): Promise<boolean> {
+  const clipboard = globalThis.navigator?.clipboard;
+  if (!clipboard?.writeText) {
+    return false;
+  }
+  try {
+    await clipboard.writeText(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function appendProjectFolderPath(message: string, path: string | null): string {
+  return path ? `${message} ${path}` : message;
 }
 
 function selectPublicFolderWorkflowPreviewIssue(

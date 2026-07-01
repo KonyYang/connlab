@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { KeyboardEvent, ReactElement } from "react";
 import type {
   ProjectFolderRequiredFormsPreview,
   PublicFolderWorkflowOperationType,
@@ -104,8 +104,25 @@ function FolderOperation({
   onAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
 }): ReactElement {
-  const blocker = readonlyReason ?? task.blockers[0] ?? null;
-  const disabled = Boolean(readonlyReason || !task.actionTarget);
+  const readonlyBlocksAction = Boolean(
+    readonlyReason && task.actionTarget !== "project_folder_open"
+  );
+  const blocker = readonlyBlocksAction ? readonlyReason ?? null : task.blockers[0] ?? null;
+  const disabled = Boolean(readonlyBlocksAction || !task.actionTarget);
+  function activateTaskAction(): void {
+    if (!disabled && task.actionTarget) {
+      onTaskAction?.(task.actionTarget);
+    }
+  }
+
+  function handleTaskActionKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    activateTaskAction();
+  }
+
   return (
     <article className="runtime-console-folder-operation">
       <span className="runtime-console-folder-operation-icon">
@@ -157,11 +174,8 @@ function FolderOperation({
             type="button"
             disabled={disabled}
             title={blocker ?? undefined}
-            onClick={() => {
-              if (task.actionTarget) {
-                onTaskAction?.(task.actionTarget);
-              }
-            }}
+            onClick={activateTaskAction}
+            onKeyDown={handleTaskActionKeyDown}
           >
             {task.actionLabel}
           </button>

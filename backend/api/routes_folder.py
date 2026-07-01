@@ -8,13 +8,21 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_folder_service
+from backend.api.dependencies import get_folder_service, get_project_folder_open_service
 from backend.application.folder_service import (
     FolderCommand,
     FolderConflictError,
     FolderError,
     FolderNotFoundError,
     FolderService,
+)
+from backend.application.project_folder_open_service import (
+    ProjectFolderOpenResult,
+    ProjectFolderOpenService,
+)
+from backend.application.public_folder_workflow_service import (
+    PublicFolderWorkflowError,
+    PublicFolderWorkflowNotFoundError,
 )
 from backend.application.project_lifecycle_service import (
     ProjectLifecycleError,
@@ -69,6 +77,15 @@ class ProjectFolderResponse(BaseModel):
     created_on: date | None = None
 
 
+class ProjectFolderOpenResponse(BaseModel):
+    """Response for non-mutating local project folder open attempts."""
+
+    project_id: str
+    status: str
+    message: str
+    local_official_folder_path: str | None
+
+
 @router.get("/latest", response_model=ProjectFolderResponse)
 def get_latest_folder(
     project_id: str,
@@ -85,6 +102,20 @@ def get_latest_folder(
         )
     except FolderNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/open-local", response_model=ProjectFolderOpenResponse)
+def open_local_project_folder(
+    project_id: str,
+    service: ProjectFolderOpenService = Depends(get_project_folder_open_service),
+) -> ProjectFolderOpenResponse:
+    """Open the backend-resolved local official project folder."""
+    try:
+        return _open_response(service.open_local_project_folder(project_id))
+    except PublicFolderWorkflowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PublicFolderWorkflowError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.post("/preview", response_model=FolderPlanResponse)
@@ -140,6 +171,20 @@ def _plan_response(plan: FolderPlan) -> FolderPlanResponse:
         project_folder_path=str(plan.project_folder_path),
         conflict=plan.conflict,
         items=[_item_response(item) for item in plan.items],
+    )
+
+
+def _open_response(result: ProjectFolderOpenResult) -> ProjectFolderOpenResponse:
+    """Convert an open-folder result to API response DTO."""
+    return ProjectFolderOpenResponse(
+        project_id=result.project_id,
+        status=result.status,
+        message=result.message,
+        local_official_folder_path=(
+            str(result.local_official_folder_path)
+            if result.local_official_folder_path is not None
+            else None
+        ),
     )
 
 

@@ -22,6 +22,7 @@ export type ProjectFolderTaskIconName = "folder" | "refresh" | "package" | "copy
 
 export type ProjectFolderTaskActionTarget =
   | "folder"
+  | "project_folder_open"
   | "request_material"
   | "fee"
   | "required_forms_generate"
@@ -98,26 +99,26 @@ export function deriveProjectFolderTasks(
 ): ProjectFolderTaskRow[] {
   const basicInformationBlocker = findBasicInformationRequiredFormsBlocker(input);
   const contextBlocker = selectContextBlocker(input);
+  const localProjectFolderPath =
+    input.publicFolderWorkflowContext?.local_official_folder_path?.trim() ?? "";
+  const projectFolderOpenAvailable = Boolean(localProjectFolderPath);
   return [
     {
       key: "project_folder",
       title: "Project folder",
       iconName: "folder",
       statusLabel: "Open",
-      status: "neutral",
+      status: projectFolderOpenAvailable ? "neutral" : "blocked",
       summary: "Folder access.",
-      context: input.folderReady
-        ? "Open is not connected yet."
-        : "Folder setup is not available yet.",
+      context: projectFolderOpenAvailable
+        ? "Local folder available."
+        : "Project folder is not available yet.",
       actionLabel: "Open",
-      actionTarget: null,
-      blockers: [
-        input.folderReady
-          ? "Project folder open is not connected yet."
-          : "Project folder is not available yet.",
-        ...(basicInformationBlocker ? [basicInformationBlocker] : []),
-      ],
-      warnings: [],
+      actionTarget: projectFolderOpenAvailable ? "project_folder_open" : null,
+      blockers: projectFolderOpenAvailable
+        ? []
+        : ["Project folder is not available yet."],
+      warnings: basicInformationBlocker ? [basicInformationBlocker] : [],
     },
     deriveWorkflowTask(input, contextBlocker, "sync"),
     deriveWorkflowTask(input, contextBlocker, "submit"),
@@ -139,7 +140,9 @@ export function selectProjectFolderOneClickBlocker(
     return null;
   }
   for (const task of tasks) {
-    const blocker = task.blockers.find(isBasicInformationRequiredFormsBlocker);
+    const blocker = [...task.blockers, ...task.warnings].find(
+      isBasicInformationRequiredFormsBlocker
+    );
     if (blocker) {
       return blocker;
     }
