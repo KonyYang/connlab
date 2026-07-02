@@ -37,17 +37,6 @@ export function NewProjectSetupConfirmationPanel({
       </div>
 
       <label className="new-project-setup-field">
-        <span>Test Item*</span>
-        <input
-          className={missingKeys.has("test_item") ? "setup-field-missing" : ""}
-          disabled={disabled}
-          type="text"
-          value={values.testItem}
-          onChange={(event) => update({ testItem: event.target.value })}
-        />
-      </label>
-
-      <label className="new-project-setup-field">
         <span>Sample Description*</span>
         <input
           className={missingKeys.has("sample_description") ? "setup-field-missing" : ""}
@@ -55,6 +44,17 @@ export function NewProjectSetupConfirmationPanel({
           type="text"
           value={values.sampleDescription}
           onChange={(event) => update({ sampleDescription: event.target.value })}
+        />
+      </label>
+
+      <label className="new-project-setup-field">
+        <span>Test Item*</span>
+        <input
+          className={missingKeys.has("test_item") ? "setup-field-missing" : ""}
+          disabled={disabled}
+          type="text"
+          value={values.testItem}
+          onChange={(event) => update({ testItem: event.target.value })}
         />
       </label>
 

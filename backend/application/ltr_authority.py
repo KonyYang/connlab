@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
 
+from backend.application.ltr_duplicate_resolution_service import DuplicateResolutionCommand
 from backend.domain import LtrRecord
 
 
@@ -28,6 +29,8 @@ class CommitLtrAuthorityCommand:
     requested_by: str | None = None
     requested_date: date | None = None
     operator_note: str | None = None
+    current_case_id: str | None = None
+    duplicate_resolution: DuplicateResolutionCommand | None = None
 
 
 @dataclass(frozen=True, slots=True)

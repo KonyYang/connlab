@@ -14,6 +14,7 @@ from backend.application.ltr_registration_preview_service import (
     LtrRegistrationPreviewService,
     PreviewLtrRegistrationCommand,
 )
+from backend.application.ltr_duplicate_resolution_service import DuplicateResolutionCommand
 from backend.application.ltr_service import (
     LtrService,
     RegisterLtrCommand,
@@ -38,6 +39,8 @@ class CommitLocalLtrCommand:
     requested_by: str | None = None
     requested_date: date | None = None
     operator_note: str | None = None
+    current_case_id: str | None = None
+    duplicate_resolution: DuplicateResolutionCommand | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +121,8 @@ class LtrLocalCommitService:
                 requested_by=command.requested_by,
                 requested_date=command.requested_date,
                 notes=_audit_notes(preview, command.operator_note),
+                current_case_id=command.current_case_id,
+                duplicate_resolution=command.duplicate_resolution,
             ),
         )
         return LtrLocalCommitResult(ltr=ltr, preview=preview)

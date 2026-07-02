@@ -17,6 +17,10 @@ from backend.infrastructure.storage.repositories.frozen_field_revision_request i
     FrozenFieldRevisionRequestRepository,
 )
 from backend.infrastructure.storage.repositories.lookup_options import LookupOptionRepository
+from backend.infrastructure.storage.repositories.ltr_duplicate_resolution import (
+    LtrAssociationEventRepository,
+    LtrDuplicateResolutionTokenRepository,
+)
 from backend.infrastructure.storage.repositories.precheck import PrecheckResultRepository
 from backend.infrastructure.storage.repositories.project_cleanup import (
     ProjectCleanupAuditRecordRepository,
@@ -86,6 +90,8 @@ __all__ = [
     "IntakeDraftRepository",
     "IntakePackageRepository",
     "LtrRecordRepository",
+    "LtrAssociationEventRepository",
+    "LtrDuplicateResolutionTokenRepository",
     "LookupOptionRepository",
     "MatrixFeePendingRebaseRepository",
     "PrecheckResultRepository",

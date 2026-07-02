@@ -64,6 +64,7 @@ def init_db(engine: Engine) -> None:
     _migrate_source_matrix_row_detail_columns(engine)
     _migrate_project_basic_information_records_table(engine)
     _migrate_project_lifecycle_columns(engine)
+    _migrate_ltr_duplicate_resolution_tables(engine)
 
 
 def _migrate_project_no_optional(engine: Engine) -> None:
@@ -779,4 +780,188 @@ def _migrate_project_lifecycle_columns(engine: Engine) -> None:
                     OR closure_type = '')
                 AND (close_reason_category IS NULL OR close_reason_category = '')
             """
+        )
+
+
+def _migrate_ltr_duplicate_resolution_tables(engine: Engine) -> None:
+    """Add local LTR duplicate-resolution owner, token, and audit storage."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "ltr_records" in table_names:
+            columns = {
+                row[1]
+                for row in connection.exec_driver_sql("PRAGMA table_info(ltr_records)").all()
+            }
+            needs_rebuild = (
+                "is_current_owner" not in columns
+                or _has_single_column_unique_index(connection, "ltr_records", "ltr_number")
+            )
+            if needs_rebuild:
+                connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+                try:
+                    connection.exec_driver_sql(
+                        """
+                        CREATE TABLE ltr_records_new (
+                            ltr_id VARCHAR(64) NOT NULL,
+                            project_id VARCHAR(64) NOT NULL,
+                            ltr_number VARCHAR(128) NOT NULL,
+                            status VARCHAR(64) NOT NULL,
+                            registered_on DATE,
+                            requested_by VARCHAR(255),
+                            requested_date DATE,
+                            notes TEXT,
+                            is_current_owner BOOLEAN NOT NULL DEFAULT 1,
+                            superseded_at VARCHAR(64),
+                            superseded_by_ltr_id VARCHAR(64),
+                            superseded_reason TEXT,
+                            owner_version INTEGER NOT NULL DEFAULT 1,
+                            PRIMARY KEY (ltr_id),
+                            FOREIGN KEY(project_id) REFERENCES projects(project_id)
+                        )
+                        """
+                    )
+                    existing_columns = columns
+                    select_values = [
+                        "ltr_id",
+                        "project_id",
+                        "ltr_number",
+                        "status",
+                        "registered_on",
+                        "requested_by",
+                        "requested_date",
+                        "notes",
+                        (
+                            "is_current_owner"
+                            if "is_current_owner" in existing_columns
+                            else "CASE WHEN status = 'registered' THEN 1 ELSE 0 END"
+                        ),
+                        (
+                            "superseded_at"
+                            if "superseded_at" in existing_columns
+                            else "NULL"
+                        ),
+                        (
+                            "superseded_by_ltr_id"
+                            if "superseded_by_ltr_id" in existing_columns
+                            else "NULL"
+                        ),
+                        (
+                            "superseded_reason"
+                            if "superseded_reason" in existing_columns
+                            else "NULL"
+                        ),
+                        (
+                            "owner_version"
+                            if "owner_version" in existing_columns
+                            else "1"
+                        ),
+                    ]
+                    connection.exec_driver_sql(
+                        """
+                        INSERT INTO ltr_records_new (
+                            ltr_id,
+                            project_id,
+                            ltr_number,
+                            status,
+                            registered_on,
+                            requested_by,
+                            requested_date,
+                            notes,
+                            is_current_owner,
+                            superseded_at,
+                            superseded_by_ltr_id,
+                            superseded_reason,
+                            owner_version
+                        )
+                        SELECT
+                        """
+                        + ",\n".join(select_values)
+                        + "\nFROM ltr_records"
+                    )
+                    connection.exec_driver_sql("DROP TABLE ltr_records")
+                    connection.exec_driver_sql("ALTER TABLE ltr_records_new RENAME TO ltr_records")
+                finally:
+                    connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+            else:
+                column_defs = {
+                    "is_current_owner": "BOOLEAN NOT NULL DEFAULT 1",
+                    "superseded_at": "VARCHAR(64)",
+                    "superseded_by_ltr_id": "VARCHAR(64)",
+                    "superseded_reason": "TEXT",
+                    "owner_version": "INTEGER NOT NULL DEFAULT 1",
+                }
+                for column, definition in column_defs.items():
+                    if column in columns:
+                        continue
+                    connection.exec_driver_sql(
+                        f"ALTER TABLE ltr_records ADD COLUMN {column} {definition}"
+                    )
+
+            connection.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_ltr_records_project_id "
+                "ON ltr_records(project_id)"
+            )
+            connection.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_ltr_records_ltr_number "
+                "ON ltr_records(ltr_number)"
+            )
+            connection.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_ltr_records_current_owner_ltr_number "
+                "ON ltr_records(ltr_number) "
+                "WHERE status = 'registered' AND is_current_owner = 1"
+            )
+
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE IF NOT EXISTS ltr_duplicate_resolution_tokens (
+                token_id VARCHAR(64) NOT NULL,
+                ltr_number VARCHAR(128) NOT NULL,
+                existing_ltr_id VARCHAR(64) NOT NULL,
+                existing_project_id VARCHAR(64) NOT NULL,
+                current_case_id VARCHAR(64) NOT NULL,
+                current_project_id VARCHAR(64) NOT NULL,
+                conflict_fingerprint VARCHAR(128) NOT NULL,
+                workbook_fingerprint VARCHAR(128),
+                expires_at VARCHAR(64) NOT NULL,
+                used_at VARCHAR(64),
+                created_at VARCHAR(64) NOT NULL,
+                created_by VARCHAR(255),
+                metadata_json TEXT,
+                PRIMARY KEY (token_id)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_ltr_duplicate_resolution_tokens_ltr_number "
+            "ON ltr_duplicate_resolution_tokens(ltr_number)"
+        )
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE IF NOT EXISTS ltr_association_events (
+                event_id VARCHAR(64) NOT NULL,
+                ltr_number VARCHAR(128) NOT NULL,
+                event_type VARCHAR(128) NOT NULL,
+                old_ltr_id VARCHAR(64),
+                old_project_id VARCHAR(64),
+                new_ltr_id VARCHAR(64),
+                new_project_id VARCHAR(64),
+                operator VARCHAR(255),
+                reason TEXT NOT NULL,
+                token_id VARCHAR(64),
+                created_at VARCHAR(64) NOT NULL,
+                metadata_json TEXT,
+                PRIMARY KEY (event_id)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_ltr_association_events_ltr_number "
+            "ON ltr_association_events(ltr_number)"
         )

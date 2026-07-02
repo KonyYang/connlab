@@ -221,6 +221,48 @@ class LtrRecord:
     requested_by: str | None = None
     requested_date: date | None = None
     notes: str | None = None
+    is_current_owner: bool = True
+    superseded_at: str | None = None
+    superseded_by_ltr_id: str | None = None
+    superseded_reason: str | None = None
+    owner_version: int = 1
+
+
+@dataclass(frozen=True, slots=True)
+class LtrDuplicateResolutionToken:
+    """One short-lived token for confirming a local LTR duplicate association."""
+
+    token_id: str
+    ltr_number: str
+    existing_ltr_id: str
+    existing_project_id: str
+    current_case_id: str
+    current_project_id: str
+    conflict_fingerprint: str
+    expires_at: str
+    created_at: str
+    created_by: str | None = None
+    workbook_fingerprint: str | None = None
+    used_at: str | None = None
+    metadata_json: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LtrAssociationEvent:
+    """Audited local LTR ownership association event."""
+
+    event_id: str
+    ltr_number: str
+    event_type: str
+    old_ltr_id: str | None
+    old_project_id: str | None
+    new_ltr_id: str | None
+    new_project_id: str | None
+    operator: str | None
+    reason: str
+    token_id: str | None
+    created_at: str
+    metadata_json: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import Depends
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import (
@@ -16,6 +17,10 @@ from backend.api.dependencies import (
 )
 from backend.api.main import app
 from backend.application.ltr_authority import LtrAuthorityCommitResult
+from backend.application.ltr_duplicate_resolution_service import (
+    LocalLtrDuplicateResolutionService,
+)
+from backend.application.ltr_service import LtrService, RegisterLtrCommand
 from backend.application.ltr_workbook_write_commit_service import (
     LtrWorkbookWriteCommitError,
 )
@@ -41,6 +46,8 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
+    LtrAssociationEventRepository,
+    LtrDuplicateResolutionTokenRepository,
     LtrRecordRepository,
     ProjectFolderRecordRepository,
     ProjectRepository,
@@ -178,8 +185,10 @@ def test_complete_new_project_rejects_duplicate_specified_ltr(tmp_path: Path) ->
         )
 
         assert first.status_code == 201
-        assert duplicate.status_code == 400
-        assert "already exists" in duplicate.json()["detail"]
+        assert duplicate.status_code == 409
+        detail = duplicate.json()["detail"]
+        assert detail["code"] == "LOCAL_LTR_DUPLICATE"
+        assert detail["ltr_number"] == "DL-2026-05-007"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -517,6 +526,210 @@ def test_complete_new_project_returns_409_when_local_ltr_unique_conflicts(
         engine.dispose()
 
 
+def test_complete_new_project_returns_structured_local_ltr_duplicate_conflict(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = override_ltr_commit_service
+    client = TestClient(app)
+
+    try:
+        conflict_case_id = _seed_intake_case(session_factory, tmp_path, suffix="STRUCT")
+        existing_project_id = uuid4().hex
+        with session_factory() as session:
+            ProjectRepository(session).create(
+                Project(
+                    project_id=existing_project_id,
+                    project_no="OLD-PROJECT",
+                    product_name="Existing Connector",
+                    requestor="Alice",
+                    status=ProjectStatus.LTR_REGISTERED,
+                    business_unit="Power Solutions",
+                )
+            )
+            LtrRecordRepository(session).create(
+                LtrRecord(
+                    ltr_id="LTR-LOCAL-DUP",
+                    project_id=existing_project_id,
+                    ltr_number="DL-2026-05-777",
+                    status=LtrStatus.REGISTERED,
+                    requested_by="Alice",
+                    requested_date=None,
+                    notes="baseline",
+                )
+            )
+            session.commit()
+
+        response = client.post(
+            f"/api/intake-cases/{conflict_case_id}/complete-new-project",
+            json={
+                **_completion_payload("specified"),
+                "specified_ltr_number": "DL-2026-05-777",
+            },
+        )
+
+        assert response.status_code == 409
+        detail = response.json()["detail"]
+        assert detail["code"] == "LOCAL_LTR_DUPLICATE"
+        assert detail["ltr_number"] == "DL-2026-05-777"
+        assert detail["existing"]["ltr_id"] == "LTR-LOCAL-DUP"
+        assert detail["existing"]["project_id"] == existing_project_id
+        assert detail["existing"]["display_project_id"] == "OLD-PROJECT"
+        assert detail["resolution"]["requires_second_confirmation"] is True
+        assert "replace_local_association" in detail["resolution"]["allowed_actions"]
+        assert detail["resolution"]["token"]
+
+        with session_factory() as session:
+            assert len(LtrRecordRepository(session).list_by_project(existing_project_id)) == 1
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    shared_state = _FakeWorkbookNumberState()
+
+    def override_ltr_commit_service(
+        session: Session = Depends(get_session),
+    ) -> _FakeWorkbookCommitService:
+        return _FakeWorkbookCommitService(session, shared_state)
+
+    app.dependency_overrides[get_ltr_authority_service] = override_ltr_commit_service
+    client = TestClient(app)
+
+    try:
+        conflict_case_id = _seed_intake_case(session_factory, tmp_path, suffix="CONFIRM")
+        existing_project_id = uuid4().hex
+        with session_factory() as session:
+            ProjectRepository(session).create(
+                Project(
+                    project_id=existing_project_id,
+                    project_no="OLD-PROJECT",
+                    product_name="Existing Connector",
+                    requestor="Alice",
+                    status=ProjectStatus.LTR_REGISTERED,
+                    business_unit="Power Solutions",
+                )
+            )
+            LtrRecordRepository(session).create(
+                LtrRecord(
+                    ltr_id="LTR-OLD-OWNER",
+                    project_id=existing_project_id,
+                    ltr_number="DL-2026-05-777",
+                    status=LtrStatus.REGISTERED,
+                    requested_by="Alice",
+                    requested_date=None,
+                    notes="baseline",
+                )
+            )
+            session.commit()
+
+        conflict = client.post(
+            f"/api/intake-cases/{conflict_case_id}/complete-new-project",
+            json={
+                **_completion_payload("specified"),
+                "specified_ltr_number": "DL-2026-05-777",
+            },
+        )
+        token = conflict.json()["detail"]["resolution"]["token"]
+
+        confirmed = client.post(
+            f"/api/intake-cases/{conflict_case_id}/complete-new-project",
+            json={
+                **_completion_payload("specified"),
+                "specified_ltr_number": "DL-2026-05-777",
+                "duplicate_resolution": {
+                    "action": "replace_local_association",
+                    "token": token,
+                    "acknowledged": True,
+                    "reason": "Operator confirmed current project should own this local LTR.",
+                },
+            },
+        )
+
+        assert confirmed.status_code == 201, confirmed.json()
+        payload = confirmed.json()
+        assert payload["ltr_number"] == "DL-2026-05-777"
+
+        with session_factory() as session:
+            rows = LtrRecordRepository(session).search("DL-2026-05-777")
+            assert len(rows) == 2
+            old = next(row for row in rows if row.ltr_id == "LTR-OLD-OWNER")
+            new = next(row for row in rows if row.ltr_id != "LTR-OLD-OWNER")
+            assert old.is_current_owner is False
+            assert old.superseded_by_ltr_id == new.ltr_id
+            assert new.is_current_owner is True
+            audits = session.execute(
+                text(
+                    "SELECT old_ltr_id, new_ltr_id, ltr_number, event_type "
+                    "FROM ltr_association_events"
+                )
+            ).all()
+            assert audits == [
+                (
+                    "LTR-OLD-OWNER",
+                    new.ltr_id,
+                    "DL-2026-05-777",
+                    "local_ltr_duplicate_override",
+                )
+            ]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_complete_new_project_rejects_invalid_lab_performing_tests(tmp_path: Path) -> None:
     """Completion rejects unsupported lab-performing-tests values."""
     settings = Settings(
@@ -702,21 +915,29 @@ class _FakeWorkbookCommitService:
             )
         self._state.numbers.append(number)
         row_number = len(self._state.numbers) + 1
-        ltr = LtrRecord(
-            ltr_id=f"LTR-{project_id}",
-            project_id=project_id,
-            ltr_number=number,
-            status=LtrStatus.REGISTERED,
-            requested_by=command.requested_by,
-            requested_date=command.requested_date,
-            notes=command.operator_note,
-        )
         projects = ProjectRepository(self._session)
         ltrs = LtrRecordRepository(self._session)
-        project = projects.get(project_id)
-        assert project is not None
-        ltrs.create(ltr)
-        projects.update(project.with_status(ProjectStatus.LTR_REGISTERED))
+        duplicate_resolution = LocalLtrDuplicateResolutionService(
+            ltr_store=ltrs,
+            project_store=projects,
+            token_store=LtrDuplicateResolutionTokenRepository(self._session),
+            event_store=LtrAssociationEventRepository(self._session),
+        )
+        ltr = LtrService(
+            project_repository=projects,
+            ltr_repository=ltrs,
+            duplicate_resolution_service=duplicate_resolution,
+        ).register_ltr(
+            project_id,
+            RegisterLtrCommand(
+                ltr_number=number,
+                requested_by=command.requested_by,
+                requested_date=command.requested_date,
+                notes=command.operator_note,
+                current_case_id=command.current_case_id,
+                duplicate_resolution=command.duplicate_resolution,
+            ),
+        )
         return LtrAuthorityCommitResult(
             ltr=ltr,
             workbook_path="D:/simulated/LTR_number.xlsx",

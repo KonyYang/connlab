@@ -17,6 +17,10 @@ from backend.application.ltr_authority import (
     LtrAuthorityCommitResult,
     LtrAuthorityPort,
 )
+from backend.application.ltr_duplicate_resolution_service import (
+    DuplicateResolutionCommand,
+    LocalLtrDuplicateResolutionService,
+)
 from backend.application.new_project_setup_policy import normalize_lab_performing_tests
 from backend.domain import ApplicationForm, IntakeCase, LtrRecord, LtrStatus, Project, ProjectStatus
 from backend.modules.ltr import LtrNumberError, parse_ltr_number
@@ -52,6 +56,7 @@ class CompleteNewProjectCommand:
     test_type_in_sheet: str | None = None
     project_leader: str | None = None
     lab_performing_tests: str | None = None
+    duplicate_resolution: DuplicateResolutionCommand | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +127,7 @@ class NewProjectCompletionService:
         application_form_store: ApplicationFormStore,
         confirmation_service: IntakeConfirmationService,
         ltr_commit_service: LtrAuthorityPort,
+        duplicate_resolution_service: LocalLtrDuplicateResolutionService | None = None,
     ) -> None:
         self._intake_cases = intake_case_store
         self._projects = project_store
@@ -129,6 +135,7 @@ class NewProjectCompletionService:
         self._forms = application_form_store
         self._confirmation = confirmation_service
         self._ltr_commit = ltr_commit_service
+        self._duplicates = duplicate_resolution_service
 
     def complete(self, command: CompleteNewProjectCommand) -> NewProjectCompletionResult:
         """Confirm intake data and apply an LTR without generating folders."""
@@ -185,12 +192,20 @@ class NewProjectCompletionService:
             return ExistingLtrCommitResult(active_ltrs[0])
 
         plan_date = command.plan_date or date.today()
+        number_input = self._resolve_ltr_input(command)
+        if number_input and self._duplicates is not None:
+            self._duplicates.ensure_no_conflict_or_valid_confirmation(
+                ltr_number=number_input,
+                current_project=project,
+                current_case_id=command.case_id,
+                resolution=command.duplicate_resolution,
+            )
         return self._ltr_commit.commit_project(
             project.project_id,
             CommitLtrAuthorityCommand(
                 plan_date=plan_date,
                 operator_confirmed=command.operator_confirmed,
-                number_input=self._resolve_ltr_input(command),
+                number_input=number_input,
                 test_item=_text(command.test_item) or "",
                 sample_description=_text(command.sample_description) or "",
                 location=_text(command.location) or "",
@@ -199,6 +214,8 @@ class NewProjectCompletionService:
                 requested_by=project.requestor,
                 requested_date=plan_date,
                 operator_note=_operator_note(command),
+                current_case_id=command.case_id,
+                duplicate_resolution=command.duplicate_resolution,
             ),
         )
 

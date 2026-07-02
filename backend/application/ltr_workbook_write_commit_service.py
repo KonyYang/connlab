@@ -10,12 +10,16 @@ from pathlib import Path
 from typing import Protocol
 
 from backend.application.ltr_service import LtrService, RegisterLtrCommand
+from backend.application.ltr_duplicate_resolution_service import (
+    DuplicateResolutionCommand,
+    LocalLtrDuplicateResolutionService,
+)
 from backend.application.ltr_workbook_write_preview_service import (
     LtrWorkbookWritePreviewError,
     LtrWorkbookWritePreviewService,
     PreviewLtrWorkbookWriteCommand,
 )
-from backend.domain import LtrRecord, LtrStatus
+from backend.domain import LtrRecord, LtrStatus, Project
 from backend.infrastructure.office import (
     LtrWorkbookDropdownEnsureResult,
     LtrWorkbookExistingRow,
@@ -56,6 +60,13 @@ class LtrRecordStore(Protocol):
         """Return local LTR records for one project."""
 
 
+class ProjectStore(Protocol):
+    """Project lookup behavior required for duplicate confirmation."""
+
+    def get(self, project_id: str) -> Project | None:
+        """Return one project by ID."""
+
+
 @dataclass(frozen=True, slots=True)
 class CommitLtrWorkbookWriteCommand:
     """Input command for a confirmed external workbook write commit."""
@@ -73,6 +84,8 @@ class CommitLtrWorkbookWriteCommand:
     requested_by: str | None = None
     requested_date: date | None = None
     operator_note: str | None = None
+    current_case_id: str | None = None
+    duplicate_resolution: DuplicateResolutionCommand | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +130,8 @@ class LtrWorkbookWriteCommitService:
         transaction_gateway: LtrWorkbookTransactionGatewayPort | LtrWorkbookTransactionGateway,
         ltr_service: LtrServicePort | LtrService,
         ltr_store: LtrRecordStore,
+        project_store: ProjectStore | None = None,
+        duplicate_resolution_service: LocalLtrDuplicateResolutionService | None = None,
         year_sheet_bootstrap_policy: LtrWorkbookYearSheetBootstrapPolicy = (
             LtrWorkbookYearSheetBootstrapPolicy()
         ),
@@ -126,6 +141,8 @@ class LtrWorkbookWriteCommitService:
         self._transaction = transaction_gateway
         self._ltr_service = ltr_service
         self._ltr_store = ltr_store
+        self._projects = project_store
+        self._duplicates = duplicate_resolution_service
         self._bootstrap_policy = year_sheet_bootstrap_policy
 
     def commit_project(
@@ -145,6 +162,18 @@ class LtrWorkbookWriteCommitService:
                 sheet_names,
                 self._bootstrap_policy,
             )
+            if self._duplicates is not None:
+                project = self._projects.get(project_id) if self._projects is not None else None
+                if project is None:
+                    raise LtrWorkbookWriteCommitError(
+                        "Project not found for local LTR duplicate confirmation."
+                    )
+                self._duplicates.ensure_no_conflict_or_valid_confirmation(
+                    ltr_number=decision.ltr_number,
+                    current_project=project,
+                    current_case_id=command.current_case_id or project_id,
+                    resolution=command.duplicate_resolution,
+                )
             try:
                 preview = self._preview.preview_project(
                     project_id,
@@ -202,6 +231,8 @@ class LtrWorkbookWriteCommitService:
                 requested_by=command.requested_by,
                 requested_date=command.requested_date or command.plan_date,
                 notes=_audit_notes(command, decision, pointer, backup_path, dropdown_result),
+                current_case_id=command.current_case_id,
+                duplicate_resolution=command.duplicate_resolution,
             ),
         )
         return LtrWorkbookWriteCommitResult(

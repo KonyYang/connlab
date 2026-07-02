@@ -97,6 +97,21 @@ class IntakeCaseReviewService:
     """Loads unified email/manual intake case review data."""
 
     FROZEN_REASON = "LTR registered. Base application fields require revise/exception handling."
+    _default_test_type_in_sheet = "Partial Qualification"
+    _test_type_in_sheet_options = (
+        "Failure Analysis",
+        "Partial Qualification",
+        "Solderability",
+        "Environmental",
+        "Qualification",
+        "Mechanical",
+        "Electrical",
+        "Chemical",
+        "Analysis",
+        "Whisker",
+        "Other",
+        "ORT",
+    )
 
     _frozen_field_keys = (
         "form_no",
@@ -405,6 +420,11 @@ class IntakeCaseReviewService:
         draft_fields = self._merged_draft_fields(draft)
         overrides = self._json_object(draft.manual_overrides_json or "{}")
         raw_project_setup = overrides.get("project_setup")
+        project_setup = (
+            raw_project_setup
+            if isinstance(raw_project_setup, dict)
+            else self._default_project_setup(draft_fields)
+        )
         precheck_issues = evaluate_section1_precheck(draft_fields)
         parsed_fields = clear_disallowed_section1_values(draft_fields)
         freeze_state = self._freeze_state(intake_case)
@@ -415,8 +435,57 @@ class IntakeCaseReviewService:
             parsed_fields=parsed_fields,
             missing_required_fields=blocking_issue_fields(precheck_issues),
             precheck_issues=precheck_issues,
-            project_setup=raw_project_setup if isinstance(raw_project_setup, dict) else {},
+            project_setup=project_setup,
             base_editing_frozen=freeze_state,
             frozen_field_keys=self._frozen_field_keys if freeze_state else (),
             frozen_reason=self.FROZEN_REASON if freeze_state else None,
         )
+
+    def _default_project_setup(self, draft_fields: dict[str, Any]) -> dict[str, str]:
+        setup: dict[str, str] = {}
+        sample_description = self._first_sample_product_name(draft_fields.get("samples"))
+        test_item = self._first_requested_testing_cell(
+            draft_fields.get("requested_testing_rows")
+        )
+        test_type_in_sheet = self._default_test_type_in_sheet_value(
+            draft_fields.get("test_type"),
+            test_item,
+        )
+        if sample_description is not None:
+            setup["sample_description"] = sample_description
+        if test_item is not None:
+            setup["test_item"] = test_item
+        setup["test_type_in_sheet"] = test_type_in_sheet
+        return setup
+
+    def _first_sample_product_name(self, samples: object) -> str | None:
+        if not isinstance(samples, list) or not samples:
+            return None
+        for sample in samples:
+            if not isinstance(sample, dict):
+                continue
+            text = self._text(sample.get("product_name"))
+            if text is not None:
+                return text
+        return None
+
+    def _first_requested_testing_cell(self, rows: object) -> str | None:
+        if not isinstance(rows, list) or not rows:
+            return None
+        first_row = rows[0]
+        if not isinstance(first_row, dict):
+            return None
+        return self._text(first_row.get("test_to_be_performed"))
+
+    def _default_test_type_in_sheet_value(
+        self,
+        application_test_type: object,
+        test_item: str | None,
+    ) -> str:
+        if self._text(application_test_type) == "Lab/Failure Analysis":
+            return "Analysis"
+        normalized_test_item = (test_item or "").casefold()
+        for option in self._test_type_in_sheet_options:
+            if option.casefold() in normalized_test_item:
+                return option
+        return self._default_test_type_in_sheet

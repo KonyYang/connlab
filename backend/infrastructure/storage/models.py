@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.infrastructure.storage.database import Base
@@ -154,12 +154,69 @@ class LtrRecordModel(Base):
 
     ltr_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
-    ltr_number: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    ltr_number: Mapped[str] = mapped_column(String(128), nullable=False)
     status: Mapped[str] = mapped_column(String(64), nullable=False)
     registered_on: Mapped[date | None] = mapped_column(Date)
     requested_by: Mapped[str | None] = mapped_column(String(255))
     requested_date: Mapped[date | None] = mapped_column(Date)
     notes: Mapped[str | None] = mapped_column(Text)
+    is_current_owner: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    superseded_at: Mapped[str | None] = mapped_column(String(64))
+    superseded_by_ltr_id: Mapped[str | None] = mapped_column(String(64))
+    superseded_reason: Mapped[str | None] = mapped_column(Text)
+    owner_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+Index(
+    "ux_ltr_records_current_owner_ltr_number",
+    LtrRecordModel.ltr_number,
+    unique=True,
+    sqlite_where=(
+        (LtrRecordModel.status == "registered")
+        & (LtrRecordModel.is_current_owner == True)  # noqa: E712
+    ),
+)
+Index("ix_ltr_records_project_id", LtrRecordModel.project_id)
+Index("ix_ltr_records_ltr_number", LtrRecordModel.ltr_number)
+
+
+class LtrDuplicateResolutionTokenModel(Base):
+    """Database row for one local LTR duplicate resolution token."""
+
+    __tablename__ = "ltr_duplicate_resolution_tokens"
+
+    token_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    ltr_number: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    existing_ltr_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    existing_project_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_case_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_project_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    conflict_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    workbook_fingerprint: Mapped[str | None] = mapped_column(String(128))
+    expires_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    used_at: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_by: Mapped[str | None] = mapped_column(String(255))
+    metadata_json: Mapped[str | None] = mapped_column(Text)
+
+
+class LtrAssociationEventModel(Base):
+    """Database row for local LTR ownership association audit."""
+
+    __tablename__ = "ltr_association_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    ltr_number: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    old_ltr_id: Mapped[str | None] = mapped_column(String(64))
+    old_project_id: Mapped[str | None] = mapped_column(String(64))
+    new_ltr_id: Mapped[str | None] = mapped_column(String(64))
+    new_project_id: Mapped[str | None] = mapped_column(String(64))
+    operator: Mapped[str | None] = mapped_column(String(255))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    token_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[str | None] = mapped_column(Text)
 
 
 class ProjectCleanupAuditRecordModel(Base):

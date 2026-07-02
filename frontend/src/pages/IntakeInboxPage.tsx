@@ -35,6 +35,7 @@ import {
   NewProjectCompletionDock,
   isValidSpecifiedLtrInput
 } from "../features/new-project/NewProjectCompletionDock";
+import { LocalLtrDuplicateConflictPanel } from "../features/new-project/LocalLtrDuplicateConflictPanel";
 import { buildNewProjectRequiredState } from "../features/new-project/newProjectRequiredState";
 import {
   NewProjectSetupConfirmationPanel,
@@ -194,7 +195,11 @@ export function IntakeInboxPage({
     complete: completeProject,
     completionError,
     completionLoading,
-    completionResult
+    completionResult,
+    localDuplicateConflict,
+    duplicateConfirming,
+    clearLocalDuplicateConflict,
+    confirmDuplicateResolution
   } = useNewProjectCompletion({
     activeCase,
     resetKey: `${packageImport?.package_id ?? ""}:${selectedAssetId ?? ""}`,
@@ -214,6 +219,10 @@ export function IntakeInboxPage({
     || Boolean(activeCase?.confirmed_project_id)
     || requiredState.missingCount > 0
     || setupMissingKeys.size > 0;
+
+  function openExistingDuplicateProject(projectId: string): void {
+    window.location.assign(`/projects/${encodeURIComponent(projectId)}`);
+  }
 
   useEffect(() => {
     onInteractionLockChange?.(ltrApplyBusy ? ltrApplyBusyReason : null);
@@ -900,6 +909,16 @@ export function IntakeInboxPage({
       </div>
 
       {temporaryError ? <p className="intake-error">{temporaryError}</p> : null}
+
+      {localDuplicateConflict ? (
+        <LocalLtrDuplicateConflictPanel
+          confirming={duplicateConfirming}
+          conflict={localDuplicateConflict}
+          onCancel={clearLocalDuplicateConflict}
+          onConfirm={(resolution) => void confirmDuplicateResolution(resolution)}
+          onOpenExisting={openExistingDuplicateProject}
+        />
+      ) : null}
 
       {packageImport && activeCase != null ? (
         <NewProjectCompletionDock

@@ -41,6 +41,9 @@ from backend.application.intake_confirmation_service import IntakeConfirmationSe
 from backend.application.intake_form_selection_service import IntakeFormSelectionService
 from backend.application.intake_package_query_service import IntakePackageQueryService
 from backend.application.ltr_authority import LtrAuthorityPort
+from backend.application.ltr_duplicate_resolution_service import (
+    LocalLtrDuplicateResolutionService,
+)
 from backend.application.ltr_excel_authority_adapter import (
     ExcelWorkbookLtrAuthorityAdapter,
 )
@@ -293,6 +296,8 @@ from backend.infrastructure.storage.repositories import (
     FileAssetRepository,
     FrozenFieldRevisionRequestRepository,
     LtrRecordRepository,
+    LtrAssociationEventRepository,
+    LtrDuplicateResolutionTokenRepository,
     PrecheckResultRepository,
     ProjectCleanupAuditRecordRepository,
     ProjectBasicInformationRepository,
@@ -353,6 +358,21 @@ def get_session() -> Generator[Session, None, None]:
         except Exception:
             session.rollback()
             raise
+
+
+def _ltr_duplicate_resolution_service(
+    session: Session,
+    *,
+    project_repository: ProjectRepository,
+    ltr_repository: LtrRecordRepository,
+) -> LocalLtrDuplicateResolutionService:
+    """Build the local LTR duplicate resolution service for one request."""
+    return LocalLtrDuplicateResolutionService(
+        ltr_store=ltr_repository,
+        project_store=project_repository,
+        token_store=LtrDuplicateResolutionTokenRepository(session),
+        event_store=LtrAssociationEventRepository(session),
+    )
 
 
 def get_project_service(session: Session = Depends(get_session)) -> ProjectService:
@@ -1564,10 +1584,16 @@ def get_frozen_field_revision_request_service(
 def get_ltr_service(session: Session = Depends(get_session)) -> LtrService:
     """Build an LTR service for API routes."""
     project_repository = ProjectRepository(session)
+    ltr_repository = LtrRecordRepository(session)
     return LtrService(
         project_repository=project_repository,
-        ltr_repository=LtrRecordRepository(session),
+        ltr_repository=ltr_repository,
         lifecycle_guard=ProjectLifecycleService(project_repository),
+        duplicate_resolution_service=_ltr_duplicate_resolution_service(
+            session,
+            project_repository=project_repository,
+            ltr_repository=ltr_repository,
+        ),
     )
 
 
@@ -1632,6 +1658,11 @@ def get_ltr_local_commit_service(
     )
     ltr_repository = LtrRecordRepository(session)
     lifecycle_guard = ProjectLifecycleService(project_repository)
+    duplicate_resolution_service = _ltr_duplicate_resolution_service(
+        session,
+        project_repository=project_repository,
+        ltr_repository=ltr_repository,
+    )
     preview_service = LtrRegistrationPreviewService(
         ltr_repository=ltr_repository,
         readiness_service=readiness_service,
@@ -1643,6 +1674,7 @@ def get_ltr_local_commit_service(
             project_repository=project_repository,
             ltr_repository=ltr_repository,
             lifecycle_guard=lifecycle_guard,
+            duplicate_resolution_service=duplicate_resolution_service,
         ),
     )
 
@@ -1680,6 +1712,11 @@ def get_ltr_workbook_write_commit_service(
     project_repository = ProjectRepository(session)
     ltr_repository = LtrRecordRepository(session)
     lifecycle_guard = ProjectLifecycleService(project_repository)
+    duplicate_resolution_service = _ltr_duplicate_resolution_service(
+        session,
+        project_repository=project_repository,
+        ltr_repository=ltr_repository,
+    )
     preview_service = LtrWorkbookWritePreviewService(
         project_store=project_repository,
         application_form_store=ApplicationFormRepository(session),
@@ -1707,8 +1744,11 @@ def get_ltr_workbook_write_commit_service(
             project_repository=project_repository,
             ltr_repository=ltr_repository,
             lifecycle_guard=lifecycle_guard,
+            duplicate_resolution_service=duplicate_resolution_service,
         ),
         ltr_store=ltr_repository,
+        project_store=project_repository,
+        duplicate_resolution_service=duplicate_resolution_service,
         year_sheet_bootstrap_policy=LtrWorkbookYearSheetBootstrapPolicy(
             allow_system_assisted_create_year_sheet=(
                 settings.ltr_workbook.allow_system_assisted_create_year_sheet
@@ -1793,6 +1833,11 @@ def get_new_project_completion_service(
         application_form_store=ApplicationFormRepository(session),
         confirmation_service=confirmation_service,
         ltr_commit_service=ltr_commit_service,
+        duplicate_resolution_service=_ltr_duplicate_resolution_service(
+            session,
+            project_repository=project_repository,
+            ltr_repository=ltr_repository,
+        ),
     )
 
 

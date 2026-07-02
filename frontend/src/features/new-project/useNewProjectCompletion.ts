@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 
 import {
+  ApiRequestError,
   completeNewProject,
-  type IntakeCaseReviewItem
+  isLocalLtrDuplicateConflictDetail,
+  type CompleteNewProjectDuplicateResolutionInput,
+  type CompleteNewProjectInput,
+  type CompleteNewProject,
+  type IntakeCaseReviewItem,
+  type LocalLtrDuplicateConflictDetail
 } from "../../api/client";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
@@ -17,7 +23,13 @@ export type NewProjectCompletionModel = {
   completionError: string | null;
   completionLoading: boolean;
   completionResult: string | null;
+  localDuplicateConflict: LocalLtrDuplicateConflictDetail | null;
+  duplicateConfirming: boolean;
   complete: () => Promise<void>;
+  clearLocalDuplicateConflict: () => void;
+  confirmDuplicateResolution: (
+    resolution: CompleteNewProjectDuplicateResolutionInput
+  ) => Promise<void>;
 };
 
 export function useNewProjectCompletion({
@@ -29,10 +41,14 @@ export function useNewProjectCompletion({
   const [completionLoading, setCompletionLoading] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [completionResult, setCompletionResult] = useState<string | null>(null);
+  const [localDuplicateConflict, setLocalDuplicateConflict] =
+    useState<LocalLtrDuplicateConflictDetail | null>(null);
+  const [duplicateConfirming, setDuplicateConfirming] = useState(false);
 
   useEffect(() => {
     setCompletionError(null);
     setCompletionResult(null);
+    setLocalDuplicateConflict(null);
   }, [resetKey]);
 
   async function complete(): Promise<void> {
@@ -42,45 +58,100 @@ export function useNewProjectCompletion({
     setCompletionLoading(true);
     setCompletionError(null);
     setCompletionResult(null);
+    setLocalDuplicateConflict(null);
     try {
-      const planDate = new Date().toISOString().slice(0, 10);
-      const result = await completeNewProject(activeCase.case_id, {
-        ltr_mode: setupValues.ltrMode,
-        specified_ltr_number:
-          setupValues.ltrMode === "specified" ? setupValues.specifiedLtrNumber.trim() : null,
-        operator_confirmed: true,
-        plan_date: planDate,
-        test_item: setupValues.testItem,
-        sample_description: setupValues.sampleDescription,
-        test_type_in_sheet: setupValues.testTypeInSheet,
-        project_leader: setupValues.projectLeader,
-        "lab_performing_tests": setupValues.labPerformingTests
-      });
-      storeLastLtrApplyResult({
-        project_id: result.project_id,
-        ltr_number: result.ltr_number,
-        workbook_sheet_name: result.workbook_sheet_name ?? null,
-        workbook_row_number: result.workbook_row_number ?? null,
-        workbook_backup_path: result.workbook_backup_path ?? null,
-        occurred_at: new Date().toISOString()
-      });
-      setCompletionResult(completionResultText(result));
-      onCompleted(result.project_id);
+      await submitCompletion(buildCompletionInput(setupValues));
     } catch (error) {
-      setCompletionError(
-        error instanceof Error ? error.message : "Unable to complete project creation."
-      );
+      handleCompletionError(error);
     } finally {
       setCompletionLoading(false);
     }
   }
 
+  async function confirmDuplicateResolution(
+    resolution: CompleteNewProjectDuplicateResolutionInput
+  ): Promise<void> {
+    if (!activeCase || !localDuplicateConflict) {
+      return;
+    }
+    setDuplicateConfirming(true);
+    setCompletionError(null);
+    try {
+      await submitCompletion({
+        ...buildCompletionInput(setupValues),
+        duplicate_resolution: resolution
+      });
+      setLocalDuplicateConflict(null);
+    } catch (error) {
+      handleCompletionError(error);
+    } finally {
+      setDuplicateConfirming(false);
+    }
+  }
+
+  async function submitCompletion(input: CompleteNewProjectInput): Promise<void> {
+    if (!activeCase) {
+      return;
+    }
+    const result = await completeNewProject(activeCase.case_id, input);
+    storeCompletionResult(result);
+    setCompletionResult(completionResultText(result));
+    onCompleted(result.project_id);
+  }
+
+  function handleCompletionError(error: unknown): void {
+    if (
+      error instanceof ApiRequestError &&
+      isLocalLtrDuplicateConflictDetail(error.detail)
+    ) {
+      setLocalDuplicateConflict(error.detail);
+      setCompletionError(null);
+      return;
+    }
+    setCompletionError(
+      error instanceof Error ? error.message : "Unable to complete project creation."
+    );
+  }
+
   return {
     completionError,
-    completionLoading,
+    completionLoading: completionLoading || duplicateConfirming,
     completionResult,
-    complete
+    localDuplicateConflict,
+    duplicateConfirming,
+    complete,
+    clearLocalDuplicateConflict: () => setLocalDuplicateConflict(null),
+    confirmDuplicateResolution
   };
+}
+
+function buildCompletionInput(
+  setupValues: NewProjectSetupConfirmationValues
+): CompleteNewProjectInput {
+  const planDate = new Date().toISOString().slice(0, 10);
+  return {
+    ltr_mode: setupValues.ltrMode,
+    specified_ltr_number:
+      setupValues.ltrMode === "specified" ? setupValues.specifiedLtrNumber.trim() : null,
+    operator_confirmed: true,
+    plan_date: planDate,
+    test_item: setupValues.testItem,
+    sample_description: setupValues.sampleDescription,
+    test_type_in_sheet: setupValues.testTypeInSheet,
+    project_leader: setupValues.projectLeader,
+    lab_performing_tests: setupValues.labPerformingTests
+  };
+}
+
+function storeCompletionResult(result: CompleteNewProject): void {
+  storeLastLtrApplyResult({
+    project_id: result.project_id,
+    ltr_number: result.ltr_number,
+    workbook_sheet_name: result.workbook_sheet_name ?? null,
+    workbook_row_number: result.workbook_row_number ?? null,
+    workbook_backup_path: result.workbook_backup_path ?? null,
+    occurred_at: new Date().toISOString()
+  });
 }
 
 type LastLtrApplyResult = {

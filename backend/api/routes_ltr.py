@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from backend.application.ltr_local_commit_service import (
@@ -12,6 +13,11 @@ from backend.application.ltr_local_commit_service import (
     LtrLocalCommitError,
     LtrLocalCommitResult,
     LtrLocalCommitService,
+)
+from backend.application.ltr_duplicate_resolution_service import (
+    DuplicateResolutionCommand,
+    LocalLtrDuplicateConflictError,
+    LocalLtrDuplicateTokenError,
 )
 from backend.application.ltr_renumber_preview_service import (
     LtrRenumberPreview,
@@ -67,6 +73,15 @@ from backend.domain import LtrRecord
 router = APIRouter(tags=["ltr"])
 
 
+class DuplicateResolutionRequest(BaseModel):
+    """Second-step confirmation for a local duplicate LTR association."""
+
+    action: str
+    token: str
+    acknowledged: bool
+    reason: str | None = None
+
+
 class LtrRegisterRequest(BaseModel):
     """Request body for LTR registration."""
 
@@ -74,6 +89,7 @@ class LtrRegisterRequest(BaseModel):
     requested_by: str | None = None
     requested_date: date | None = None
     notes: str | None = None
+    duplicate_resolution: DuplicateResolutionRequest | None = None
 
 
 class LtrRecordResponse(BaseModel):
@@ -148,6 +164,7 @@ class LtrLocalCommitRequest(BaseModel):
     requested_by: str | None = None
     requested_date: date | None = None
     operator_note: str | None = None
+    duplicate_resolution: DuplicateResolutionRequest | None = None
 
 
 class LtrLocalCommitResponse(BaseModel):
@@ -233,7 +250,7 @@ def register_ltr(
     project_id: str,
     request: LtrRegisterRequest,
     service: LtrService = Depends(get_ltr_service),
-) -> LtrRecordResponse:
+) -> LtrRecordResponse | JSONResponse:
     """Register an LTR for a project."""
     try:
         return _to_response(
@@ -244,6 +261,10 @@ def register_ltr(
                     requested_by=request.requested_by,
                     requested_date=request.requested_date,
                     notes=request.notes,
+                    current_case_id=project_id,
+                    duplicate_resolution=_duplicate_resolution_command(
+                        request.duplicate_resolution
+                    ),
                 ),
             )
         )
@@ -251,6 +272,16 @@ def register_ltr(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DuplicateActiveLtrError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except LocalLtrDuplicateConflictError as exc:
+        return JSONResponse(status_code=409, content={"detail": exc.detail})
+    except LocalLtrDuplicateTokenError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "LOCAL_LTR_DUPLICATE_TOKEN_STALE",
+                "message": str(exc),
+            },
+        ) from exc
     except (LtrError, ProjectLifecycleError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -331,7 +362,7 @@ def commit_ltr_locally(
     project_id: str,
     request: LtrLocalCommitRequest,
     service: LtrLocalCommitService = Depends(get_ltr_local_commit_service),
-) -> LtrLocalCommitResponse:
+) -> LtrLocalCommitResponse | JSONResponse:
     """Commit an approved LTR preview to local ConnLab records only."""
     try:
         return _local_commit_to_response(
@@ -347,6 +378,10 @@ def commit_ltr_locally(
                     requested_by=request.requested_by,
                     requested_date=request.requested_date,
                     operator_note=request.operator_note,
+                    current_case_id=project_id,
+                    duplicate_resolution=_duplicate_resolution_command(
+                        request.duplicate_resolution
+                    ),
                 ),
             )
         )
@@ -354,6 +389,16 @@ def commit_ltr_locally(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DuplicateActiveLtrError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except LocalLtrDuplicateConflictError as exc:
+        return JSONResponse(status_code=409, content={"detail": exc.detail})
+    except LocalLtrDuplicateTokenError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "LOCAL_LTR_DUPLICATE_TOKEN_STALE",
+                "message": str(exc),
+            },
+        ) from exc
     except (
         LtrLocalCommitError,
         LtrPreviewError,
@@ -491,6 +536,20 @@ def _local_commit_to_response(
     return LtrLocalCommitResponse(
         ltr=_to_response(result.ltr),
         preview=_preview_to_response(result.preview),
+    )
+
+
+def _duplicate_resolution_command(
+    request: DuplicateResolutionRequest | None,
+) -> DuplicateResolutionCommand | None:
+    """Convert an API duplicate resolution payload to an application command."""
+    if request is None:
+        return None
+    return DuplicateResolutionCommand(
+        action=request.action,
+        token=request.token,
+        acknowledged=request.acknowledged,
+        reason=request.reason,
     )
 
 

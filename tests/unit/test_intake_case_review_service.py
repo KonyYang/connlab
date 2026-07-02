@@ -286,6 +286,176 @@ def test_review_service_persists_project_setup_per_draft(tmp_path: Path) -> None
     }
 
 
+def test_review_service_defaults_project_setup_sample_description_from_sample_table(
+    tmp_path: Path,
+) -> None:
+    """New Project setup uses the first Product Name cell as a default."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "samples": [
+                    {
+                        "housing_material": "PA9T",
+                        "product_name": "Two plated busbar samples",
+                        "quantity": "2",
+                    }
+                ],
+            }
+        ),
+    )
+
+    item = service.get_package_review("pkg-1").cases[0]
+
+    assert item.project_setup["sample_description"] == "Two plated busbar samples"
+    assert item.project_setup["test_type_in_sheet"] == "Partial Qualification"
+
+
+def test_review_service_defaults_project_setup_sample_description_skips_blank_product_name(
+    tmp_path: Path,
+) -> None:
+    """Blank Product Name rows do not fall back to other sample columns."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "samples": [
+                    {
+                        "housing_material": "PA9T",
+                        "product_name": "",
+                        "quantity": "2",
+                    },
+                    {
+                        "housing_material": "LCP",
+                        "product_name": "Second row product",
+                        "quantity": "4",
+                    },
+                ],
+            }
+        ),
+    )
+
+    item = service.get_package_review("pkg-1").cases[0]
+
+    assert item.project_setup["sample_description"] == "Second row product"
+
+
+def test_review_service_defaults_project_setup_test_item_from_requested_testing_table(
+    tmp_path: Path,
+) -> None:
+    """New Project setup uses the first requested testing row as a default."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "requested_testing_rows": [
+                    {
+                        "test_to_be_performed": "Contact resistance at low level",
+                        "applicable_specification": "EIA-364-23",
+                    }
+                ],
+            }
+        ),
+    )
+
+    item = service.get_package_review("pkg-1").cases[0]
+
+    assert item.project_setup["test_item"] == "Contact resistance at low level"
+    assert item.project_setup["test_type_in_sheet"] == "Partial Qualification"
+
+
+def test_review_service_defaults_project_setup_test_type_in_sheet_from_failure_analysis(
+    tmp_path: Path,
+) -> None:
+    """Lab/Failure Analysis application type defaults the sheet type to Analysis."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "test_type": "Lab/Failure Analysis",
+                "requested_testing_rows": [
+                    {
+                        "test_to_be_performed": "Unknown diagnostic work",
+                        "applicable_specification": "",
+                    }
+                ],
+            }
+        ),
+    )
+
+    item = service.get_package_review("pkg-1").cases[0]
+
+    assert item.project_setup["test_type_in_sheet"] == "Analysis"
+
+
+def test_review_service_defaults_project_setup_test_type_in_sheet_from_test_item_keyword(
+    tmp_path: Path,
+) -> None:
+    """Requested testing text can select a matching sheet type option."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "requested_testing_rows": [
+                    {
+                        "test_to_be_performed": "Mechanical durability check",
+                        "applicable_specification": "",
+                    }
+                ],
+            }
+        ),
+    )
+
+    item = service.get_package_review("pkg-1").cases[0]
+
+    assert item.project_setup["test_type_in_sheet"] == "Mechanical"
+
+
+def test_review_service_keeps_saved_project_setup_over_defaults(tmp_path: Path) -> None:
+    """Saved New Project setup values are never overwritten by parsed defaults."""
+    service = _service(
+        _package(tmp_path),
+        _asset(tmp_path),
+        _case(),
+        _draft(
+            {
+                **_complete_section1_fields(),
+                "samples": [{"sample_description": "Parsed sample"}],
+                "requested_testing_rows": [
+                    {"test_to_be_performed": "Parsed test item"}
+                ],
+            }
+        ),
+    )
+
+    item = service.update_case_fields(
+        "case-1",
+        {},
+        project_setup={
+            "sample_description": "Manual sample",
+            "test_item": "Manual test item",
+        },
+    )
+
+    assert item.project_setup["sample_description"] == "Manual sample"
+    assert item.project_setup["test_item"] == "Manual test item"
+
+
 def test_review_service_rejects_invalid_lab_performing_tests_setup(
     tmp_path: Path,
 ) -> None:

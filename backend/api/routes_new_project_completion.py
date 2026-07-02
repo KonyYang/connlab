@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
@@ -21,6 +22,11 @@ from backend.application.intake_confirmation_service import (
     IntakeConfirmationNotFoundError,
 )
 from backend.application.ltr_authority import LtrAuthorityCommitError
+from backend.application.ltr_duplicate_resolution_service import (
+    DuplicateResolutionCommand,
+    LocalLtrDuplicateConflictError,
+    LocalLtrDuplicateTokenError,
+)
 from backend.application.ltr_registration_preview_service import LtrPreviewError
 from backend.application.ltr_readiness_service import LtrReadinessError
 from backend.application.ltr_service import DuplicateActiveLtrError, LtrError
@@ -44,6 +50,15 @@ router = APIRouter(tags=["new-project"])
 logger = logging.getLogger(__name__)
 
 
+class DuplicateResolutionRequest(BaseModel):
+    """Second-step confirmation for a local duplicate LTR association."""
+
+    action: str
+    token: str
+    acknowledged: bool
+    reason: str | None = None
+
+
 class CompleteNewProjectRequest(BaseModel):
     """Request body for completing New Project creation."""
 
@@ -57,6 +72,7 @@ class CompleteNewProjectRequest(BaseModel):
     test_type_in_sheet: str | None = None
     project_leader: str | None = None
     lab_performing_tests: str | None = None
+    duplicate_resolution: DuplicateResolutionRequest | None = None
 
 
 class NewProjectCompletionOptionsResponse(BaseModel):
@@ -104,7 +120,7 @@ def complete_new_project(
     case_id: str,
     request: CompleteNewProjectRequest,
     service: NewProjectCompletionService = Depends(get_new_project_completion_service),
-) -> CompleteNewProjectResponse:
+) -> CompleteNewProjectResponse | JSONResponse:
     """Confirm New Project data and apply an LTR before workspace handoff."""
     try:
         return _to_response(
@@ -121,6 +137,9 @@ def complete_new_project(
                     test_type_in_sheet=request.test_type_in_sheet,
                     project_leader=request.project_leader,
                     lab_performing_tests=request.lab_performing_tests,
+                    duplicate_resolution=_duplicate_resolution_command(
+                        request.duplicate_resolution
+                    ),
                 )
             )
         )
@@ -132,6 +151,16 @@ def complete_new_project(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DuplicateActiveLtrError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except LocalLtrDuplicateConflictError as exc:
+        return JSONResponse(status_code=409, content={"detail": exc.detail})
+    except LocalLtrDuplicateTokenError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "LOCAL_LTR_DUPLICATE_TOKEN_STALE",
+                "message": str(exc),
+            },
+        ) from exc
     except IntegrityError as exc:
         raise HTTPException(
             status_code=409,
@@ -168,6 +197,20 @@ def _to_response(result: NewProjectCompletionResult) -> CompleteNewProjectRespon
         workbook_sheet_name=result.workbook_sheet_name,
         workbook_row_number=result.workbook_row_number,
         workbook_backup_path=result.workbook_backup_path,
+    )
+
+
+def _duplicate_resolution_command(
+    request: DuplicateResolutionRequest | None,
+) -> DuplicateResolutionCommand | None:
+    """Convert an API duplicate resolution payload to an application command."""
+    if request is None:
+        return None
+    return DuplicateResolutionCommand(
+        action=request.action,
+        token=request.token,
+        acknowledged=request.acknowledged,
+        reason=request.reason,
     )
 
 

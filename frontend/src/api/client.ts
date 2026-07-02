@@ -1772,6 +1772,46 @@ export type CompleteNewProjectInput = {
   test_type_in_sheet?: string | null;
   project_leader?: string | null;
   lab_performing_tests?: string | null;
+  duplicate_resolution?: CompleteNewProjectDuplicateResolutionInput | null;
+};
+
+export type CompleteNewProjectDuplicateResolutionInput = {
+  action: "replace_local_association";
+  token: string;
+  acknowledged: boolean;
+  reason?: string | null;
+};
+
+export type LocalLtrDuplicateConflictDetail = {
+  code: "LOCAL_LTR_DUPLICATE";
+  message: string;
+  ltr_number: string;
+  existing: {
+    ltr_id: string;
+    project_id: string;
+    display_project_id: string;
+    project_name?: string | null;
+    product_name?: string | null;
+    requester?: string | null;
+    registered_on?: string | null;
+    project_status?: string | null;
+    lifecycle_state?: string | null;
+    has_local_folder?: boolean;
+    has_matrix?: boolean;
+    has_outputs?: boolean;
+  };
+  current: {
+    case_id: string;
+    project_id: string;
+    project_name?: string | null;
+    requester?: string | null;
+  };
+  resolution: {
+    token: string;
+    expires_at: string;
+    allowed_actions: string[];
+    requires_second_confirmation: boolean;
+  };
 };
 
 export type CompleteNewProject = {
@@ -2308,6 +2348,34 @@ export function isProjectLifecycleReadonlyErrorDetail(
     typeof value.message === "string" &&
     Array.isArray(value.allowed_actions) &&
     value.allowed_actions.every((action) => typeof action === "string")
+  );
+}
+
+export function isLocalLtrDuplicateConflictDetail(
+  detail: unknown
+): detail is LocalLtrDuplicateConflictDetail {
+  if (!detail || typeof detail !== "object") {
+    return false;
+  }
+  const value = detail as Record<string, unknown>;
+  const existing = value.existing as Record<string, unknown> | undefined;
+  const current = value.current as Record<string, unknown> | undefined;
+  const resolution = value.resolution as Record<string, unknown> | undefined;
+  return (
+    value.code === "LOCAL_LTR_DUPLICATE" &&
+    typeof value.message === "string" &&
+    typeof value.ltr_number === "string" &&
+    !!existing &&
+    typeof existing.ltr_id === "string" &&
+    typeof existing.project_id === "string" &&
+    typeof existing.display_project_id === "string" &&
+    !!current &&
+    typeof current.case_id === "string" &&
+    typeof current.project_id === "string" &&
+    !!resolution &&
+    typeof resolution.token === "string" &&
+    typeof resolution.expires_at === "string" &&
+    Array.isArray(resolution.allowed_actions)
   );
 }
 

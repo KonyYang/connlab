@@ -65,6 +65,17 @@ class LtrRecordRepository:
         ).all()
         return [_ltr_to_domain(row) for row in rows]
 
+    def find_current_by_ltr_number(self, ltr_number: str) -> LtrRecord | None:
+        """Return the current registered owner for one LTR number."""
+        row = self._session.scalars(
+            select(LtrRecordModel).where(
+                LtrRecordModel.ltr_number == ltr_number,
+                LtrRecordModel.status == LtrStatus.REGISTERED.value,
+                LtrRecordModel.is_current_owner == True,  # noqa: E712
+            )
+        ).first()
+        return _ltr_to_domain(row) if row else None
+
     def update(self, ltr: LtrRecord) -> LtrRecord:
         """Update an existing LTR record."""
         row = self._session.get(LtrRecordModel, ltr.ltr_id)
@@ -77,6 +88,11 @@ class LtrRecordRepository:
         row.requested_by = ltr.requested_by
         row.requested_date = ltr.requested_date
         row.notes = ltr.notes
+        row.is_current_owner = ltr.is_current_owner
+        row.superseded_at = ltr.superseded_at
+        row.superseded_by_ltr_id = ltr.superseded_by_ltr_id
+        row.superseded_reason = ltr.superseded_reason
+        row.owner_version = ltr.owner_version
         self._session.flush()
         return ltr
 
@@ -184,6 +200,11 @@ def _ltr_to_model(ltr: LtrRecord) -> LtrRecordModel:
         requested_by=ltr.requested_by,
         requested_date=ltr.requested_date,
         notes=ltr.notes,
+        is_current_owner=ltr.is_current_owner,
+        superseded_at=ltr.superseded_at,
+        superseded_by_ltr_id=ltr.superseded_by_ltr_id,
+        superseded_reason=ltr.superseded_reason,
+        owner_version=ltr.owner_version,
     )
 
 
@@ -198,6 +219,11 @@ def _ltr_to_domain(row: LtrRecordModel) -> LtrRecord:
         requested_by=row.requested_by,
         requested_date=row.requested_date,
         notes=row.notes,
+        is_current_owner=bool(row.is_current_owner),
+        superseded_at=row.superseded_at,
+        superseded_by_ltr_id=row.superseded_by_ltr_id,
+        superseded_reason=row.superseded_reason,
+        owner_version=row.owner_version,
     )
 
 
