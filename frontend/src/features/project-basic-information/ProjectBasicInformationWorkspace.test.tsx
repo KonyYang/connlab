@@ -62,6 +62,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(screen.queryByText("Project Type *")).toBeNull();
     expect(screen.getByText("Product Description *")).toBeTruthy();
     expect(screen.getByText("Test Item *")).toBeTruthy();
+    expect(screen.getByText("Tests to be Performed *")).toBeTruthy();
     expect(screen.getByText("Applicable Specifications *")).toBeTruthy();
     expect(screen.getByText("Lab Received Samples *")).toBeTruthy();
     expect(screen.getByText("Estimated Completion *")).toBeTruthy();
@@ -207,6 +208,7 @@ describe("ProjectBasicInformationWorkspace", () => {
         condition_of_samples_when_received: "Acceptable",
         finish_test_date: "2026-07-02",
         report_date: "2026-07-02",
+        sample_deposition: "Send Back to Requestor",
         sub_contract: "Yes",
         project_leader: "Even Yang",
       })
@@ -228,6 +230,7 @@ describe("ProjectBasicInformationWorkspace", () => {
           condition_of_samples_when_received: "Acceptable",
           finish_test_date: "2026-07-02",
           report_date: "2026-07-02",
+          sample_deposition: "Send Back to Requestor",
           sub_contract: "Yes",
           project_leader: "Even Yang",
         },
@@ -319,6 +322,93 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(
       within(subContractGroup).getByRole("radio", { name: "Yes" })
     ).toHaveProperty("checked", false);
+  });
+
+  it("defaults Sample deposition from Post-Testing Sample Disposition", async () => {
+    api.getProjectBasicInformation.mockResolvedValue(
+      response({
+        post_testing_disposition: "Keep in the Lab",
+        sample_deposition: "",
+      })
+    );
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByLabelText("Sample deposition")).toHaveProperty(
+      "value",
+      "Keep in the Lab"
+    );
+  });
+
+  it("keeps Sample deposition aligned while it still mirrors the disposition", async () => {
+    const user = userEvent.setup();
+    api.getProjectBasicInformation.mockResolvedValue(
+      response({
+        post_testing_disposition: "Send Back to Requestor",
+        sample_deposition: "",
+      })
+    );
+    api.saveProjectBasicInformationDraft.mockResolvedValue(
+      response({
+        post_testing_disposition: "Keep in the Lab",
+        sample_deposition: "Keep in the Lab",
+      })
+    );
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    const dispositionSelect = await screen.findByLabelText(
+      "Post-Testing Sample Disposition"
+    );
+    await user.selectOptions(dispositionSelect, "Keep in the Lab");
+
+    expect(screen.getByLabelText("Sample deposition")).toHaveProperty(
+      "value",
+      "Keep in the Lab"
+    );
+  });
+
+  it("does not overwrite manually edited Sample deposition when disposition changes", async () => {
+    const user = userEvent.setup();
+    api.getProjectBasicInformation.mockResolvedValue(
+      response({
+        post_testing_disposition: "Send Back to Requestor",
+        sample_deposition: "Manual sample handling note",
+      })
+    );
+    api.saveProjectBasicInformationDraft.mockResolvedValue(
+      response({
+        post_testing_disposition: "Keep in the Lab",
+        sample_deposition: "Manual sample handling note",
+      })
+    );
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    const dispositionSelect = await screen.findByLabelText(
+      "Post-Testing Sample Disposition"
+    );
+    await user.selectOptions(dispositionSelect, "Keep in the Lab");
+
+    expect(screen.getByLabelText("Sample deposition")).toHaveProperty(
+      "value",
+      "Manual sample handling note"
+    );
   });
 
   it("defaults Finish Test Date and Report Date to Estimated Completion", async () => {
@@ -675,6 +765,9 @@ describe("ProjectBasicInformationWorkspace", () => {
     const testItemField = screen
       .getByLabelText("Test Item")
       .closest(".basic-information-field");
+    const testsToBePerformedField = screen
+      .getByLabelText("Tests to be Performed")
+      .closest(".basic-information-field");
     const applicableSpecificationsField = screen
       .getByLabelText("Applicable Specifications")
       .closest(".basic-information-field");
@@ -755,10 +848,12 @@ describe("ProjectBasicInformationWorkspace", () => {
     const laboratoryPanelText = laboratoryPanel.textContent ?? "";
     expect(productDescriptionField?.classList.contains("is-compact")).toBe(true);
     expect(testItemField?.classList.contains("is-compact")).toBe(true);
+    expect(testsToBePerformedField?.classList.contains("is-compact")).toBe(true);
     expect(applicableSpecificationsField?.classList.contains("is-compact")).toBe(
       true
     );
     expect(descriptionPnField?.classList.contains("is-compact")).toBe(true);
+    expect(descriptionPnField?.classList.contains("is-full")).toBe(true);
     expect(projectTypeField?.classList.contains("is-third")).toBe(true);
     expect(testTypeField?.classList.contains("is-third")).toBe(true);
     expect(subContractField?.classList.contains("is-third")).toBe(true);
@@ -793,12 +888,15 @@ describe("ProjectBasicInformationWorkspace", () => {
       productPanelText.indexOf("Test Item")
     );
     expect(productPanelText.indexOf("Test Item")).toBeLessThan(
-      productPanelText.indexOf("Applicable Specifications")
-    );
-    expect(productPanelText.indexOf("Applicable Specifications")).toBeLessThan(
       productPanelText.indexOf("Description P/N")
     );
     expect(productPanelText.indexOf("Description P/N")).toBeLessThan(
+      productPanelText.indexOf("Tests to be Performed")
+    );
+    expect(productPanelText.indexOf("Tests to be Performed")).toBeLessThan(
+      productPanelText.indexOf("Applicable Specifications")
+    );
+    expect(productPanelText.indexOf("Applicable Specifications")).toBeLessThan(
       productPanelText.indexOf("Project Type")
     );
     expect(productPanelText.indexOf("Project Type")).toBeLessThan(
@@ -926,7 +1024,7 @@ describe("ProjectBasicInformationWorkspace", () => {
       />
     );
 
-    expect(await screen.findByText("Project closed as completed")).toBeTruthy();
+    expect(await screen.findByText("Project closed: Completed")).toBeTruthy();
     const projectLeader = screen.getByLabelText("Project Leader");
     expect(projectLeader).toHaveProperty("disabled", true);
     await user.type(projectLeader, "Blocked");
@@ -959,9 +1057,10 @@ function response(
   const values = {
     dl_number: "DL-2026-05-011",
     project_type: "New Product Development",
+    test_item: "Product qualification test",
     description_pn: "PN-123",
     product_description: "Coolpower HDF",
-    test_item: "Qualification Testing",
+    tests_to_be_performed: "Qualification Testing",
     applicable_specifications: "EIA-364",
     requested_by: "MP Cao",
     project_leader: "MP Cao",
@@ -1023,7 +1122,7 @@ function project() {
     project_no: "DL-2026-05-011",
     sample_description: "Coolpower HDF 3.40mm pin",
     product_name: "Coolpower fallback",
-    test_item: "Qualification Testing",
+    tests_to_be_performed: "Qualification Testing",
     requestor: "MP Cao",
     status: "ltr_registered",
   };

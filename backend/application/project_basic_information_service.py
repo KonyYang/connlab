@@ -23,6 +23,7 @@ REQUIRED_FIELD_LABELS: dict[str, str] = {
     "dl_number": "DL/LTR Number",
     "project_type": "Project Type",
     "test_item": "Test Item",
+    "tests_to_be_performed": "Tests to be Performed",
     "requested_by": "Requested By",
     "project_leader": "Project Leader",
     "lab_performing_tests": "Lab Performing the Tests",
@@ -323,9 +324,9 @@ class ProjectBasicInformationService:
         suggestions: dict[str, ProjectBasicInformationFieldSuggestion],
     ) -> dict[str, str]:
         if draft is not None:
-            values = dict(draft.values)
+            values = _normalize_basic_information_values(draft.values)
         elif confirmed is not None:
-            values = dict(confirmed.values)
+            values = _normalize_basic_information_values(confirmed.values)
         else:
             values = {}
         for key, suggestion in suggestions.items():
@@ -367,9 +368,13 @@ class ProjectBasicInformationSourceAssembler:
             "project_type": ("application_form", latest_form.project_type if latest_form else None),
             "product_description": ("project_identity", project.product_name),
             "description_pn": ("sample_info", format_description_pn(samples)),
-            "test_item": (
+            "tests_to_be_performed": (
                 "application_form",
                 latest_form.requested_testing if latest_form else None,
+            ),
+            "test_item": (
+                "project_setup_confirmation",
+                _text_from_payload(setup_payload.get("test_item")),
             ),
             "requested_by": (
                 "application_form",
@@ -513,6 +518,15 @@ def _clean_values(values: dict[str, str]) -> dict[str, str]:
     }
 
 
+def _normalize_basic_information_values(values: dict[str, str]) -> dict[str, str]:
+    normalized = dict(values)
+    legacy_test_item = normalized.get("test_item", "").strip()
+    if legacy_test_item and not normalized.get("tests_to_be_performed", "").strip():
+        normalized["tests_to_be_performed"] = legacy_test_item
+        normalized.pop("test_item", None)
+    return normalized
+
+
 def _source_signature(
     suggestions: dict[str, ProjectBasicInformationFieldSuggestion],
 ) -> str:
@@ -532,11 +546,11 @@ def _source_values_from_signature(signature: str) -> dict[str, str]:
         return {}
     if not isinstance(loaded, dict):
         return {}
-    return {
+    return _normalize_basic_information_values({
         str(key): str(value).strip()
         for key, value in loaded.items()
         if value is not None and str(value).strip()
-    }
+    })
 
 
 def _signature(values: dict[str, str]) -> str:

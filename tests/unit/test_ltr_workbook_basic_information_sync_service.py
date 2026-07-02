@@ -33,7 +33,7 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert preview.row_data.dl_number == "DL-2026-05-011"
     assert preview.row_data.project_type == "NPD"
     assert preview.row_data.description_pn == "Coolpower HDF:PN-001"
-    assert preview.row_data.test_item == "Qualification Testing"
+    assert preview.row_data.test_item == "Product qualification test"
     assert preview.row_data.test_type == "Partial Qualification"
     assert preview.row_data.requested_by == "MP Cao"
     assert preview.row_data.location == "Dongguan"
@@ -67,7 +67,7 @@ def test_preview_builds_row_from_confirmed_basic_information_and_existing_workbo
     assert comparison_by_field["description_pn"].changed is True
     assert comparison_by_field["test_item"].label == "Test Item"
     assert comparison_by_field["test_item"].current_value == "Old testing"
-    assert comparison_by_field["test_item"].pending_value == "Qualification Testing"
+    assert comparison_by_field["test_item"].pending_value == "Product qualification test"
     assert comparison_by_field["test_result"].label == "Test Result"
     assert comparison_by_field["test_result"].current_value == "In progress"
     assert comparison_by_field["test_result"].pending_value is None
@@ -189,6 +189,26 @@ def test_preview_blocks_when_description_pn_is_missing_even_if_product_descripti
     )
 
 
+def test_preview_blocks_when_test_item_is_missing_without_requested_testing_fallback() -> None:
+    service, _ = _service(
+        basic_information=_basic_information(
+            {
+                "test_item": "",
+                "tests_to_be_performed": "Requested testing must not fill LTR Test Item",
+            }
+        )
+    )
+
+    preview = service.preview(
+        PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1")
+    )
+
+    assert preview.status == "blocked"
+    assert preview.blockers == (
+        "Test Item is required in confirmed Basic Information.",
+    )
+
+
 def test_preview_blocks_without_confirmed_basic_information() -> None:
     service, _ = _service(basic_information=None)
 
@@ -259,7 +279,7 @@ def test_preview_normalizes_comparison_whitespace_without_marking_changed() -> N
                     "\u00a0DL-2026-05-011 ",
                     "NPD",
                     "Coolpower\u00a0HDF:PN-001",
-                    "Qualification   Testing",
+                    "Product   qualification   test",
                     "Partial Qualification",
                     "MP\u00a0Cao",
                     "Dongguan",
@@ -299,7 +319,7 @@ def test_preview_normalizes_integer_numeric_comparison_without_marking_changed()
                     "DL-2026-05-011",
                     "NPD",
                     "Coolpower HDF:PN-001",
-                    "Qualification Testing",
+                    "Product qualification test",
                     "Partial Qualification",
                     "MP Cao",
                     "Dongguan",
@@ -352,7 +372,7 @@ def test_commit_rejects_when_workbook_is_already_up_to_date() -> None:
                     "DL-2026-05-011",
                     "NPD",
                     "Coolpower HDF:PN-001",
-                    "Qualification Testing",
+                    "Product qualification test",
                     "Partial Qualification",
                     "MP Cao",
                     "Dongguan",
@@ -619,7 +639,8 @@ def _basic_information(
         "project_type": "New Product Development",
         "product_description": "Coolpower HDF 3.40mm pin",
         "description_pn": "Coolpower HDF:PN-001",
-        "test_item": "Qualification Testing",
+        "test_item": "Product qualification test",
+        "tests_to_be_performed": "Qualification Testing",
         "test_type": "Application Type",
         "test_type_in_sheet": "Partial Qualification",
         "requested_by": "MP Cao",

@@ -49,7 +49,7 @@ def test_output_identity_keeps_optional_values_empty_without_fallback() -> None:
                 "dl_number": "DL-BI",
                 "product_description": "",
                 "description_pn": "101-ABC",
-                "test_item": "Qualification BI",
+                "tests_to_be_performed": "Qualification BI",
                 "requested_by": "Requester BI",
             }
         )
@@ -77,7 +77,7 @@ def _snapshot(
         "project_type": "NPD",
         "description_pn": "",
         "product_description": "Connector BI",
-        "test_item": "Qualification BI",
+        "tests_to_be_performed": "Qualification BI",
         "applicable_specifications": "GS-12-BI",
         "requested_by": "Requester BI",
         "phone": "12345",

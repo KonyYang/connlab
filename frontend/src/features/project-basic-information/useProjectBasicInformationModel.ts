@@ -168,7 +168,20 @@ export function useProjectBasicInformationModel({
     }
     setSavedMessage(null);
     autosaveRevisionRef.current += 1;
-    setValues((previous) => ({ ...previous, [key]: value }));
+    setValues((previous) => {
+      const nextValues = { ...previous, [key]: value };
+      if (key === "post_testing_disposition") {
+        const previousDisposition = previous.post_testing_disposition?.trim() ?? "";
+        const previousSampleDeposition = previous.sample_deposition?.trim() ?? "";
+        if (
+          !previousSampleDeposition ||
+          previousSampleDeposition === previousDisposition
+        ) {
+          nextValues.sample_deposition = value;
+        }
+      }
+      return nextValues;
+    });
     setDraftDirty(true);
   }
 
@@ -254,6 +267,6 @@ function buildBasicInformationIdentityLabel({
     latestLtr,
     projectId,
     productFallback: values.product_description,
-    testItemFallback: values.test_item,
+    testItemFallback: values.test_item || values.tests_to_be_performed,
   });
 }

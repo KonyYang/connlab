@@ -86,6 +86,32 @@ def test_latest_confirmed_values_beat_source_suggestions_without_draft() -> None
     assert result.changed_source_fields == tuple()
 
 
+def test_legacy_test_item_values_are_exposed_as_tests_to_be_performed() -> None:
+    records = _BasicInformationStore()
+    records.records.append(
+        ProjectBasicInformationRecord(
+            record_id="LEGACY",
+            project_id="P1",
+            status="draft",
+            version=0,
+            values={
+                "dl_number": "DL-2026-05-011",
+                "project_type": "NPD",
+                "test_item": "Legacy requested testing",
+            },
+            source_signature='{"test_item":"Legacy requested testing"}',
+            created_at="2026-06-19T09:00:00+08:00",
+            updated_at="2026-06-19T09:00:00+08:00",
+        )
+    )
+    service = _service(records=records)
+
+    result = service.get("P1")
+
+    assert result.draft.values["tests_to_be_performed"] == "Legacy requested testing"
+    assert "test_item" not in result.draft.values
+
+
 def test_confirm_allows_description_pn_when_product_description_is_missing() -> None:
     service = _service()
 
@@ -96,7 +122,8 @@ def test_confirm_allows_description_pn_when_product_description_is_missing() -> 
                 "dl_number": "DL-2026-05-011",
                 "project_type": "NPD",
                 "description_pn": "PN-123",
-                "test_item": "Qualification Testing",
+                "test_item": "Product qualification test",
+                "tests_to_be_performed": "Qualification Testing",
                 "requested_by": "MP Cao",
                 "project_leader": "Even Yang",
                 "lab_performing_tests": "Dongguan",
@@ -151,7 +178,7 @@ def test_source_assembly_keeps_application_test_type_separate_from_sheet_test_ty
             ltr_number="DL-2026-05-010",
             status=LtrStatus.DRAFT,
             registered_on=date(2026, 5, 1),
-            notes=_ltr_notes("Analysis"),
+            notes=_ltr_notes("Analysis", test_item="Draft setup item"),
         ),
         LtrRecord(
             ltr_id="REGISTERED",
@@ -159,7 +186,7 @@ def test_source_assembly_keeps_application_test_type_separate_from_sheet_test_ty
             ltr_number="DL-2026-05-011",
             status=LtrStatus.REGISTERED,
             registered_on=date(2026, 5, 2),
-            notes=_ltr_notes("Qualification"),
+            notes=_ltr_notes("Qualification", test_item="Product qualification test"),
         ),
     ]
     service = ProjectBasicInformationService(
@@ -178,6 +205,10 @@ def test_source_assembly_keeps_application_test_type_separate_from_sheet_test_ty
     assert result.field_suggestions["test_type"].source == "application_form"
     assert result.draft.values["test_type_in_sheet"] == "Qualification"
     assert result.field_suggestions["test_type_in_sheet"].source == (
+        "project_setup_confirmation"
+    )
+    assert result.draft.values["test_item"] == "Product qualification test"
+    assert result.field_suggestions["test_item"].source == (
         "project_setup_confirmation"
     )
 
@@ -236,6 +267,7 @@ def test_confirm_rejects_missing_required_fields_with_business_labels() -> None:
     assert "Project Type" in exc_info.value.missing_labels
     assert "Product Description or Description P/N" in exc_info.value.missing_labels
     assert "Test Item" in exc_info.value.missing_labels
+    assert "Tests to be Performed" in exc_info.value.missing_labels
     assert "Lab Performing the Tests" in exc_info.value.missing_labels
 
 
@@ -294,7 +326,8 @@ def _complete_values(**overrides: str) -> dict[str, str]:
         "dl_number": "DL-2026-05-011",
         "project_type": "NPD",
         "product_description": "Coolpower HDF",
-        "test_item": "Qualification Testing",
+        "test_item": "Product qualification test",
+        "tests_to_be_performed": "Qualification Testing",
         "requested_by": "MP Cao",
         "project_leader": "Even Yang",
         "lab_performing_tests": "Dongguan",
@@ -407,14 +440,17 @@ class _SampleInfoStore:
         return [sample for sample in self.samples if sample.project_id == project_id]
 
 
-def _ltr_notes(test_type_in_sheet: str) -> str:
+def _ltr_notes(test_type_in_sheet: str, *, test_item: str | None = None) -> str:
+    setup_payload = {
+        "source": "new_project_setup_confirmation",
+        "test_type_in_sheet": test_type_in_sheet,
+    }
+    if test_item is not None:
+        setup_payload["test_item"] = test_item
     return json.dumps(
         {
             "operator_note": json.dumps(
-                {
-                    "source": "new_project_setup_confirmation",
-                    "test_type_in_sheet": test_type_in_sheet,
-                },
+                setup_payload,
                 sort_keys=True,
             )
         },

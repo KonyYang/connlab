@@ -89,7 +89,7 @@ def fee_form_identity(
     return FeeFormIdentity(
         dl_number=_text(values, "dl_number"),
         product_description=_text(values, "product_description"),
-        test_item=_text(values, "test_item"),
+        test_item=_basic_information_test_item_text(values),
         requested_by=_text(values, "requested_by"),
         location=_text(values, "location"),
         lab_performing_tests=_text(values, "lab_performing_tests"),
@@ -106,7 +106,7 @@ def customer_feedback_identity(
         product_name=(
             _text(values, "product_description") or _text(values, "description_pn")
         ),
-        test_item=_text(values, "test_item"),
+        test_item=_basic_information_test_item_text(values),
         requestor=_text(values, "requested_by"),
         phone=_text(values, "phone"),
         email=_text(values, "requestor_email"),
@@ -129,7 +129,7 @@ def application_form_identity(
         "project_type": _text(values, "project_type"),
         "description_pn": _text(values, "description_pn"),
         "product_description": _text(values, "product_description"),
-        "test_item": _text(values, "test_item"),
+        "test_item": _basic_information_test_item_text(values),
         "applicable_specifications": _text(values, "applicable_specifications"),
         "requested_by": _text(values, "requested_by"),
         "requester": _text(values, "requested_by"),
@@ -178,3 +178,8 @@ test_record_header_identity.__test__ = False
 def _text(values: dict[str, str], key: str) -> str:
     """Return a stripped Basic Information value."""
     return str(values.get(key, "") or "").strip()
+
+
+def _basic_information_test_item_text(values: dict[str, str]) -> str:
+    """Return the current Basic Information tests-to-be-performed value."""
+    return _text(values, "test_item") or _text(values, "tests_to_be_performed")

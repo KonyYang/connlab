@@ -505,7 +505,7 @@ function confirmedRecord(): NonNullable<ProjectBasicInformationResponse["latest_
       project_type: "NPD",
       product_description: "Coolpower HDF",
       description_pn: "HDF-34",
-      test_item: "Qualification Testing",
+      tests_to_be_performed: "Qualification Testing",
       test_type: "Product/Process Qualification",
       test_type_in_sheet: "Qualification",
       requested_by: "MP Cao",

@@ -223,7 +223,27 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
         required: true,
         compact: true,
       },
-      { key: "test_item", label: "Test Item", kind: "textarea", required: true, compact: true },
+      {
+        key: "test_item",
+        label: "Test Item",
+        kind: "textarea",
+        required: true,
+        compact: true,
+      },
+      {
+        key: "description_pn",
+        label: "Description P/N",
+        kind: "text",
+        compact: true,
+        layout: "full",
+      },
+      {
+        key: "tests_to_be_performed",
+        label: "Tests to be Performed",
+        kind: "textarea",
+        required: true,
+        compact: true,
+      },
       {
         key: "applicable_specifications",
         label: "Applicable Specifications",
@@ -231,7 +251,6 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
         required: true,
         compact: true,
       },
-      { key: "description_pn", label: "Description P/N", kind: "text", compact: true },
       {
         key: "project_type",
         label: "Project Type",
@@ -453,6 +472,12 @@ export function normalizeBasicInformationFieldValues(
   values: Record<string, string>
 ): Record<string, string> {
   const normalizedValues = { ...values };
+  const postTestingDisposition =
+    normalizedValues.post_testing_disposition?.trim() ?? "";
+  const sampleDeposition = normalizedValues.sample_deposition?.trim() ?? "";
+  if (postTestingDisposition && !sampleDeposition) {
+    normalizedValues.sample_deposition = postTestingDisposition;
+  }
   const estimatedCompletionDate =
     normalizedValues.estimated_completion_date?.trim() ?? "";
   if (estimatedCompletionDate) {

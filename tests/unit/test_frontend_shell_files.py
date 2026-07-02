@@ -6184,3 +6184,20 @@ def test_task329_matrix_projection_test_item_cells_are_not_bold() -> None:
 
     assert "font-weight: 400;" in body_header_block
     assert "font-weight: 700;" not in body_header_block
+
+
+def test_basic_information_full_width_fields_override_compact_textarea_grid() -> None:
+    """Full-width Basic Information fields must not be narrowed by compact textareas."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    compact_rule_index = styles_source.index(
+        ".basic-information-field.is-textarea.is-compact"
+    )
+    full_override_index = styles_source.index(
+        ".basic-information-field.is-full,\n"
+        ".basic-information-field.is-textarea.is-full"
+    )
+
+    assert compact_rule_index < full_override_index
