@@ -91,6 +91,17 @@ type DuplicateDecisionMemo = {
   action: DraftDuplicateAction;
 };
 
+type LocalDuplicateCancelSnapshot = {
+  session: IntakeSessionState;
+  review: IntakeCaseReview | null;
+  selectedCaseId: string | null;
+  fieldValues: Record<string, string>;
+  sampleRows: PrecheckSampleRow[];
+  requestedTestingRows: PrecheckRequestedTestingRow[];
+  setupValues: NewProjectSetupConfirmationValues;
+  importMessage: string | null;
+};
+
 export function IntakeInboxPage({
   session,
   onInteractionLockChange,
@@ -137,6 +148,7 @@ export function IntakeInboxPage({
   const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
   const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
   const setupValuesRef = useRef<NewProjectSetupConfirmationValues>(setupValues);
+  const localDuplicateCancelSnapshotRef = useRef<LocalDuplicateCancelSnapshot | null>(null);
   const { packageImport, selectedAssetId, sourceMode, directWordName } = session;
   const visibleAttachmentAssets = useMemo(
     () => visibleIntakeAttachments(packageImport),
@@ -220,8 +232,61 @@ export function IntakeInboxPage({
     || requiredState.missingCount > 0
     || setupMissingKeys.size > 0;
 
+  useEffect(() => {
+    if (!localDuplicateConflict) {
+      localDuplicateCancelSnapshotRef.current = null;
+      return;
+    }
+    if (localDuplicateCancelSnapshotRef.current) {
+      return;
+    }
+    localDuplicateCancelSnapshotRef.current = {
+      session: { ...session },
+      review,
+      selectedCaseId,
+      fieldValues: { ...fieldValues },
+      sampleRows: cloneRows(sampleRows),
+      requestedTestingRows: cloneRows(requestedTestingRows),
+      setupValues: { ...setupValues },
+      importMessage
+    };
+  }, [
+    fieldValues,
+    importMessage,
+    localDuplicateConflict,
+    requestedTestingRows,
+    review,
+    sampleRows,
+    selectedCaseId,
+    session,
+    setupValues
+  ]);
+
   function openExistingDuplicateProject(projectId: string): void {
     window.location.assign(`/projects/${encodeURIComponent(projectId)}`);
+  }
+
+  function handleLocalDuplicateCancel(): void {
+    const snapshot = localDuplicateCancelSnapshotRef.current;
+    clearLocalDuplicateConflict();
+    if (!snapshot) {
+      return;
+    }
+
+    setReview(snapshot.review);
+    setSelectedCaseId(snapshot.selectedCaseId);
+    setFieldValues(snapshot.fieldValues);
+    setSampleRows(snapshot.sampleRows);
+    setRequestedTestingRows(snapshot.requestedTestingRows);
+    setSetupValues(snapshot.setupValues);
+    setImportMessage(snapshot.importMessage);
+    fieldValuesRef.current = snapshot.fieldValues;
+    sampleRowsRef.current = snapshot.sampleRows;
+    requestedTestingRowsRef.current = snapshot.requestedTestingRows;
+    setupValuesRef.current = snapshot.setupValues;
+    setCompletionSetupError(null);
+    onSessionChange(snapshot.session);
+    localDuplicateCancelSnapshotRef.current = null;
   }
 
   useEffect(() => {
@@ -914,7 +979,7 @@ export function IntakeInboxPage({
         <LocalLtrDuplicateConflictPanel
           confirming={duplicateConfirming}
           conflict={localDuplicateConflict}
-          onCancel={clearLocalDuplicateConflict}
+          onCancel={handleLocalDuplicateCancel}
           onConfirm={(resolution) => void confirmDuplicateResolution(resolution)}
           onOpenExisting={openExistingDuplicateProject}
         />
@@ -1018,6 +1083,10 @@ function emptySetupValues(defaultProjectLeader = ""): NewProjectSetupConfirmatio
     projectLeader: defaultProjectLeader,
     labPerformingTests: "Dongguan"
   };
+}
+
+function cloneRows<T extends Record<string, unknown>>(rows: T[]): T[] {
+  return rows.map((row) => ({ ...row }));
 }
 
 function setupValuesFromProjectSetup(
