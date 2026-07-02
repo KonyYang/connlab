@@ -43,7 +43,11 @@ class ExcelComLtrWorkbookReadonlyOpenGateway:
             excel = win32com.client.DispatchEx("Excel.Application")
             excel.Visible = True
             excel.DisplayAlerts = True
-            workbook = _open_workbook_readonly(excel.Workbooks, path)
+            workbook = _open_workbook_readonly(
+                excel.Workbooks,
+                path,
+                modify_password=self._modify_password,
+            )
             worksheet = workbook.Worksheets.Item(sheet_name)
             _prepare_sheet_for_review(worksheet)
             worksheet.Activate()
@@ -75,12 +79,18 @@ def a1_address(*, row_number: int, column_number: int) -> str:
     return f"{column}{row_number}"
 
 
-def _open_workbook_readonly(workbooks, workbook_path: Path):
-    """Open an LTR workbook for operator review without write-reservation credentials."""
+def _open_workbook_readonly(
+    workbooks,
+    workbook_path: Path,
+    *,
+    modify_password: str | None = None,
+):
+    """Open an LTR workbook for operator review without write access."""
     return workbooks.Open(
         Filename=str(workbook_path),
         UpdateLinks=0,
         ReadOnly=True,
+        Password=modify_password or "",
         AddToMru=False,
         IgnoreReadOnlyRecommended=True,
         CorruptLoad=2,
@@ -94,18 +104,18 @@ def _raise_if_workbook_already_open(win32_client, workbook_path: Path) -> None:
     except Exception:
         return
     try:
-        for workbook in excel.Workbooks:
-            if _path_key(Path(str(workbook.FullName))) == _path_key(workbook_path):
-                raise LtrWorkbookReadonlyOpenError(
-                    "The LTR workbook is already open in Excel. Close it and retry."
-                )
-    except LtrWorkbookReadonlyOpenError:
-        raise
-    except Exception as exc:
-        raise LtrWorkbookReadonlyOpenError(
-            "Unable to verify whether the LTR workbook is already open. "
-            "Close Excel workbooks and retry."
-        ) from exc
+        workbooks = list(excel.Workbooks)
+    except Exception:
+        return
+    for workbook in workbooks:
+        try:
+            full_name = Path(str(workbook.FullName))
+        except Exception:
+            continue
+        if _path_key(full_name) == _path_key(workbook_path):
+            raise LtrWorkbookReadonlyOpenError(
+                "The LTR workbook is already open in Excel. Close it and retry."
+            )
 
 
 def _prepare_sheet_for_review(worksheet) -> None:

@@ -890,7 +890,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    expect(await screen.findByText("Project closed as completed")).toBeTruthy();
+    expect(await screen.findByText("Project closed: Completed")).toBeTruthy();
     expect(screen.getByLabelText("Row 1 test item")).toHaveProperty(
       "disabled",
       true
@@ -919,6 +919,32 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Preparing confirm...")).toBeNull();
     expect(document.querySelector(".matrix-editor-save-status")?.textContent ?? "").not.toContain(
       "Preparing confirm..."
+    );
+  });
+
+  it("does not autosave before the first Matrix authority exists", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      active_confirmed_matrix_id: null,
+      active_confirmed_revision: null,
+      active_source_import_id: null,
+      active_source_snapshot_id: null,
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Updated first authority method" },
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+    expect(document.querySelector(".matrix-editor-save-status")?.textContent ?? "").not.toContain(
+      "Save failed. Retry before confirming."
+    );
+    expect(screen.getByRole("button", { name: "Confirm Matrix" })).toHaveProperty(
+      "disabled",
+      false
     );
   });
 

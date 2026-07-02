@@ -1990,6 +1990,7 @@ export function MatrixEditorWorkspace({
     if (
       !hasUnsavedChanges ||
       !hasProjectId ||
+      !activeConfirmedMatrixId ||
       draftLoading ||
       isLifecycleReadonly ||
       cancellingRef.current ||
