@@ -1003,7 +1003,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     const folderActions = screen.getByLabelText("Folder Actions");
-    expect(folderActions.textContent).toContain("Local folder available.");
+    expect(folderActions.textContent).toContain("D:/Test Project/DL-2026-06-001");
 
     await user.click(screen.getByRole("button", { name: "Open" }));
 
@@ -1379,11 +1379,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       name: "Project folder update in progress",
     });
     expect(dialog).toBeTruthy();
-    expect(dialog.textContent).toContain("Keep this page open until the operation finishes.");
     expect(dialog.textContent).toContain("Current step");
     expect(dialog.textContent).toContain("Updating Application Form");
-    expect(dialog.textContent).toContain("Updating Customer Feedback Form");
-    expect(dialog.textContent).toContain("Updating Fee Form");
+    expect(dialog.textContent).not.toContain("Keep this page open until the operation finishes.");
+    expect(dialog.textContent).not.toContain("Updating Customer Feedback Form");
+    expect(dialog.textContent).not.toContain("Updating Fee Form");
     expect(screen.getByRole("button", { name: "Generating..." })).toHaveProperty(
       "disabled",
       true

@@ -790,40 +790,16 @@ function ProjectFolderProgressDialog({
         role="dialog"
       >
         <div className="runtime-console-progress-dialog-indicator" aria-hidden="true" />
-        <div>
-          <h3>Project folder update in progress</h3>
-          <p>
-            ConnLab is preparing the project folder files. Keep this page open until the
-            operation finishes.
-          </p>
-          <dl className="runtime-console-progress-dialog-step">
-            <div>
-              <dt>Current step</dt>
-              <dd>{visibleStep}</dd>
-            </div>
-          </dl>
-          <ul className="runtime-console-progress-dialog-steps" aria-label="Project folder update steps">
-            {PROJECT_FOLDER_PROGRESS_STEPS.map((step) => (
-              <li className={step === visibleStep ? "is-current" : undefined} key={step}>
-                {step}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <dl className="runtime-console-progress-dialog-step">
+          <div>
+            <dt>Current step</dt>
+            <dd>{visibleStep}</dd>
+          </div>
+        </dl>
       </section>
     </div>
   );
 }
-
-const PROJECT_FOLDER_PROGRESS_STEPS = [
-  "Creating or updating project folder",
-  "Archiving request materials",
-  "Checking project folder structure",
-  "Updating Customer Feedback Form",
-  "Updating Fee Form",
-  "Updating Test Record",
-  "Updating Application Form",
-];
 
 function deriveFolderTemplateReady(
   template: ProjectRuntimeConsoleModel["folderResources"]["template"]

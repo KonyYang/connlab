@@ -2214,31 +2214,13 @@
 .runtime-console-progress-dialog {
   align-items: center;
   display: grid;
-  gap: 14px;
+  gap: 18px;
   grid-template-columns: auto 1fr;
-  max-width: 640px;
-}
-
-.runtime-console-progress-dialog h3,
-.runtime-console-progress-dialog p {
-  margin: 0;
-}
-
-.runtime-console-progress-dialog h3 {
-  color: var(--color-ink);
-  font-size: 18px;
-  line-height: 1.25;
-}
-
-.runtime-console-progress-dialog p {
-  color: var(--color-ink-muted);
-  font-size: 14px;
-  line-height: 1.5;
-  margin-top: 6px;
+  max-width: 520px;
 }
 
 .runtime-console-progress-dialog-step {
-  margin: 14px 0 0;
+  margin: 0;
 }
 
 .runtime-console-progress-dialog-step div {
@@ -2263,43 +2245,6 @@
   font-weight: 760;
   line-height: 1.35;
   margin: 0;
-}
-
-.runtime-console-progress-dialog-steps {
-  display: grid;
-  gap: 6px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-}
-
-.runtime-console-progress-dialog-steps li {
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  line-height: 1.35;
-  padding-left: 14px;
-  position: relative;
-}
-
-.runtime-console-progress-dialog-steps li::before {
-  background: color-mix(in srgb, var(--color-ink-muted) 38%, var(--color-border));
-  border-radius: 999px;
-  content: "";
-  height: 6px;
-  left: 0;
-  position: absolute;
-  top: 5px;
-  width: 6px;
-}
-
-.runtime-console-progress-dialog-steps li.is-current {
-  color: var(--color-primary-strong);
-  font-weight: 780;
-}
-
-.runtime-console-progress-dialog-steps li.is-current::before {
-  background: var(--color-primary);
 }
 
 .runtime-console-progress-dialog-indicator {
