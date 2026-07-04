@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.api.dependencies import (
     get_ltr_authority_service,
+    get_specified_ltr_workbook_authority_preview_service,
     get_session,
     get_settings,
 )
@@ -23,6 +25,10 @@ from backend.application.ltr_duplicate_resolution_service import (
 from backend.application.ltr_service import LtrService, RegisterLtrCommand
 from backend.application.ltr_workbook_write_commit_service import (
     LtrWorkbookWriteCommitError,
+)
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreviewCommand,
+    SpecifiedLtrWorkbookAuthorityPreviewService,
 )
 from backend.domain import (
     IntakeAsset,
@@ -37,7 +43,10 @@ from backend.domain import (
     LtrStatus,
     ProjectStatus,
     Project,
+    ProjectFolderRecord,
+    ProjectTemporaryContext,
 )
+from backend.infrastructure.office import LtrWorkbookExistingRow
 from backend.modules.ltr import next_monthly_dl_number, parse_ltr_number
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -50,6 +59,7 @@ from backend.infrastructure.storage.repositories import (
     LtrDuplicateResolutionTokenRepository,
     LtrRecordRepository,
     ProjectFolderRecordRepository,
+    ProjectTemporaryContextRepository,
     ProjectRepository,
 )
 from backend.infrastructure.storage.repositories.intake_package import (
@@ -95,6 +105,11 @@ def test_complete_new_project_auto_ltr_applies_ltr_without_folder(
 
     app.dependency_overrides[get_ltr_authority_service] = (
         override_ltr_commit_service
+    )
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            _authority_existing_row("DL-2026-05-007")
+        )
     )
     client = TestClient(app)
 
@@ -164,6 +179,11 @@ def test_complete_new_project_rejects_duplicate_specified_ltr(tmp_path: Path) ->
     app.dependency_overrides[get_ltr_authority_service] = (
         override_ltr_commit_service
     )
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            _authority_existing_row("DL-2026-05-007")
+        )
+    )
     client = TestClient(app)
 
     try:
@@ -174,6 +194,11 @@ def test_complete_new_project_rejects_duplicate_specified_ltr(tmp_path: Path) ->
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-007",
+                "specified_ltr_workbook_preview_ack": _preview_ack(
+                    client,
+                    first_case_id,
+                    "DL-2026-05-007",
+                ),
             },
         )
         duplicate = client.post(
@@ -181,6 +206,11 @@ def test_complete_new_project_rejects_duplicate_specified_ltr(tmp_path: Path) ->
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-007",
+                "specified_ltr_workbook_preview_ack": _preview_ack(
+                    client,
+                    second_case_id,
+                    "DL-2026-05-007",
+                ),
             },
         )
 
@@ -227,6 +257,11 @@ def test_complete_new_project_is_idempotent_for_completed_case(tmp_path: Path) -
 
     app.dependency_overrides[get_ltr_authority_service] = (
         override_ltr_commit_service
+    )
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            _authority_existing_row("DL-2026-05-009")
+        )
     )
     client = TestClient(app)
 
@@ -360,6 +395,11 @@ def test_complete_new_project_returns_existing_external_ltr_without_folder(
     app.dependency_overrides[get_ltr_authority_service] = (
         override_ltr_commit_service
     )
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            _authority_existing_row("DL-2026-05-009")
+        )
+    )
     client = TestClient(app)
 
     try:
@@ -393,6 +433,11 @@ def test_complete_new_project_returns_existing_external_ltr_without_folder(
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-009",
+                "specified_ltr_workbook_preview_ack": _preview_ack(
+                    client,
+                    case_id,
+                    "DL-2026-05-009",
+                ),
             },
         )
 
@@ -559,6 +604,11 @@ def test_complete_new_project_returns_structured_local_ltr_duplicate_conflict(
         return _FakeWorkbookCommitService(session, shared_state)
 
     app.dependency_overrides[get_ltr_authority_service] = override_ltr_commit_service
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            _authority_existing_row("DL-2026-05-777")
+        )
+    )
     client = TestClient(app)
 
     try:
@@ -581,6 +631,7 @@ def test_complete_new_project_returns_structured_local_ltr_duplicate_conflict(
                     project_id=existing_project_id,
                     ltr_number="DL-2026-05-777",
                     status=LtrStatus.REGISTERED,
+                    registered_on=date(2026, 5, 7),
                     requested_by="Alice",
                     requested_date=None,
                     notes="baseline",
@@ -593,6 +644,11 @@ def test_complete_new_project_returns_structured_local_ltr_duplicate_conflict(
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-777",
+                "specified_ltr_workbook_preview_ack": _preview_ack(
+                    client,
+                    conflict_case_id,
+                    "DL-2026-05-777",
+                ),
             },
         )
 
@@ -602,7 +658,8 @@ def test_complete_new_project_returns_structured_local_ltr_duplicate_conflict(
         assert detail["ltr_number"] == "DL-2026-05-777"
         assert detail["existing"]["ltr_id"] == "LTR-LOCAL-DUP"
         assert detail["existing"]["project_id"] == existing_project_id
-        assert detail["existing"]["display_project_id"] == "OLD-PROJECT"
+        assert detail["existing"]["display_project_id"] == "DL-2026-05-777"
+        assert detail["existing"]["product_name"] == "Existing Connector"
         assert detail["resolution"]["requires_second_confirmation"] is True
         assert "replace_local_association" in detail["resolution"]["allowed_actions"]
         assert detail["resolution"]["token"]
@@ -647,6 +704,11 @@ def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
         return _FakeWorkbookCommitService(session, shared_state)
 
     app.dependency_overrides[get_ltr_authority_service] = override_ltr_commit_service
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            _authority_existing_row("DL-2026-05-777")
+        )
+    )
     client = TestClient(app)
 
     try:
@@ -681,6 +743,11 @@ def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-777",
+                "specified_ltr_workbook_preview_ack": _preview_ack(
+                    client,
+                    conflict_case_id,
+                    "DL-2026-05-777",
+                ),
             },
         )
         token = conflict.json()["detail"]["resolution"]["token"]
@@ -690,6 +757,11 @@ def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-777",
+                "specified_ltr_workbook_preview_ack": _preview_ack(
+                    client,
+                    conflict_case_id,
+                    "DL-2026-05-777",
+                ),
                 "duplicate_resolution": {
                     "action": "replace_local_association",
                     "token": token,
@@ -772,6 +844,174 @@ def test_complete_new_project_rejects_invalid_lab_performing_tests(tmp_path: Pat
         engine.dispose()
 
 
+def test_specified_ltr_workbook_preview_found_returns_row_without_local_create(
+    tmp_path: Path,
+) -> None:
+    settings, engine, session_factory = _new_completion_test_store(tmp_path)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    preview_service = _fake_specified_ltr_preview_service(
+        LtrWorkbookExistingRow(
+            sheet_name="2026",
+            row_number=12,
+            dl_number="DL-2026-05-011",
+            values=_authority_row_values("PwrBlade Ultra Pro"),
+        )
+    )
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: preview_service
+    )
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="PREVIEW")
+
+        response = client.post(
+            f"/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
+            json={"specified_ltr_number": "DL-2026-05-011"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "found"
+        assert payload["ltr_number"] == "DL-2026-05-011"
+        assert payload["workbook_path"].replace("\\", "/") == "D:/PublicProject/LTR.xlsx"
+        assert payload["sheet_name"] == "2026"
+        assert payload["row_number"] == 12
+        assert [value["label"] for value in payload["row_values"]] == [
+            "Project Type",
+            "Description P/N",
+            "Test Item",
+            "Test Type",
+            "Requested by",
+            "Location",
+            "Project Leader",
+            "Test Result",
+            "Failed item",
+            "Sample deposition",
+            "Sub-contract",
+            "Test Fee",
+            "Remarks (PO)",
+        ]
+        assert payload["preview_ack"]["acknowledged"] is True
+        with session_factory() as session:
+            intake_case = IntakeCaseRepository(session).get(case_id)
+            assert intake_case is not None
+            assert intake_case.confirmed_project_id is None
+            assert ProjectRepository(session).list() == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_specified_ltr_workbook_preview_not_found_blocks_continuation(
+    tmp_path: Path,
+) -> None:
+    settings, engine, session_factory = _new_completion_test_store(tmp_path)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(None)
+    )
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="NOTFOUND")
+
+        response = client.post(
+            f"/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
+            json={"specified_ltr_number": "DL-2026-05-099"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "not_found"
+        assert payload["message"] == "LTR workbook 中不存在该编号"
+        assert payload["preview_ack"] is None
+        with session_factory() as session:
+            assert ProjectRepository(session).list() == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_complete_new_project_requires_specified_ltr_preview_ack_before_local_create(
+    tmp_path: Path,
+) -> None:
+    settings, engine, session_factory = _new_completion_test_store(tmp_path)
+
+    def override_session() -> Generator[Session, None, None]:
+        with session_factory() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        lambda: _fake_specified_ltr_preview_service(
+            LtrWorkbookExistingRow(
+                sheet_name="2026",
+                row_number=12,
+                dl_number="DL-2026-05-011",
+                values=_authority_row_values("PwrBlade Ultra Pro"),
+            )
+        )
+    )
+    app.dependency_overrides[get_ltr_authority_service] = (
+        lambda session=Depends(get_session): _FakeWorkbookCommitService(
+            session,
+            _FakeWorkbookNumberState(),
+        )
+    )
+    client = TestClient(app)
+
+    try:
+        case_id = _seed_intake_case(session_factory, tmp_path, suffix="NOACK")
+
+        response = client.post(
+            f"/api/intake-cases/{case_id}/complete-new-project",
+            json={
+                **_completion_payload("specified"),
+                "specified_ltr_number": "DL-2026-05-011",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "preview must be confirmed" in response.json()["detail"]
+        with session_factory() as session:
+            intake_case = IntakeCaseRepository(session).get(case_id)
+            assert intake_case is not None
+            assert intake_case.confirmed_project_id is None
+            assert ProjectRepository(session).list() == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _seed_intake_case(session_factory, tmp_path: Path, suffix: str = "") -> str:
     package_id = f"PKG{suffix or '1'}"
     asset_id = f"ASSET{suffix or '1'}"
@@ -821,6 +1061,70 @@ def _seed_intake_case(session_factory, tmp_path: Path, suffix: str = "") -> str:
         )
         session.commit()
     return case_id
+
+
+def _new_completion_test_store(tmp_path: Path):
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=_create_template(tmp_path / "{DL_NUMBER}_{PROJECT_NO}_{PRODUCT_NAME}"),
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    settings.ensure_directories()
+    engine = create_database_engine(settings)
+    init_db(engine)
+    return settings, engine, create_session_factory(engine)
+
+
+def _fake_specified_ltr_preview_service(
+    existing: LtrWorkbookExistingRow | None,
+) -> SpecifiedLtrWorkbookAuthorityPreviewService:
+    return SpecifiedLtrWorkbookAuthorityPreviewService(
+        transaction_gateway=_FakeSpecifiedLtrPreviewTransactionGateway(existing)
+    )
+
+
+def _authority_existing_row(ltr_number: str) -> LtrWorkbookExistingRow:
+    return LtrWorkbookExistingRow(
+        sheet_name="2026",
+        row_number=12,
+        dl_number=ltr_number,
+        values=_authority_row_values("PwrBlade Ultra Pro"),
+    )
+
+
+def _preview_ack(client: TestClient, case_id: str, ltr_number: str) -> dict[str, object]:
+    response = client.post(
+        f"/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
+        json={"specified_ltr_number": ltr_number},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "found"
+    assert payload["preview_ack"] is not None
+    return payload["preview_ack"]
+
+
+def _authority_row_values(description: str) -> tuple[object, ...]:
+    return (
+        "May",
+        10,
+        11,
+        "DL-2026-05-011",
+        "Qualification",
+        description,
+        "R/A TYPE, WITH 2HP +20S",
+        "Qualification",
+        "Alice",
+        "Dongguan",
+        "Lab User",
+        "",
+        "",
+        "Return",
+        "No",
+        "1200",
+        "PO-1",
+    )
 
 
 def _draft_fields(suffix: str) -> dict[str, object]:
@@ -885,6 +1189,40 @@ def _create_template(template: Path) -> Path:
 class _FakeWorkbookNumberState:
     def __init__(self) -> None:
         self.numbers = ["DL-2026-05-000"]
+
+
+class _FakeSpecifiedLtrPreviewTransactionGateway:
+    def __init__(self, existing: LtrWorkbookExistingRow | None) -> None:
+        self.session = _FakeSpecifiedLtrPreviewSession(existing)
+
+    def open_read_only_transaction(self):
+        return _FakeSpecifiedLtrPreviewTransaction(self.session)
+
+
+class _FakeSpecifiedLtrPreviewTransaction:
+    def __init__(self, session: "_FakeSpecifiedLtrPreviewSession") -> None:
+        self._session = session
+
+    def __enter__(self):
+        return type(
+            "Context",
+            (),
+            {
+                "session": self._session,
+                "workbook_path": Path("D:/PublicProject/LTR.xlsx"),
+            },
+        )()
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+
+class _FakeSpecifiedLtrPreviewSession:
+    def __init__(self, existing: LtrWorkbookExistingRow | None) -> None:
+        self.existing = existing
+
+    def find_ltr_number(self, ltr_number: str, sheet_names=None):
+        return self.existing
 
 
 class _FakeWorkbookCommitService:

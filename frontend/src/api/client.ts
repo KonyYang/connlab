@@ -1773,6 +1773,40 @@ export type CompleteNewProjectInput = {
   project_leader?: string | null;
   lab_performing_tests?: string | null;
   duplicate_resolution?: CompleteNewProjectDuplicateResolutionInput | null;
+  specified_ltr_workbook_preview_ack?: SpecifiedLtrWorkbookAuthorityPreviewAck | null;
+};
+
+export type SpecifiedLtrWorkbookAuthorityPreviewInput = {
+  specified_ltr_number: string;
+};
+
+export type SpecifiedLtrWorkbookAuthorityRowValue = {
+  field_name: string;
+  label: string;
+  value: unknown | null;
+  is_blank: boolean;
+};
+
+export type SpecifiedLtrWorkbookAuthorityPreviewAck = {
+  acknowledged: boolean;
+  ltr_number: string;
+  sheet_name: string;
+  row_number: number;
+  preview_token: string;
+  row_fingerprint: string;
+};
+
+export type SpecifiedLtrWorkbookAuthorityPreview = {
+  status: "found" | "not_found" | "blocked";
+  ltr_number: string;
+  message: string;
+  workbook_path?: string | null;
+  sheet_name?: string | null;
+  row_number?: number | null;
+  row_values: SpecifiedLtrWorkbookAuthorityRowValue[];
+  preview_ack?: SpecifiedLtrWorkbookAuthorityPreviewAck | null;
+  blockers: string[];
+  warnings: string[];
 };
 
 export type CompleteNewProjectDuplicateResolutionInput = {
@@ -2902,6 +2936,19 @@ export function completeNewProject(
     {
       method: "POST",
       body: JSON.stringify({ operator_confirmed: true, ...input })
+    }
+  );
+}
+
+export function previewSpecifiedLtrWorkbookAuthority(
+  caseId: string,
+  input: SpecifiedLtrWorkbookAuthorityPreviewInput
+): Promise<SpecifiedLtrWorkbookAuthorityPreview> {
+  return requestJson<SpecifiedLtrWorkbookAuthorityPreview>(
+    `/api/intake-cases/${encodeURIComponent(caseId)}/specified-ltr-workbook-authority-preview`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
     }
   );
 }

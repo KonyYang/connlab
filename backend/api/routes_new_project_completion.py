@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.api.dependencies import (
     get_lookup_option_service,
     get_new_project_completion_service,
+    get_specified_ltr_workbook_authority_preview_service,
 )
 from backend.application.intake_confirmation_service import (
     IntakeConfirmationError,
@@ -38,6 +39,12 @@ from backend.application.new_project_completion_service import (
     NewProjectCompletionService,
     NewProjectLtrMode,
 )
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreview,
+    SpecifiedLtrWorkbookAuthorityPreviewAck,
+    SpecifiedLtrWorkbookAuthorityPreviewCommand,
+    SpecifiedLtrWorkbookAuthorityPreviewService,
+)
 from backend.application.lookup_options_service import LookupOptionService
 from backend.domain.lookup_options import LookupOption
 from backend.application.project_lifecycle_service import (
@@ -59,6 +66,17 @@ class DuplicateResolutionRequest(BaseModel):
     reason: str | None = None
 
 
+class SpecifiedLtrWorkbookPreviewAckRequest(BaseModel):
+    """Operator acknowledgement of the read-only specified LTR workbook preview."""
+
+    acknowledged: bool
+    ltr_number: str
+    sheet_name: str
+    row_number: int
+    preview_token: str
+    row_fingerprint: str
+
+
 class CompleteNewProjectRequest(BaseModel):
     """Request body for completing New Project creation."""
 
@@ -73,6 +91,50 @@ class CompleteNewProjectRequest(BaseModel):
     project_leader: str | None = None
     lab_performing_tests: str | None = None
     duplicate_resolution: DuplicateResolutionRequest | None = None
+    specified_ltr_workbook_preview_ack: (
+        SpecifiedLtrWorkbookPreviewAckRequest | None
+    ) = None
+
+
+class SpecifiedLtrWorkbookAuthorityPreviewRequest(BaseModel):
+    """Request body for full specified DL workbook authority preview."""
+
+    specified_ltr_number: str
+
+
+class SpecifiedLtrWorkbookAuthorityRowValueResponse(BaseModel):
+    """One business-readable workbook row value."""
+
+    field_name: str
+    label: str
+    value: object | None
+    is_blank: bool
+
+
+class SpecifiedLtrWorkbookAuthorityPreviewAckResponse(BaseModel):
+    """Acknowledgement payload to send with completion after confirmation."""
+
+    acknowledged: bool
+    ltr_number: str
+    sheet_name: str
+    row_number: int
+    preview_token: str
+    row_fingerprint: str
+
+
+class SpecifiedLtrWorkbookAuthorityPreviewResponse(BaseModel):
+    """Read-only specified LTR workbook authority preview response."""
+
+    status: str
+    ltr_number: str
+    message: str
+    workbook_path: str | None
+    sheet_name: str | None
+    row_number: int | None
+    row_values: list[SpecifiedLtrWorkbookAuthorityRowValueResponse]
+    preview_ack: SpecifiedLtrWorkbookAuthorityPreviewAckResponse | None
+    blockers: list[str]
+    warnings: list[str]
 
 
 class NewProjectCompletionOptionsResponse(BaseModel):
@@ -112,6 +174,27 @@ def get_new_project_completion_options(
 
 
 @router.post(
+    "/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
+    response_model=SpecifiedLtrWorkbookAuthorityPreviewResponse,
+)
+def preview_specified_ltr_workbook_authority(
+    case_id: str,
+    request: SpecifiedLtrWorkbookAuthorityPreviewRequest,
+    service: SpecifiedLtrWorkbookAuthorityPreviewService = Depends(
+        get_specified_ltr_workbook_authority_preview_service
+    ),
+) -> SpecifiedLtrWorkbookAuthorityPreviewResponse:
+    """Preview a full specified DL row in the LTR workbook before local completion."""
+    preview = service.preview(
+        SpecifiedLtrWorkbookAuthorityPreviewCommand(
+            case_id=case_id,
+            specified_ltr_number=request.specified_ltr_number,
+        )
+    )
+    return _to_specified_ltr_preview_response(preview)
+
+
+@router.post(
     "/api/intake-cases/{case_id}/complete-new-project",
     response_model=CompleteNewProjectResponse,
     status_code=status.HTTP_201_CREATED,
@@ -139,6 +222,9 @@ def complete_new_project(
                     lab_performing_tests=request.lab_performing_tests,
                     duplicate_resolution=_duplicate_resolution_command(
                         request.duplicate_resolution
+                    ),
+                    specified_ltr_workbook_preview_ack=_specified_ltr_preview_ack(
+                        request.specified_ltr_workbook_preview_ack
                     ),
                 )
             )
@@ -211,6 +297,59 @@ def _duplicate_resolution_command(
         token=request.token,
         acknowledged=request.acknowledged,
         reason=request.reason,
+    )
+
+
+def _specified_ltr_preview_ack(
+    request: SpecifiedLtrWorkbookPreviewAckRequest | None,
+) -> SpecifiedLtrWorkbookAuthorityPreviewAck | None:
+    """Convert the API preview acknowledgement payload to an application command."""
+    if request is None:
+        return None
+    return SpecifiedLtrWorkbookAuthorityPreviewAck(
+        acknowledged=request.acknowledged,
+        ltr_number=request.ltr_number,
+        sheet_name=request.sheet_name,
+        row_number=request.row_number,
+        preview_token=request.preview_token,
+        row_fingerprint=request.row_fingerprint,
+    )
+
+
+def _to_specified_ltr_preview_response(
+    preview: SpecifiedLtrWorkbookAuthorityPreview,
+) -> SpecifiedLtrWorkbookAuthorityPreviewResponse:
+    """Convert the application preview result to an API response."""
+    return SpecifiedLtrWorkbookAuthorityPreviewResponse(
+        status=preview.status,
+        ltr_number=preview.ltr_number,
+        message=preview.message,
+        workbook_path=str(preview.workbook_path) if preview.workbook_path else None,
+        sheet_name=preview.sheet_name,
+        row_number=preview.row_number,
+        row_values=[
+            SpecifiedLtrWorkbookAuthorityRowValueResponse(
+                field_name=value.field_name,
+                label=value.label,
+                value=value.value,
+                is_blank=value.is_blank,
+            )
+            for value in preview.row_values
+        ],
+        preview_ack=(
+            SpecifiedLtrWorkbookAuthorityPreviewAckResponse(
+                acknowledged=preview.preview_ack.acknowledged,
+                ltr_number=preview.preview_ack.ltr_number,
+                sheet_name=preview.preview_ack.sheet_name,
+                row_number=preview.preview_ack.row_number,
+                preview_token=preview.preview_ack.preview_token,
+                row_fingerprint=preview.preview_ack.row_fingerprint,
+            )
+            if preview.preview_ack
+            else None
+        ),
+        blockers=list(preview.blockers),
+        warnings=list(preview.warnings),
     )
 
 

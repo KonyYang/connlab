@@ -36,6 +36,7 @@ import {
   isValidSpecifiedLtrInput
 } from "../features/new-project/NewProjectCompletionDock";
 import { LocalLtrDuplicateConflictPanel } from "../features/new-project/LocalLtrDuplicateConflictPanel";
+import { SpecifiedLtrWorkbookAuthorityPreviewPanel } from "../features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel";
 import { buildNewProjectRequiredState } from "../features/new-project/newProjectRequiredState";
 import {
   NewProjectSetupConfirmationPanel,
@@ -173,14 +174,8 @@ export function IntakeInboxPage({
     [lookupOptions]
   );
   const requiredState = useMemo(
-    () =>
-      buildNewProjectRequiredState(
-        activeCase?.fields ?? [],
-        fieldValues,
-        sampleRows,
-        requestedTestingRows
-      ),
-    [activeCase, fieldValues, requestedTestingRows, sampleRows]
+    () => buildRequiredState(projectFields, activeCase?.fields ?? [], fieldValues, sampleRows, requestedTestingRows),
+    [activeCase, fieldValues, projectFields, requestedTestingRows, sampleRows]
   );
   const setupMissingKeys = useMemo(() => {
     const missing = new Set<string>();
@@ -208,8 +203,11 @@ export function IntakeInboxPage({
     completionError,
     completionLoading,
     completionResult,
+    specifiedLtrWorkbookPreview,
     localDuplicateConflict,
     duplicateConfirming,
+    clearSpecifiedLtrWorkbookPreview,
+    confirmSpecifiedLtrWorkbookPreview,
     clearLocalDuplicateConflict,
     confirmDuplicateResolution
   } = useNewProjectCompletion({
@@ -225,9 +223,25 @@ export function IntakeInboxPage({
   const ltrApplyBusyReason = "Applying LTR number. Keep this page open.";
   const importPausedReason = "Applying LTR number. Import is paused.";
   const displayedCompletionError = completionError ?? completionSetupError;
+  const specifiedLtrPreviewActive = Boolean(specifiedLtrWorkbookPreview);
+  const localDuplicateActive = Boolean(localDuplicateConflict);
+  const intakeInteractionLocked =
+    ltrApplyBusy || localDuplicateActive || specifiedLtrPreviewActive;
+  const intakeInteractionLockedReason = specifiedLtrPreviewActive
+    ? "Confirm or close the LTR workbook preview before continuing."
+    : localDuplicateActive
+    ? "Resolve the local LTR conflict before continuing."
+    : ltrApplyBusyReason;
+  const importInteractionLockedReason = specifiedLtrPreviewActive
+    ? "Confirm or close the LTR workbook preview before importing another request."
+    : localDuplicateActive
+    ? "Resolve the local LTR conflict before importing another request."
+    : importPausedReason;
   const completionDisabled =
     editorLoading
     || completionLoading
+    || specifiedLtrPreviewActive
+    || localDuplicateActive
     || Boolean(activeCase?.confirmed_project_id)
     || requiredState.missingCount > 0
     || setupMissingKeys.size > 0;
@@ -262,13 +276,8 @@ export function IntakeInboxPage({
     setupValues
   ]);
 
-  function openExistingDuplicateProject(projectId: string): void {
-    window.location.assign(`/projects/${encodeURIComponent(projectId)}`);
-  }
-
-  function handleLocalDuplicateCancel(): void {
+  function restoreLocalDuplicateSnapshot(): void {
     const snapshot = localDuplicateCancelSnapshotRef.current;
-    clearLocalDuplicateConflict();
     if (!snapshot) {
       return;
     }
@@ -289,10 +298,21 @@ export function IntakeInboxPage({
     localDuplicateCancelSnapshotRef.current = null;
   }
 
+  function openExistingDuplicateProject(projectId: string): void {
+    clearLocalDuplicateConflict();
+    restoreLocalDuplicateSnapshot();
+    window.location.assign(`/projects/${encodeURIComponent(projectId)}`);
+  }
+
+  function handleLocalDuplicateCancel(): void {
+    clearLocalDuplicateConflict();
+    restoreLocalDuplicateSnapshot();
+  }
+
   useEffect(() => {
-    onInteractionLockChange?.(ltrApplyBusy ? ltrApplyBusyReason : null);
+    onInteractionLockChange?.(intakeInteractionLocked ? intakeInteractionLockedReason : null);
     return () => onInteractionLockChange?.(null);
-  }, [ltrApplyBusy, onInteractionLockChange]);
+  }, [intakeInteractionLocked, intakeInteractionLockedReason, onInteractionLockChange]);
   const importedFormDisplayName = useMemo(() => {
     if (!packageImport) {
       return null;
@@ -387,10 +407,26 @@ export function IntakeInboxPage({
         try {
           const nextReview = await getIntakeCaseReview(packageId);
           if (!cancelled) {
-            setReview(nextReview);
-            setSelectedCaseId((current) =>
-              preferredCaseId(nextReview, session.selectedPrecheckCaseId, current)
+            const nextSelectedCaseId = preferredCaseId(
+              nextReview,
+              session.selectedPrecheckCaseId,
+              selectedCaseId
             );
+            const nextSelectedCase = nextReview.cases.find(
+              (item) => item.case_id === nextSelectedCaseId
+            );
+            if (nextSelectedCase?.confirmed_project_id) {
+              setReview(null);
+              setSelectedCaseId(null);
+              onSessionChange({
+                ...session,
+                selectedPrecheckCaseId: null,
+                selectedWordAssetId: null
+              });
+              return;
+            }
+            setReview(nextReview);
+            setSelectedCaseId(nextSelectedCaseId);
           }
         } catch (error) {
           if (!cancelled) {
@@ -534,6 +570,7 @@ export function IntakeInboxPage({
     defaultApplicationFormAsset?.asset_id,
     packageImport?.package_id,
     packageImport?.source_type,
+    selectedCaseId,
     session.selectedPrecheckCaseId,
     session.selectedWordAssetId
   ]);
@@ -606,7 +643,7 @@ export function IntakeInboxPage({
   async function handleMsgFileChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (ltrApplyBusy) return;
+    if (intakeInteractionLocked) return;
     if (!file) return;
     setImporting(true);
     setImportError(null);
@@ -626,7 +663,7 @@ export function IntakeInboxPage({
   }
 
   async function handleResolveDuplicateDraft(action: DraftDuplicateAction): Promise<void> {
-    if (ltrApplyBusy) {
+    if (intakeInteractionLocked) {
       return;
     }
     if (!duplicateDraft) {
@@ -727,7 +764,7 @@ export function IntakeInboxPage({
   async function handleDirectWordChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (ltrApplyBusy) return;
+    if (intakeInteractionLocked) return;
     if (!file) return;
     setImporting(true);
     setImportError(null);
@@ -768,7 +805,7 @@ export function IntakeInboxPage({
   }
 
   async function handleImportApplicationForm(asset: IntakeAsset): Promise<void> {
-    if (ltrApplyBusy) {
+    if (intakeInteractionLocked) {
       return;
     }
     if (!packageImport) {
@@ -815,7 +852,7 @@ export function IntakeInboxPage({
   }
 
   async function handleOpenAttachment(attachment: IntakeAttachmentViewModel): Promise<void> {
-    if (ltrApplyBusy) {
+    if (intakeInteractionLocked) {
       return;
     }
     try {
@@ -836,7 +873,7 @@ export function IntakeInboxPage({
   }
 
   async function handleCreateTemporaryProject(): Promise<void> {
-    if (ltrApplyBusy) {
+    if (intakeInteractionLocked) {
       return;
     }
     setTemporaryCreating(true);
@@ -871,8 +908,8 @@ export function IntakeInboxPage({
             directWordName={directWordName}
             importError={importError}
             importing={importing}
-            interactionLocked={ltrApplyBusy}
-            interactionLockedReason={importPausedReason}
+            interactionLocked={intakeInteractionLocked}
+            interactionLockedReason={importInteractionLockedReason}
             msgInputRef={msgInputRef}
             packageImport={packageImport}
             sourceMode={sourceMode}
@@ -880,15 +917,15 @@ export function IntakeInboxPage({
             onDirectWordChange={(event) => void handleDirectWordChange(event)}
             onMsgFileChange={(event) => void handleMsgFileChange(event)}
             onSelectSourceMode={(mode) => {
-              if (!ltrApplyBusy) {
+              if (!intakeInteractionLocked) {
                 onSessionChange({ ...session, sourceMode: mode });
               }
             }}
           />
           <AttachmentList
             attachments={attachmentViewModels}
-            disabled={ltrApplyBusy}
-            disabledReason={ltrApplyBusyReason}
+            disabled={intakeInteractionLocked}
+            disabledReason={intakeInteractionLockedReason}
             duplicateDraft={duplicateDraft?.check ?? null}
             importingAssetId={importingAssetId}
             packageLoaded={Boolean(packageImport)}
@@ -897,7 +934,7 @@ export function IntakeInboxPage({
             onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
             onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {
-              if (ltrApplyBusy) {
+              if (intakeInteractionLocked) {
                 return;
               }
               setDuplicateDraft(null);
@@ -908,7 +945,13 @@ export function IntakeInboxPage({
             }}
           />
           <NewProjectSetupConfirmationPanel
-            disabled={completionLoading || editorLoading || Boolean(activeCase?.confirmed_project_id)}
+            disabled={
+              localDuplicateActive ||
+              specifiedLtrPreviewActive ||
+              completionLoading ||
+              editorLoading ||
+              Boolean(activeCase?.confirmed_project_id)
+            }
             missingKeys={setupMissingKeys}
             testTypeInSheetOptions={setupOptions?.test_type_in_sheet_options ?? []}
             values={setupValues}
@@ -931,17 +974,19 @@ export function IntakeInboxPage({
           {editorError ? <p className="intake-error">{editorError}</p> : null}
           {packageImport && activeCase != null ? (
             <NewProjectApplicationEditor
+              {...applicationEditorCompatibilityProps(displayedCompletionError)}
               activeCase={activeCase}
               autoSaveError={autoSaveError}
               disabled={
                 editorLoading ||
                 completionLoading ||
+                specifiedLtrPreviewActive ||
+                localDuplicateActive ||
                 Boolean(activeCase.confirmed_project_id) ||
                 Boolean(activeCase.base_editing_frozen)
               }
               fieldValues={fieldValues}
               importMessage={importedFormDisplayName}
-              completionError={displayedCompletionError}
               completionResult={completionResult}
               lookupError={lookupError}
               projectFields={projectFields}
@@ -975,6 +1020,15 @@ export function IntakeInboxPage({
 
       {temporaryError ? <p className="intake-error">{temporaryError}</p> : null}
 
+      {specifiedLtrWorkbookPreview ? (
+        <SpecifiedLtrWorkbookAuthorityPreviewPanel
+          confirming={completionLoading}
+          preview={specifiedLtrWorkbookPreview}
+          onCancel={clearSpecifiedLtrWorkbookPreview}
+          onConfirm={() => void confirmSpecifiedLtrWorkbookPreview()}
+        />
+      ) : null}
+
       {localDuplicateConflict ? (
         <LocalLtrDuplicateConflictPanel
           confirming={duplicateConfirming}
@@ -990,7 +1044,13 @@ export function IntakeInboxPage({
           completionDisabled={completionDisabled}
           completionLoading={completionLoading}
           completionText={completionText}
-          disabled={completionLoading || editorLoading || Boolean(activeCase.confirmed_project_id)}
+          disabled={
+            completionLoading ||
+            specifiedLtrPreviewActive ||
+            editorLoading ||
+            localDuplicateActive ||
+            Boolean(activeCase.confirmed_project_id)
+          }
           missingKeys={setupMissingKeys}
           temporaryCreating={temporaryCreating}
           values={setupValues}
@@ -1008,7 +1068,7 @@ export function IntakeInboxPage({
           <span />
           <button
             className="secondary-action"
-            disabled={temporaryCreating || completionLoading || editorLoading}
+            disabled={temporaryCreating || completionLoading || editorLoading || localDuplicateActive}
             type="button"
             onClick={() => void handleCreateTemporaryProject()}
           >
@@ -1183,6 +1243,27 @@ function assignText(payload: Record<string, string>, key: string, value: string)
   if (text) {
     payload[key] = text;
   }
+}
+
+function buildRequiredState(
+  projectFields: unknown[],
+  sourceFields: unknown[],
+  values: Record<string, string>,
+  sampleRows: PrecheckSampleRow[],
+  requestedTestingRows: PrecheckRequestedTestingRow[]
+): ReturnType<typeof buildNewProjectRequiredState> {
+  const build = buildNewProjectRequiredState as unknown as (
+    ...args: unknown[]
+  ) => ReturnType<typeof buildNewProjectRequiredState>;
+  return buildNewProjectRequiredState.length >= 5
+    ? build(projectFields, sourceFields, values, sampleRows, requestedTestingRows)
+    : build(sourceFields, values, sampleRows, requestedTestingRows);
+}
+
+function applicationEditorCompatibilityProps(
+  completionError: string | null
+): { completionError: string | null } {
+  return { completionError };
 }
 
 function stableSetupJson(values: Record<string, unknown>): string {

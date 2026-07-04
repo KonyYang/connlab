@@ -22,8 +22,13 @@ from backend.application.ltr_duplicate_resolution_service import (
     LocalLtrDuplicateResolutionService,
 )
 from backend.application.new_project_setup_policy import normalize_lab_performing_tests
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreviewAck,
+    SpecifiedLtrWorkbookAuthorityPreviewError,
+    SpecifiedLtrWorkbookAuthorityPreviewService,
+)
 from backend.domain import ApplicationForm, IntakeCase, LtrRecord, LtrStatus, Project, ProjectStatus
-from backend.modules.ltr import LtrNumberError, parse_ltr_number
+from backend.modules.ltr import LtrNumberError, LtrNumberKind, parse_ltr_number
 
 
 class NewProjectCompletionError(ValueError):
@@ -57,6 +62,7 @@ class CompleteNewProjectCommand:
     project_leader: str | None = None
     lab_performing_tests: str | None = None
     duplicate_resolution: DuplicateResolutionCommand | None = None
+    specified_ltr_workbook_preview_ack: SpecifiedLtrWorkbookAuthorityPreviewAck | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +133,7 @@ class NewProjectCompletionService:
         application_form_store: ApplicationFormStore,
         confirmation_service: IntakeConfirmationService,
         ltr_commit_service: LtrAuthorityPort,
+        specified_ltr_preview_service: SpecifiedLtrWorkbookAuthorityPreviewService | None = None,
         duplicate_resolution_service: LocalLtrDuplicateResolutionService | None = None,
     ) -> None:
         self._intake_cases = intake_case_store
@@ -135,11 +142,13 @@ class NewProjectCompletionService:
         self._forms = application_form_store
         self._confirmation = confirmation_service
         self._ltr_commit = ltr_commit_service
+        self._specified_ltr_preview = specified_ltr_preview_service
         self._duplicates = duplicate_resolution_service
 
     def complete(self, command: CompleteNewProjectCommand) -> NewProjectCompletionResult:
         """Confirm intake data and apply an LTR without generating folders."""
         self._validate_setup_confirmation(command)
+        self._verify_specified_ltr_workbook_preview(command)
         project = self._confirm_or_load_project(command.case_id)
         project = self._ensure_ltr_ready_status(project)
         if not self._registered_ltrs(project):
@@ -283,6 +292,33 @@ class NewProjectCompletionService:
             return parsed.normalized
 
         return None
+
+    def _verify_specified_ltr_workbook_preview(
+        self,
+        command: CompleteNewProjectCommand,
+    ) -> None:
+        """Require read-only workbook preview acknowledgement for full specified DL input."""
+        if command.ltr_mode is not NewProjectLtrMode.SPECIFIED:
+            return
+        if not command.specified_ltr_number:
+            return
+        try:
+            parsed = parse_ltr_number(command.specified_ltr_number)
+        except LtrNumberError:
+            return
+        if parsed.kind is not LtrNumberKind.STANDARD_DL:
+            return
+        if self._specified_ltr_preview is None:
+            raise NewProjectCompletionError(
+                "LTR workbook authority preview is not available."
+            )
+        try:
+            self._specified_ltr_preview.verify_ack(
+                specified_ltr_number=command.specified_ltr_number,
+                ack=command.specified_ltr_workbook_preview_ack,
+            )
+        except SpecifiedLtrWorkbookAuthorityPreviewError as exc:
+            raise NewProjectCompletionError(str(exc)) from exc
 
 def _operator_note(command: CompleteNewProjectCommand) -> str:
     """Build audit context for values that will later map to LTR.xls."""

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApiRequestError,
@@ -9,12 +9,14 @@ import {
   getIntakeCaseReview,
   getIntakePrecheckLookupOptions,
   getNewProjectCompletionOptions,
+  previewSpecifiedLtrWorkbookAuthority,
   type IntakeCaseReview,
   type IntakeCaseReviewItem,
   type IntakePackageImport,
   type LocalLtrDuplicateConflictDetail
 } from "../api/client";
 import {
+  EMPTY_INTAKE_SESSION,
   type IntakeSessionState
 } from "../features/intake/intakeSession";
 import { IntakeInboxPage } from "./IntakeInboxPage";
@@ -27,13 +29,21 @@ vi.mock("../api/client", async (importOriginal) => {
     getIntakeCaseReview: vi.fn(),
     getIntakePrecheckLookupOptions: vi.fn(),
     getNewProjectCompletionOptions: vi.fn(),
+    previewSpecifiedLtrWorkbookAuthority: vi.fn(),
     updateIntakeCaseReviewFields: vi.fn()
   };
 });
 
 describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
+  const locationAssign = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    locationAssign.mockReset();
+    vi.stubGlobal("location", {
+      ...window.location,
+      assign: locationAssign
+    });
     vi.mocked(getIntakePrecheckLookupOptions).mockResolvedValue({
       business_unit: [],
       manufacturing_site: [],
@@ -51,6 +61,10 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithCase);
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("restores the imported case and apply readiness when local duplicate cancel closes the conflict", async () => {
     const user = userEvent.setup();
     vi.mocked(completeNewProject).mockRejectedValueOnce(
@@ -66,29 +80,172 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
     await user.click(applyButton);
 
-    expect(await screen.findByText("LTR number already exists locally")).toBeTruthy();
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(
+      screen.getByText("DL-2026-05-777 Existing sample assembly Qualification")
+    ).toBeTruthy();
 
     vi.mocked(getIntakeCaseReview).mockResolvedValueOnce(reviewWithoutCases);
     await user.click(screen.getByRole("button", { name: "Simulate review refresh without cases" }));
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /Apply LTR Number/ })).toBeNull();
+      expect((screen.getByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
+        .toBe(true);
     });
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
-      expect(screen.queryByText("LTR number already exists locally")).toBeNull();
+      expect(screen.queryByRole("alertdialog")).toBeNull();
     });
     const restoredApplyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
     expect((restoredApplyButton as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getAllByDisplayValue("Connector sample").length).toBeGreaterThan(0);
     expect(vi.mocked(completeNewProject)).toHaveBeenCalledTimes(1);
   });
+
+  it("opens the existing project without clearing the current intake session", async () => {
+    const user = userEvent.setup();
+    const onSessionChange = vi.fn();
+    vi.mocked(completeNewProject).mockRejectedValueOnce(
+      new ApiRequestError("Local LTR duplicate", 409, duplicateConflict)
+    );
+
+    render(<Harness onSessionChangeSpy={onSessionChange} />);
+
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => {
+      expect((applyButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(applyButton);
+    await screen.findByRole("alertdialog");
+
+    vi.mocked(getIntakeCaseReview).mockResolvedValueOnce(reviewWithoutCases);
+    await user.click(screen.getByRole("button", { name: "Simulate review refresh without cases" }));
+
+    await waitFor(() => {
+      expect((screen.getByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
+        .toBe(true);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Open existing project" }));
+
+    expect(locationAssign).toHaveBeenCalledWith("/projects/project-old");
+    expect(onSessionChange).not.toHaveBeenCalledWith(EMPTY_INTAKE_SESSION);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect((await screen.findByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
+      .toBe(false);
+    expect(screen.getAllByDisplayValue("Connector sample").length).toBeGreaterThan(0);
+  });
+
+  it("previews the workbook row before completing a full specified LTR", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithSpecifiedCase);
+    vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue(workbookPreviewFound);
+    vi.mocked(completeNewProject).mockResolvedValue({
+      project_id: "project-new",
+      project_status: "ltr_registered",
+      ltr_number: "DL-2026-05-011",
+      workbook_path: "D:/PublicProject/LTR.xlsx",
+      workbook_sheet_name: "2026",
+      workbook_row_number: 12,
+      workbook_backup_path: "D:/PublicProject/backups/LTR.xlsx"
+    });
+
+    render(<Harness />);
+
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => {
+      expect((applyButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(applyButton);
+
+    await waitFor(() => {
+      expect(previewSpecifiedLtrWorkbookAuthority).toHaveBeenCalledWith("case-1", {
+        specified_ltr_number: "DL-2026-05-011"
+      });
+    });
+    expect(completeNewProject).not.toHaveBeenCalled();
+    expect(await screen.findByText("Confirm LTR workbook row")).toBeTruthy();
+    expect(screen.getByText("PwrBlade Ultra Pro")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Use this LTR number" }));
+
+    await waitFor(() => {
+      expect(completeNewProject).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          ltr_mode: "specified",
+          specified_ltr_number: "DL-2026-05-011",
+          specified_ltr_workbook_preview_ack: workbookPreviewFound.preview_ack
+        })
+      );
+    });
+  });
+
+  it("blocks completion when the specified LTR is missing from the workbook", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithSpecifiedCase);
+    vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue(workbookPreviewNotFound);
+
+    render(<Harness />);
+
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => {
+      expect((applyButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(applyButton);
+
+    expect(await screen.findByText("LTR workbook 中不存在该编号")).toBeTruthy();
+    expect(completeNewProject).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("LTR workbook 中不存在该编号")).toBeNull();
+    });
+    expect((await screen.findByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
+      .toBe(false);
+  });
+
+  it("hands off to local duplicate conflict after workbook preview confirmation", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithSpecifiedCase);
+    vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue(workbookPreviewFound);
+    vi.mocked(completeNewProject).mockRejectedValueOnce(
+      new ApiRequestError("Local LTR duplicate", 409, duplicateConflict)
+    );
+
+    render(<Harness />);
+
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => {
+      expect((applyButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(applyButton);
+    await screen.findByText("Confirm LTR workbook row");
+    await user.click(screen.getByRole("button", { name: "Use this LTR number" }));
+
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(screen.queryByText("Confirm LTR workbook row")).toBeNull();
+    expect(screen.getByText("DL-2026-05-777 Existing sample assembly Qualification"))
+      .toBeTruthy();
+  });
 });
 
-function Harness() {
+function Harness({
+  onSessionChangeSpy
+}: {
+  onSessionChangeSpy?: (session: IntakeSessionState) => void;
+}) {
   const [session, setSession] = useState<IntakeSessionState>(loadedSession);
+  const handleSessionChange = (nextSession: IntakeSessionState) => {
+    onSessionChangeSpy?.(nextSession);
+    setSession(nextSession);
+  };
   return (
     <>
       <button
@@ -106,7 +263,7 @@ function Harness() {
         session={session}
         onExit={vi.fn()}
         onProjectCreated={vi.fn()}
-        onSessionChange={setSession}
+        onSessionChange={handleSessionChange}
       />
     </>
   );
@@ -212,6 +369,20 @@ const reviewWithCase: IntakeCaseReview = {
   cases: [activeCase]
 };
 
+const reviewWithSpecifiedCase: IntakeCaseReview = {
+  ...reviewWithCase,
+  cases: [
+    {
+      ...activeCase,
+      project_setup: {
+        ...activeCase.project_setup,
+        ltr_mode: "specified",
+        specified_ltr_number: "DL-2026-05-011"
+      }
+    }
+  ]
+};
+
 const reviewWithoutCases: IntakeCaseReview = {
   ...reviewWithCase,
   cases: []
@@ -227,6 +398,8 @@ const duplicateConflict: LocalLtrDuplicateConflictDetail = {
     display_project_id: "DL-2026-05-777",
     project_name: "Existing project",
     product_name: "Existing Connector",
+    sample_description: "Existing sample assembly",
+    test_item: "Qualification",
     requester: "Alice",
     registered_on: "2026-05-07",
     project_status: "ltr_registered",
@@ -247,6 +420,52 @@ const duplicateConflict: LocalLtrDuplicateConflictDetail = {
     allowed_actions: ["open_existing", "cancel", "replace_local_association"],
     requires_second_confirmation: true
   }
+};
+
+const workbookPreviewFound = {
+  status: "found" as const,
+  ltr_number: "DL-2026-05-011",
+  message: "LTR workbook row found.",
+  workbook_path: "D:/PublicProject/LTR.xlsx",
+  sheet_name: "2026",
+  row_number: 12,
+  row_values: [
+    {
+      field_name: "project_type",
+      label: "Project Type",
+      value: "Qualification",
+      is_blank: false
+    },
+    {
+      field_name: "description_pn",
+      label: "Description P/N",
+      value: "PwrBlade Ultra Pro",
+      is_blank: false
+    }
+  ],
+  preview_ack: {
+    acknowledged: true,
+    ltr_number: "DL-2026-05-011",
+    sheet_name: "2026",
+    row_number: 12,
+    preview_token: "preview-token",
+    row_fingerprint: "row-fingerprint"
+  },
+  blockers: [],
+  warnings: []
+};
+
+const workbookPreviewNotFound = {
+  status: "not_found" as const,
+  ltr_number: "DL-2026-05-011",
+  message: "LTR workbook 中不存在该编号",
+  workbook_path: "D:/PublicProject/LTR.xlsx",
+  sheet_name: "2026",
+  row_number: null,
+  row_values: [],
+  preview_ack: null,
+  blockers: [],
+  warnings: []
 };
 
 function field(key: string, label: string, value: string) {

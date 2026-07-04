@@ -4,11 +4,13 @@ import {
   ApiRequestError,
   completeNewProject,
   isLocalLtrDuplicateConflictDetail,
+  previewSpecifiedLtrWorkbookAuthority,
   type CompleteNewProjectDuplicateResolutionInput,
   type CompleteNewProjectInput,
   type CompleteNewProject,
   type IntakeCaseReviewItem,
-  type LocalLtrDuplicateConflictDetail
+  type LocalLtrDuplicateConflictDetail,
+  type SpecifiedLtrWorkbookAuthorityPreview
 } from "../../api/client";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
@@ -23,9 +25,12 @@ export type NewProjectCompletionModel = {
   completionError: string | null;
   completionLoading: boolean;
   completionResult: string | null;
+  specifiedLtrWorkbookPreview: SpecifiedLtrWorkbookAuthorityPreview | null;
   localDuplicateConflict: LocalLtrDuplicateConflictDetail | null;
   duplicateConfirming: boolean;
   complete: () => Promise<void>;
+  clearSpecifiedLtrWorkbookPreview: () => void;
+  confirmSpecifiedLtrWorkbookPreview: () => Promise<void>;
   clearLocalDuplicateConflict: () => void;
   confirmDuplicateResolution: (
     resolution: CompleteNewProjectDuplicateResolutionInput
@@ -41,6 +46,10 @@ export function useNewProjectCompletion({
   const [completionLoading, setCompletionLoading] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [completionResult, setCompletionResult] = useState<string | null>(null);
+  const [specifiedLtrWorkbookPreview, setSpecifiedLtrWorkbookPreview] =
+    useState<SpecifiedLtrWorkbookAuthorityPreview | null>(null);
+  const [specifiedLtrPreviewLoading, setSpecifiedLtrPreviewLoading] = useState(false);
+  const [specifiedLtrPreviewConfirming, setSpecifiedLtrPreviewConfirming] = useState(false);
   const [localDuplicateConflict, setLocalDuplicateConflict] =
     useState<LocalLtrDuplicateConflictDetail | null>(null);
   const [duplicateConfirming, setDuplicateConfirming] = useState(false);
@@ -48,6 +57,7 @@ export function useNewProjectCompletion({
   useEffect(() => {
     setCompletionError(null);
     setCompletionResult(null);
+    setSpecifiedLtrWorkbookPreview(null);
     setLocalDuplicateConflict(null);
   }, [resetKey]);
 
@@ -58,13 +68,46 @@ export function useNewProjectCompletion({
     setCompletionLoading(true);
     setCompletionError(null);
     setCompletionResult(null);
+    setSpecifiedLtrWorkbookPreview(null);
     setLocalDuplicateConflict(null);
     try {
+      if (shouldPreviewSpecifiedLtrWorkbook(setupValues)) {
+        const preview = await previewSpecifiedLtrWorkbookAuthority(activeCase.case_id, {
+          specified_ltr_number: setupValues.specifiedLtrNumber.trim()
+        });
+        setSpecifiedLtrWorkbookPreview(preview);
+        return;
+      }
       await submitCompletion(buildCompletionInput(setupValues));
     } catch (error) {
       handleCompletionError(error);
     } finally {
       setCompletionLoading(false);
+    }
+  }
+
+  async function confirmSpecifiedLtrWorkbookPreview(): Promise<void> {
+    if (!activeCase || !specifiedLtrWorkbookPreview?.preview_ack) {
+      return;
+    }
+    setSpecifiedLtrPreviewConfirming(true);
+    setCompletionError(null);
+    try {
+      await submitCompletion({
+        ...buildCompletionInput(setupValues),
+        specified_ltr_workbook_preview_ack: specifiedLtrWorkbookPreview.preview_ack
+      });
+      setSpecifiedLtrWorkbookPreview(null);
+    } catch (error) {
+      if (
+        error instanceof ApiRequestError &&
+        isLocalLtrDuplicateConflictDetail(error.detail)
+      ) {
+        setSpecifiedLtrWorkbookPreview(null);
+      }
+      handleCompletionError(error);
+    } finally {
+      setSpecifiedLtrPreviewConfirming(false);
     }
   }
 
@@ -115,14 +158,44 @@ export function useNewProjectCompletion({
 
   return {
     completionError,
-    completionLoading: completionLoading || duplicateConfirming,
+    completionLoading:
+      completionLoading ||
+      duplicateConfirming ||
+      specifiedLtrPreviewLoading ||
+      specifiedLtrPreviewConfirming,
     completionResult,
+    specifiedLtrWorkbookPreview,
     localDuplicateConflict,
     duplicateConfirming,
     complete,
-    clearLocalDuplicateConflict: () => setLocalDuplicateConflict(null),
+    clearSpecifiedLtrWorkbookPreview: () => {
+      setSpecifiedLtrWorkbookPreview(null);
+      setCompletionError(null);
+    },
+    confirmSpecifiedLtrWorkbookPreview,
+    clearLocalDuplicateConflict: () => {
+      setCompletionLoading(false);
+      setSpecifiedLtrPreviewLoading(false);
+      setSpecifiedLtrPreviewConfirming(false);
+      setSpecifiedLtrWorkbookPreview(null);
+      setLocalDuplicateConflict(null);
+      setCompletionError(null);
+      setCompletionResult(null);
+      setDuplicateConfirming(false);
+    },
     confirmDuplicateResolution
   };
+}
+
+function shouldPreviewSpecifiedLtrWorkbook(
+  setupValues: NewProjectSetupConfirmationValues
+): boolean {
+  if (setupValues.ltrMode !== "specified") {
+    return false;
+  }
+  return /^DL-\d{4}-\d{2}-\d{3}([A-Z][A-Z0-9]*)?$/i.test(
+    setupValues.specifiedLtrNumber.trim()
+  );
 }
 
 function buildCompletionInput(

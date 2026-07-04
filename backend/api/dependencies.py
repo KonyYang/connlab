@@ -80,6 +80,9 @@ from backend.application.new_project_application_draft_service import (
 from backend.application.new_project_completion_service import (
     NewProjectCompletionService,
 )
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreviewService,
+)
 from backend.application.no_ltr_project_cleanup_service import (
     NoLtrProjectCleanupService,
 )
@@ -1796,6 +1799,29 @@ def get_ltr_workbook_basic_information_sync_service(
     )
 
 
+def get_specified_ltr_workbook_authority_preview_service(
+    settings: Settings = Depends(get_settings),
+) -> SpecifiedLtrWorkbookAuthorityPreviewService:
+    """Build the read-only specified LTR workbook authority preview service."""
+    transaction_gateway = LtrWorkbookTransactionGateway(
+        OfficeFacade(),
+        LtrWorkbookTransactionConfig(
+            path=settings.ltr_workbook.path,
+            write_enabled=False,
+            modify_password=settings.ltr_workbook.modify_password,
+            lock_dir=settings.ltr_workbook.lock_dir,
+            lock_timeout_seconds=settings.ltr_workbook.lock_timeout_seconds,
+            backup_dir=settings.ltr_workbook.backup_dir,
+            backup_retention_count=settings.ltr_workbook.backup_retention_count,
+            backup_retention_days=settings.ltr_workbook.backup_retention_days,
+            backup_retention_max_mb=settings.ltr_workbook.backup_retention_max_mb,
+        ),
+    )
+    return SpecifiedLtrWorkbookAuthorityPreviewService(
+        transaction_gateway=transaction_gateway
+    )
+
+
 def get_ltr_authority_service(
     workbook_service: LtrWorkbookWriteCommitService = Depends(
         get_ltr_workbook_write_commit_service
@@ -1809,6 +1835,9 @@ def get_new_project_completion_service(
     session: Session = Depends(get_session),
     ltr_commit_service: LtrAuthorityPort = Depends(
         get_ltr_authority_service
+    ),
+    specified_ltr_preview_service: SpecifiedLtrWorkbookAuthorityPreviewService = Depends(
+        get_specified_ltr_workbook_authority_preview_service
     ),
 ) -> NewProjectCompletionService:
     """Build the New Project single-page completion orchestration service."""
@@ -1833,6 +1862,7 @@ def get_new_project_completion_service(
         application_form_store=ApplicationFormRepository(session),
         confirmation_service=confirmation_service,
         ltr_commit_service=ltr_commit_service,
+        specified_ltr_preview_service=specified_ltr_preview_service,
         duplicate_resolution_service=_ltr_duplicate_resolution_service(
             session,
             project_repository=project_repository,
