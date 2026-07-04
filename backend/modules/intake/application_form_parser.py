@@ -166,8 +166,18 @@ def _merge_table_row(values: dict[str, str], cells: list[str]) -> None:
     if len(cells) == 2:
         _set_value(values, cells[0], cells[1])
         return
-    for index in range(0, len(cells) - 1, 2):
+    index = 0
+    while index < len(cells) - 1:
+        if (
+            index + 2 < len(cells)
+            and _is_known_label(cells[index + 1])
+            and not _is_known_label(cells[index + 2])
+        ):
+            _set_value(values, cells[index + 1], cells[index + 2])
+            index += 3
+            continue
         _set_value(values, cells[index], cells[index + 1])
+        index += 2
 
 
 def _merge_pair(values: dict[str, str], text: str) -> None:
@@ -351,9 +361,49 @@ def _merge_content_control_values(values: dict[str, str], document) -> None:
         ordered_values.append("" if is_placeholder else value)
         if is_placeholder:
             continue
+        if inferred_key := _infer_dropdown_field_from_value(value):
+            values.setdefault(inferred_key, value)
         if key:
             values[key] = value
     _merge_ordered_section1_content_controls(values, ordered_values)
+
+
+def _infer_dropdown_field_from_value(value: str) -> str | None:
+    """Infer unlabeled Section 1 dropdown controls from their option text."""
+    normalized = _normalize_label(value)
+    if normalized in {
+        "formal report customer",
+        "formal report internal",
+        "data and observation",
+    }:
+        return "results_format"
+    if normalized in {
+        "product process development",
+        "product process qualification",
+        "lab failure analysis",
+        "customer specific testing",
+    }:
+        return "test_type"
+    if normalized in {
+        "new product development",
+        "product extension",
+        "innovation",
+        "lab activities lab use only",
+        "operational support",
+        "cost reduction",
+    }:
+        return "project_type"
+    if normalized in {
+        "prototype",
+        "production",
+        "pre production",
+        "engineering sample",
+        "new product",
+    }:
+        return "sample_status"
+    if _looks_like_post_testing_disposition(value):
+        return "post_testing_disposition"
+    return None
 
 
 def _merge_ordered_section1_content_controls(
@@ -361,7 +411,39 @@ def _merge_ordered_section1_content_controls(
     ordered_values: list[str],
 ) -> None:
     """Merge E-3718 Rev H content controls that have no stable alias/tag."""
-    ordered_keys = (
+    ordered_keys = _section1_content_control_order(ordered_values)
+    if len(ordered_values) < 8:
+        return
+    for key, value in zip(ordered_keys, ordered_values, strict=False):
+        if value and not _is_known_label(value):
+            if key == "project_type" and _looks_like_post_testing_disposition(value):
+                values.setdefault("post_testing_disposition", value)
+                continue
+            values.setdefault(key, value)
+
+
+def _section1_content_control_order(ordered_values: list[str]) -> tuple[str, ...]:
+    if (
+        len(ordered_values) > 2
+        and _infer_dropdown_field_from_value(ordered_values[2]) == "results_format"
+    ):
+        return (
+            "request_date",
+            "business_unit",
+            "results_format",
+            "requested_completion_date",
+            "test_type",
+            "sample_status",
+            "project_type",
+            "post_testing_disposition",
+            "confidential",
+            "subcontract",
+            "lab",
+            "received_date",
+            "estimated_completion_date",
+            "sample_condition",
+        )
+    return (
         "request_date",
         "business_unit",
         "manufacturing_site",
@@ -378,11 +460,17 @@ def _merge_ordered_section1_content_controls(
         "estimated_completion_date",
         "sample_condition",
     )
-    if len(ordered_values) < 8:
-        return
-    for key, value in zip(ordered_keys, ordered_values, strict=False):
-        if value and not _is_known_label(value):
-            values.setdefault(key, value)
+
+
+def _looks_like_post_testing_disposition(value: str) -> bool:
+    normalized = _normalize_label(value)
+    return normalized in {
+        "send back to requestor",
+        "scrap",
+        "keep in the lab",
+        "return samples",
+        "return to requestor",
+    }
 
 
 def _control_attribute_values(control, name: str) -> list[str]:

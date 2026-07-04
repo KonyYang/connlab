@@ -5,6 +5,7 @@ import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirm
 
 type NewProjectCompletionDockProps = {
   completionDisabled: boolean;
+  completionError?: string | null;
   completionLoading: boolean;
   completionText: string;
   disabled: boolean;
@@ -18,6 +19,7 @@ type NewProjectCompletionDockProps = {
 
 export function NewProjectCompletionDock({
   completionDisabled,
+  completionError,
   completionLoading,
   completionText,
   disabled,
@@ -93,6 +95,10 @@ export function NewProjectCompletionDock({
             <span>ConnLab may open and update the LTR workbook. Keep this page open.</span>
           </span>
         </div>
+      ) : null}
+
+      {completionError ? (
+        <p className="new-project-dock-error" role="alert">{completionError}</p>
       ) : null}
 
       <div className="new-project-dock-summary">

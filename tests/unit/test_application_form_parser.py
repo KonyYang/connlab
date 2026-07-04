@@ -151,6 +151,23 @@ def test_application_form_parser_tolerates_missing_optional_fields(
     assert parsed.lab_section.lab is None
 
 
+def test_application_form_parser_extracts_value_after_neighbor_label(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "neighbor-label-value.docx"
+    document = Document()
+    table = document.add_table(rows=1, cols=5)
+    values = ["Email:", "kris.li@example.com", "Business Unit:", "Mfg. Site:", "Nantong"]
+    for index, value in enumerate(values):
+        table.cell(0, index).text = value
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.email == "kris.li@example.com"
+    assert parsed.manufacturing_site == "Nantong"
+
+
 def test_application_form_parser_extracts_real_style_applicant_fixture(
     tmp_path: Path,
 ) -> None:
@@ -379,6 +396,81 @@ def test_application_form_parser_keeps_section1_placeholders_in_content_control_
     assert parsed.sample_status == "Pre-production"
     assert parsed.project_type == "New Product Development"
     assert parsed.post_testing_disposition == "Keep in the Lab"
+
+
+def test_application_form_parser_does_not_shift_disposition_into_project_type(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "missing-project-type-content-control.docx"
+    document = Document()
+    _add_key_value_table(
+        document,
+        [
+            ("Date:", ""),
+            ("Business Unit:", "Mfg. Site:"),
+            ("Results Format:", "Requested Testing Completion Date:"),
+        ],
+    )
+    for value in [
+        "4/23/2025",
+        "Power Solutions",
+        "Dongguan",
+        "Formal Report (Internal)",
+        "5/23/2025",
+        "Product/Process Qualification",
+        "Prototype",
+        "Send Back to Requestor",
+        "No",
+        "Yes",
+    ]:
+        _add_content_control_paragraph(document, value)
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.project_type is None
+    assert parsed.post_testing_disposition == "Send Back to Requestor"
+
+
+def test_application_form_parser_handles_section1_without_mfg_site_control(
+    tmp_path: Path,
+) -> None:
+    docx_path = tmp_path / "section1-no-mfg-site-control.docx"
+    document = Document()
+    _add_key_value_table(
+        document,
+        [
+            ("Date:", ""),
+            ("Business Unit:", "Mfg. Site:"),
+            ("Results Format:", "Requested Testing Completion Date:"),
+        ],
+    )
+    for value in [
+        "5/19/2023",
+        "Power",
+        "Formal Report (Customer)",
+        "6/19/2023",
+        "Product/Process Qualification",
+        "Production",
+        "New Product Development",
+        "Send Back to Requestor",
+        "No",
+        "Yes",
+    ]:
+        _add_content_control_paragraph(document, value)
+    document.save(docx_path)
+
+    parsed = ApplicationFormParser().parse(docx_path)
+
+    assert parsed.request_date == "5/19/2023"
+    assert parsed.business_unit == "Power"
+    assert parsed.manufacturing_site is None
+    assert parsed.results_format == "Formal Report (Customer)"
+    assert parsed.requested_completion_date == "6/19/2023"
+    assert parsed.test_type == "Product/Process Qualification"
+    assert parsed.sample_status == "Production"
+    assert parsed.project_type == "New Product Development"
+    assert parsed.post_testing_disposition == "Send Back to Requestor"
 
 
 def test_application_form_parser_keeps_blank_fields_blank_when_neighbor_is_label(

@@ -5,6 +5,27 @@ import { NewProjectCompletionDock } from "./NewProjectCompletionDock";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
 describe("NewProjectCompletionDock Apply LTR busy state", () => {
+  it("shows completion errors inside the dock action area", () => {
+    render(
+      <NewProjectCompletionDock
+        completionDisabled={false}
+        completionError="Intake case not found: case-1"
+        completionLoading={false}
+        completionText="Required project information complete"
+        disabled={false}
+        missingKeys={new Set()}
+        values={values}
+        onChange={vi.fn()}
+        onComplete={vi.fn()}
+        onCreateTemporaryProject={vi.fn()}
+      />
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("Intake case not found: case-1");
+    expect(alert.closest(".new-project-completion-dock")).toBeTruthy();
+  });
+
   it("shows compact busy status and prevents Apply/temporary actions while loading", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();

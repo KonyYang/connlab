@@ -259,6 +259,7 @@
 
 .precheck-field input,
 .precheck-field select,
+.precheck-additional-panel textarea,
 .precheck-subpanel textarea,
 .draft-field-input {
   width: 100%;
@@ -290,6 +291,7 @@
 
 .precheck-field input:focus,
 .precheck-field select:focus,
+.precheck-additional-panel textarea:focus,
 .precheck-subpanel textarea:focus {
   border-color: #0b61e8;
   outline: 3px solid #d9e8ff;
@@ -737,6 +739,7 @@
 }
 
 .precheck-additional-input {
+  font-family: "Aptos", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;

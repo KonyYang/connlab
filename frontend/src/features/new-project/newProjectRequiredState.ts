@@ -1,7 +1,7 @@
 import type { IntakeCaseReviewField } from "../../api/client";
 import {
-  PRECHECK_PROJECT_FIELDS,
   PRECHECK_SAMPLE_COLUMNS,
+  type PrecheckFieldSpec,
   type PrecheckRequestedTestingRow,
   type PrecheckSampleRow
 } from "../precheck/precheckFieldConfig";
@@ -16,6 +16,7 @@ export type NewProjectRequiredState = {
 const LOWER_REQUIRED_KEYS = ["requested_testing", "confidential", "subcontract"] as const;
 
 export function buildNewProjectRequiredState(
+  projectFields: PrecheckFieldSpec[],
   sourceFields: IntakeCaseReviewField[],
   values: Record<string, string>,
   sampleRows: PrecheckSampleRow[],
@@ -24,8 +25,8 @@ export function buildNewProjectRequiredState(
   const missingFieldKeys = new Set<string>();
   const missingSampleCells = new Set<string>();
 
-  for (const field of PRECHECK_PROJECT_FIELDS) {
-    if (field.required && !fieldValue(field.key, values, sourceFields).trim()) {
+  for (const field of projectFields) {
+    if (field.required && !validFieldValue(field, values, sourceFields).trim()) {
       missingFieldKeys.add(field.key);
     }
   }
@@ -58,6 +59,18 @@ export function buildNewProjectRequiredState(
     missingSampleCells,
     missingCount: missingFieldKeys.size + missingSampleCells.size
   };
+}
+
+function validFieldValue(
+  field: PrecheckFieldSpec,
+  values: Record<string, string>,
+  sourceFields: IntakeCaseReviewField[]
+): string {
+  const value = fieldValue(field.key, values, sourceFields).trim();
+  if (!value || field.kind !== "select" || !field.options?.length) {
+    return value;
+  }
+  return field.options.includes(value) ? value : "";
 }
 
 function rowHasAnySampleValue(row: PrecheckSampleRow): boolean {

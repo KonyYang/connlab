@@ -1826,11 +1826,15 @@ export type LocalLtrDuplicateConflictDetail = {
     display_project_id: string;
     project_name?: string | null;
     product_name?: string | null;
+    sample_description?: string | null;
+    test_item?: string | null;
     requester?: string | null;
     registered_on?: string | null;
+    recent_activity_at?: string | null;
     project_status?: string | null;
     lifecycle_state?: string | null;
     has_local_folder?: boolean;
+    local_folder_path?: string | null;
     has_matrix?: boolean;
     has_outputs?: boolean;
   };

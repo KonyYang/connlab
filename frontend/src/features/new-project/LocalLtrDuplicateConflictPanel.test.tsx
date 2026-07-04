@@ -21,10 +21,14 @@ describe("LocalLtrDuplicateConflictPanel", () => {
       />
     );
 
-    expect(screen.getByText("LTR number already exists locally")).toBeTruthy();
-    expect(screen.getByText("DL-2026-05-777")).toBeTruthy();
-    expect(screen.getByText("OLD-PROJECT")).toBeTruthy();
-    expect(screen.getByText("Existing Connector")).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(
+      screen.getByText("DL-2026-05-777 Existing sample assembly Qualification Testing")
+    ).toBeTruthy();
+    expect(screen.queryByText("Local LTR conflict")).toBeNull();
+    expect(screen.queryByText("LTR number already exists locally")).toBeNull();
+    expect(screen.queryByText("OLD-PROJECT")).toBeNull();
+    expect(screen.queryByText("Project folder")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Continue with this LTR number" }));
     expect(onConfirm).not.toHaveBeenCalled();
@@ -81,11 +85,15 @@ const conflict: LocalLtrDuplicateConflictDetail = {
     display_project_id: "OLD-PROJECT",
     project_name: "Existing Connector",
     product_name: "Existing Connector",
+    sample_description: "Existing sample assembly",
+    test_item: "Qualification Testing",
     requester: "Alice",
     registered_on: "2026-05-07",
+    recent_activity_at: "2026-05-07",
     project_status: "ltr_registered",
     lifecycle_state: "active",
     has_local_folder: true,
+    local_folder_path: "D:\\Test Project\\DL-2026-05-777",
     has_matrix: false,
     has_outputs: false,
   },

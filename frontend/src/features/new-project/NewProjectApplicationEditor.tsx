@@ -22,7 +22,6 @@ import type { NewProjectRequiredState } from "./newProjectRequiredState";
 type NewProjectApplicationEditorProps = {
   activeCase: IntakeCaseReviewItem | null;
   autoSaveError: string | null;
-  completionError: string | null;
   completionResult: string | null;
   disabled: boolean;
   fieldValues: Record<string, string>;
@@ -41,7 +40,6 @@ type NewProjectApplicationEditorProps = {
 export function NewProjectApplicationEditor({
   activeCase,
   autoSaveError,
-  completionError,
   completionResult,
   disabled,
   fieldValues,
@@ -145,8 +143,6 @@ export function NewProjectApplicationEditor({
           onFieldValuesChange({ ...fieldValues, subcontract: value })
         }
       />
-
-      {completionError ? <p className="intake-error">{completionError}</p> : null}
 
       {completionResult ? <p className="new-project-completion-result">{completionResult}</p> : null}
 

@@ -65,12 +65,15 @@ function ReviewField({
   const recipientsMultiline = field.key === "send_copies_recipients";
   const options = normalizedOptions(field.options ?? [], value);
   const inputValue = field.kind === "date" ? dateInputValue(value) : value;
-  const selectOptions = value ? options : ["", ...options.filter(Boolean)];
+  const selectValue = field.kind === "select" && options.length > 0 && !options.includes(value)
+    ? ""
+    : value;
+  const selectOptions = selectValue ? options : ["", ...options.filter(Boolean)];
   return (
     <label className={fieldClassName(issueLevel)}>
       <span>{field.label}{field.required ? <b>*</b> : null}</span>
       {field.kind === "select" ? (
-        <select disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)}>
+        <select disabled={disabled} value={selectValue} onChange={(event) => onChange(event.target.value)}>
           {selectOptions.map((option) => (
             <option key={option || "__blank"} value={option}>
               {option || "Select..."}

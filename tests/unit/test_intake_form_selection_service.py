@@ -484,6 +484,59 @@ def test_selection_requires_resolution_for_existing_application_draft() -> None:
     assert check.incoming_application_form_name == "application.docx"
 
 
+def test_selection_duplicate_hides_replace_when_existing_package_has_confirmed_case() -> None:
+    from backend.application.intake_form_selection_service import (
+        IntakeDraftDuplicateResolutionRequiredError,
+    )
+
+    existing_package = replace(_package(), package_id="pkg-existing")
+    incoming_package = _package()
+    existing_form = replace(
+        _asset("asset-existing", IntakeAssetRole.SELECTED_APPLICATION_FORM),
+        package_id="pkg-existing",
+        original_name="application.docx",
+    )
+    incoming_form = replace(
+        _asset("asset-incoming", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        original_name="application.docx",
+    )
+    reusable_case = IntakeCase(
+        case_id="case-existing",
+        package_id="pkg-existing",
+        selected_form_asset_id="asset-existing",
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    confirmed_case = IntakeCase(
+        case_id="case-confirmed",
+        package_id="pkg-existing",
+        selected_form_asset_id=None,
+        status=IntakeCaseStatus.CONFIRMED,
+        confirmed_project_id="project-existing",
+    )
+    service, _, _, _ = _service(
+        [
+            _email_asset("email-existing", "pkg-existing", 2048),
+            _email_asset("email-incoming", "pkg-1", 2048),
+            existing_form,
+            incoming_form,
+        ],
+        cases=[reusable_case, confirmed_case],
+        drafts=[
+            IntakeDraft(
+                draft_id="draft-existing",
+                case_id="case-existing",
+                parsed_fields_json="{}",
+            )
+        ],
+        packages=[existing_package, incoming_package],
+    )
+
+    with pytest.raises(IntakeDraftDuplicateResolutionRequiredError) as exc_info:
+        service.select_form_asset("pkg-1", "asset-incoming")
+
+    assert exc_info.value.check.allowed_actions == ("open_existing",)
+
+
 def test_selection_duplicate_uses_email_hash_not_display_filename() -> None:
     from backend.application.intake_form_selection_service import (
         IntakeDraftDuplicateResolutionRequiredError,

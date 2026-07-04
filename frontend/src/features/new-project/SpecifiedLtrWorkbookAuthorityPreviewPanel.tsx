@@ -88,21 +88,11 @@ export function SpecifiedLtrWorkbookAuthorityPreviewPanel({
       >
         <div className="specified-ltr-preview-heading">
           <div>
-            <p className="ui-section-kicker">LTR workbook authority</p>
-            <h3 id="specified-ltr-preview-title">Confirm LTR workbook row</h3>
+            <h3 id="specified-ltr-preview-title">{preview.ltr_number}</h3>
           </div>
-          <span className={`specified-ltr-preview-status is-${preview.status}`}>
-            {preview.status === "found" ? "Found" : preview.status === "not_found" ? "Not found" : "Blocked"}
-          </span>
         </div>
 
         <div className="specified-ltr-preview-meta" id={metaId}>
-          <span>{preview.ltr_number}</span>
-          {preview.sheet_name && preview.row_number ? (
-            <span>
-              {preview.sheet_name} row {preview.row_number}
-            </span>
-          ) : null}
           {preview.workbook_path ? <span>{preview.workbook_path}</span> : null}
         </div>
 

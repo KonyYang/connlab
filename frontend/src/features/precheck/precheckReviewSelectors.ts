@@ -86,10 +86,7 @@ export function issueLevelMap(issues: DraftPrecheckIssue[]): Map<string, string>
 }
 
 export function normalizedOptions(options: string[], value: string): string[] {
-  if (!value || options.includes(value)) {
-    return options;
-  }
-  return [value, ...options];
+  return options;
 }
 
 export function fieldClassName(issueLevel?: string): string {

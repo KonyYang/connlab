@@ -9,11 +9,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Protocol
 from uuid import uuid4
 
+from backend.application.project_identity import resolve_project_identity
 from backend.domain import (
     LtrAssociationEvent,
     LtrDuplicateResolutionToken,
     LtrRecord,
     Project,
+    ProjectFolderRecord,
+    ProjectTemporaryContext,
 )
 
 
@@ -56,6 +59,20 @@ class ProjectStore(Protocol):
         """Return a project by id."""
 
 
+class ProjectTemporaryContextStore(Protocol):
+    """Temporary project context lookup required for duplicate summaries."""
+
+    def get_by_project(self, project_id: str) -> ProjectTemporaryContext | None:
+        """Return temporary setup context by project id."""
+
+
+class ProjectFolderStore(Protocol):
+    """Project folder lookup required for duplicate summaries."""
+
+    def list_by_project(self, project_id: str) -> list[ProjectFolderRecord]:
+        """Return folder records for one project."""
+
+
 class TokenStore(Protocol):
     """Token store behavior required by duplicate resolution."""
 
@@ -86,12 +103,16 @@ class LocalLtrDuplicateResolutionService:
         project_store: ProjectStore,
         token_store: TokenStore,
         event_store: EventStore,
+        temporary_context_store: ProjectTemporaryContextStore | None = None,
+        folder_store: ProjectFolderStore | None = None,
         token_ttl_minutes: int = 30,
     ) -> None:
         self._ltrs = ltr_store
         self._projects = project_store
         self._tokens = token_store
         self._events = event_store
+        self._temporary_contexts = temporary_context_store
+        self._folders = folder_store
         self._token_ttl_minutes = token_ttl_minutes
 
     def ensure_no_conflict_or_valid_confirmation(
@@ -189,6 +210,15 @@ class LocalLtrDuplicateResolutionService:
         current_case_id: str,
     ) -> dict[str, object]:
         existing_project = self._projects.get(existing.project_id)
+        existing_context = (
+            self._temporary_contexts.get_by_project(existing.project_id)
+            if self._temporary_contexts is not None
+            else None
+        )
+        existing_identity = (
+            resolve_project_identity(existing_project, [existing]) if existing_project else None
+        )
+        local_folder = self._latest_folder_path(existing.project_id)
         token = self._tokens.create(
             LtrDuplicateResolutionToken(
                 token_id=uuid4().hex,
@@ -216,21 +246,29 @@ class LocalLtrDuplicateResolutionService:
             "existing": {
                 "ltr_id": existing.ltr_id,
                 "project_id": existing.project_id,
-                "display_project_id": (
-                    existing_project.project_no if existing_project else existing.ltr_number
-                )
-                or existing.ltr_number,
+                "display_project_id": existing.ltr_number,
                 "project_name": existing_project.product_name if existing_project else None,
                 "product_name": existing_project.product_name if existing_project else None,
+                "sample_description": _first_text(
+                    existing_context.sample_description if existing_context else None,
+                    existing_identity.sample_description if existing_identity else None,
+                    existing_project.product_name if existing_project else None,
+                ),
+                "test_item": _first_text(
+                    existing_context.test_item if existing_context else None,
+                    existing_identity.test_item if existing_identity else None,
+                ),
                 "requester": existing_project.requestor if existing_project else None,
                 "registered_on": (
                     existing.registered_on.isoformat() if existing.registered_on else None
                 ),
+                "recent_activity_at": self._recent_activity_at(existing, existing_project),
                 "project_status": existing_project.status.value if existing_project else None,
                 "lifecycle_state": (
                     existing_project.lifecycle_state.value if existing_project else None
                 ),
-                "has_local_folder": False,
+                "has_local_folder": local_folder is not None,
+                "local_folder_path": local_folder,
                 "has_matrix": False,
                 "has_outputs": False,
             },
@@ -251,6 +289,29 @@ class LocalLtrDuplicateResolutionService:
                 "requires_second_confirmation": True,
             },
         }
+
+    def _latest_folder_path(self, project_id: str) -> str | None:
+        if self._folders is None:
+            return None
+        folders = self._folders.list_by_project(project_id)
+        if not folders:
+            return None
+        latest = max(
+            folders,
+            key=lambda folder: (
+                folder.created_on.isoformat() if folder.created_on else "",
+                folder.folder_id,
+            ),
+        )
+        return str(latest.folder_path)
+
+    @staticmethod
+    def _recent_activity_at(existing: LtrRecord, project: Project | None) -> str | None:
+        if existing.registered_on is not None:
+            return existing.registered_on.isoformat()
+        if project is not None and project.created_on is not None:
+            return project.created_on.isoformat()
+        return None
 
     def _validate_resolution(
         self,
@@ -285,6 +346,13 @@ class LocalLtrDuplicateResolutionService:
 
 def _fingerprint(*parts: str) -> str:
     return hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
+
+
+def _first_text(*values: str | None) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _now() -> str:

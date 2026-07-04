@@ -168,7 +168,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
       });
     });
     expect(completeNewProject).not.toHaveBeenCalled();
-    const dialog = await screen.findByRole("dialog", { name: "Confirm LTR workbook row" });
+    const dialog = await screen.findByRole("dialog", { name: "DL-2026-05-011" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
     expect(dialog.closest(".specified-ltr-preview-modal")).toBeTruthy();
     expect(screen.getByText("PwrBlade Ultra Pro")).toBeTruthy();
@@ -206,7 +206,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
     await user.click(applyButton);
 
-    const alertDialog = await screen.findByRole("alertdialog", { name: "Confirm LTR workbook row" });
+    const alertDialog = await screen.findByRole("alertdialog", { name: "DL-2026-05-011" });
     expect(alertDialog.getAttribute("aria-modal")).toBe("true");
     expect(alertDialog.closest(".specified-ltr-preview-modal")).toBeTruthy();
     expect(await screen.findByText("LTR workbook 中不存在该编号")).toBeTruthy();
@@ -238,13 +238,13 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
     await user.click(applyButton);
 
-    const dialog = await screen.findByRole("dialog", { name: "Confirm LTR workbook row" });
+    const dialog = await screen.findByRole("dialog", { name: "DL-2026-05-011" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
 
     await user.keyboard("{Escape}");
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Confirm LTR workbook row" })).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "DL-2026-05-011" })).toBeNull();
     });
     expect(completeNewProject).not.toHaveBeenCalled();
     expect((await screen.findByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
@@ -267,11 +267,11 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     });
 
     await user.click(applyButton);
-    await screen.findByText("Confirm LTR workbook row");
+    await screen.findByText("DL-2026-05-011");
     await user.click(screen.getByRole("button", { name: "Use this LTR number" }));
 
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
-    expect(screen.queryByText("Confirm LTR workbook row")).toBeNull();
+    expect(screen.queryByText("DL-2026-05-011")).toBeNull();
     expect(screen.getByText("DL-2026-05-777 Existing sample assembly Qualification"))
       .toBeTruthy();
   });

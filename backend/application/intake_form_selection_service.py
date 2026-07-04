@@ -276,6 +276,9 @@ class IntakeFormSelectionService:
                     incoming_source_size_bytes=incoming_source.size_bytes,
                     existing_application_form_name=existing_form.original_name,
                     incoming_application_form_name=selected_asset.original_name,
+                    allowed_actions=self._duplicate_allowed_actions(
+                        existing_package.package_id
+                    ),
                 )
         return None
 
@@ -361,6 +364,15 @@ class IntakeFormSelectionService:
                 raise IntakeSelectionError(
                     "Replacement is allowed only for unconfirmed creation drafts."
                 )
+
+    def _duplicate_allowed_actions(self, package_id: str) -> tuple[str, ...]:
+        """Return only actions that can safely execute for the duplicate package."""
+        if all(
+            self._can_reuse_case(case)
+            for case in self._case_store.list_by_package(package_id)
+        ):
+            return ("open_existing", "replace_existing")
+        return ("open_existing",)
 
     def _delete_package_records(self, package_id: str) -> None:
         """Delete old unconfirmed duplicate records after replacement is chosen."""
