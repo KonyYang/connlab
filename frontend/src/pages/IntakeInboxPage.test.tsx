@@ -168,8 +168,15 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
       });
     });
     expect(completeNewProject).not.toHaveBeenCalled();
-    expect(await screen.findByText("Confirm LTR workbook row")).toBeTruthy();
+    const dialog = await screen.findByRole("dialog", { name: "Confirm LTR workbook row" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.closest(".specified-ltr-preview-modal")).toBeTruthy();
     expect(screen.getByText("PwrBlade Ultra Pro")).toBeTruthy();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Use this LTR number" }));
+    });
+    expect((screen.getByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
+      .toBe(true);
 
     await user.click(screen.getByRole("button", { name: "Use this LTR number" }));
 
@@ -199,13 +206,47 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
     await user.click(applyButton);
 
+    const alertDialog = await screen.findByRole("alertdialog", { name: "Confirm LTR workbook row" });
+    expect(alertDialog.getAttribute("aria-modal")).toBe("true");
+    expect(alertDialog.closest(".specified-ltr-preview-modal")).toBeTruthy();
     expect(await screen.findByText("LTR workbook 中不存在该编号")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use this LTR number" })).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
+    });
     expect(completeNewProject).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Close" }));
 
     await waitFor(() => {
       expect(screen.queryByText("LTR workbook 中不存在该编号")).toBeNull();
     });
+    expect((await screen.findByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
+      .toBe(false);
+  });
+
+  it("closes the specified LTR workbook modal with Escape without completing", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithSpecifiedCase);
+    vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue(workbookPreviewFound);
+
+    render(<Harness />);
+
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => {
+      expect((applyButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(applyButton);
+
+    const dialog = await screen.findByRole("dialog", { name: "Confirm LTR workbook row" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Confirm LTR workbook row" })).toBeNull();
+    });
+    expect(completeNewProject).not.toHaveBeenCalled();
     expect((await screen.findByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
       .toBe(false);
   });
