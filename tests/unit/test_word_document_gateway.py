@@ -73,7 +73,7 @@ def test_application_form_requires_com_does_not_fallback_to_false_success(
         lambda path: True,
     )
 
-    def _raise_unavailable(path: Path, fields: dict[str, str]):
+    def _raise_unavailable(path: Path, fields: dict[str, str], **kwargs: object):
         raise OfficeAutomationUnavailable("Word COM automation requires pywin32.")
 
     monkeypatch.setattr(
@@ -86,6 +86,50 @@ def test_application_form_requires_com_does_not_fallback_to_false_success(
         WordDocumentGateway().write_application_form_fields(
             target,
             {"requested_by": "Ming-Peng.Cao"},
+        )
+
+
+def test_convert_legacy_doc_to_docx_uses_caller_output_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "legacy.doc"
+    source.write_bytes(b"legacy")
+    output = tmp_path / "converted.docx"
+
+    def _fake_convert(source_path: Path, output_path: Path) -> None:
+        assert source_path == source
+        assert output_path == output
+        output_path.write_bytes(b"converted")
+
+    monkeypatch.setattr(
+        word_gateway_module,
+        "_convert_legacy_doc_to_docx_with_com",
+        _fake_convert,
+    )
+
+    result = WordDocumentGateway().convert_legacy_doc_to_docx(source, output)
+
+    assert result == output
+    assert output.read_bytes() == b"converted"
+
+
+def test_convert_legacy_doc_to_docx_rejects_wrong_extensions(tmp_path: Path) -> None:
+    source = tmp_path / "source.docx"
+    source.write_bytes(b"docx")
+
+    with pytest.raises(ValueError, match="Only .doc files"):
+        WordDocumentGateway().convert_legacy_doc_to_docx(
+            source,
+            tmp_path / "converted.docx",
+        )
+
+    legacy_source = tmp_path / "legacy.doc"
+    legacy_source.write_bytes(b"legacy")
+    with pytest.raises(ValueError, match="output must be a .docx"):
+        WordDocumentGateway().convert_legacy_doc_to_docx(
+            legacy_source,
+            tmp_path / "converted.doc",
         )
 
 

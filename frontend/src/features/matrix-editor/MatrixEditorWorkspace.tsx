@@ -2973,7 +2973,7 @@ export function MatrixEditorWorkspace({
       ) : null}
       <input
         ref={fileInputRef}
-        accept=".docx"
+        accept=".doc,.docx"
         disabled={isLifecycleReadonly}
         style={{ display: "none" }}
         type="file"

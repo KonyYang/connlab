@@ -125,16 +125,37 @@ async def preview_matrix_from_upload(
         get_project_test_plan_matrix_preview_service
     ),
 ) -> MatrixPreviewResponse:
-    """Return a read-only Matrix preview for an uploaded `.docx` file."""
+    """Return a read-only Matrix preview for an uploaded Word file."""
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix != ".docx":
-        raise HTTPException(status_code=400, detail="Only .docx is supported.")
-    original_name = file.filename or "uploaded.docx"
-    temp_path: Path | None = None
-    with NamedTemporaryFile(delete=False, suffix=".docx") as temp:
+    if suffix not in {".doc", ".docx"}:
+        raise HTTPException(status_code=400, detail="Only .doc and .docx are supported.")
+    original_name = file.filename or f"uploaded{suffix}"
+    temp_paths: list[Path] = []
+    with NamedTemporaryFile(delete=False, suffix=suffix) as temp:
         content = await file.read()
         temp.write(content)
         temp_path = Path(temp.name)
+        temp_paths.append(temp_path)
+    preview_source_path = temp_path
+    if suffix == ".doc":
+        with NamedTemporaryFile(delete=False, suffix=".docx") as converted:
+            converted_path = Path(converted.name)
+            temp_paths.append(converted_path)
+        try:
+            preview_source_path = service.convert_legacy_doc_to_docx(temp_path, converted_path)
+        except Exception as exc:
+            for path in temp_paths:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Cannot convert legacy .doc for Matrix import. "
+                    "Microsoft Word is required on this workstation."
+                ),
+            ) from exc
     try:
         _PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
         for stale_file in _PREVIEW_DIR.glob("*.pdf"):
@@ -144,14 +165,14 @@ async def preview_matrix_from_upload(
         preview_pdf_path = _PREVIEW_DIR / f"{preview_token}.pdf"
         table_locations = ()
         try:
-            table_locations = service._office.read_word_table_locations(temp_path)
+            table_locations = service.read_word_table_locations(preview_source_path)
         except Exception:
             table_locations = ()
-        service._office.export_word_preview_pdf(temp_path, preview_pdf_path)
+        service.export_word_preview_pdf(preview_source_path, preview_pdf_path)
         _PREVIEW_TOKEN_MAP[preview_token] = preview_pdf_path
         preview = service.preview_from_path(
             MatrixPreviewFromPathCommand(
-                source_path=temp_path,
+                source_path=preview_source_path,
                 project_id=project_id,
                 page_number=page_number,
                 page_table_index=page_table_index,
@@ -160,12 +181,12 @@ async def preview_matrix_from_upload(
             preview_pdf_token=preview_token,
             table_locations=table_locations,
         )
-        if preview.source_document_name != original_name:
+        if preview.source_document_name != original_name or suffix == ".doc":
             preview = ProjectTestPlanMatrixPreview(
                 project_id=preview.project_id,
-                source_document_path=preview.source_document_path,
+                source_document_path=Path(original_name) if suffix == ".doc" else preview.source_document_path,
                 source_document_name=original_name,
-                source_format=preview.source_format,
+                source_format=suffix if suffix == ".doc" else preview.source_format,
                 capability_status=preview.capability_status,
                 generated_at=preview.generated_at,
                 groups=preview.groups,
@@ -182,9 +203,9 @@ async def preview_matrix_from_upload(
     except ProjectTestPlanMatrixPreviewError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     finally:
-        if temp_path is not None:
+        for path in temp_paths:
             try:
-                temp_path.unlink(missing_ok=True)
+                path.unlink(missing_ok=True)
             except OSError:
                 pass
 

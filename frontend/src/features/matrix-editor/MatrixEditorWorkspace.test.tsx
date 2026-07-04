@@ -318,6 +318,14 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect((append as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("allows legacy doc and docx files from the import selector", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    expect(input.getAttribute("accept")).toBe(".doc,.docx");
+  });
+
   it("imports by Replace directly and does not enter group-selection mode", async () => {
     apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce({
       ...buildSessionSeed().source_preview_payload,

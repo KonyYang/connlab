@@ -78,6 +78,10 @@ class OfficeFacade:
         """Export one Word document as a PDF preview through the configured gateway."""
         return self._word_gateway.export_preview_pdf(source_path, output_pdf_path)
 
+    def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
+        """Convert one legacy `.doc` source into a caller-owned temporary `.docx`."""
+        return self._word_gateway.convert_legacy_doc_to_docx(source_path, output_path)
+
     def read_word_header_table_cell(
         self,
         source_path: Path,

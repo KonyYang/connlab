@@ -94,6 +94,22 @@ class WordDocumentGateway:
         _export_pdf_with_com(path, output)
         return output
 
+    def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
+        """Convert one legacy `.doc` file into a caller-owned temporary `.docx`."""
+        source = Path(source_path)
+        output = Path(output_path)
+        if source.suffix.lower() != ".doc":
+            raise ValueError(f"Only .doc files can be converted through the legacy Word gateway: {source}")
+        if output.suffix.lower() != ".docx":
+            raise ValueError(f"Converted legacy Word output must be a .docx file: {output}")
+        if not source.is_file():
+            raise FileNotFoundError(f"Legacy Word document does not exist: {source}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        _convert_legacy_doc_to_docx_with_com(source, output)
+        if not output.is_file():
+            raise RuntimeError("Legacy Word conversion did not produce a .docx output.")
+        return output
+
     def read_header_table_cell(
         self,
         source_path: Path,
@@ -364,6 +380,38 @@ def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
             ExportFormat=wd_export_format_pdf,
             OpenAfterExport=False,
         )
+    finally:
+        if document is not None:
+            document.Close(SaveChanges=False)
+        if word is not None:
+            word.Quit()
+        pythoncom.CoUninitialize()
+
+
+def _convert_legacy_doc_to_docx_with_com(source_path: Path, output_path: Path) -> None:
+    """Convert a legacy Word `.doc` file to `.docx` through Microsoft Word COM."""
+    try:
+        import pythoncom  # type: ignore[import-not-found]
+        import win32com.client  # type: ignore[import-not-found]
+    except ImportError as exc:  # pragma: no cover - depends on Windows host
+        raise OfficeAutomationUnavailable("Word COM automation requires pywin32.") from exc
+
+    source = source_path.resolve()
+    output = output_path.resolve()
+    wd_format_xml_document = 16
+    pythoncom.CoInitialize()
+    word = None
+    document = None
+    try:
+        word = win32com.client.DispatchEx("Word.Application")
+        word.Visible = False
+        word.DisplayAlerts = 0
+        document = word.Documents.Open(
+            str(source),
+            ReadOnly=True,
+            AddToRecentFiles=False,
+        )
+        document.SaveAs2(str(output), FileFormat=wd_format_xml_document)
     finally:
         if document is not None:
             document.Close(SaveChanges=False)

@@ -143,6 +143,18 @@ class ProjectTestPlanMatrixPreviewService:
             rows=parsed.rows,
         )
 
+    def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
+        """Convert a legacy `.doc` source through the Office boundary."""
+        return self._office.convert_legacy_doc_to_docx(source_path, output_path)
+
+    def read_word_table_locations(self, source_path: Path) -> tuple:
+        """Read table location metadata for upload preview calibration."""
+        return self._office.read_word_table_locations(source_path)
+
+    def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        """Export an upload preview source to PDF through the Office boundary."""
+        return self._office.export_word_preview_pdf(source_path, output_pdf_path)
+
 
 def _unsupported_format_blocker(suffix: str) -> tuple[str, str]:
     """Return capability status and blocker for unsupported source formats."""

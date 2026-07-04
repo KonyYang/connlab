@@ -5,7 +5,13 @@ from pathlib import Path
 from docx import Document
 from fastapi.testclient import TestClient
 
+from backend.api.dependencies import get_project_test_plan_matrix_preview_service
 from backend.api.main import app
+from backend.application.project_test_plan_matrix_preview_service import (
+    MatrixPreviewFromPathCommand,
+    ProjectTestPlanMatrixPreview,
+)
+from backend.infrastructure.office import OfficeAutomationUnavailable
 
 
 def test_matrix_preview_api_extracts_docx_matrix(tmp_path: Path) -> None:
@@ -128,6 +134,56 @@ def test_matrix_preview_api_rejects_test_record_like_docx(tmp_path: Path) -> Non
     assert "No Matrix table" in payload["blockers"][0]
 
 
+def test_matrix_preview_upload_accepts_doc_by_converting_to_temp_docx(tmp_path: Path) -> None:
+    fake_service = _FakeUploadPreviewService()
+    app.dependency_overrides[get_project_test_plan_matrix_preview_service] = lambda: fake_service
+    client = TestClient(app)
+    try:
+        response = client.post(
+            "/api/test-plan/matrix-preview-from-upload",
+            files={"file": ("legacy-spec.doc", b"legacy word", "application/msword")},
+            data={"project_id": "P-doc"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_project_test_plan_matrix_preview_service, None)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project_id"] == "P-doc"
+    assert payload["source_document_name"] == "legacy-spec.doc"
+    assert payload["source_format"] == ".doc"
+    assert not payload["source_document_path"].endswith(".docx")
+    assert fake_service.office.converted_source is not None
+    assert fake_service.office.converted_source.suffix == ".doc"
+    assert fake_service.office.converted_output is not None
+    assert fake_service.office.converted_output.suffix == ".docx"
+    assert fake_service.previewed_source is not None
+    assert fake_service.previewed_source == fake_service.office.converted_output
+    assert not fake_service.office.converted_source.exists()
+    assert not fake_service.office.converted_output.exists()
+
+
+def test_matrix_preview_upload_doc_conversion_failure_is_readable() -> None:
+    fake_service = _FakeUploadPreviewService(conversion_error=OfficeAutomationUnavailable("Word COM automation requires pywin32."))
+    app.dependency_overrides[get_project_test_plan_matrix_preview_service] = lambda: fake_service
+    client = TestClient(app)
+    try:
+        response = client.post(
+            "/api/test-plan/matrix-preview-from-upload",
+            files={"file": ("legacy-spec.doc", b"legacy word", "application/msword")},
+        )
+    finally:
+        app.dependency_overrides.pop(get_project_test_plan_matrix_preview_service, None)
+
+    assert response.status_code == 400
+    assert "Cannot convert legacy .doc for Matrix import" in response.json()["detail"]
+    assert fake_service.previewed_source is None
+    assert fake_service.office.converted_source is not None
+    assert not fake_service.office.converted_source.exists()
+    if fake_service.office.converted_output is not None:
+        assert not fake_service.office.converted_output.exists()
+
+
 def _write_product_spec_docx(path: Path) -> None:
     document = Document()
     table = document.add_table(rows=4, cols=4)
@@ -195,3 +251,65 @@ def _write_test_record_like_docx(path: Path) -> None:
         for column_index, value in enumerate(row):
             table.cell(row_index, column_index).text = value
     document.save(path)
+
+
+class _FakeUploadPreviewOffice:
+    def __init__(self, conversion_error: Exception | None = None) -> None:
+        self.conversion_error = conversion_error
+        self.converted_source: Path | None = None
+        self.converted_output: Path | None = None
+
+    def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
+        self.converted_source = Path(source_path)
+        self.converted_output = Path(output_path)
+        if self.conversion_error is not None:
+            raise self.conversion_error
+        output_path.write_bytes(b"converted docx")
+        return output_path
+
+    def read_word_table_locations(self, source_path: Path) -> tuple:
+        assert source_path.suffix == ".docx"
+        return ()
+
+    def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        assert source_path.suffix == ".docx"
+        output_pdf_path.write_bytes(b"%PDF-1.4")
+        return output_pdf_path
+
+
+class _FakeUploadPreviewService:
+    def __init__(self, conversion_error: Exception | None = None) -> None:
+        self._office = _FakeUploadPreviewOffice(conversion_error)
+        self.previewed_source: Path | None = None
+
+    @property
+    def office(self) -> _FakeUploadPreviewOffice:
+        return self._office
+
+    def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
+        return self._office.convert_legacy_doc_to_docx(source_path, output_path)
+
+    def read_word_table_locations(self, source_path: Path) -> tuple:
+        return self._office.read_word_table_locations(source_path)
+
+    def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        return self._office.export_word_preview_pdf(source_path, output_pdf_path)
+
+    def preview_from_path(
+        self,
+        command: MatrixPreviewFromPathCommand,
+        *,
+        preview_pdf_token: str | None = None,
+        table_locations: tuple | None = None,
+    ) -> ProjectTestPlanMatrixPreview:
+        self.previewed_source = Path(command.source_path)
+        assert self.previewed_source.suffix == ".docx"
+        return ProjectTestPlanMatrixPreview(
+            project_id=command.project_id,
+            source_document_path=self.previewed_source,
+            source_document_name=self.previewed_source.name,
+            source_format=".docx",
+            capability_status="supported",
+            generated_at="2026-07-04T00:00:00+00:00",
+            preview_pdf_token=preview_pdf_token,
+        )
