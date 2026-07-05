@@ -124,6 +124,12 @@ type MatrixContextMenu =
   | { kind: "row"; rowIndex: number; x: number; y: number }
   | { kind: "group"; groupId: string; x: number; y: number };
 
+type ImportLocatorSnapshot = {
+  page: string;
+  tableOnPage: string;
+  keyword: string;
+};
+
 type MatrixAutoGrowTextareaProps = {
   ariaLabel: string;
   className?: string;
@@ -1597,6 +1603,7 @@ export function MatrixEditorWorkspace({
   const [schedulePlan, setSchedulePlan] = useState<MatrixSchedulePlan>(() => emptySchedulePlan());
   const [importPreview, setImportPreview] = useState<MatrixPreviewResponse | null>(null);
   const [importPreviewPdfToken, setImportPreviewPdfToken] = useState<string | null>(null);
+  const [lastParsedLocator, setLastParsedLocator] = useState<ImportLocatorSnapshot | null>(null);
   const [importingPreview, setImportingPreview] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importLookupMessage, setImportLookupMessage] = useState<string>("");
@@ -2214,6 +2221,129 @@ export function MatrixEditorWorkspace({
     setSelectedRowId(null);
   };
 
+  const currentImportLocatorSnapshot = (): ImportLocatorSnapshot => ({
+    page: locatorPage.trim(),
+    tableOnPage: locatorTableOnPage.trim(),
+    keyword: locatorKeyword.trim(),
+  });
+
+  const previewImportLocatorSnapshot = (preview: MatrixPreviewResponse): ImportLocatorSnapshot => ({
+    page: preview.selected_page_number != null ? String(preview.selected_page_number) : "",
+    tableOnPage: preview.selected_page_table_index != null ? String(preview.selected_page_table_index) : "",
+    keyword: "",
+  });
+
+  const importLocatorSnapshotsMatch = (
+    left: ImportLocatorSnapshot | null,
+    right: ImportLocatorSnapshot | null,
+  ): boolean =>
+    Boolean(left && right) &&
+    left?.page === right?.page &&
+    left?.tableOnPage === right?.tableOnPage &&
+    left?.keyword === right?.keyword;
+
+  const parsedCurrentImportLocator = (
+    preservePreviewOnError: boolean,
+  ): { snapshot: ImportLocatorSnapshot; pageNumber: number | null; tableIndex: number | null } | null => {
+    const snapshot = currentImportLocatorSnapshot();
+    const requestedPageNumber = parsePositiveInteger(snapshot.page);
+    const requestedTableIndex = parsePositiveInteger(snapshot.tableOnPage);
+    if (snapshot.page && requestedPageNumber === null) {
+      setImportError("Page must be a positive integer.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
+      if (!preservePreviewOnError) {
+        setImportPreview(null);
+      }
+      return null;
+    }
+    if (snapshot.tableOnPage && requestedTableIndex === null) {
+      setImportError("Table on page must be a positive integer.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
+      if (!preservePreviewOnError) {
+        setImportPreview(null);
+      }
+      return null;
+    }
+    return { snapshot, pageNumber: requestedPageNumber, tableIndex: requestedTableIndex };
+  };
+
+  const applyImportPreviewStatus = (preview: MatrixPreviewResponse): boolean => {
+    if (preview.blockers.length > 0) {
+      setImportError(preview.blockers[0]);
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
+      return false;
+    }
+    if (preview.groups.length === 0) {
+      setImportError("No matching matrix found.");
+      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
+      setImportLookupTone("error");
+      return false;
+    }
+    setImportError(null);
+    setImportLookupMessage(`Matrix found: ${preview.groups.length} groups detected.`);
+    setImportLookupTone("success");
+    return true;
+  };
+
+  const fetchImportPreviewForLocator = async (
+    parsedLocator: { snapshot: ImportLocatorSnapshot; pageNumber: number | null; tableIndex: number | null },
+    preservePreviewOnNoMatch: boolean,
+  ): Promise<MatrixPreviewResponse | null> => {
+    if (!importFile) {
+      return null;
+    }
+    const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
+      pageNumber: parsedLocator.pageNumber,
+      pageTableIndex: parsedLocator.tableIndex,
+      tableTextQuery: parsedLocator.snapshot.keyword || null,
+    });
+    if (preview.preview_pdf_token) {
+      setImportPreviewPdfToken(preview.preview_pdf_token);
+    }
+    const pageMismatch =
+      parsedLocator.pageNumber != null && preview.selected_page_number !== parsedLocator.pageNumber;
+    const tableMismatch =
+      parsedLocator.tableIndex != null && preview.selected_page_table_index !== parsedLocator.tableIndex;
+    if (pageMismatch || tableMismatch) {
+      if (!preservePreviewOnNoMatch) {
+        setImportPreview(null);
+      }
+      setImportError("Requested page/table did not match a matrix.");
+      setImportLookupMessage("No matching matrix found at requested page/table. Reparse or edit manually.");
+      setImportLookupTone("error");
+      return null;
+    }
+    return preview;
+  };
+
+  const commitImportedPreview = async (preview: MatrixPreviewResponse): Promise<void> => {
+    const selectedGroupKeys = preview.groups.map((group) => group.group_key);
+    const response: MatrixImportCommitResponse = await commitMatrixImport(projectId, {
+      source_document_path: preview.source_document_path,
+      source_document_name: preview.source_document_name,
+      source_format: preview.source_format,
+      preview_payload: preview,
+      selected_group_keys: selectedGroupKeys,
+    });
+    applyDraftSnapshotToEditor(
+      buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
+      preview,
+      schedulePlanFromProjectMatrixDraft(response.project_matrix_draft)
+    );
+    setSessionSourceImportId(response.source_import_id);
+    setSessionSourceSnapshotId(response.source_snapshot_id);
+    setSavedEditorDraftId(null);
+    setSavedPayloadSignature(null);
+    setSavedLocalSignature(null);
+    latestAutosaveResultRef.current = null;
+    setSaveState("saved");
+    setImportError(null);
+    setShowImportDialog(false);
+  };
+
   const applyImportedMatrixDirectly = async (): Promise<void> => {
     if (isLifecycleReadonly) {
       setImportError(lifecycleReadonlyView.message);
@@ -2223,30 +2353,37 @@ export function MatrixEditorWorkspace({
       setImportError("No valid matrix found from import.");
       return;
     }
+    const isPreviewStale = !importLocatorSnapshotsMatch(currentImportLocatorSnapshot(), lastParsedLocator);
     setCommittingImport(true);
     try {
-      const selectedGroupKeys = importPreview.groups.map((group) => group.group_key);
-      const response: MatrixImportCommitResponse = await commitMatrixImport(projectId, {
-        source_document_path: importPreview.source_document_path,
-        source_document_name: importPreview.source_document_name,
-        source_format: importPreview.source_format,
-        preview_payload: importPreview,
-        selected_group_keys: selectedGroupKeys,
-      });
-      applyDraftSnapshotToEditor(
-        buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
-        importPreview,
-        schedulePlanFromProjectMatrixDraft(response.project_matrix_draft)
-      );
-      setSessionSourceImportId(response.source_import_id);
-      setSessionSourceSnapshotId(response.source_snapshot_id);
-      setSavedEditorDraftId(null);
-      setSavedPayloadSignature(null);
-      setSavedLocalSignature(null);
-      latestAutosaveResultRef.current = null;
-      setSaveState("saved");
-      setImportError(null);
-      setShowImportDialog(false);
+      if (isPreviewStale) {
+        const parsedLocator = parsedCurrentImportLocator(true);
+        if (!parsedLocator) {
+          return;
+        }
+        setImportingPreview(true);
+        setImportError(null);
+        setImportLookupMessage("");
+        setImportLookupTone("idle");
+        let refreshedPreview: MatrixPreviewResponse | null = null;
+        try {
+          refreshedPreview = await fetchImportPreviewForLocator(parsedLocator, true);
+        } finally {
+          setImportingPreview(false);
+        }
+        if (!refreshedPreview) {
+          return;
+        }
+        const hasUsableGroups = applyImportPreviewStatus(refreshedPreview);
+        if (!hasUsableGroups) {
+          return;
+        }
+        setImportPreview(refreshedPreview);
+        setLastParsedLocator(parsedLocator.snapshot);
+        await commitImportedPreview(refreshedPreview);
+        return;
+      }
+      await commitImportedPreview(importPreview);
     } catch (error) {
       setImportError(parseRequestError(error, "Failed to import Matrix."));
     } finally {
@@ -2273,6 +2410,7 @@ export function MatrixEditorWorkspace({
     setImportLookupTone("idle");
     setImportPreview(null);
     setImportPreviewPdfToken(null);
+    setLastParsedLocator(null);
     setImportingPreview(true);
     try {
       const preview = await previewProjectTestPlanMatrixFromUpload(file, projectId);
@@ -2281,6 +2419,7 @@ export function MatrixEditorWorkspace({
       setLocatorPage(preview.selected_page_number != null ? String(preview.selected_page_number) : "");
       setLocatorTableOnPage(preview.selected_page_table_index != null ? String(preview.selected_page_table_index) : "");
       setLocatorKeyword("");
+      setLastParsedLocator(previewImportLocatorSnapshot(preview));
       setShowImportDialog(true);
       if (preview.blockers.length > 0) {
         setImportError(preview.blockers[0]);
@@ -2298,6 +2437,7 @@ export function MatrixEditorWorkspace({
     } catch (error) {
       setImportPreview(null);
       setImportPreviewPdfToken(null);
+      setLastParsedLocator(null);
       setImportError(error instanceof Error ? error.message : "Import preview failed.");
       setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
       setImportLookupTone("error");
@@ -2314,20 +2454,8 @@ export function MatrixEditorWorkspace({
     if (!importFile) {
       return;
     }
-    const requestedPageNumber = parsePositiveInteger(locatorPage);
-    const requestedTableIndex = parsePositiveInteger(locatorTableOnPage);
-    if (locatorPage.trim() && requestedPageNumber === null) {
-      setImportError("Page must be a positive integer.");
-      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
-      setImportLookupTone("error");
-      setImportPreview(null);
-      return;
-    }
-    if (locatorTableOnPage.trim() && requestedTableIndex === null) {
-      setImportError("Table on page must be a positive integer.");
-      setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
-      setImportLookupTone("error");
-      setImportPreview(null);
+    const parsedLocator = parsedCurrentImportLocator(false);
+    if (!parsedLocator) {
       return;
     }
     setImportingPreview(true);
@@ -2335,39 +2463,18 @@ export function MatrixEditorWorkspace({
     setImportLookupMessage("");
     setImportLookupTone("idle");
     setImportPreview(null);
+    setLastParsedLocator(null);
     try {
-      const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
-        pageNumber: requestedPageNumber,
-        pageTableIndex: requestedTableIndex,
-        tableTextQuery: locatorKeyword.trim() || null,
-      });
-      if (preview.preview_pdf_token) {
-        setImportPreviewPdfToken(preview.preview_pdf_token);
-      }
-      const pageMismatch = requestedPageNumber != null && preview.selected_page_number !== requestedPageNumber;
-      const tableMismatch = requestedTableIndex != null && preview.selected_page_table_index !== requestedTableIndex;
-      if (pageMismatch || tableMismatch) {
-        setImportPreview(null);
-        setImportError("Requested page/table did not match a matrix.");
-        setImportLookupMessage("No matching matrix found at requested page/table. Reparse or edit manually.");
-        setImportLookupTone("error");
+      const preview = await fetchImportPreviewForLocator(parsedLocator, false);
+      if (!preview) {
         return;
       }
       setImportPreview(preview);
-      if (preview.blockers.length > 0) {
-        setImportError(preview.blockers[0]);
-        setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
-        setImportLookupTone("error");
-      } else if (preview.groups.length === 0) {
-        setImportError("No matching matrix found.");
-        setImportLookupMessage("No matching matrix found. You can reparse or continue to manual group setup.");
-        setImportLookupTone("error");
-      } else {
-        setImportLookupMessage(`Matrix found: ${preview.groups.length} groups detected.`);
-        setImportLookupTone("success");
-      }
+      setLastParsedLocator(parsedLocator.snapshot);
+      applyImportPreviewStatus(preview);
     } catch (error) {
       setImportPreview(null);
+      setLastParsedLocator(null);
       setImportError(error instanceof Error ? error.message : "Reparse failed.");
       setImportLookupMessage("No matching matrix found. Adjust page/table and reparse.");
       setImportLookupTone("error");
@@ -2381,6 +2488,7 @@ export function MatrixEditorWorkspace({
   const previewPdfSrc = importPreviewPdfToken
     ? `${matrixPreviewPdfUrl(importPreviewPdfToken)}#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs`
     : null;
+  const importActionBusy = importingPreview || committingImport;
 
   if ((!model.project && !model.error) || draftLoading) {
     return <></>;
@@ -2974,7 +3082,7 @@ export function MatrixEditorWorkspace({
       <input
         ref={fileInputRef}
         accept=".doc,.docx"
-        disabled={isLifecycleReadonly}
+        disabled={isLifecycleReadonly || importActionBusy}
         style={{ display: "none" }}
         type="file"
         onChange={(event) => void onImportFileChange(event)}
@@ -3002,18 +3110,18 @@ export function MatrixEditorWorkspace({
                 <div className="matrix-editor-import-controls-row">
                   <label>
                     <span>Page</span>
-                    <input disabled={isLifecycleReadonly} value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
+                    <input disabled={isLifecycleReadonly || importActionBusy} value={locatorPage} onChange={(event) => setLocatorPage(event.target.value)} />
                   </label>
                   <label>
                     <span>Table on page</span>
-                    <input disabled={isLifecycleReadonly} value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
+                    <input disabled={isLifecycleReadonly || importActionBusy} value={locatorTableOnPage} onChange={(event) => setLocatorTableOnPage(event.target.value)} />
                   </label>
                 </div>
                 <label>
                   <span>Table Title / Content Keyword</span>
-                  <input disabled={isLifecycleReadonly} value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
+                  <input disabled={isLifecycleReadonly || importActionBusy} value={locatorKeyword} onChange={(event) => setLocatorKeyword(event.target.value)} />
                 </label>
-                <button className="matrix-editor-import-reparse-button" type="button" onClick={() => void reparseImportPreview()} disabled={isLifecycleReadonly || importingPreview || !importFile}>
+                <button className="matrix-editor-import-reparse-button" type="button" onClick={() => void reparseImportPreview()} disabled={isLifecycleReadonly || importActionBusy || !importFile}>
                   {importingPreview ? "Reparsing..." : "Reparse"}
                 </button>
                 {importingPreview ? <p>Reparsing...</p> : null}
@@ -3024,11 +3132,11 @@ export function MatrixEditorWorkspace({
                 ) : null}
                 {importError ? <p className="error">{importError}</p> : null}
                 <footer className="matrix-editor-import-controls-footer">
-                  <button className="matrix-editor-import-secondary-button" type="button" onClick={() => setShowImportDialog(false)}>Cancel</button>
+                  <button className="matrix-editor-import-secondary-button" type="button" disabled={importActionBusy} onClick={() => setShowImportDialog(false)}>Cancel</button>
                   <button
                     className="matrix-editor-import-commit-button"
                     type="button"
-                    disabled={isLifecycleReadonly || importingPreview || !importPreview || importPreview.groups.length === 0}
+                    disabled={isLifecycleReadonly || importActionBusy || !importPreview || importPreview.groups.length === 0}
                     onClick={() => void applyImportedMatrixDirectly()}
                   >
                     Replace
