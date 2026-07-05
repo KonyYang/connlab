@@ -2191,12 +2191,6 @@ export function MatrixEditorWorkspace({
       setImportError(lifecycleReadonlyView.message);
       return;
     }
-    const warning = hasUnsavedChanges
-      ? "Import Matrix will replace the current source session. Unsaved edits will be lost. Continue?"
-      : "Import Matrix will replace the current source session. Continue?";
-    if (!window.confirm(warning)) {
-      return;
-    }
     openChooseDocx();
   };
 

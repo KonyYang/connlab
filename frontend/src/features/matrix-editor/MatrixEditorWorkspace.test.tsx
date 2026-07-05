@@ -338,6 +338,21 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Confirm Revision")).toBeNull();
   });
 
+  it("opens the import file selector without native confirmation", async () => {
+    const inputClickSpy = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(inputClickSpy).toHaveBeenCalledTimes(1);
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    expect(input.getAttribute("accept")).toBe(".doc,.docx");
+  });
+
   it("downloads a Test Record preview from current unsaved Matrix Editor state", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
