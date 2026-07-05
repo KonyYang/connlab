@@ -294,6 +294,7 @@ export function FeeEvaluationPreviewTable({
                     <EditablePreviewInput
                       ariaLabel={`Spend Time for group ${row.groupLabel || "manual"} step ${row.stepToken}`}
                       disabled={readOnly}
+                      fieldState={previewFieldState(row, "spendTime")}
                       value={row.spendTime}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "spendTime", value)
@@ -302,11 +303,13 @@ export function FeeEvaluationPreviewTable({
                   </td>
                   <td>
                     <strong>{row.description}</strong>
+                    <ReviewCue row={row} />
                   </td>
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Unit Price for ${row.description}`}
                       disabled={readOnly}
+                      fieldState={previewFieldState(row, "unitPrice")}
                       value={row.unitPrice}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "unitPrice", value)
@@ -316,6 +319,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditableUnitTypeSelect
                       disabled={readOnly}
+                      fieldState={previewFieldState(row, "unitType")}
                       value={row.unitType}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "unitType", value)
@@ -326,6 +330,7 @@ export function FeeEvaluationPreviewTable({
                     <EditablePreviewInput
                       ariaLabel={`Units for ${row.description}`}
                       disabled={readOnly}
+                      fieldState={previewFieldState(row, "units")}
                       value={row.units}
                       onChange={(value) => onRowEditChange(row.lineId, "units", value)}
                     />
@@ -334,6 +339,7 @@ export function FeeEvaluationPreviewTable({
                     <EditablePreviewInput
                       ariaLabel={`Base Fee for ${row.description}`}
                       disabled={readOnly}
+                      fieldState={previewFieldState(row, "baseFee")}
                       value={row.baseFee}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "baseFee", value)
@@ -344,6 +350,7 @@ export function FeeEvaluationPreviewTable({
                     <EditablePreviewInput
                       ariaLabel={`Discount for ${row.description}`}
                       disabled={readOnly}
+                      fieldState={previewFieldState(row, "discount")}
                       value={row.discount}
                       onChange={(value) =>
                         onRowEditChange(row.lineId, "discount", value)
@@ -398,9 +405,27 @@ function previewRowClassName(row: FeeEvaluationPreviewRow): string {
   return classNames.join(" ");
 }
 
+function ReviewCue({ row }: { row: FeeEvaluationPreviewRow }): ReactElement | null {
+  const metadata = row.fieldMetadata.find((entry) => entry.state !== "auto_filled");
+  const message = metadata?.message ?? row.reviewReason;
+  if (!message) {
+    return null;
+  }
+  return <span className="fee-evaluation-review-cue">Review: {message}</span>;
+}
+
+function previewFieldState(
+  row: FeeEvaluationPreviewRow,
+  field: NonNullable<FeeEvaluationPreviewRow["fieldMetadata"]>[number]["field"]
+): string | null {
+  const state = row.fieldMetadata.find((entry) => entry.field === field)?.state;
+  return state && state !== "auto_filled" ? state : null;
+}
+
 function EditablePreviewInput({
   ariaLabel,
   disabled = false,
+  fieldState,
   inputMode = "decimal",
   onChange,
   placeholder = "Pending",
@@ -408,15 +433,22 @@ function EditablePreviewInput({
 }: {
   ariaLabel: string;
   disabled?: boolean;
+  fieldState?: string | null;
   inputMode?: "decimal" | "text";
   onChange: (value: string) => void;
   placeholder?: string;
   value: string;
 }): ReactElement {
+  const className = [
+    "fee-evaluation-preview-cell-input",
+    fieldState ? `fee-evaluation-preview-cell-${fieldState}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <input
       aria-label={ariaLabel}
-      className="fee-evaluation-preview-cell-input"
+      className={className}
       disabled={disabled}
       inputMode={inputMode}
       placeholder={placeholder}
@@ -428,10 +460,12 @@ function EditablePreviewInput({
 
 function EditableUnitTypeSelect({
   disabled = false,
+  fieldState,
   onChange,
   value,
 }: {
   disabled?: boolean;
+  fieldState?: string | null;
   onChange: (value: string) => void;
   value: string;
 }): ReactElement {
@@ -442,7 +476,12 @@ function EditableUnitTypeSelect({
   return (
     <select
       aria-label="Unit Type"
-      className="fee-evaluation-preview-cell-select"
+      className={[
+        "fee-evaluation-preview-cell-select",
+        fieldState ? `fee-evaluation-preview-cell-${fieldState}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       disabled={disabled}
       value={normalizedValue}
       onChange={(event) => onChange(event.currentTarget.value)}

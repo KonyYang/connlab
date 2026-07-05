@@ -2110,6 +2110,24 @@ export type FeeEvaluationWarning = {
   scope: string;
 };
 
+export type FeeEvaluationFieldMetadata = {
+  field:
+    | "spend_time"
+    | "unit_price"
+    | "unit_label"
+    | "units"
+    | "base_fee"
+    | "discount_percent"
+    | "testing_fee";
+  state:
+    | "auto_filled"
+    | "suggested_review"
+    | "manual_required"
+    | "not_available";
+  source: string | null;
+  message: string | null;
+};
+
 export type FeeEvaluationLineItem = {
   line_id: string;
   status: FeeEvaluationLineStatus;
@@ -2135,12 +2153,14 @@ export type FeeEvaluationLineItem = {
   matched_rule_name: string | null;
   match_reason: string;
   calculation_strategy: string | null;
+  spend_time: string;
   unit_label: string;
   unit_price: string | null;
   units: string | null;
   base_fee: string | null;
   discount_percent: string | null;
   testing_fee: string | null;
+  field_metadata?: FeeEvaluationFieldMetadata[];
   warnings: FeeEvaluationWarning[];
 };
 
@@ -2148,6 +2168,7 @@ export type FeeEvaluationGroup = {
   group_key: string;
   group_label: string;
   sample_quantity_expression: string;
+  manual_line_items?: FeeEvaluationLineItem[];
   line_items: FeeEvaluationLineItem[];
 };
 
@@ -2168,6 +2189,7 @@ export type FeeEvaluationDraft = {
   total_fee: string | null;
   review_required_count: number;
   groups: FeeEvaluationGroup[];
+  manual_line_items?: FeeEvaluationLineItem[];
   warnings: FeeEvaluationWarning[];
 };
 

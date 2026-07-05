@@ -36,7 +36,7 @@ def test_fee_draft_header_uses_confirmed_matrix_version_sample_received_date() -
     assert draft.header.pricing_rule_version_id == "fee_rules_v2026_06_03"
     assert draft.header.pricing_source_file_name == "Testing Fee Evaluation-Even.xls"
     assert draft.header.pricing_effective_from == "2026-06-03"
-    assert draft.draft_status in {"empty", "needs_review"}
+    assert draft.draft_status == "ready"
 
 
 def test_fee_draft_not_found_when_no_active_authority() -> None:
@@ -59,21 +59,57 @@ def test_fee_draft_warns_when_pricing_effective_from_is_missing() -> None:
     assert draft.review_required_count >= 1
 
 
-def test_fee_draft_marks_visual_exam_review_required_because_photo_count_is_unknown() -> None:
+def test_fee_draft_autofills_visual_exam_defaults() -> None:
     service = ConfirmedMatrixFeeDraftService(confirmed_store=_ConfirmedStore(active=_snapshot()))
 
     draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
 
     line = draft.groups[0].line_items[0]
-    assert line.status == "review_required"
-    assert line.review_required is True
+    assert line.status == "calculated"
+    assert line.review_required is False
     assert line.matched_rule_id == "fee_rule_visual_exam"
     assert line.matched_rule_version_id == "fee_rules_v2026_06_03"
     assert line.calculation_strategy == "per_photo"
     assert line.unit_price == Decimal("10")
-    assert line.units is None
-    assert line.testing_fee is None
+    assert line.units == Decimal("3")
+    assert line.discount_percent == Decimal("100")
+    assert line.testing_fee == Decimal("0")
+    assert line.spend_time == "0.5"
     assert line.step_tokens == ("1",)
+    assert any(
+        metadata.field == "units" and metadata.state == "auto_filled"
+        for metadata in line.field_metadata
+    )
+
+
+def test_fee_draft_includes_backend_owned_manual_default_rows() -> None:
+    service = ConfirmedMatrixFeeDraftService(confirmed_store=_ConfirmedStore(active=_snapshot()))
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    sample_line = draft.groups[0].manual_line_items[0]
+    assert sample_line.line_id == "sample-preparation:g1"
+    assert sample_line.test_item == "Sample preparation"
+    assert sample_line.spend_time == "0.5"
+    assert sample_line.unit_price == Decimal("50")
+    assert sample_line.unit_label == "sample"
+    assert sample_line.units == Decimal("5")
+    assert sample_line.discount_percent == Decimal("100")
+    assert sample_line.testing_fee == Decimal("0")
+    assert any(
+        metadata.field == "units" and metadata.state == "auto_filled"
+        for metadata in sample_line.field_metadata
+    )
+
+    report_line = draft.manual_line_items[0]
+    assert report_line.line_id == "manual-report-preparation"
+    assert report_line.test_item == "Report preparation"
+    assert report_line.spend_time == "4"
+    assert report_line.unit_price == Decimal("600")
+    assert report_line.unit_label == "report"
+    assert report_line.units == Decimal("1")
+    assert report_line.discount_percent == Decimal("100")
+    assert report_line.testing_fee == Decimal("0")
 
 
 def test_fee_draft_marks_unmatched_row_as_no_rule_match() -> None:
@@ -227,6 +263,34 @@ def test_fee_draft_marks_marker_sample_quantity_review_required_for_per_sample()
     assert "sample quantity" in (line.review_reason or "").lower()
 
 
+def test_fee_draft_prefills_temperature_rise_tier_and_flags_base_fee_review() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row("Temperature Rise", condition="300A"),
+                sample_quantity_expression="5",
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "review_required"
+    assert line.review_required is True
+    assert line.review_reason == "Review base fee"
+    assert line.unit_price == Decimal("600")
+    assert line.unit_label == "sample"
+    assert line.units == Decimal("5")
+    assert line.base_fee == Decimal("500")
+    assert line.testing_fee == Decimal("3500")
+    assert line.spend_time == "4"
+    assert any(
+        metadata.field == "base_fee" and metadata.state == "suggested_review"
+        for metadata in line.field_metadata
+    )
+
+
 class _ConfirmedStore:
     def __init__(self, active: ConfirmedMatrixSnapshot | None) -> None:
         self.active = active
@@ -286,7 +350,7 @@ def _snapshot(
     )
 
 
-def _fixture_row(test_item: str) -> ConfirmedMatrixRow:
+def _fixture_row(test_item: str, *, condition: str = "Visual Inspection") -> ConfirmedMatrixRow:
     return ConfirmedMatrixRow(
         confirmed_row_id=f"cmr-{test_item.lower().replace(' ', '-')}",
         confirmed_matrix_id="cmv-1",
@@ -296,7 +360,7 @@ def _fixture_row(test_item: str) -> ConfirmedMatrixRow:
         test_item=test_item,
         source_section="6.1",
         method="EIA-364-18",
-        condition="Visual Inspection",
+        condition=condition,
         requirement="No damage",
     )
 

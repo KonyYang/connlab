@@ -5,21 +5,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-import re
-from typing import Literal, Protocol
 
+from backend.application.confirmed_matrix_fee_draft_models import (
+    BuildConfirmedMatrixFeeDraftCommand,
+    ConfirmedMatrixAuthorityStore,
+    FeeDraftStatus,
+    FeeEvaluationDraft,
+    FeeEvaluationGroup,
+    FeeEvaluationHeader,
+    FeeEvaluationLineItem,
+    FeeEvaluationWarning,
+    FeeLineStatus,
+)
+from backend.application.confirmed_matrix_fee_manual_defaults import (
+    build_report_preparation_line,
+    build_sample_preparation_line,
+)
 from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixRow, ConfirmedMatrixSnapshot
 from backend.modules.fee_evaluation import (
+    FeeDefaultFillContext,
+    FeeFieldMetadata,
     FeeRule,
     FeeRuleLibrary,
     FeeRuleMatcher,
+    build_fee_default_fill,
     load_active_fee_rule_library,
 )
 from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
 
-FeeDraftStatus = Literal["ready", "empty", "needs_review"]
-FeeLineStatus = Literal["calculated", "review_required", "no_rule_match"]
-_PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 _ZERO = Decimal("0")
 
 
@@ -31,112 +44,19 @@ class ConfirmedMatrixFeeDraftError(ValueError):
     """Raised when confirmed Matrix fee draft data cannot be built."""
 
 
-class ConfirmedMatrixAuthorityStore(Protocol):
-    """Confirmed Matrix authority read operations required by fee draft service."""
-
-    def get_active_by_project(self, project_id: str) -> ConfirmedMatrixSnapshot | None:
-        """Return one active confirmed authority aggregate in one project."""
-
-
 @dataclass(frozen=True, slots=True)
-class BuildConfirmedMatrixFeeDraftCommand:
-    """Input payload for confirmed-authority fee draft building."""
-
-    project_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class FeeEvaluationWarning:
-    """One warning emitted while building the fee draft."""
-
-    code: str
-    message: str
-    scope: str
-
-
-@dataclass(frozen=True, slots=True)
-class FeeEvaluationLineItem:
-    """One Matrix-derived fee candidate line for operator review."""
-
-    line_id: str
+class _CalculationResult:
     status: FeeLineStatus
     review_required: bool
     review_reason: str | None
-    confirmed_matrix_id: str
-    confirmed_revision: int
-    group_key: str
-    group_label: str
-    confirmed_group_id: str
-    sample_quantity_expression: str
-    spend_time: str
-    confirmed_row_id: str
-    source_row_id: str | None
-    row_order: int
-    test_item: str
-    section: str
-    method: str
-    condition: str
-    requirement: str
-    step_tokens: tuple[str, ...]
-    matched_rule_id: str | None
-    matched_rule_version_id: str | None
-    matched_rule_name: str | None
-    match_reason: str
-    calculation_strategy: str | None
+    spend_time: Decimal | None
     unit_label: str
     unit_price: Decimal | None
     units: Decimal | None
     base_fee: Decimal | None
     discount_percent: Decimal | None
     testing_fee: Decimal | None
-    warnings: tuple[FeeEvaluationWarning, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class FeeEvaluationGroup:
-    """One selected Confirmed Matrix group with fee draft line items."""
-
-    group_key: str
-    group_label: str
-    sample_quantity_expression: str
-    line_items: tuple[FeeEvaluationLineItem, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class FeeEvaluationHeader:
-    """Top-level fee draft metadata and pricing source traceability."""
-
-    project_id: str
-    confirmed_matrix_id: str
-    confirmed_revision: int
-    pricing_rule_version_id: str
-    pricing_source_file_name: str
-    pricing_source_hash: str
-    pricing_effective_from: str | None
-    generated_at: str
-
-
-@dataclass(frozen=True, slots=True)
-class FeeEvaluationDraft:
-    """Read-only fee evaluation draft preview derived from Confirmed Matrix."""
-
-    header: FeeEvaluationHeader
-    draft_status: FeeDraftStatus
-    total_fee: Decimal | None
-    review_required_count: int
-    groups: tuple[FeeEvaluationGroup, ...]
-    warnings: tuple[FeeEvaluationWarning, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class _CalculationResult:
-    status: FeeLineStatus
-    review_required: bool
-    review_reason: str | None
-    units: Decimal | None
-    base_fee: Decimal | None
-    discount_percent: Decimal | None
-    testing_fee: Decimal | None
+    field_metadata: tuple[FeeFieldMetadata, ...]
 
 
 class ConfirmedMatrixFeeDraftService:
@@ -159,7 +79,17 @@ class ConfirmedMatrixFeeDraftService:
         library = self._rule_library or load_active_fee_rule_library()
         warnings = _root_warnings(snapshot)
         groups = _build_groups(snapshot=snapshot, library=library)
-        line_items = tuple(item for group in groups for item in group.line_items)
+        manual_line_items = (
+            build_report_preparation_line(
+                snapshot=snapshot,
+                rule_version_id=library.version.version_id,
+            ),
+        )
+        line_items = tuple(
+            item
+            for group in groups
+            for item in (*group.manual_line_items, *group.line_items)
+        ) + manual_line_items
         review_required_count = sum(1 for item in line_items if item.review_required)
         calculated_values = [item.testing_fee for item in line_items if item.testing_fee is not None]
         total_fee = (
@@ -182,6 +112,7 @@ class ConfirmedMatrixFeeDraftService:
             total_fee=total_fee,
             review_required_count=review_required_count + len(warnings),
             groups=groups,
+            manual_line_items=manual_line_items,
             warnings=tuple(warnings),
         )
 
@@ -210,7 +141,11 @@ def _draft_status(
         return "needs_review"
     if not groups:
         return "empty"
-    if any(item.review_required for group in groups for item in group.line_items):
+    if any(
+        item.review_required
+        for group in groups
+        for item in (*group.manual_line_items, *group.line_items)
+    ):
         return "needs_review"
     return "ready"
 
@@ -244,6 +179,13 @@ def _build_groups(
                 group_key=group.group_key.strip(),
                 group_label=group.group_label.strip(),
                 sample_quantity_expression=_text(group.sample_quantity_expression),
+                manual_line_items=(
+                    build_sample_preparation_line(
+                        group=group,
+                        snapshot=snapshot,
+                        rule_version_id=library.version.version_id,
+                    ),
+                ),
                 line_items=tuple(lines),
             )
         )
@@ -325,6 +267,7 @@ def _build_line_item(
         else _calculate_line(
             rule=rule,
             group=group,
+            row=row,
             step_tokens=step_tokens,
             warnings=warnings,
         )
@@ -340,7 +283,7 @@ def _build_line_item(
         group_label=group.group_label.strip(),
         confirmed_group_id=group.confirmed_group_id,
         sample_quantity_expression=_text(group.sample_quantity_expression),
-        spend_time=_text(row.day_expression),
+        spend_time=_decimal_text(calculation.spend_time) or _text(row.day_expression),
         confirmed_row_id=row.confirmed_row_id,
         source_row_id=row.source_row_snapshot_id,
         row_order=row.row_order,
@@ -355,12 +298,13 @@ def _build_line_item(
         matched_rule_name=rule.display_name if rule is not None else None,
         match_reason=match_reason,
         calculation_strategy=rule.calculation_strategy if rule is not None else None,
-        unit_label=rule.unit_label if rule is not None else "",
-        unit_price=rule.unit_price.amount if rule is not None else None,
+        unit_label=calculation.unit_label,
+        unit_price=calculation.unit_price,
         units=calculation.units,
         base_fee=calculation.base_fee,
         discount_percent=calculation.discount_percent,
         testing_fee=calculation.testing_fee,
+        field_metadata=calculation.field_metadata,
         warnings=warnings,
     )
 
@@ -369,42 +313,37 @@ def _calculate_line(
     *,
     rule: FeeRule,
     group: ConfirmedMatrixGroup,
+    row: ConfirmedMatrixRow,
     step_tokens: tuple[str, ...],
     warnings: tuple[FeeEvaluationWarning, ...],
 ) -> _CalculationResult:
     if warnings:
         return _review("Step token parse warning requires operator review.", rule)
-    if rule.review_required:
-        return _review(_review_reason_for_rule(rule), rule)
-    if rule.unit_price.amount is None:
-        return _review("Unit price is not numeric in the active fee rule.", rule)
-    if rule.base_fee.amount is None:
-        return _review("Base fee is not deterministic in the active fee rule.", rule)
-    if rule.calculation_strategy in {"per_sample", "per_specimen"}:
-        units = _plain_decimal_quantity(group.sample_quantity_expression)
-        if units is None:
-            return _review("Group sample quantity is not a plain numeric unit basis.", rule)
-        return _calculated(rule, units)
-    if rule.calculation_strategy == "fixed_per_group":
-        if not step_tokens:
-            return _review("No selected step tokens are available for this group.", rule)
-        return _calculated(rule, Decimal("1"))
-    return _review(_review_reason_for_rule(rule), rule)
-
-
-def _calculated(rule: FeeRule, units: Decimal) -> _CalculationResult:
-    discount_percent = _ZERO
-    unit_price = rule.unit_price.amount or _ZERO
-    base_fee = rule.base_fee.amount or _ZERO
-    testing_fee = unit_price * units * (Decimal("1") - discount_percent / Decimal("100")) + base_fee
+    default_fill = build_fee_default_fill(
+        rule=rule,
+        context=FeeDefaultFillContext(
+            test_item=_text(row.test_item),
+            method=_text(row.method),
+            condition=_text(row.condition),
+            requirement=_text(row.requirement),
+            sample_quantity_expression=_text(group.sample_quantity_expression),
+            spend_time=_text(row.day_expression),
+            step_tokens=step_tokens,
+        ),
+    )
+    status: FeeLineStatus = default_fill.status
     return _CalculationResult(
-        status="calculated",
-        review_required=False,
-        review_reason=None,
-        units=units,
-        base_fee=base_fee,
-        discount_percent=discount_percent,
-        testing_fee=testing_fee,
+        status=status,
+        review_required=default_fill.review_required,
+        review_reason=default_fill.review_reason,
+        spend_time=default_fill.spend_time,
+        unit_label=default_fill.unit_label,
+        unit_price=default_fill.unit_price,
+        units=default_fill.units,
+        base_fee=default_fill.base_fee,
+        discount_percent=default_fill.discount_percent,
+        testing_fee=default_fill.testing_fee,
+        field_metadata=default_fill.field_metadata,
     )
 
 
@@ -413,10 +352,14 @@ def _review(reason: str, rule: FeeRule) -> _CalculationResult:
         status="review_required",
         review_required=True,
         review_reason=reason,
+        spend_time=None,
+        unit_label=rule.unit_label,
+        unit_price=rule.unit_price.amount,
         units=None,
         base_fee=rule.base_fee.amount,
         discount_percent=_ZERO,
         testing_fee=None,
+        field_metadata=(),
     )
 
 
@@ -425,35 +368,22 @@ def _no_rule_match(review_reason: str | None) -> _CalculationResult:
         status="no_rule_match",
         review_required=True,
         review_reason=review_reason or "No fee rule match.",
+        spend_time=None,
+        unit_label="",
+        unit_price=None,
         units=None,
         base_fee=None,
         discount_percent=None,
         testing_fee=None,
+        field_metadata=(),
     )
-
-
-def _review_reason_for_rule(rule: FeeRule) -> str:
-    if rule.calculation_strategy == "per_photo":
-        return "Photo count is not available from Matrix authority."
-    if rule.calculation_strategy == "per_reading":
-        return "Reading count derivation is not defined in TASK_286."
-    if rule.calculation_strategy == "per_cycle":
-        return "Cycle count derivation is not defined in TASK_286."
-    if rule.calculation_strategy == "per_hour":
-        return "Day-to-hour fee conversion is not defined in TASK_286."
-    if rule.calculation_strategy in {"manual_required", "unknown"}:
-        return rule.review_reason or "Matched fee rule requires operator review."
-    if rule.review_required:
-        return rule.review_reason or "Matched fee rule requires operator review."
-    return "Fee line requires operator review."
-
-
-def _plain_decimal_quantity(value: str) -> Decimal | None:
-    text = value.strip()
-    if not _PLAIN_NON_NEGATIVE_DECIMAL.fullmatch(text):
-        return None
-    return Decimal(text)
 
 
 def _text(value: str | None) -> str:
     return (value or "").strip()
+
+
+def _decimal_text(value: Decimal | None) -> str:
+    if value is None:
+        return ""
+    return format(value, "f")

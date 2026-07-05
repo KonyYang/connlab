@@ -32,12 +32,13 @@ describe("feeEvaluationPreviewModel", () => {
       rowKind: "sample_preparation",
       stepToken: "0",
       description: "Sample preparation",
-      unitPrice: "0",
+      unitPrice: "50",
       unitType: "per sample",
-      units: "1",
+      units: "5",
       baseFee: "0",
-      discount: "0%",
+      discount: "100%",
       testingFee: "0",
+      status: "confirmed",
     });
     expect(rows[1]).toMatchObject({
       lineId: "fixture:1:0",
@@ -72,7 +73,153 @@ describe("feeEvaluationPreviewModel", () => {
     expect(rows.at(-1)).toMatchObject({
       rowKind: "manual_trailing",
       groupTone: "manual",
-      reviewReason: "Manual completion in Fee Form.",
+      spendTime: "4",
+      unitPrice: "600",
+      unitType: "per report",
+      units: "1",
+      baseFee: "0",
+      discount: "100%",
+      testingFee: "0",
+      status: "confirmed",
+      reviewReason: null,
+    });
+  });
+
+  it("maps field-level review metadata without changing editable Notes", () => {
+    const rows = buildFeeEvaluationPreviewRows({
+      ...createDraft(),
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "Group 1",
+          sample_quantity_expression: "5",
+          manual_line_items: [createSamplePreparationLine()],
+          line_items: [
+            createLine({
+              line_id: "temperature-rise",
+              status: "review_required",
+              review_required: true,
+              review_reason: "Review base fee",
+              test_item: "Temperature Rise",
+              unit_label: "sample",
+              unit_price: "600",
+              units: "5",
+              base_fee: "500",
+              discount_percent: "0",
+              testing_fee: "3500",
+              field_metadata: [
+                {
+                  field: "base_fee",
+                  state: "suggested_review",
+                  source: "Temperature Rise current tier",
+                  message: "Review base fee",
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+    });
+
+    const row = rows.find((candidate) => candidate.description === "Temperature Rise");
+    expect(row).toMatchObject({
+      reviewReason: "Review base fee",
+      notes: "",
+      baseFee: "500",
+      testingFee: "3500",
+    });
+    expect(row?.fieldMetadata).toEqual([
+      {
+        field: "baseFee",
+        state: "suggested_review",
+        source: "Temperature Rise current tier",
+        message: "Review base fee",
+      },
+    ]);
+  });
+
+  it("uses backend manual default rows instead of frontend pricing rules", () => {
+    const draft = {
+      ...createDraft(),
+      groups: [
+        {
+          ...createDraft().groups[0],
+          manual_line_items: [
+            createLine({
+              line_id: "sample-preparation:g1",
+              test_item: "Sample preparation",
+              step_tokens: [],
+              unit_label: "sample",
+              unit_price: "77",
+              units: "4",
+              base_fee: "1",
+              discount_percent: "25",
+              testing_fee: "232",
+              field_metadata: [
+                {
+                  field: "unit_price",
+                  state: "auto_filled",
+                  source: "Backend sample rule",
+                  message: null,
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      manual_line_items: [
+        createLine({
+          line_id: "manual-report-preparation",
+          test_item: "Report preparation",
+          group_key: "",
+          group_label: "",
+          confirmed_group_id: "",
+          step_tokens: [],
+          unit_label: "report",
+          unit_price: "888",
+          units: "1",
+          base_fee: "2",
+          discount_percent: "10",
+          testing_fee: "801.2",
+          field_metadata: [
+            {
+              field: "unit_price",
+              state: "auto_filled",
+              source: "Backend report rule",
+              message: null,
+            },
+          ],
+        }),
+      ],
+    } as unknown as FeeEvaluationDraft;
+
+    const rows = buildFeeEvaluationPreviewRows(draft);
+
+    expect(rows[0]).toMatchObject({
+      lineId: "sample-preparation:g1",
+      rowKind: "sample_preparation",
+      unitPrice: "77",
+      unitType: "per sample",
+      units: "4",
+      baseFee: "1",
+      discount: "25%",
+      testingFee: "232",
+    });
+    expect(rows[0].fieldMetadata).toContainEqual({
+      field: "unitPrice",
+      state: "auto_filled",
+      source: "Backend sample rule",
+      message: null,
+    });
+    expect(rows.at(-1)).toMatchObject({
+      lineId: "manual-report-preparation",
+      rowKind: "manual_trailing",
+      unitPrice: "888",
+      unitType: "per report",
+      units: "1",
+      baseFee: "2",
+      discount: "10%",
+      testingFee: "801.2",
     });
   });
 
@@ -122,6 +269,7 @@ describe("feeEvaluationPreviewModel", () => {
           group_key: "g1",
           group_label: "Group 1",
           sample_quantity_expression: "5",
+          manual_line_items: [createSamplePreparationLine()],
           line_items: [
             createLine({
               line_id: "group-1-fixture",
@@ -134,6 +282,15 @@ describe("feeEvaluationPreviewModel", () => {
           group_key: "g2",
           group_label: "Group 2",
           sample_quantity_expression: "5",
+          manual_line_items: [
+            createSamplePreparationLine({
+              line_id: "sample-preparation:g2",
+              group_key: "g2",
+              group_label: "Group 2",
+              confirmed_group_id: "cmg-2",
+              units: "5",
+            }),
+          ],
           line_items: [
             createLine({
               line_id: "group-2-visual",
@@ -229,19 +386,19 @@ describe("feeEvaluationPreviewModel", () => {
       testingFee: "10",
     });
     expect(rows.find((row) => row.lineId === "sample-preparation:g1")).toMatchObject({
-      spendTime: "0",
-      unitPrice: "0",
-      units: "1",
+      spendTime: "0.5",
+      unitPrice: "50",
+      units: "5",
       baseFee: "0",
-      discount: "0%",
+      discount: "100%",
       testingFee: "0",
     });
     expect(rows.find((row) => row.lineId === "manual-report-preparation")).toMatchObject({
-      spendTime: "0",
-      unitPrice: "0",
+      spendTime: "4",
+      unitPrice: "600",
       units: "1",
       baseFee: "0",
-      discount: "0%",
+      discount: "100%",
       testingFee: "0",
     });
   });
@@ -252,7 +409,7 @@ describe("feeEvaluationPreviewModel", () => {
       "visual:2:0": { spendTime: "2" },
     });
 
-    expect(buildFeeEvaluationPreviewWorkingHours(rows, "0.5")).toBe("4.0");
+    expect(buildFeeEvaluationPreviewWorkingHours(rows, "0.5")).toBe("8.5");
   });
 
   it("filters preview totals to the selected Matrix group scope", () => {
@@ -272,7 +429,7 @@ describe("feeEvaluationPreviewModel", () => {
         filterFeeEvaluationPreviewRowsForScope(rows, "Group 2"),
         "0"
       )
-    ).toBe("3.0");
+    ).toBe("3.5");
   });
 
   it("calculates Lab manpower cost from scoped working hours and editable hourly rate", () => {
@@ -301,6 +458,7 @@ describe("feeEvaluationPreviewModel", () => {
           group_key: "g1",
           group_label: "Group 1",
           sample_quantity_expression: "5",
+          manual_line_items: [createSamplePreparationLine()],
           line_items: [
             createLine({
               line_id: "multi-step-priced",
@@ -576,6 +734,7 @@ function createDraft(): FeeEvaluationDraft {
         group_key: "g1",
         group_label: "Group 1",
         sample_quantity_expression: "5",
+        manual_line_items: [createSamplePreparationLine()],
         line_items: [
           createLine({
             line_id: "fixture",
@@ -606,6 +765,7 @@ function createDraft(): FeeEvaluationDraft {
         ],
       },
     ],
+    manual_line_items: [createReportPreparationLine()],
   };
 }
 
@@ -619,6 +779,15 @@ function createDraftWithTwoGroups(): FeeEvaluationDraft {
         group_key: "g2",
         group_label: "Group 2",
         sample_quantity_expression: "3",
+        manual_line_items: [
+          createSamplePreparationLine({
+            line_id: "sample-preparation:g2",
+            group_key: "g2",
+            group_label: "Group 2",
+            confirmed_group_id: "cmg-2",
+            units: "3",
+          }),
+        ],
         line_items: [
           createLine({
             line_id: "group-2-fixture",
@@ -642,6 +811,7 @@ function createDraftWithUnsortedStepTokens(): FeeEvaluationDraft {
         group_key: "g1",
         group_label: "Group 1",
         sample_quantity_expression: "5",
+        manual_line_items: [createSamplePreparationLine()],
         line_items: [
           createLine({ line_id: "g1-s1", test_item: "Step 1", step_tokens: ["1"] }),
           createLine({ line_id: "g1-s9", test_item: "Step 9", step_tokens: ["9"] }),
@@ -658,6 +828,15 @@ function createDraftWithUnsortedStepTokens(): FeeEvaluationDraft {
         group_key: "g2",
         group_label: "Group 2",
         sample_quantity_expression: "3",
+        manual_line_items: [
+          createSamplePreparationLine({
+            line_id: "sample-preparation:g2",
+            group_key: "g2",
+            group_label: "Group 2",
+            confirmed_group_id: "cmg-2",
+            units: "3",
+          }),
+        ],
         line_items: [
           createLine({
             line_id: "g2-s1",
@@ -681,6 +860,76 @@ function createDraftWithUnsortedStepTokens(): FeeEvaluationDraft {
       },
     ],
   };
+}
+
+function createSamplePreparationLine(
+  overrides: Partial<FeeEvaluationLineItem> = {}
+): FeeEvaluationLineItem {
+  return createLine({
+    line_id: "sample-preparation:g1",
+    test_item: "Sample preparation",
+    confirmed_row_id: "",
+    source_row_id: null,
+    row_order: 0,
+    step_tokens: [],
+    spend_time: "0.5",
+    matched_rule_id: "fee_rule_sample_preparation",
+    matched_rule_name: "Sample preparation",
+    match_reason: "backend_manual_default",
+    calculation_strategy: "per_sample",
+    unit_label: "sample",
+    unit_price: "50",
+    units: "5",
+    base_fee: "0",
+    discount_percent: "100",
+    testing_fee: "0",
+    field_metadata: [
+      {
+        field: "unit_price",
+        state: "auto_filled",
+        source: "Sample preparation",
+        message: null,
+      },
+    ],
+    ...overrides,
+  });
+}
+
+function createReportPreparationLine(
+  overrides: Partial<FeeEvaluationLineItem> = {}
+): FeeEvaluationLineItem {
+  return createLine({
+    line_id: "manual-report-preparation",
+    group_key: "",
+    group_label: "",
+    confirmed_group_id: "",
+    sample_quantity_expression: "",
+    confirmed_row_id: "",
+    source_row_id: null,
+    row_order: 0,
+    test_item: "Report preparation",
+    step_tokens: [],
+    spend_time: "4",
+    matched_rule_id: "fee_rule_report_preparation",
+    matched_rule_name: "Report preparation",
+    match_reason: "backend_manual_default",
+    calculation_strategy: "fixed_per_group",
+    unit_label: "report",
+    unit_price: "600",
+    units: "1",
+    base_fee: "0",
+    discount_percent: "100",
+    testing_fee: "0",
+    field_metadata: [
+      {
+        field: "unit_price",
+        state: "auto_filled",
+        source: "Report preparation",
+        message: null,
+      },
+    ],
+    ...overrides,
+  });
 }
 
 function createLine(overrides: Partial<FeeEvaluationLineItem>): FeeEvaluationLineItem {
@@ -709,6 +958,7 @@ function createLine(overrides: Partial<FeeEvaluationLineItem>): FeeEvaluationLin
     matched_rule_name: "Fixture setup",
     match_reason: "exact",
     calculation_strategy: "fixed_per_group",
+    spend_time: "",
     unit_label: "group",
     unit_price: "100.00",
     units: "1",

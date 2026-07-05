@@ -44,13 +44,19 @@ def test_confirmed_matrix_fee_draft_api_happy_path(tmp_path: Path) -> None:
         assert payload["header"]["project_id"] == "P1"
         assert payload["header"]["pricing_rule_version_id"] == "fee_rules_v2026_06_03"
         assert payload["header"]["pricing_effective_from"] == "2026-06-03"
-        assert payload["draft_status"] == "needs_review"
+        assert payload["draft_status"] == "ready"
         assert payload["groups"][0]["group_key"] == "g1"
         assert payload["groups"][0]["line_items"][0]["matched_rule_id"] == "fee_rule_visual_exam"
         assert payload["groups"][0]["line_items"][0]["matched_rule_version_id"] == "fee_rules_v2026_06_03"
-        assert payload["groups"][0]["line_items"][0]["spend_time"] == "2D"
+        assert payload["groups"][0]["line_items"][0]["spend_time"] == "0.5"
         assert payload["groups"][0]["line_items"][0]["unit_price"] == "10"
-        assert payload["groups"][0]["line_items"][0]["testing_fee"] is None
+        assert payload["groups"][0]["line_items"][0]["testing_fee"] == "0"
+        assert payload["groups"][0]["line_items"][0]["field_metadata"][0] == {
+            "field": "spend_time",
+            "state": "auto_filled",
+            "message": None,
+            "source": "Visual exam",
+        }
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

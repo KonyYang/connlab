@@ -18,6 +18,7 @@ from backend.application.confirmed_matrix_fee_draft_service import (
     FeeEvaluationLineItem,
     FeeEvaluationWarning,
 )
+from backend.modules.fee_evaluation import FeeFieldMetadata
 
 
 router = APIRouter(tags=["confirmed-matrix-fee-draft"])
@@ -27,6 +28,13 @@ class FeeEvaluationWarningResponse(BaseModel):
     code: str
     message: str
     scope: str
+
+
+class FeeEvaluationFieldMetadataResponse(BaseModel):
+    field: str
+    state: str
+    source: str | None
+    message: str | None
 
 
 class FeeEvaluationLineItemResponse(BaseModel):
@@ -61,6 +69,7 @@ class FeeEvaluationLineItemResponse(BaseModel):
     base_fee: str | None
     discount_percent: str | None
     testing_fee: str | None
+    field_metadata: list[FeeEvaluationFieldMetadataResponse]
     warnings: list[FeeEvaluationWarningResponse]
 
 
@@ -68,6 +77,7 @@ class FeeEvaluationGroupResponse(BaseModel):
     group_key: str
     group_label: str
     sample_quantity_expression: str
+    manual_line_items: list[FeeEvaluationLineItemResponse]
     line_items: list[FeeEvaluationLineItemResponse]
 
 
@@ -88,6 +98,7 @@ class FeeEvaluationDraftResponse(BaseModel):
     total_fee: str | None
     review_required_count: int
     groups: list[FeeEvaluationGroupResponse]
+    manual_line_items: list[FeeEvaluationLineItemResponse]
     warnings: list[FeeEvaluationWarningResponse]
 
 
@@ -125,6 +136,7 @@ def _to_response(draft: FeeEvaluationDraft) -> FeeEvaluationDraftResponse:
         total_fee=_decimal_or_none(draft.total_fee),
         review_required_count=draft.review_required_count,
         groups=[_to_group_response(group) for group in draft.groups],
+        manual_line_items=[_to_line_response(line) for line in draft.manual_line_items],
         warnings=[_to_warning_response(warning) for warning in draft.warnings],
     )
 
@@ -134,6 +146,7 @@ def _to_group_response(group: FeeEvaluationGroup) -> FeeEvaluationGroupResponse:
         group_key=group.group_key,
         group_label=group.group_label,
         sample_quantity_expression=group.sample_quantity_expression,
+        manual_line_items=[_to_line_response(line) for line in group.manual_line_items],
         line_items=[_to_line_response(line) for line in group.line_items],
     )
 
@@ -171,7 +184,19 @@ def _to_line_response(line: FeeEvaluationLineItem) -> FeeEvaluationLineItemRespo
         base_fee=_decimal_or_none(line.base_fee),
         discount_percent=_decimal_or_none(line.discount_percent),
         testing_fee=_decimal_or_none(line.testing_fee),
+        field_metadata=[_to_field_metadata_response(metadata) for metadata in line.field_metadata],
         warnings=[_to_warning_response(warning) for warning in line.warnings],
+    )
+
+
+def _to_field_metadata_response(
+    metadata: FeeFieldMetadata,
+) -> FeeEvaluationFieldMetadataResponse:
+    return FeeEvaluationFieldMetadataResponse(
+        field=metadata.field,
+        state=metadata.state,
+        source=metadata.source,
+        message=metadata.message,
     )
 
 

@@ -1,6 +1,7 @@
 import type {
   FeeEvaluationDraft,
   FeeEvaluationEditedFileExportRequest,
+  FeeEvaluationFieldMetadata,
   FeeEvaluationLineItem,
 } from "../../api/client";
 
@@ -54,8 +55,23 @@ export type FeeEvaluationPreviewRow = {
   notes: string;
   status: "confirmed" | "pending";
   reviewReason: string | null;
+  fieldMetadata: FeeEvaluationPreviewFieldMetadata[];
   rowKind: "matrix_step" | "sample_preparation" | "manual_trailing";
   groupTone: "tone-a" | "tone-b" | "manual";
+};
+
+export type FeeEvaluationPreviewFieldMetadata = {
+  field:
+    | "spendTime"
+    | "unitPrice"
+    | "unitType"
+    | "units"
+    | "baseFee"
+    | "discount"
+    | "testingFee";
+  state: FeeEvaluationFieldMetadata["state"];
+  source: string | null;
+  message: string | null;
 };
 
 export type FeeEvaluationPreviewTotals = {
@@ -122,17 +138,31 @@ export function buildFeeEvaluationPreviewRows(
         .sort(comparePreviewRows)
         .map(stripPreviewSortMetadata);
       const firstLine = group.line_items[0];
+      const sampleRows =
+        group.manual_line_items?.length
+          ? group.manual_line_items.map((line) =>
+              buildManualDefaultRow(line, "sample_preparation", groupTone, "0")
+            )
+          : [
+              buildSamplePreparationFallbackRow(
+                group.group_key,
+                group.group_label,
+                firstLine?.confirmed_group_id ?? "",
+                groupTone
+              ),
+            ];
       return [
-        buildSamplePreparationRow(
-          group.group_key,
-          group.group_label,
-          firstLine?.confirmed_group_id ?? "",
-          groupTone
-        ),
+        ...sampleRows,
         ...matrixRows,
       ];
     }) ?? [];
-  return [...rows, ...buildManualTrailingRows()];
+  const manualRows =
+    draft?.manual_line_items?.length
+      ? draft.manual_line_items.map((line) =>
+          buildManualDefaultRow(line, "manual_trailing", "manual", "-")
+        )
+      : [buildReportPreparationFallbackRow()];
+  return [...rows, ...manualRows];
 }
 
 export function buildFeeEvaluationPreviewTotals(
@@ -469,6 +499,7 @@ function buildMatrixStepRows(
       notes: "",
       status: line.review_required ? "pending" : "confirmed",
       reviewReason: line.review_reason,
+      fieldMetadata: mapFieldMetadata(line.field_metadata ?? []),
       rowKind: "matrix_step" as const,
       groupTone,
       stepSortValue: parseStepSortValue(stepDisplay),
@@ -499,7 +530,7 @@ function stripPreviewSortMetadata(row: ExpandedStepRow): FeeEvaluationPreviewRow
   return previewRow;
 }
 
-function buildSamplePreparationRow(
+function buildSamplePreparationFallbackRow(
   groupKey: string,
   groupLabel: string,
   confirmedGroupId: string,
@@ -514,17 +545,22 @@ function buildSamplePreparationRow(
     groupLabel,
     stepToken: "0",
     stepIndex: 0,
-    spendTime: "0",
+    spendTime: "Pending",
     description: "Sample preparation",
-    unitPrice: "0",
-    unitType: "per sample",
-    units: "1",
-    baseFee: "0",
-    discount: "0%",
-    testingFee: "0",
+    unitPrice: "Pending",
+    unitType: "Pending",
+    units: "Pending",
+    baseFee: "Pending",
+    discount: "Pending",
+    testingFee: "Pending",
     notes: "",
     status: "pending",
-    reviewReason: null,
+    reviewReason: "Backend sample preparation default is unavailable.",
+    fieldMetadata: [
+      reviewMetadata("unitPrice", "Backend sample preparation default is unavailable."),
+      reviewMetadata("units", "Backend sample preparation default is unavailable."),
+      reviewMetadata("testingFee", "Backend sample preparation default is unavailable."),
+    ],
     rowKind: "sample_preparation",
     groupTone,
   };
@@ -539,38 +575,114 @@ function parseStepSortValue(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function buildManualTrailingRows(): FeeEvaluationPreviewRow[] {
-  return [
-    buildManualTrailingRow("manual-report-preparation", "Report preparation"),
-  ];
-}
-
-function buildManualTrailingRow(
-  lineId: string,
-  description: string
-): FeeEvaluationPreviewRow {
+function buildReportPreparationFallbackRow(): FeeEvaluationPreviewRow {
   return {
-    lineId,
-    sourceLineId: lineId,
+    lineId: "manual-report-preparation",
+    sourceLineId: "manual-report-preparation",
     confirmedGroupId: "",
     confirmedRowId: "",
     groupKey: "",
     groupLabel: "",
     stepToken: "-",
     stepIndex: 0,
+    description: "Report preparation",
     spendTime: "Pending",
-    description,
     unitPrice: "Pending",
     unitType: "Pending",
     units: "Pending",
-    baseFee: "",
-    discount: "",
+    baseFee: "Pending",
+    discount: "Pending",
     testingFee: "Pending",
     notes: "",
     status: "pending",
-    reviewReason: "Manual completion in Fee Form.",
+    reviewReason: "Backend report preparation default is unavailable.",
+    fieldMetadata: [
+      reviewMetadata("unitPrice", "Backend report preparation default is unavailable."),
+      reviewMetadata("testingFee", "Backend report preparation default is unavailable."),
+    ],
     rowKind: "manual_trailing",
     groupTone: "manual",
+  };
+}
+
+function buildManualDefaultRow(
+  line: FeeEvaluationLineItem,
+  rowKind: "sample_preparation" | "manual_trailing",
+  groupTone: "tone-a" | "tone-b" | "manual",
+  stepToken: string
+): FeeEvaluationPreviewRow {
+  return {
+    lineId: line.line_id,
+    sourceLineId: line.line_id,
+    confirmedGroupId: line.confirmed_group_id,
+    confirmedRowId: line.confirmed_row_id,
+    groupKey: line.group_key,
+    groupLabel: line.group_label,
+    stepToken,
+    stepIndex: 0,
+    spendTime: pendingValue(line.spend_time),
+    description: line.test_item,
+    unitPrice: pendingValue(line.unit_price),
+    unitType: formatUnitTypeForPreview(line.unit_label || line.calculation_strategy || "Pending"),
+    units: pendingValue(line.units),
+    baseFee: pendingValue(line.base_fee),
+    discount: formatDiscount(line.discount_percent),
+    testingFee: pendingValue(line.testing_fee),
+    notes: "",
+    status: line.review_required ? "pending" : "confirmed",
+    reviewReason: line.review_reason,
+    fieldMetadata: mapFieldMetadata(line.field_metadata ?? []),
+    rowKind,
+    groupTone,
+  };
+}
+
+function mapFieldMetadata(
+  metadata: FeeEvaluationFieldMetadata[]
+): FeeEvaluationPreviewFieldMetadata[] {
+  return metadata
+    .map((entry) => {
+      const field = mapMetadataField(entry.field);
+      if (!field) {
+        return null;
+      }
+      return {
+        field,
+        state: entry.state,
+        source: entry.source,
+        message: entry.message,
+      };
+    })
+    .filter((entry): entry is FeeEvaluationPreviewFieldMetadata => entry !== null);
+}
+
+function mapMetadataField(
+  field: FeeEvaluationFieldMetadata["field"]
+): FeeEvaluationPreviewFieldMetadata["field"] | null {
+  const map: Record<
+    FeeEvaluationFieldMetadata["field"],
+    FeeEvaluationPreviewFieldMetadata["field"] | null
+  > = {
+    spend_time: "spendTime",
+    unit_price: "unitPrice",
+    unit_label: "unitType",
+    units: "units",
+    base_fee: "baseFee",
+    discount_percent: "discount",
+    testing_fee: "testingFee",
+  };
+  return map[field] ?? null;
+}
+
+function reviewMetadata(
+  field: FeeEvaluationPreviewFieldMetadata["field"],
+  message: string
+): FeeEvaluationPreviewFieldMetadata {
+  return {
+    field,
+    state: "manual_required",
+    source: "Fee rule default",
+    message,
   };
 }
 

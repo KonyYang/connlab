@@ -33,6 +33,14 @@ from backend.modules.fee_evaluation.fee_rule_models import (
     FeeRuleSeedValidationError,
     FeeRuleVersion,
 )
+from backend.modules.fee_evaluation.fee_default_fill import build_fee_default_fill
+from backend.modules.fee_evaluation.fee_default_fill_models import (
+    FeeDefaultField,
+    FeeDefaultFieldState,
+    FeeDefaultFillContext,
+    FeeDefaultFillResult,
+    FeeFieldMetadata,
+)
 from backend.modules.fee_evaluation.fee_rule_seed_loader import (
     FeeRuleSeedLoaderError,
     load_active_fee_rule_library,
@@ -45,6 +53,11 @@ __all__ = [
     "SUPPORTED_EFFECTIVE_FROM_BASES",
     "CalculationStrategy",
     "FeeAmount",
+    "FeeDefaultField",
+    "FeeDefaultFieldState",
+    "FeeDefaultFillContext",
+    "FeeDefaultFillResult",
+    "FeeFieldMetadata",
     "FeeReferenceCandidateRow",
     "FeeRuleActivationValidationError",
     "FeeRuleDiffEntry",
@@ -59,6 +72,7 @@ __all__ = [
     "FeeRuleSeedValidationError",
     "FeeRuleVersion",
     "build_fee_rule_library_candidate",
+    "build_fee_default_fill",
     "diff_fee_rule_libraries",
     "fee_rule_library_to_seed_json",
     "load_active_fee_rule_library",

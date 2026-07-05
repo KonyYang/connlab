@@ -132,8 +132,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     }
     expect(within(previewTable).queryByRole("columnheader", { name: "Price Percent Off" })).toBeNull();
     expect(within(previewTable).getAllByText("1").length).toBeGreaterThan(0);
-    expect(within(previewTable).getAllByText("Pending").length).toBeGreaterThan(0);
     expect(within(previewTable).getAllByText("Visual Examination").length).toBeGreaterThan(0);
+    expect(
+      within(previewTable).getAllByText(
+        "Review: Photo count is not available from Matrix authority."
+      ).length
+    ).toBeGreaterThan(0);
     expect(within(previewTable).getByText("Report preparation")).toBeTruthy();
     expect(within(previewTable).queryByText("Condition confirmation")).toBeNull();
     expect(within(previewTable).queryByText("External Cost (tooling / purchase cost)")).toBeNull();
@@ -190,7 +194,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     const totals = screen.getByLabelText("Testing Prices totals");
     expect(within(totals).getByText("Working hours")).toBeTruthy();
-    expect(within(totals).getByText("3.0")).toBeTruthy();
+    expect(within(totals).getByText("8.0")).toBeTruthy();
     expect(within(totals).getByText("125.00")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Preview group"), {
@@ -199,7 +203,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     expect(screen.getByLabelText("Selected group fee").textContent).toContain("100.00");
     expect(within(totals).getByText("Grand Cost")).toBeTruthy();
-    expect(within(totals).getByText("1.0")).toBeTruthy();
+    expect(within(totals).getByText("1.5")).toBeTruthy();
     expect(within(totals).getByText("100.00")).toBeTruthy();
   });
 
@@ -322,17 +326,21 @@ describe("FeeEvaluationReviewExportPage", () => {
       confirmed_group_id: "cmg-1",
       group_key: "g1",
       group_label: "Group 1",
-      spend_time: "0",
-      unit_price: "0",
+      spend_time: "0.5",
+      unit_price: "50",
       unit_type: "per sample",
-      units: "1",
+      units: "5",
       base_fee: "0",
-      discount: "0%",
+      discount: "100%",
       notes: "",
     });
     expect(payload.manual_rows[1]).toMatchObject({
       row_kind: "report_preparation",
-      unit_price: "0",
+      spend_time: "4",
+      unit_price: "600",
+      unit_type: "per report",
+      units: "1",
+      discount: "100%",
     });
     expect(
       await screen.findByText(
@@ -410,8 +418,8 @@ describe("FeeEvaluationReviewExportPage", () => {
         expected_pricing_draft_edit_id: "fed-seeded",
         summary: {
           testing_fee_total: "125.00",
-          working_hours: "0.0",
-          lab_manpower_cost: "0",
+          working_hours: "5.0",
+          lab_manpower_cost: "1000",
           external_cost: "0",
           grand_cost: "125.00",
         },
@@ -467,8 +475,8 @@ describe("FeeEvaluationReviewExportPage", () => {
         expected_pricing_draft_edit_id: "fed-current",
         summary: {
           testing_fee_total: "145.00",
-          working_hours: "0.0",
-          lab_manpower_cost: "0",
+          working_hours: "5.0",
+          lab_manpower_cost: "1000",
           external_cost: "5",
           grand_cost: "150.00",
         },
@@ -634,8 +642,8 @@ describe("FeeEvaluationReviewExportPage", () => {
         expected_pricing_draft_edit_id: "fed-promoted-pending-numeric",
         summary: {
           testing_fee_total: "10.00",
-          working_hours: "0.0",
-          lab_manpower_cost: "0",
+          working_hours: "4.5",
+          lab_manpower_cost: "900",
           external_cost: "0",
           grand_cost: "10.00",
         },
@@ -819,7 +827,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       />
     );
 
-    expect(await screen.findByText("Project closed as completed")).toBeTruthy();
+    expect(await screen.findByText("Project closed: Completed")).toBeTruthy();
     expect(
       screen
         .getAllByLabelText("Unit Price for Visual Examination")
@@ -1247,6 +1255,7 @@ function createDraft() {
         group_key: "g1",
         group_label: "Group 1",
         sample_quantity_expression: "5",
+        manual_line_items: [createSamplePreparationLine()],
         line_items: [
           createLine({
             line_id: "fixture",
@@ -1290,6 +1299,7 @@ function createDraft() {
         ],
       },
     ],
+    manual_line_items: [createReportPreparationLine()],
   };
 }
 
@@ -1303,6 +1313,15 @@ function createDraftWithTwoGroups() {
         group_key: "g2",
         group_label: "Group 2",
         sample_quantity_expression: "3",
+        manual_line_items: [
+          createSamplePreparationLine({
+            line_id: "sample-preparation:g2",
+            group_key: "g2",
+            group_label: "Group 2",
+            confirmed_group_id: "cmg-2",
+            units: "3",
+          }),
+        ],
         line_items: [
           createLine({
             line_id: "g2-calculated",
@@ -1329,6 +1348,7 @@ function createDraftWithTwoCalculatedGroups() {
         group_key: "g1",
         group_label: "Group 1",
         sample_quantity_expression: "5",
+        manual_line_items: [createSamplePreparationLine()],
         line_items: [
           createLine({
             line_id: "g1-calculated",
@@ -1345,6 +1365,15 @@ function createDraftWithTwoCalculatedGroups() {
         group_key: "g2",
         group_label: "Group 2",
         sample_quantity_expression: "3",
+        manual_line_items: [
+          createSamplePreparationLine({
+            line_id: "sample-preparation:g2",
+            group_key: "g2",
+            group_label: "Group 2",
+            confirmed_group_id: "cmg-2",
+            units: "3",
+          }),
+        ],
         line_items: [
           createLine({
             line_id: "g2-calculated",
@@ -1373,6 +1402,7 @@ function createDraftWithEditableSingleLine() {
         group_key: "g1",
         group_label: "Group 1",
         sample_quantity_expression: "5",
+        manual_line_items: [createSamplePreparationLine()],
         line_items: [
           createLine({
             line_id: "cmv-1:g1:row-1",
@@ -1394,6 +1424,76 @@ function createDraftWithEditableSingleLine() {
       },
     ],
   };
+}
+
+function createSamplePreparationLine(
+  overrides: Partial<FeeEvaluationLineItem> = {}
+): FeeEvaluationLineItem {
+  return createLine({
+    line_id: "sample-preparation:g1",
+    confirmed_row_id: "",
+    source_row_id: null,
+    row_order: 0,
+    test_item: "Sample preparation",
+    step_tokens: [],
+    spend_time: "0.5",
+    matched_rule_id: "fee_rule_sample_preparation",
+    matched_rule_name: "Sample preparation",
+    match_reason: "backend_manual_default",
+    calculation_strategy: "per_sample",
+    unit_label: "sample",
+    unit_price: "50",
+    units: "5",
+    base_fee: "0",
+    discount_percent: "100",
+    testing_fee: "0",
+    field_metadata: [
+      {
+        field: "unit_price",
+        state: "auto_filled",
+        source: "Sample preparation",
+        message: null,
+      },
+    ],
+    ...overrides,
+  });
+}
+
+function createReportPreparationLine(
+  overrides: Partial<FeeEvaluationLineItem> = {}
+): FeeEvaluationLineItem {
+  return createLine({
+    line_id: "manual-report-preparation",
+    group_key: "",
+    group_label: "",
+    confirmed_group_id: "",
+    sample_quantity_expression: "",
+    confirmed_row_id: "",
+    source_row_id: null,
+    row_order: 0,
+    test_item: "Report preparation",
+    step_tokens: [],
+    spend_time: "4",
+    matched_rule_id: "fee_rule_report_preparation",
+    matched_rule_name: "Report preparation",
+    match_reason: "backend_manual_default",
+    calculation_strategy: "fixed_per_group",
+    unit_label: "report",
+    unit_price: "600",
+    units: "1",
+    base_fee: "0",
+    discount_percent: "100",
+    testing_fee: "0",
+    field_metadata: [
+      {
+        field: "unit_price",
+        state: "auto_filled",
+        source: "Report preparation",
+        message: null,
+      },
+    ],
+    ...overrides,
+  });
 }
 
 function createLine(overrides: Partial<FeeEvaluationLineItem>): FeeEvaluationLineItem {
@@ -1429,6 +1529,7 @@ function baseLine(): FeeEvaluationLineItem {
     matched_rule_name: "Fixture setup",
     match_reason: "exact",
     calculation_strategy: "fixed_per_group",
+    spend_time: "",
     unit_label: "group",
     unit_price: "100.00",
     units: "1",
