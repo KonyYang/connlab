@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import type {
   CompleteNewProjectDuplicateResolutionInput,
@@ -10,7 +10,7 @@ type LocalLtrDuplicateConflictPanelProps = {
   confirming?: boolean;
   onCancel: () => void;
   onOpenExisting: (projectId: string) => void;
-  onConfirm: (resolution: CompleteNewProjectDuplicateResolutionInput) => void;
+  onConfirm: (resolution: CompleteNewProjectDuplicateResolutionInput) => Promise<void> | void;
 };
 
 export function LocalLtrDuplicateConflictPanel({
@@ -20,11 +20,11 @@ export function LocalLtrDuplicateConflictPanel({
   onOpenExisting,
   onConfirm
 }: LocalLtrDuplicateConflictPanelProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [acknowledged, setAcknowledged] = useState(false);
   const [reason, setReason] = useState("");
+  const [localSubmitting, setLocalSubmitting] = useState(false);
   const reasonText = reason.trim();
-  const confirmDisabled = confirming || !acknowledged || reasonText.length === 0;
+  const isConfirming = confirming || localSubmitting;
+  const confirmDisabled = isConfirming || reasonText.length === 0;
   const identityLine = [
     conflict.ltr_number,
     conflict.existing.sample_description,
@@ -32,6 +32,29 @@ export function LocalLtrDuplicateConflictPanel({
   ]
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(" ");
+
+  async function handleConfirmRequest(): Promise<void> {
+    if (confirmDisabled) {
+      return;
+    }
+    setLocalSubmitting(true);
+    try {
+      await onConfirm({
+        action: "replace_local_association",
+        token: conflict.resolution.token,
+        acknowledged: true,
+        reason: reasonText
+      });
+    } finally {
+      setLocalSubmitting(false);
+    }
+  }
+
+  function handleConfirm(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    void handleConfirmRequest();
+  }
+
   return (
     <div className="local-ltr-duplicate-modal" role="presentation">
       <section
@@ -52,51 +75,24 @@ export function LocalLtrDuplicateConflictPanel({
           <button className="secondary-action" type="button" onClick={onCancel}>
             Cancel
           </button>
+        </div>
+        <form className="local-ltr-duplicate-panel__confirmation" onSubmit={handleConfirm}>
+          <label className="local-ltr-duplicate-panel__note">
+            <span>Confirmation note</span>
+            <textarea
+              value={reason}
+              rows={3}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
           <button
             className="secondary-action"
-            type="button"
-            onClick={() => setExpanded((current) => !current)}
+            disabled={confirmDisabled}
+            type="submit"
           >
-            Continue with this LTR number
+            {isConfirming ? "Replacing..." : "Replace local owner"}
           </button>
-        </div>
-        {expanded ? (
-          <div className="local-ltr-duplicate-panel__confirmation">
-            <label className="local-ltr-duplicate-panel__check">
-              <input
-                checked={acknowledged}
-                type="checkbox"
-                onChange={(event) => setAcknowledged(event.target.checked)}
-              />
-              <span>
-                I understand the old local history will be kept and this project becomes current.
-              </span>
-            </label>
-            <label className="local-ltr-duplicate-panel__note">
-              <span>Confirmation note</span>
-              <textarea
-                value={reason}
-                rows={3}
-                onChange={(event) => setReason(event.target.value)}
-              />
-            </label>
-            <button
-              className="primary-action"
-              disabled={confirmDisabled}
-              type="button"
-              onClick={() =>
-                onConfirm({
-                  action: "replace_local_association",
-                  token: conflict.resolution.token,
-                  acknowledged: true,
-                  reason: reasonText
-                })
-              }
-            >
-              {confirming ? "Confirming..." : "Confirm current local owner"}
-            </button>
-          </div>
-        ) : null}
+        </form>
       </section>
     </div>
   );

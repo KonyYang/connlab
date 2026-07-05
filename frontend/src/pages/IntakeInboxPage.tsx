@@ -1034,7 +1034,7 @@ export function IntakeInboxPage({
           confirming={duplicateConfirming}
           conflict={localDuplicateConflict}
           onCancel={handleLocalDuplicateCancel}
-          onConfirm={(resolution) => void confirmDuplicateResolution(resolution)}
+          onConfirm={(resolution) => confirmDuplicateResolution(resolution)}
           onOpenExisting={openExistingDuplicateProject}
         />
       ) : null}

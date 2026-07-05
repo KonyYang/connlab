@@ -1,6 +1,5 @@
 import type { ReactElement } from "react";
 
-import { UiIcon } from "../../components/common/UiIcon";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
 type NewProjectCompletionDockProps = {
@@ -102,11 +101,6 @@ export function NewProjectCompletionDock({
       ) : null}
 
       <div className="new-project-dock-summary">
-        <span className="new-project-required-count">
-          <UiIcon name="clock" />
-          <span title="required fields remaining">{completionText}</span>
-        </span>
-
         {onCreateTemporaryProject ? (
           <button
             className="secondary-action"
@@ -121,6 +115,7 @@ export function NewProjectCompletionDock({
         <button
           className="new-project-primary-action ui-primary-action"
           disabled={completionDisabled}
+          title={completionDisabled && !completionLoading ? completionText : undefined}
           type="button"
           onClick={onComplete}
         >

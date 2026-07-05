@@ -175,15 +175,6 @@ export function ProjectListPage({
           <div className="registry-result-banner" role="status" aria-live="polite">
             <div className="registry-result-banner-text">
               <strong>LTR Number applied: {lastLtrApplyResult.ltr_number}</strong>
-              <span>
-                Project {lastLtrApplyResult.project_id}
-                {lastLtrApplyResult.workbook_sheet_name && lastLtrApplyResult.workbook_row_number
-                  ? `, workbook ${lastLtrApplyResult.workbook_sheet_name} row ${lastLtrApplyResult.workbook_row_number}`
-                  : ""}
-                {lastLtrApplyResult.workbook_backup_path
-                  ? `, backup ${lastLtrApplyResult.workbook_backup_path}`
-                  : ""}
-              </span>
             </div>
             <button
               className="row-action"

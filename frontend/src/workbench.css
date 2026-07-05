@@ -8426,6 +8426,78 @@
   z-index: 60;
 }
 
+.matrix-editor-import-opening-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.35);
+  pointer-events: auto;
+}
+
+.matrix-editor-import-opening-panel {
+  width: min(760px, calc(100vw - 48px));
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 28px;
+  border: 1px solid #cfd8e7;
+  border-radius: 16px;
+  background: #fbfdff;
+  box-shadow: 0 24px 60px rgba(23, 32, 51, 0.18);
+}
+
+.matrix-editor-import-opening-spinner {
+  width: 44px;
+  height: 44px;
+  border: 5px solid #d8e6fa;
+  border-top-color: #1f66d1;
+  border-radius: 50%;
+  animation: matrix-editor-import-opening-spin 0.9s linear infinite;
+}
+
+.matrix-editor-import-opening-copy {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid #bfd7f2;
+  border-radius: 10px;
+  background: #e8f2ff;
+}
+
+.matrix-editor-import-opening-copy h3,
+.matrix-editor-import-opening-copy p {
+  margin: 0;
+}
+
+.matrix-editor-import-opening-copy h3 {
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.matrix-editor-import-opening-copy p {
+  margin-top: 6px;
+  color: #647084;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+@keyframes matrix-editor-import-opening-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matrix-editor-import-opening-spinner {
+    animation: none;
+  }
+}
+
 .matrix-editor-import-modal {
   width: 96vw;
   height: 92vh;
@@ -8545,29 +8617,6 @@
 
 .matrix-editor-import-primary-button:hover {
   background: #1a54aa;
-}
-
-.matrix-editor-import-reparse-button {
-  min-width: 112px;
-  height: 42px;
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  background: #1f5fbf;
-  color: #fff;
-  border: 1px solid #1f5fbf;
-  align-self: flex-end;
-}
-
-.matrix-editor-import-reparse-button:disabled {
-  background: #eef2f8;
-  color: #9aa8bf;
-  border-color: #d4dcea;
-}
-
-.matrix-editor-import-reparse-button:not(:disabled):hover {
-  background: #1a54aa;
-  border-color: #1a54aa;
 }
 
 .matrix-editor-import-controls-pane .error {

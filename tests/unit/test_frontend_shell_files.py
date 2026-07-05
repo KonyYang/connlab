@@ -4383,8 +4383,8 @@ def test_task252cq_matrix_editor_identical_sample_rows_merge_note_is_wired() -> 
         assert required_source in matrix_editor_source
 
 
-def test_task252cr_matrix_import_preview_layout_and_reparse_style_are_wired() -> None:
-    """TASK_252CR keeps import title+filename inline, uses viewer fit-width fragment, and aligns reparse styling."""
+def test_task252cr_matrix_import_preview_layout_is_wired() -> None:
+    """TASK_252CR keeps import title+filename inline and uses viewer fit-width fragment."""
     matrix_editor_source = (
         FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
     ).read_text(encoding="utf-8")
@@ -4396,6 +4396,9 @@ def test_task252cr_matrix_import_preview_layout_and_reparse_style_are_wired() ->
         "const previewPdfSrc = importPreviewPdfToken",
         "#page=${previewOpenPage}&zoom=page-width&pagemode=thumbs",
         "className=\"matrix-editor-import-controls-row\"",
+        "className=\"matrix-editor-import-opening-backdrop\"",
+        "Searching for Matrix",
+        "ConnLab is reading the Word document and preparing the preview.",
     ]:
         assert required_source in matrix_editor_source
 
@@ -4405,10 +4408,9 @@ def test_task252cr_matrix_import_preview_layout_and_reparse_style_are_wired() ->
         "text-overflow: ellipsis;",
         ".matrix-editor-import-controls-row {",
         "grid-template-columns: 1fr 1fr;",
-        ".matrix-editor-import-reparse-button {",
-        "height: 42px;",
-        "font-size: 18px;",
-        ".matrix-editor-import-reparse-button:disabled {",
+        ".matrix-editor-import-opening-backdrop {",
+        "position: fixed;",
+        ".matrix-editor-import-opening-spinner {",
     ]:
         assert required_style in styles_source
 

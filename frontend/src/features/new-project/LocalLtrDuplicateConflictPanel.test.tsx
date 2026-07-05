@@ -30,19 +30,18 @@ describe("LocalLtrDuplicateConflictPanel", () => {
     expect(screen.queryByText("OLD-PROJECT")).toBeNull();
     expect(screen.queryByText("Project folder")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Continue with this LTR number" }));
+    expect(screen.queryByText("I understand the old local history will be kept and this project becomes current.")).toBeNull();
+
+    const replaceButton = screen.getByRole("button", { name: "Replace local owner" });
+    const confirmationNote = screen.getByLabelText("Confirmation note");
+    expect(replaceButton).toHaveProperty("disabled", true);
+
+    await user.click(replaceButton);
     expect(onConfirm).not.toHaveBeenCalled();
 
-    const confirmButton = screen.getByRole("button", { name: "Confirm current local owner" });
-    expect(confirmButton).toHaveProperty("disabled", true);
-
-    await user.click(
-      screen.getByLabelText(
-        "I understand the old local history will be kept and this project becomes current."
-      )
-    );
-    await user.type(screen.getByLabelText("Confirmation note"), "Confirmed by lab coordinator");
-    await user.click(confirmButton);
+    await user.type(confirmationNote, "Confirmed by lab coordinator");
+    expect(replaceButton).toHaveProperty("disabled", false);
+    await user.click(replaceButton);
 
     expect(onConfirm).toHaveBeenCalledWith({
       action: "replace_local_association",
@@ -72,6 +71,34 @@ describe("LocalLtrDuplicateConflictPanel", () => {
 
     expect(onOpenExisting).toHaveBeenCalledWith("P-OLD");
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a local replacing state while the confirmation request is pending", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<void>(() => {
+          // Keep the request pending so the button state is observable.
+        })
+    );
+
+    render(
+      <LocalLtrDuplicateConflictPanel
+        conflict={conflict}
+        confirming={false}
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+        onOpenExisting={vi.fn()}
+      />
+    );
+
+    await user.type(screen.getByLabelText("Confirmation note"), "Confirmed");
+    await user.click(screen.getByRole("button", { name: "Replace local owner" }));
+
+    expect(screen.getByRole("button", { name: "Replacing..." })).toHaveProperty(
+      "disabled",
+      true
+    );
   });
 });
 

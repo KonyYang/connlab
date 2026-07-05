@@ -353,6 +353,74 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(input.getAttribute("accept")).toBe(".doc,.docx");
   });
 
+  it("shows a blocking Matrix search dialog while the selected Word document is parsed", async () => {
+    const deferredPreview = createDeferred<MatrixPreviewResponse>();
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockReturnValueOnce(deferredPreview.promise);
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["docx"], "slow_spec.docx", {
+            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          }),
+        ],
+      },
+    });
+
+    expect(
+      await screen.findByRole("alertdialog", { name: "Searching for Matrix" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText("ConnLab is reading the Word document and preparing the preview.")
+    ).toBeTruthy();
+
+    await act(async () => {
+      deferredPreview.resolve(
+        buildImportPreview({
+          source_document_name: "slow_spec.docx",
+          preview_pdf_token: "pdf-token-slow",
+        })
+      );
+      await deferredPreview.promise;
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog", { name: "Searching for Matrix" })).toBeNull()
+    );
+    expect(await screen.findByRole("button", { name: "Replace" })).toBeTruthy();
+  });
+
+  it("opens the import panel with the failure when initial Matrix search fails", async () => {
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockRejectedValueOnce(new Error("Word parser failed"));
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["docx"], "broken_spec.docx", {
+            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          }),
+        ],
+      },
+    });
+
+    expect(
+      await screen.findByRole("alertdialog", { name: "Searching for Matrix" })
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog", { name: "Searching for Matrix" })).toBeNull()
+    );
+    expect(await screen.findByText("Word parser failed")).toBeTruthy();
+    expect(screen.getByText("PDF preview unavailable.")).toBeTruthy();
+  });
+
   it("downloads a Test Record preview from current unsaved Matrix Editor state", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
@@ -413,6 +481,44 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     });
     const append = await screen.findByRole("button", { name: "Append" });
     expect((append as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("keeps the committed source document name when import preview is cancelled", async () => {
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce({
+      ...buildSessionSeed().source_preview_payload,
+      source_document_name: "spec_b.docx",
+      source_document_path: "D:/spec_b.docx",
+      preview_pdf_token: "pdf-token-b",
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "1",
+          source_table_index: 0,
+          extraction_status: "loaded",
+          sample_size: null,
+          sample_quantity_expression: "7",
+          sample_note: null,
+          steps: [],
+        },
+      ],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await screen.findByText("spec.docx");
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [new File(["docx"], "spec_b.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })],
+      },
+    });
+
+    await screen.findByRole("button", { name: "Replace" });
+    expect(screen.getByText("spec.docx")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Cancel" })[0]);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Replace" })).toBeNull());
+    expect(screen.getByText("spec.docx")).toBeTruthy();
+    expect(screen.queryByText("spec_b.docx")).toBeNull();
   });
 
   it("allows legacy doc and docx files from the import selector", async () => {
@@ -497,6 +603,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     });
     fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
     await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("spec_b.docx")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Selected Groups" })).toBeNull();
   });
 
@@ -599,35 +706,6 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(apiMocks.commitMatrixImport).not.toHaveBeenCalled();
   });
 
-  it("manual Reparse refreshes the locator snapshot before direct Replace", async () => {
-    const firstPreview = buildImportPreview({ preview_pdf_token: "pdf-token-stale" });
-    const refreshedPreview = buildImportPreview({
-      selected_page_number: 2,
-      selected_page_table_index: 1,
-      preview_pdf_token: "pdf-token-fresh",
-    });
-    apiMocks.previewProjectTestPlanMatrixFromUpload
-      .mockResolvedValueOnce(firstPreview)
-      .mockResolvedValueOnce(refreshedPreview);
-    apiMocks.commitMatrixImport.mockResolvedValueOnce(buildCommitResponse(refreshedPreview));
-
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
-    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
-    fireEvent.change(input, {
-      target: {
-        files: [new File(["docx"], "stale.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })],
-      },
-    });
-    fireEvent.change(await screen.findByLabelText("Page"), { target: { value: "2" } });
-    fireEvent.click(await screen.findByRole("button", { name: "Reparse" }));
-    await waitFor(() => expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(2));
-    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
-
-    await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
-    expect(apiMocks.previewProjectTestPlanMatrixFromUpload).toHaveBeenCalledTimes(2);
-  });
-
   it("disables locator inputs and import actions while stale Replace is reparsing", async () => {
     const firstPreview = buildImportPreview({ preview_pdf_token: "pdf-token-stale" });
     const deferredPreview = createDeferred<MatrixPreviewResponse>();
@@ -650,7 +728,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect((screen.getByLabelText("Page") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByLabelText("Table on page") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByLabelText("Table Title / Content Keyword") as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Reparsing..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Reparsing...")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Replace" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Append" }) as HTMLButtonElement).disabled).toBe(true);
 

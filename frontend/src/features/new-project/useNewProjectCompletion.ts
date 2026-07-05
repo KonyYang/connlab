@@ -10,7 +10,8 @@ import {
   type CompleteNewProject,
   type IntakeCaseReviewItem,
   type LocalLtrDuplicateConflictDetail,
-  type SpecifiedLtrWorkbookAuthorityPreview
+  type SpecifiedLtrWorkbookAuthorityPreview,
+  type SpecifiedLtrWorkbookAuthorityPreviewAck
 } from "../../api/client";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
@@ -48,6 +49,8 @@ export function useNewProjectCompletion({
   const [completionResult, setCompletionResult] = useState<string | null>(null);
   const [specifiedLtrWorkbookPreview, setSpecifiedLtrWorkbookPreview] =
     useState<SpecifiedLtrWorkbookAuthorityPreview | null>(null);
+  const [pendingSpecifiedLtrPreviewAck, setPendingSpecifiedLtrPreviewAck] =
+    useState<SpecifiedLtrWorkbookAuthorityPreviewAck | null>(null);
   const [specifiedLtrPreviewLoading, setSpecifiedLtrPreviewLoading] = useState(false);
   const [specifiedLtrPreviewConfirming, setSpecifiedLtrPreviewConfirming] = useState(false);
   const [localDuplicateConflict, setLocalDuplicateConflict] =
@@ -58,6 +61,7 @@ export function useNewProjectCompletion({
     setCompletionError(null);
     setCompletionResult(null);
     setSpecifiedLtrWorkbookPreview(null);
+    setPendingSpecifiedLtrPreviewAck(null);
     setLocalDuplicateConflict(null);
   }, [resetKey]);
 
@@ -69,6 +73,7 @@ export function useNewProjectCompletion({
     setCompletionError(null);
     setCompletionResult(null);
     setSpecifiedLtrWorkbookPreview(null);
+    setPendingSpecifiedLtrPreviewAck(null);
     setLocalDuplicateConflict(null);
     try {
       if (shouldPreviewSpecifiedLtrWorkbook(setupValues)) {
@@ -92,12 +97,14 @@ export function useNewProjectCompletion({
     }
     setSpecifiedLtrPreviewConfirming(true);
     setCompletionError(null);
+    setPendingSpecifiedLtrPreviewAck(specifiedLtrWorkbookPreview.preview_ack);
     try {
       await submitCompletion({
         ...buildCompletionInput(setupValues),
         specified_ltr_workbook_preview_ack: specifiedLtrWorkbookPreview.preview_ack
       });
       setSpecifiedLtrWorkbookPreview(null);
+      setPendingSpecifiedLtrPreviewAck(null);
     } catch (error) {
       if (
         error instanceof ApiRequestError &&
@@ -114,7 +121,11 @@ export function useNewProjectCompletion({
   async function confirmDuplicateResolution(
     resolution: CompleteNewProjectDuplicateResolutionInput
   ): Promise<void> {
-    if (!activeCase || !localDuplicateConflict) {
+    if (!localDuplicateConflict) {
+      return;
+    }
+    const completionCaseId = activeCase?.case_id ?? localDuplicateConflict.current.case_id;
+    if (!completionCaseId) {
       return;
     }
     setDuplicateConfirming(true);
@@ -122,9 +133,11 @@ export function useNewProjectCompletion({
     try {
       await submitCompletion({
         ...buildCompletionInput(setupValues),
-        duplicate_resolution: resolution
-      });
+        duplicate_resolution: resolution,
+        specified_ltr_workbook_preview_ack: pendingSpecifiedLtrPreviewAck
+      }, completionCaseId);
       setLocalDuplicateConflict(null);
+      setPendingSpecifiedLtrPreviewAck(null);
     } catch (error) {
       handleCompletionError(error);
     } finally {
@@ -132,11 +145,15 @@ export function useNewProjectCompletion({
     }
   }
 
-  async function submitCompletion(input: CompleteNewProjectInput): Promise<void> {
-    if (!activeCase) {
+  async function submitCompletion(
+    input: CompleteNewProjectInput,
+    caseIdOverride?: string
+  ): Promise<void> {
+    const completionCaseId = caseIdOverride ?? activeCase?.case_id;
+    if (!completionCaseId) {
       return;
     }
-    const result = await completeNewProject(activeCase.case_id, input);
+    const result = await completeNewProject(completionCaseId, input);
     storeCompletionResult(result);
     setCompletionResult(completionResultText(result));
     onCompleted(result.project_id);
@@ -170,6 +187,7 @@ export function useNewProjectCompletion({
     complete,
     clearSpecifiedLtrWorkbookPreview: () => {
       setSpecifiedLtrWorkbookPreview(null);
+      setPendingSpecifiedLtrPreviewAck(null);
       setCompletionError(null);
     },
     confirmSpecifiedLtrWorkbookPreview,
@@ -178,6 +196,7 @@ export function useNewProjectCompletion({
       setSpecifiedLtrPreviewLoading(false);
       setSpecifiedLtrPreviewConfirming(false);
       setSpecifiedLtrWorkbookPreview(null);
+      setPendingSpecifiedLtrPreviewAck(null);
       setLocalDuplicateConflict(null);
       setCompletionError(null);
       setCompletionResult(null);

@@ -255,9 +255,13 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     const user = userEvent.setup();
     vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithSpecifiedCase);
     vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue(workbookPreviewFound);
-    vi.mocked(completeNewProject).mockRejectedValueOnce(
-      new ApiRequestError("Local LTR duplicate", 409, duplicateConflict)
-    );
+    vi.mocked(completeNewProject)
+      .mockRejectedValueOnce(new ApiRequestError("Local LTR duplicate", 409, duplicateConflict))
+      .mockResolvedValueOnce({
+        project_id: "project-new",
+        project_status: "ltr_registered",
+        ltr_number: "DL-2026-05-011"
+      });
 
     render(<Harness />);
 
@@ -274,6 +278,29 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     expect(screen.queryByText("DL-2026-05-011")).toBeNull();
     expect(screen.getByText("DL-2026-05-777 Existing sample assembly Qualification"))
       .toBeTruthy();
+
+    const replaceButton = screen.getByRole("button", { name: "Replace local owner" });
+    expect(replaceButton).toHaveProperty("disabled", true);
+
+    await user.type(screen.getByLabelText("Confirmation note"), "Confirmed by lab coordinator");
+    expect(replaceButton).toHaveProperty("disabled", false);
+    await user.click(replaceButton);
+
+    await waitFor(() => {
+      expect(completeNewProject).toHaveBeenCalledTimes(2);
+    });
+    expect(completeNewProject).toHaveBeenLastCalledWith(
+      "case-1",
+      expect.objectContaining({
+        specified_ltr_workbook_preview_ack: workbookPreviewFound.preview_ack,
+        duplicate_resolution: {
+          action: "replace_local_association",
+          token: "token-1",
+          acknowledged: true,
+          reason: "Confirmed by lab coordinator"
+        }
+      })
+    );
   });
 });
 

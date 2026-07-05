@@ -80,6 +80,58 @@ describe("useNewProjectCompletion duplicate confirmation busy lock", () => {
     expect(result.current.completionLoading).toBe(false);
     expect(onCompleted).toHaveBeenCalledWith("project-new");
   });
+
+  it("uses the duplicate conflict case id when the active case is unavailable", async () => {
+    const completeNewProjectMock = vi.mocked(completeNewProject);
+    completeNewProjectMock
+      .mockRejectedValueOnce(
+        new ApiRequestError("Local LTR duplicate", 409, conflict)
+      )
+      .mockResolvedValueOnce({
+        project_id: "project-new",
+        project_status: "ltr_registered",
+        ltr_number: "DL-2026-05-777"
+      });
+    const onCompleted = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ currentActiveCase }: { currentActiveCase: IntakeCaseReviewItem | null }) =>
+        useNewProjectCompletion({
+          activeCase: currentActiveCase,
+          resetKey: "case-1",
+          setupValues,
+          onCompleted
+        }),
+      { initialProps: { currentActiveCase: activeCase as IntakeCaseReviewItem | null } }
+    );
+
+    await act(async () => {
+      await result.current.complete();
+    });
+
+    expect(result.current.localDuplicateConflict).toEqual(conflict);
+
+    rerender({ currentActiveCase: null });
+
+    await act(async () => {
+      await result.current.confirmDuplicateResolution({
+        action: "replace_local_association",
+        token: "token-1",
+        acknowledged: true,
+        reason: "Confirmed after reopening the intake draft"
+      });
+    });
+
+    expect(completeNewProject).toHaveBeenLastCalledWith(
+      "case-1",
+      expect.objectContaining({
+        duplicate_resolution: expect.objectContaining({
+          action: "replace_local_association",
+          reason: "Confirmed after reopening the intake draft"
+        })
+      })
+    );
+    expect(onCompleted).toHaveBeenCalledWith("project-new");
+  });
 });
 
 const activeCase: IntakeCaseReviewItem = {
