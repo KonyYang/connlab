@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.infrastructure.files.pdf_matrix_source_gateway import (
+    PdfMatrixSourceGateway,
+    PdfMatrixSourceGatewayError,
+)
 from backend.infrastructure.office import OfficeFacade
 from backend.modules.test_plan import (
     MatrixGroupPreview,
@@ -57,10 +61,12 @@ class ProjectTestPlanMatrixPreviewService:
         self,
         *,
         office: OfficeFacade | None = None,
+        pdf_gateway: PdfMatrixSourceGateway | None = None,
         parser: ProductSpecMatrixParser | None = None,
     ) -> None:
         """Create a Matrix preview service."""
         self._office = office or OfficeFacade()
+        self._pdf_gateway = pdf_gateway or PdfMatrixSourceGateway()
         self._parser = parser or ProductSpecMatrixParser()
 
     def preview_from_path(
@@ -78,6 +84,37 @@ class ProjectTestPlanMatrixPreviewService:
             )
         suffix = source_path.suffix.lower()
         generated_at = datetime.now(timezone.utc).isoformat()
+        if suffix == ".pdf":
+            try:
+                snapshot = self._pdf_gateway.read_pdf_document(source_path)
+            except PdfMatrixSourceGatewayError as exc:
+                return ProjectTestPlanMatrixPreview(
+                    project_id=command.project_id,
+                    source_document_path=source_path,
+                    source_document_name=source_path.name,
+                    source_format=suffix,
+                    capability_status="unsupported",
+                    generated_at=generated_at,
+                    blockers=(str(exc),),
+                    preview_pdf_token=preview_pdf_token,
+                )
+            return _preview_from_snapshot(
+                project_id=command.project_id,
+                source_path=source_path,
+                source_format=suffix,
+                generated_at=generated_at,
+                parser=self._parser,
+                tables=[
+                    [list(row) for row in table]
+                    for table in snapshot.tables
+                ],
+                paragraphs=list(snapshot.paragraphs),
+                table_locations=snapshot.table_locations,
+                page_number=command.page_number,
+                page_table_index=command.page_table_index,
+                table_text_query=command.table_text_query,
+                preview_pdf_token=preview_pdf_token,
+            )
         if suffix != ".docx":
             status, blocker = _unsupported_format_blocker(suffix)
             return ProjectTestPlanMatrixPreview(
@@ -91,56 +128,19 @@ class ProjectTestPlanMatrixPreviewService:
             )
 
         snapshot = self._office.read_word_document(source_path)
-        resolved_locations = table_locations or ()
-        selected_table_index = _select_table_index(
-            table_locations=resolved_locations,
+        return _preview_from_snapshot(
+            project_id=command.project_id,
+            source_path=source_path,
+            source_format=suffix,
+            generated_at=generated_at,
+            parser=self._parser,
+            tables=snapshot.tables,
+            paragraphs=snapshot.paragraphs,
+            table_locations=table_locations or (),
             page_number=command.page_number,
             page_table_index=command.page_table_index,
             table_text_query=command.table_text_query,
-        )
-        parsed = self._parser.parse_tables(
-            snapshot.tables,
-            paragraphs=snapshot.paragraphs,
-            selected_table_index=selected_table_index,
-            table_contexts={
-                item.table_index: (item.preceding_paragraph or "")
-                for item in resolved_locations
-            },
-        )
-        capability_status = "supported" if not parsed.blockers else "unsupported"
-        selected_location = None
-        if parsed.selected_table_index is not None:
-            selected_location = next(
-                (item for item in resolved_locations if item.table_index == parsed.selected_table_index),
-                None,
-            )
-        return ProjectTestPlanMatrixPreview(
-            project_id=command.project_id,
-            source_document_path=source_path,
-            source_document_name=source_path.name,
-            source_format=suffix,
-            capability_status=capability_status,
-            generated_at=generated_at,
-            groups=parsed.groups,
-            warnings=parsed.warnings,
-            blockers=parsed.blockers,
-            selected_table_index=parsed.selected_table_index,
-            selected_page_number=selected_location.page_number if selected_location else None,
-            selected_page_table_index=selected_location.page_table_index if selected_location else None,
-            candidate_tables=tuple(
-                {
-                    "table_index": item.table_index,
-                    "page_number": item.page_number,
-                    "page_table_index": item.page_table_index,
-                    "preceding_paragraph": item.preceding_paragraph,
-                    "text_preview": item.text_preview,
-                    "row_count": item.row_count,
-                    "column_count": item.column_count,
-                }
-                for item in resolved_locations
-            ),
             preview_pdf_token=preview_pdf_token,
-            rows=parsed.rows,
         )
 
     def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
@@ -171,6 +171,73 @@ def _unsupported_format_blocker(suffix: str) -> tuple[str, str]:
     return (
         "unsupported",
         f"Unsupported product specification format: {suffix or 'unknown'}.",
+    )
+
+
+def _preview_from_snapshot(
+    *,
+    project_id: str | None,
+    source_path: Path,
+    source_format: str,
+    generated_at: str,
+    parser: ProductSpecMatrixParser,
+    tables: list[list[list[str]]],
+    paragraphs: list[str],
+    table_locations: tuple,
+    page_number: int | None,
+    page_table_index: int | None,
+    table_text_query: str | None,
+    preview_pdf_token: str | None,
+) -> ProjectTestPlanMatrixPreview:
+    """Parse a neutral document snapshot into a Matrix preview."""
+    selected_table_index = _select_table_index(
+        table_locations=table_locations,
+        page_number=page_number,
+        page_table_index=page_table_index,
+        table_text_query=table_text_query,
+    )
+    parsed = parser.parse_tables(
+        tables,
+        paragraphs=paragraphs,
+        selected_table_index=selected_table_index,
+        table_contexts={
+            item.table_index: (item.preceding_paragraph or "")
+            for item in table_locations
+        },
+    )
+    selected_location = None
+    if parsed.selected_table_index is not None:
+        selected_location = next(
+            (item for item in table_locations if item.table_index == parsed.selected_table_index),
+            None,
+        )
+    return ProjectTestPlanMatrixPreview(
+        project_id=project_id,
+        source_document_path=source_path,
+        source_document_name=source_path.name,
+        source_format=source_format,
+        capability_status="supported" if not parsed.blockers else "unsupported",
+        generated_at=generated_at,
+        groups=parsed.groups,
+        warnings=parsed.warnings,
+        blockers=parsed.blockers,
+        selected_table_index=parsed.selected_table_index,
+        selected_page_number=selected_location.page_number if selected_location else None,
+        selected_page_table_index=selected_location.page_table_index if selected_location else None,
+        candidate_tables=tuple(
+            {
+                "table_index": item.table_index,
+                "page_number": item.page_number,
+                "page_table_index": item.page_table_index,
+                "preceding_paragraph": item.preceding_paragraph,
+                "text_preview": item.text_preview,
+                "row_count": item.row_count,
+                "column_count": item.column_count,
+            }
+            for item in table_locations
+        ),
+        preview_pdf_token=preview_pdf_token,
+        rows=parsed.rows,
     )
 
 

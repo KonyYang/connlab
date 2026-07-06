@@ -350,7 +350,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(window.confirm).not.toHaveBeenCalled();
     expect(inputClickSpy).toHaveBeenCalledTimes(1);
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
-    expect(input.getAttribute("accept")).toBe(".doc,.docx");
+    expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
   });
 
   it("shows a blocking Matrix search dialog while the selected Word document is parsed", async () => {
@@ -375,7 +375,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       await screen.findByRole("alertdialog", { name: "Searching for Matrix" })
     ).toBeTruthy();
     expect(
-      screen.getByText("ConnLab is reading the Word document and preparing the preview.")
+      screen.getByText("ConnLab is reading the source document and preparing the preview.")
     ).toBeTruthy();
 
     await act(async () => {
@@ -521,12 +521,12 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("spec_b.docx")).toBeNull();
   });
 
-  it("allows legacy doc and docx files from the import selector", async () => {
+  it("allows pdf, legacy doc, and docx files from the import selector", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
 
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
-    expect(input.getAttribute("accept")).toBe(".doc,.docx");
+    expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
   });
 
   it("imports by Replace directly and does not enter group-selection mode", async () => {

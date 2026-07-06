@@ -3047,7 +3047,7 @@ export function MatrixEditorWorkspace({
       ) : null}
       <input
         ref={fileInputRef}
-        accept=".doc,.docx"
+        accept=".pdf,.doc,.docx"
         disabled={isLifecycleReadonly || importActionBusy}
         style={{ display: "none" }}
         type="file"
@@ -3066,7 +3066,7 @@ export function MatrixEditorWorkspace({
             <div className="matrix-editor-import-opening-copy">
               <h3 id="matrix-import-opening-title">Searching for Matrix</h3>
               <p id="matrix-import-opening-description">
-                ConnLab is reading the Word document and preparing the preview.
+                ConnLab is reading the source document and preparing the preview.
               </p>
             </div>
           </article>
@@ -3086,7 +3086,7 @@ export function MatrixEditorWorkspace({
             <div className="matrix-editor-import-modal-body">
               <div className="matrix-editor-import-pdf-pane">
                 {previewPdfSrc ? (
-                  <iframe title="Word PDF Preview" src={previewPdfSrc} />
+                  <iframe title="Source PDF Preview" src={previewPdfSrc} />
                 ) : (
                   <div className="matrix-editor-step-empty">PDF preview unavailable.</div>
                 )}

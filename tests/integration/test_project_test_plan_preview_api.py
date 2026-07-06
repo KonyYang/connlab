@@ -4,6 +4,8 @@ from pathlib import Path
 
 from docx import Document
 from fastapi.testclient import TestClient
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 from backend.api.dependencies import get_project_test_plan_matrix_preview_service
 from backend.api.main import app
@@ -41,11 +43,11 @@ def test_matrix_preview_api_extracts_docx_matrix(tmp_path: Path) -> None:
     assert group_1["steps"][1]["source_section"] == "6.1"
 
 
-def test_matrix_preview_api_reports_doc_and_pdf_as_deferred(tmp_path: Path) -> None:
+def test_matrix_preview_api_reports_doc_as_deferred_and_no_text_pdf_as_unsupported(tmp_path: Path) -> None:
     doc_path = tmp_path / "spec.doc"
     pdf_path = tmp_path / "spec.pdf"
     doc_path.write_bytes(b"legacy-doc-placeholder")
-    pdf_path.write_bytes(b"%PDF-1.4")
+    _write_blank_pdf(pdf_path)
     client = TestClient(app)
 
     doc_response = client.post(
@@ -61,8 +63,8 @@ def test_matrix_preview_api_reports_doc_and_pdf_as_deferred(tmp_path: Path) -> N
     assert doc_response.json()["capability_status"] == "deferred"
     assert ".doc product specifications require" in doc_response.json()["blockers"][0]
     assert pdf_response.status_code == 200
-    assert pdf_response.json()["capability_status"] == "deferred"
-    assert "PDF product specifications require" in pdf_response.json()["blockers"][0]
+    assert pdf_response.json()["capability_status"] == "unsupported"
+    assert "no extractable text" in pdf_response.json()["blockers"][0].lower()
 
 
 def test_matrix_preview_api_reports_missing_source(tmp_path: Path) -> None:
@@ -184,6 +186,37 @@ def test_matrix_preview_upload_doc_conversion_failure_is_readable() -> None:
         assert not fake_service.office.converted_output.exists()
 
 
+def test_matrix_preview_upload_accepts_pdf_with_preview_token() -> None:
+    fake_service = _FakeUploadPreviewService()
+    app.dependency_overrides[get_project_test_plan_matrix_preview_service] = lambda: fake_service
+    client = TestClient(app)
+    try:
+        response = client.post(
+            "/api/test-plan/matrix-preview-from-upload",
+            files={"file": ("spec.pdf", b"%PDF-1.4\n% fake", "application/pdf")},
+            data={"project_id": "P-pdf", "page_number": "2", "page_table_index": "1"},
+        )
+        assert response.status_code == 200
+        preview_response = client.get(
+            f"/api/test-plan/matrix-preview-pdf/{response.json()['preview_pdf_token']}"
+        )
+    finally:
+        app.dependency_overrides.pop(get_project_test_plan_matrix_preview_service, None)
+
+    payload = response.json()
+    assert payload["project_id"] == "P-pdf"
+    assert payload["source_document_name"] == "spec.pdf"
+    assert payload["source_format"] == ".pdf"
+    assert fake_service.previewed_source is not None
+    assert fake_service.previewed_source.suffix == ".pdf"
+    assert fake_service.previewed_locator == (2, 1)
+    assert fake_service.office.word_locations_requested == []
+    assert fake_service.office.word_pdf_exports == []
+    assert not fake_service.previewed_source.exists()
+    assert preview_response.status_code == 200
+    assert preview_response.headers["content-type"].startswith("application/pdf")
+
+
 def _write_product_spec_docx(path: Path) -> None:
     document = Document()
     table = document.add_table(rows=4, cols=4)
@@ -197,6 +230,12 @@ def _write_product_spec_docx(path: Path) -> None:
         for column_index, value in enumerate(row):
             table.cell(row_index, column_index).text = value
     document.save(path)
+
+
+def _write_blank_pdf(path: Path) -> None:
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.showPage()
+    c.save()
 
 
 def _write_product_spec_docx_with_variant_note(path: Path) -> None:
@@ -258,6 +297,8 @@ class _FakeUploadPreviewOffice:
         self.conversion_error = conversion_error
         self.converted_source: Path | None = None
         self.converted_output: Path | None = None
+        self.word_locations_requested: list[Path] = []
+        self.word_pdf_exports: list[tuple[Path, Path]] = []
 
     def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
         self.converted_source = Path(source_path)
@@ -268,10 +309,12 @@ class _FakeUploadPreviewOffice:
         return output_path
 
     def read_word_table_locations(self, source_path: Path) -> tuple:
+        self.word_locations_requested.append(Path(source_path))
         assert source_path.suffix == ".docx"
         return ()
 
     def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        self.word_pdf_exports.append((Path(source_path), Path(output_pdf_path)))
         assert source_path.suffix == ".docx"
         output_pdf_path.write_bytes(b"%PDF-1.4")
         return output_pdf_path
@@ -281,6 +324,7 @@ class _FakeUploadPreviewService:
     def __init__(self, conversion_error: Exception | None = None) -> None:
         self._office = _FakeUploadPreviewOffice(conversion_error)
         self.previewed_source: Path | None = None
+        self.previewed_locator: tuple[int | None, int | None] | None = None
 
     @property
     def office(self) -> _FakeUploadPreviewOffice:
@@ -303,12 +347,13 @@ class _FakeUploadPreviewService:
         table_locations: tuple | None = None,
     ) -> ProjectTestPlanMatrixPreview:
         self.previewed_source = Path(command.source_path)
-        assert self.previewed_source.suffix == ".docx"
+        self.previewed_locator = (command.page_number, command.page_table_index)
+        assert self.previewed_source.suffix in {".docx", ".pdf"}
         return ProjectTestPlanMatrixPreview(
             project_id=command.project_id,
             source_document_path=self.previewed_source,
             source_document_name=self.previewed_source.name,
-            source_format=".docx",
+            source_format=self.previewed_source.suffix,
             capability_status="supported",
             generated_at="2026-07-04T00:00:00+00:00",
             preview_pdf_token=preview_pdf_token,
