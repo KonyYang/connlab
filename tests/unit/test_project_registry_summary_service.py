@@ -3,10 +3,19 @@ from __future__ import annotations
 import json
 from datetime import date
 
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationRecord,
+)
 from backend.application.project_registry_summary_service import (
     ProjectRegistrySummaryService,
 )
-from backend.domain import LtrRecord, LtrStatus, Project, ProjectStatus
+from backend.domain import (
+    LtrRecord,
+    LtrStatus,
+    Project,
+    ProjectStatus,
+    ProjectTemporaryContext,
+)
 
 
 def test_registry_summary_uses_new_project_setup_fields_from_backend_notes() -> None:
@@ -162,6 +171,125 @@ def test_registered_project_has_registered_identity() -> None:
     assert row.registered_ltr_number == "DL-2026-05-009"
 
 
+def test_confirmed_basic_information_overrides_project_display_identity() -> None:
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore(
+            [_project(project_id="P1", product_name="Initial intake sample")]
+        ),
+        ltr_store=_LtrStore(
+            {
+                "P1": [
+                    _ltr(
+                        project_id="P1",
+                        number="DL-2026-05-010",
+                        notes=_audit_notes(
+                            operator_note=json.dumps(
+                                {
+                                    "source": "new_project_setup_confirmation",
+                                    "sample_description": "Initial intake sample",
+                                    "test_item": "Initial qualification",
+                                },
+                                sort_keys=True,
+                            )
+                        ),
+                    )
+                ]
+            }
+        ),
+        basic_information_store=_BasicInformationStore(
+            {
+                "P1": _basic_information(
+                    project_id="P1",
+                    product_description="Confirmed product description",
+                    test_item="Confirmed test item",
+                )
+            }
+        ),
+    )
+
+    row = service.list_rows()[0]
+
+    assert row.sample_description == "Confirmed product description"
+    assert row.test_item == "Confirmed test item"
+    assert row.display_project_id == "DL-2026-05-010"
+
+
+def test_blank_confirmed_basic_information_keeps_existing_identity_fallback() -> None:
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore(
+            [_project(project_id="P1", product_name="Initial intake sample")]
+        ),
+        ltr_store=_LtrStore(
+            {
+                "P1": [
+                    _ltr(
+                        project_id="P1",
+                        number="DL-2026-05-011",
+                        notes=_audit_notes(
+                            operator_note=json.dumps(
+                                {
+                                    "source": "new_project_setup_confirmation",
+                                    "sample_description": "Initial intake sample",
+                                    "test_item": "Initial qualification",
+                                },
+                                sort_keys=True,
+                            )
+                        ),
+                    )
+                ]
+            }
+        ),
+        basic_information_store=_BasicInformationStore(
+            {
+                "P1": _basic_information(
+                    project_id="P1",
+                    product_description="",
+                    test_item="",
+                )
+            }
+        ),
+    )
+
+    row = service.list_rows()[0]
+
+    assert row.sample_description == "Initial intake sample"
+    assert row.test_item == "Initial qualification"
+
+
+def test_confirmed_basic_information_overrides_temporary_context_identity() -> None:
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore(
+            [_project(project_id="P1", status=ProjectStatus.DRAFT)]
+        ),
+        ltr_store=_LtrStore({}),
+        temporary_context_store=_TemporaryContextStore(
+            {
+                "P1": ProjectTemporaryContext(
+                    context_id="CTX-1",
+                    project_id="P1",
+                    sample_description="Temporary intake sample",
+                    test_item="Temporary qualification",
+                )
+            }
+        ),
+        basic_information_store=_BasicInformationStore(
+            {
+                "P1": _basic_information(
+                    project_id="P1",
+                    product_description="Confirmed temporary product",
+                    test_item="Confirmed temporary test",
+                )
+            }
+        ),
+    )
+
+    row = service.list_rows()[0]
+
+    assert row.sample_description == "Confirmed temporary product"
+    assert row.test_item == "Confirmed temporary test"
+    assert row.display_project_id == "TMP-P1"
+
+
 class _ProjectStore:
     def __init__(self, projects: list[Project]) -> None:
         self._projects = projects
@@ -176,6 +304,24 @@ class _LtrStore:
 
     def list_by_project(self, project_id: str) -> list[LtrRecord]:
         return self._records.get(project_id, [])
+
+
+class _TemporaryContextStore:
+    def __init__(self, contexts: dict[str, ProjectTemporaryContext]) -> None:
+        self._contexts = contexts
+
+    def get_by_project(self, project_id: str) -> ProjectTemporaryContext | None:
+        return self._contexts.get(project_id)
+
+
+class _BasicInformationStore:
+    def __init__(self, records: dict[str, ProjectBasicInformationRecord]) -> None:
+        self._records = records
+
+    def get_latest_confirmed(
+        self, project_id: str
+    ) -> ProjectBasicInformationRecord | None:
+        return self._records.get(project_id)
 
 
 def _project(
@@ -217,4 +363,27 @@ def _audit_notes(*, operator_note: str | None) -> str:
             "row_number": 12,
         },
         sort_keys=True,
+    )
+
+
+def _basic_information(
+    *,
+    project_id: str,
+    product_description: str,
+    test_item: str,
+) -> ProjectBasicInformationRecord:
+    return ProjectBasicInformationRecord(
+        record_id=f"BASIC-{project_id}",
+        project_id=project_id,
+        status="confirmed",
+        version=1,
+        values={
+            "product_description": product_description,
+            "test_item": test_item,
+        },
+        source_signature="{}",
+        created_at="2026-07-07T09:00:00+08:00",
+        updated_at="2026-07-07T09:00:00+08:00",
+        confirmed_at="2026-07-07T09:00:00+08:00",
+        confirmed_by="Lab User",
     )

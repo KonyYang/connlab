@@ -25,7 +25,20 @@ class ProjectIdentity:
     registered_ltr_number: str | None
 
 
-def resolve_project_identity(project: Project, ltrs: list[LtrRecord]) -> ProjectIdentity:
+@dataclass(frozen=True, slots=True)
+class ProjectDisplayIdentityOverride:
+    """Local display identity override from confirmed Basic Information."""
+
+    sample_description: str | None = None
+    test_item: str | None = None
+
+
+def resolve_project_identity(
+    project: Project,
+    ltrs: list[LtrRecord],
+    *,
+    identity_override: ProjectDisplayIdentityOverride | None = None,
+) -> ProjectIdentity:
     """Resolve display and folder-naming identity from the current registered LTR."""
     ltr = select_registered_ltr(ltrs)
     setup = setup_payload_from_ltr_notes(ltr.notes if ltr else None)
@@ -33,8 +46,15 @@ def resolve_project_identity(project: Project, ltrs: list[LtrRecord]) -> Project
     temporary_project_id = _temporary_project_id(project.project_id)
     return ProjectIdentity(
         ltr_number=ltr_number,
-        sample_description=_text(project.product_name) or _text(setup.get("sample_description")),
-        test_item=_text(setup.get("test_item")),
+        sample_description=(
+            _text(identity_override.sample_description) if identity_override else None
+        )
+        or _text(project.product_name)
+        or _text(setup.get("sample_description")),
+        test_item=(
+            _text(identity_override.test_item) if identity_override else None
+        )
+        or _text(setup.get("test_item")),
         operator_note=operator_note_from_ltr_notes(ltr.notes if ltr else None),
         display_project_id=ltr_number or temporary_project_id,
         display_project_id_kind="registered" if ltr_number else "temporary",
@@ -42,6 +62,21 @@ def resolve_project_identity(project: Project, ltrs: list[LtrRecord]) -> Project
         temporary_project_id=None if ltr_number else temporary_project_id,
         registered_ltr_number=ltr_number,
     )
+
+
+def display_identity_override_from_values(
+    values: dict[str, str] | None,
+) -> ProjectDisplayIdentityOverride | None:
+    """Return a display identity override from confirmed Basic Information values."""
+    if not values:
+        return None
+    override = ProjectDisplayIdentityOverride(
+        sample_description=_text(values.get("product_description")),
+        test_item=_text(values.get("test_item")),
+    )
+    if override.sample_description is None and override.test_item is None:
+        return None
+    return override
 
 
 def select_registered_ltr(records: list[LtrRecord]) -> LtrRecord | None:

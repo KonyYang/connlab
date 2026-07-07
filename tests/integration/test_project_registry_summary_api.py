@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session
 from backend.api.main import app
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationRecord,
+)
 from backend.domain import (
     FileAsset,
     FileAssetType,
@@ -26,6 +29,7 @@ from backend.infrastructure.storage.database import (
 from backend.infrastructure.storage.repositories import (
     FileAssetRepository,
     LtrRecordRepository,
+    ProjectBasicInformationRepository,
     ProjectCleanupAuditRecordRepository,
     ProjectRepository,
 )
@@ -69,6 +73,38 @@ def test_project_registry_api_returns_summary_rows_and_project_identity_fields(
         assert project_detail.json()["sample_description"] == "CoolPower connector samples"
         assert project_detail.json()["test_item"] == "Qualification bend testing"
         assert project_detail.json()["temporary_source_asset_ids"] == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_project_registry_api_prefers_confirmed_basic_information_identity(
+    tmp_path: Path,
+) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    try:
+        _seed_registry_project(session_factory)
+        _seed_confirmed_basic_information(
+            session_factory,
+            product_description="Confirmed Basic Information product",
+            test_item="Confirmed Basic Information test",
+        )
+
+        registry = client.get("/api/projects/registry")
+        projects = client.get("/api/projects")
+        project_detail = client.get("/api/projects/P1")
+
+        assert registry.status_code == 200
+        row = registry.json()[0]
+        assert row["ltr_number"] == "DL-2026-05-001"
+        assert row["sample_description"] == "Confirmed Basic Information product"
+        assert row["test_item"] == "Confirmed Basic Information test"
+        assert projects.status_code == 200
+        assert projects.json()[0]["sample_description"] == "Confirmed Basic Information product"
+        assert projects.json()[0]["test_item"] == "Confirmed Basic Information test"
+        assert project_detail.status_code == 200
+        assert project_detail.json()["sample_description"] == "Confirmed Basic Information product"
+        assert project_detail.json()["test_item"] == "Confirmed Basic Information test"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -303,6 +339,33 @@ def _seed_registry_project(session_factory) -> None:
                     },
                     sort_keys=True,
                 ),
+            )
+        )
+        session.commit()
+
+
+def _seed_confirmed_basic_information(
+    session_factory,
+    *,
+    product_description: str,
+    test_item: str,
+) -> None:
+    with session_factory() as session:
+        ProjectBasicInformationRepository(session).create_confirmed(
+            ProjectBasicInformationRecord(
+                record_id="BASIC-P1",
+                project_id="P1",
+                status="confirmed",
+                version=1,
+                values={
+                    "product_description": product_description,
+                    "test_item": test_item,
+                },
+                source_signature="{}",
+                created_at="2026-07-07T09:00:00+08:00",
+                updated_at="2026-07-07T09:00:00+08:00",
+                confirmed_at="2026-07-07T09:00:00+08:00",
+                confirmed_by="Lab User",
             )
         )
         session.commit()

@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from backend.application.project_identity import resolve_project_identity
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationRecord,
+)
+from backend.application.project_identity import (
+    display_identity_override_from_values,
+    resolve_project_identity,
+)
 from backend.domain import LtrRecord, Project, ProjectTemporaryContext
 
 
@@ -28,6 +34,15 @@ class ProjectRegistryTemporaryContextStore(Protocol):
 
     def get_by_project(self, project_id: str) -> ProjectTemporaryContext | None:
         """Return temporary planning context linked to a project."""
+
+
+class ProjectRegistryBasicInformationStore(Protocol):
+    """Basic Information read behavior required by the registry summary service."""
+
+    def get_latest_confirmed(
+        self, project_id: str
+    ) -> ProjectBasicInformationRecord | None:
+        """Return the latest confirmed Basic Information record for one project."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,19 +75,30 @@ class ProjectRegistrySummaryService:
         project_store: ProjectRegistryProjectStore,
         ltr_store: ProjectRegistryLtrStore,
         temporary_context_store: ProjectRegistryTemporaryContextStore | None = None,
+        basic_information_store: ProjectRegistryBasicInformationStore | None = None,
     ) -> None:
         """Create the service with read-only stores."""
         self._projects = project_store
         self._ltrs = ltr_store
         self._temporary_contexts = temporary_context_store
+        self._basic_information = basic_information_store
 
     def list_rows(self) -> list[ProjectRegistryRow]:
         """Return registry summary rows for all projects."""
         rows: list[ProjectRegistryRow] = []
         for project in self._projects.list():
+            basic_information = (
+                self._basic_information.get_latest_confirmed(project.project_id)
+                if self._basic_information is not None
+                else None
+            )
+            identity_override = display_identity_override_from_values(
+                basic_information.values if basic_information else None
+            )
             identity = resolve_project_identity(
                 project,
                 self._ltrs.list_by_project(project.project_id),
+                identity_override=identity_override,
             )
             temporary_context = (
                 self._temporary_contexts.get_by_project(project.project_id)
@@ -84,10 +110,12 @@ class ProjectRegistrySummaryService:
                     project_id=project.project_id,
                     ltr_number=identity.ltr_number,
                     sample_description=_first_text(
+                        identity_override.sample_description if identity_override else None,
                         temporary_context.sample_description if temporary_context else None,
                         identity.sample_description,
                     ),
                     test_item=_first_text(
+                        identity_override.test_item if identity_override else None,
                         temporary_context.test_item if temporary_context else None,
                         identity.test_item,
                     ),
