@@ -85,6 +85,13 @@ class FeeEvaluationExportSubprocessRunner:
 
 def _child_command(command_json: Path) -> list[str]:
     """Return child process argv using an absolute command JSON path."""
+    if getattr(sys, "frozen", False):
+        return [
+            sys.executable,
+            "--connlab-fee-export-child",
+            "--command-json",
+            str(command_json.resolve()),
+        ]
     return [
         sys.executable,
         "-m",

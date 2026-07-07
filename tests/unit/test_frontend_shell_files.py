@@ -3680,6 +3680,19 @@ def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority
     ]:
         assert required_label in matrix_editor_source
 
+    matrix_editor_responsive_block = styles_source[
+        styles_source.index("@media (max-width: 1180px)") :
+        styles_source.index(".matrix-editor-import-modal-backdrop")
+    ]
+    for required_responsive_style in [
+        ".matrix-editor-studio",
+        "grid-template-columns: minmax(0, 1fr);",
+        ".matrix-editor-step-workspace",
+        ".matrix-editor-schedule-fields",
+        "repeat(auto-fit, minmax(150px, 1fr))",
+    ]:
+        assert required_responsive_style in matrix_editor_responsive_block
+
     assert "runtime-console-shell" not in matrix_editor_source
 
 

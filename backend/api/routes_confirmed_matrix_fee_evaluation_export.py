@@ -11,6 +11,7 @@ from pydantic import BaseModel, field_validator, model_validator
 
 from backend.api.dependencies import (
     get_confirmed_matrix_fee_evaluation_export_service,
+    get_fee_evaluation_template_resource_store,
     get_settings,
 )
 from backend.application.confirmed_matrix_fee_draft_service import (
@@ -32,7 +33,11 @@ from backend.application.fee_evaluation_edited_export_values import (
 )
 from backend.application.fee_evaluation_template_discovery import (
     FeeEvaluationTemplateDiscoveryError,
-    discover_fee_evaluation_template,
+)
+from backend.application.fee_evaluation_template_resource import (
+    FeeEvaluationTemplateResourceError,
+    FeeEvaluationTemplateResourceStore,
+    resolve_fee_evaluation_template_path,
 )
 from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
@@ -397,12 +402,15 @@ def generate_confirmed_matrix_fee_file(
         get_confirmed_matrix_fee_evaluation_export_service
     ),
     settings: Settings = Depends(get_settings),
+    template_resource_store: FeeEvaluationTemplateResourceStore = Depends(
+        get_fee_evaluation_template_resource_store
+    ),
 ) -> FileResponse:
     """Generate a Matrix basic-fill Fee Evaluation workbook for browser download."""
     output_dir = settings.data_dir / FEE_FILE_DOWNLOAD_DIR_NAME
     output_dir.mkdir(parents=True, exist_ok=True)
     try:
-        template_path = discover_fee_evaluation_template(settings.templates_dir)
+        template_path = resolve_fee_evaluation_template_path(template_resource_store)
         result = service.export(
             ExportConfirmedMatrixFeeEvaluationCommand(
                 project_id=project_id,
@@ -420,6 +428,7 @@ def generate_confirmed_matrix_fee_file(
         ConfirmedMatrixFeeDraftNotFoundError,
         ProjectOutputRecordNotFoundError,
         FeeEvaluationTemplateDiscoveryError,
+        FeeEvaluationTemplateResourceError,
     ) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (

@@ -25,15 +25,15 @@ describe("deriveProjectFolderTasks", () => {
     ]);
     expect(tasks.map((task) => task.iconName)).toEqual([
       "folder",
-      "refresh",
-      "package",
-      "copy",
+      "cloud-sync",
+      "folder-move",
+      "download",
     ]);
     expect(tasks.map((task) => task.context)).toEqual([
-      "Local folder available.",
-      "Public Open working copy.",
-      "Preview moves Open output to Closed after confirmation.",
-      "Closed output can be pulled without overwriting local history.",
+      "D:/Test Project/DL-2026-06-001",
+      "D:/PublicProject/Open/2026/DL-2026-06-001",
+      "Preview required before moving the package.",
+      "D:/PublicProject/Closed/2026/DL-2026-06-001 · keep local history",
     ]);
     expect(selectCurrentProjectFolderTaskKey(tasks)).toBe("project_folder");
   });
@@ -86,6 +86,16 @@ describe("deriveProjectFolderTasks", () => {
     expect(tasks[0].title).toBe("Project folder");
     expect(tasks[0].context).toBe("Project folder is not available yet.");
     expect(tasks[0].blockers[0]).toBe("Project folder is not available yet.");
+    expect(tasks.slice(1).map((task) => task.actionTarget)).toEqual([null, null, null]);
+    expect(tasks.slice(1).flatMap((task) => task.blockers)).toEqual([
+      "Project folder is not available yet.",
+      "Project folder is not available yet.",
+      "Project folder is not available yet.",
+    ]);
+    expect(tasks[1].autoSync).toMatchObject({
+      disabled: true,
+      blocker: "Project folder is not available yet.",
+    });
   });
 
   it("does not require legacy folderReady for project folder Open", () => {
@@ -96,7 +106,7 @@ describe("deriveProjectFolderTasks", () => {
 
     expect(tasks[0]).toMatchObject({
       title: "Project folder",
-      context: "Local folder available.",
+      context: "D:/Test Project/DL-2026-06-001",
       actionLabel: "Open",
       actionTarget: "project_folder_open",
       blockers: [],

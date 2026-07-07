@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from backend.api.dependencies import (
     get_matrix_editor_test_record_document_generation_service,
     get_settings,
+    get_test_record_template_resource_store,
 )
 from backend.application.matrix_editor_test_record_document_generation_service import (
     GenerateMatrixEditorTestRecordDocumentCommand,
@@ -17,6 +18,11 @@ from backend.application.matrix_editor_test_record_document_generation_service i
     MatrixEditorTestRecordDocumentGenerationService,
     MatrixEditorTestRecordGroupInput,
     MatrixEditorTestRecordRowInput,
+)
+from backend.application.test_record_template_resource import (
+    TestRecordTemplateResourceError,
+    TestRecordTemplateResourceStore,
+    resolve_test_record_template_path,
 )
 from backend.shared.config import Settings
 
@@ -60,6 +66,9 @@ def generate_matrix_editor_test_record_draft_preview(
         get_matrix_editor_test_record_document_generation_service
     ),
     settings: Settings = Depends(get_settings),
+    template_resource_store: TestRecordTemplateResourceStore = Depends(
+        get_test_record_template_resource_store
+    ),
 ) -> FileResponse:
     """Generate and return one preview Test Record from current Matrix Editor state."""
     if request.source != "matrix_editor_current_ui_state":
@@ -67,17 +76,22 @@ def generate_matrix_editor_test_record_draft_preview(
             status_code=422,
             detail="Matrix Editor Test Record preview requires current UI state payload.",
         )
-    if settings.test_record.template_path is None:
+    try:
+        template_path = resolve_test_record_template_path(
+            template_resource_store,
+            configured_template_path=settings.test_record.template_path,
+        )
+    except TestRecordTemplateResourceError as exc:
         raise HTTPException(
             status_code=422,
-            detail="Test Record template path is not configured.",
-        )
+            detail=str(exc),
+        ) from exc
     try:
         result = service.generate(
             GenerateMatrixEditorTestRecordDocumentCommand(
                 project_id=project_id,
                 output_dir=settings.data_dir / "generated_test_record_previews",
-                template_path=settings.test_record.template_path,
+                template_path=template_path,
                 groups=tuple(
                     MatrixEditorTestRecordGroupInput(
                         group_key=group.group_key,

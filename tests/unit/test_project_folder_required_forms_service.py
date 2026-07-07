@@ -34,6 +34,9 @@ from backend.application.project_output_record_service import (
 )
 from backend.domain import (
     ApplicationForm,
+    ExternalResource,
+    ExternalResourceType,
+    ExternalResourceValidationStatus,
     ProjectOutputKind,
     ProjectOutputSource,
     ProjectOutputStatus,
@@ -134,7 +137,7 @@ def test_xls_fee_template_context_is_stable_when_office_metadata_changes(
     templates_dir.mkdir()
     template = templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     template.write_bytes(b"ole-metadata-version-1")
-    reader = _FeeFormTemplateContextReader(templates_dir)
+    reader = _FeeFormTemplateContextReader(_TemplateFolderStore(templates_dir))
 
     first_context = reader.preview_template_context("P1")
     template.write_bytes(b"ole-metadata-version-2")
@@ -772,6 +775,25 @@ class _FeeTemplateReader:
 
     def preview_template_context(self, project_id: str) -> str:
         return self.context
+
+
+class _TemplateFolderStore:
+    def __init__(self, template_folder: Path) -> None:
+        self.template_folder = template_folder
+
+    def get_by_type(
+        self,
+        resource_type: ExternalResourceType,
+    ) -> ExternalResource | None:
+        if resource_type is not ExternalResourceType.PROJECT_FOLDER_TEMPLATE:
+            return None
+        return ExternalResource(
+            resource_id="template-folder",
+            resource_type=ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
+            path=self.template_folder,
+            active=True,
+            validation_status=ExternalResourceValidationStatus.VALID,
+        )
 
 
 class _Generator:

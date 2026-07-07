@@ -10,6 +10,7 @@ import {
   buildFeeEvaluationPreviewScopeTotal,
   buildFeeEvaluationPreviewTotals,
   buildFeeEvaluationPreviewWorkingHours,
+  buildFeeEvaluationUpdateBlockers,
   calculateFeePreviewTestingFee,
   FEE_UNIT_TYPE_OPTIONS,
   filterFeeEvaluationPreviewRowsForScope,
@@ -401,6 +402,53 @@ describe("feeEvaluationPreviewModel", () => {
       discount: "100%",
       testingFee: "0",
     });
+  });
+
+  it("names the first incomplete Report preparation blocker before Update Fee", () => {
+    const rows = applyFeeEvaluationPreviewEdits(
+      buildFeeEvaluationPreviewRows({
+        ...createDraft(),
+        manual_line_items: [
+          createReportPreparationLine({
+            unit_price: "",
+            unit_label: "",
+            calculation_strategy: "",
+            units: "",
+            base_fee: "",
+            discount_percent: "",
+            testing_fee: "",
+          }),
+        ],
+      }),
+      {}
+    );
+
+    const blockers = buildFeeEvaluationUpdateBlockers({
+      rows,
+      totals: {
+        testingFeeTotal: buildFeeEvaluationPreviewScopeTotal(rows, "all"),
+        workingHours: buildFeeEvaluationPreviewWorkingHours(rows, "0"),
+        labManpowerCost: buildFeeEvaluationLabManpowerCost(
+          buildFeeEvaluationPreviewWorkingHours(rows, "0"),
+          "200"
+        ),
+        externalCost: "0",
+        grandCost: buildFeeEvaluationPreviewGrandCost(rows, "0"),
+      },
+    });
+
+    expect(blockers[0]).toMatchObject({
+      rowId: "manual-report-preparation",
+      rowLabel: "Report preparation",
+      fields: ["Unit Type"],
+      message:
+        "Complete Fee Evaluation pricing before Update Fee. First blocker: Report preparation has incomplete Unit Type.",
+    });
+    expect(blockers).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rowLabel: "testing_fee_total" }),
+      ])
+    );
   });
 
   it("builds working hours from row spend time and condition confirmation time", () => {

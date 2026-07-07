@@ -133,6 +133,45 @@ describe("ProjectFolderTaskList", () => {
       "Activate project before editing is restored."
     );
   });
+
+  it("disables public folder operations when the project folder is unavailable", () => {
+    render(
+      <ProjectFolderActionsSurface
+        tasks={[
+          {
+            ...tasks[0],
+            status: "blocked",
+            context: "Project folder is not available yet.",
+            actionTarget: null,
+            blockers: ["Project folder is not available yet."],
+          },
+          ...tasks.slice(1).map((task) => ({
+            ...task,
+            actionTarget: null,
+            blockers: ["Project folder is not available yet."],
+            autoSync: task.autoSync
+              ? {
+                  ...task.autoSync,
+                  disabled: true,
+                  blocker: "Project folder is not available yet.",
+                }
+              : task.autoSync,
+          })),
+        ]}
+      />
+    );
+
+    for (const label of ["Open", "Sync now", "Submit", "Pull"]) {
+      const button = screen.getByRole("button", { name: label }) as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+      expect(button.getAttribute("title")).toBe("Project folder is not available yet.");
+    }
+    expect(
+      (screen.getByRole("checkbox", {
+        name: "Auto sync public working copy",
+      }) as HTMLInputElement).disabled
+    ).toBe(true);
+  });
 });
 
 function ProjectFolderTaskListHarness({

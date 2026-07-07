@@ -6300,6 +6300,14 @@
   font-weight: 800;
 }
 
+.fee-evaluation-preview-row-blocked td {
+  background: #fff7f5;
+}
+
+.fee-evaluation-preview-row-blocked td:first-child {
+  box-shadow: inset 0 0 0 1px rgba(194, 65, 58, 0.24);
+}
+
 .fee-evaluation-preview-totals {
   display: grid;
   grid-template-columns:
@@ -8414,6 +8422,28 @@
   .fee-evaluation-preview-external-entry,
   .fee-evaluation-preview-totals > div:last-child {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1180px) {
+  .matrix-editor-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .matrix-editor-step-workspace {
+    width: 100%;
+  }
+
+  .matrix-editor-schedule-header {
+    display: grid;
+  }
+
+  .matrix-editor-schedule-header strong {
+    white-space: normal;
+  }
+
+  .matrix-editor-schedule-fields {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 .matrix-editor-import-modal-backdrop {

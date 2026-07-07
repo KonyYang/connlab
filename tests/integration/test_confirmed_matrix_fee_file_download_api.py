@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from backend.api.dependencies import (
     get_confirmed_matrix_fee_evaluation_export_service,
+    get_fee_evaluation_template_resource_store,
     get_settings,
 )
 from backend.api.main import app
@@ -22,18 +23,21 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
 from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
 )
+from backend.domain import (
+    ExternalResource,
+    ExternalResourceType,
+    ExternalResourceValidationStatus,
+)
 from backend.shared.config import Settings
 
 
 def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fill(
     tmp_path: Path,
 ) -> None:
-    settings = _settings(tmp_path)
+    settings = _settings(tmp_path, with_fee_template=False)
+    template_folder = _template_folder(tmp_path)
     service = _FakeDownloadExportService()
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: service
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, service, template_folder)
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
@@ -54,7 +58,7 @@ def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fil
     assert command.output_file_name is None
     assert command.output_dir == settings.data_dir / "generated_fee_files"
     assert command.template_path == (
-        settings.templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+        template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     )
 
 
@@ -63,10 +67,7 @@ def test_fee_file_download_route_accepts_edited_payload(
 ) -> None:
     settings = _settings(tmp_path)
     service = _FakeDownloadExportService()
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: service
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, service)
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
@@ -124,10 +125,7 @@ def test_fee_file_download_route_rejects_incomplete_sample_preparation_identity(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path)
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = _FakeDownloadExportService
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, _FakeDownloadExportService())
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
@@ -169,10 +167,7 @@ def test_fee_file_download_route_rejects_duplicate_edited_row_identity(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path)
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = _FakeDownloadExportService
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, _FakeDownloadExportService())
     row = {
         "source_line_id": "cmv-1:g1:cmr-1:1:0",
         "confirmed_group_id": "cmg-1",
@@ -213,10 +208,7 @@ def test_fee_file_download_route_rejects_service_path_outside_generated_fee_dir(
     settings = _settings(tmp_path)
     outside = tmp_path / "outside.xls"
     outside.write_bytes(b"not a fee cache file")
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: _PathReturningExportService(outside)
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, _PathReturningExportService(outside))
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
@@ -234,10 +226,7 @@ def test_fee_file_download_route_rejects_non_xls_generated_path(tmp_path: Path) 
     generated_dir.mkdir(parents=True)
     generated = generated_dir / "fee-P1.xlsx"
     generated.write_bytes(b"xlsx")
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: _PathReturningExportService(generated)
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, _PathReturningExportService(generated))
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
@@ -251,12 +240,14 @@ def test_fee_file_download_route_rejects_non_xls_generated_path(tmp_path: Path) 
 
 def test_fee_file_download_route_maps_missing_authority_to_404(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: _FailingDownloadExportService(
-        ConfirmedMatrixFeeEvaluationExportNotFoundError("No active Confirmed Matrix.")
+    _install_route_overrides(
+        settings,
+        _FailingDownloadExportService(
+            ConfirmedMatrixFeeEvaluationExportNotFoundError(
+                "No active Confirmed Matrix."
+            )
+        ),
     )
-    app.dependency_overrides[get_settings] = lambda: settings
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
@@ -269,12 +260,10 @@ def test_fee_file_download_route_maps_missing_authority_to_404(tmp_path: Path) -
 
 
 def test_fee_file_download_route_maps_missing_fee_template_to_404(tmp_path: Path) -> None:
-    settings = _settings(tmp_path, with_fee_template=False)
+    settings = _settings(tmp_path)
+    template_folder = _template_folder(tmp_path, with_fee_template=False)
     service = _FakeDownloadExportService()
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: service
-    app.dependency_overrides[get_settings] = lambda: settings
+    _install_route_overrides(settings, service, template_folder)
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
@@ -289,16 +278,16 @@ def test_fee_file_download_route_maps_missing_fee_template_to_404(tmp_path: Path
 
 def test_fee_file_download_route_maps_timeout_to_structured_503(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
-    app.dependency_overrides[
-        get_confirmed_matrix_fee_evaluation_export_service
-    ] = lambda: _FailingDownloadExportService(
-        ConfirmedMatrixFeeEvaluationExportTimeoutError(
-            "Fee file generation timed out after 90 seconds.",
-            elapsed_seconds=90.0,
-            manual_cleanup_warning="Close Excel manually if it is still open.",
+    _install_route_overrides(
+        settings,
+        _FailingDownloadExportService(
+            ConfirmedMatrixFeeEvaluationExportTimeoutError(
+                "Fee file generation timed out after 90 seconds.",
+                elapsed_seconds=90.0,
+                manual_cleanup_warning="Close Excel manually if it is still open.",
+            )
         )
     )
-    app.dependency_overrides[get_settings] = lambda: settings
     try:
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
@@ -326,6 +315,50 @@ def _settings(tmp_path: Path, *, with_fee_template: bool = True) -> Settings:
         templates_dir=templates_dir,
         database_path=tmp_path / "data" / "connlab.sqlite3",
     )
+
+
+def _template_folder(tmp_path: Path, *, with_fee_template: bool = True) -> Path:
+    template_folder = tmp_path / "settings-template-folder"
+    template_folder.mkdir(parents=True, exist_ok=True)
+    if with_fee_template:
+        (template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls").write_bytes(
+            b"settings template"
+        )
+    return template_folder
+
+
+def _install_route_overrides(
+    settings: Settings,
+    service,
+    template_folder: Path | None = None,
+) -> None:
+    folder = template_folder or _template_folder(settings.data_dir.parent)
+    app.dependency_overrides[
+        get_confirmed_matrix_fee_evaluation_export_service
+    ] = lambda: service
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_fee_evaluation_template_resource_store] = (
+        lambda: _TemplateFolderStore(folder)
+    )
+
+
+class _TemplateFolderStore:
+    def __init__(self, template_folder: Path) -> None:
+        self.template_folder = template_folder
+
+    def get_by_type(
+        self,
+        resource_type: ExternalResourceType,
+    ) -> ExternalResource | None:
+        if resource_type is not ExternalResourceType.PROJECT_FOLDER_TEMPLATE:
+            return None
+        return ExternalResource(
+            resource_id="template-folder",
+            resource_type=ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
+            path=self.template_folder,
+            active=True,
+            validation_status=ExternalResourceValidationStatus.VALID,
+        )
 
 
 class _FakeDownloadExportService:

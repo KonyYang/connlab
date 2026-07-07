@@ -55,6 +55,28 @@ def test_child_command_uses_absolute_command_json_path(tmp_path: Path) -> None:
     assert str(command_json.resolve()) in argv
 
 
+def test_child_command_uses_packaged_child_flag_when_frozen(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    command_json = tmp_path / "runs" / "run-1" / "command.json"
+    executable = r"D:\Release\ConnLab_Server.exe"
+    import backend.infrastructure.office.fee_evaluation_export_subprocess_runner as runner_module
+
+    monkeypatch.setattr(runner_module.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(runner_module.sys, "executable", executable)
+
+    argv = _child_command(command_json)
+
+    assert argv == [
+        executable,
+        "--connlab-fee-export-child",
+        "--command-json",
+        str(command_json.resolve()),
+    ]
+    assert "-m" not in argv
+
+
 def test_parse_success_child_json_result() -> None:
     result = _parse_child_result(
         stdout='{"status":"success","result":{"project_id":"P1"},"warnings":[]}',

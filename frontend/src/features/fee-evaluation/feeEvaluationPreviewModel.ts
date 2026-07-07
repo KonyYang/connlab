@@ -97,6 +97,14 @@ export type FeeEvaluationCostRisk = {
   message: string | null;
 };
 
+export type FeeEvaluationUpdateBlocker = {
+  rowId: string | null;
+  rowLabel: string;
+  fields: string[];
+  message: string;
+  rowMessage: string;
+};
+
 export type FeeEvaluationSavedDraftHydrationResult = {
   edits: FeeEvaluationPreviewEditState;
   costPreviewValues: {
@@ -462,6 +470,54 @@ export function buildFeeEvaluationCostRisk(input: {
     };
   }
   return { severity: "none", message: null };
+}
+
+export function buildFeeEvaluationUpdateBlockers(input: {
+  rows: FeeEvaluationPreviewRow[];
+  totals: {
+    testingFeeTotal: string;
+    workingHours: string;
+    labManpowerCost: string;
+    externalCost: string;
+    grandCost: string;
+  };
+}): FeeEvaluationUpdateBlocker[] {
+  const blockers: FeeEvaluationUpdateBlocker[] = [];
+  for (const row of input.rows) {
+    const fields = incompleteUpdateFields(row);
+    if (fields.length === 0) {
+      continue;
+    }
+    const rowLabel = updateRowLabel(row);
+    blockers.push({
+      rowId: row.lineId,
+      rowLabel,
+      fields,
+      message: updateBlockerMessage(rowLabel, fields),
+      rowMessage: `Complete ${formatFieldList(fields)} before Update Fee.`,
+    });
+  }
+  if (blockers.length > 0) {
+    return blockers;
+  }
+  for (const [field, value] of [
+    ["Total Testing Fee", input.totals.testingFeeTotal],
+    ["Working hours", input.totals.workingHours],
+    ["Lab manpower cost", input.totals.labManpowerCost],
+    ["External Cost", input.totals.externalCost],
+    ["Grand Cost", input.totals.grandCost],
+  ] as const) {
+    if (!isCompleteNumber(value)) {
+      blockers.push({
+        rowId: null,
+        rowLabel: field,
+        fields: [field],
+        message: updateBlockerMessage(field, [field]),
+        rowMessage: `Complete ${field} before Update Fee.`,
+      });
+    }
+  }
+  return blockers;
 }
 
 function buildMatrixStepRows(
@@ -843,4 +899,78 @@ function formatPreviewWholeAmount(value: number): string {
     return "Pending";
   }
   return value.toFixed(0);
+}
+
+function incompleteUpdateFields(row: FeeEvaluationPreviewRow): string[] {
+  const fields: string[] = [];
+  if (!isCompleteNumber(row.spendTime)) {
+    fields.push("Man-hour");
+  }
+  if (!isCompleteNumber(row.unitPrice)) {
+    fields.push("Unit Price");
+  }
+  if (!isCompleteUnitType(row.unitType)) {
+    fields.push("Unit Type");
+  }
+  if (!isCompleteNumber(row.units)) {
+    fields.push("Units");
+  }
+  if (!isCompleteOptionalNumber(row.baseFee)) {
+    fields.push("Base Fee");
+  }
+  if (!isCompleteDiscount(row.discount)) {
+    fields.push("Discount");
+  }
+  if (!isCompleteNumber(row.testingFee)) {
+    fields.push("Testing Fee");
+  }
+  return fields;
+}
+
+function updateRowLabel(row: FeeEvaluationPreviewRow): string {
+  if (row.rowKind === "manual_trailing") {
+    return row.description;
+  }
+  const group = row.groupLabel.trim();
+  const step = row.stepToken.trim();
+  const prefix = [
+    group ? formatGroupLabel(group) : "",
+    step && step !== "-" ? `Step ${step}` : "",
+  ].filter(Boolean);
+  return [...prefix, row.description].join(", ") || row.description;
+}
+
+function formatGroupLabel(group: string): string {
+  return group.toLowerCase().startsWith("group ") ? group : `Group ${group}`;
+}
+
+function updateBlockerMessage(rowLabel: string, fields: string[]): string {
+  return `Complete Fee Evaluation pricing before Update Fee. First blocker: ${rowLabel} has incomplete ${formatFieldList(fields)}.`;
+}
+
+function formatFieldList(fields: string[]): string {
+  if (fields.length <= 1) {
+    return fields[0] ?? "fee fields";
+  }
+  if (fields.length === 2) {
+    return `${fields[0]} and ${fields[1]}`;
+  }
+  return `${fields.slice(0, -1).join(", ")}, and ${fields.at(-1)}`;
+}
+
+function isCompleteNumber(value: string): boolean {
+  return parsePreviewNumber(value) !== null;
+}
+
+function isCompleteOptionalNumber(value: string): boolean {
+  return parseOptionalEditableNumber(value) !== null;
+}
+
+function isCompleteDiscount(value: string): boolean {
+  return parseEditableDiscount(value) !== null;
+}
+
+function isCompleteUnitType(value: string): boolean {
+  const normalized = value.trim();
+  return normalized.length > 0 && normalized.toLowerCase() !== "pending";
 }

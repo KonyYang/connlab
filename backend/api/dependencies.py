@@ -157,8 +157,13 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftPersistenceService,
     edited_values_from_json,
 )
-from backend.application.fee_evaluation_template_discovery import (
-    discover_fee_evaluation_template,
+from backend.application.fee_evaluation_template_resource import (
+    FeeEvaluationTemplateResourceStore,
+    resolve_fee_evaluation_template_path,
+)
+from backend.application.test_record_template_resource import (
+    TestRecordTemplateResourceStore,
+    resolve_test_record_template_path,
 )
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
@@ -1128,12 +1133,12 @@ class _ReusableFeeFormArtifactReader:
 class _FeeFormTemplateContextReader:
     """Build Fee Form template identity for Required forms reuse context."""
 
-    def __init__(self, templates_dir: Path) -> None:
-        self._templates_dir = templates_dir
+    def __init__(self, resource_store: FeeEvaluationTemplateResourceStore) -> None:
+        self._resource_store = resource_store
 
     def preview_template_context(self, project_id: str) -> str:
         """Return a stable Fee Form template context token."""
-        template = discover_fee_evaluation_template(self._templates_dir)
+        template = resolve_fee_evaluation_template_path(self._resource_store)
         return _fee_form_template_context(template)
 
 
@@ -1160,12 +1165,18 @@ class _RequiredFormsStagingGenerator:
         *,
         project_id: str | None = None,
         settings: Settings,
+        fee_template_resource_store: FeeEvaluationTemplateResourceStore,
+        test_record_template_resource_store: TestRecordTemplateResourceStore | None = None,
         test_record_service: ConfirmedMatrixTestRecordDocumentGenerationService,
         fee_export_service: ConfirmedMatrixFeeEvaluationExportService,
         customer_feedback_service: CustomerFeedbackFormGenerationService,
     ) -> None:
         self._project_id = project_id
         self._settings = settings
+        self._fee_template_resource_store = fee_template_resource_store
+        self._test_record_template_resource_store = (
+            test_record_template_resource_store or fee_template_resource_store
+        )
         self._test_record_service = test_record_service
         self._fee_export_service = fee_export_service
         self._customer_feedback_service = customer_feedback_service
@@ -1183,13 +1194,15 @@ class _RequiredFormsStagingGenerator:
         output_dir = self._settings.data_dir / "staged_required_forms" / project_id
         output_dir.mkdir(parents=True, exist_ok=True)
         if key == "test_record":
-            if self._settings.test_record.template_path is None:
-                raise ValueError("Test Record template path is not configured.")
+            template_path = resolve_test_record_template_path(
+                self._test_record_template_resource_store,
+                configured_template_path=self._settings.test_record.template_path,
+            )
             result = self._test_record_service.generate(
                 GenerateConfirmedMatrixTestRecordDocumentCommand(
                     project_id=project_id,
                     output_dir=output_dir,
-                    template_path=self._settings.test_record.template_path,
+                    template_path=template_path,
                 )
             )
             return _rename_staged_file(result.output_path, target_name)
@@ -1205,8 +1218,8 @@ class _RequiredFormsStagingGenerator:
             result = self._fee_export_service.export(
                 ExportConfirmedMatrixFeeEvaluationCommand(
                     project_id=project_id,
-                    template_path=discover_fee_evaluation_template(
-                        self._settings.templates_dir
+                    template_path=resolve_fee_evaluation_template_path(
+                        self._fee_template_resource_store
                     ),
                     output_dir=output_dir,
                     output_file_name=target_name,
@@ -1287,11 +1300,12 @@ def get_project_folder_required_forms_service(
             ExternalResourceRepository(session)
         ),
         fee_form_template_context_reader=_FeeFormTemplateContextReader(
-            settings.templates_dir
+            ExternalResourceRepository(session)
         ),
         application_form_reader=ApplicationFormRepository(session),
         generator=_RequiredFormsStagingGenerator(
             settings=settings,
+            fee_template_resource_store=ExternalResourceRepository(session),
             test_record_service=test_record_service,
             fee_export_service=fee_service,
             customer_feedback_service=get_customer_feedback_form_generation_service(
@@ -1352,6 +1366,20 @@ def get_external_resource_service(
 ) -> ExternalResourceService:
     """Build the external resource registry service."""
     return ExternalResourceService(ExternalResourceRepository(session))
+
+
+def get_fee_evaluation_template_resource_store(
+    session: Session = Depends(get_session),
+) -> FeeEvaluationTemplateResourceStore:
+    """Build the resource store used to resolve Fee Evaluation templates."""
+    return ExternalResourceRepository(session)
+
+
+def get_test_record_template_resource_store(
+    session: Session = Depends(get_session),
+) -> TestRecordTemplateResourceStore:
+    """Build the resource store used to resolve Test Record templates."""
+    return ExternalResourceRepository(session)
 
 
 def get_ltr_workbook_local_config_service() -> LtrWorkbookLocalConfigService:

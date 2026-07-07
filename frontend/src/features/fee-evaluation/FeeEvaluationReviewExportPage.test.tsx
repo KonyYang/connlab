@@ -488,6 +488,42 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Fee authority is current.")).toBeNull();
   });
 
+  it("blocks Update Fee at the incomplete Report preparation row without duplicate alerts", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
+      createDraftWithIncompleteReportPreparation()
+    );
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
+      ...currentPricingDraftResponse(),
+      saved_draft_edit_id: "fed-incomplete-report",
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    }, { timeout: 1600 });
+
+    const blockerMessage =
+      "Complete Fee Evaluation pricing before Update Fee. First blocker: Report preparation has incomplete Unit Type.";
+    await screen.findByText(blockerMessage);
+    expect(screen.getAllByText(blockerMessage)).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "Review: Complete Unit Type before Update Fee."
+      )
+    ).toBeTruthy();
+    expect(screen.queryByText("testing_fee_total must be numeric.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+      "disabled",
+      true
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+  });
+
   it("keeps status card hidden when saved pricing draft id differs from confirmed fee id", async () => {
     arrangeSuccessfulContext({
       pricingDraft: {
@@ -1422,6 +1458,23 @@ function createDraftWithEditableSingleLine() {
           }),
         ],
       },
+    ],
+  };
+}
+
+function createDraftWithIncompleteReportPreparation() {
+  return {
+    ...createDraftWithEditableSingleLine(),
+    manual_line_items: [
+      createReportPreparationLine({
+        unit_price: "",
+        unit_label: "",
+        calculation_strategy: "",
+        units: "",
+        base_fee: "",
+        discount_percent: "",
+        testing_fee: "",
+      }),
     ],
   };
 }

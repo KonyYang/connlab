@@ -6,6 +6,12 @@ from docx import Document
 
 from backend.api.dependencies import get_settings
 from backend.api.main import app
+from backend.domain import (
+    ExternalResource,
+    ExternalResourceType,
+    ExternalResourceValidationStatus,
+)
+from backend.infrastructure.storage.repositories import ExternalResourceRepository
 from backend.shared.config import Settings, TestRecordSettings
 from tests.integration.test_confirmed_matrix_test_record_generation_api import (
     _build_template,
@@ -75,6 +81,49 @@ def test_matrix_editor_test_record_generation_uses_current_ui_payload(
         engine.dispose()
 
 
+def test_matrix_editor_test_record_generation_uses_settings_template_folder(
+    tmp_path: Path,
+) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    try:
+        template_folder = tmp_path / "template-folder"
+        template_folder.mkdir()
+        _build_template(template_folder / "FDQF-E-036 Test Record Template-Even.docx")
+        _seed_template_folder(session_factory, template_folder)
+        _seed_project("P1", tmp_path)
+        _seed_header_metadata_sources("P1", tmp_path)
+
+        response = client.post(
+            "/api/projects/P1/matrix-editor/test-record-draft/generate",
+            json={
+                "source": "matrix_editor_current_ui_state",
+                "groups": [
+                    {
+                        "group_key": "g1",
+                        "group_label": "1",
+                        "sample_quantity_expression": "3",
+                    }
+                ],
+                "rows": [
+                    {
+                        "test_item": "Visual Check",
+                        "section": "5.1",
+                        "method": "EIA-364-18B",
+                        "condition": "Normal",
+                        "requirement": "No defect",
+                        "group_values": {"g1": "1"},
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        assert "Preview" in response.headers["content-disposition"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_test_record_generation_rejects_wrong_source(
     tmp_path: Path,
 ) -> None:
@@ -91,3 +140,17 @@ def test_matrix_editor_test_record_generation_rejects_wrong_source(
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def _seed_template_folder(session_factory, template_folder: Path) -> None:
+    with session_factory() as session:
+        ExternalResourceRepository(session).upsert(
+            ExternalResource(
+                resource_id="template-folder",
+                resource_type=ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
+                path=template_folder,
+                active=True,
+                validation_status=ExternalResourceValidationStatus.VALID,
+            )
+        )
+        session.commit()

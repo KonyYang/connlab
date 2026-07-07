@@ -647,6 +647,7 @@ def _draft(
         base_fee=Decimal("0"),
         discount_percent=Decimal("0"),
         testing_fee=total_fee,
+        field_metadata=(),
         warnings=(),
     )
     return FeeEvaluationDraft(
@@ -663,11 +664,13 @@ def _draft(
         draft_status=status,
         total_fee=total_fee,
         review_required_count=0 if status == "ready" else 1,
+        manual_line_items=(),
         groups=(
             FeeEvaluationGroup(
                 group_key="g1",
                 group_label="Group 1",
                 sample_quantity_expression="1",
+                manual_line_items=(),
                 line_items=(line,),
             ),
         ),

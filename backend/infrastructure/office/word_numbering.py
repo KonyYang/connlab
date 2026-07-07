@@ -61,7 +61,10 @@ def _paragraph_numbering_label(
 
 
 def _numbering_definitions(document: Any) -> dict[str, dict[int, _NumberingLevel]]:
-    numbering_part = getattr(document.part, "numbering_part", None)
+    try:
+        numbering_part = getattr(document.part, "numbering_part", None)
+    except (AttributeError, KeyError, NotImplementedError):
+        return {}
     if numbering_part is None:
         return {}
     root = numbering_part.element

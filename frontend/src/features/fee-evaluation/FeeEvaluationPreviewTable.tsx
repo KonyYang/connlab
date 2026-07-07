@@ -5,6 +5,7 @@ import type {
   FeeEvaluationPreviewRow,
   FeeEvaluationPreviewTotals,
   FeeEvaluationCostRisk,
+  FeeEvaluationUpdateBlocker,
 } from "./feeEvaluationPreviewModel";
 import { FEE_UNIT_TYPE_OPTIONS } from "./feeEvaluationPreviewModel";
 
@@ -30,10 +31,12 @@ type FeeEvaluationPreviewTableProps = {
     value: string
   ) => void;
   saveState: FeePricingDraftSaveState;
+  suppressedSaveMessage?: string | null;
   scopeFeeLabel: string;
   groupOptions: string[];
   rows: FeeEvaluationPreviewRow[];
   totals: FeeEvaluationPreviewTotals;
+  updateFeeBlockersByRowId?: Record<string, FeeEvaluationUpdateBlocker>;
 };
 
 export type FeeEvaluationCostPreviewValues = {
@@ -82,10 +85,12 @@ export function FeeEvaluationPreviewTable({
   onGroupFilterChange,
   onRowEditChange,
   saveState,
+  suppressedSaveMessage = null,
   scopeFeeLabel,
   groupOptions,
   rows,
   totals,
+  updateFeeBlockersByRowId = {},
 }: FeeEvaluationPreviewTableProps): ReactElement {
   return (
     <section className="fee-evaluation-preview-surface" aria-label="Testing Prices preview">
@@ -131,7 +136,10 @@ export function FeeEvaluationPreviewTable({
           state={downloadState}
           disabledReason={generateDisabledReason}
         />
-        <FeePricingDraftSaveStatus state={saveState} />
+        <FeePricingDraftSaveStatus
+          state={saveState}
+          suppressedMessage={suppressedSaveMessage}
+        />
       </header>
 
       {confirmFeeActionState.kind === "error" ? (
@@ -287,7 +295,13 @@ export function FeeEvaluationPreviewTable({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.lineId} className={previewRowClassName(row)}>
+                <tr
+                  key={row.lineId}
+                  className={previewRowClassName(
+                    row,
+                    Boolean(updateFeeBlockersByRowId[row.lineId])
+                  )}
+                >
                   <td>{row.groupLabel}</td>
                   <td>{row.stepToken}</td>
                   <td>
@@ -303,7 +317,10 @@ export function FeeEvaluationPreviewTable({
                   </td>
                   <td>
                     <strong>{row.description}</strong>
-                    <ReviewCue row={row} />
+                    <ReviewCue
+                      row={row}
+                      updateBlocker={updateFeeBlockersByRowId[row.lineId]}
+                    />
                   </td>
                   <td>
                     <EditablePreviewInput
@@ -381,10 +398,15 @@ export function FeeEvaluationPreviewTable({
 
 function FeePricingDraftSaveStatus({
   state,
+  suppressedMessage,
 }: {
   state: FeePricingDraftSaveState;
+  suppressedMessage?: string | null;
 }): ReactElement | null {
   if (state.kind !== "stale" && state.kind !== "error") {
+    return null;
+  }
+  if (suppressedMessage && state.message === suppressedMessage) {
     return null;
   }
   return (
@@ -394,7 +416,10 @@ function FeePricingDraftSaveStatus({
   );
 }
 
-function previewRowClassName(row: FeeEvaluationPreviewRow): string {
+function previewRowClassName(
+  row: FeeEvaluationPreviewRow,
+  hasUpdateBlocker = false
+): string {
   const classNames = [`fee-evaluation-preview-group-${row.groupTone}`];
   if (row.status === "pending") {
     classNames.push("fee-evaluation-preview-row-pending");
@@ -402,12 +427,21 @@ function previewRowClassName(row: FeeEvaluationPreviewRow): string {
   if (row.rowKind === "manual_trailing") {
     classNames.push("fee-evaluation-preview-row-manual");
   }
+  if (hasUpdateBlocker) {
+    classNames.push("fee-evaluation-preview-row-blocked");
+  }
   return classNames.join(" ");
 }
 
-function ReviewCue({ row }: { row: FeeEvaluationPreviewRow }): ReactElement | null {
+function ReviewCue({
+  row,
+  updateBlocker,
+}: {
+  row: FeeEvaluationPreviewRow;
+  updateBlocker?: FeeEvaluationUpdateBlocker;
+}): ReactElement | null {
   const metadata = row.fieldMetadata.find((entry) => entry.state !== "auto_filled");
-  const message = metadata?.message ?? row.reviewReason;
+  const message = updateBlocker?.rowMessage ?? metadata?.message ?? row.reviewReason;
   if (!message) {
     return null;
   }

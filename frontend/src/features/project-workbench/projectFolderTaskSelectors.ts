@@ -106,6 +106,9 @@ export function deriveProjectFolderTasks(
   const localProjectFolderPath =
     input.publicFolderWorkflowContext?.local_official_folder_path?.trim() ?? "";
   const projectFolderOpenAvailable = Boolean(localProjectFolderPath);
+  const projectFolderUnavailableBlocker = projectFolderOpenAvailable
+    ? null
+    : "Project folder is not available yet.";
   return [
     {
       key: "project_folder",
@@ -124,9 +127,9 @@ export function deriveProjectFolderTasks(
         : ["Project folder is not available yet."],
       warnings: basicInformationBlocker ? [basicInformationBlocker] : [],
     },
-    deriveWorkflowTask(input, contextBlocker, "sync"),
-    deriveWorkflowTask(input, contextBlocker, "submit"),
-    deriveWorkflowTask(input, contextBlocker, "pull"),
+    deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "sync"),
+    deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "submit"),
+    deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "pull"),
   ];
 }
 
@@ -174,6 +177,7 @@ function isBasicInformationRequiredFormsBlocker(message: string): boolean {
 function deriveWorkflowTask(
   input: ProjectFolderTaskSelectorInput,
   contextBlocker: string | null,
+  projectFolderBlocker: string | null,
   operation: PublicFolderWorkflowOperationType
 ): ProjectFolderTaskRow {
   const preview = input.publicFolderWorkflowPreviews?.[operation] ?? null;
@@ -182,7 +186,7 @@ function deriveWorkflowTask(
   const busy = input.publicFolderWorkflowBusyOperation === operation;
   const confirming = input.publicFolderWorkflowConfirmingOperation === operation;
   const readonlyReason = input.lifecycleReadonlyReason ?? null;
-  const blocker = readonlyReason ?? contextBlocker ?? issue;
+  const blocker = readonlyReason ?? projectFolderBlocker ?? contextBlocker ?? issue;
   const definition = workflowDefinition(operation);
   const canRun = !blocker && Boolean(input.publicFolderWorkflowContext) && !busy;
   const detailMessages = [
@@ -208,9 +212,9 @@ function deriveWorkflowTask(
       operation === "sync"
         ? {
             checked: input.publicFolderWorkflowContext?.auto_sync_enabled ?? false,
-            disabled: Boolean(readonlyReason || contextBlocker || input.publicFolderWorkflowAutoSyncBusy),
+            disabled: Boolean(readonlyReason || projectFolderBlocker || contextBlocker || input.publicFolderWorkflowAutoSyncBusy),
             busy: input.publicFolderWorkflowAutoSyncBusy,
-            blocker: readonlyReason ?? contextBlocker,
+            blocker: readonlyReason ?? projectFolderBlocker ?? contextBlocker,
           }
         : undefined,
     confirming,

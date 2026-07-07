@@ -41,11 +41,13 @@ import {
   buildFeeEvaluationPreviewScopeTotal,
   buildFeeEvaluationPreviewTotals,
   buildFeeEvaluationPreviewWorkingHours,
+  buildFeeEvaluationUpdateBlockers,
   applyFeeEvaluationPreviewEdits,
   filterFeeEvaluationPreviewRowsForScope,
   hydrateFeeEvaluationPreviewEditsFromSavedDraft,
   type FeeEvaluationEditableField,
   type FeeEvaluationPreviewEditState,
+  type FeeEvaluationUpdateBlocker,
 } from "./feeEvaluationPreviewModel";
 
 type DraftLoadState =
@@ -503,6 +505,32 @@ export function FeeEvaluationReviewExportPage({
       ),
     [allPreviewRows, costPreviewValues.externalCost, previewTotals.grandCost]
   );
+  const updateFeeBlockers = useMemo(
+    () =>
+      buildFeeEvaluationUpdateBlockers({
+        rows: allPreviewRows,
+        totals: {
+          testingFeeTotal: allPreviewTotal,
+          workingHours: allWorkingHoursLabel,
+          labManpowerCost: allLabManpowerCostLabel,
+          externalCost: costPreviewValues.externalCost,
+          grandCost: allGrandCostLabel,
+        },
+      }),
+    [
+      allGrandCostLabel,
+      allLabManpowerCostLabel,
+      allPreviewRows,
+      allPreviewTotal,
+      allWorkingHoursLabel,
+      costPreviewValues.externalCost,
+    ]
+  );
+  const firstUpdateFeeBlocker = updateFeeBlockers[0] ?? null;
+  const updateFeeBlockersByRowId = useMemo(
+    () => updateBlockersByRowId(updateFeeBlockers),
+    [updateFeeBlockers]
+  );
   const currentPricingDraftPayload = useMemo(
     () => buildEditedExportPayload(previewRows, costPreviewValues),
     [costPreviewValues, previewRows]
@@ -539,6 +567,7 @@ export function FeeEvaluationReviewExportPage({
         saveState,
         savedLocalPricingSignature,
         currentPricingDraftSignature,
+        updateFeeBlockerMessage: firstUpdateFeeBlocker?.message ?? null,
       });
   const generateDisabledReason = isLifecycleReadonly
     ? lifecycleReadonlyView.message
@@ -713,6 +742,13 @@ export function FeeEvaluationReviewExportPage({
         });
         return;
       }
+      if (firstUpdateFeeBlocker) {
+        setConfirmFeeActionState({
+          kind: "error",
+          message: firstUpdateFeeBlocker.message,
+        });
+        return;
+      }
 
       const result = await confirmFeeVersion(projectId, {
         confirmed_by: FEE_CONFIRM_INTERNAL_ACTOR,
@@ -729,7 +765,9 @@ export function FeeEvaluationReviewExportPage({
       setConfirmFeeActionState({ kind: "success", message: "Fee updated." });
       onBackToWorkbench();
     } catch (error: unknown) {
-      const message = readonlyAwareErrorMessage(error, "Unable to update Fee.");
+      const message = businessReadableConfirmFeeError(
+        readonlyAwareErrorMessage(error, "Unable to update Fee.")
+      );
       setConfirmFeeActionState({ kind: "error", message });
       setSaveState({ kind: "error", message });
     }
@@ -895,9 +933,15 @@ export function FeeEvaluationReviewExportPage({
         readOnly={isLifecycleReadonly}
         readOnlyReason={lifecycleReadonlyView.message}
         saveState={saveState}
+        suppressedSaveMessage={
+          confirmFeeActionState.kind === "error"
+            ? confirmFeeActionState.message
+            : null
+        }
         scopeFeeLabel={selectedPreviewTotal}
         rows={visiblePreviewRows}
         totals={previewTotals}
+        updateFeeBlockersByRowId={updateFeeBlockersByRowId}
       />
       <footer
         aria-label="Fee Evaluation completion actions"
@@ -945,6 +989,7 @@ function confirmFeeBlocker(input: {
   saveState: FeePricingDraftSaveState;
   savedLocalPricingSignature: string | null;
   currentPricingDraftSignature: string;
+  updateFeeBlockerMessage: string | null;
 }): string | null {
   if (input.draftState.kind === "loading") {
     return "Waiting for Fee Evaluation draft.";
@@ -982,7 +1027,22 @@ function confirmFeeBlocker(input: {
   if (input.savedLocalPricingSignature !== input.currentPricingDraftSignature) {
     return "Saving pricing draft before update.";
   }
+  if (input.updateFeeBlockerMessage) {
+    return input.updateFeeBlockerMessage;
+  }
   return null;
+}
+
+function updateBlockersByRowId(
+  blockers: FeeEvaluationUpdateBlocker[]
+): Record<string, FeeEvaluationUpdateBlocker> {
+  const byRowId: Record<string, FeeEvaluationUpdateBlocker> = {};
+  for (const blocker of blockers) {
+    if (blocker.rowId) {
+      byRowId[blocker.rowId] = blocker;
+    }
+  }
+  return byRowId;
 }
 
 async function loadPageContext(projectId: string): Promise<{
@@ -1067,6 +1127,16 @@ function readonlyAwareErrorMessage(error: unknown, fallback: string): string {
     return deriveReadonlyApiErrorMessage(detail);
   }
   return error instanceof ApiRequestError ? error.message : fallback;
+}
+
+function businessReadableConfirmFeeError(message: string): string {
+  if (
+    /must be numeric\.$/.test(message) ||
+    message === "Saved Fee Evaluation pricing draft totals are incomplete."
+  ) {
+    return "Fee Evaluation pricing is incomplete. Review highlighted rows before Update Fee.";
+  }
+  return message;
 }
 
 type AutosaveSettlement =

@@ -30,6 +30,19 @@ def test_paragraph_texts_with_numbering_materializes_decimal_headings() -> None:
     assert paragraphs[6] == "Visual inspection according to EIA-364-18."
 
 
+def test_paragraph_texts_with_numbering_ignores_missing_numbering_part() -> None:
+    document = _FakeDocumentWithoutNumbering(
+        paragraphs=[
+            _paragraph("Matrix section", num_id=1, ilvl=0),
+            _paragraph("Visual inspection"),
+        ],
+    )
+
+    paragraphs = paragraph_texts_with_numbering(document)
+
+    assert paragraphs == ["Matrix section", "Visual inspection"]
+
+
 @dataclass
 class _FakeDocument:
     paragraphs: list[object]
@@ -42,6 +55,20 @@ class _FakeDocument:
 class _Part:
     def __init__(self, numbering_xml: str) -> None:
         self.numbering_part = _NumberingPart(numbering_xml)
+
+
+@dataclass
+class _FakeDocumentWithoutNumbering:
+    paragraphs: list[object]
+
+    def __post_init__(self) -> None:
+        self.part = _PartWithoutNumbering()
+
+
+class _PartWithoutNumbering:
+    @property
+    def numbering_part(self) -> object:
+        raise NotImplementedError
 
 
 class _NumberingPart:

@@ -39,7 +39,6 @@ class ExcelComLtrWorkbookReadonlyOpenGateway:
 
         pythoncom.CoInitialize()
         try:
-            _raise_if_workbook_already_open(win32com.client, path)
             excel = win32com.client.DispatchEx("Excel.Application")
             excel.Visible = True
             excel.DisplayAlerts = True
@@ -97,27 +96,6 @@ def _open_workbook_readonly(
     )
 
 
-def _raise_if_workbook_already_open(win32_client, workbook_path: Path) -> None:
-    """Block rather than mutate a user-controlled open Excel workbook."""
-    try:
-        excel = win32_client.GetActiveObject("Excel.Application")
-    except Exception:
-        return
-    try:
-        workbooks = list(excel.Workbooks)
-    except Exception:
-        return
-    for workbook in workbooks:
-        try:
-            full_name = Path(str(workbook.FullName))
-        except Exception:
-            continue
-        if _path_key(full_name) == _path_key(workbook_path):
-            raise LtrWorkbookReadonlyOpenError(
-                "The LTR workbook is already open in Excel. Close it and retry."
-            )
-
-
 def _prepare_sheet_for_review(worksheet) -> None:
     """Unhide rows/columns and clear active filters in the read-only viewer session."""
     _try_optional_excel_adjustment(lambda: setattr(worksheet.Rows, "Hidden", False))
@@ -140,7 +118,3 @@ def _try_optional_excel_adjustment(action) -> None:
         action()
     except Exception:
         return
-
-
-def _path_key(path: Path) -> str:
-    return str(path.resolve()).casefold()

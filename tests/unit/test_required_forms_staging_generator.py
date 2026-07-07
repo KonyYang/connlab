@@ -19,6 +19,11 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
 )
+from backend.domain import (
+    ExternalResource,
+    ExternalResourceType,
+    ExternalResourceValidationStatus,
+)
 
 
 def test_staging_generator_passes_raw_basic_information_to_customer_feedback(
@@ -30,6 +35,7 @@ def test_staging_generator_passes_raw_basic_information_to_customer_feedback(
             data_dir=tmp_path / "data",
             templates_dir=tmp_path / "templates",
         ),
+        fee_template_resource_store=_TemplateFolderStore(tmp_path / "templates"),
         test_record_service=SimpleNamespace(),
         fee_export_service=SimpleNamespace(),
         customer_feedback_service=feedback_service,
@@ -61,15 +67,19 @@ def test_staging_generator_passes_raw_basic_information_to_customer_feedback(
 def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
     tmp_path: Path,
 ) -> None:
-    templates_dir = tmp_path / "templates"
-    templates_dir.mkdir()
-    (templates_dir / "FDQF-E-176 Fee Form.xls").write_bytes(b"template")
+    runtime_templates_dir = tmp_path / "runtime-templates"
+    settings_template_folder = tmp_path / "settings-template-folder"
+    runtime_templates_dir.mkdir()
+    settings_template_folder.mkdir()
+    template = settings_template_folder / "FDQF-E-176 Fee Form.xls"
+    template.write_bytes(b"template")
     fee_export = _FeeExportService()
     generator = _RequiredFormsStagingGenerator(
         settings=SimpleNamespace(
             data_dir=tmp_path / "data",
-            templates_dir=templates_dir,
+            templates_dir=runtime_templates_dir,
         ),
+        fee_template_resource_store=_TemplateFolderStore(settings_template_folder),
         test_record_service=SimpleNamespace(),
         fee_export_service=fee_export,
         customer_feedback_service=SimpleNamespace(),
@@ -103,6 +113,40 @@ def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
     assert fee_export.command.edited_values is not None
     assert fee_export.command.edited_values.rows[0].notes == "阿第三方"
     assert fee_export.command.fill_mode == "matrix_basic"
+    assert fee_export.command.template_path == template
+
+
+def test_required_forms_test_record_uses_settings_template_folder(
+    tmp_path: Path,
+) -> None:
+    settings_template_folder = tmp_path / "settings-template-folder"
+    settings_template_folder.mkdir()
+    template = settings_template_folder / "FDQF-E-036 Test Record Template-Even.docx"
+    template.write_bytes(b"template")
+    test_record_service = _TestRecordService()
+    generator = _RequiredFormsStagingGenerator(
+        settings=SimpleNamespace(
+            data_dir=tmp_path / "data",
+            templates_dir=tmp_path / "runtime-templates",
+            test_record=SimpleNamespace(template_path=None),
+        ),
+        fee_template_resource_store=_TemplateFolderStore(settings_template_folder),
+        test_record_service=test_record_service,
+        fee_export_service=SimpleNamespace(),
+        customer_feedback_service=SimpleNamespace(),
+    )
+
+    output = generator.generate(
+        project_id="P1",
+        key="test_record",
+        target_name="DL-001 Test Record.docx",
+        basic_information=_basic_information(),
+        confirmed_fee=SimpleNamespace(pricing_snapshot_json="{}"),
+    )
+
+    assert output.name == "DL-001 Test Record.docx"
+    assert test_record_service.command is not None
+    assert test_record_service.command.template_path == template
 
 
 class _FeeExportService:
@@ -113,6 +157,18 @@ class _FeeExportService:
         self.command = command
         output = command.output_dir / command.output_file_name
         output.write_bytes(b"fee")
+        return SimpleNamespace(output_path=output)
+
+
+class _TestRecordService:
+    def __init__(self) -> None:
+        self.command = None
+
+    def generate(self, command):
+        self.command = command
+        output = command.output_dir / "generated-test-record.docx"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"test record")
         return SimpleNamespace(output_path=output)
 
 
@@ -133,6 +189,25 @@ class _CustomerFeedbackService:
             template_path=Path("template.xlsx"),
             output_path=self.output_path,
             output_file_name=self.output_path.name,
+        )
+
+
+class _TemplateFolderStore:
+    def __init__(self, template_folder: Path) -> None:
+        self.template_folder = template_folder
+
+    def get_by_type(
+        self,
+        resource_type: ExternalResourceType,
+    ) -> ExternalResource | None:
+        if resource_type is not ExternalResourceType.PROJECT_FOLDER_TEMPLATE:
+            return None
+        return ExternalResource(
+            resource_id="template-folder",
+            resource_type=ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
+            path=self.template_folder,
+            active=True,
+            validation_status=ExternalResourceValidationStatus.VALID,
         )
 
 

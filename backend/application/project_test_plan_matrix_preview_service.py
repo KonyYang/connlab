@@ -207,9 +207,11 @@ def _preview_from_snapshot(
     )
     selected_location = None
     if parsed.selected_table_index is not None:
-        selected_location = next(
-            (item for item in table_locations if item.table_index == parsed.selected_table_index),
-            None,
+        selected_location = _selected_location_for_preview(
+            table_locations=table_locations,
+            selected_table_index=parsed.selected_table_index,
+            page_number=page_number,
+            page_table_index=page_table_index,
         )
     return ProjectTestPlanMatrixPreview(
         project_id=project_id,
@@ -260,3 +262,30 @@ def _select_table_index(
             if query in hay:
                 return item.table_index
     return None
+
+
+def _selected_location_for_preview(
+    *,
+    table_locations: tuple,
+    selected_table_index: int,
+    page_number: int | None,
+    page_table_index: int | None,
+) -> object | None:
+    """Return the location that best reflects the operator's selector."""
+    if page_number is not None and page_table_index is not None:
+        requested = next(
+            (
+                item
+                for item in table_locations
+                if item.table_index == selected_table_index
+                and item.page_number == page_number
+                and item.page_table_index == page_table_index
+            ),
+            None,
+        )
+        if requested is not None:
+            return requested
+    return next(
+        (item for item in table_locations if item.table_index == selected_table_index),
+        None,
+    )
