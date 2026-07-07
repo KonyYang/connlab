@@ -521,6 +521,7 @@ export function ProjectWorkbenchLayout({
               }
               projectFolderTasks={projectFolderTasks}
               projectId={project.project_id}
+              registeredLtrNumber={projectNumber}
               runtimeProjectionSnapshot={runtimeProjectionSnapshot}
               selectedProjectionToken={selectedProjectionToken}
               setSelectedProjectionToken={setSelectedProjectionToken}

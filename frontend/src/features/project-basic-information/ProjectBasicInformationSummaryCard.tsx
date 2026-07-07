@@ -3,9 +3,11 @@ import {
   commitLtrWorkbookBasicInformationSync,
   openLtrWorkbookBasicInformationSyncReadonly,
   previewLtrWorkbookBasicInformationSync,
+  previewRegisteredLtrWorkbookRow,
   type LtrWorkbookBasicInformationSyncCommit,
   type LtrWorkbookBasicInformationSyncPreview,
   type ProjectBasicInformationResponse,
+  type RegisteredLtrWorkbookRowPreview,
 } from "../../api/client";
 import {
   selectBasicInformationMissingLabels,
@@ -16,6 +18,7 @@ import {
 type ProjectBasicInformationSummaryCardProps = {
   projectId: string;
   basicInformation: ProjectBasicInformationResponse | null;
+  registeredLtrNumber?: string | null;
   loading: boolean;
   error: string | null;
 };
@@ -23,9 +26,14 @@ type ProjectBasicInformationSummaryCardProps = {
 export function ProjectBasicInformationSummaryCard({
   projectId,
   basicInformation,
+  registeredLtrNumber = null,
   loading,
   error,
 }: ProjectBasicInformationSummaryCardProps): ReactElement {
+  const [registeredRowPreview, setRegisteredRowPreview] =
+    useState<RegisteredLtrWorkbookRowPreview | null>(null);
+  const [registeredRowLoading, setRegisteredRowLoading] = useState(false);
+  const [registeredRowError, setRegisteredRowError] = useState<string | null>(null);
   const [ltrPreview, setLtrPreview] =
     useState<LtrWorkbookBasicInformationSyncPreview | null>(null);
   const [ltrPreviewLoading, setLtrPreviewLoading] = useState(false);
@@ -38,6 +46,7 @@ export function ProjectBasicInformationSummaryCard({
   const missingLabels = selectBasicInformationMissingLabels(basicInformation);
   const changedLabels = selectChangedSourceFieldLabels(basicInformation);
   const hasConfirmed = Boolean(basicInformation?.latest_confirmed);
+  const canPreviewRegisteredLtr = Boolean(registeredLtrNumber);
   const canUpdateLtr = basicInformation?.status === "confirmed" && hasConfirmed;
   const showStatusBadge = loading || basicInformation?.status !== "confirmed";
   const hasLtrPreviewChanges = Boolean(
@@ -48,6 +57,23 @@ export function ProjectBasicInformationSummaryCard({
     ltrPreview.confirmed_basic_information_version !== null &&
     ltrPreview.confirmed_basic_information_source_signature_hash !== null &&
     hasLtrPreviewChanges;
+
+  async function handlePreviewRegisteredRow(): Promise<void> {
+    if (!canPreviewRegisteredLtr) {
+      return;
+    }
+    setRegisteredRowLoading(true);
+    setRegisteredRowError(null);
+    setRegisteredRowPreview(null);
+    try {
+      const preview = await previewRegisteredLtrWorkbookRow(projectId);
+      setRegisteredRowPreview(preview);
+    } catch (previewError) {
+      setRegisteredRowError(toLtrSyncOperatorMessage(previewError));
+    } finally {
+      setRegisteredRowLoading(false);
+    }
+  }
 
   async function handlePreviewLtrSync(): Promise<void> {
     if (!canUpdateLtr) {
@@ -147,6 +173,18 @@ export function ProjectBasicInformationSummaryCard({
         <div className="runtime-console-basic-information-actions">
           <button
             type="button"
+            onClick={handlePreviewRegisteredRow}
+            disabled={!canPreviewRegisteredLtr || registeredRowLoading}
+            title={
+              canPreviewRegisteredLtr
+                ? "Preview the registered LTR workbook row read-only."
+                : "Registered LTR is required for workbook row preview."
+            }
+          >
+            {registeredRowLoading ? "Loading row..." : "LTR workbook row preview"}
+          </button>
+          <button
+            type="button"
             onClick={handlePreviewLtrSync}
             disabled={!canUpdateLtr || ltrPreviewLoading || ltrCommitLoading}
             title={
@@ -155,28 +193,123 @@ export function ProjectBasicInformationSummaryCard({
                 : "Confirm Basic Information before updating LTR."
             }
           >
-            {ltrPreviewLoading ? "Previewing..." : "LTR update preview"}
+            {ltrPreviewLoading ? "Previewing..." : "Update LTR from Basic Information"}
           </button>
         </div>
       ) : null}
       {!loading && !error ? (
-        <LtrWorkbookSyncPanel
-          preview={ltrPreview}
-          previewLoading={ltrPreviewLoading}
-          commitLoading={ltrCommitLoading}
-          openLoading={ltrOpenLoading}
-          error={ltrSyncError}
-          result={ltrSyncResult}
-          canCommit={canCommitLtrPreview}
-          onCommit={handleCommitLtrSync}
-          onOpenWorkbook={handleOpenLtrWorkbookReadonly}
-          onCancel={() => {
-            setLtrPreview(null);
-            setLtrSyncError(null);
-          }}
-        />
+        <>
+          <RegisteredLtrWorkbookRowPreviewPanel
+            preview={registeredRowPreview}
+            loading={registeredRowLoading}
+            error={registeredRowError}
+            onClose={() => {
+              setRegisteredRowPreview(null);
+              setRegisteredRowError(null);
+            }}
+          />
+          <LtrWorkbookSyncPanel
+            preview={ltrPreview}
+            previewLoading={ltrPreviewLoading}
+            commitLoading={ltrCommitLoading}
+            openLoading={ltrOpenLoading}
+            error={ltrSyncError}
+            result={ltrSyncResult}
+            canCommit={canCommitLtrPreview}
+            onCommit={handleCommitLtrSync}
+            onOpenWorkbook={handleOpenLtrWorkbookReadonly}
+            onCancel={() => {
+              setLtrPreview(null);
+              setLtrSyncError(null);
+            }}
+          />
+        </>
       ) : null}
     </section>
+  );
+}
+
+type RegisteredLtrWorkbookRowPreviewPanelProps = {
+  preview: RegisteredLtrWorkbookRowPreview | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+};
+
+function RegisteredLtrWorkbookRowPreviewPanel({
+  preview,
+  loading,
+  error,
+  onClose,
+}: RegisteredLtrWorkbookRowPreviewPanelProps): ReactElement | null {
+  if (!loading && !error && !preview) {
+    return null;
+  }
+
+  return (
+    <div className="runtime-console-ltr-sync-panel" aria-live="polite">
+      {loading ? <p>Loading LTR workbook row...</p> : null}
+      {error ? (
+        <p className="runtime-console-ltr-sync-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {preview && !loading ? (
+        <>
+          <div className="runtime-console-ltr-sync-heading">
+            <span>LTR workbook row</span>
+            {preview.ltr_number ? <span>{preview.ltr_number}</span> : null}
+          </div>
+          <dl className="runtime-console-ltr-sync-context">
+            <div>
+              <dt>Workbook</dt>
+              <dd>{preview.workbook_path ?? "-"}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>{preview.sheet_name && preview.row_number ? `${preview.sheet_name} row ${preview.row_number}` : "-"}</dd>
+            </div>
+          </dl>
+          {preview.blockers.length > 0 ? (
+            <ul className="runtime-console-ltr-sync-list is-blocked">
+              {preview.blockers.map((blocker) => (
+                <li key={blocker}>{blocker}</li>
+              ))}
+            </ul>
+          ) : null}
+          {preview.warnings.length > 0 ? (
+            <ul className="runtime-console-ltr-sync-list">
+              {preview.warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+          {preview.row_values.length > 0 ? (
+            <table className="runtime-console-ltr-sync-comparison">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">LTR workbook</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.row_values.map((value) => (
+                  <tr key={value.field_name}>
+                    <th scope="row">{value.label}</th>
+                    <td>{formatPreviewValue(value.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          <div className="runtime-console-ltr-sync-actions">
+            <button type="button" onClick={onClose}>
+              Close preview
+            </button>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 

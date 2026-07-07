@@ -20,6 +20,7 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   onPublicFolderAutoSyncChange: (enabled: boolean) => void;
   projectFolderTasks: ProjectFolderTaskRow[];
   projectId: string;
+  registeredLtrNumber: string | null;
   basicInformation: ProjectRuntimeConsoleModel["basicInformation"];
   basicInformationLoading: ProjectRuntimeConsoleModel["basicInformationLoading"];
   basicInformationError: ProjectRuntimeConsoleModel["basicInformationError"];
@@ -38,6 +39,7 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   onPublicFolderAutoSyncChange,
   projectFolderTasks,
   projectId,
+  registeredLtrNumber,
   basicInformation,
   basicInformationLoading,
   basicInformationError,
@@ -77,6 +79,7 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
               <ProjectBasicInformationSummaryCard
                 projectId={projectId}
                 basicInformation={basicInformation}
+                registeredLtrNumber={registeredLtrNumber}
                 loading={basicInformationLoading}
                 error={basicInformationError}
               />

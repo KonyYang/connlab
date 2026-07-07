@@ -65,6 +65,9 @@ from backend.application.ltr_workbook_write_commit_service import (
 from backend.application.ltr_workbook_basic_information_sync_service import (
     LtrWorkbookBasicInformationSyncService,
 )
+from backend.application.registered_ltr_workbook_row_preview_service import (
+    RegisteredLtrWorkbookRowPreviewService,
+)
 from backend.application.ltr_workbook_local_config_service import (
     LtrWorkbookLocalConfigService,
 )
@@ -1823,6 +1826,29 @@ def get_specified_ltr_workbook_authority_preview_service(
     )
 
 
+def get_registered_ltr_workbook_row_preview_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> RegisteredLtrWorkbookRowPreviewService:
+    """Build the read-only registered LTR workbook row preview service."""
+    transaction_gateway = LtrWorkbookTransactionGateway(
+        OfficeFacade(),
+        LtrWorkbookTransactionConfig(
+            path=settings.ltr_workbook.path,
+            write_enabled=False,
+            modify_password=settings.ltr_workbook.modify_password,
+            lock_dir=settings.ltr_workbook.lock_dir,
+            lock_timeout_seconds=settings.ltr_workbook.lock_timeout_seconds,
+            backup_dir=settings.ltr_workbook.backup_dir,
+            backup_retention_count=settings.ltr_workbook.backup_retention_count,
+            backup_retention_days=settings.ltr_workbook.backup_retention_days,
+            backup_retention_max_mb=settings.ltr_workbook.backup_retention_max_mb,
+        ),
+    )
+    return RegisteredLtrWorkbookRowPreviewService(
+        ltr_store=LtrRecordRepository(session),
+        transaction_gateway=transaction_gateway,
+    )
 def get_ltr_authority_service(
     workbook_service: LtrWorkbookWriteCommitService = Depends(
         get_ltr_workbook_write_commit_service

@@ -19,6 +19,9 @@ from backend.api.routes_ltr_workbook import router as ltr_workbook_router
 from backend.api.routes_ltr_workbook_basic_information_sync import (
     router as ltr_workbook_basic_information_sync_router,
 )
+from backend.api.routes_ltr_workbook_registered_row_preview import (
+    router as ltr_workbook_registered_row_preview_router,
+)
 from backend.api.routes_ltr_workbook_compatibility import (
     router as ltr_workbook_compatibility_router,
 )
@@ -142,6 +145,7 @@ app.include_router(lookup_options_router)
 app.include_router(ltr_router)
 app.include_router(ltr_workbook_router)
 app.include_router(ltr_workbook_basic_information_sync_router)
+app.include_router(ltr_workbook_registered_row_preview_router)
 app.include_router(ltr_workbook_compatibility_router)
 app.include_router(new_project_router)
 app.include_router(project_router)
