@@ -244,14 +244,17 @@ class ProductSpecMatrixParser:
             if not test_item or _looks_like_note_or_footer(test_item):
                 continue
             source_section = _cell(row, header.section_column) if header.section_column is not None else None
-            row_detail = _row_detail_for_section(
-                source_section=source_section,
-                test_item=test_item,
-                section_text_blocks=section_text_blocks,
-                row_detail_cache=row_detail_cache,
-                extract_row_detail=extract_row_details,
-            )
             is_sample_row = _looks_like_sample_row(test_item, source_section, self._SAMPLE_ROW_RE)
+            is_information_row = _looks_like_information_only_row(test_item, source_section, row, header)
+            row_detail = None
+            if not is_sample_row and not is_information_row:
+                row_detail = _row_detail_for_section(
+                    source_section=source_section,
+                    test_item=test_item,
+                    section_text_blocks=section_text_blocks,
+                    row_detail_cache=row_detail_cache,
+                    extract_row_detail=extract_row_details,
+                )
             row_item_section_note = _row_item_section_note(test_item, source_section, marker_notes)
             row_tokens: dict[str, str] = {}
             for column, group_label in header.group_columns:
@@ -293,7 +296,7 @@ class ProductSpecMatrixParser:
                     test_item=test_item,
                     source_section=source_section,
                     group_tokens=row_tokens,
-                    is_sample_row=is_sample_row,
+                    is_sample_row=is_sample_row or is_information_row,
                     method=row_detail.method if row_detail else None,
                     condition=row_detail.condition if row_detail else None,
                     requirement=row_detail.requirement if row_detail else None,
@@ -374,7 +377,13 @@ def _parse_step_tokens(
     """Parse matrix step tokens preserving raw token and suffix."""
     warnings: list[str] = []
     tokens: list[dict[str, int | str | None]] = []
-    normalized = value.replace("，", ",").replace(";", ",").replace("\n", ",")
+    normalized = (
+        value.replace("，", ",")
+        .replace("、", ",")
+        .replace("\u040e\u045e", ",")
+        .replace(";", ",")
+        .replace("\n", ",")
+    )
     for token in (part.strip() for part in normalized.split(",")):
         if not token:
             continue
@@ -451,3 +460,22 @@ def _looks_like_sample_row(
     if not section:
         return True
     return ProductSpecMatrixParser._SECTION_STEP_LIKE_RE.match(section) is None
+
+
+def _looks_like_information_only_row(
+    test_item: str | None,
+    source_section: str | None,
+    row: list[str],
+    header: _Header,
+) -> bool:
+    """Identify section label rows that only carry a test-item label."""
+    if not (test_item or "").strip():
+        return False
+    if (source_section or "").strip():
+        return False
+    for index, value in enumerate(row):
+        if index == header.item_column:
+            continue
+        if _clean(value):
+            return False
+    return True

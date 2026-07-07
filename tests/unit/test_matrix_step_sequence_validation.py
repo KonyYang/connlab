@@ -20,6 +20,13 @@ def test_parse_step_tokens_splits_full_width_commas_after_confirmation() -> None
     assert [item.sequence for item in parsed] == [8, 10]
 
 
+def test_parse_step_tokens_splits_ideographic_comma_after_confirmation() -> None:
+    parsed, warnings = parse_step_tokens("1、8 2Ўў9")
+    assert warnings == ()
+    assert [item.raw_token for item in parsed] == ["1", "8", "2", "9"]
+    assert [item.sequence for item in parsed] == [1, 8, 2, 9]
+
+
 def test_parse_step_tokens_uses_numeric_raw_token_and_preserves_suffix_note() -> None:
     parsed, warnings = parse_step_tokens("3(a),4(b),6#,10*")
     assert warnings == ()

@@ -34,6 +34,25 @@ describe("matrixSchedulePlanning", () => {
     expect(result.isValid).toBe(true);
   });
 
+  it("counts ideographic comma and PDF comma mojibake tokens for multiplier days", () => {
+    const result = calculateMatrixSchedule(
+      [
+        {
+          id: "r1",
+          isSampleRow: false,
+          dayExpression: "0.5x",
+          groups: { g1: "1、8 2Ўў3" },
+        },
+      ],
+      [{ id: "g1", name: "1", isSelected: true }],
+      emptySchedulePlan()
+    );
+
+    expect(result.groupDays.g1).toBe(2);
+    expect(result.criticalGroupDays).toBe(2);
+    expect(result.isValid).toBe(true);
+  });
+
   it("ignores invalid day expressions on rows without selected group tokens", () => {
     const result = calculateMatrixSchedule(
       [

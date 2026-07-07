@@ -68,7 +68,7 @@ def count_step_tokens(cell_value: str | None) -> int:
     text = (cell_value or "").strip()
     if not text:
         return 0
-    return len([token for token in re.split(r"[\s,]+", text) if token.strip()])
+    return len([token for token in re.split(r"[\s,，、\u040e\u045e]+", text) if token.strip()])
 
 
 def calculate_group_test_days(

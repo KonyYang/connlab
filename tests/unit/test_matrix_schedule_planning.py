@@ -48,6 +48,16 @@ def test_multiplier_day_expression_counts_group_tokens() -> None:
     assert totals["g1"] == Decimal("1.0")
 
 
+def test_multiplier_day_expression_counts_ideographic_comma_tokens() -> None:
+    totals = calculate_group_test_days(
+        rows=[{"row_id": "r1", "day_expression": "0.5x"}],
+        cells=[{"row_id": "r1", "group_id": "g1", "cell_value": "1、8 2Ўў3"}],
+        selected_group_ids=["g1"],
+    )
+
+    assert totals["g1"] == Decimal("2.0")
+
+
 def test_plain_day_expression_counts_once_when_group_has_tokens() -> None:
     totals = calculate_group_test_days(
         rows=[{"row_id": "r1", "day_expression": "1"}],

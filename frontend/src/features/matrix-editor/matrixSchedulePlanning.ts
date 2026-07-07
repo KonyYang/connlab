@@ -176,7 +176,7 @@ function parseBufferDays(value: string): { value: number | null; error: string |
 }
 
 function countStepTokens(value: string): number {
-  return value.trim().split(/[\s,]+/).filter((token) => token.trim().length > 0).length;
+  return value.trim().split(/[\s,，、\u040e\u045e]+/).filter((token) => token.trim().length > 0).length;
 }
 
 function validateDatePlan(

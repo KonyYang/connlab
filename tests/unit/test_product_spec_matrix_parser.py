@@ -178,6 +178,44 @@ def test_product_spec_matrix_parser_warns_for_malformed_sequence() -> None:
     assert "Unrecognized sequence token 'A'" in result.groups[0].steps[0].warnings[0]
 
 
+def test_product_spec_matrix_parser_splits_ideographic_comma_sequence() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["Visual Examination", "7.1", "1、8"],
+                ["Contact Resistance", "6.1", "2Ўў9"],
+            ]
+        ]
+    )
+
+    assert result.warnings == ()
+    assert [step.sequence for step in result.groups[0].steps] == [1, 2, 8, 9]
+    assert [step.raw_token for step in result.groups[0].steps] == ["1", "2", "8", "9"]
+
+
+def test_product_spec_matrix_parser_marks_item_only_rows_as_information() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1", "Group 2"],
+                ["Visual Examination", "7.1", "1", "1"],
+                ["Mechanical:", "", "", ""],
+                ["Contact Resistance", "6.1", "2", ""],
+            ]
+        ]
+    )
+
+    information_row = result.rows[1]
+    assert information_row.test_item == "Mechanical:"
+    assert information_row.is_sample_row is True
+    assert information_row.group_tokens == {"Group 1": "", "Group 2": ""}
+    assert [step.test_item for step in result.groups[0].steps] == [
+        "Visual Examination",
+        "Contact Resistance",
+    ]
+
+
 def test_product_spec_matrix_parser_preserves_duplicate_sequence_warning() -> None:
     result = ProductSpecMatrixParser().parse_tables(
         [

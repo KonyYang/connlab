@@ -1078,27 +1078,27 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1,2,3,4\uFF081\uFF09");
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.queryByText("Only digits, commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
+    expect(screen.queryByText(/Only digits,/)).toBeNull();
   });
 
-  it("treats Chinese commas and spaces as step separators", async () => {
+  it("treats Chinese commas, ideographic commas, PDF comma mojibake, and spaces as step separators", async () => {
     const seed = buildSessionSeed();
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
       ...seed,
       editor_draft: {
         ...seed.editor_draft,
-        cells: [{ draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1\uFF0C2 3,4\uFF081\uFF09 5" }],
+        cells: [{ draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1、8 2Ўў3,4\uFF081\uFF09 5 6 7" }],
       },
     });
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1\uFF0C2 3,4\uFF081\uFF09 5");
-    expect(screen.getByText("Group 1: 5 steps")).toBeTruthy();
+    expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1、8 2Ўў3,4\uFF081\uFF09 5 6 7");
+    expect(screen.getByText("Group 1: 8 steps")).toBeTruthy();
     expect(screen.getByLabelText("Step 4 description")).toBeTruthy();
-    expect(screen.getByLabelText("Step 5 description")).toBeTruthy();
+    expect(screen.getByLabelText("Step 8 description")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.queryByText("Only digits, commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
+    expect(screen.queryByText(/Only digits,/)).toBeNull();
   });
 
   it("lets source instruction rows be marked as non-test rows so their text does not block confirm", async () => {
@@ -1149,7 +1149,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       { timeout: 1600 }
     );
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.queryByText("Only digits, commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).")).toBeNull();
+    expect(screen.queryByText(/Only digits,/)).toBeNull();
   });
 
   it("hides inline group checkboxes while selected-only filtering is active", async () => {

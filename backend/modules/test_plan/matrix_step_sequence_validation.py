@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 
 
-_TOKEN_SPLIT_RE = re.compile(r"[,，;\s]+")
+_TOKEN_SPLIT_RE = re.compile(r"[,，、\u040e\u045e;\s]+")
 _TOKEN_PARSE_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
 
 

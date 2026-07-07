@@ -282,7 +282,7 @@ def _merged_table_preview(
 
 def _clean_text(value: str) -> str:
     """Normalize whitespace in extracted PDF text."""
-    text = " ".join(value.replace("\x00", " ").split())
+    text = " ".join(value.replace("\x00", " ").replace("\u040e\u045e", "、").split())
     return re.sub(r"\bSECTIO\s+N\b", "SECTION", text, flags=re.IGNORECASE)
 
 

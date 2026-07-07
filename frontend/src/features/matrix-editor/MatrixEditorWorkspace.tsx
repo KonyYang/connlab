@@ -1158,7 +1158,9 @@ function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[
     .trim()
     .replaceAll("（", "(")
     .replaceAll("）", ")")
-    .replaceAll("，", ",");
+    .replaceAll("，", ",")
+    .replaceAll("、", ",")
+    .replaceAll("\u040e\u045e", ",");
   if (normalized === "") {
     return { isValid: true, numbers: [], tokens: [], errorMessage: "" };
   }
@@ -1175,7 +1177,7 @@ function parseStepTokens(rawValue: string): { isValid: boolean; numbers: number[
         isValid: false,
         numbers: [],
         tokens: [],
-        errorMessage: "Only digits, commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).",
+        errorMessage: "Only digits, commas, Chinese commas, and spaces are allowed (extended tokens: 3(a), 4(1), 6#, 10*).",
       };
     }
     tokens.push({
