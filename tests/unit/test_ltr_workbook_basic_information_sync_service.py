@@ -14,6 +14,7 @@ from backend.application.ltr_workbook_basic_information_sync_service import (
     PreviewLtrWorkbookBasicInformationSyncCommand,
 )
 from backend.application.project_basic_information_output import (
+    BasicInformationPreviewSnapshot,
     ConfirmedBasicInformationSnapshot,
 )
 from backend.domain import LtrRecord, LtrStatus
@@ -209,14 +210,33 @@ def test_preview_blocks_when_test_item_is_missing_without_requested_testing_fall
     )
 
 
-def test_preview_blocks_without_confirmed_basic_information() -> None:
+def test_preview_uses_initial_basic_information_without_confirmed_context() -> None:
+    draft = BasicInformationPreviewSnapshot(
+        project_id="P1",
+        version=None,
+        values=_basic_information().values,
+        source_signature_hash=None,
+    )
+    service, _ = _service(basic_information=None, preview_basic_information=draft)
+
+    preview = service.preview(PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1"))
+
+    assert preview.status == "ready"
+    assert preview.row_data is not None
+    assert preview.row_data.description_pn == "Coolpower HDF:PN-001"
+    assert preview.confirmed_basic_information_version is None
+    assert preview.confirmed_basic_information_source_signature_hash is None
+    assert any(value.changed for value in preview.comparison_values)
+
+
+def test_preview_blocks_without_any_basic_information() -> None:
     service, _ = _service(basic_information=None)
 
     preview = service.preview(PreviewLtrWorkbookBasicInformationSyncCommand(project_id="P1"))
 
     assert preview.status == "blocked"
     assert preview.blockers == (
-        "Confirm Basic Information before synchronizing LTR workbook.",
+        "Basic Information is required before previewing LTR workbook.",
     )
     assert preview.columns == ()
     assert preview.comparison_values == ()
@@ -454,6 +474,7 @@ def test_preview_uses_read_only_transaction_without_saving() -> None:
 def _service(
     *,
     basic_information: ConfirmedBasicInformationSnapshot | None | object = "__default__",
+    preview_basic_information: BasicInformationPreviewSnapshot | None = None,
     rows_by_sheet: dict[str, list[tuple[object, ...]]] | None = None,
     return_gateway: bool = False,
     readonly_open_gateway=None,
@@ -490,7 +511,10 @@ def _service(
     transaction_gateway = _FakeTransactionGateway(session)
     service = LtrWorkbookBasicInformationSyncService(
         ltr_store=_LtrStore(),
-        basic_information_reader=_BasicInformationReader(snapshot),
+        basic_information_reader=_BasicInformationReader(
+            snapshot,
+            preview_snapshot=preview_basic_information,
+        ),
         transaction_gateway=transaction_gateway,
         readonly_open_gateway=readonly_open_gateway,
     )
@@ -500,11 +524,29 @@ def _service(
 
 
 class _BasicInformationReader:
-    def __init__(self, snapshot: ConfirmedBasicInformationSnapshot | None) -> None:
+    def __init__(
+        self,
+        snapshot: ConfirmedBasicInformationSnapshot | None,
+        *,
+        preview_snapshot: BasicInformationPreviewSnapshot | None = None,
+    ) -> None:
         self.snapshot = snapshot
+        self.preview_snapshot = preview_snapshot
 
     def get_latest_confirmed(self, project_id: str):
         return self.snapshot if project_id == "P1" else None
+
+    def get_preview_snapshot(self, project_id: str):
+        if project_id != "P1":
+            return None
+        if self.snapshot is not None:
+            return BasicInformationPreviewSnapshot(
+                project_id=self.snapshot.project_id,
+                version=self.snapshot.version,
+                values=dict(self.snapshot.values),
+                source_signature_hash=self.snapshot.source_signature_hash,
+            )
+        return self.preview_snapshot
 
 
 class _LtrStore:

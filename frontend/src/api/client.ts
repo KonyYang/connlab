@@ -1922,26 +1922,6 @@ export type LtrWorkbookBasicInformationSyncPreview = {
   warnings: string[];
 };
 
-export type RegisteredLtrWorkbookRowPreviewValue = {
-  field_name: string;
-  label: string;
-  value: unknown | null;
-  is_blank: boolean;
-};
-
-export type RegisteredLtrWorkbookRowPreview = {
-  status: "found" | "not_found" | "blocked";
-  project_id: string;
-  ltr_number: string | null;
-  message: string;
-  workbook_path: string | null;
-  sheet_name: string | null;
-  row_number: number | null;
-  row_values: RegisteredLtrWorkbookRowPreviewValue[];
-  blockers: string[];
-  warnings: string[];
-};
-
 export type LtrWorkbookBasicInformationSyncCommitInput = {
   operator_confirmed: boolean;
   preview_acknowledged: boolean;
@@ -3093,15 +3073,6 @@ export function previewLtrWorkbookBasicInformationSync(
 ): Promise<LtrWorkbookBasicInformationSyncPreview> {
   return requestJson<LtrWorkbookBasicInformationSyncPreview>(
     `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/basic-information-sync/preview`,
-    { cache: "no-store" }
-  );
-}
-
-export function previewRegisteredLtrWorkbookRow(
-  projectId: string
-): Promise<RegisteredLtrWorkbookRowPreview> {
-  return requestJson<RegisteredLtrWorkbookRowPreview>(
-    `/api/projects/${encodeURIComponent(projectId)}/ltr-workbook/registered-row-preview`,
     { cache: "no-store" }
   );
 }

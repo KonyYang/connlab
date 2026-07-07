@@ -6,7 +6,6 @@ import {
   commitLtrWorkbookBasicInformationSync,
   openLtrWorkbookBasicInformationSyncReadonly,
   previewLtrWorkbookBasicInformationSync,
-  previewRegisteredLtrWorkbookRow,
 } from "../../api/client";
 import { ProjectBasicInformationSummaryCard } from "./ProjectBasicInformationSummaryCard";
 
@@ -17,7 +16,6 @@ vi.mock("../../api/client", async (importOriginal) => {
     previewLtrWorkbookBasicInformationSync: vi.fn(),
     commitLtrWorkbookBasicInformationSync: vi.fn(),
     openLtrWorkbookBasicInformationSyncReadonly: vi.fn(),
-    previewRegisteredLtrWorkbookRow: vi.fn(),
   };
 });
 
@@ -30,14 +28,12 @@ const commitLtrWorkbookBasicInformationSyncMock = vi.mocked(
 const openLtrWorkbookBasicInformationSyncReadonlyMock = vi.mocked(
   openLtrWorkbookBasicInformationSyncReadonly
 );
-const previewRegisteredLtrWorkbookRowMock = vi.mocked(previewRegisteredLtrWorkbookRow);
 
 describe("ProjectBasicInformationSummaryCard", () => {
   beforeEach(() => {
     previewLtrWorkbookBasicInformationSyncMock.mockReset();
     commitLtrWorkbookBasicInformationSyncMock.mockReset();
     openLtrWorkbookBasicInformationSyncReadonlyMock.mockReset();
-    previewRegisteredLtrWorkbookRowMock.mockReset();
   });
 
   it("shows unconfirmed state without an inline edit action", () => {
@@ -57,10 +53,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
     expect(screen.getByText("Confirm from Basic Information")).toBeTruthy();
     expect(screen.getByText("Project Leader")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.getByRole("button", { name: "LTR workbook row preview" }).hasAttribute("disabled")).toBe(false);
-    expect(
-      screen.getByRole("button", { name: "Update LTR from Basic Information" }).hasAttribute("disabled")
-    ).toBe(true);
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("renders an on-demand confirmed LTR workbook update entry", () => {
@@ -85,42 +78,44 @@ describe("ProjectBasicInformationSummaryCard", () => {
     expect(screen.queryByText("Description P/N")).toBeNull();
     expect(screen.queryByText("Test Item")).toBeNull();
     expect(screen.queryByRole("button", { name: "View" })).toBeNull();
-    expect(screen.getByRole("button", { name: "LTR workbook row preview" }).hasAttribute("disabled")).toBe(true);
-    expect(
-      screen.getByRole("button", { name: "Update LTR from Basic Information" }).hasAttribute("disabled")
-    ).toBe(false);
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(false);
   });
 
-  it("opens the registered LTR workbook row as read-only without Basic Information confirmation", async () => {
+  it("opens the existing LTR update preview from unconfirmed initial Basic Information", async () => {
     const user = userEvent.setup();
-    previewRegisteredLtrWorkbookRowMock.mockResolvedValue({
-      status: "found",
+    previewLtrWorkbookBasicInformationSyncMock.mockResolvedValue({
+      status: "ready",
       project_id: "P1",
       ltr_number: "DL-2026-05-011",
-      message: "LTR workbook row found.",
       workbook_path: "P:\\LTR\\LTR.xlsx",
-      sheet_name: "2026",
-      row_number: 42,
-      row_values: [
+      target_sheet: "2026",
+      target_row: 42,
+      columns: [],
+      comparison_values: [
         {
           field_name: "project_type",
           label: "Project Type",
-          value: "NPD",
-          is_blank: false,
+          current_value: "Old NPD",
+          pending_value: "NPD",
+          changed: true,
         },
         {
           field_name: "description_pn",
           label: "Description P/N",
-          value: "Coolpower HDF 3.40mm pin",
-          is_blank: false,
+          current_value: "Old P/N",
+          pending_value: "Coolpower HDF 3.40mm pin",
+          changed: true,
         },
         {
           field_name: "test_item",
           label: "Test Item",
-          value: "Qualification Testing",
-          is_blank: false,
+          current_value: "Old testing",
+          pending_value: "Qualification Testing",
+          changed: true,
         },
       ],
+      confirmed_basic_information_version: null,
+      confirmed_basic_information_source_signature_hash: null,
       blockers: [],
       warnings: [],
     });
@@ -135,15 +130,14 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "LTR workbook row preview" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
-    expect(previewRegisteredLtrWorkbookRowMock).toHaveBeenCalledWith("P1");
-    expect(await screen.findByText("LTR workbook row")).toBeTruthy();
+    expect(previewLtrWorkbookBasicInformationSyncMock).toHaveBeenCalledWith("P1");
+    expect(await screen.findByText("DL-2026-05-011")).toBeTruthy();
     expect(screen.getByText("P:\\LTR\\LTR.xlsx")).toBeTruthy();
-    expect(screen.getByText("2026 row 42")).toBeTruthy();
     expect(screen.getByText("Coolpower HDF 3.40mm pin")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Confirm update" })).toBeNull();
-    expect(previewLtrWorkbookBasicInformationSyncMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Confirm update" }).hasAttribute("disabled")).toBe(true);
+    expect(commitLtrWorkbookBasicInformationSyncMock).not.toHaveBeenCalled();
   });
 
   it("does not render empty LTR summary placeholders before preview", () => {
@@ -199,10 +193,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
     expect(screen.getByText("Needs review")).toBeTruthy();
     expect(screen.getByText("1 source field changed")).toBeTruthy();
     expect(screen.getByText("Confirm from Basic Information")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "LTR workbook row preview" }).hasAttribute("disabled")).toBe(true);
-    expect(
-      screen.getByRole("button", { name: "Update LTR from Basic Information" }).hasAttribute("disabled")
-    ).toBe(true);
+    expect(screen.getByRole("button", { name: "LTR update preview" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("previews and commits the confirmed Basic Information LTR workbook update", async () => {
@@ -346,7 +337,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR from Basic Information" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(previewLtrWorkbookBasicInformationSyncMock).toHaveBeenCalledWith("P1");
     expect(await screen.findByText("DL-2026-05-011")).toBeTruthy();
@@ -434,7 +425,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR from Basic Information" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(await screen.findByText("DL-2026-05-011")).toBeTruthy();
     expect(screen.queryByText("LTR workbook update is blocked")).toBeNull();
@@ -476,7 +467,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR from Basic Information" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(await screen.findByText("LTR workbook")).toBeTruthy();
     expect(screen.queryByText("LTR workbook is already up to date.")).toBeNull();
@@ -499,7 +490,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR from Basic Information" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
 
     expect(
       await screen.findByText(
@@ -533,7 +524,7 @@ describe("ProjectBasicInformationSummaryCard", () => {
       new Error("Basic Information changed after preview")
     );
 
-    await user.click(screen.getByRole("button", { name: "Update LTR from Basic Information" }));
+    await user.click(screen.getByRole("button", { name: "LTR update preview" }));
     await user.click(await screen.findByRole("button", { name: "Confirm update" }));
 
     expect(

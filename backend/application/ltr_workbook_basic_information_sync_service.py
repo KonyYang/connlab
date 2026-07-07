@@ -15,6 +15,7 @@ from backend.application.ltr_workbook_write_preview_service import (
     LtrWorkbookWriteColumnPreview,
 )
 from backend.application.project_basic_information_output import (
+    BasicInformationPreviewSnapshot,
     ConfirmedBasicInformationReader,
     ConfirmedBasicInformationSnapshot,
 )
@@ -199,7 +200,7 @@ class LtrWorkbookBasicInformationSyncService:
         """Preview an existing LTR workbook row update without saving."""
         ltr = self._latest_registered_ltr(command.project_id)
         try:
-            basic = self._require_basic_information(command.project_id)
+            basic = self._preview_basic_information(command.project_id)
             with self._transaction.open_read_only_transaction() as context:
                 return self._build_preview(
                     project_id=command.project_id,
@@ -317,7 +318,7 @@ class LtrWorkbookBasicInformationSyncService:
         *,
         project_id: str,
         ltr: LtrRecord,
-        basic_information: ConfirmedBasicInformationSnapshot,
+        basic_information: BasicInformationPreviewSnapshot,
         context,
     ) -> LtrWorkbookBasicInformationSyncPreview:
         target_sheet, target_row = self._locate_exact_ltr_row(
@@ -426,9 +427,28 @@ class LtrWorkbookBasicInformationSyncService:
             )
         return snapshot
 
+    def _preview_basic_information(
+        self, project_id: str
+    ) -> BasicInformationPreviewSnapshot:
+        if hasattr(self._basic_information, "get_preview_snapshot"):
+            snapshot = self._basic_information.get_preview_snapshot(project_id)
+            if snapshot is not None:
+                return snapshot
+        confirmed = self._basic_information.get_latest_confirmed(project_id)
+        if confirmed is None:
+            raise LtrWorkbookBasicInformationSyncError(
+                "Basic Information is required before previewing LTR workbook."
+            )
+        return BasicInformationPreviewSnapshot(
+            project_id=confirmed.project_id,
+            version=confirmed.version,
+            values=dict(confirmed.values),
+            source_signature_hash=confirmed.source_signature_hash,
+        )
+
 
 def _row_data_from_basic_information(
-    basic_information: ConfirmedBasicInformationSnapshot,
+    basic_information: BasicInformationPreviewSnapshot,
     *,
     ltr_number: str,
     row_number: int,

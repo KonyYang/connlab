@@ -33,6 +33,16 @@ class ConfirmedBasicInformationSnapshot:
         return f"basic:{self.version}@{self.source_signature_hash}"
 
 
+@dataclass(frozen=True, slots=True)
+class BasicInformationPreviewSnapshot:
+    """Basic Information values available for non-mutating previews."""
+
+    project_id: str
+    version: int | None
+    values: dict[str, str]
+    source_signature_hash: str | None
+
+
 class ConfirmedBasicInformationReader(Protocol):
     """Read latest confirmed Basic Information for formal outputs."""
 
@@ -40,6 +50,11 @@ class ConfirmedBasicInformationReader(Protocol):
         self, project_id: str
     ) -> ConfirmedBasicInformationSnapshot | None:
         """Return latest confirmed Basic Information, if available."""
+
+    def get_preview_snapshot(
+        self, project_id: str
+    ) -> BasicInformationPreviewSnapshot | None:
+        """Return confirmed or draft Basic Information values for previews."""
 
 
 class ProjectBasicInformationSnapshotReader:
@@ -55,6 +70,30 @@ class ProjectBasicInformationSnapshotReader:
         """Return the latest confirmed Basic Information snapshot."""
         record = self._repository.get_latest_confirmed(project_id)
         return snapshot_from_record(record) if record is not None else None
+
+    def get_preview_snapshot(
+        self, project_id: str
+    ) -> BasicInformationPreviewSnapshot | None:
+        """Return confirmed Basic Information, or current draft values for preview only."""
+        confirmed = self.get_latest_confirmed(project_id)
+        if confirmed is not None:
+            return BasicInformationPreviewSnapshot(
+                project_id=confirmed.project_id,
+                version=confirmed.version,
+                values=dict(confirmed.values),
+                source_signature_hash=confirmed.source_signature_hash,
+            )
+        if not hasattr(self._repository, "get_latest_draft"):
+            return None
+        draft = self._repository.get_latest_draft(project_id)
+        if draft is None:
+            return None
+        return BasicInformationPreviewSnapshot(
+            project_id=draft.project_id,
+            version=None,
+            values=dict(draft.values),
+            source_signature_hash=None,
+        )
 
 
 def snapshot_from_record(

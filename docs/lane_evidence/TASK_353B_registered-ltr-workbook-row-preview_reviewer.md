@@ -275,3 +275,85 @@ Package `git diff --check` passed with existing LF/CRLF warnings only. Trailing 
 Recommended next role: QA gate.
 
 QA should smoke the Workbench / Basic Information side-card flow for registered LTR row preview, including found, blocked/read failure, and separation from `Update LTR from Basic Information`.
+
+---
+
+## Correction Implementation Re-Gate - User Direction Alignment
+
+Date: 2026-07-07
+Status: reviewer_pass
+
+### Context
+
+After TASK_353B acceptance, the user corrected the product direction: the separate `LTR workbook row preview` button/card/API/service/client workflow was over-scoped. The desired behavior aligns with TASK_353C: keep one original `LTR update preview` entry, allow registered-LTR projects to preview before Basic Information confirmation, use draft/initial Basic Information values for preview, and keep `Confirm update` / commit safety tied to confirmed Basic Information.
+
+### Findings
+
+No blocking findings.
+
+- The over-scoped TASK_353B surface is removed from the candidate product/test package. The registered-row preview route, service, client DTO/helper, independent button/panel, and focused registered-row preview tests are deleted or removed from runtime references.
+- The Basic Information side card now presents one LTR workbook action, `LTR update preview`. The rejected `LTR workbook row preview` and `Update LTR from Basic Information` split-action labels are absent from product/test code.
+- Preview enablement matches the correction: the existing preview action is enabled when either confirmed Basic Information is available or a registered LTR number is present.
+- Unconfirmed Basic Information preview uses `BasicInformationPreviewSnapshot` with `version=None` and `source_signature_hash=None`. The frontend keeps `Confirm update` disabled when those confirmed fields are null.
+- Commit/update safety is not weakened. `LtrWorkbookBasicInformationSyncService.commit(...)` still calls `_require_basic_information(...)`, still requires `preview_acknowledged`, `operator_confirmed`, expected confirmed Basic Information version/hash, lifecycle write guard, exact row lookup, and the existing workbook write transaction path.
+- No schema/migration, Intake specified-LTR/local duplicate semantics, Matrix, Fee, Folder Actions, Report, StepInstance, AI, permissions, LAN/server, multi-user, real workbook/folder mutation, `.agents/**`, or `docs/project_management/**` changes were introduced by the correction package.
+
+### Non-Blocking Notes
+
+- `docs/task_board.md` still presents TASK_353C as planned / Reviewer plan gate, while this correction arrived as a TASK_353B correction fix pass aligned with TASK_353C direction. The implementation evidence is reviewable and passes this gate, but Orchestrator/Planner should reconcile board/source-of-truth wording before integration packaging.
+- `backend/api/dependencies.py` still contains unrelated template-resource residual hunks in the same file. They remain external to this correction and need hunk-level package isolation by Integrator.
+- Existing release/settings/template/desktop/TASK_352/Fee/Word residuals remain visible in `git status` and are excluded from this gate.
+
+### Reviewer Validation
+
+Commands rerun:
+
+```powershell
+py -m pytest tests/unit/test_ltr_workbook_basic_information_sync_service.py -q
+```
+
+Result:
+
+```text
+19 passed
+```
+
+```powershell
+py -m pytest tests/unit/test_ltr_workbook_basic_information_sync_service.py tests/integration/test_ltr_workbook_basic_information_sync_api.py tests/unit/test_specified_ltr_workbook_authority_preview_service.py -q
+```
+
+Result:
+
+```text
+34 passed
+```
+
+```powershell
+npm test -- ProjectBasicInformationSummaryCard --run
+```
+
+Result:
+
+```text
+1 file / 10 tests passed
+```
+
+```powershell
+npm run build
+```
+
+Result: passed with existing Vite chunk-size warning only.
+
+```powershell
+py -m py_compile backend/application/project_basic_information_output.py backend/application/ltr_workbook_basic_information_sync_service.py backend/api/dependencies.py backend/api/main.py
+```
+
+Result: passed.
+
+Package `git diff --check` passed with existing LF/CRLF warnings only. Trailing whitespace scan on the correction package returned no matches. Rejected-surface scan found no product/test references to `registered-row-preview`, `RegisteredLtrWorkbookRowPreview`, `previewRegisteredLtrWorkbookRow`, `LTR workbook row preview`, or `Update LTR from Basic Information`; remaining generic "workbook row preview" hits belong to older LTR write-preview code paths.
+
+### Recommendation
+
+Recommended next role: QA gate.
+
+QA should smoke the Workbench / Basic Information side-card flow for: registered LTR + unconfirmed Basic Information preview enabled, `Confirm update` disabled for unconfirmed/draft preview, confirmed Basic Information preview/commit still works, no registered LTR remains blocked/disabled, and no second LTR preview button/card appears.
