@@ -16,6 +16,7 @@ from backend.domain import (
     ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
+    ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
     Project,
     ProjectMatrixDraftCell,
@@ -71,6 +72,130 @@ def test_confirmed_matrix_authority_repository_create_and_get_active_roundtrip(
             active = repo.get_active_by_project("P1")
             assert active is not None
             assert active.version.confirmed_matrix_id == "cmv-1"
+    finally:
+        engine.dispose()
+
+
+def test_confirmed_matrix_authority_repository_roundtrips_step_quantities(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            draft_snapshot = _seed_project_matrix_draft(session, source_import_id, source_snapshot)
+            snapshot = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-qty",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            snapshot = ConfirmedMatrixSnapshot(
+                version=snapshot.version,
+                groups=snapshot.groups,
+                rows=snapshot.rows,
+                cells=snapshot.cells,
+                step_quantities=(
+                    ConfirmedMatrixStepQuantity(
+                        confirmed_step_quantity_id="cmsq-1",
+                        confirmed_matrix_id="cmv-qty",
+                        confirmed_group_id=snapshot.groups[0].confirmed_group_id,
+                        confirmed_row_id=snapshot.rows[0].confirmed_row_id,
+                        draft_group_id=draft_snapshot.groups[0].draft_group_id,
+                        draft_row_id=draft_snapshot.rows[0].draft_row_id,
+                        step_sequence=1,
+                        step_suffix_note=None,
+                        raw_token="1",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                        contact_points_per_sample="4",
+                        source="matrix_step_override",
+                        review_required=False,
+                        review_reason=None,
+                        confirmed_at="2026-07-08T09:00:00+00:00",
+                    ),
+                ),
+            )
+            repo = ConfirmedMatrixAuthorityRepository(session)
+            repo.create_snapshot(snapshot)
+            session.commit()
+
+            loaded = repo.get("cmv-qty")
+            assert loaded is not None
+            assert len(loaded.step_quantities) == 1
+            assert loaded.step_quantities[0].test_points_per_sample == "3"
+            assert loaded.step_quantities[0].source == "matrix_step_override"
+    finally:
+        engine.dispose()
+
+
+def test_confirmed_matrix_authority_repository_rejects_duplicate_no_suffix_step_quantity(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            draft_snapshot = _seed_project_matrix_draft(session, source_import_id, source_snapshot)
+            snapshot = _build_confirmed_snapshot(
+                confirmed_matrix_id="cmv-qty-uq",
+                draft=draft_snapshot,
+                status=ConfirmedMatrixStatus.CONFIRMED,
+            )
+            snapshot = ConfirmedMatrixSnapshot(
+                version=snapshot.version,
+                groups=snapshot.groups,
+                rows=snapshot.rows,
+                cells=snapshot.cells,
+                step_quantities=(
+                    ConfirmedMatrixStepQuantity(
+                        confirmed_step_quantity_id="cmsq-uq-1",
+                        confirmed_matrix_id="cmv-qty-uq",
+                        confirmed_group_id=snapshot.groups[0].confirmed_group_id,
+                        confirmed_row_id=snapshot.rows[0].confirmed_row_id,
+                        draft_group_id=draft_snapshot.groups[0].draft_group_id,
+                        draft_row_id=draft_snapshot.rows[0].draft_row_id,
+                        step_sequence=1,
+                        step_suffix_note=None,
+                        raw_token="1",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                        contact_points_per_sample="4",
+                        source="matrix_step_override",
+                        review_required=False,
+                        review_reason=None,
+                        confirmed_at="2026-07-08T09:00:00+00:00",
+                    ),
+                    ConfirmedMatrixStepQuantity(
+                        confirmed_step_quantity_id="cmsq-uq-2",
+                        confirmed_matrix_id="cmv-qty-uq",
+                        confirmed_group_id=snapshot.groups[0].confirmed_group_id,
+                        confirmed_row_id=snapshot.rows[0].confirmed_row_id,
+                        draft_group_id=draft_snapshot.groups[0].draft_group_id,
+                        draft_row_id=draft_snapshot.rows[0].draft_row_id,
+                        step_sequence=1,
+                        step_suffix_note=None,
+                        raw_token="1",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                        contact_points_per_sample="4",
+                        source="matrix_step_override",
+                        review_required=False,
+                        review_reason=None,
+                        confirmed_at="2026-07-08T09:00:00+00:00",
+                    ),
+                ),
+            )
+            repo = ConfirmedMatrixAuthorityRepository(session)
+
+            with pytest.raises(IntegrityError):
+                repo.create_snapshot(snapshot)
+            session.rollback()
     finally:
         engine.dispose()
 

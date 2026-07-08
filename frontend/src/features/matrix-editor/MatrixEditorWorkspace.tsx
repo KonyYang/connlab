@@ -11,12 +11,15 @@ import {
   confirmMatrixEditorSession,
   discardMatrixEditorSessionDraft,
   fetchMatrixEditorSession,
+  fetchMatrixStepQuantities,
   generateMatrixEditorTestRecordDraftDownload,
   isProjectLifecycleReadonlyErrorDetail,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromUpload,
   saveMatrixEditorSessionDraft,
+  saveMatrixStepQuantities,
   type ConfirmedMatrixSnapshot,
+  type MatrixStepQuantityItem,
   type MatrixEditorTestRecordDraftRequest,
   type MatrixEditorSessionDraft,
   type MatrixEditorSessionSeed,
@@ -29,6 +32,13 @@ import {
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
+import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
+import {
+  filterStepQuantitiesForGroup,
+  toStepQuantitySaveItems,
+  updateStepQuantityField,
+  type MatrixStepQuantityEditableField,
+} from "./matrixStepQuantitySelectors";
 import {
   calculateMatrixSchedule,
   emptySchedulePlan,
@@ -1636,6 +1646,11 @@ export function MatrixEditorWorkspace({
   const [savedEditorDraftId, setSavedEditorDraftId] = useState<string | null>(null);
   const [savedPayloadSignature, setSavedPayloadSignature] = useState<string | null>(null);
   const [savedLocalSignature, setSavedLocalSignature] = useState<string | null>(null);
+  const [stepQuantityItems, setStepQuantityItems] = useState<MatrixStepQuantityItem[]>([]);
+  const [stepQuantityLoading, setStepQuantityLoading] = useState(false);
+  const [stepQuantitySaving, setStepQuantitySaving] = useState(false);
+  const [stepQuantityMessage, setStepQuantityMessage] = useState<string | null>(null);
+  const [stepQuantityError, setStepQuantityError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1764,6 +1779,42 @@ export function MatrixEditorWorkspace({
       cancelled = true;
     };
   }, [projectId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStepQuantities = async (): Promise<void> => {
+      if (!savedEditorDraftId) {
+        setStepQuantityItems([]);
+        setStepQuantityMessage(null);
+        setStepQuantityError(null);
+        return;
+      }
+      setStepQuantityLoading(true);
+      setStepQuantityError(null);
+      try {
+        const response = await fetchMatrixStepQuantities(projectId, savedEditorDraftId);
+        if (cancelled) {
+          return;
+        }
+        setStepQuantityItems(response.items);
+        setStepQuantityMessage(null);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setStepQuantityItems([]);
+        setStepQuantityError(parseRequestError(error, "Unable to load Step quantities."));
+      } finally {
+        if (!cancelled) {
+          setStepQuantityLoading(false);
+        }
+      }
+    };
+    void loadStepQuantities();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, savedEditorDraftId]);
 
   useLayoutEffect(() => {
     setSampleValues((previous) => {
@@ -1907,6 +1958,40 @@ export function MatrixEditorWorkspace({
   );
   const selectedGroupPreviewNotes = buildPreviewStepNoteLookup(importPreview, selectedGroup);
   const selectedGroupSamplesValue = selectedGroup ? sampleValues[selectedGroup.id] ?? "" : "";
+  const selectedGroupStepQuantityItems = filterStepQuantitiesForGroup(
+    stepQuantityItems,
+    selectedGroup?.draftGroupId ?? null
+  );
+  const onStepQuantityFieldChange = (
+    item: MatrixStepQuantityItem,
+    field: MatrixStepQuantityEditableField,
+    value: string
+  ): void => {
+    setStepQuantityItems((previous) =>
+      updateStepQuantityField(previous, item, field, value)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onSaveStepQuantities = async (): Promise<void> => {
+    if (!savedEditorDraftId) {
+      setStepQuantityError("Save the Matrix draft before setting Step quantities.");
+      return;
+    }
+    setStepQuantitySaving(true);
+    setStepQuantityError(null);
+    try {
+      const response = await saveMatrixStepQuantities(projectId, savedEditorDraftId, {
+        items: toStepQuantitySaveItems(stepQuantityItems)
+      });
+      setStepQuantityItems(response.items);
+      setStepQuantityMessage("Step quantities saved.");
+    } catch (error) {
+      setStepQuantityError(parseRequestError(error, "Unable to save Step quantities."));
+    } finally {
+      setStepQuantitySaving(false);
+    }
+  };
   const selectedGroupStepNotes = selectedGroupStepRows
     .map((row) => {
       const marker = extractMarkerKey(row.rawToken) ?? extractMarkerKey(row.suffixNote);
@@ -3537,6 +3622,16 @@ export function MatrixEditorWorkspace({
                   ))}
                 </tbody>
               </table>
+              <MatrixStepQuantityPanel
+                items={selectedGroupStepQuantityItems}
+                loading={stepQuantityLoading}
+                saving={stepQuantitySaving}
+                readOnly={isLifecycleReadonly}
+                message={stepQuantityMessage}
+                error={stepQuantityError}
+                onFieldChange={onStepQuantityFieldChange}
+                onSave={() => void onSaveStepQuantities()}
+              />
               {selectedGroupStepNotes.length > 0 ? (
                 <section className="matrix-editor-notes-card matrix-editor-notes-card-step">
                   <h4>Step Notes</h4>

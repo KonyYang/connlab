@@ -78,6 +78,28 @@ class ConfirmedMatrixCell:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfirmedMatrixStepQuantity:
+    """Confirmed authority quantity setup for one parsed Matrix Step token."""
+
+    confirmed_step_quantity_id: str
+    confirmed_matrix_id: str
+    confirmed_group_id: str
+    confirmed_row_id: str
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int
+    step_suffix_note: str | None
+    raw_token: str | None
+    test_points_per_sample: str | None
+    readings_per_point: str | None
+    contact_points_per_sample: str | None
+    source: str
+    review_required: bool
+    review_reason: str | None
+    confirmed_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class ConfirmedMatrixSnapshot:
     """Aggregate immutable confirmed Matrix authority snapshot."""
 
@@ -85,3 +107,6 @@ class ConfirmedMatrixSnapshot:
     groups: tuple[ConfirmedMatrixGroup, ...] = field(default_factory=tuple)
     rows: tuple[ConfirmedMatrixRow, ...] = field(default_factory=tuple)
     cells: tuple[ConfirmedMatrixCell, ...] = field(default_factory=tuple)
+    step_quantities: tuple[ConfirmedMatrixStepQuantity, ...] = field(
+        default_factory=tuple
+    )

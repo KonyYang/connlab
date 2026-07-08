@@ -71,6 +71,26 @@ class ProjectMatrixDraftCell:
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectMatrixDraftStepQuantity:
+    """Draft quantity setup for one parsed Matrix Step token."""
+
+    draft_step_quantity_id: str
+    project_matrix_draft_id: str
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int
+    step_suffix_note: str | None
+    raw_token: str | None
+    test_points_per_sample: str | None
+    readings_per_point: str | None
+    contact_points_per_sample: str | None
+    source: str
+    review_required: bool
+    review_reason: str | None
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectMatrixDraftSnapshot:
     """Aggregate structured Project Matrix draft snapshot."""
 
@@ -78,3 +98,6 @@ class ProjectMatrixDraftSnapshot:
     groups: tuple[ProjectMatrixDraftGroup, ...] = field(default_factory=tuple)
     rows: tuple[ProjectMatrixDraftRow, ...] = field(default_factory=tuple)
     cells: tuple[ProjectMatrixDraftCell, ...] = field(default_factory=tuple)
+    step_quantities: tuple[ProjectMatrixDraftStepQuantity, ...] = field(
+        default_factory=tuple
+    )

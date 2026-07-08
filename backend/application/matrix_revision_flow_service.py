@@ -19,6 +19,10 @@ from backend.application.matrix_sample_quantity_guard import (
     find_selected_sample_quantity_violations,
     format_sample_quantity_violation_message,
 )
+from backend.application.matrix_step_quantity_authority_builder import (
+    build_confirmed_step_quantities,
+    carry_forward_step_quantities,
+)
 from backend.domain import (
     ConfirmedMatrixCell,
     ConfirmedMatrixGroup,
@@ -306,11 +310,19 @@ def _build_revision_draft_from_active(
                 cell_value=cell_value,
             )
         )
+    step_quantities = carry_forward_step_quantities(
+        active=active,
+        draft_id=draft_id,
+        group_id_map=group_id_map,
+        row_id_map=row_id_map,
+        updated_at=now,
+    )
     return ProjectMatrixDraftSnapshot(
         record=record,
         groups=groups,
         rows=rows,
         cells=tuple(cells),
+        step_quantities=tuple(step_quantities),
     )
 
 
@@ -412,11 +424,19 @@ def _build_confirmed_snapshot_from_revision_draft(
                 cell_value=cell_value,
             )
         )
+    step_quantities = build_confirmed_step_quantities(
+        draft=draft,
+        confirmed_matrix_id=confirmed_matrix_id,
+        confirmed_at=confirmed_at,
+        confirmed_group_id_by_draft_group=confirmed_group_id_by_draft_group,
+        confirmed_row_id_by_draft_row=confirmed_row_id_by_draft_row,
+    )
     return ConfirmedMatrixSnapshot(
         version=version,
         groups=tuple(groups),
         rows=tuple(rows),
         cells=tuple(cells),
+        step_quantities=tuple(step_quantities),
     )
 
 

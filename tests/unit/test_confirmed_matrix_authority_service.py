@@ -21,6 +21,7 @@ from backend.domain import (
     ProjectMatrixDraftRow,
     ProjectMatrixDraftSnapshot,
     ProjectMatrixDraftStatus,
+    ProjectMatrixDraftStepQuantity,
     ProjectStatus,
 )
 
@@ -63,6 +64,67 @@ def test_confirmed_matrix_authority_service_happy_path_copies_scope_and_lineage(
     assert len(confirmed.cells) == 2
     assert sorted(cell.cell_value for cell in confirmed.cells) == ["1", "2"]
     assert stores.draft_snapshot == before
+
+
+def test_confirmed_matrix_authority_service_copies_step_quantities_to_authority() -> None:
+    service, _ = _service(
+        step_quantities=(
+            ProjectMatrixDraftStepQuantity(
+                draft_step_quantity_id="pmdsq-1",
+                project_matrix_draft_id="pmd-1",
+                draft_group_id="pmdg-1",
+                draft_row_id="pmdr-1",
+                step_sequence=1,
+                step_suffix_note=None,
+                raw_token="1",
+                test_points_per_sample="3",
+                readings_per_point="2",
+                contact_points_per_sample="4",
+                source="matrix_step_override",
+                review_required=False,
+                review_reason=None,
+                updated_at="2026-07-08T09:00:00+00:00",
+            ),
+        ),
+    )
+
+    confirmed = service.confirm_draft(
+        ConfirmProjectMatrixDraftCommand(
+            project_id="P1",
+            project_matrix_draft_id="pmd-1",
+            confirmed_by="operator",
+        )
+    )
+
+    copied = [
+        item
+        for item in confirmed.step_quantities
+        if item.draft_group_id == "pmdg-1" and item.draft_row_id == "pmdr-1"
+    ]
+    assert len(copied) == 1
+    assert copied[0].test_points_per_sample == "3"
+    assert copied[0].readings_per_point == "2"
+    assert copied[0].contact_points_per_sample == "4"
+    assert copied[0].source == "matrix_step_override"
+    assert copied[0].review_required is False
+
+
+def test_confirmed_matrix_authority_service_marks_missing_step_quantity_review_required() -> None:
+    service, _ = _service()
+
+    confirmed = service.confirm_draft(
+        ConfirmProjectMatrixDraftCommand(
+            project_id="P1",
+            project_matrix_draft_id="pmd-1",
+            confirmed_by="operator",
+        )
+    )
+
+    assert confirmed.step_quantities
+    assert all(item.review_required for item in confirmed.step_quantities)
+    assert {item.review_reason for item in confirmed.step_quantities} == {
+        "Quantity setup not confirmed."
+    }
 
 
 def test_confirmed_matrix_authority_service_rejects_no_selected_groups() -> None:
@@ -240,6 +302,7 @@ def _service(
     group_key_override: str | None = None,
     group_label_override: str | None = None,
     sample_quantity_override: str | None = None,
+    step_quantities: tuple[ProjectMatrixDraftStepQuantity, ...] = (),
 ) -> tuple[ConfirmedMatrixAuthorityService, _Stores]:
     groups = (
         ProjectMatrixDraftGroup(
@@ -367,6 +430,7 @@ def _service(
         groups=groups,
         rows=rows,
         cells=cells,
+        step_quantities=step_quantities,
     )
     draft_store = _DraftStore(snapshot=snapshot)
     confirmed_store = _ConfirmedStore()

@@ -31,6 +31,7 @@ from backend.domain.confirmed_matrix_authority_models import (
     ConfirmedMatrixGroup,
     ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
+    ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
 )
 from backend.domain.models import (
@@ -68,6 +69,7 @@ from backend.domain.project_matrix_draft_models import (
     ProjectMatrixDraftRecord,
     ProjectMatrixDraftRow,
     ProjectMatrixDraftSnapshot,
+    ProjectMatrixDraftStepQuantity,
 )
 
 __all__ = [
@@ -77,6 +79,7 @@ __all__ = [
     "ConfirmedMatrixRow",
     "ConfirmedMatrixSnapshot",
     "ConfirmedMatrixStatus",
+    "ConfirmedMatrixStepQuantity",
     "ConfirmedMatrixVersion",
     "ExternalResource",
     "ExternalResourceType",
@@ -118,6 +121,7 @@ __all__ = [
     "ProjectMatrixDraftRecord",
     "ProjectMatrixDraftRow",
     "ProjectMatrixDraftSnapshot",
+    "ProjectMatrixDraftStepQuantity",
     "ProjectMatrixDraftStatus",
     "ProjectStatus",
     "ProjectTemporaryContext",

@@ -156,3 +156,44 @@ class ProjectMatrixDraftCellModel(Base):
         nullable=False,
     )
     cell_value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProjectMatrixDraftStepQuantityModel(Base):
+    """Database row for one draft Matrix Step quantity setup record."""
+
+    __tablename__ = "project_matrix_draft_step_quantities"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_matrix_draft_id",
+            "draft_group_id",
+            "draft_row_id",
+            "step_sequence",
+            "step_suffix_note",
+            name="uq_project_matrix_draft_step_quantity_identity",
+        ),
+    )
+
+    draft_step_quantity_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_matrix_draft_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_records.project_matrix_draft_id"),
+        nullable=False,
+        index=True,
+    )
+    draft_group_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_groups.draft_group_id"),
+        nullable=False,
+    )
+    draft_row_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_rows.draft_row_id"),
+        nullable=False,
+    )
+    step_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_suffix_note: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    raw_token: Mapped[str | None] = mapped_column(String(64))
+    test_points_per_sample: Mapped[str | None] = mapped_column(String(64))
+    readings_per_point: Mapped[str | None] = mapped_column(String(64))
+    contact_points_per_sample: Mapped[str | None] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    review_reason: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)

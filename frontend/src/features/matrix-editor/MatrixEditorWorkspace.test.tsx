@@ -9,7 +9,9 @@ import {
 
 const apiMocks = vi.hoisted(() => ({
   fetchMatrixEditorSession: vi.fn(),
+  fetchMatrixStepQuantities: vi.fn(),
   saveMatrixEditorSessionDraft: vi.fn(),
+  saveMatrixStepQuantities: vi.fn(),
   discardMatrixEditorSessionDraft: vi.fn(),
   confirmMatrixEditorSession: vi.fn(),
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
@@ -48,7 +50,9 @@ vi.mock("../../api/client", () => {
   return {
     ApiRequestError: MockApiRequestError,
     fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
+    fetchMatrixStepQuantities: apiMocks.fetchMatrixStepQuantities,
     saveMatrixEditorSessionDraft: apiMocks.saveMatrixEditorSessionDraft,
+    saveMatrixStepQuantities: apiMocks.saveMatrixStepQuantities,
     discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
@@ -252,6 +256,38 @@ function createDeferred<T>() {
 describe("MatrixEditorWorkspace TASK_279 flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.fetchMatrixStepQuantities.mockResolvedValue({
+      project_id: "P1",
+      project_matrix_draft_id: "draft-test",
+      items: [
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "row-1",
+          step_sequence: 1,
+          step_suffix_note: null,
+          raw_token: "1",
+          test_item: "Visual Examination",
+          test_points_per_sample: "3",
+          readings_per_point: "2",
+          contact_points_per_sample: "4",
+          total_readings: "6",
+          source: "basic_information_confirmed",
+          review_required: false,
+          review_reason: null,
+        },
+      ],
+    });
+    apiMocks.saveMatrixStepQuantities.mockImplementation(async (_projectId, draftId, input) => ({
+      project_id: "P1",
+      project_matrix_draft_id: draftId,
+      items: input.items.map((item: any) => ({
+        ...item,
+        test_item: "Visual Examination",
+        total_readings: "20",
+        review_required: Boolean(item.review_required),
+        review_reason: item.review_reason ?? null,
+      })),
+    }));
     runtimeModelState.lifecycle = {
       project_id: "P1",
       lifecycle_state: "active",
@@ -336,6 +372,30 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Confirm As Active Matrix")).toBeNull();
     expect(screen.queryByText("Create Revision Draft")).toBeNull();
     expect(screen.queryByText("Confirm Revision")).toBeNull();
+  });
+
+  it("loads and saves Matrix Step quantity setup for the selected group", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "draft-test",
+      saved_payload_signature: "saved-signature",
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect(await screen.findByText("Step quantity setup")).toBeTruthy();
+    expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "draft-test");
+    const points = screen.getByLabelText("Step 1 test points per sample") as HTMLInputElement;
+    fireEvent.change(points, { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save quantities" }));
+
+    await waitFor(() => expect(apiMocks.saveMatrixStepQuantities).toHaveBeenCalledTimes(1));
+    expect(apiMocks.saveMatrixStepQuantities.mock.calls[0][0]).toBe("P1");
+    expect(apiMocks.saveMatrixStepQuantities.mock.calls[0][1]).toBe("draft-test");
+    expect(apiMocks.saveMatrixStepQuantities.mock.calls[0][2].items[0]).toMatchObject({
+      test_points_per_sample: "5",
+      source: "matrix_step_override",
+    });
   });
 
   it("opens the import file selector without native confirmation", async () => {

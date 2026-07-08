@@ -11,12 +11,14 @@ from backend.domain import (
     ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
+    ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
 )
 from backend.infrastructure.storage.models_confirmed_matrix_authority import (
     ConfirmedMatrixCellModel,
     ConfirmedMatrixGroupModel,
     ConfirmedMatrixRowModel,
+    ConfirmedMatrixStepQuantityModel,
     ConfirmedMatrixVersionModel,
 )
 
@@ -33,6 +35,7 @@ class ConfirmedMatrixAuthorityRepository:
         self._session.add_all(_to_group_models(snapshot.groups))
         self._session.add_all(_to_row_models(snapshot.rows))
         self._session.add_all(_to_cell_models(snapshot.cells))
+        self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.flush()
         return snapshot
 
@@ -101,11 +104,23 @@ class ConfirmedMatrixAuthorityRepository:
             .where(ConfirmedMatrixCellModel.confirmed_matrix_id == version_row.confirmed_matrix_id)
             .order_by(ConfirmedMatrixCellModel.confirmed_cell_id.asc())
         ).all()
+        quantity_rows = self._session.scalars(
+            select(ConfirmedMatrixStepQuantityModel)
+            .where(
+                ConfirmedMatrixStepQuantityModel.confirmed_matrix_id
+                == version_row.confirmed_matrix_id
+            )
+            .order_by(
+                ConfirmedMatrixStepQuantityModel.confirmed_group_id.asc(),
+                ConfirmedMatrixStepQuantityModel.step_sequence.asc(),
+            )
+        ).all()
         return ConfirmedMatrixSnapshot(
             version=_to_version_domain(version_row),
             groups=tuple(_to_group_domain(row) for row in group_rows),
             rows=tuple(_to_row_domain(row) for row in row_rows),
             cells=tuple(_to_cell_domain(row) for row in cell_rows),
+            step_quantities=tuple(_to_step_quantity_domain(row) for row in quantity_rows),
         )
 
 
@@ -188,6 +203,32 @@ def _to_cell_models(
     ]
 
 
+def _to_step_quantity_models(
+    quantities: tuple[ConfirmedMatrixStepQuantity, ...],
+) -> list[ConfirmedMatrixStepQuantityModel]:
+    return [
+        ConfirmedMatrixStepQuantityModel(
+            confirmed_step_quantity_id=quantity.confirmed_step_quantity_id,
+            confirmed_matrix_id=quantity.confirmed_matrix_id,
+            confirmed_group_id=quantity.confirmed_group_id,
+            confirmed_row_id=quantity.confirmed_row_id,
+            draft_group_id=quantity.draft_group_id,
+            draft_row_id=quantity.draft_row_id,
+            step_sequence=quantity.step_sequence,
+            step_suffix_note=_suffix_identity_value(quantity.step_suffix_note),
+            raw_token=quantity.raw_token,
+            test_points_per_sample=quantity.test_points_per_sample,
+            readings_per_point=quantity.readings_per_point,
+            contact_points_per_sample=quantity.contact_points_per_sample,
+            source=quantity.source,
+            review_required=quantity.review_required,
+            review_reason=quantity.review_reason,
+            confirmed_at=quantity.confirmed_at,
+        )
+        for quantity in quantities
+    ]
+
+
 def _to_version_domain(row: ConfirmedMatrixVersionModel) -> ConfirmedMatrixVersion:
     return ConfirmedMatrixVersion(
         confirmed_matrix_id=row.confirmed_matrix_id,
@@ -254,8 +295,35 @@ def _to_cell_domain(row: ConfirmedMatrixCellModel) -> ConfirmedMatrixCell:
     )
 
 
+def _to_step_quantity_domain(
+    row: ConfirmedMatrixStepQuantityModel,
+) -> ConfirmedMatrixStepQuantity:
+    return ConfirmedMatrixStepQuantity(
+        confirmed_step_quantity_id=row.confirmed_step_quantity_id,
+        confirmed_matrix_id=row.confirmed_matrix_id,
+        confirmed_group_id=row.confirmed_group_id,
+        confirmed_row_id=row.confirmed_row_id,
+        draft_group_id=row.draft_group_id,
+        draft_row_id=row.draft_row_id,
+        step_sequence=row.step_sequence,
+        step_suffix_note=_normalize_optional_text(row.step_suffix_note),
+        raw_token=row.raw_token,
+        test_points_per_sample=row.test_points_per_sample,
+        readings_per_point=row.readings_per_point,
+        contact_points_per_sample=row.contact_points_per_sample,
+        source=row.source,
+        review_required=row.review_required,
+        review_reason=row.review_reason,
+        confirmed_at=row.confirmed_at,
+    )
+
+
 def _normalize_optional_text(value: str | None) -> str | None:
     if value is None:
         return None
     text = value.strip()
     return text or None
+
+
+def _suffix_identity_value(value: str | None) -> str:
+    return _normalize_optional_text(value) or ""

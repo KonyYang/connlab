@@ -19,6 +19,7 @@ from backend.domain import (
     ProjectMatrixDraftRow,
     ProjectMatrixDraftSnapshot,
     ProjectMatrixDraftStatus,
+    ProjectMatrixDraftStepQuantity,
     ProjectStatus,
 )
 from backend.infrastructure.storage.database import (
@@ -126,6 +127,195 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
             assert loaded.cells[0].cell_value == "1"
             assert repo.get_by_project_and_source_import("P1", source_import_id) is not None
             assert loaded.record.base_confirmed_matrix_id is None
+    finally:
+        engine.dispose()
+
+
+def test_project_matrix_draft_repository_replaces_step_quantities(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            source_groups = source_snapshot.groups
+            source_rows = source_snapshot.rows
+            snapshot = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-qty",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-07-08T08:00:00+00:00",
+                    updated_at="2026-07-08T08:00:00+00:00",
+                ),
+                groups=(
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-qty",
+                        project_matrix_draft_id="pmd-qty",
+                        source_group_snapshot_id=source_groups[0].group_snapshot_id,
+                        group_order=1,
+                        group_key="g1",
+                        group_label="G1",
+                        is_selected=True,
+                        sample_quantity_expression="5",
+                    ),
+                ),
+                rows=(
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-qty",
+                        project_matrix_draft_id="pmd-qty",
+                        source_row_snapshot_id=source_rows[0].row_snapshot_id,
+                        row_order=1,
+                        test_item="LLCR",
+                        is_sample_row=False,
+                    ),
+                ),
+                cells=(
+                    ProjectMatrixDraftCell(
+                        draft_cell_id="pmdc-qty",
+                        project_matrix_draft_id="pmd-qty",
+                        draft_row_id="pmdr-qty",
+                        draft_group_id="pmdg-qty",
+                        cell_value="1",
+                    ),
+                ),
+            )
+            repo = ProjectMatrixDraftRepository(session)
+            repo.create_snapshot(snapshot)
+            repo.replace_step_quantities(
+                "pmd-qty",
+                (
+                    ProjectMatrixDraftStepQuantity(
+                        draft_step_quantity_id="pmdsq-1",
+                        project_matrix_draft_id="pmd-qty",
+                        draft_group_id="pmdg-qty",
+                        draft_row_id="pmdr-qty",
+                        step_sequence=1,
+                        step_suffix_note=None,
+                        raw_token="1",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                        contact_points_per_sample="4",
+                        source="matrix_step_override",
+                        review_required=False,
+                        review_reason=None,
+                        updated_at="2026-07-08T09:00:00+00:00",
+                    ),
+                ),
+            )
+            session.commit()
+
+            loaded = repo.get("pmd-qty")
+            assert loaded is not None
+            assert len(loaded.step_quantities) == 1
+            assert loaded.step_quantities[0].test_points_per_sample == "3"
+            assert loaded.step_quantities[0].readings_per_point == "2"
+    finally:
+        engine.dispose()
+
+
+def test_project_matrix_draft_repository_rejects_duplicate_no_suffix_step_quantity(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            source_groups = source_snapshot.groups
+            source_rows = source_snapshot.rows
+            snapshot = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-qty-uq",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-07-08T08:00:00+00:00",
+                    updated_at="2026-07-08T08:00:00+00:00",
+                ),
+                groups=(
+                    ProjectMatrixDraftGroup(
+                        draft_group_id="pmdg-qty-uq",
+                        project_matrix_draft_id="pmd-qty-uq",
+                        source_group_snapshot_id=source_groups[0].group_snapshot_id,
+                        group_order=1,
+                        group_key="g1",
+                        group_label="G1",
+                        is_selected=True,
+                        sample_quantity_expression="5",
+                    ),
+                ),
+                rows=(
+                    ProjectMatrixDraftRow(
+                        draft_row_id="pmdr-qty-uq",
+                        project_matrix_draft_id="pmd-qty-uq",
+                        source_row_snapshot_id=source_rows[0].row_snapshot_id,
+                        row_order=1,
+                        test_item="LLCR",
+                        is_sample_row=False,
+                    ),
+                ),
+                cells=(
+                    ProjectMatrixDraftCell(
+                        draft_cell_id="pmdc-qty-uq",
+                        project_matrix_draft_id="pmd-qty-uq",
+                        draft_row_id="pmdr-qty-uq",
+                        draft_group_id="pmdg-qty-uq",
+                        cell_value="1",
+                    ),
+                ),
+            )
+            repo = ProjectMatrixDraftRepository(session)
+            repo.create_snapshot(snapshot)
+            duplicate = ProjectMatrixDraftStepQuantity(
+                draft_step_quantity_id="pmdsq-uq-1",
+                project_matrix_draft_id="pmd-qty-uq",
+                draft_group_id="pmdg-qty-uq",
+                draft_row_id="pmdr-qty-uq",
+                step_sequence=1,
+                step_suffix_note=None,
+                raw_token="1",
+                test_points_per_sample="3",
+                readings_per_point="2",
+                contact_points_per_sample="4",
+                source="matrix_step_override",
+                review_required=False,
+                review_reason=None,
+                updated_at="2026-07-08T09:00:00+00:00",
+            )
+
+            with pytest.raises(IntegrityError):
+                repo.replace_step_quantities(
+                    "pmd-qty-uq",
+                    (
+                        duplicate,
+                        ProjectMatrixDraftStepQuantity(
+                            draft_step_quantity_id="pmdsq-uq-2",
+                            project_matrix_draft_id="pmd-qty-uq",
+                            draft_group_id="pmdg-qty-uq",
+                            draft_row_id="pmdr-qty-uq",
+                            step_sequence=1,
+                            step_suffix_note=None,
+                            raw_token="1",
+                            test_points_per_sample="3",
+                            readings_per_point="2",
+                            contact_points_per_sample="4",
+                            source="matrix_step_override",
+                            review_required=False,
+                            review_reason=None,
+                            updated_at="2026-07-08T09:00:00+00:00",
+                        ),
+                    ),
+                )
+            session.rollback()
     finally:
         engine.dispose()
 

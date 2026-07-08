@@ -178,3 +178,52 @@ class ConfirmedMatrixCellModel(Base):
         nullable=False,
     )
     cell_value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ConfirmedMatrixStepQuantityModel(Base):
+    """Database row for immutable confirmed Matrix Step quantity authority."""
+
+    __tablename__ = "confirmed_matrix_step_quantities"
+    __table_args__ = (
+        UniqueConstraint(
+            "confirmed_matrix_id",
+            "confirmed_group_id",
+            "confirmed_row_id",
+            "step_sequence",
+            "step_suffix_note",
+            name="uq_confirmed_matrix_step_quantity_identity",
+        ),
+    )
+
+    confirmed_step_quantity_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    confirmed_matrix_id: Mapped[str] = mapped_column(
+        ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"),
+        nullable=False,
+        index=True,
+    )
+    confirmed_group_id: Mapped[str] = mapped_column(
+        ForeignKey("confirmed_matrix_groups.confirmed_group_id"),
+        nullable=False,
+    )
+    confirmed_row_id: Mapped[str] = mapped_column(
+        ForeignKey("confirmed_matrix_rows.confirmed_row_id"),
+        nullable=False,
+    )
+    draft_group_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_groups.draft_group_id"),
+        nullable=False,
+    )
+    draft_row_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_rows.draft_row_id"),
+        nullable=False,
+    )
+    step_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_suffix_note: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    raw_token: Mapped[str | None] = mapped_column(String(64))
+    test_points_per_sample: Mapped[str | None] = mapped_column(String(64))
+    readings_per_point: Mapped[str | None] = mapped_column(String(64))
+    contact_points_per_sample: Mapped[str | None] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    review_reason: Mapped[str | None] = mapped_column(Text)
+    confirmed_at: Mapped[str] = mapped_column(String(64), nullable=False)

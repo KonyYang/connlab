@@ -1347,6 +1347,46 @@ export type ProjectMatrixDraft = {
   cells: ProjectMatrixDraftCell[];
 };
 
+export type MatrixStepQuantityItem = {
+  draft_group_id: string;
+  draft_row_id: string;
+  step_sequence: number;
+  step_suffix_note?: string | null;
+  raw_token?: string | null;
+  test_item: string;
+  test_points_per_sample?: string | null;
+  readings_per_point?: string | null;
+  contact_points_per_sample?: string | null;
+  total_readings?: string | null;
+  source: string;
+  review_required: boolean;
+  review_reason?: string | null;
+};
+
+export type MatrixStepQuantityDraftResponse = {
+  project_id: string;
+  project_matrix_draft_id: string;
+  items: MatrixStepQuantityItem[];
+};
+
+export type MatrixStepQuantitySaveItem = {
+  draft_group_id: string;
+  draft_row_id: string;
+  step_sequence: number;
+  step_suffix_note?: string | null;
+  raw_token?: string | null;
+  test_points_per_sample?: string | null;
+  readings_per_point?: string | null;
+  contact_points_per_sample?: string | null;
+  source: string;
+  review_required?: boolean;
+  review_reason?: string | null;
+};
+
+export type MatrixStepQuantitySaveRequest = {
+  items: MatrixStepQuantitySaveItem[];
+};
+
 export type ProjectMatrixDraftSummary = ProjectMatrixDraftRecord;
 
 export type ProjectMatrixDraftSaveGroupInput = {
@@ -3204,6 +3244,29 @@ export function saveProjectMatrixDraft(
 ): Promise<ProjectMatrixDraft> {
   return requestJson<ProjectMatrixDraft>(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function fetchMatrixStepQuantities(
+  projectId: string,
+  projectMatrixDraftId: string
+): Promise<MatrixStepQuantityDraftResponse> {
+  return requestJson<MatrixStepQuantityDraftResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/step-quantities`
+  );
+}
+
+export function saveMatrixStepQuantities(
+  projectId: string,
+  projectMatrixDraftId: string,
+  input: MatrixStepQuantitySaveRequest
+): Promise<MatrixStepQuantityDraftResponse> {
+  return requestJson<MatrixStepQuantityDraftResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/step-quantities`,
     {
       method: "PUT",
       body: JSON.stringify(input)
