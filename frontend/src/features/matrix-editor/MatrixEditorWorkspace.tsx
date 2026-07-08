@@ -34,9 +34,11 @@ import {
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import {
+  applyStepQuantityDefaultsToBlankFields,
   filterStepQuantitiesForGroup,
   toStepQuantitySaveItems,
   updateStepQuantityField,
+  type MatrixStepQuantityDefaults,
   type MatrixStepQuantityEditableField,
 } from "./matrixStepQuantitySelectors";
 import {
@@ -1651,6 +1653,12 @@ export function MatrixEditorWorkspace({
   const [stepQuantitySaving, setStepQuantitySaving] = useState(false);
   const [stepQuantityMessage, setStepQuantityMessage] = useState<string | null>(null);
   const [stepQuantityError, setStepQuantityError] = useState<string | null>(null);
+  const [stepQuantityDefaults, setStepQuantityDefaults] =
+    useState<MatrixStepQuantityDefaults>({
+      test_points_per_sample: "",
+      readings_per_point: "",
+      contact_points_per_sample: ""
+    });
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1971,6 +1979,28 @@ export function MatrixEditorWorkspace({
       updateStepQuantityField(previous, item, field, value)
     );
     setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onStepQuantityDefaultChange = (
+    field: MatrixStepQuantityEditableField,
+    value: string
+  ): void => {
+    setStepQuantityDefaults((previous) => ({ ...previous, [field]: value }));
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onApplyStepQuantityDefaults = (): void => {
+    const result = applyStepQuantityDefaultsToBlankFields(
+      stepQuantityItems,
+      selectedGroup?.draftGroupId ?? null,
+      stepQuantityDefaults
+    );
+    setStepQuantityItems(result.items);
+    setStepQuantityMessage(
+      result.changed
+        ? "Defaults applied to blank Step quantities."
+        : "No blank Step quantities to update."
+    );
     setStepQuantityError(null);
   };
   const onSaveStepQuantities = async (): Promise<void> => {
@@ -3627,8 +3657,11 @@ export function MatrixEditorWorkspace({
                 loading={stepQuantityLoading}
                 saving={stepQuantitySaving}
                 readOnly={isLifecycleReadonly}
+                defaults={stepQuantityDefaults}
                 message={stepQuantityMessage}
                 error={stepQuantityError}
+                onDefaultChange={onStepQuantityDefaultChange}
+                onApplyDefaults={onApplyStepQuantityDefaults}
                 onFieldChange={onStepQuantityFieldChange}
                 onSave={() => void onSaveStepQuantities()}
               />

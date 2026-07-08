@@ -40,6 +40,57 @@ export function updateStepQuantityField(
   });
 }
 
+export function applyStepQuantityDefaultsToBlankFields(
+  items: MatrixStepQuantityItem[],
+  draftGroupId: string | null,
+  defaults: MatrixStepQuantityDefaults
+): MatrixStepQuantityDefaultsApplyResult {
+  if (!draftGroupId) {
+    return { items, changed: false };
+  }
+  let changed = false;
+  const nextItems = items.map((item) => {
+    if (item.draft_group_id !== draftGroupId) {
+      return item;
+    }
+    const next = {
+      ...item,
+      test_points_per_sample: fillBlankValue(
+        item.test_points_per_sample,
+        defaults.test_points_per_sample
+      ),
+      readings_per_point: fillBlankValue(item.readings_per_point, defaults.readings_per_point),
+      contact_points_per_sample: fillBlankValue(
+        item.contact_points_per_sample,
+        defaults.contact_points_per_sample
+      )
+    };
+    const itemChanged =
+      next.test_points_per_sample !== item.test_points_per_sample ||
+      next.readings_per_point !== item.readings_per_point ||
+      next.contact_points_per_sample !== item.contact_points_per_sample;
+    if (!itemChanged) {
+      return item;
+    }
+    changed = true;
+    const reviewRequired = requiresReview(
+      next.test_points_per_sample,
+      next.readings_per_point
+    );
+    return {
+      ...next,
+      source: "matrix_step_override",
+      review_required: reviewRequired,
+      review_reason: reviewRequired ? "Confirm Step quantity values." : null,
+      total_readings: deriveTotalReadings(
+        next.test_points_per_sample,
+        next.readings_per_point
+      )
+    };
+  });
+  return { items: nextItems, changed };
+}
+
 export function toStepQuantitySaveItems(
   items: MatrixStepQuantityItem[]
 ): MatrixStepQuantitySaveItem[] {
@@ -76,6 +127,13 @@ export type MatrixStepQuantityEditableField =
   | "readings_per_point"
   | "contact_points_per_sample";
 
+export type MatrixStepQuantityDefaults = Record<MatrixStepQuantityEditableField, string>;
+
+export type MatrixStepQuantityDefaultsApplyResult = {
+  items: MatrixStepQuantityItem[];
+  changed: boolean;
+};
+
 export type MatrixStepQuantityIdentity = Pick<
   MatrixStepQuantityItem,
   "draft_group_id" | "draft_row_id" | "step_sequence" | "step_suffix_note"
@@ -98,6 +156,14 @@ function requiresReview(
   readingsPerPoint?: string | null
 ): boolean {
   return !testPointsPerSample?.trim() || !readingsPerPoint?.trim();
+}
+
+function fillBlankValue(currentValue: string | null | undefined, defaultValue: string): string | null {
+  if (currentValue?.trim()) {
+    return currentValue;
+  }
+  const trimmedDefault = defaultValue.trim();
+  return trimmedDefault || (currentValue ?? null);
 }
 
 function parseNonNegativeNumber(value?: string | null): number | null {

@@ -1,13 +1,19 @@
 import type { MatrixStepQuantityItem } from "../../api/client";
-import type { MatrixStepQuantityEditableField } from "./matrixStepQuantitySelectors";
+import type {
+  MatrixStepQuantityDefaults,
+  MatrixStepQuantityEditableField,
+} from "./matrixStepQuantitySelectors";
 
 type MatrixStepQuantityPanelProps = {
   items: MatrixStepQuantityItem[];
   loading: boolean;
   saving: boolean;
   readOnly: boolean;
+  defaults: MatrixStepQuantityDefaults;
   message: string | null;
   error: string | null;
+  onDefaultChange: (field: MatrixStepQuantityEditableField, value: string) => void;
+  onApplyDefaults: () => void;
   onFieldChange: (
     item: MatrixStepQuantityItem,
     field: MatrixStepQuantityEditableField,
@@ -21,8 +27,11 @@ export function MatrixStepQuantityPanel({
   loading,
   saving,
   readOnly,
+  defaults,
   message,
   error,
+  onDefaultChange,
+  onApplyDefaults,
   onFieldChange,
   onSave
 }: MatrixStepQuantityPanelProps) {
@@ -38,6 +47,48 @@ export function MatrixStepQuantityPanel({
           onClick={onSave}
         >
           {saving ? "Saving" : "Save quantities"}
+        </button>
+      </div>
+      <div className="matrix-step-quantity-defaults" aria-label="Step quantity defaults">
+        <span>Defaults for this group</span>
+        <label>
+          <span>Test points</span>
+          <input
+            aria-label="Default test points per sample"
+            disabled={disabled}
+            value={defaults.test_points_per_sample}
+            onChange={(event) =>
+              onDefaultChange("test_points_per_sample", event.target.value)
+            }
+          />
+        </label>
+        <label>
+          <span>Readings</span>
+          <input
+            aria-label="Default readings per point"
+            disabled={disabled}
+            value={defaults.readings_per_point}
+            onChange={(event) => onDefaultChange("readings_per_point", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Contact points</span>
+          <input
+            aria-label="Default contact points per sample"
+            disabled={disabled}
+            value={defaults.contact_points_per_sample}
+            onChange={(event) =>
+              onDefaultChange("contact_points_per_sample", event.target.value)
+            }
+          />
+        </label>
+        <button
+          type="button"
+          className="matrix-step-quantity-apply-defaults"
+          disabled={disabled || items.length === 0}
+          onClick={onApplyDefaults}
+        >
+          Apply to blank Step quantities
         </button>
       </div>
       {loading ? (

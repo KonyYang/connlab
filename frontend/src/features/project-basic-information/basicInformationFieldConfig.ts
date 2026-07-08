@@ -436,29 +436,6 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
     ],
   },
   {
-    title: "Quantity defaults",
-    fields: [
-      {
-        key: "test_points_per_sample",
-        label: "Test points / sample",
-        kind: "text",
-        layout: "third",
-      },
-      {
-        key: "readings_per_point",
-        label: "Readings / point",
-        kind: "text",
-        layout: "third",
-      },
-      {
-        key: "contact_points_per_sample",
-        label: "Contact points / sample",
-        kind: "text",
-        layout: "third",
-      },
-    ],
-  },
-  {
     title: "Result and commercial",
     layout: "failedItemWithSheetType",
     fields: [

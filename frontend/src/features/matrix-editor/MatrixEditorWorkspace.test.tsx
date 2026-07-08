@@ -398,6 +398,91 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     });
   });
 
+  it("applies Matrix Step quantity defaults only to blank fields", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "draft-test",
+      saved_payload_signature: "saved-signature",
+    });
+    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
+      project_id: "P1",
+      project_matrix_draft_id: "draft-test",
+      items: [
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "row-1",
+          step_sequence: 1,
+          step_suffix_note: null,
+          raw_token: "1",
+          test_item: "Visual Examination",
+          test_points_per_sample: "",
+          readings_per_point: null,
+          contact_points_per_sample: "",
+          total_readings: null,
+          source: "manual_required",
+          review_required: true,
+          review_reason: "Confirm Step quantity values.",
+        },
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "row-2",
+          step_sequence: 2,
+          step_suffix_note: null,
+          raw_token: "2",
+          test_item: "LLCR",
+          test_points_per_sample: "9",
+          readings_per_point: "8",
+          contact_points_per_sample: "7",
+          total_readings: "72",
+          source: "matrix_step_override",
+          review_required: false,
+          review_reason: null,
+        },
+      ],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect(await screen.findByText("Defaults for this group")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Default test points per sample"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("Default readings per point"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("Default contact points per sample"), {
+      target: { value: "1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply to blank Step quantities" }));
+
+    expect(screen.getByLabelText("Step 1 test points per sample")).toHaveProperty("value", "3");
+    expect(screen.getByLabelText("Step 1 readings per point")).toHaveProperty("value", "2");
+    expect(screen.getByLabelText("Step 1 contact points per sample")).toHaveProperty("value", "1");
+    expect(screen.getByLabelText("Step 2 test points per sample")).toHaveProperty("value", "9");
+    expect(screen.getByLabelText("Step 2 readings per point")).toHaveProperty("value", "8");
+    expect(screen.getByLabelText("Step 2 contact points per sample")).toHaveProperty("value", "7");
+    expect(screen.getByText("Defaults applied to blank Step quantities.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save quantities" }));
+    await waitFor(() => expect(apiMocks.saveMatrixStepQuantities).toHaveBeenCalledTimes(1));
+    expect(apiMocks.saveMatrixStepQuantities.mock.calls[0][2].items).toMatchObject([
+      {
+        step_sequence: 1,
+        test_points_per_sample: "3",
+        readings_per_point: "2",
+        contact_points_per_sample: "1",
+        source: "matrix_step_override",
+      },
+      {
+        step_sequence: 2,
+        test_points_per_sample: "9",
+        readings_per_point: "8",
+        contact_points_per_sample: "7",
+        source: "matrix_step_override",
+      },
+    ]);
+  });
+
   it("opens the import file selector without native confirmation", async () => {
     const inputClickSpy = vi
       .spyOn(HTMLInputElement.prototype, "click")
