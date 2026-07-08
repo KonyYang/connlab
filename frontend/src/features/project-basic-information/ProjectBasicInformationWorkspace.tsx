@@ -29,6 +29,7 @@ export function ProjectBasicInformationWorkspace({
     selectBasicInformationMissingLabels(model.response)
   );
   const dateValidation = selectDateValidation(model.values);
+  const quantityValidation = selectQuantityDefaultValidation(model.values);
   const changedSourceLabels = selectChangedSourceFieldLabels(model.response);
   const confirmBlocked =
     model.loading ||
@@ -36,7 +37,8 @@ export function ProjectBasicInformationWorkspace({
     model.saving ||
     model.lifecycleReadonlyView.readonly ||
     missingLabels.length > 0 ||
-    dateValidation.messages.length > 0;
+    dateValidation.messages.length > 0 ||
+    quantityValidation.messages.length > 0;
   const panelIdentity = model.values.dl_number?.trim() || model.identityLabel;
 
   return (
@@ -88,6 +90,7 @@ export function ProjectBasicInformationWorkspace({
                     missingLabels={missingLabels}
                     missingDateLabels={dateValidation.missingLabels}
                     invalidDateLabels={dateValidation.invalidLabels}
+                    invalidQuantityLabels={quantityValidation.invalidLabels}
                     readOnly={model.lifecycleReadonlyView.readonly}
                     testTypeInSheetOptions={model.testTypeInSheetOptions}
                     onChange={model.updateValue}
@@ -103,6 +106,21 @@ export function ProjectBasicInformationWorkspace({
                     <strong>Date checks</strong>
                     <ul>
                       {dateValidation.messages.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {panel.title === "Laboratory execution" &&
+                quantityValidation.messages.length > 0 ? (
+                  <div
+                    className="basic-information-panel-hints"
+                    role="status"
+                    aria-label="Quantity default validation"
+                  >
+                    <strong>Quantity checks</strong>
+                    <ul>
+                      {quantityValidation.messages.map((message) => (
                         <li key={message}>{message}</li>
                       ))}
                     </ul>
@@ -140,6 +158,7 @@ function BasicInformationFieldGroupView({
   missingLabels,
   missingDateLabels,
   invalidDateLabels,
+  invalidQuantityLabels,
   readOnly,
   testTypeInSheetOptions,
   onChange,
@@ -149,6 +168,7 @@ function BasicInformationFieldGroupView({
   missingLabels: string[];
   missingDateLabels: string[];
   invalidDateLabels: string[];
+  invalidQuantityLabels: string[];
   readOnly: boolean;
   testTypeInSheetOptions: string[];
   onChange: (key: string, value: string) => void;
@@ -156,6 +176,7 @@ function BasicInformationFieldGroupView({
   const missingLabelSet = new Set(missingLabels);
   const missingDateLabelSet = new Set(missingDateLabels);
   const invalidDateLabelSet = new Set(invalidDateLabels);
+  const invalidQuantityLabelSet = new Set(invalidQuantityLabels);
   const fieldGridClassName = [
     "basic-information-field-grid",
     group.layout === "failedItemWithSheetType" ? "is-failed-item-with-sheet-type" : "",
@@ -184,6 +205,7 @@ function BasicInformationFieldGroupView({
             missingRequired={missingLabelSet.has(field.label)}
             missingDate={missingDateLabelSet.has(field.label)}
             invalidDateSequence={invalidDateLabelSet.has(field.label)}
+            invalidQuantityDefault={invalidQuantityLabelSet.has(field.label)}
             readOnly={readOnly}
             testTypeInSheetOptions={testTypeInSheetOptions}
             onChange={onChange}
@@ -200,6 +222,7 @@ function BasicInformationField({
   missingRequired,
   missingDate,
   invalidDateSequence,
+  invalidQuantityDefault,
   readOnly,
   testTypeInSheetOptions,
   onChange,
@@ -209,6 +232,7 @@ function BasicInformationField({
   missingRequired: boolean;
   missingDate: boolean;
   invalidDateSequence: boolean;
+  invalidQuantityDefault: boolean;
   readOnly: boolean;
   testTypeInSheetOptions: string[];
   onChange: (key: string, value: string) => void;
@@ -234,7 +258,7 @@ function BasicInformationField({
     field.layout === "wideRemainder" ? "is-wide-remainder" : "",
     missingDate ? "is-missing-date" : "",
     missingRequired ? "is-missing-required" : "",
-    invalidDateSequence ? "is-invalid-sequence" : "",
+    invalidDateSequence || invalidQuantityDefault ? "is-invalid-sequence" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -372,6 +396,41 @@ type DateValidationResult = {
   invalidLabels: string[];
   messages: string[];
 };
+
+type QuantityValidationResult = {
+  invalidLabels: string[];
+  messages: string[];
+};
+
+const QUANTITY_DEFAULT_FIELD_LABELS: Record<string, string> = {
+  test_points_per_sample: "Test points / sample",
+  readings_per_point: "Readings / point",
+  contact_points_per_sample: "Contact points / sample",
+};
+
+const NON_NEGATIVE_DECIMAL = /^\d+(?:\.\d+)?$/;
+
+function selectQuantityDefaultValidation(
+  values: Record<string, string>
+): QuantityValidationResult {
+  const invalidLabels = Object.entries(QUANTITY_DEFAULT_FIELD_LABELS)
+    .filter(([key]) => {
+      const value = (values[key] ?? "").trim();
+      return value.length > 0 && !NON_NEGATIVE_DECIMAL.test(value);
+    })
+    .map(([, label]) => label);
+  return {
+    invalidLabels,
+    messages:
+      invalidLabels.length > 0
+        ? [
+            `Quantity defaults need non-negative numeric values: ${invalidLabels.join(
+              ", "
+            )}.`,
+          ]
+        : [],
+  };
+}
 
 function selectDateValidation(values: Record<string, string>): DateValidationResult {
   const missingLabels = new Set<string>();

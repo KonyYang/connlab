@@ -8,6 +8,7 @@ import pytest
 
 from backend.application.project_basic_information_service import (
     ConfirmProjectBasicInformationCommand,
+    ProjectBasicInformationInvalidQuantityDefaultsError,
     ProjectBasicInformationMissingRequiredError,
     ProjectBasicInformationRecord,
     ProjectBasicInformationService,
@@ -84,6 +85,83 @@ def test_latest_confirmed_values_beat_source_suggestions_without_draft() -> None
     assert result.draft.values["project_type"] == "PEX"
     assert result.draft.values["requested_by"] == "Confirmed User"
     assert result.changed_source_fields == tuple()
+
+
+def test_quantity_default_fields_round_trip_as_optional_basic_information_values() -> None:
+    service = _service()
+
+    service.save_draft(
+        SaveProjectBasicInformationDraftCommand(
+            project_id="P1",
+            values={
+                "test_points_per_sample": "20",
+                "readings_per_point": "2.5",
+                "contact_points_per_sample": "8",
+            },
+        )
+    )
+    result = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values=_complete_values(
+                test_points_per_sample="20",
+                readings_per_point="2.5",
+                contact_points_per_sample="8",
+            ),
+            confirmed_by="Lab User",
+        )
+    )
+
+    assert result.latest_confirmed is not None
+    assert result.latest_confirmed.values["test_points_per_sample"] == "20"
+    assert result.latest_confirmed.values["readings_per_point"] == "2.5"
+    assert result.latest_confirmed.values["contact_points_per_sample"] == "8"
+
+
+def test_blank_quantity_default_fields_do_not_block_confirmation() -> None:
+    service = _service()
+
+    result = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values=_complete_values(
+                test_points_per_sample="",
+                readings_per_point="",
+                contact_points_per_sample="",
+            ),
+            confirmed_by="Lab User",
+        )
+    )
+
+    assert result.latest_confirmed is not None
+    assert "test_points_per_sample" not in result.latest_confirmed.values
+    assert "readings_per_point" not in result.latest_confirmed.values
+    assert "contact_points_per_sample" not in result.latest_confirmed.values
+
+
+def test_invalid_quantity_default_fields_block_confirm_with_business_labels() -> None:
+    service = _service()
+
+    with pytest.raises(ProjectBasicInformationInvalidQuantityDefaultsError) as exc_info:
+        service.confirm(
+            ConfirmProjectBasicInformationCommand(
+                project_id="P1",
+                values=_complete_values(
+                    test_points_per_sample="-1",
+                    readings_per_point="two",
+                ),
+                confirmed_by="Lab User",
+            )
+        )
+
+    assert exc_info.value.invalid_fields == (
+        "test_points_per_sample",
+        "readings_per_point",
+    )
+    assert exc_info.value.invalid_labels == (
+        "Test points / sample",
+        "Readings / point",
+    )
 
 
 def test_legacy_test_item_values_are_exposed_as_tests_to_be_performed() -> None:

@@ -648,6 +648,53 @@ describe("ProjectBasicInformationWorkspace", () => {
     );
   });
 
+  it("highlights invalid quantity defaults and blocks confirm", async () => {
+    api.getProjectBasicInformation.mockResolvedValue(
+      response({
+        test_points_per_sample: "many",
+        readings_per_point: "-1",
+        contact_points_per_sample: "4",
+      })
+    );
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    const quantityStatus = await screen.findByRole("status", {
+      name: "Quantity default validation",
+    });
+    expect(quantityStatus.textContent).toContain(
+      "Quantity defaults need non-negative numeric values: Test points / sample, Readings / point."
+    );
+    expect(
+      screen
+        .getByLabelText("Test points / sample")
+        .closest(".basic-information-field")
+        ?.classList.contains("is-invalid-sequence")
+    ).toBe(true);
+    expect(
+      screen
+        .getByLabelText("Readings / point")
+        .closest(".basic-information-field")
+        ?.classList.contains("is-invalid-sequence")
+    ).toBe(true);
+    expect(
+      screen
+        .getByLabelText("Contact points / sample")
+        .closest(".basic-information-field")
+        ?.classList.contains("is-invalid-sequence")
+    ).toBe(false);
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(api.confirmProjectBasicInformation).not.toHaveBeenCalled();
+  });
+
   it("blocks empty required dates while optional empty dates only warn", async () => {
     api.getProjectBasicInformation.mockResolvedValue(
       response({
@@ -829,6 +876,15 @@ describe("ProjectBasicInformationWorkspace", () => {
     const remarksPoField = screen
       .getByLabelText("Remarks (PO)")
       .closest(".basic-information-field");
+    const testPointsPerSampleField = screen
+      .getByLabelText("Test points / sample")
+      .closest(".basic-information-field");
+    const readingsPerPointField = screen
+      .getByLabelText("Readings / point")
+      .closest(".basic-information-field");
+    const contactPointsPerSampleField = screen
+      .getByLabelText("Contact points / sample")
+      .closest(".basic-information-field");
     const failedItemField = screen
       .getByLabelText("Failed item")
       .closest(".basic-information-field");
@@ -876,6 +932,9 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(finishTestDateField?.classList.contains("is-quarter")).toBe(true);
     expect(reportDateField?.classList.contains("is-quarter")).toBe(true);
     expect(remarksPoField?.classList.contains("is-quarter")).toBe(true);
+    expect(testPointsPerSampleField?.classList.contains("is-third")).toBe(true);
+    expect(readingsPerPointField?.classList.contains("is-third")).toBe(true);
+    expect(contactPointsPerSampleField?.classList.contains("is-third")).toBe(true);
     expect(failedItemField?.classList.contains("is-wide-remainder")).toBe(true);
     expect(testTypeInSheetField?.classList.contains("is-narrow-quarter")).toBe(true);
     expect(sampleDepositionField?.classList.contains("is-quarter")).toBe(true);
@@ -975,6 +1034,15 @@ describe("ProjectBasicInformationWorkspace", () => {
       laboratoryPanelText.indexOf("Remarks (PO)")
     );
     expect(laboratoryPanelText.indexOf("Remarks (PO)")).toBeLessThan(
+      laboratoryPanelText.indexOf("Test points / sample")
+    );
+    expect(laboratoryPanelText.indexOf("Test points / sample")).toBeLessThan(
+      laboratoryPanelText.indexOf("Readings / point")
+    );
+    expect(laboratoryPanelText.indexOf("Readings / point")).toBeLessThan(
+      laboratoryPanelText.indexOf("Contact points / sample")
+    );
+    expect(laboratoryPanelText.indexOf("Contact points / sample")).toBeLessThan(
       laboratoryPanelText.indexOf("Failed item")
     );
     expect(laboratoryPanelText.indexOf("Failed item")).toBeLessThan(
@@ -1026,7 +1094,9 @@ describe("ProjectBasicInformationWorkspace", () => {
 
     expect(await screen.findByText("Project closed: Completed")).toBeTruthy();
     const projectLeader = screen.getByLabelText("Project Leader");
+    const testPointsPerSample = screen.getByLabelText("Test points / sample");
     expect(projectLeader).toHaveProperty("disabled", true);
+    expect(testPointsPerSample).toHaveProperty("disabled", true);
     await user.type(projectLeader, "Blocked");
     expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
     const confirmButton = screen.getByRole("button", { name: "Confirm" });
@@ -1079,6 +1149,9 @@ function response(
     send_copies_recipients: "Peter.Hu@fci.com/Yi-Peng.Wu@fci.com",
     confidential: "Yes",
     test_result: "In progress",
+    test_points_per_sample: "3",
+    readings_per_point: "2",
+    contact_points_per_sample: "4",
     ...overrides,
   };
   return {

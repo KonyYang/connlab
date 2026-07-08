@@ -18,6 +18,7 @@ from backend.application.project_basic_information_service import (
     ConfirmProjectBasicInformationCommand,
     ProjectBasicInformationError,
     ProjectBasicInformationFieldSuggestion,
+    ProjectBasicInformationInvalidQuantityDefaultsError,
     ProjectBasicInformationMissingRequiredError,
     ProjectBasicInformationProjectNotFoundError,
     ProjectBasicInformationRecord,
@@ -165,6 +166,15 @@ def confirm_basic_information(
                 "message": str(exc),
                 "missing_fields": list(exc.missing_fields),
                 "missing_labels": list(exc.missing_labels),
+            },
+        ) from exc
+    except ProjectBasicInformationInvalidQuantityDefaultsError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": str(exc),
+                "invalid_fields": list(exc.invalid_fields),
+                "invalid_labels": list(exc.invalid_labels),
             },
         ) from exc
     except ProjectBasicInformationProjectNotFoundError as exc:

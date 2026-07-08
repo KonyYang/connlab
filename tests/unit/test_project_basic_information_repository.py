@@ -78,6 +78,34 @@ def test_project_basic_information_repository_creates_multiple_confirmed_version
     assert latest.values["project_type"] == "PEX"
 
 
+def test_project_basic_information_repository_round_trips_quantity_defaults() -> None:
+    engine = create_engine("sqlite:///:memory:", future=True)
+    init_db(engine)
+    values = {
+        "project_type": "NPD",
+        "test_points_per_sample": "3",
+        "readings_per_point": "2",
+        "contact_points_per_sample": "4",
+    }
+    with Session(engine) as session:
+        repository = ProjectBasicInformationRepository(session)
+
+        repository.save_draft(
+            _record("draft-1", status="draft", version=0, values=values)
+        )
+        repository.create_confirmed(
+            _record("confirmed-1", status="confirmed", version=1, values=values)
+        )
+
+        draft = repository.get_latest_draft("P1")
+        confirmed = repository.get_latest_confirmed("P1")
+
+    assert draft is not None
+    assert draft.values == values
+    assert confirmed is not None
+    assert confirmed.values == values
+
+
 def test_project_basic_information_repository_returns_next_confirmed_version() -> None:
     engine = create_engine("sqlite:///:memory:", future=True)
     init_db(engine)
