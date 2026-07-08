@@ -6,6 +6,13 @@ from dataclasses import dataclass
 import re
 from typing import Protocol
 
+from backend.application.confirmed_matrix_step_quantity_projection import (
+    ConfirmedMatrixTestRecordStepQuantity,
+    StepQuantityProjectionLookup,
+    build_step_quantity_projection_lookup,
+    project_test_record_step_quantity,
+)
+from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixRow
 from backend.domain import ConfirmedMatrixSnapshot
 from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
 
@@ -44,6 +51,7 @@ class ConfirmedMatrixTestRecordPreviewStep:
     condition: str
     requirement: str
     suffix_note: str | None = None
+    quantity: ConfirmedMatrixTestRecordStepQuantity | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,10 +95,16 @@ class ConfirmedMatrixTestRecordPreviewService:
         groups_by_id = {group.confirmed_group_id: group for group in snapshot.groups}
         rows_by_id = {row.confirmed_row_id: row for row in snapshot.rows}
         cell_lookup = _build_cell_lookup(snapshot=snapshot, groups_by_id=groups_by_id, rows_by_id=rows_by_id)
+        quantity_lookup = build_step_quantity_projection_lookup(snapshot)
 
         preview_groups: list[ConfirmedMatrixTestRecordPreviewGroup] = []
         for group in snapshot.groups:
-            steps = _build_group_steps(group_id=group.confirmed_group_id, snapshot=snapshot, cell_lookup=cell_lookup)
+            steps = _build_group_steps(
+                group=group,
+                snapshot=snapshot,
+                cell_lookup=cell_lookup,
+                quantity_lookup=quantity_lookup,
+            )
             if not steps:
                 continue
             preview_groups.append(
@@ -129,13 +143,14 @@ def _build_cell_lookup(
 
 def _build_group_steps(
     *,
-    group_id: str,
+    group: ConfirmedMatrixGroup,
     snapshot: ConfirmedMatrixSnapshot,
     cell_lookup: dict[tuple[str, str], str],
+    quantity_lookup: StepQuantityProjectionLookup,
 ) -> list[ConfirmedMatrixTestRecordPreviewStep]:
     steps: list[ConfirmedMatrixTestRecordPreviewStep] = []
     for row in snapshot.rows:
-        cell_value = _normalize_text(cell_lookup.get((group_id, row.confirmed_row_id)))
+        cell_value = _normalize_text(cell_lookup.get((group.confirmed_group_id, row.confirmed_row_id)))
         if not cell_value:
             continue
         parsed_tokens, _warnings = parse_step_tokens(cell_value)
@@ -150,6 +165,12 @@ def _build_group_steps(
                     method=_normalize_text(row.method),
                     condition=_normalize_text(row.condition),
                     requirement=_normalize_text(row.requirement),
+                    quantity=project_test_record_step_quantity(
+                        group=group,
+                        row=row,
+                        token=token,
+                        lookup=quantity_lookup,
+                    ),
                 )
             )
     steps.sort(key=lambda step: (step.sequence, step.raw_token))
@@ -177,6 +198,7 @@ def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPr
             method=first_step.method,
             condition=first_step.condition,
             requirement=initial_value,
+            quantity=first_step.quantity,
         )
     if delta_value:
         for index in llcr_indexes[1:]:
@@ -190,6 +212,7 @@ def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPr
                 method=step.method,
                 condition=step.condition,
                 requirement=delta_value,
+                quantity=step.quantity,
             )
 
 

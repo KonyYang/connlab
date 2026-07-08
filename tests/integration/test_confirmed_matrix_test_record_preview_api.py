@@ -14,8 +14,12 @@ from backend.application.source_matrix_import_persistence_service import (
     SourceMatrixImportPersistenceService,
 )
 from backend.domain import (
+    ConfirmedMatrixCell,
+    ConfirmedMatrixGroup,
+    ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
+    ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
     Project,
     ProjectStatus,
@@ -66,6 +70,34 @@ def test_confirmed_matrix_test_record_preview_api_happy_path(tmp_path: Path) -> 
         assert payload["groups"][0]["steps"][0]["method"] == ""
         assert payload["groups"][0]["steps"][0]["condition"] == ""
         assert payload["groups"][0]["steps"][0]["requirement"] == ""
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_confirmed_matrix_test_record_preview_api_returns_step_quantity_metadata(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        _seed_active_snapshot_with_step_quantity("P1", tmp_path)
+
+        response = client.get(
+            "/api/projects/P1/confirmed-matrix/test-record-preview"
+        )
+
+        assert response.status_code == 200
+        step = response.json()["groups"][0]["steps"][0]
+        assert step["quantity"] == {
+            "test_points_per_sample": "3",
+            "readings_per_point": "2",
+            "contact_points_per_sample": "6",
+            "total_readings": "6",
+            "status": "ready",
+            "source": "matrix_step_override",
+            "review_reason": None,
+        }
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -262,6 +294,93 @@ def _seed_empty_active_confirmed_snapshot(project_id: str, tmp_path: Path) -> No
                 groups=(),
                 rows=(),
                 cells=(),
+            )
+        )
+        session.commit()
+    engine.dispose()
+
+
+def _seed_active_snapshot_with_step_quantity(project_id: str, tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    session_factory = create_session_factory(engine)
+    with session_factory() as session:
+        repo = ConfirmedMatrixAuthorityRepository(session)
+        row = ConfirmedMatrixRow(
+            confirmed_row_id="cmr-llcr",
+            confirmed_matrix_id="cmv-quantity",
+            draft_row_id="pmdr-llcr",
+            source_row_snapshot_id="smr-llcr",
+            row_order=1,
+            test_item="LLCR",
+            source_section="6.2",
+            method="M2",
+            condition="C2",
+            requirement="R2",
+        )
+        repo.create_snapshot(
+            ConfirmedMatrixSnapshot(
+                version=ConfirmedMatrixVersion(
+                    confirmed_matrix_id="cmv-quantity",
+                    project_id=project_id,
+                    project_matrix_draft_id="pmd-quantity",
+                    source_import_id="smi-quantity",
+                    source_snapshot_id="sms-quantity",
+                    confirmed_revision=1,
+                    is_active_authority=True,
+                    status=ConfirmedMatrixStatus.CONFIRMED,
+                    confirmed_by="operator",
+                    confirmed_at="2026-05-23T10:00:00+00:00",
+                ),
+                groups=(
+                    ConfirmedMatrixGroup(
+                        confirmed_group_id="cmg-1",
+                        confirmed_matrix_id="cmv-quantity",
+                        draft_group_id="pmdg-1",
+                        source_group_snapshot_id="smg-1",
+                        group_order=1,
+                        group_key="g1",
+                        group_label="G1",
+                        sample_quantity_expression="5",
+                    ),
+                ),
+                rows=(row,),
+                cells=(
+                    ConfirmedMatrixCell(
+                        confirmed_cell_id="cmc-1",
+                        confirmed_matrix_id="cmv-quantity",
+                        confirmed_row_id=row.confirmed_row_id,
+                        confirmed_group_id="cmg-1",
+                        draft_row_id=row.draft_row_id,
+                        draft_group_id="pmdg-1",
+                        cell_value="1",
+                    ),
+                ),
+                step_quantities=(
+                    ConfirmedMatrixStepQuantity(
+                        confirmed_step_quantity_id="cmsq-1",
+                        confirmed_matrix_id="cmv-quantity",
+                        confirmed_group_id="cmg-1",
+                        confirmed_row_id=row.confirmed_row_id,
+                        draft_group_id="pmdg-1",
+                        draft_row_id=row.draft_row_id,
+                        step_sequence=1,
+                        step_suffix_note=None,
+                        raw_token="1",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                        contact_points_per_sample="6",
+                        source="matrix_step_override",
+                        review_required=False,
+                        review_reason=None,
+                        confirmed_at="2026-07-08T09:00:00+00:00",
+                    ),
+                ),
             )
         )
         session.commit()

@@ -14,6 +14,7 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewNotFoundError,
     ConfirmedMatrixTestRecordPreviewService,
     ConfirmedMatrixTestRecordPreviewStep,
+    ConfirmedMatrixTestRecordStepQuantity,
 )
 
 
@@ -28,6 +29,17 @@ class ConfirmedMatrixTestRecordPreviewStepResponse(BaseModel):
     method: str
     condition: str
     requirement: str
+    quantity: "ConfirmedMatrixTestRecordStepQuantityResponse | None" = None
+
+
+class ConfirmedMatrixTestRecordStepQuantityResponse(BaseModel):
+    test_points_per_sample: str | None
+    readings_per_point: str | None
+    contact_points_per_sample: str | None
+    total_readings: str | None
+    status: str
+    source: str | None
+    review_reason: str | None
 
 
 class ConfirmedMatrixTestRecordPreviewGroupResponse(BaseModel):
@@ -101,9 +113,26 @@ def _to_step_response(
         method=step.method,
         condition=step.condition,
         requirement=step.requirement,
+        quantity=_to_quantity_response(step.quantity),
     )
 
 
 def _display_step_token(raw_token: str, suffix_note: str | None) -> str:
     suffix = suffix_note.strip() if suffix_note else ""
     return f"{raw_token}{suffix}" if suffix else raw_token
+
+
+def _to_quantity_response(
+    quantity: ConfirmedMatrixTestRecordStepQuantity | None,
+) -> ConfirmedMatrixTestRecordStepQuantityResponse | None:
+    if quantity is None:
+        return None
+    return ConfirmedMatrixTestRecordStepQuantityResponse(
+        test_points_per_sample=quantity.test_points_per_sample,
+        readings_per_point=quantity.readings_per_point,
+        contact_points_per_sample=quantity.contact_points_per_sample,
+        total_readings=quantity.total_readings,
+        status=quantity.status,
+        source=quantity.source,
+        review_reason=quantity.review_reason,
+    )

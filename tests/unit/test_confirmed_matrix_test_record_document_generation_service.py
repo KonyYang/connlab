@@ -20,6 +20,7 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewGroup,
     ConfirmedMatrixTestRecordPreviewNotFoundError,
     ConfirmedMatrixTestRecordPreviewStep,
+    ConfirmedMatrixTestRecordStepQuantity,
 )
 from backend.domain.enums import LtrStatus
 
@@ -309,6 +310,27 @@ def test_generation_service_passes_step_mapped_requirements_to_writer(tmp_path: 
     assert written_steps[1].requirement == "ΔR ≤ 0.17 mΩ"
 
 
+def test_generation_service_passes_step_quantity_projection_to_writer(tmp_path: Path) -> None:
+    writer = _Writer()
+    service = ConfirmedMatrixTestRecordDocumentGenerationService(
+        preview_service=_PreviewService(_preview_with_quantity()),
+        project_store=_ProjectStore(),
+        writer=writer,
+    )
+
+    service.generate(
+        GenerateConfirmedMatrixTestRecordDocumentCommand(
+            project_id="P1",
+            output_dir=tmp_path,
+            template_path=_template(tmp_path),
+        )
+    )
+
+    quantity = writer.calls[0]["groups"][0].steps[0].quantity
+    assert quantity.status == "ready"
+    assert quantity.total_readings == "6"
+
+
 class _PreviewService:
     def __init__(self, preview: ConfirmedMatrixTestRecordPreview | None) -> None:
         self.preview = preview
@@ -387,6 +409,43 @@ def _preview() -> ConfirmedMatrixTestRecordPreview:
                         method="EIA-364-18",
                         condition="10x",
                         requirement="No damage",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def _preview_with_quantity() -> ConfirmedMatrixTestRecordPreview:
+    quantity = ConfirmedMatrixTestRecordStepQuantity(
+        test_points_per_sample="3",
+        readings_per_point="2",
+        contact_points_per_sample="6",
+        total_readings="6",
+        status="ready",
+        source="matrix_step_override",
+        review_reason=None,
+    )
+    return ConfirmedMatrixTestRecordPreview(
+        project_id="P1",
+        confirmed_matrix_id="cmv-1",
+        preview_status="ready",
+        groups=(
+            ConfirmedMatrixTestRecordPreviewGroup(
+                group_key="g1",
+                group_label="Group 1",
+                sample_quantity_expression="5",
+                step_count=1,
+                steps=(
+                    ConfirmedMatrixTestRecordPreviewStep(
+                        sequence=1,
+                        raw_token="1",
+                        test_item="LLCR",
+                        section="6.2",
+                        method="EIA-364-23",
+                        condition="20mV max, 100mA max",
+                        requirement="≤ 0.25 mΩ",
+                        quantity=quantity,
                     ),
                 ),
             ),

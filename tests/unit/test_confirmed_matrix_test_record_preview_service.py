@@ -14,6 +14,7 @@ from backend.domain import (
     ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
+    ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
 )
 
@@ -233,6 +234,94 @@ def test_preview_maps_llcr_initial_only_without_delta_for_followup_steps() -> No
     assert steps[1].requirement == "Initial ≤ 25 mΩ"
 
 
+def test_preview_projects_confirmed_step_quantities_for_matching_step() -> None:
+    service = ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                step_quantities=(
+                    _step_quantity(
+                        confirmed_row_id="cmr-2",
+                        draft_row_id="pmdr-2",
+                        step_sequence=5,
+                        raw_token="5",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                        contact_points_per_sample="6",
+                    ),
+                )
+            )
+        )
+    )
+
+    preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+
+    quantity = preview.groups[0].steps[-1].quantity
+    assert quantity is not None
+    assert quantity.status == "ready"
+    assert quantity.test_points_per_sample == "3"
+    assert quantity.readings_per_point == "2"
+    assert quantity.contact_points_per_sample == "6"
+    assert quantity.total_readings == "6"
+    assert quantity.source == "matrix_step_override"
+    assert quantity.review_reason is None
+
+
+def test_preview_marks_missing_step_quantity_when_other_step_quantities_are_present() -> None:
+    service = ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                step_quantities=(
+                    _step_quantity(
+                        confirmed_row_id="cmr-2",
+                        draft_row_id="pmdr-2",
+                        step_sequence=99,
+                        raw_token="99",
+                        test_points_per_sample="1",
+                        readings_per_point="1",
+                    ),
+                )
+            )
+        )
+    )
+
+    preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+
+    quantity = preview.groups[0].steps[-1].quantity
+    assert quantity is not None
+    assert quantity.status == "missing"
+    assert quantity.review_reason == "Confirm Matrix Step quantity."
+    assert quantity.total_readings is None
+
+
+def test_preview_preserves_review_required_step_quantity() -> None:
+    service = ConfirmedMatrixTestRecordPreviewService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                step_quantities=(
+                    _step_quantity(
+                        confirmed_row_id="cmr-2",
+                        draft_row_id="pmdr-2",
+                        step_sequence=5,
+                        raw_token="5",
+                        test_points_per_sample="3",
+                        readings_per_point=None,
+                        review_required=True,
+                        review_reason="Confirm readings per point.",
+                    ),
+                )
+            )
+        )
+    )
+
+    preview = service.build_preview(BuildConfirmedMatrixTestRecordPreviewCommand(project_id="P1"))
+
+    quantity = preview.groups[0].steps[-1].quantity
+    assert quantity is not None
+    assert quantity.status == "review_required"
+    assert quantity.review_reason == "Confirm readings per point."
+    assert quantity.total_readings is None
+
+
 class _ConfirmedStore:
     def __init__(self, active: ConfirmedMatrixSnapshot | None) -> None:
         self.active = active
@@ -247,6 +336,7 @@ def _snapshot(
     *,
     rows: tuple[ConfirmedMatrixRow, ...] | None = None,
     cells: tuple[ConfirmedMatrixCell, ...] | None = None,
+    step_quantities: tuple[ConfirmedMatrixStepQuantity, ...] = (),
 ) -> ConfirmedMatrixSnapshot:
     return ConfirmedMatrixSnapshot(
         version=ConfirmedMatrixVersion(
@@ -342,4 +432,39 @@ def _snapshot(
                 cell_value="3",
             ),
         ),
+        step_quantities=step_quantities,
+    )
+
+
+def _step_quantity(
+    *,
+    confirmed_group_id: str = "cmg-1",
+    confirmed_row_id: str,
+    draft_group_id: str = "pmdg-1",
+    draft_row_id: str,
+    step_sequence: int,
+    raw_token: str,
+    test_points_per_sample: str | None,
+    readings_per_point: str | None,
+    contact_points_per_sample: str | None = None,
+    review_required: bool = False,
+    review_reason: str | None = None,
+) -> ConfirmedMatrixStepQuantity:
+    return ConfirmedMatrixStepQuantity(
+        confirmed_step_quantity_id=f"cmsq-{confirmed_row_id}-{raw_token}",
+        confirmed_matrix_id="cmv-1",
+        confirmed_group_id=confirmed_group_id,
+        confirmed_row_id=confirmed_row_id,
+        draft_group_id=draft_group_id,
+        draft_row_id=draft_row_id,
+        step_sequence=step_sequence,
+        step_suffix_note=None,
+        raw_token=raw_token,
+        test_points_per_sample=test_points_per_sample,
+        readings_per_point=readings_per_point,
+        contact_points_per_sample=contact_points_per_sample,
+        source="matrix_step_override",
+        review_required=review_required,
+        review_reason=review_reason,
+        confirmed_at="2026-07-08T09:00:00+00:00",
     )
