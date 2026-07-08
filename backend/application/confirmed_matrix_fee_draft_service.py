@@ -21,13 +21,23 @@ from backend.application.confirmed_matrix_fee_manual_defaults import (
     build_report_preparation_line,
     build_sample_preparation_line,
 )
-from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixRow, ConfirmedMatrixSnapshot
+from backend.application.confirmed_matrix_fee_step_quantities import (
+    StepQuantityLookup,
+    build_step_quantity_contexts,
+    build_step_quantity_lookup,
+)
+from backend.domain import (
+    ConfirmedMatrixGroup,
+    ConfirmedMatrixRow,
+    ConfirmedMatrixSnapshot,
+)
 from backend.modules.fee_evaluation import (
     FeeDefaultFillContext,
     FeeFieldMetadata,
     FeeRule,
     FeeRuleLibrary,
     FeeRuleMatcher,
+    FeeStepQuantityContext,
     build_fee_default_fill,
     load_active_fee_rule_library,
 )
@@ -162,6 +172,7 @@ def _build_groups(
         groups_by_id=groups_by_id,
         rows_by_id=rows_by_id,
     )
+    step_quantity_lookup = build_step_quantity_lookup(snapshot)
     matcher = FeeRuleMatcher(library)
     groups: list[FeeEvaluationGroup] = []
     for group in snapshot.groups:
@@ -169,6 +180,7 @@ def _build_groups(
             group=group,
             snapshot=snapshot,
             cell_lookup=cell_lookup,
+            step_quantity_lookup=step_quantity_lookup,
             matcher=matcher,
             library=library,
         )
@@ -211,6 +223,7 @@ def _build_group_lines(
     group: ConfirmedMatrixGroup,
     snapshot: ConfirmedMatrixSnapshot,
     cell_lookup: dict[tuple[str, str], str],
+    step_quantity_lookup: StepQuantityLookup,
     matcher: FeeRuleMatcher,
     library: FeeRuleLibrary,
 ) -> list[FeeEvaluationLineItem]:
@@ -223,6 +236,12 @@ def _build_group_lines(
         step_tokens = tuple(token.raw_token for token in parsed_tokens)
         if not step_tokens:
             continue
+        step_quantities = build_step_quantity_contexts(
+            group=group,
+            row=row,
+            parsed_tokens=parsed_tokens,
+            step_quantity_lookup=step_quantity_lookup,
+        )
         match = matcher.match_test_item(row.test_item)
         rule = match.rule
         warnings = tuple(
@@ -239,6 +258,7 @@ def _build_group_lines(
                 row=row,
                 snapshot=snapshot,
                 step_tokens=step_tokens,
+                step_quantities=step_quantities,
                 rule=rule,
                 rule_version_id=library.version.version_id if rule is not None else None,
                 match_reason=match.match_reason,
@@ -255,6 +275,7 @@ def _build_line_item(
     row: ConfirmedMatrixRow,
     snapshot: ConfirmedMatrixSnapshot,
     step_tokens: tuple[str, ...],
+    step_quantities: tuple[FeeStepQuantityContext, ...],
     rule: FeeRule | None,
     rule_version_id: str | None,
     match_reason: str,
@@ -269,6 +290,7 @@ def _build_line_item(
             group=group,
             row=row,
             step_tokens=step_tokens,
+            step_quantities=step_quantities,
             warnings=warnings,
         )
     )
@@ -315,6 +337,7 @@ def _calculate_line(
     group: ConfirmedMatrixGroup,
     row: ConfirmedMatrixRow,
     step_tokens: tuple[str, ...],
+    step_quantities: tuple[FeeStepQuantityContext, ...],
     warnings: tuple[FeeEvaluationWarning, ...],
 ) -> _CalculationResult:
     if warnings:
@@ -329,6 +352,7 @@ def _calculate_line(
             sample_quantity_expression=_text(group.sample_quantity_expression),
             spend_time=_text(row.day_expression),
             step_tokens=step_tokens,
+            step_quantities=step_quantities,
         ),
     )
     status: FeeLineStatus = default_fill.status

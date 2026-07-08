@@ -40,6 +40,7 @@ from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultFillContext,
     FeeDefaultFillResult,
     FeeFieldMetadata,
+    FeeStepQuantityContext,
 )
 from backend.modules.fee_evaluation.fee_rule_seed_loader import (
     FeeRuleSeedLoaderError,
@@ -58,6 +59,7 @@ __all__ = [
     "FeeDefaultFillContext",
     "FeeDefaultFillResult",
     "FeeFieldMetadata",
+    "FeeStepQuantityContext",
     "FeeReferenceCandidateRow",
     "FeeRuleActivationValidationError",
     "FeeRuleDiffEntry",

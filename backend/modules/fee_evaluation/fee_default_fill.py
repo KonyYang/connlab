@@ -18,19 +18,15 @@ from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeFieldMetadata,
 )
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
+from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
+    build_reading_result,
+)
 
 _PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 _HOUR_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b", re.I)
 _DAY_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:d|day|days)\b", re.I)
 _CYCLE_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:cycle|cycles)\b", re.I)
 _CURRENT_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:a|amp|amps)\b", re.I)
-_READING_PATTERN = re.compile(
-    r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:reading|readings|point|points|contact|contacts)"
-    r"\s*(?:/|per)\s*(?:specimen|sample)\b",
-    re.I,
-)
-
-
 def build_fee_default_fill(
     *,
     rule: FeeRule,
@@ -60,7 +56,12 @@ def build_fee_default_fill(
             source=rule.display_name,
         )
     if rule.rule_id in {"fee_rule_llcr", "fee_rule_contact_resistance_specified_current"}:
-        return _reading_result(rule=rule, context=context)
+        return build_reading_result(
+            rule=rule,
+            sample_quantity_expression=context.sample_quantity_expression,
+            source_text=_combined_text(context),
+            step_quantities=context.step_quantities,
+        )
     if rule.rule_id == "fee_rule_durability":
         return _cycle_result(rule=rule, context=context)
     if rule.rule_id in {
@@ -97,39 +98,6 @@ def build_fee_default_fill(
     if rule.rule_id == "fee_rule_temperature_rise":
         return _temperature_rise_result(rule=rule, context=context)
     return _fallback_result(rule=rule, context=context)
-
-
-def _reading_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
-    sample_qty = _plain_decimal(context.sample_quantity_expression)
-    readings_per_specimen = _first_decimal(_READING_PATTERN, _combined_text(context))
-    if readings_per_specimen is None:
-        return manual_required(
-            rule=rule,
-            unit_label="reading",
-            unit_price=None,
-            base_fee=ZERO,
-            review_reason="Enter readings/specimen",
-            manual_fields=("unit_price", "units", "testing_fee"),
-        )
-    if sample_qty is None:
-        return manual_required(
-            rule=rule,
-            unit_label="reading",
-            unit_price=None,
-            base_fee=ZERO,
-            review_reason="Confirm sample quantity",
-            manual_fields=("unit_price", "units", "testing_fee"),
-        )
-    unit_price = Decimal("1.5") if readings_per_specimen <= Decimal("20") else Decimal("1")
-    return calculated_result(
-        spend_time=None,
-        unit_label="reading",
-        unit_price=unit_price,
-        units=sample_qty * readings_per_specimen,
-        base_fee=ZERO,
-        discount_percent=ZERO,
-        source=rule.display_name,
-    )
 
 
 def _cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:

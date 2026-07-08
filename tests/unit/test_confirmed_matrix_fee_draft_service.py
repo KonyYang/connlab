@@ -15,6 +15,7 @@ from backend.domain import (
     ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
+    ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
 )
 from backend.modules.fee_evaluation.fee_rule_models import (
@@ -291,6 +292,91 @@ def test_fee_draft_prefills_temperature_rise_tier_and_flags_base_fee_review() ->
     )
 
 
+def test_fee_draft_uses_confirmed_step_quantities_for_llcr_units() -> None:
+    row = _fixture_row("Contact Resistance (Low Level)", requirement="5 readings/specimen")
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=row,
+                step_quantities=(
+                    _step_quantity(
+                        row=row,
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                    ),
+                ),
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.review_required is False
+    assert line.unit_label == "reading"
+    assert line.unit_price == Decimal("1.5")
+    assert line.units == Decimal("30")
+    assert line.testing_fee == Decimal("45")
+    assert any(
+        metadata.field == "units" and metadata.source == "Matrix Step quantity"
+        for metadata in line.field_metadata
+    )
+
+
+def test_fee_draft_marks_conflicting_step_quantities_review_required() -> None:
+    row = _fixture_row("Contact Resistance (Low Level)")
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=row,
+                cell_value="1 2",
+                step_quantities=(
+                    _step_quantity(
+                        row=row,
+                        step_sequence=1,
+                        raw_token="1",
+                        test_points_per_sample="3",
+                        readings_per_point="2",
+                    ),
+                    _step_quantity(
+                        row=row,
+                        step_sequence=2,
+                        raw_token="2",
+                        test_points_per_sample="4",
+                        readings_per_point="2",
+                    ),
+                ),
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "review_required"
+    assert line.review_required is True
+    assert line.units is None
+    assert line.testing_fee is None
+    assert line.review_reason == "Confirm Matrix Step quantity"
+
+
+def test_fee_draft_preserves_text_fallback_when_step_quantities_are_absent() -> None:
+    row = _fixture_row("Contact Resistance (Low Level)", requirement="5 readings/specimen")
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(active=_snapshot(row=row))
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.review_required is False
+    assert line.unit_price == Decimal("1.5")
+    assert line.units == Decimal("25")
+    assert line.testing_fee == Decimal("37.5")
+
+
 class _ConfirmedStore:
     def __init__(self, active: ConfirmedMatrixSnapshot | None) -> None:
         self.active = active
@@ -307,6 +393,7 @@ def _snapshot(
     row: ConfirmedMatrixRow | None = None,
     cell_value: str = "1",
     sample_received_date: str | None = "2026-06-03",
+    step_quantities: tuple[ConfirmedMatrixStepQuantity, ...] = (),
 ) -> ConfirmedMatrixSnapshot:
     row = row or _fixture_row("Visual Examination")
     return ConfirmedMatrixSnapshot(
@@ -347,10 +434,16 @@ def _snapshot(
                 cell_value=cell_value,
             ),
         ),
+        step_quantities=step_quantities,
     )
 
 
-def _fixture_row(test_item: str, *, condition: str = "Visual Inspection") -> ConfirmedMatrixRow:
+def _fixture_row(
+    test_item: str,
+    *,
+    condition: str = "Visual Inspection",
+    requirement: str = "No damage",
+) -> ConfirmedMatrixRow:
     return ConfirmedMatrixRow(
         confirmed_row_id=f"cmr-{test_item.lower().replace(' ', '-')}",
         confirmed_matrix_id="cmv-1",
@@ -361,7 +454,37 @@ def _fixture_row(test_item: str, *, condition: str = "Visual Inspection") -> Con
         source_section="6.1",
         method="EIA-364-18",
         condition=condition,
-        requirement="No damage",
+        requirement=requirement,
+    )
+
+
+def _step_quantity(
+    *,
+    row: ConfirmedMatrixRow,
+    step_sequence: int = 1,
+    raw_token: str = "1",
+    test_points_per_sample: str | None,
+    readings_per_point: str | None,
+    contact_points_per_sample: str | None = None,
+    review_required: bool = False,
+) -> ConfirmedMatrixStepQuantity:
+    return ConfirmedMatrixStepQuantity(
+        confirmed_step_quantity_id=f"cmsq-{raw_token}",
+        confirmed_matrix_id="cmv-1",
+        confirmed_group_id="cmg-1",
+        confirmed_row_id=row.confirmed_row_id,
+        draft_group_id="pmdg-1",
+        draft_row_id=row.draft_row_id,
+        step_sequence=step_sequence,
+        step_suffix_note=None,
+        raw_token=raw_token,
+        test_points_per_sample=test_points_per_sample,
+        readings_per_point=readings_per_point,
+        contact_points_per_sample=contact_points_per_sample,
+        source="matrix_step_override",
+        review_required=review_required,
+        review_reason="Confirm Step quantity values." if review_required else None,
+        confirmed_at="2026-07-08T09:00:00+00:00",
     )
 
 

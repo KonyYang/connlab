@@ -34,6 +34,23 @@ class FeeFieldMetadata:
 
 
 @dataclass(frozen=True, slots=True)
+class FeeStepQuantityContext:
+    """Read-only Matrix Step quantity fact available to fee default-fill."""
+
+    step_token: str
+    step_sequence: int
+    step_suffix_note: str | None
+    test_points_per_sample: str | None
+    readings_per_point: str | None
+    contact_points_per_sample: str | None
+    total_readings: str | None
+    source: str | None
+    review_required: bool
+    review_reason: str | None
+    matched: bool
+
+
+@dataclass(frozen=True, slots=True)
 class FeeDefaultFillContext:
     """Matrix facts available to deterministic fee default-fill rules."""
 
@@ -44,6 +61,7 @@ class FeeDefaultFillContext:
     sample_quantity_expression: str
     spend_time: str = ""
     step_tokens: tuple[str, ...] = ()
+    step_quantities: tuple[FeeStepQuantityContext, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
