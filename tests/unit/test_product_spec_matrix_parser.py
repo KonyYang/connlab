@@ -69,6 +69,28 @@ def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() 
     assert durability.detail_extraction_status == "partial"
 
 
+def test_product_spec_matrix_parser_uses_basic_information_specification_for_reseating() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["test Items", "Section", "Group 1"],
+                ["Reseating", "7.8", "1"],
+            ]
+        ],
+        paragraphs=[
+            "7.8 Reseating",
+            "Manually mating/un-mating the pin and socket, perform 3 such cycles, "
+            "after mechanical/environmental exposure.",
+        ],
+        applicable_specifications="EIA-364-37",
+    )
+
+    reseating = result.rows[0]
+    assert reseating.method == "EIA-364-37 7.8"
+    assert reseating.condition == "Manual 3 cycles"
+    assert reseating.requirement == "No damage"
+
+
 def test_product_spec_matrix_parser_applies_family_aware_details_on_real_path() -> None:
     result = ProductSpecMatrixParser().parse_tables(
         [

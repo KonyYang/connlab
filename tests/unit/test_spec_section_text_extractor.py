@@ -191,6 +191,13 @@ def test_family_coverage_safe_outputs() -> None:
             "No damage",
         ),
         (
+            "7.8",
+            "Reseating",
+            "7.8 Reseating. Manually mating/un-mating the pin and socket, perform 3 such cycles, after mechanical/environmental exposure.",
+            "Applicable Specifications 7.8",
+            "No damage",
+        ),
+        (
             "8.1",
             "Thermal Shock",
             "8.1 Thermal Shock –EIA 364-32. Number of cycles - 10 cycles. Temperature range -55 to +85 C.",
@@ -247,6 +254,38 @@ def test_family_coverage_safe_outputs() -> None:
         assert requirement != "Maximum Change: 0"
         if expected_requirement:
             assert requirement == expected_requirement
+
+
+def test_reseating_uses_section_specific_default_details() -> None:
+    detail = extract_row_details(
+        section="7.8",
+        section_text=(
+            "7.8 Reseating. Manually mating/un-mating the pin and socket, "
+            "perform 3 such cycles, after mechanical/environmental exposure."
+        ),
+        test_item="Reseating",
+    )
+
+    assert detail.method == "Applicable Specifications 7.8"
+    assert detail.condition == "Manual 3 cycles"
+    assert detail.requirement == "No damage"
+    assert detail.status == "matched"
+
+
+def test_reseating_uses_basic_information_specification_for_method() -> None:
+    detail = extract_row_details(
+        section="7.8",
+        section_text=(
+            "7.8 Reseating. Manually mating/un-mating the pin and socket, "
+            "perform 3 such cycles, after mechanical/environmental exposure."
+        ),
+        test_item="Reseating",
+        applicable_specifications="EIA-364-37",
+    )
+
+    assert detail.method == "EIA-364-37 7.8"
+    assert detail.condition == "Manual 3 cycles"
+    assert detail.requirement == "No damage"
 
 
 def test_template_fallback_applies_only_to_empty_fields() -> None:

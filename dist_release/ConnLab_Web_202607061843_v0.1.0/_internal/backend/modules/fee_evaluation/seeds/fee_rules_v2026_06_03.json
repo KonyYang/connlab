@@ -1,0 +1,397 @@
+{
+  "version": {
+    "version_id": "fee_rules_v2026_06_03",
+    "source_file_name": "Testing Fee Evaluation-Even.xls",
+    "source_sheet": "Unit Price Reference",
+    "source_hash": "sha256:b19cce35f774ad3a83260805f7b717d5446f23ca1a90c209a08d8cb7f91fe226",
+    "effective_from_basis": "project.sample_received_date",
+    "created_at": "2026-06-03T00:00:00+08:00"
+  },
+  "rules": [
+    {
+      "rule_id": "fee_rule_llcr",
+      "display_name": "LLCR",
+      "aliases": [
+        "LLCR",
+        "Low Level Contact Resistance",
+        "Contact Resistance (Low Level)",
+        "低阶接触电阻"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "≤20readings/specimen, 1.5/reading; >20readings/specimen, 1/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-23",
+      "range_condition": "20mV max, 100mA max",
+      "calculation_strategy": "per_reading",
+      "review_required": true,
+      "review_reason": "Tiered per-reading pricing depends on specimen reading count."
+    },
+    {
+      "rule_id": "fee_rule_visual_exam",
+      "display_name": "Visual exam",
+      "aliases": [
+        "Visual exam",
+        "Visual Examination",
+        "Visual Inspection",
+        "Visual Examination after test",
+        "外观检查"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": 10,
+        "text": "Digital Microscope: 10/photo"
+      },
+      "unit_label": "photo",
+      "applicable_standard": "EIA-364-18",
+      "range_condition": "Typical post-test appearance photos",
+      "calculation_strategy": "per_photo",
+      "review_required": true,
+      "review_reason": "Typical post-test photos may be free; operator review is required for full-sample photography."
+    },
+    {
+      "rule_id": "fee_rule_durability",
+      "display_name": "Durability",
+      "aliases": [
+        "Durability",
+        "Mating Durability",
+        "耐久性"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "If each specimen <250 cycles and fixturing is time-consuming, base fee 50~100 may apply; otherwise none"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "≤50cycle/specimen: 2/cycle; 50~250cycle/specimen: 1/cycle; >250cycle/specimen: 0.5/cycle"
+      },
+      "unit_label": "cycle",
+      "applicable_standard": "EIA-364-09/13",
+      "range_condition": "750mm/minute max",
+      "calculation_strategy": "per_cycle",
+      "review_required": true,
+      "review_reason": "Cycle-tier pricing and optional base fee depend on specimen count and fixturing complexity."
+    },
+    {
+      "rule_id": "fee_rule_thermal_shock",
+      "display_name": "Thermal shock",
+      "aliases": [
+        "Thermal shock",
+        "冷热冲击"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<10hours 300; ≥10hours no base fee"
+      },
+      "unit_price": {
+        "amount": 30,
+        "text": "30/hour"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-32",
+      "range_condition": "-80~220C",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Base fee changes at the 10-hour threshold."
+    },
+    {
+      "rule_id": "fee_rule_temperature_humidity",
+      "display_name": "Temperature & Humidity",
+      "aliases": [
+        "Temperature & Humidity",
+        "Steady state temperature humidity",
+        "Cyclic temperature humidity",
+        "Cycling Temperature & Humidity",
+        "Thermal Disturbance",
+        "温湿度"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<96hours 300; ≥96hours no base fee"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "Steady state: 20/hour; Cyclic state: 25/hour"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-31",
+      "range_condition": "-40~180C, 10~98%RH",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Steady-state and cyclic pricing diverge and require operator confirmation."
+    },
+    {
+      "rule_id": "fee_rule_high_temperature_life",
+      "display_name": "High temperature life",
+      "aliases": [
+        "High temperature Life",
+        "Pre-High temperature Life",
+        "High temperature Life (Preconditioning)",
+        "Preconditioning high temperature life",
+        "高温寿命"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": 15,
+        "text": "15/hour"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-17",
+      "range_condition": "Duration from Matrix condition or requirement",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Duration must be explicit before hourly pricing can be calculated."
+    },
+    {
+      "rule_id": "fee_rule_mfg_class_iia",
+      "display_name": "MFG (Class IIA)",
+      "aliases": [
+        "MFG",
+        "MFG (Class IIA)",
+        "Mixed Flowing Gas Class IIA",
+        "混合流动气体",
+        "混合流动气体(等级2A)"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<48hours 300; ≥48hours no base fee"
+      },
+      "unit_price": {
+        "amount": 1000,
+        "text": "1000/day"
+      },
+      "unit_label": "day",
+      "applicable_standard": "EIA-364-65",
+      "range_condition": "20~50C, 75~95%RH",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "MFG source price is per day and the V1 strategy set has no per_day strategy; operator should confirm the intended class and duration."
+    },
+    {
+      "rule_id": "fee_rule_vibration",
+      "display_name": "Vibration",
+      "aliases": [
+        "Vibration",
+        "Random Vibration",
+        "振动"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "≤2hours 300~500; >2hour per axis no base fee"
+      },
+      "unit_price": {
+        "amount": 300,
+        "text": "300"
+      },
+      "unit_label": "group",
+      "applicable_standard": "EIA-364-28",
+      "range_condition": "5~2000Hz, 15G",
+      "calculation_strategy": "fixed_per_group",
+      "review_required": true,
+      "review_reason": "Base fee depends on planned duration and setup complexity."
+    },
+    {
+      "rule_id": "fee_rule_mechanical_force",
+      "display_name": "Mechanical force",
+      "aliases": [
+        "Mechanical force",
+        "Insertion force",
+        "Withdrawal force",
+        "Mating / Un-mating Force",
+        "Mating / Unmating Force",
+        "Mating Force",
+        "Unmating Force",
+        "机械测试",
+        "插拔力"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "Simple 100; normal 200; complex 200~400"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "20/reading or 50/specimen depending on pricing mode"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-13/04/29",
+      "range_condition": "20kN max",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Mechanical-force pricing can be per reading or per specimen and depends on test complexity."
+    },
+    {
+      "rule_id": "fee_rule_mechanical_shock",
+      "display_name": "Mechanical shock",
+      "aliases": [
+        "Mechanical Shock",
+        "Shock",
+        "机械冲击"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": 30,
+        "text": "30/time"
+      },
+      "unit_label": "time",
+      "applicable_standard": "EIA-364-27",
+      "range_condition": "Units require operator confirmation unless explicit",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Mechanical shock units must be confirmed."
+    },
+    {
+      "rule_id": "fee_rule_temperature_rise",
+      "display_name": "Temperature rise",
+      "aliases": [
+        "Temperature rise",
+        "Current carrying temperature rise",
+        "温升"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "Regular 500; complex 500~1000; waived for 3+ specimens under regular setup"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "500/specimen ≤240A; 600/specimen ≤500A; 700/specimen ≤1000A; 800/specimen ≤2000A"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "EIA-364-70 method 2&3",
+      "range_condition": "1200A maximum",
+      "calculation_strategy": "per_specimen",
+      "review_required": true,
+      "review_reason": "Pricing varies by current range and specimen preparation complexity."
+    },
+    {
+      "rule_id": "fee_rule_contact_resistance_specified_current",
+      "display_name": "Contact resistance specified current",
+      "aliases": [
+        "Contact Resistance",
+        "Contact Resistance (Power)",
+        "Contact Resistance, Specified Current",
+        "CR",
+        "接触电阻"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "Unit Price Reference tier by readings/specimen when facts are explicit"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-06",
+      "range_condition": "Specified current contact resistance",
+      "calculation_strategy": "per_reading",
+      "review_required": true,
+      "review_reason": "Specified-current contact resistance pricing requires explicit readings/specimen."
+    },
+    {
+      "rule_id": "fee_rule_microsecond_discontinuity",
+      "display_name": "Microsecond discontinuity",
+      "aliases": [
+        "Microsecond discontinuity",
+        "微秒瞬断"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": 300,
+        "text": "300/time"
+      },
+      "unit_label": "time",
+      "applicable_standard": "EIA-364-87",
+      "range_condition": "Default one setup time",
+      "calculation_strategy": "manual_required",
+      "review_required": false,
+      "review_reason": null
+    },
+    {
+      "rule_id": "fee_rule_solderability",
+      "display_name": "Solderability",
+      "aliases": [
+        "Solderability",
+        "可焊性"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "200; waived when specimen count is 5 or more"
+      },
+      "unit_price": {
+        "amount": 100,
+        "text": "100/specimen"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "J-STD-002",
+      "range_condition": "300C max",
+      "calculation_strategy": "per_specimen",
+      "review_required": true,
+      "review_reason": "Base fee waiver depends on specimen count."
+    },
+    {
+      "rule_id": "fee_rule_sem_eds_analysis",
+      "display_name": "SEM/EDS analysis",
+      "aliases": [
+        "SEM/EDS analysis",
+        "Scanning Electron Microscopy",
+        "扫描电镜",
+        "能谱分析"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "300/specimen/point or 500/hour with discount after 2 hours or 5 hours"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "N/A",
+      "range_condition": "2 hours+ 10% discount; 5 hours+ 20% discount",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Pricing mode and discount depend on whether the work is billed per point or per hour."
+    },
+    {
+      "rule_id": "fee_rule_report_preparation",
+      "display_name": "Report preparation",
+      "aliases": [
+        "Report preparation",
+        "Internal report",
+        "Customer report",
+        "报告准备"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "Multi-group: free; single-group report <10 pages: 400; ≥10 pages: 600; FA summary over 20 slides: 1000; bilingual reports +50%"
+      },
+      "unit_label": "group",
+      "applicable_standard": "N/A",
+      "range_condition": "Internal and customer report together charge internal-report fee only",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Report charges depend on group count, page count, language, and summary format."
+    }
+  ]
+}

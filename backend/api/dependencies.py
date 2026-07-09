@@ -461,9 +461,15 @@ def get_project_lifecycle_state_service(
     )
 
 
-def get_project_test_plan_matrix_preview_service() -> ProjectTestPlanMatrixPreviewService:
+def get_project_test_plan_matrix_preview_service(
+    session: Session = Depends(get_session),
+) -> ProjectTestPlanMatrixPreviewService:
     """Build the read-only project test-plan Matrix preview service."""
-    return ProjectTestPlanMatrixPreviewService()
+    return ProjectTestPlanMatrixPreviewService(
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        )
+    )
 
 
 def get_matrix_import_commit_service(

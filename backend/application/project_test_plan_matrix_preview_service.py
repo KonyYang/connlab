@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationReader,
+)
 from backend.infrastructure.files.pdf_matrix_source_gateway import (
     PdfMatrixSourceGateway,
     PdfMatrixSourceGatewayError,
@@ -63,11 +66,13 @@ class ProjectTestPlanMatrixPreviewService:
         office: OfficeFacade | None = None,
         pdf_gateway: PdfMatrixSourceGateway | None = None,
         parser: ProductSpecMatrixParser | None = None,
+        basic_information_reader: ConfirmedBasicInformationReader | None = None,
     ) -> None:
         """Create a Matrix preview service."""
         self._office = office or OfficeFacade()
         self._pdf_gateway = pdf_gateway or PdfMatrixSourceGateway()
         self._parser = parser or ProductSpecMatrixParser()
+        self._basic_information = basic_information_reader
 
     def preview_from_path(
         self,
@@ -114,6 +119,7 @@ class ProjectTestPlanMatrixPreviewService:
                 page_table_index=command.page_table_index,
                 table_text_query=command.table_text_query,
                 preview_pdf_token=preview_pdf_token,
+                applicable_specifications=self._applicable_specifications(command.project_id),
             )
         if suffix != ".docx":
             status, blocker = _unsupported_format_blocker(suffix)
@@ -141,7 +147,17 @@ class ProjectTestPlanMatrixPreviewService:
             page_table_index=command.page_table_index,
             table_text_query=command.table_text_query,
             preview_pdf_token=preview_pdf_token,
+            applicable_specifications=self._applicable_specifications(command.project_id),
         )
+
+    def _applicable_specifications(self, project_id: str | None) -> str | None:
+        """Read the current Basic Information specification for preview defaults."""
+        if self._basic_information is None or not project_id:
+            return None
+        snapshot = self._basic_information.get_preview_snapshot(project_id)
+        if snapshot is None:
+            return None
+        return snapshot.values.get("applicable_specifications")
 
     def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
         """Convert a legacy `.doc` source through the Office boundary."""
@@ -188,6 +204,7 @@ def _preview_from_snapshot(
     page_table_index: int | None,
     table_text_query: str | None,
     preview_pdf_token: str | None,
+    applicable_specifications: str | None,
 ) -> ProjectTestPlanMatrixPreview:
     """Parse a neutral document snapshot into a Matrix preview."""
     selected_table_index = _select_table_index(
@@ -204,6 +221,7 @@ def _preview_from_snapshot(
             item.table_index: (item.preceding_paragraph or "")
             for item in table_locations
         },
+        applicable_specifications=applicable_specifications,
     )
     selected_location = None
     if parsed.selected_table_index is not None:

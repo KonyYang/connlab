@@ -40,6 +40,8 @@
         "Visual Examination",
         "Visual Inspection",
         "Visual Examination after test",
+        "Examination of Product",
+        "Product Examination",
         "外观检查"
       ],
       "base_fee": {
@@ -63,6 +65,7 @@
       "aliases": [
         "Durability",
         "Mating Durability",
+        "Durability Preconditioning",
         "耐久性"
       ],
       "base_fee": {

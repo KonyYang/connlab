@@ -150,6 +150,7 @@ def row_detail_for_section(
     section_text_blocks: dict[str, str],
     row_detail_cache: dict[tuple[str, str], Any],
     extract_row_detail: Callable[..., Any],
+    applicable_specifications: str | None = None,
 ) -> Any | None:
     """Resolve one row detail using section/test-item context and cache."""
     section = (source_section or "").strip()
@@ -161,6 +162,7 @@ def row_detail_for_section(
                 section="",
                 section_text="",
                 test_item=test_item,
+                applicable_specifications=applicable_specifications,
             )
             row_detail_cache[cache_key] = detail
         return detail
@@ -184,6 +186,7 @@ def row_detail_for_section(
                 section=candidate,
                 section_text=section_text,
                 test_item=test_item,
+                applicable_specifications=applicable_specifications,
             )
             row_detail_cache[cache_key] = detail
         first_detail = first_detail or detail

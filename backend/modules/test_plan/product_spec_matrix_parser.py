@@ -113,6 +113,7 @@ class ProductSpecMatrixParser:
         paragraphs: list[str] | None = None,
         selected_table_index: int | None = None,
         table_contexts: dict[int, str] | None = None,
+        applicable_specifications: str | None = None,
     ) -> MatrixParseResult:
         """Parse the first supported Matrix-like table from document tables."""
         warnings: list[str] = []
@@ -137,6 +138,7 @@ class ProductSpecMatrixParser:
                 marker_notes,
                 section_text_blocks,
                 row_detail_cache,
+                applicable_specifications,
             )
             score = _table_score(
                 result=result,
@@ -229,6 +231,7 @@ class ProductSpecMatrixParser:
         marker_notes: dict[str, str],
         section_text_blocks: dict[str, str],
         row_detail_cache: dict[tuple[str, str], MatrixRowDetailExtraction],
+        applicable_specifications: str | None,
     ) -> MatrixParseResult:
         """Extract Matrix groups from one table."""
         group_steps: dict[str, list[MatrixStepPreview]] = {
@@ -254,6 +257,7 @@ class ProductSpecMatrixParser:
                     section_text_blocks=section_text_blocks,
                     row_detail_cache=row_detail_cache,
                     extract_row_detail=extract_row_details,
+                    applicable_specifications=applicable_specifications,
                 )
             row_item_section_note = _row_item_section_note(test_item, source_section, marker_notes)
             row_tokens: dict[str, str] = {}

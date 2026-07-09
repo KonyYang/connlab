@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from backend.modules.test_plan.method_template_matcher import apply_fill_empty_fallback
+from backend.modules.test_plan.method_template_matcher import (
+    apply_fill_empty_fallback,
+    normalize_test_item,
+)
 from backend.modules.test_plan.mcr_text_normalizer import normalize_condition_requirement
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +92,13 @@ def collect_section_text_blocks(paragraphs: list[str]) -> dict[str, str]:
     }
 
 
-def extract_row_details(*, section: str, section_text: str, test_item: str | None = None) -> MatrixRowDetailExtraction:
+def extract_row_details(
+    *,
+    section: str,
+    section_text: str,
+    test_item: str | None = None,
+    applicable_specifications: str | None = None,
+) -> MatrixRowDetailExtraction:
     """Extract Method, Condition, and Requirement values from one section block."""
     text = _clean(section_text)
     body = _strip_section_heading(section=section, text=text) if text else ""
@@ -117,6 +126,16 @@ def extract_row_details(*, section: str, section_text: str, test_item: str | Non
     method = fallback.method
     condition = fallback.condition
     requirement = fallback.requirement
+
+    method, condition, requirement = _apply_reseating_default(
+        section=section,
+        test_item=test_item,
+        method=method,
+        condition=condition,
+        requirement=requirement,
+        applicable_specifications=applicable_specifications,
+        notes=notes,
+    )
 
     normalized = normalize_condition_requirement(
         test_item=test_item,
@@ -300,6 +319,33 @@ def _collect_condition_tokens(text: str) -> str | None:
     if len(unique) > 3:
         unique = unique[:3]
     return ", ".join(unique)
+
+
+def _apply_reseating_default(
+    *,
+    section: str,
+    test_item: str | None,
+    method: str | None,
+    condition: str | None,
+    requirement: str | None,
+    applicable_specifications: str | None,
+    notes: list[str],
+) -> tuple[str | None, str | None, str | None]:
+    """Fill missing Reseating row details for section 7.8 only."""
+    if section.strip() != "7.8" or normalize_test_item(test_item) != "reseating":
+        return method, condition, requirement
+    specification = _clean(applicable_specifications or "")
+    next_method = method or f"{specification or 'Applicable Specifications'} 7.8"
+    next_condition = condition or "Manual 3 cycles"
+    next_requirement = requirement or "No damage"
+    if next_method != method:
+        notes.append("reseating-default-method")
+    if next_condition != condition:
+        notes.append("reseating-default-condition")
+    if next_requirement != requirement:
+        notes.append("reseating-default-requirement")
+    return next_method, next_condition, next_requirement
+
 
 def _strip_section_heading(*, section: str, text: str) -> str:
     """Remove the leading section heading so titles are not parsed as values."""

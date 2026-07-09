@@ -41,6 +41,28 @@ def test_fee_rule_matcher_supports_conservative_token_match() -> None:
     assert result.match_reason.startswith("token_alias_match:")
 
 
+def test_fee_rule_matcher_treats_examination_of_product_as_visual_exam() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("Examination of Product")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_visual_exam"
+    assert result.match_reason == "exact_alias_match"
+
+
+def test_fee_rule_matcher_treats_preconditioning_durability_as_durability() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("Durability (Preconditioning 20 cycles)")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_durability"
+    assert result.match_reason.startswith("token_alias_match:")
+
+
 def test_fee_rule_matcher_returns_no_match_for_ambiguous_token_match() -> None:
     matcher = FeeRuleMatcher(_ambiguous_library())
 
