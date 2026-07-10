@@ -175,6 +175,8 @@ function formatSource(source: string): string {
       return "Matrix Step";
     case "confirmed_matrix_carry_forward":
       return "Carried forward";
+    case "matrix_contact_plan":
+      return "Contact plan";
     default:
       return "Manual";
   }

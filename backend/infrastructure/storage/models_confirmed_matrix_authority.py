@@ -226,4 +226,5 @@ class ConfirmedMatrixStepQuantityModel(Base):
     source: Mapped[str] = mapped_column(String(64), nullable=False)
     review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     review_reason: Mapped[str | None] = mapped_column(Text)
+    contact_plan_json: Mapped[str | None] = mapped_column(Text)
     confirmed_at: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -19,6 +19,7 @@ from backend.application.matrix_step_quantity_service import (
     MatrixStepQuantityService,
     MatrixStepQuantityValidationError,
 )
+from backend.domain import MatrixStepContactFamily, MatrixStepContactPlan
 from backend.infrastructure.storage.repositories import (
     ProjectBasicInformationRepository,
     ProjectMatrixDraftRepository,
@@ -29,6 +30,30 @@ router = APIRouter(
     prefix="/api/projects/{project_id}/matrix-drafts",
     tags=["matrix-step-quantities"],
 )
+
+
+class MatrixStepContactFamilyPayload(BaseModel):
+    """One structured contact family within a Matrix Step target."""
+
+    family_id: str
+    family_label: str
+    count_per_sample: str
+    record_label: str
+    record_prefix: str
+    included: bool
+    is_custom: bool
+
+
+class MatrixStepContactPlanPayload(BaseModel):
+    """Coverage and contact-family authority for one Matrix Step target."""
+
+    contact_kind: str
+    coverage_status: str
+    included: bool
+    exclusion_reason: str | None = None
+    is_override: bool = False
+    readings_per_sample: str | None = None
+    families: list[MatrixStepContactFamilyPayload]
 
 
 class MatrixStepQuantityItemResponse(BaseModel):
@@ -47,6 +72,7 @@ class MatrixStepQuantityItemResponse(BaseModel):
     source: str
     review_required: bool
     review_reason: str | None = None
+    contact_plan: MatrixStepContactPlanPayload | None = None
 
 
 class MatrixStepQuantityDraftResponse(BaseModel):
@@ -71,6 +97,7 @@ class MatrixStepQuantitySaveItemRequest(BaseModel):
     source: str
     review_required: bool = False
     review_reason: str | None = None
+    contact_plan: MatrixStepContactPlanPayload | None = None
 
 
 class MatrixStepQuantitySaveRequest(BaseModel):
@@ -139,6 +166,7 @@ def save_matrix_step_quantities(
                         source=item.source,
                         review_required=item.review_required,
                         review_reason=item.review_reason,
+                        contact_plan=_to_domain_contact_plan(item.contact_plan),
                     )
                     for item in request.items
                 ),
@@ -174,7 +202,62 @@ def _to_response(
                 source=item.source,
                 review_required=item.review_required,
                 review_reason=item.review_reason,
+                contact_plan=_to_api_contact_plan(item.contact_plan),
             )
             for item in response.items
+        ],
+    )
+
+
+def _to_domain_contact_plan(
+    payload: MatrixStepContactPlanPayload | None,
+) -> MatrixStepContactPlan | None:
+    if payload is None:
+        return None
+    return MatrixStepContactPlan(
+        contact_kind=payload.contact_kind,
+        coverage_status=payload.coverage_status,
+        included=payload.included,
+        exclusion_reason=payload.exclusion_reason,
+        is_override=payload.is_override,
+        readings_per_sample=payload.readings_per_sample,
+        families=tuple(
+            MatrixStepContactFamily(
+                family_id=family.family_id,
+                family_label=family.family_label,
+                count_per_sample=family.count_per_sample,
+                record_label=family.record_label,
+                record_prefix=family.record_prefix,
+                included=family.included,
+                is_custom=family.is_custom,
+            )
+            for family in payload.families
+        ),
+    )
+
+
+def _to_api_contact_plan(
+    plan: MatrixStepContactPlan | None,
+) -> MatrixStepContactPlanPayload | None:
+    if plan is None:
+        return None
+    return MatrixStepContactPlanPayload(
+        contact_kind=plan.contact_kind,
+        coverage_status=plan.coverage_status,
+        included=plan.included,
+        exclusion_reason=plan.exclusion_reason,
+        is_override=plan.is_override,
+        readings_per_sample=plan.readings_per_sample,
+        families=[
+            MatrixStepContactFamilyPayload(
+                family_id=family.family_id,
+                family_label=family.family_label,
+                count_per_sample=family.count_per_sample,
+                record_label=family.record_label,
+                record_prefix=family.record_prefix,
+                included=family.included,
+                is_custom=family.is_custom,
+            )
+            for family in plan.families
         ],
     )

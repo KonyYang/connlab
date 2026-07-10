@@ -105,7 +105,8 @@ export function toStepQuantitySaveItems(
     contact_points_per_sample: item.contact_points_per_sample ?? null,
     source: item.source,
     review_required: item.review_required,
-    review_reason: item.review_reason ?? null
+    review_reason: item.review_reason ?? null,
+    contact_plan: item.contact_plan ?? null
   }));
 }
 

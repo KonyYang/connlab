@@ -41,6 +41,21 @@ import {
   type MatrixStepQuantityDefaults,
   type MatrixStepQuantityEditableField,
 } from "./matrixStepQuantitySelectors";
+import { MatrixContactMeasurementPlanCard } from "./MatrixContactMeasurementPlanCard";
+import {
+  DEFAULT_CONTACT_PLAN_PROFILES,
+  addCustomContactFamily,
+  applyContactPlanToBlankTargets,
+  filterNonContactStepQuantities,
+  removeCustomContactFamily,
+  updateContactFamilyCount,
+  updateContactFamilyIncluded,
+  updateContactFamilyLabel,
+  updateContactFamilyPrefix,
+  updateContactTargetCoverage,
+  type ContactMeasurementKind,
+  type ContactPlanProfiles,
+} from "./matrixContactMeasurementPlanSelectors";
 import {
   calculateMatrixSchedule,
   emptySchedulePlan,
@@ -1659,6 +1674,9 @@ export function MatrixEditorWorkspace({
       readings_per_point: "",
       contact_points_per_sample: ""
     });
+  const [contactPlanProfiles, setContactPlanProfiles] = useState<ContactPlanProfiles>(
+    DEFAULT_CONTACT_PLAN_PROFILES
+  );
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1970,6 +1988,19 @@ export function MatrixEditorWorkspace({
     stepQuantityItems,
     selectedGroup?.draftGroupId ?? null
   );
+  const selectedGroupNonContactStepQuantityItems = filterNonContactStepQuantities(
+    selectedGroupStepQuantityItems
+  );
+  const contactGroupLabels = Object.fromEntries(
+    groupColumns.map((group) => [
+      group.draftGroupId ?? group.id,
+      group.name || group.groupKey || "Group",
+    ])
+  );
+  const contactPlanMessage = stepQuantityMessage?.startsWith("Contact plan")
+    ? stepQuantityMessage
+    : null;
+  const genericStepQuantityMessage = contactPlanMessage ? null : stepQuantityMessage;
   const onStepQuantityFieldChange = (
     item: MatrixStepQuantityItem,
     field: MatrixStepQuantityEditableField,
@@ -1977,6 +2008,93 @@ export function MatrixEditorWorkspace({
   ): void => {
     setStepQuantityItems((previous) =>
       updateStepQuantityField(previous, item, field, value)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onContactFamilyCountChange = (
+    kind: ContactMeasurementKind,
+    familyId: string,
+    value: string
+  ): void => {
+    setContactPlanProfiles((previous) =>
+      updateContactFamilyCount(previous, kind, familyId, value)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onContactFamilyIncludedChange = (
+    kind: ContactMeasurementKind,
+    familyId: string,
+    included: boolean
+  ): void => {
+    setContactPlanProfiles((previous) =>
+      updateContactFamilyIncluded(previous, kind, familyId, included)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onContactFamilyLabelChange = (
+    kind: ContactMeasurementKind,
+    familyId: string,
+    value: string
+  ): void => {
+    setContactPlanProfiles((previous) =>
+      updateContactFamilyLabel(previous, kind, familyId, value)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onContactFamilyPrefixChange = (
+    kind: ContactMeasurementKind,
+    familyId: string,
+    value: string
+  ): void => {
+    setContactPlanProfiles((previous) =>
+      updateContactFamilyPrefix(previous, kind, familyId, value)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onAddCustomContactFamily = (kind: ContactMeasurementKind): void => {
+    const persistedFamilyIds = stepQuantityItems.flatMap((item) =>
+      item.contact_plan?.contact_kind === kind
+        ? item.contact_plan.families.map((family) => family.family_id)
+        : []
+    );
+    setContactPlanProfiles((previous) =>
+      addCustomContactFamily(previous, kind, persistedFamilyIds)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onRemoveCustomContactFamily = (
+    kind: ContactMeasurementKind,
+    familyId: string
+  ): void => {
+    setContactPlanProfiles((previous) =>
+      removeCustomContactFamily(previous, kind, familyId)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onContactTargetIncludedChange = (
+    item: MatrixStepQuantityItem,
+    included: boolean,
+    exclusionReason: string
+  ): void => {
+    setStepQuantityItems((previous) =>
+      updateContactTargetCoverage(previous, item, included, exclusionReason)
+    );
+    setStepQuantityMessage(null);
+    setStepQuantityError(null);
+  };
+  const onContactTargetExclusionReasonChange = (
+    item: MatrixStepQuantityItem,
+    exclusionReason: string
+  ): void => {
+    setStepQuantityItems((previous) =>
+      updateContactTargetCoverage(previous, item, false, exclusionReason)
     );
     setStepQuantityMessage(null);
     setStepQuantityError(null);
@@ -2000,6 +2118,18 @@ export function MatrixEditorWorkspace({
       result.changed
         ? "Defaults applied to blank Step quantities."
         : "No blank Step quantities to update."
+    );
+    setStepQuantityError(null);
+  };
+  const onApplyContactPlan = (): void => {
+    const result = applyContactPlanToBlankTargets(stepQuantityItems, contactPlanProfiles);
+    setStepQuantityItems(result.items);
+    setStepQuantityMessage(
+      result.changed
+        ? result.reviewRequired
+          ? "Contact plan needs family counts before save."
+          : "Contact plan applied to blank targets."
+        : "No blank contact targets to update."
     );
     setStepQuantityError(null);
   };
@@ -3604,6 +3734,25 @@ export function MatrixEditorWorkspace({
               setSchedulePlan(nextPlan);
             }}
           />
+          <MatrixContactMeasurementPlanCard
+            items={stepQuantityItems}
+            profiles={contactPlanProfiles}
+            groupLabels={contactGroupLabels}
+            disabled={isLifecycleReadonly || stepQuantityLoading || stepQuantitySaving}
+            saving={stepQuantitySaving}
+            message={contactPlanMessage}
+            error={stepQuantityError}
+            onFamilyCountChange={onContactFamilyCountChange}
+            onFamilyIncludedChange={onContactFamilyIncludedChange}
+            onFamilyLabelChange={onContactFamilyLabelChange}
+            onFamilyPrefixChange={onContactFamilyPrefixChange}
+            onAddCustomFamily={onAddCustomContactFamily}
+            onRemoveCustomFamily={onRemoveCustomContactFamily}
+            onTargetIncludedChange={onContactTargetIncludedChange}
+            onTargetExclusionReasonChange={onContactTargetExclusionReasonChange}
+            onApply={onApplyContactPlan}
+            onSave={() => void onSaveStepQuantities()}
+          />
         </section>
 
         <aside className="matrix-editor-step-workspace" aria-label="Group Step Workspace">
@@ -3653,12 +3802,12 @@ export function MatrixEditorWorkspace({
                 </tbody>
               </table>
               <MatrixStepQuantityPanel
-                items={selectedGroupStepQuantityItems}
+                items={selectedGroupNonContactStepQuantityItems}
                 loading={stepQuantityLoading}
                 saving={stepQuantitySaving}
                 readOnly={isLifecycleReadonly}
                 defaults={stepQuantityDefaults}
-                message={stepQuantityMessage}
+                message={genericStepQuantityMessage}
                 error={stepQuantityError}
                 onDefaultChange={onStepQuantityDefaultChange}
                 onApplyDefaults={onApplyStepQuantityDefaults}

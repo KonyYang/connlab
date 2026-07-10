@@ -12,6 +12,9 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from backend.infrastructure.storage.matrix_schedule_schema_migration import (
     migrate_matrix_schedule_planning_columns,
 )
+from backend.infrastructure.storage.matrix_contact_measurement_schema_migration import (
+    migrate_matrix_contact_measurement_columns,
+)
 from backend.shared.config import Settings
 
 
@@ -59,6 +62,7 @@ def init_db(engine: Engine) -> None:
     _migrate_project_matrix_draft_lineage_columns_optional(engine)
     _migrate_project_matrix_draft_row_detail_columns(engine)
     migrate_matrix_schedule_planning_columns(engine)
+    migrate_matrix_contact_measurement_columns(engine)
     _migrate_source_matrix_import_commit_fingerprint(engine)
     _migrate_source_matrix_import_preview_payload(engine)
     _migrate_source_matrix_row_detail_columns(engine)

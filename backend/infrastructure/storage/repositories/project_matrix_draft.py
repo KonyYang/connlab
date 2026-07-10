@@ -6,6 +6,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from backend.domain import (
+    contact_plan_from_json,
+    contact_plan_to_json,
     ProjectMatrixDraftCell,
     ProjectMatrixDraftGroup,
     ProjectMatrixDraftRecord,
@@ -297,6 +299,7 @@ def _to_step_quantity_models(
             source=quantity.source,
             review_required=quantity.review_required,
             review_reason=quantity.review_reason,
+            contact_plan_json=contact_plan_to_json(quantity.contact_plan),
             updated_at=quantity.updated_at,
         )
         for quantity in quantities
@@ -380,6 +383,7 @@ def _to_step_quantity_domain(
         review_required=row.review_required,
         review_reason=row.review_reason,
         updated_at=row.updated_at,
+        contact_plan=contact_plan_from_json(row.contact_plan_json),
     )
 
 

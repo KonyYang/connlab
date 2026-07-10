@@ -44,6 +44,7 @@ def carry_forward_step_quantities(
                 review_required=quantity.review_required,
                 review_reason=quantity.review_reason,
                 updated_at=updated_at,
+                contact_plan=quantity.contact_plan,
             )
         )
     return carried
@@ -115,6 +116,7 @@ def build_confirmed_step_quantities(
                     if draft_quantity
                     else "Quantity setup not confirmed.",
                     confirmed_at=confirmed_at,
+                    contact_plan=draft_quantity.contact_plan if draft_quantity else None,
                 )
             )
     return confirmed

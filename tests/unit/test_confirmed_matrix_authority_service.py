@@ -14,6 +14,8 @@ from backend.application.confirmed_matrix_authority_service import (
 )
 from backend.domain import (
     ConfirmedMatrixStatus,
+    MatrixStepContactFamily,
+    MatrixStepContactPlan,
     Project,
     ProjectMatrixDraftCell,
     ProjectMatrixDraftGroup,
@@ -107,6 +109,59 @@ def test_confirmed_matrix_authority_service_copies_step_quantities_to_authority(
     assert copied[0].contact_points_per_sample == "4"
     assert copied[0].source == "matrix_step_override"
     assert copied[0].review_required is False
+
+
+def test_confirmed_matrix_authority_service_copies_structured_contact_plan_snapshot() -> None:
+    contact_plan = MatrixStepContactPlan(
+        contact_kind="llcr",
+        coverage_status="eligible",
+        included=True,
+        exclusion_reason=None,
+        is_override=False,
+        readings_per_sample="4",
+        families=(
+            MatrixStepContactFamily(
+                family_id="signal_pin",
+                family_label="Signal Pin",
+                count_per_sample="4",
+                record_label="Signal Pin contact",
+                record_prefix="SIG",
+                included=True,
+                is_custom=False,
+            ),
+        ),
+    )
+    service, _ = _service(
+        step_quantities=(
+            ProjectMatrixDraftStepQuantity(
+                draft_step_quantity_id="pmdsq-1",
+                project_matrix_draft_id="pmd-1",
+                draft_group_id="pmdg-1",
+                draft_row_id="pmdr-1",
+                step_sequence=1,
+                step_suffix_note=None,
+                raw_token="1",
+                test_points_per_sample="4",
+                readings_per_point="1",
+                contact_points_per_sample="4",
+                source="matrix_contact_plan",
+                review_required=False,
+                review_reason=None,
+                updated_at="2026-07-10T09:00:00+00:00",
+                contact_plan=contact_plan,
+            ),
+        ),
+    )
+
+    confirmed = service.confirm_draft(
+        ConfirmProjectMatrixDraftCommand(
+            project_id="P1",
+            project_matrix_draft_id="pmd-1",
+            confirmed_by="operator",
+        )
+    )
+
+    assert confirmed.step_quantities[0].contact_plan == contact_plan
 
 
 def test_confirmed_matrix_authority_service_marks_missing_step_quantity_review_required() -> None:

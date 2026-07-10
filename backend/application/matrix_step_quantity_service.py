@@ -10,7 +10,9 @@ from typing import Callable, Protocol
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationRecord,
 )
+from backend.application.matrix_contact_plan_validation import normalize_contact_plan
 from backend.domain import (
+    MatrixStepContactPlan,
     ProjectMatrixDraftSnapshot,
     ProjectMatrixDraftStepQuantity,
 )
@@ -22,12 +24,14 @@ SOURCE_BASIC_INFORMATION_DRAFT = "basic_information_draft"
 SOURCE_MATRIX_STEP_OVERRIDE = "matrix_step_override"
 SOURCE_MANUAL_REQUIRED = "manual_required"
 SOURCE_CONFIRMED_MATRIX_CARRY_FORWARD = "confirmed_matrix_carry_forward"
+SOURCE_MATRIX_CONTACT_PLAN = "matrix_contact_plan"
 _VALID_SOURCES = {
     SOURCE_BASIC_INFORMATION_CONFIRMED,
     SOURCE_BASIC_INFORMATION_DRAFT,
     SOURCE_MATRIX_STEP_OVERRIDE,
     SOURCE_MANUAL_REQUIRED,
     SOURCE_CONFIRMED_MATRIX_CARRY_FORWARD,
+    SOURCE_MATRIX_CONTACT_PLAN,
 }
 _NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 
@@ -88,6 +92,7 @@ class MatrixStepQuantityItem:
     source: str
     review_required: bool
     review_reason: str | None
+    contact_plan: MatrixStepContactPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +119,7 @@ class MatrixStepQuantitySaveItem:
     source: str
     review_required: bool
     review_reason: str | None
+    contact_plan: MatrixStepContactPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,14 +227,14 @@ class MatrixStepQuantityService:
                     "Step quantity identity is not part of this Matrix draft."
                 )
             _validate_source(item.source)
-            test_points = _clean_quantity(
-                item.test_points_per_sample,
-                "Test points / sample",
-            )
-            readings = _clean_quantity(item.readings_per_point, "Readings / point")
-            contacts = _clean_quantity(
-                item.contact_points_per_sample,
-                "Contact points / sample",
+            contact_plan = _normalize_contact_plan(item.contact_plan)
+            test_points, readings, contacts = _effective_quantity_values(item, contact_plan)
+            source = SOURCE_MATRIX_CONTACT_PLAN if contact_plan is not None else item.source
+            review_required, review_reason = _contact_plan_review_state(
+                item,
+                contact_plan,
+                test_points,
+                readings,
             )
             quantities.append(
                 ProjectMatrixDraftStepQuantity(
@@ -242,15 +248,11 @@ class MatrixStepQuantityService:
                     test_points_per_sample=test_points,
                     readings_per_point=readings,
                     contact_points_per_sample=contacts,
-                    source=item.source,
-                    review_required=item.review_required
-                    or _requires_review(test_points, readings),
-                    review_reason=_review_reason(
-                        item.review_reason,
-                        test_points=test_points,
-                        readings=readings,
-                    ),
+                    source=source,
+                    review_required=review_required,
+                    review_reason=review_reason,
                     updated_at=now,
+                    contact_plan=contact_plan,
                 )
             )
         self._drafts.replace_step_quantities(
@@ -329,6 +331,7 @@ def _to_response_item(
         source = persisted.source
         review_required = persisted.review_required
         review_reason = persisted.review_reason
+        contact_plan = persisted.contact_plan
     else:
         test_points = defaults.get("test_points_per_sample")
         readings = defaults.get("readings_per_point")
@@ -336,6 +339,7 @@ def _to_response_item(
         source = default_source
         review_required = _requires_review(test_points, readings)
         review_reason = _review_reason(None, test_points=test_points, readings=readings)
+        contact_plan = None
     return MatrixStepQuantityItem(
         draft_group_id=step.draft_group_id,
         draft_row_id=step.draft_row_id,
@@ -350,7 +354,53 @@ def _to_response_item(
         source=source,
         review_required=review_required,
         review_reason=review_reason,
+        contact_plan=contact_plan,
     )
+
+
+def _normalize_contact_plan(
+    contact_plan: MatrixStepContactPlan | None,
+) -> MatrixStepContactPlan | None:
+    if contact_plan is None:
+        return None
+    try:
+        return normalize_contact_plan(contact_plan)
+    except ValueError as exc:
+        raise MatrixStepQuantityValidationError(str(exc)) from exc
+
+
+def _effective_quantity_values(
+    item: MatrixStepQuantitySaveItem,
+    contact_plan: MatrixStepContactPlan | None,
+) -> tuple[str | None, str | None, str | None]:
+    if contact_plan is not None:
+        if not contact_plan.included or contact_plan.readings_per_sample is None:
+            return None, None, None
+        readings = contact_plan.readings_per_sample
+        return readings, "1", readings
+    return (
+        _clean_quantity(item.test_points_per_sample, "Test points / sample"),
+        _clean_quantity(item.readings_per_point, "Readings / point"),
+        _clean_quantity(item.contact_points_per_sample, "Contact points / sample"),
+    )
+
+
+def _contact_plan_review_state(
+    item: MatrixStepQuantitySaveItem,
+    contact_plan: MatrixStepContactPlan | None,
+    test_points: str | None,
+    readings: str | None,
+) -> tuple[bool, str | None]:
+    if contact_plan is None:
+        return (
+            item.review_required or _requires_review(test_points, readings),
+            _review_reason(item.review_reason, test_points=test_points, readings=readings),
+        )
+    if not contact_plan.included:
+        return True, "Contact target excluded from the common plan."
+    if contact_plan.readings_per_sample is None:
+        return True, "Confirm contact family counts."
+    return item.review_required, item.review_reason
 
 
 def _quantity_defaults(record: ProjectBasicInformationRecord) -> dict[str, str | None]:

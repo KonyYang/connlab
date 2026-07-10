@@ -429,7 +429,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
           step_sequence: 2,
           step_suffix_note: null,
           raw_token: "2",
-          test_item: "LLCR",
+          test_item: "Visual Examination",
           test_points_per_sample: "9",
           readings_per_point: "8",
           contact_points_per_sample: "7",
@@ -481,6 +481,103 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
         source: "matrix_step_override",
       },
     ]);
+  });
+
+  it("applies contact measurement plan to blank LLCR targets without exposing generic inputs", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "draft-test",
+      saved_payload_signature: "saved-signature",
+    });
+    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
+      project_id: "P1",
+      project_matrix_draft_id: "draft-test",
+      items: [
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "llcr-row",
+          step_sequence: 1,
+          step_suffix_note: null,
+          raw_token: "1",
+          test_item: "LLCR",
+          test_points_per_sample: null,
+          readings_per_point: null,
+          contact_points_per_sample: null,
+          total_readings: null,
+          source: "manual_required",
+          review_required: true,
+          review_reason: "Confirm Step quantity values.",
+        },
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "visual-row",
+          step_sequence: 2,
+          step_suffix_note: null,
+          raw_token: "2",
+          test_item: "Visual Examination",
+          test_points_per_sample: null,
+          readings_per_point: null,
+          contact_points_per_sample: null,
+          total_readings: null,
+          source: "manual_required",
+          review_required: true,
+          review_reason: "Confirm Step quantity values.",
+        },
+      ],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect(await screen.findByText("Contact Measurement Plan")).toBeTruthy();
+    expect(await screen.findByLabelText("Include LLCR Step 1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add custom LLCR contact" }));
+    fireEvent.change(screen.getByLabelText("LLCR custom contact label"), {
+      target: { value: "Sense contact" },
+    });
+    fireEvent.change(screen.getByLabelText("LLCR Sense contact count per sample"), {
+      target: { value: "0" },
+    });
+    fireEvent.change(screen.getByLabelText("LLCR Sense contact record prefix"), {
+      target: { value: "SEN" },
+    });
+    expect(screen.queryByLabelText("Step 1 test points per sample")).toBeNull();
+    fireEvent.change(screen.getByLabelText("LLCR High Power Pin count per sample"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("LLCR Low Power Pin count per sample"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("LLCR Signal Pin count per sample"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply to blank contact targets" }));
+    expect(screen.getAllByText("Contact plan applied to blank targets.").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Save contact plan" }));
+
+    await waitFor(() => expect(apiMocks.saveMatrixStepQuantities).toHaveBeenCalledTimes(1));
+    const savedItems = apiMocks.saveMatrixStepQuantities.mock.calls[0][2].items;
+    expect(savedItems[0]).toMatchObject({
+      draft_row_id: "llcr-row",
+      test_points_per_sample: "9",
+      readings_per_point: "1",
+      contact_points_per_sample: "9",
+      source: "matrix_contact_plan",
+      review_required: false,
+    });
+    expect(savedItems[0].contact_plan?.families).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          family_label: "Sense contact",
+          count_per_sample: "0",
+          record_prefix: "SEN",
+          is_custom: true,
+        }),
+      ])
+    );
+    expect(savedItems[1]).toMatchObject({
+      draft_row_id: "visual-row",
+      source: "manual_required",
+    });
   });
 
   it("opens the import file selector without native confirmation", async () => {

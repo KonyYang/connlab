@@ -1361,6 +1361,27 @@ export type MatrixStepQuantityItem = {
   source: string;
   review_required: boolean;
   review_reason?: string | null;
+  contact_plan?: MatrixStepContactPlan | null;
+};
+
+export type MatrixStepContactFamily = {
+  family_id: string;
+  family_label: string;
+  count_per_sample: string;
+  record_label: string;
+  record_prefix: string;
+  included: boolean;
+  is_custom: boolean;
+};
+
+export type MatrixStepContactPlan = {
+  contact_kind: "llcr" | "cr_specified_current";
+  coverage_status: "eligible" | "excluded" | "manual_override";
+  included: boolean;
+  exclusion_reason?: string | null;
+  is_override: boolean;
+  readings_per_sample?: string | null;
+  families: MatrixStepContactFamily[];
 };
 
 export type MatrixStepQuantityDraftResponse = {
@@ -1381,6 +1402,7 @@ export type MatrixStepQuantitySaveItem = {
   source: string;
   review_required?: boolean;
   review_reason?: string | null;
+  contact_plan?: MatrixStepContactPlan | null;
 };
 
 export type MatrixStepQuantitySaveRequest = {

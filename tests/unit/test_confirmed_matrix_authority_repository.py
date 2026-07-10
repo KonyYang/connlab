@@ -18,6 +18,8 @@ from backend.domain import (
     ConfirmedMatrixStatus,
     ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
+    MatrixStepContactFamily,
+    MatrixStepContactPlan,
     Project,
     ProjectMatrixDraftCell,
     ProjectMatrixDraftGroup,
@@ -115,6 +117,25 @@ def test_confirmed_matrix_authority_repository_roundtrips_step_quantities(
                         review_required=False,
                         review_reason=None,
                         confirmed_at="2026-07-08T09:00:00+00:00",
+                        contact_plan=MatrixStepContactPlan(
+                            contact_kind="llcr",
+                            coverage_status="eligible",
+                            included=True,
+                            exclusion_reason=None,
+                            is_override=False,
+                            readings_per_sample="6",
+                            families=(
+                                MatrixStepContactFamily(
+                                    family_id="signal_pin",
+                                    family_label="Signal Pin",
+                                    count_per_sample="6",
+                                    record_label="Signal Pin contact",
+                                    record_prefix="SIG",
+                                    included=True,
+                                    is_custom=False,
+                                ),
+                            ),
+                        ),
                     ),
                 ),
             )
@@ -127,6 +148,8 @@ def test_confirmed_matrix_authority_repository_roundtrips_step_quantities(
             assert len(loaded.step_quantities) == 1
             assert loaded.step_quantities[0].test_points_per_sample == "3"
             assert loaded.step_quantities[0].source == "matrix_step_override"
+            assert loaded.step_quantities[0].contact_plan is not None
+            assert loaded.step_quantities[0].contact_plan.families[0].record_prefix == "SIG"
     finally:
         engine.dispose()
 

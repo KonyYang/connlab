@@ -995,6 +995,196 @@
   font-weight: 700;
 }
 
+.matrix-contact-plan-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.matrix-contact-plan-header,
+.matrix-contact-plan-profile-header,
+.matrix-contact-plan-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.matrix-contact-plan-header h3,
+.matrix-contact-plan-header p,
+.matrix-contact-plan-profile h4,
+.matrix-contact-plan-message,
+.matrix-contact-plan-error {
+  margin: 0;
+}
+
+.matrix-contact-plan-header h3,
+.matrix-contact-plan-profile h4 {
+  color: var(--color-ink);
+  font-size: 13px;
+}
+
+.matrix-contact-plan-header p,
+.matrix-contact-plan-header strong,
+.matrix-contact-plan-profile-header span,
+.matrix-contact-plan-family,
+.matrix-contact-plan-family em {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.matrix-contact-plan-header strong,
+.matrix-contact-plan-profile-header span {
+  white-space: nowrap;
+}
+
+.matrix-contact-plan-profiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.matrix-contact-plan-profile {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.matrix-contact-plan-family-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.matrix-contact-plan-family {
+  display: grid;
+  grid-template-columns: minmax(116px, 1fr) minmax(96px, 1fr) 72px 64px auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-contact-plan-family label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.matrix-contact-plan-family input[type="text"],
+.matrix-contact-plan-family input:not([type]) {
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+}
+
+.matrix-contact-plan-family button,
+.matrix-contact-plan-profile > button {
+  width: fit-content;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.matrix-contact-plan-coverage {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.matrix-contact-plan-coverage h4 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.matrix-contact-plan-target {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 108px minmax(180px, 0.7fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.matrix-contact-plan-target label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.matrix-contact-plan-target span {
+  color: var(--color-ink-muted);
+  font-weight: 700;
+}
+
+.matrix-contact-plan-target input:not([type]) {
+  min-width: 0;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+}
+
+@media (max-width: 900px) {
+  .matrix-contact-plan-profiles {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix-contact-plan-family,
+  .matrix-contact-plan-target {
+    grid-template-columns: 1fr;
+  }
+}
+
+.matrix-contact-plan-actions button {
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 700;
+  min-height: 30px;
+  padding: 0 12px;
+}
+
+.matrix-contact-plan-actions button:last-child {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.matrix-contact-plan-actions button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+
+.matrix-contact-plan-message {
+  color: var(--color-success);
+  font-size: 11px;
+}
+
+.matrix-contact-plan-error {
+  color: var(--color-danger);
+  font-size: 11px;
+}
+
 .matrix-workspace-state-banner {
   display: flex;
   align-items: center;

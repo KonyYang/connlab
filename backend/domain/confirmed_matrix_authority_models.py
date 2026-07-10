@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from backend.domain.enums import ConfirmedMatrixStatus
+from backend.domain.matrix_contact_measurement_models import MatrixStepContactPlan
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +98,7 @@ class ConfirmedMatrixStepQuantity:
     review_required: bool
     review_reason: str | None
     confirmed_at: str
+    contact_plan: MatrixStepContactPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)

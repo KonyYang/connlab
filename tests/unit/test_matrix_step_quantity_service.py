@@ -12,6 +12,8 @@ from backend.application.project_basic_information_service import (
     ProjectBasicInformationRecord,
 )
 from backend.domain import (
+    MatrixStepContactFamily,
+    MatrixStepContactPlan,
     ProjectMatrixDraftCell,
     ProjectMatrixDraftGroup,
     ProjectMatrixDraftRecord,
@@ -101,6 +103,153 @@ def test_step_quantity_override_persists_as_matrix_step_authority() -> None:
     assert saved.contact_points_per_sample == "2"
     assert saved.source == "matrix_step_override"
     assert response.items[0].total_readings == "20"
+
+
+def test_step_quantity_accepts_contact_plan_compatibility_source() -> None:
+    draft_store = _DraftStore(_draft_snapshot())
+    service = MatrixStepQuantityService(
+        draft_store=draft_store,
+        basic_information_store=_BasicInformationStore(),
+        clock=lambda: "2026-07-10T09:00:00+00:00",
+        id_factory=lambda: "qty-id",
+    )
+
+    response = service.save_draft(
+        MatrixStepQuantitySaveCommand(
+            project_id="P1",
+            project_matrix_draft_id="draft-1",
+            items=(
+                MatrixStepQuantitySaveItem(
+                    draft_group_id="group-1",
+                    draft_row_id="row-1",
+                    step_sequence=1,
+                    step_suffix_note=None,
+                    raw_token="1",
+                    test_points_per_sample="9",
+                    readings_per_point="1",
+                    contact_points_per_sample="9",
+                    source="matrix_contact_plan",
+                    review_required=False,
+                    review_reason=None,
+                ),
+            ),
+        )
+    )
+
+    saved = draft_store.saved_quantities[0]
+    assert saved.source == "matrix_contact_plan"
+    assert saved.test_points_per_sample == "9"
+    assert saved.readings_per_point == "1"
+    assert saved.contact_points_per_sample == "9"
+    assert response.items[0].total_readings == "9"
+
+
+def test_step_quantity_persists_structured_contact_plan_without_review_reason_transport() -> None:
+    draft_store = _DraftStore(_draft_snapshot())
+    service = MatrixStepQuantityService(
+        draft_store=draft_store,
+        basic_information_store=_BasicInformationStore(),
+        clock=lambda: "2026-07-10T09:00:00+00:00",
+        id_factory=lambda: "qty-id",
+    )
+    contact_plan = MatrixStepContactPlan(
+        contact_kind="llcr",
+        coverage_status="eligible",
+        included=True,
+        exclusion_reason=None,
+        is_override=False,
+        readings_per_sample="5",
+        families=(
+            MatrixStepContactFamily(
+                family_id="high_power_pin",
+                family_label="High Power Pin",
+                count_per_sample="2",
+                record_label="High Power Pin contact",
+                record_prefix="HP",
+                included=True,
+                is_custom=False,
+            ),
+            MatrixStepContactFamily(
+                family_id="custom-sense",
+                family_label="Sense contact",
+                count_per_sample="3",
+                record_label="Sense contact",
+                record_prefix="SEN",
+                included=True,
+                is_custom=True,
+            ),
+        ),
+    )
+
+    response = service.save_draft(
+        MatrixStepQuantitySaveCommand(
+            project_id="P1",
+            project_matrix_draft_id="draft-1",
+            items=(
+                MatrixStepQuantitySaveItem(
+                    draft_group_id="group-1",
+                    draft_row_id="row-1",
+                    step_sequence=1,
+                    step_suffix_note=None,
+                    raw_token="1",
+                    test_points_per_sample=None,
+                    readings_per_point=None,
+                    contact_points_per_sample=None,
+                    source="matrix_contact_plan",
+                    review_required=False,
+                    review_reason=None,
+                    contact_plan=contact_plan,
+                ),
+            ),
+        )
+    )
+
+    saved = draft_store.saved_quantities[0]
+    assert saved.review_reason is None
+    assert saved.contact_plan == contact_plan
+    assert response.items[0].contact_plan == contact_plan
+    assert response.items[0].total_readings == "5"
+
+
+def test_step_quantity_rejects_excluded_contact_target_without_reason() -> None:
+    service = MatrixStepQuantityService(
+        draft_store=_DraftStore(_draft_snapshot()),
+        basic_information_store=_BasicInformationStore(),
+        clock=lambda: "2026-07-10T09:00:00+00:00",
+        id_factory=lambda: "qty-id",
+    )
+
+    with pytest.raises(MatrixStepQuantityValidationError, match="require a short reason"):
+        service.save_draft(
+            MatrixStepQuantitySaveCommand(
+                project_id="P1",
+                project_matrix_draft_id="draft-1",
+                items=(
+                    MatrixStepQuantitySaveItem(
+                        draft_group_id="group-1",
+                        draft_row_id="row-1",
+                        step_sequence=1,
+                        step_suffix_note=None,
+                        raw_token="1",
+                        test_points_per_sample=None,
+                        readings_per_point=None,
+                        contact_points_per_sample=None,
+                        source="matrix_contact_plan",
+                        review_required=False,
+                        review_reason=None,
+                        contact_plan=MatrixStepContactPlan(
+                            contact_kind="llcr",
+                            coverage_status="excluded",
+                            included=False,
+                            exclusion_reason=None,
+                            is_override=False,
+                            readings_per_sample=None,
+                            families=(),
+                        ),
+                    ),
+                ),
+            )
+        )
 
 
 def test_step_quantity_save_rejects_negative_numeric_values() -> None:

@@ -61,14 +61,17 @@ def _matched_context(
     token: ParsedStepToken,
     quantity: ConfirmedMatrixStepQuantity,
 ) -> FeeStepQuantityContext:
+    contact_readings = _contact_plan_readings(quantity)
+    test_points = contact_readings or _text(quantity.test_points_per_sample)
+    readings_per_point = "1" if contact_readings else _text(quantity.readings_per_point)
     return FeeStepQuantityContext(
         step_token=token.raw_token,
         step_sequence=token.sequence,
         step_suffix_note=token.suffix_note,
-        test_points_per_sample=_text(quantity.test_points_per_sample),
-        readings_per_point=_text(quantity.readings_per_point),
-        contact_points_per_sample=_text(quantity.contact_points_per_sample),
-        total_readings=_step_total_readings(quantity),
+        test_points_per_sample=test_points,
+        readings_per_point=readings_per_point,
+        contact_points_per_sample=contact_readings or _text(quantity.contact_points_per_sample),
+        total_readings=contact_readings or _step_total_readings(quantity),
         source=quantity.source,
         review_required=quantity.review_required,
         review_reason=quantity.review_reason,
@@ -106,6 +109,13 @@ def _step_total_readings(quantity: ConfirmedMatrixStepQuantity) -> str | None:
     if test_points is None or readings is None:
         return None
     return _decimal_text(test_points * readings)
+
+
+def _contact_plan_readings(quantity: ConfirmedMatrixStepQuantity) -> str | None:
+    plan = quantity.contact_plan
+    if plan is None or not plan.included:
+        return None
+    return _text(plan.readings_per_sample) or None
 
 
 def _quantity_decimal(value: str | None) -> Decimal | None:

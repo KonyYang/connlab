@@ -34,6 +34,12 @@ from backend.domain.confirmed_matrix_authority_models import (
     ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
 )
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixStepContactFamily,
+    MatrixStepContactPlan,
+    contact_plan_from_json,
+    contact_plan_to_json,
+)
 from backend.domain.models import (
     ApplicationForm,
     ExternalResource,
@@ -102,6 +108,10 @@ __all__ = [
     "LtrAssociationEvent",
     "LtrDuplicateResolutionToken",
     "LtrStatus",
+    "MatrixStepContactFamily",
+    "MatrixStepContactPlan",
+    "contact_plan_from_json",
+    "contact_plan_to_json",
     "PrecheckIssue",
     "PrecheckResult",
     "PrecheckStatus",
