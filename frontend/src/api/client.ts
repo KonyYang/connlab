@@ -1384,6 +1384,64 @@ export type MatrixStepContactPlan = {
   families: MatrixStepContactFamily[];
 };
 
+export type LlcrCrRecordWorkbookDiagnostic = {
+  code: string;
+  severity: "blocked" | "review_required";
+  message: string;
+  confirmed_group_id: string | null;
+  confirmed_row_id: string | null;
+  step_sequence: number | null;
+  family_id: string | null;
+  normalized_prefix: string | null;
+  first_family_id: string | null;
+  first_family_label: string | null;
+  second_family_id: string | null;
+  second_family_label: string | null;
+};
+
+export type LlcrCrRecordWorkbookRow = {
+  sample_index: number;
+  contact_id: string;
+  contact_label: string;
+};
+
+export type LlcrCrRecordWorkbookSection = {
+  record_type: "llcr" | "cr_specified_current";
+  confirmed_group_id: string;
+  confirmed_row_id: string;
+  step_sequence: number;
+  step_suffix_note: string;
+  group_label: string;
+  source_step: string;
+  sample_count: number;
+  readings_per_sample: number;
+  rows: LlcrCrRecordWorkbookRow[];
+};
+
+export type LlcrCrRecordWorkbookPreviewResponse = {
+  project_id: string;
+  status: "ready" | "blocked" | "review_required" | "empty";
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  preview_fingerprint: string | null;
+  row_count: number;
+  sections: LlcrCrRecordWorkbookSection[];
+  diagnostics: LlcrCrRecordWorkbookDiagnostic[];
+};
+
+export type LlcrCrRecordWorkbookGenerateRequest = {
+  preview_fingerprint: string;
+};
+
+export type LlcrCrRecordWorkbookGenerateResponse = {
+  project_id: string;
+  confirmed_matrix_id: string;
+  confirmed_revision: number;
+  artifact_id: string;
+  file_name: string;
+  download_url: string;
+};
+
 export type MatrixStepQuantityDraftResponse = {
   project_id: string;
   project_matrix_draft_id: string;
@@ -3839,6 +3897,34 @@ export function fetchConfirmedMatrixTestRecordPreview(
   return requestJson<ConfirmedMatrixTestRecordPreview>(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/test-record-preview`,
     { cache: "no-store" }
+  );
+}
+
+export function previewLlcrCrRecordWorkbook(
+  projectId: string
+): Promise<LlcrCrRecordWorkbookPreviewResponse> {
+  return requestJson<LlcrCrRecordWorkbookPreviewResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/llcr-cr-record-workbook/preview`,
+    { method: "POST" }
+  );
+}
+
+export function generateLlcrCrRecordWorkbook(
+  projectId: string,
+  input: LlcrCrRecordWorkbookGenerateRequest
+): Promise<LlcrCrRecordWorkbookGenerateResponse> {
+  return requestJson<LlcrCrRecordWorkbookGenerateResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/llcr-cr-record-workbook/generate`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function downloadLlcrCrRecordWorkbook(
+  projectId: string,
+  artifactId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/llcr-cr-record-workbook/files/${encodeURIComponent(artifactId)}`
   );
 }
 

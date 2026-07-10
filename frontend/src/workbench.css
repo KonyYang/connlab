@@ -1175,6 +1175,63 @@
   color: var(--color-ink-muted);
 }
 
+.matrix-contact-plan-workbook {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.matrix-contact-plan-workbook strong,
+.matrix-contact-plan-workbook p {
+  margin: 0;
+}
+
+.matrix-contact-plan-workbook strong {
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.matrix-contact-plan-workbook p {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.matrix-contact-plan-workbook-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.matrix-contact-plan-workbook-actions button {
+  min-height: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  padding: 3px 8px;
+}
+
+.matrix-contact-plan-workbook-actions button:nth-child(2) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .matrix-contact-plan-workbook {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .matrix-contact-plan-workbook-actions {
+    justify-content: flex-start;
+  }
+}
+
 .matrix-contact-plan-message {
   color: var(--color-success);
   font-size: 11px;

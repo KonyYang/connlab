@@ -35,6 +35,27 @@ type MatrixContactMeasurementPlanCardProps = {
   onTargetExclusionReasonChange: (item: MatrixStepQuantityItem, value: string) => void;
   onApply: () => void;
   onSave: () => void;
+  workbook?: {
+    busy: "preview" | "generate" | "download" | null;
+    preview: {
+      status: "ready" | "blocked" | "review_required" | "empty";
+      row_count: number;
+      sections: Array<{ group_label: string; source_step: string; record_type: string }>;
+      diagnostics?: Array<{
+        code: string;
+        first_family_id?: string | null;
+        first_family_label?: string | null;
+        second_family_id?: string | null;
+        second_family_label?: string | null;
+      }>;
+    } | null;
+    generated: { file_name: string } | null;
+    error: string | null;
+    canGenerate: boolean;
+    onPreview: () => void;
+    onGenerate: () => void;
+    onDownload: () => void;
+  };
 };
 
 const PROFILE_LABELS: Record<ContactMeasurementKind, string> = {
@@ -60,6 +81,7 @@ export function MatrixContactMeasurementPlanCard({
   onTargetExclusionReasonChange,
   onApply,
   onSave,
+  workbook,
 }: MatrixContactMeasurementPlanCardProps) {
   const targets = buildContactPlanTargets(items);
   const profileError = validateContactPlanProfiles(
@@ -192,9 +214,69 @@ export function MatrixContactMeasurementPlanCard({
           {saving ? "Saving" : "Save contact plan"}
         </button>
       </div>
+      {workbook ? (
+        <div className="matrix-contact-plan-workbook" aria-label="Specialized record workbook">
+          <div>
+            <strong>Specialized LLCR/CR record</strong>
+            {workbook.preview ? (
+              <p>
+                {workbookPreviewMessage(workbook.preview)}
+              </p>
+            ) : (
+              <p>Preview confirmed contact-plan records before generation.</p>
+            )}
+          </div>
+          <div className="matrix-contact-plan-workbook-actions">
+            <button
+              type="button"
+              disabled={disabled || workbook.busy !== null}
+              onClick={workbook.onPreview}
+            >
+              {workbook.busy === "preview" ? "Previewing" : "Preview specialized record"}
+            </button>
+            <button
+              type="button"
+              disabled={disabled || workbook.busy !== null || !workbook.canGenerate}
+              onClick={workbook.onGenerate}
+            >
+              {workbook.busy === "generate" ? "Generating" : "Generate workbook"}
+            </button>
+            {workbook.generated ? (
+              <button
+                type="button"
+                disabled={disabled || workbook.busy !== null}
+                onClick={workbook.onDownload}
+              >
+                {workbook.busy === "download" ? "Downloading" : "Download workbook"}
+              </button>
+            ) : null}
+          </div>
+          {workbook.error ? <p className="matrix-contact-plan-error">{workbook.error}</p> : null}
+        </div>
+      ) : null}
       {profileError ? <p className="matrix-contact-plan-error">{profileError}</p> : null}
       {message ? <p className="matrix-contact-plan-message">{message}</p> : null}
       {error ? <p className="matrix-contact-plan-error">{error}</p> : null}
     </section>
   );
+}
+
+function workbookPreviewMessage(
+  preview: NonNullable<MatrixContactMeasurementPlanCardProps["workbook"]>["preview"]
+): string {
+  if (!preview) return "Preview confirmed contact-plan records before generation.";
+  if (preview.status === "ready") return `${preview.row_count} record rows ready`;
+  if (preview.status === "empty") return "No included LLCR/CR targets";
+  const collision = preview.diagnostics?.find(
+    (diagnostic) => diagnostic.code === "normalized_prefix_collision"
+  );
+  if (
+    collision?.first_family_id &&
+    collision.first_family_label &&
+    collision.second_family_id &&
+    collision.second_family_label
+  ) {
+    return `${collision.first_family_label} (${collision.first_family_id}) conflicts with ${collision.second_family_label} (${collision.second_family_id}).`;
+  }
+  return "Review contact plan blockers";
 }

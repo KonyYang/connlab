@@ -137,6 +137,12 @@ from backend.application.confirmed_matrix_runtime_projection_service import (
 from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewService,
 )
+from backend.application.confirmed_matrix_llcr_cr_record_generation_service import (
+    LlcrCrRecordWorkbookGenerationService,
+)
+from backend.application.confirmed_matrix_llcr_cr_record_preview_service import (
+    LlcrCrRecordWorkbookPreviewService,
+)
 from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftService,
 )
@@ -204,6 +210,12 @@ from backend.application.project_folder_open_service import ProjectFolderOpenSer
 from backend.application.public_folder_year_resolver import PublicFolderYearResolver
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
+)
+from backend.infrastructure.files.llcr_cr_specialized_record_artifact_store import (
+    LlcrCrSpecializedRecordArtifactStore,
+)
+from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import (
+    LlcrCrSpecializedRecordWorkbookGateway,
 )
 from backend.application.project_application_form_write_back_service import (
     ProjectApplicationFormWriteBackService,
@@ -840,6 +852,40 @@ def get_no_ltr_project_cleanup_service(
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings.load()
+
+
+def get_llcr_cr_record_workbook_artifact_store(
+    settings: Settings = Depends(get_settings),
+) -> LlcrCrSpecializedRecordArtifactStore:
+    """Build contained local storage for specialized LLCR/CR workbook artifacts."""
+    return LlcrCrSpecializedRecordArtifactStore(
+        settings.data_dir / "generated_llcr_cr_record_files"
+    )
+
+
+def get_llcr_cr_record_workbook_preview_service(
+    session: Session = Depends(get_session),
+) -> LlcrCrRecordWorkbookPreviewService:
+    """Build no-write preview from active confirmed Matrix contact authority."""
+    return LlcrCrRecordWorkbookPreviewService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_llcr_cr_record_workbook_generation_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> LlcrCrRecordWorkbookGenerationService:
+    """Build preview-fingerprint-protected specialized workbook generation."""
+    return LlcrCrRecordWorkbookGenerationService(
+        preview_service=LlcrCrRecordWorkbookPreviewService(
+            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        ),
+        workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
+        artifact_store=LlcrCrSpecializedRecordArtifactStore(
+            settings.data_dir / "generated_llcr_cr_record_files"
+        ),
+    )
 
 
 def get_official_project_workspace_service(

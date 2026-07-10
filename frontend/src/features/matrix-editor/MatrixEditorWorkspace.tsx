@@ -42,6 +42,7 @@ import {
   type MatrixStepQuantityEditableField,
 } from "./matrixStepQuantitySelectors";
 import { MatrixContactMeasurementPlanCard } from "./MatrixContactMeasurementPlanCard";
+import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 import {
   DEFAULT_CONTACT_PLAN_PROFILES,
   addCustomContactFamily,
@@ -1677,6 +1678,7 @@ export function MatrixEditorWorkspace({
   const [contactPlanProfiles, setContactPlanProfiles] = useState<ContactPlanProfiles>(
     DEFAULT_CONTACT_PLAN_PROFILES
   );
+  const specializedRecordWorkbook = useLlcrCrSpecializedRecordWorkbookModel(projectId);
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -3752,6 +3754,16 @@ export function MatrixEditorWorkspace({
             onTargetExclusionReasonChange={onContactTargetExclusionReasonChange}
             onApply={onApplyContactPlan}
             onSave={() => void onSaveStepQuantities()}
+            workbook={{
+              busy: specializedRecordWorkbook.busy,
+              preview: specializedRecordWorkbook.preview,
+              generated: specializedRecordWorkbook.generated,
+              error: specializedRecordWorkbook.error,
+              canGenerate: specializedRecordWorkbook.canGenerate,
+              onPreview: () => void specializedRecordWorkbook.previewWorkbook(),
+              onGenerate: () => void specializedRecordWorkbook.generateWorkbook(),
+              onDownload: () => void specializedRecordWorkbook.downloadWorkbook(),
+            }}
           />
         </section>
 

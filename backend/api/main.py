@@ -56,6 +56,9 @@ from backend.api.routes_confirmed_matrix_runtime_projection import (
 from backend.api.routes_confirmed_matrix_test_record_preview import (
     router as confirmed_matrix_test_record_preview_router,
 )
+from backend.api.routes_confirmed_matrix_llcr_cr_record_workbook import (
+    router as confirmed_matrix_llcr_cr_record_workbook_router,
+)
 from backend.api.routes_confirmed_matrix_fee_draft import (
     router as confirmed_matrix_fee_draft_router,
 )
@@ -160,6 +163,7 @@ app.include_router(project_test_plan_source_candidates_router)
 app.include_router(runtime_projection_read_only_router)
 app.include_router(confirmed_matrix_runtime_projection_router)
 app.include_router(confirmed_matrix_test_record_preview_router)
+app.include_router(confirmed_matrix_llcr_cr_record_workbook_router)
 app.include_router(confirmed_matrix_fee_draft_router)
 app.include_router(confirmed_matrix_fee_evaluation_export_router)
 app.include_router(confirmed_matrix_fee_evaluation_pricing_draft_router)
