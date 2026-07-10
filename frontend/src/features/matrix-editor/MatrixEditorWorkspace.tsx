@@ -9,6 +9,7 @@ import {
   ApiRequestError,
   commitMatrixImport,
   confirmMatrixEditorSession,
+  createMatrixRevisionDraft,
   discardMatrixEditorSessionDraft,
   fetchMatrixEditorSession,
   fetchMatrixStepQuantities,
@@ -110,6 +111,7 @@ type MatrixSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 type MatrixPublishState = "idle" | "loading" | "success" | "error";
 type MatrixTestRecordState = "idle" | "loading" | "success" | "error";
 type MatrixPublishMode = "first_authority" | "revision_authority";
+type MatrixRevisionDraftActionState = "idle" | "opening" | "error";
 
 const AUTOSAVE_CANCEL_WAIT_TIMEOUT_MS = 1500;
 
@@ -1648,6 +1650,10 @@ export function MatrixEditorWorkspace({
   const [locatorTableOnPage, setLocatorTableOnPage] = useState("");
   const [locatorKeyword, setLocatorKeyword] = useState("");
   const [draftLoading, setDraftLoading] = useState(false);
+  const [sessionReloadGeneration, setSessionReloadGeneration] = useState(0);
+  const [revisionDraftActionState, setRevisionDraftActionState] =
+    useState<MatrixRevisionDraftActionState>("idle");
+  const [revisionDraftActionMessage, setRevisionDraftActionMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<MatrixSaveState>("idle");
   const [saveBaselineSignature, setSaveBaselineSignature] = useState<string | null>(null);
   const [confirmActiveState, setConfirmActiveState] = useState<MatrixPublishState>("idle");
@@ -1688,6 +1694,7 @@ export function MatrixEditorWorkspace({
   const autosaveAbortControllerRef = useRef<AbortController | null>(null);
   const latestAutosaveResultRef = useRef<MatrixEditorSessionDraftSaveResponse | null>(null);
   const cancellingRef = useRef(false);
+  const revisionDraftReloadPendingRef = useRef(false);
 
   const applyDraftSnapshotToEditor = (
     draft: MatrixEditorSessionDraft,
@@ -1781,6 +1788,16 @@ export function MatrixEditorWorkspace({
         setConfirmActiveState("idle");
         setConfirmActiveMessage("");
         setActiveAuthorityConfirmed(false);
+        if (revisionDraftReloadPendingRef.current) {
+          revisionDraftReloadPendingRef.current = false;
+          if (seed.editor_draft_id) {
+            setRevisionDraftActionState("idle");
+            setRevisionDraftActionMessage("Editable Matrix draft opened.");
+          } else {
+            setRevisionDraftActionState("error");
+            setRevisionDraftActionMessage("Unable to open an editable Matrix draft. Retry.");
+          }
+        }
       } catch (error) {
         if (cancelled) {
           return;
@@ -1796,6 +1813,11 @@ export function MatrixEditorWorkspace({
         setSavedPayloadSignature(null);
         setSavedLocalSignature(null);
         setSaveState("error");
+        if (revisionDraftReloadPendingRef.current) {
+          revisionDraftReloadPendingRef.current = false;
+          setRevisionDraftActionState("error");
+          setRevisionDraftActionMessage("Unable to reload the editable Matrix draft. Retry.");
+        }
       } finally {
         if (!cancelled) {
           setDraftLoading(false);
@@ -1806,7 +1828,7 @@ export function MatrixEditorWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, sessionReloadGeneration]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2153,6 +2175,31 @@ export function MatrixEditorWorkspace({
     } finally {
       setStepQuantitySaving(false);
     }
+  };
+  const onOpenEditableMatrixDraft = async (): Promise<void> => {
+    if (
+      isLifecycleReadonly ||
+      !activeConfirmedMatrixId ||
+      savedEditorDraftId ||
+      revisionDraftActionState === "opening"
+    ) {
+      return;
+    }
+    setRevisionDraftActionState("opening");
+    setRevisionDraftActionMessage("Opening editable Matrix draft.");
+    try {
+      await createMatrixRevisionDraft(projectId);
+    } catch (error) {
+      if (!(error instanceof ApiRequestError && error.status === 409)) {
+        setRevisionDraftActionState("error");
+        setRevisionDraftActionMessage(
+          parseRequestError(error, "Unable to open an editable Matrix draft.")
+        );
+        return;
+      }
+    }
+    revisionDraftReloadPendingRef.current = true;
+    setSessionReloadGeneration((previous) => previous + 1);
   };
   const selectedGroupStepNotes = selectedGroupStepRows
     .map((row) => {
@@ -3736,11 +3783,36 @@ export function MatrixEditorWorkspace({
               setSchedulePlan(nextPlan);
             }}
           />
+          {activeConfirmedMatrixId && !savedEditorDraftId ? (
+            <div className="matrix-editor-revision-draft-bridge">
+              <p role="status">
+                {revisionDraftActionMessage ?? "Open an editable Matrix draft to update contact targets."}
+              </p>
+              <button
+                type="button"
+                disabled={isLifecycleReadonly || draftLoading || revisionDraftActionState === "opening"}
+                title={isLifecycleReadonly ? lifecycleReadonlyView.message : ""}
+                onClick={() => void onOpenEditableMatrixDraft()}
+              >
+                Open editable Matrix draft
+              </button>
+            </div>
+          ) : revisionDraftActionMessage ? (
+            <p className="matrix-editor-revision-draft-message" role="status">
+              {revisionDraftActionMessage}
+            </p>
+          ) : null}
           <MatrixContactMeasurementPlanCard
             items={stepQuantityItems}
             profiles={contactPlanProfiles}
             groupLabels={contactGroupLabels}
-            disabled={isLifecycleReadonly || stepQuantityLoading || stepQuantitySaving}
+            disabled={
+              isLifecycleReadonly ||
+              !savedEditorDraftId ||
+              stepQuantityLoading ||
+              stepQuantitySaving
+            }
+            workbookDisabled={isLifecycleReadonly}
             saving={stepQuantitySaving}
             message={contactPlanMessage}
             error={stepQuantityError}

@@ -10,6 +10,7 @@ import {
 const apiMocks = vi.hoisted(() => ({
   fetchMatrixEditorSession: vi.fn(),
   fetchMatrixStepQuantities: vi.fn(),
+  createMatrixRevisionDraft: vi.fn(),
   saveMatrixEditorSessionDraft: vi.fn(),
   saveMatrixStepQuantities: vi.fn(),
   discardMatrixEditorSessionDraft: vi.fn(),
@@ -17,6 +18,9 @@ const apiMocks = vi.hoisted(() => ({
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
   commitMatrixImport: vi.fn(),
+  previewLlcrCrRecordWorkbook: vi.fn(),
+  generateLlcrCrRecordWorkbook: vi.fn(),
+  downloadLlcrCrRecordWorkbook: vi.fn(),
   matrixPreviewPdfUrl: vi.fn((token: string) => `/api/pdf/${token}`),
 }));
 
@@ -51,6 +55,7 @@ vi.mock("../../api/client", () => {
     ApiRequestError: MockApiRequestError,
     fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
     fetchMatrixStepQuantities: apiMocks.fetchMatrixStepQuantities,
+    createMatrixRevisionDraft: apiMocks.createMatrixRevisionDraft,
     saveMatrixEditorSessionDraft: apiMocks.saveMatrixEditorSessionDraft,
     saveMatrixStepQuantities: apiMocks.saveMatrixStepQuantities,
     discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
@@ -58,6 +63,9 @@ vi.mock("../../api/client", () => {
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
     commitMatrixImport: apiMocks.commitMatrixImport,
+    previewLlcrCrRecordWorkbook: apiMocks.previewLlcrCrRecordWorkbook,
+    generateLlcrCrRecordWorkbook: apiMocks.generateLlcrCrRecordWorkbook,
+    downloadLlcrCrRecordWorkbook: apiMocks.downloadLlcrCrRecordWorkbook,
     matrixPreviewPdfUrl: apiMocks.matrixPreviewPdfUrl,
     isProjectLifecycleReadonlyErrorDetail: (detail: unknown) =>
       Boolean(detail) &&
@@ -302,6 +310,14 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       warnings: [],
     };
     apiMocks.fetchMatrixEditorSession.mockResolvedValue(buildSessionSeed());
+    apiMocks.createMatrixRevisionDraft.mockResolvedValue({});
+    apiMocks.previewLlcrCrRecordWorkbook.mockResolvedValue({
+      status: "ready",
+      row_count: 1,
+      sections: [{ group_label: "1", source_step: "1", record_type: "llcr" }],
+      diagnostics: [],
+      preview_fingerprint: "confirmed-preview",
+    });
     apiMocks.saveMatrixEditorSessionDraft.mockResolvedValue({
       editor_draft_id: "editor-draft-1",
       draft_status: "current",
@@ -372,6 +388,87 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Confirm As Active Matrix")).toBeNull();
     expect(screen.queryByText("Create Revision Draft")).toBeNull();
     expect(screen.queryByText("Confirm Revision")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save contact plan" })).toHaveProperty("disabled", true);
+  });
+
+  it("opens an editable revision draft and reloads the Matrix Editor session", async () => {
+    const currentDraftSeed = {
+      ...buildSessionSeed(),
+      editor_draft_id: "revision-draft-1",
+      draft_status: "current",
+      loaded_source: "draft",
+      saved_payload_signature: "revision-signature",
+    };
+    apiMocks.fetchMatrixEditorSession
+      .mockResolvedValueOnce(buildSessionSeed())
+      .mockResolvedValueOnce(currentDraftSeed);
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const openDraft = await screen.findByRole("button", { name: "Open editable Matrix draft" });
+    fireEvent.click(openDraft);
+
+    await waitFor(() => expect(apiMocks.createMatrixRevisionDraft).toHaveBeenCalledWith("P1"));
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Editable Matrix draft opened.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open editable Matrix draft" })).toBeNull();
+    expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "revision-draft-1");
+  });
+
+  it("recovers an existing revision draft conflict by reloading the Matrix Editor session", async () => {
+    const currentDraftSeed = {
+      ...buildSessionSeed(),
+      editor_draft_id: "revision-draft-existing",
+      draft_status: "current",
+      loaded_source: "draft",
+      saved_payload_signature: "revision-signature",
+    };
+    apiMocks.fetchMatrixEditorSession
+      .mockResolvedValueOnce(buildSessionSeed())
+      .mockResolvedValueOnce(currentDraftSeed);
+    apiMocks.createMatrixRevisionDraft.mockRejectedValueOnce(
+      new ApiRequestError("existing revision", 409, "Revision draft already exists")
+    );
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open editable Matrix draft" }));
+
+    await waitFor(() => expect(apiMocks.createMatrixRevisionDraft).toHaveBeenCalledWith("P1"));
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Editable Matrix draft opened.")).toBeTruthy();
+    expect(screen.queryByText("Revision draft already exists")).toBeNull();
+    expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "revision-draft-existing");
+  });
+
+  it("does not request an editable revision draft while the project is readonly", async () => {
+    runtimeModelState.lifecycle = {
+      ...runtimeModelState.lifecycle,
+      lifecycle_state: "closed",
+      closure_type: "completed",
+      status: "closed",
+      allowed_actions: [],
+      readonly: true,
+    };
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const openDraft = await screen.findByRole("button", { name: "Open editable Matrix draft" });
+    expect(openDraft).toHaveProperty("disabled", true);
+    fireEvent.click(openDraft);
+    expect(apiMocks.createMatrixRevisionDraft).not.toHaveBeenCalled();
+  });
+
+  it("keeps confirmed specialized record preview available while draftless contact-plan editing is locked", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect(await screen.findByRole("button", { name: "Open editable Matrix draft" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save contact plan" })).toHaveProperty("disabled", true);
+    const preview = screen.getByRole("button", { name: "Preview specialized record" });
+    expect(preview).toHaveProperty("disabled", false);
+    fireEvent.click(preview);
+
+    await waitFor(() => expect(apiMocks.previewLlcrCrRecordWorkbook).toHaveBeenCalledWith("P1"));
   });
 
   it("loads and saves Matrix Step quantity setup for the selected group", async () => {

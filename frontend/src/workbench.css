@@ -995,6 +995,44 @@
   font-weight: 700;
 }
 
+.matrix-editor-revision-draft-bridge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.matrix-editor-revision-draft-bridge p,
+.matrix-editor-revision-draft-message {
+  margin: 0;
+}
+
+.matrix-editor-revision-draft-bridge button {
+  min-height: 30px;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font: inherit;
+  font-weight: 700;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.matrix-editor-revision-draft-bridge button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+
+.matrix-editor-revision-draft-message {
+  margin-top: 10px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
 .matrix-contact-plan-card {
   display: grid;
   gap: 10px;

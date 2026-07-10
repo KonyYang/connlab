@@ -14,6 +14,7 @@ type MatrixContactMeasurementPlanCardProps = {
   profiles: ContactPlanProfiles;
   groupLabels: Record<string, string>;
   disabled: boolean;
+  workbookDisabled?: boolean;
   saving: boolean;
   message: string | null;
   error: string | null;
@@ -68,6 +69,7 @@ export function MatrixContactMeasurementPlanCard({
   profiles,
   groupLabels,
   disabled,
+  workbookDisabled = disabled,
   saving,
   message,
   error,
@@ -229,14 +231,14 @@ export function MatrixContactMeasurementPlanCard({
           <div className="matrix-contact-plan-workbook-actions">
             <button
               type="button"
-              disabled={disabled || workbook.busy !== null}
+              disabled={workbookDisabled || workbook.busy !== null}
               onClick={workbook.onPreview}
             >
               {workbook.busy === "preview" ? "Previewing" : "Preview specialized record"}
             </button>
             <button
               type="button"
-              disabled={disabled || workbook.busy !== null || !workbook.canGenerate}
+              disabled={workbookDisabled || workbook.busy !== null || !workbook.canGenerate}
               onClick={workbook.onGenerate}
             >
               {workbook.busy === "generate" ? "Generating" : "Generate workbook"}
@@ -244,7 +246,7 @@ export function MatrixContactMeasurementPlanCard({
             {workbook.generated ? (
               <button
                 type="button"
-                disabled={disabled || workbook.busy !== null}
+                disabled={workbookDisabled || workbook.busy !== null}
                 onClick={workbook.onDownload}
               >
                 {workbook.busy === "download" ? "Downloading" : "Download workbook"}
