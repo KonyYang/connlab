@@ -31,6 +31,12 @@ from backend.application.matrix_sample_quantity_guard import (
     find_selected_sample_quantity_violations,
     format_sample_quantity_violation_message,
 )
+from backend.application.matrix_step_quantity_authority_builder import (
+    build_confirmed_step_quantities,
+)
+from backend.application.matrix_step_quantity_authority_comparison import (
+    step_quantity_authority_matches,
+)
 from backend.application.matrix_revision_flow_service import (
     CreateMatrixRevisionDraftCommand,
     MatrixRevisionFlowConflictError,
@@ -650,6 +656,21 @@ class MatrixEditorSessionService:
         if active is not None:
             active_signature = _build_signature_from_confirmed(active)
             if payload_signature == active_signature:
+                if _has_expected_saved_draft(command):
+                    saved_draft = self._load_expected_saved_draft(command, active)
+                    if not step_quantity_authority_matches(saved_draft, active):
+                        if payload_signature != (
+                            command.expected_saved_payload_signature or ""
+                        ).strip():
+                            raise MatrixEditorSessionDraftConflictError(
+                                "Confirm payload differs from the saved Matrix draft. Save again before confirming."
+                            )
+                        return self._publish_saved_revision_result(
+                            project_id=command.project_id,
+                            saved_draft=saved_draft,
+                            active=active,
+                            confirmed_by=confirmed_by,
+                        )
                 return MatrixEditorSessionConfirmResult(
                     publish_status="no_change",
                     message="No Matrix changes to confirm.",
@@ -671,25 +692,11 @@ class MatrixEditorSessionService:
                 raise MatrixEditorSessionDraftConflictError(
                     "Confirm payload differs from the saved Matrix draft. Save again before confirming."
                 )
-            confirmed = self._publish_saved_revision(
-                draft=saved_draft,
-                command=command,
-                active=active,
-                confirmed_by=confirmed_by,
-            )
-            promotion = self._promote_fee_rebase_after_matrix_confirm(
+            return self._publish_saved_revision_result(
                 project_id=command.project_id,
                 saved_draft=saved_draft,
-                previous_active=active,
-                confirmed=confirmed,
-            )
-            return MatrixEditorSessionConfirmResult(
-                publish_status="published",
-                message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
-                confirmed_snapshot=confirmed,
-                fee_rebase_promotion_status=promotion.status,
-                fee_rebase_promotion_summary=promotion.summary,
-                fee_rebase_promotion_error=promotion.error,
+                active=active,
+                confirmed_by=confirmed_by,
             )
         confirmed = self._publish_as_first_authority(command, selected_group_keys, confirmed_by)
         promotion = self._initialize_fee_after_first_matrix_confirm(
@@ -750,11 +757,38 @@ class MatrixEditorSessionService:
                 error=f"Fee rebase promotion failed: {exc}",
             )
 
+    def _publish_saved_revision_result(
+        self,
+        *,
+        project_id: str,
+        saved_draft: ProjectMatrixDraftSnapshot,
+        active: ConfirmedMatrixSnapshot,
+        confirmed_by: str,
+    ) -> MatrixEditorSessionConfirmResult:
+        confirmed = self._publish_saved_revision(
+            draft=saved_draft,
+            active=active,
+            confirmed_by=confirmed_by,
+        )
+        promotion = self._promote_fee_rebase_after_matrix_confirm(
+            project_id=project_id,
+            saved_draft=saved_draft,
+            previous_active=active,
+            confirmed=confirmed,
+        )
+        return MatrixEditorSessionConfirmResult(
+            publish_status="published",
+            message=f"Matrix confirmed (v{confirmed.version.confirmed_revision}).",
+            confirmed_snapshot=confirmed,
+            fee_rebase_promotion_status=promotion.status,
+            fee_rebase_promotion_summary=promotion.summary,
+            fee_rebase_promotion_error=promotion.error,
+        )
+
     def _publish_saved_revision(
         self,
         *,
         draft: ProjectMatrixDraftSnapshot,
-        command: MatrixEditorSessionConfirmCommand,
         active: ConfirmedMatrixSnapshot,
         confirmed_by: str,
     ) -> ConfirmedMatrixSnapshot:
@@ -1463,6 +1497,13 @@ def _build_signature_from_session_payload(
     return repr(payload)
 
 
+def _has_expected_saved_draft(command: MatrixEditorSessionConfirmCommand) -> bool:
+    return bool(
+        (command.expected_editor_draft_id or "").strip()
+        and (command.expected_saved_payload_signature or "").strip()
+    )
+
+
 def _schedule_signature_from_command(
     command: MatrixEditorSessionConfirmCommand,
 ) -> dict[str, str]:
@@ -1802,6 +1843,15 @@ def _build_confirmed_snapshot_from_session_draft(
         groups=tuple(groups),
         rows=tuple(rows),
         cells=tuple(cells),
+        step_quantities=tuple(
+            build_confirmed_step_quantities(
+                draft=draft,
+                confirmed_matrix_id=confirmed_matrix_id,
+                confirmed_at=confirmed_at,
+                confirmed_group_id_by_draft_group=confirmed_group_id_by_draft_group,
+                confirmed_row_id_by_draft_row=confirmed_row_id_by_draft_row,
+            )
+        ),
     )
 
 

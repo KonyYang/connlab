@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -33,12 +34,15 @@ from backend.domain import (
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
     ConfirmedMatrixVersion,
+    MatrixStepContactFamily,
+    MatrixStepContactPlan,
     Project,
     ProjectMatrixDraftCell,
     ProjectMatrixDraftGroup,
     ProjectMatrixDraftRecord,
     ProjectMatrixDraftRow,
     ProjectMatrixDraftSnapshot,
+    ProjectMatrixDraftStepQuantity,
     ProjectMatrixDraftStatus,
     ProjectStatus,
     SourceMatrixImportRecord,
@@ -275,6 +279,99 @@ def test_confirm_saved_revision_keeps_published_when_fee_promotion_failed() -> N
     assert result.confirmed_snapshot is not None
     assert result.fee_rebase_promotion_status == "failed"
     assert "database unavailable" in (result.fee_rebase_promotion_error or "")
+
+
+def test_confirm_session_publishes_contact_plan_only_saved_revision() -> None:
+    draft = _saved_revision_draft()
+    contact_plan = MatrixStepContactPlan(
+        contact_kind="llcr",
+        coverage_status="eligible",
+        included=True,
+        exclusion_reason=None,
+        is_override=False,
+        readings_per_sample="33",
+        families=(
+            MatrixStepContactFamily(
+                family_id="high_power_pin",
+                family_label="High Power Pin",
+                count_per_sample="4",
+                record_label="High Power Pin contact",
+                record_prefix="HP",
+                included=True,
+                is_custom=False,
+            ),
+        ),
+    )
+    draft = replace(
+        draft,
+        step_quantities=(
+            ProjectMatrixDraftStepQuantity(
+                draft_step_quantity_id="quantity-1",
+                project_matrix_draft_id=draft.record.project_matrix_draft_id,
+                draft_group_id=draft.groups[0].draft_group_id,
+                draft_row_id=draft.rows[0].draft_row_id,
+                step_sequence=1,
+                step_suffix_note=None,
+                raw_token="1",
+                test_points_per_sample="33",
+                readings_per_point="1",
+                contact_points_per_sample="33",
+                source="matrix_contact_plan",
+                review_required=False,
+                review_reason=None,
+                updated_at="2026-07-11T10:00:00+00:00",
+                contact_plan=contact_plan,
+            ),
+        ),
+    )
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_store=_SavedDraftStore(draft),
+    )
+
+    result = service.confirm_session(_confirm_saved_revision_command(draft))
+
+    assert result.publish_status == "published"
+    assert result.confirmed_snapshot is not None
+    assert result.confirmed_snapshot.version.confirmed_revision == 2
+    assert result.confirmed_snapshot.step_quantities[0].contact_plan == contact_plan
+    assert result.confirmed_snapshot.step_quantities[0].contact_points_per_sample == "33"
+
+
+def test_confirm_session_publishes_matrix_equal_revision_when_contact_plan_changes() -> None:
+    contact_plan = MatrixStepContactPlan(
+        contact_kind="llcr",
+        coverage_status="eligible",
+        included=True,
+        exclusion_reason=None,
+        is_override=False,
+        readings_per_sample="4",
+        families=(
+            MatrixStepContactFamily(
+                family_id="high_power_pin",
+                family_label="High Power Pin",
+                count_per_sample="4",
+                record_label="High Power Pin contact",
+                record_prefix="HP",
+                included=True,
+                is_custom=False,
+            ),
+        ),
+    )
+    draft = _matrix_equal_saved_revision_draft(contact_plan)
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_store=_SavedDraftStore(draft),
+    )
+
+    result = service.confirm_session(_confirm_saved_revision_command(draft))
+
+    assert result.publish_status == "published"
+    assert result.confirmed_snapshot is not None
+    assert result.confirmed_snapshot.version.confirmed_revision == 2
+    assert result.confirmed_snapshot.step_quantities[0].contact_plan == contact_plan
 
 
 def test_confirm_first_authority_initializes_default_fee_authority() -> None:
@@ -1007,6 +1104,78 @@ def _saved_revision_draft() -> ProjectMatrixDraftSnapshot:
                 draft_row_id="dr-1",
                 draft_group_id="dg-1",
                 cell_value="1",
+            ),
+        ),
+    )
+
+
+def _matrix_equal_saved_revision_draft(
+    contact_plan: MatrixStepContactPlan,
+) -> ProjectMatrixDraftSnapshot:
+    return ProjectMatrixDraftSnapshot(
+        record=ProjectMatrixDraftRecord(
+            project_matrix_draft_id="pmd-contact",
+            project_id="P1",
+            source_import_id="smi-1",
+            source_snapshot_id="sms-1",
+            status=ProjectMatrixDraftStatus.DRAFT,
+            created_at="2026-07-11T10:00:00+00:00",
+            updated_at="2026-07-11T10:01:00+00:00",
+            base_confirmed_matrix_id="cmv-1",
+        ),
+        groups=(
+            ProjectMatrixDraftGroup(
+                draft_group_id="dg-1",
+                project_matrix_draft_id="pmd-contact",
+                source_group_snapshot_id="sg-1",
+                group_order=1,
+                group_key="g1",
+                group_label="1",
+                is_selected=True,
+                sample_quantity_expression="5",
+                sample_note=None,
+            ),
+        ),
+        rows=(
+            ProjectMatrixDraftRow(
+                draft_row_id="dr-1",
+                project_matrix_draft_id="pmd-contact",
+                source_row_snapshot_id="sr-1",
+                row_order=1,
+                test_item="Visual Examination",
+                source_section="1.1",
+                method="EIA-364-18B",
+                condition="10x min magnification",
+                requirement="No detrimental condition",
+                is_sample_row=False,
+            ),
+        ),
+        cells=(
+            ProjectMatrixDraftCell(
+                draft_cell_id="dc-contact",
+                project_matrix_draft_id="pmd-contact",
+                draft_row_id="dr-1",
+                draft_group_id="dg-1",
+                cell_value="1",
+            ),
+        ),
+        step_quantities=(
+            ProjectMatrixDraftStepQuantity(
+                draft_step_quantity_id="quantity-contact",
+                project_matrix_draft_id="pmd-contact",
+                draft_group_id="dg-1",
+                draft_row_id="dr-1",
+                step_sequence=1,
+                step_suffix_note=None,
+                raw_token="1",
+                test_points_per_sample="4",
+                readings_per_point="1",
+                contact_points_per_sample="4",
+                source="matrix_contact_plan",
+                review_required=False,
+                review_reason=None,
+                updated_at="2026-07-11T10:01:00+00:00",
+                contact_plan=contact_plan,
             ),
         ),
     )

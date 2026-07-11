@@ -30,6 +30,11 @@ export type ContactPlanApplyResult = {
   reviewRequired: boolean;
 };
 
+export type ContactPlanProfileHydration = {
+  profiles: Partial<ContactPlanProfiles> | null;
+  reviewMessage: string | null;
+};
+
 const CONTACT_PLAN_SOURCE = "matrix_contact_plan";
 
 export const DEFAULT_CONTACT_PLAN_PROFILES: ContactPlanProfiles = {
@@ -127,6 +132,48 @@ export function validateContactPlanProfiles(
     }
   }
   return null;
+}
+
+export function hydrateUniformContactPlanProfiles(
+  items: MatrixStepQuantityItem[]
+): ContactPlanProfileHydration {
+  const profiles: Partial<ContactPlanProfiles> = {};
+  let hasDivergentPlans = false;
+  (Object.keys(DEFAULT_CONTACT_PLAN_PROFILES) as ContactMeasurementKind[]).forEach((kind) => {
+    const plans = items.flatMap((item) => {
+      if (contactMeasurementKindForItem(item) !== kind) {
+        return [];
+      }
+      const plan = item.contact_plan;
+      return plan && plan.included ? [plan] : [];
+    });
+    if (plans.length === 0) {
+      return;
+    }
+    if (plans.some((plan) => plan.is_override)) {
+      hasDivergentPlans = true;
+      return;
+    }
+    const canonical = canonicalPersistedPlan(plans[0]);
+    if (!plans.every((plan) => canonicalPersistedPlan(plan) === canonical)) {
+      hasDivergentPlans = true;
+      return;
+    }
+    profiles[kind] = plans[0].families.map((family) => ({
+      familyId: family.family_id,
+      familyLabel: family.family_label,
+      countPerSample: family.count_per_sample,
+      recordPrefix: family.record_prefix,
+      included: family.included,
+      isCustom: family.is_custom,
+    }));
+  });
+  return {
+    profiles: Object.keys(profiles).length > 0 ? profiles : null,
+    reviewMessage: hasDivergentPlans
+      ? "Contact plans differ by target. Review target coverage."
+      : null,
+  };
 }
 
 export function applyContactPlanToBlankTargets(
@@ -310,6 +357,25 @@ function emptyTargetPlan(kind: ContactMeasurementKind): MatrixStepContactPlan {
     readings_per_sample: null,
     families: [],
   };
+}
+
+function canonicalPersistedPlan(plan: MatrixStepContactPlan): string {
+  return JSON.stringify({
+    contact_kind: plan.contact_kind,
+    coverage_status: plan.coverage_status,
+    included: plan.included,
+    exclusion_reason: plan.exclusion_reason,
+    is_override: plan.is_override,
+    readings_per_sample: plan.readings_per_sample,
+    families: plan.families.map((family) => ({
+      family_id: family.family_id,
+      family_label: family.family_label,
+      count_per_sample: family.count_per_sample,
+      record_prefix: family.record_prefix,
+      included: family.included,
+      is_custom: family.is_custom,
+    })),
+  });
 }
 
 function planForTarget(

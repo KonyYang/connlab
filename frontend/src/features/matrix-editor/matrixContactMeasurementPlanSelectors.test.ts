@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { MatrixStepQuantityItem } from "../../api/client";
+import type { MatrixStepContactPlan, MatrixStepQuantityItem } from "../../api/client";
 import {
   DEFAULT_CONTACT_PLAN_PROFILES,
   addCustomContactFamily,
   applyContactPlanToBlankTargets,
   contactMeasurementKindForItem,
   filterNonContactStepQuantities,
+  hydrateUniformContactPlanProfiles,
   removeCustomContactFamily,
   updateContactTargetCoverage,
   updateContactFamilyCount,
@@ -128,6 +129,101 @@ describe("matrixContactMeasurementPlanSelectors", () => {
       .items[0].contact_plan;
     const savedIds = savedPlan?.families.map((family) => family.family_id) ?? [];
     expect(new Set(savedIds).size).toBe(savedIds.length);
+  });
+
+  it("hydrates a uniform persisted contact plan without collapsing divergent targets", () => {
+    const uniformPlan: MatrixStepContactPlan = {
+      contact_kind: "llcr" as const,
+      coverage_status: "eligible",
+      included: true,
+      exclusion_reason: null,
+      is_override: false,
+      readings_per_sample: "9",
+      families: [
+        {
+          family_id: "high_power_pin",
+          family_label: "High Power Pin",
+          count_per_sample: "4",
+          record_label: "High Power Pin contact",
+          record_prefix: "HP",
+          included: true,
+          is_custom: false,
+        },
+      ],
+    };
+    const hydrated = hydrateUniformContactPlanProfiles([
+      item({ draft_row_id: "llcr-1", contact_plan: uniformPlan }),
+      item({ draft_row_id: "llcr-2", contact_plan: uniformPlan }),
+    ]);
+
+    const uniformProfiles = hydrated.profiles;
+    expect(uniformProfiles?.llcr).toBeDefined();
+    if (!uniformProfiles?.llcr) {
+      throw new Error("Expected the uniform LLCR profile to hydrate.");
+    }
+    expect(uniformProfiles.llcr[0]).toMatchObject({
+      familyId: "high_power_pin",
+      countPerSample: "4",
+      recordPrefix: "HP",
+    });
+    expect(hydrated.reviewMessage).toBeNull();
+
+    const divergent = hydrateUniformContactPlanProfiles([
+      item({ draft_row_id: "llcr-1", contact_plan: uniformPlan }),
+      item({
+        draft_row_id: "llcr-2",
+        contact_plan: {
+          ...uniformPlan,
+          readings_per_sample: "5",
+          families: [{ ...uniformPlan.families[0], count_per_sample: "5" }],
+        },
+      }),
+    ]);
+
+    expect(divergent.profiles).toBeNull();
+    expect(divergent.reviewMessage).toBe("Contact plans differ by target. Review target coverage.");
+  });
+
+  it("keeps override targets out of the common profile and requests review", () => {
+    const persistedPlan: MatrixStepContactPlan = {
+      contact_kind: "llcr",
+      coverage_status: "eligible",
+      included: true,
+      exclusion_reason: null,
+      is_override: false,
+      readings_per_sample: "4",
+      families: [
+        {
+          family_id: "high_power_pin",
+          family_label: "High Power Pin",
+          count_per_sample: "4",
+          record_label: "High Power Pin contact",
+          record_prefix: "HP",
+          included: true,
+          is_custom: false,
+        },
+      ],
+    };
+    const expectedReview = "Contact plans differ by target. Review target coverage.";
+
+    const normalWithOverride = hydrateUniformContactPlanProfiles([
+      item({ draft_row_id: "llcr-normal", contact_plan: persistedPlan }),
+      item({
+        draft_row_id: "llcr-override",
+        contact_plan: { ...persistedPlan, is_override: true },
+      }),
+    ]);
+    expect(normalWithOverride.profiles).toBeNull();
+    expect(normalWithOverride.reviewMessage).toBe(expectedReview);
+
+    const overrideOnly = hydrateUniformContactPlanProfiles([
+      item({
+        draft_row_id: "llcr-override",
+        contact_plan: { ...persistedPlan, is_override: true },
+      }),
+    ]);
+    expect(overrideOnly.profiles).toBeNull();
+    expect(overrideOnly.reviewMessage).toBe(expectedReview);
   });
 });
 

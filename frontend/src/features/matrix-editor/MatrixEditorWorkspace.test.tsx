@@ -481,8 +481,12 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     expect(await screen.findByText("Step quantity setup")).toBeTruthy();
-    expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "draft-test");
-    const points = screen.getByLabelText("Step 1 test points per sample") as HTMLInputElement;
+    await waitFor(() =>
+      expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "draft-test")
+    );
+    const points = (await screen.findByLabelText(
+      "Step 1 test points per sample"
+    )) as HTMLInputElement;
     fireEvent.change(points, { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Save quantities" }));
 
@@ -675,6 +679,149 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       draft_row_id: "visual-row",
       source: "manual_required",
     });
+  });
+
+  it("hydrates the common contact profile from uniform persisted draft targets", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "draft-contact-plan",
+      saved_payload_signature: "saved-signature",
+    });
+    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
+      project_id: "P1",
+      project_matrix_draft_id: "draft-contact-plan",
+      items: [
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "llcr-row",
+          step_sequence: 1,
+          step_suffix_note: null,
+          raw_token: "1",
+          test_item: "LLCR",
+          test_points_per_sample: "33",
+          readings_per_point: "1",
+          contact_points_per_sample: "33",
+          total_readings: "33",
+          source: "matrix_contact_plan",
+          review_required: false,
+          review_reason: null,
+          contact_plan: {
+            contact_kind: "llcr",
+            coverage_status: "eligible",
+            included: true,
+            exclusion_reason: null,
+            is_override: false,
+            readings_per_sample: "33",
+            families: [
+              {
+                family_id: "high_power_pin",
+                family_label: "High Power Pin",
+                count_per_sample: "4",
+                record_label: "High Power Pin contact",
+                record_prefix: "HP",
+                included: true,
+                is_custom: false,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const highPower = await screen.findByLabelText("LLCR High Power Pin count per sample");
+    await waitFor(() => expect(highPower).toHaveProperty("value", "4"));
+  });
+
+  it("does not collapse persisted override targets into the common contact profile", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_draft_id: "draft-contact-plan",
+      saved_payload_signature: "saved-signature",
+    });
+    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
+      project_id: "P1",
+      project_matrix_draft_id: "draft-contact-plan",
+      items: [
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "llcr-normal",
+          step_sequence: 1,
+          step_suffix_note: null,
+          raw_token: "1",
+          test_item: "LLCR",
+          test_points_per_sample: "4",
+          readings_per_point: "1",
+          contact_points_per_sample: "4",
+          total_readings: "4",
+          source: "matrix_contact_plan",
+          review_required: false,
+          review_reason: null,
+          contact_plan: {
+            contact_kind: "llcr",
+            coverage_status: "eligible",
+            included: true,
+            exclusion_reason: null,
+            is_override: false,
+            readings_per_sample: "4",
+            families: [
+              {
+                family_id: "high_power_pin",
+                family_label: "High Power Pin",
+                count_per_sample: "4",
+                record_label: "High Power Pin contact",
+                record_prefix: "HP",
+                included: true,
+                is_custom: false,
+              },
+            ],
+          },
+        },
+        {
+          draft_group_id: "group-1",
+          draft_row_id: "llcr-override",
+          step_sequence: 2,
+          step_suffix_note: null,
+          raw_token: "2",
+          test_item: "LLCR",
+          test_points_per_sample: "7",
+          readings_per_point: "1",
+          contact_points_per_sample: "7",
+          total_readings: "7",
+          source: "matrix_step_override",
+          review_required: false,
+          review_reason: null,
+          contact_plan: {
+            contact_kind: "llcr",
+            coverage_status: "manual_override",
+            included: true,
+            exclusion_reason: null,
+            is_override: true,
+            readings_per_sample: "7",
+            families: [
+              {
+                family_id: "high_power_pin",
+                family_label: "High Power Pin",
+                count_per_sample: "7",
+                record_label: "High Power Pin contact",
+                record_prefix: "HP",
+                included: true,
+                is_custom: false,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const highPower = await screen.findByLabelText("LLCR High Power Pin count per sample");
+    expect(
+      await screen.findByText("Contact plans differ by target. Review target coverage.")
+    ).toBeTruthy();
+    expect(highPower).toHaveProperty("value", "");
   });
 
   it("opens the import file selector without native confirmation", async () => {

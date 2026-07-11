@@ -49,6 +49,7 @@ import {
   addCustomContactFamily,
   applyContactPlanToBlankTargets,
   filterNonContactStepQuantities,
+  hydrateUniformContactPlanProfiles,
   removeCustomContactFamily,
   updateContactFamilyCount,
   updateContactFamilyIncluded,
@@ -1847,7 +1848,11 @@ export function MatrixEditorWorkspace({
           return;
         }
         setStepQuantityItems(response.items);
-        setStepQuantityMessage(null);
+        const hydration = hydrateUniformContactPlanProfiles(response.items);
+        if (hydration.profiles) {
+          setContactPlanProfiles((previous) => ({ ...previous, ...hydration.profiles }));
+        }
+        setStepQuantityMessage(hydration.reviewMessage);
       } catch (error) {
         if (cancelled) {
           return;
