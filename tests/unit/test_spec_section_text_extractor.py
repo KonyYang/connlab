@@ -44,6 +44,16 @@ def test_extract_row_details_does_not_parse_section_title_as_condition() -> None
     assert details["6.2"].requirement == "shall not exceed 0.5mV"
 
 
+def test_llcr_condition_defaults_when_source_has_no_measurement_condition() -> None:
+    detail = extract_row_details(
+        section="6.1",
+        section_text="6.1 LLCR. Measurements shall be in accordance with EIA 364-23D.",
+        test_item="LLCR",
+    )
+
+    assert detail.condition == "20 mV, 100 mA"
+
+
 def test_extract_row_details_supports_uscar_j_std_and_iec_methods() -> None:
     details = extract_row_details_by_section(
         [
@@ -180,6 +190,16 @@ def test_temperature_rise_condition_extracts_first_test_current(test_item: str) 
     )
 
     assert detail.condition == "75 A"
+
+
+def test_temperature_rise_uses_current_placeholder_when_current_is_missing() -> None:
+    detail = extract_row_details(
+        section="6.3.1",
+        section_text="6.3.1 Temperature rise. The temperature rise shall not exceed 30 C.",
+        test_item="Temperature rise",
+    )
+
+    assert detail.condition == "A"
 
 
 def test_normal_force_extracts_minimum_requirement() -> None:
@@ -369,6 +389,31 @@ def test_dust_exposure_condition_uses_report_default_and_preserves_ambiguity(
     )
 
     assert detail.condition == expected_condition
+
+
+def test_current_rating_uses_temperature_rise_defaults() -> None:
+    detail = extract_row_details(
+        section="6.5",
+        section_text=(
+            "6.5 Current Rating. The temperature rise shall not exceed 30 C "
+            "when all contacts are powered at 75A."
+        ),
+        test_item="Current Rating",
+    )
+
+    assert detail.condition == "75 A"
+    assert detail.requirement == "≤ 30 ℃"
+
+
+def test_current_rating_matches_temperature_rise_when_current_is_missing() -> None:
+    detail = extract_row_details(
+        section="6.5",
+        section_text="6.5 Current Rating. The temperature rise shall not exceed 30 deg C.",
+        test_item="Current Rating",
+    )
+
+    assert detail.condition == "A"
+    assert detail.requirement == "≤ 30 ℃"
 
 
 def test_family_coverage_safe_outputs() -> None:

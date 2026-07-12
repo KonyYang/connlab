@@ -108,6 +108,29 @@ def test_temperature_rise_keeps_concise_threshold_not_report_curve_text() -> Non
     assert result.requirement == "≤ 30 ℃"
 
 
+def test_current_rating_uses_temperature_rise_requirement_normalization() -> None:
+    result = normalize_condition_requirement(
+        test_item="Current Rating",
+        condition="75 A",
+        requirement="shall not exceed 30 C",
+        source_text="The temperature rise shall not exceed 30 C at 75A.",
+    )
+
+    assert result.condition == "75 A"
+    assert result.requirement == "≤ 30 ℃"
+
+
+def test_temperature_requirement_normalization_supports_deg_c_text() -> None:
+    result = normalize_condition_requirement(
+        test_item="Current Rating",
+        condition="A",
+        requirement="shall not exceed 30 deg C",
+        source_text="",
+    )
+
+    assert result.requirement == "≤ 30 ℃"
+
+
 def test_mating_unmating_normalization_requires_both_values() -> None:
     text = (
         "The force to mate a pin to socket connector shall not exceed 20N. "

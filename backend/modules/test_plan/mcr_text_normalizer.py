@@ -221,7 +221,7 @@ def _normalize_temperature_requirement(source_text: str, current_requirement: st
     text = _standardize_units(" ".join(part for part in (current_requirement, source_text) if part))
     match = re.search(
         r"(?:shall\s+not\s+exceed|must\s+not\s+exceed|max(?:imum)?\.?|<=|≤)\s*"
-        r"(?P<value>\d+(?:\.\d+)?)\s*(?:℃|C)",
+        r"(?P<value>\d+(?:\.\d+)?)\s*(?:℃|deg(?:rees?)?\s*C|C)",
         text,
         re.IGNORECASE,
     )
@@ -330,7 +330,7 @@ def _family(test_item: str | None, source_text: str) -> str:
         return "insulation_resistance"
     if "dielectric withstanding voltage" in combined or "dwv" in combined:
         return "dwv"
-    if "temperature rise" in combined:
+    if "temperature rise" in combined or "current rating" in combined:
         return "temperature_rise"
     if "mating" in combined and "force" in combined:
         return "mating_force"

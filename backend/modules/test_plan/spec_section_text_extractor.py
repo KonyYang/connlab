@@ -241,14 +241,17 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
     if "low level" in lowered or "llcr" in lowered:
         if llcr_generic:
             return _clean(llcr_generic.group(1))
+        return "20 mV, 100 mA"
     if "specified current" in lowered:
         current = re.search(r"(?:test\s+current\s*[-:]?\s*|at\s+)(\d+(?:\.\d+)?\s*(?:ADC|A|amperes?))", text, re.IGNORECASE)
         if current:
             return _clean(current.group(1).replace("amperes", "A"))
     if "dust exposure" in lowered:
         return _extract_dust_exposure_condition(text)
+    if "current rating" in lowered:
+        return _extract_temperature_rise_current(text) or "A"
     if "temperature rise" in lowered or re.search(r"\bt[-\s]?rise\b", lowered):
-        return _extract_temperature_rise_current(text)
+        return _extract_temperature_rise_current(text) or "A"
     if "humidity" in lowered:
         return _collect_condition_segments(text, ("temperature", "humidity", "rh", "duration", "dwell", "ramp", "cycles"))
     if "mfg" in lowered or "mixed flowing gas" in lowered:
