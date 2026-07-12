@@ -891,6 +891,63 @@ def get_contact_measurement_plan_workspace_read_service(
     )
 
 
+def get_draft_measurement_plan_workbook_artifact_store(
+    settings: Settings = Depends(get_settings),
+):
+    """Compose the isolated TASK_361D derived-artifact root."""
+    from backend.infrastructure.files.draft_measurement_plan_workbook_artifact_store import (
+        DraftMeasurementPlanWorkbookArtifactStore,
+    )
+    return DraftMeasurementPlanWorkbookArtifactStore(
+        settings.data_dir / "generated_contact_measurement_draft_workbooks"
+    )
+
+
+def get_draft_measurement_plan_workbook_preview_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Build the editable-revision-only draft preview service."""
+    from backend.application.contact_measurement_plan_workspace_read_service import (
+        ContactMeasurementPlanWorkspaceReadService,
+    )
+    from backend.application.draft_measurement_plan_workbook_preview_service import (
+        DraftMeasurementPlanWorkbookPreviewService,
+    )
+    from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import (
+        ContactMeasurementPlanAuthorityRepository,
+    )
+    workspace = ContactMeasurementPlanWorkspaceReadService(
+        repository=ContactMeasurementPlanAuthorityRepository(session),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        enabled=settings.contact_measurement_plan_authority_enabled,
+    )
+    return DraftMeasurementPlanWorkbookPreviewService(workspace.get_workspace)
+
+
+def get_draft_measurement_plan_workbook_generation_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Compose fingerprint-protected generation without touching confirmed output."""
+    from backend.application.draft_measurement_plan_workbook_generation_service import (
+        DraftMeasurementPlanWorkbookGenerationService,
+    )
+    from backend.infrastructure.files.draft_measurement_plan_workbook_artifact_store import (
+        DraftMeasurementPlanWorkbookArtifactStore,
+    )
+    from backend.infrastructure.office.draft_measurement_plan_workbook_gateway import (
+        DraftMeasurementPlanWorkbookGateway,
+    )
+    return DraftMeasurementPlanWorkbookGenerationService(
+        preview_service=get_draft_measurement_plan_workbook_preview_service(session, settings),
+        workbook_gateway=DraftMeasurementPlanWorkbookGateway(),
+        artifact_store=DraftMeasurementPlanWorkbookArtifactStore(
+            settings.data_dir / "generated_contact_measurement_draft_workbooks"
+        ),
+    )
+
+
 def get_contact_measurement_plan_lifecycle_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),

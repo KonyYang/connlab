@@ -2572,6 +2572,34 @@ export type ContactMeasurementPlanWorkspace = {
   diagnostics: string[];
 };
 
+export type DraftMeasurementPlanWorkbookPreview = {
+  project_id: string;
+  revision_id: string | null;
+  revision_sequence: number | null;
+  revision_state: string | null;
+  revision_fingerprint: string | null;
+  matrix_id: string | null;
+  matrix_revision: number | null;
+  matrix_binding_fingerprint: string | null;
+  status: "ready" | "review_required" | "blocked" | "empty";
+  output_label: "DRAFT" | "NEEDS REVIEW" | null;
+  preview_fingerprint: string | null;
+  row_count: number;
+  sections: Array<{ record_type: string; group_label: string; source_step: string; rows: unknown[] }>;
+  diagnostics: Array<{ code: string; severity: string; message: string }>;
+  generate_allowed: boolean;
+};
+
+export type DraftMeasurementPlanWorkbookArtifact = {
+  project_id: string;
+  revision_id: string;
+  artifact_id: string;
+  file_name: string;
+  output_label: "DRAFT" | "NEEDS REVIEW";
+  download_url: string;
+  cleanup_warning: string | null;
+};
+
 export type ContactMeasurementPlanRevisionResponse = {
   status: string;
   revision_id: string;
@@ -2807,6 +2835,35 @@ export function fetchContactMeasurementPlanWorkspace(
 ): Promise<ContactMeasurementPlanWorkspace> {
   return requestJson<ContactMeasurementPlanWorkspace>(
     `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/workspace`
+  );
+}
+
+export function previewDraftMeasurementPlanWorkbook(
+  projectId: string,
+  revisionId: string
+): Promise<DraftMeasurementPlanWorkbookPreview> {
+  return requestJson<DraftMeasurementPlanWorkbookPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/draft-workbook/preview`,
+    { method: "POST" }
+  );
+}
+
+export function generateDraftMeasurementPlanWorkbook(
+  projectId: string,
+  revisionId: string,
+  previewFingerprint: string
+): Promise<DraftMeasurementPlanWorkbookArtifact> {
+  return requestJson<DraftMeasurementPlanWorkbookArtifact>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/draft-workbook/generate`,
+    { method: "POST", body: JSON.stringify({ preview_fingerprint: previewFingerprint }) }
+  );
+}
+
+export function fetchLatestDraftMeasurementPlanWorkbook(
+  projectId: string
+): Promise<DraftMeasurementPlanWorkbookArtifact | null> {
+  return requestJson<DraftMeasurementPlanWorkbookArtifact | null>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/draft-workbook/artifacts/latest`
   );
 }
 

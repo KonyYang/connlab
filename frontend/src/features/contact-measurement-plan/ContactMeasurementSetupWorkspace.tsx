@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { ContactMeasurementPlanTarget } from "../../api/client";
+import { DraftMeasurementPlanWorkbookPanel } from "./DraftMeasurementPlanWorkbookPanel";
 import { useContactMeasurementPlanModel } from "./useContactMeasurementPlanModel";
 
 type ContactMeasurementSetupWorkspaceProps = {
@@ -13,6 +14,8 @@ export function ContactMeasurementSetupWorkspace({
 }: ContactMeasurementSetupWorkspaceProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const model = useContactMeasurementPlanModel({ projectId });
+  const [draftWorkbookBusy, setDraftWorkbookBusy] = useState(false);
+  const controlsBusy = Boolean(model.busy) || draftWorkbookBusy;
 
   useEffect(() => {
     if (!model.loading) headingRef.current?.focus();
@@ -54,10 +57,10 @@ export function ContactMeasurementSetupWorkspace({
         <>
           <section className="contact-measurement-review-band" aria-label="Measurement plan review">
             <span>{`${model.workspace.summary.needs_review_count} changes need review`}</span>
-            <button type="button" disabled={Boolean(model.busy)} onClick={() => void model.refreshImpacts()}>
+            <button type="button" disabled={controlsBusy} onClick={() => void model.refreshImpacts()}>
               Review changes
             </button>
-            <button type="button" disabled={Boolean(model.busy)} onClick={() => void model.acceptCompatible()}>
+            <button type="button" disabled={controlsBusy} onClick={() => void model.acceptCompatible()}>
               Accept suggested changes
             </button>
           </section>
@@ -69,7 +72,7 @@ export function ContactMeasurementSetupWorkspace({
                   key={target.stable_target_key}
                   type="button"
                   className={target.stable_target_key === model.selectedTarget?.stable_target_key ? "is-selected" : ""}
-                  disabled={Boolean(model.busy) || (model.dirty && target.stable_target_key !== model.selectedTarget?.stable_target_key)}
+                  disabled={controlsBusy || (model.dirty && target.stable_target_key !== model.selectedTarget?.stable_target_key)}
                   onClick={() => model.selectTarget(target.stable_target_key)}
                 >
                   <strong>{target.group_label}</strong>
@@ -80,7 +83,7 @@ export function ContactMeasurementSetupWorkspace({
             </section>
             <TargetEditor
               target={model.selectedTarget}
-              disabled={Boolean(model.busy)}
+              disabled={controlsBusy}
               onChange={model.updateSelectedTarget}
               onAddCustomFamily={model.addCustomFamily}
               onRemoveCustomFamily={model.removeCustomFamily}
@@ -94,7 +97,7 @@ export function ContactMeasurementSetupWorkspace({
                   <strong>{impact.candidate ? `${impact.candidate.group_label}: ${impact.candidate.test_item}` : "Matrix change"}</strong>
                   <span>{impact.reason ?? impact.category}</span>
                   {impact.candidate && model.selectedTarget ? (
-                    <button type="button" disabled={Boolean(model.busy)} onClick={() => void model.rebindSelectedTarget(impact.impact_subject_key)}>
+                    <button type="button" disabled={controlsBusy} onClick={() => void model.rebindSelectedTarget(impact.impact_subject_key)}>
                       Rebind selected target
                     </button>
                   ) : null}
@@ -102,11 +105,12 @@ export function ContactMeasurementSetupWorkspace({
               ))}
             </section>
           ) : null}
+          <DraftMeasurementPlanWorkbookPanel projectId={projectId} revisionId={model.workspace.editable_revision_id} disabled={Boolean(model.busy)} onBusyChange={setDraftWorkbookBusy} />
           <footer className="contact-measurement-setup-actions">
-            <button type="button" disabled={!model.dirty || Boolean(model.busy)} onClick={model.cancelSelectedTarget}>Cancel local edits</button>
-            <button type="button" disabled={!model.dirty || Boolean(model.busy)} onClick={() => void model.saveSelectedTarget()}>Save target</button>
-            <button type="button" disabled={Boolean(model.busy)} onClick={() => void model.saveDraft()}>Save draft</button>
-            <button type="button" disabled={Boolean(model.busy) || model.workspace.summary.needs_review_count > 0} onClick={() => void model.confirmPlan()}>Confirm measurement plan</button>
+            <button type="button" disabled={!model.dirty || controlsBusy} onClick={model.cancelSelectedTarget}>Cancel local edits</button>
+            <button type="button" disabled={!model.dirty || controlsBusy} onClick={() => void model.saveSelectedTarget()}>Save target</button>
+            <button type="button" disabled={controlsBusy} onClick={() => void model.saveDraft()}>Save draft</button>
+            <button type="button" disabled={controlsBusy || model.workspace.summary.needs_review_count > 0} onClick={() => void model.confirmPlan()}>Confirm measurement plan</button>
           </footer>
         </>
       )}
