@@ -245,6 +245,10 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
         current = re.search(r"(?:test\s+current\s*[-:]?\s*|at\s+)(\d+(?:\.\d+)?\s*(?:ADC|A|amperes?))", text, re.IGNORECASE)
         if current:
             return _clean(current.group(1).replace("amperes", "A"))
+    if "dust exposure" in lowered:
+        return _extract_dust_exposure_condition(text)
+    if "temperature rise" in lowered or re.search(r"\bt[-\s]?rise\b", lowered):
+        return _extract_temperature_rise_current(text)
     if "humidity" in lowered:
         return _collect_condition_segments(text, ("temperature", "humidity", "rh", "duration", "dwell", "ramp", "cycles"))
     if "mfg" in lowered or "mixed flowing gas" in lowered:
@@ -256,7 +260,17 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
     if "high temperature" in lowered:
         return _collect_condition_segments(text, ("temperature", "duration", "hours"))
     if "durability" in lowered:
-        return _collect_condition_segments(text, ("cycles", "rate", "minute"))
+        return _extract_durability_condition(text)
+    if "offset mating insertion force" in lowered:
+        return _extract_offset_mating_condition(text)
+    if "floater displacement force" in lowered or "side force" in lowered:
+        return _extract_floater_displacement_condition(text)
+    if "mating" in lowered and "force" in lowered:
+        return _extract_mating_force_condition(text)
+    if "terminal extraction force" in lowered:
+        return _extract_terminal_extraction_condition(text)
+    if "normal force" in lowered:
+        return _extract_normal_force_condition(text)
     if "mating" in lowered or "force" in lowered:
         return _collect_condition_segments(text, ("speed", "mm/min", "cross head"))
     if "vibration" in lowered:
@@ -268,7 +282,158 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
     return _collect_condition_tokens(text)
 
 
+def _extract_temperature_rise_current(text: str) -> str | None:
+    """Extract the first current value governing a temperature-rise section."""
+    current = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*(A|amps?|amperes?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not current:
+        return None
+    return f"{current.group(1)}A"
+
+
+def _extract_dust_exposure_condition(text: str) -> str:
+    """Build the report-style dust condition while flagging ambiguous states."""
+    composition = re.search(
+        r"\bbenign\s+dust\s+composition(?:\s*(?P<number>\d+)\s*#?)?",
+        text,
+        re.IGNORECASE,
+    )
+    composition_number = composition.group("number") if composition and composition.group("number") else "1"
+    duration = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\b", text, re.IGNORECASE)
+    duration_text = f"{duration.group(1)} hour" if duration else "1 hour"
+    prefix = f"Benign dust composition {composition_number}#, {duration_text}"
+
+    lowered = text.lower()
+    both_unmated = bool(re.search(r"\bunmated\s+for\s+both\s+connectors?\b", lowered))
+    ambiguous_state = bool(
+        re.search(r"\bmated\b", lowered)
+        or re.search(r"\bunmated\b[^.]*\bonly\b", lowered)
+        or re.search(r"\bonly\b[^.]*\b(?:receptacle|connector)\b", lowered)
+    )
+    if both_unmated or not ambiguous_state:
+        return f"{prefix}, unmated for both connectors"
+    return prefix
+
+
+def _extract_durability_condition(text: str) -> str | None:
+    """Extract cycle count and a reviewable displacement-speed slot."""
+    cycles = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*\*?\s*(?:mating\s*/\s*un-?mating\s+)?cycles\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not cycles:
+        return None
+    speed = re.search(r"\b(\d+(?:\.\d+)?)\s*mm\s*/\s*min(?:ute)?\b", text, re.IGNORECASE)
+    speed_text = f"{speed.group(1)} mm/min" if speed else " mm/min"
+    return f"{cycles.group(1)} cycles, {speed_text}"
+
+
+def _extract_offset_mating_condition(text: str) -> str | None:
+    """Extract offset-position repetitions and displacement speed."""
+    repetitions = re.search(r"\b(\d+(?:\.\d+)?)\s*times\b", text, re.IGNORECASE)
+    speed = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
+        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not repetitions:
+        return f"{speed.group(1)} mm/min" if speed else "mm/min"
+    speed_text = f"{speed.group(1)} mm/min" if speed else "mm/min"
+    return f"{repetitions.group(1)} times, {speed_text}"
+
+
+def _extract_floater_displacement_condition(text: str) -> str | None:
+    """Extract numeric displacement speed for the floater side-force test."""
+    speed = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
+        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not speed:
+        return None
+    return f"{speed.group(1)} mm/min"
+
+
+def _extract_mating_force_condition(text: str) -> str | None:
+    """Extract numeric cross-head speed for mating-force tests."""
+    speed = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
+        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not speed:
+        return None
+    return f"{speed.group(1)} mm/min"
+
+
+def _extract_terminal_extraction_condition(text: str) -> str | None:
+    """Extract numeric cross-head speed for terminal extraction tests."""
+    speed = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
+        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not speed:
+        return None
+    return f"{speed.group(1)} mm/min"
+
+
+def _extract_normal_force_condition(text: str) -> str:
+    """Extract normal-force displacement speed or its review placeholder."""
+    speed = re.search(
+        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
+        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    return f"{speed.group(1)} mm/min" if speed else "mm/min"
+
+
 def _extract_requirement(text: str) -> str | None:
+    normal_force = re.search(
+        r"\bminimum\s+normal\s+force\s+is\s+not\s+less\s+than\s+"
+        r"(?P<value>\d+(?:\.\d+)?)\s*N\s+per\s+beam\b",
+        text,
+        re.IGNORECASE,
+    )
+    if normal_force:
+        return f"≥ {normal_force.group('value')} N per beam"
+    offset_force = re.search(
+        r"\boffset\s+mating\s+insertion\s+force\s+is\s+no\s+more\s+than\s+"
+        r"(?P<value>\d+(?:\.\d+)?)\s*N\b",
+        text,
+        re.IGNORECASE,
+    )
+    if offset_force:
+        return f"≤ {offset_force.group('value')} N"
+    floater_force = re.search(
+        r"\bdisplacement\s+force\s+is\s+not\s+less\s+than\s+"
+        r"(?P<lower>\d+(?:\.\d+)?)\s*N\s+and\s+no\s+more\s+than\s+"
+        r"(?P<upper>\d+(?:\.\d+)?)\s*N\b",
+        text,
+        re.IGNORECASE,
+    )
+    if floater_force:
+        return (
+            f"{floater_force.group('lower')} N ≤ Displacement Force ≤ "
+            f"{floater_force.group('upper')} N"
+        )
+    terminal_force = re.search(
+        r"\bminimum\s+extraction\s+force\b.*?\bis\s+"
+        r"(?P<value>\d+(?:\.\d+)?)\s*N\b",
+        text,
+        re.IGNORECASE,
+    )
+    if terminal_force:
+        return f"≥ {terminal_force.group('value')} N"
     no_discontinuity = _NO_DISCONTINUITY_RE.search(text)
     if no_discontinuity:
         return _clean(no_discontinuity.group(1))

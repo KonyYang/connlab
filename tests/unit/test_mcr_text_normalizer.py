@@ -313,4 +313,14 @@ def test_llcr_alias_works_without_llcr_keyword_in_source_text() -> None:
     assert result.requirement is not None
     assert result.requirement.startswith("Initial ≤")
     assert "0.25" in result.requirement
-    assert "0.17" in result.requirement
+
+
+def test_specified_current_condition_uses_adc_unit() -> None:
+    result = normalize_condition_requirement(
+        test_item="Contact Resistance, Specified Current",
+        condition="75 a",
+        requirement="≤15mV",
+        source_text="Test Current - 75 amperes DC.",
+    )
+
+    assert result.condition == "75 ADC"

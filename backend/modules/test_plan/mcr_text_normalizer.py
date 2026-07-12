@@ -67,6 +67,8 @@ def normalize_condition_requirement(
     family = _family(test_item, source_text)
     notes: list[str] = []
     normalized_condition = _normalize_condition(condition)
+    if family == "cr" and "specified current" in _normalize_family_label(test_item):
+        normalized_condition = _normalize_specified_current_condition(normalized_condition)
     normalized_requirement = _normalize_requirement(requirement)
     normalized_requirement = _normalize_initial_voltage_requirement(
         source_text=source_text,
@@ -148,6 +150,18 @@ def _normalize_condition(condition: str | None) -> str | None:
     if not condition:
         return None
     return _collapse_ws(_standardize_units(condition))
+
+
+def _normalize_specified_current_condition(condition: str | None) -> str | None:
+    """Use the report convention `ADC` for specified-current conditions."""
+    if not condition:
+        return None
+    return re.sub(
+        r"(?P<value>\d+(?:\.\d+)?)\s*(?:amperes?\s+DC|amps?\s+DC|A\s*DC|ADC|A)\b",
+        r"\g<value> ADC",
+        condition,
+        flags=re.IGNORECASE,
+    )
 
 
 def _normalize_requirement(requirement: str | None) -> str | None:

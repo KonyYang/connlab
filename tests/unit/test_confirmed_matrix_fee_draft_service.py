@@ -129,6 +129,51 @@ def test_fee_draft_autofills_preconditioning_durability_cycles() -> None:
     assert line.testing_fee == Decimal("200")
 
 
+def test_fee_draft_autofills_reseating_manual_cycles() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row("Reseating", condition="Manual 3 cycles"),
+                sample_quantity_expression="5",
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.review_required is False
+    assert line.matched_rule_id == "fee_rule_reseating"
+    assert line.calculation_strategy == "per_cycle"
+    assert line.unit_price == Decimal("2")
+    assert line.unit_label == "cycle"
+    assert line.units == Decimal("15")
+    assert line.discount_percent == Decimal("0")
+    assert line.testing_fee == Decimal("30")
+
+
+def test_fee_draft_defaults_reseating_to_three_cycles_when_cycle_text_is_absent() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row("Reseating", condition="Manual"),
+                sample_quantity_expression="5",
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.review_required is False
+    assert line.matched_rule_id == "fee_rule_reseating"
+    assert line.unit_label == "cycle"
+    assert line.units == Decimal("15")
+    assert line.testing_fee == Decimal("30")
+
+
 def test_fee_draft_includes_backend_owned_manual_default_rows() -> None:
     service = ConfirmedMatrixFeeDraftService(confirmed_store=_ConfirmedStore(active=_snapshot()))
 

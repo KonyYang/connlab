@@ -1033,6 +1033,7 @@
   color: var(--color-ink-muted);
   font-size: 11px;
 }
+
 .matrix-contact-plan-card {
   display: grid;
   gap: 10px;
@@ -1694,6 +1695,7 @@
   display: grid;
   gap: 7px;
   padding: 8px;
+  min-width: 0;
 }
 
 .matrix-step-quantity-panel {
@@ -1703,6 +1705,7 @@
   padding: 10px;
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .matrix-step-quantity-header {
@@ -1737,11 +1740,17 @@
 
 .matrix-step-quantity-defaults {
   display: grid;
-  grid-template-columns: minmax(92px, auto) repeat(3, minmax(78px, 1fr)) auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 1fr)) minmax(0, 1.25fr);
   align-items: end;
   gap: 6px;
   border-top: 1px solid var(--color-border);
   padding-top: 8px;
+  min-width: 0;
+}
+
+.matrix-step-quantity-defaults > *,
+.matrix-step-quantity-apply-defaults {
+  min-width: 0;
 }
 
 .matrix-step-quantity-defaults > span {
@@ -1775,6 +1784,7 @@
   font-size: 11px;
   font-weight: 700;
   padding: 6px 10px;
+  overflow-wrap: anywhere;
 }
 
 .matrix-step-quantity-apply-defaults:disabled {
@@ -1784,7 +1794,9 @@
 
 .matrix-step-quantity-table {
   width: 100%;
+  min-width: 0;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 10px;
 }
 
@@ -1841,6 +1853,7 @@
   padding: 10px 12px;
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .matrix-editor-notes-card h4,
@@ -1873,6 +1886,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .matrix-editor-samples-inline h4 {
@@ -2010,6 +2024,11 @@
 .matrix-editor-step-output-table th:nth-child(3),
 .matrix-editor-step-output-table td:nth-child(3) {
   width: 120px;
+}
+
+.matrix-editor-step-output-table {
+  min-width: 0;
+  table-layout: fixed;
 }
 
 .matrix-editor-step-workspace .matrix-editor-step-output-textarea {
@@ -8849,7 +8868,7 @@
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1024px) {
   .matrix-editor-studio {
     grid-template-columns: minmax(0, 1fr);
   }

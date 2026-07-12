@@ -63,6 +63,17 @@ def test_fee_rule_matcher_treats_preconditioning_durability_as_durability() -> N
     assert result.match_reason.startswith("token_alias_match:")
 
 
+def test_fee_rule_matcher_treats_reseating_as_reseating_rule() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("Reseating")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_reseating"
+    assert result.match_reason == "exact_alias_match"
+
+
 def test_fee_rule_matcher_returns_no_match_for_ambiguous_token_match() -> None:
     matcher = FeeRuleMatcher(_ambiguous_library())
 

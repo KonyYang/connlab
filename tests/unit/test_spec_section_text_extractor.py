@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from backend.modules.test_plan.spec_section_text_extractor import (
     collect_section_text_blocks,
     extract_row_details,
@@ -164,6 +166,209 @@ def test_mfg_extraction_does_not_emit_numeric_letter_fragment() -> None:
     assert detail.requirement is not None
     assert detail.requirement != "Maximum Change: 0"
     assert detail.requirement == "No damage"
+
+
+@pytest.mark.parametrize("test_item", ["Temperature rise (Post MFG Samples)", "T-rise (Post MFG Samples)"])
+def test_temperature_rise_condition_extracts_first_test_current(test_item: str) -> None:
+    detail = extract_row_details(
+        section="6.3.1",
+        section_text=(
+            "6.3.1 Temperature rise. The temperature rise shall not exceed 30 C "
+            "when all contacts are powered at 75A."
+        ),
+        test_item=test_item,
+    )
+
+    assert detail.condition == "75 A"
+
+
+def test_normal_force_extracts_minimum_requirement() -> None:
+    detail = extract_row_details(
+        section="7.7",
+        section_text=(
+            "7.7 Normal Force. The minimum normal force is not less than 1.5N "
+            "per beam. The following details shall apply: Reference - EIA-364-04."
+        ),
+        test_item="Normal Force",
+    )
+
+    assert detail.method == "EIA-364-04"
+    assert detail.condition == "mm/min"
+    assert detail.requirement == "≥ 1.5 N per beam"
+
+
+@pytest.mark.parametrize(
+    ("section", "cycles", "speed_text"),
+    [
+        ("7.2", "20", "Cycling Rate - less than 10 cycles per minute."),
+        ("7.3", "200", "Cycling Rate - less than 10 cycles per minute."),
+        ("7.3", "200", "Displacement Speed - 25.4 mm/min."),
+    ],
+)
+def test_durability_condition_extracts_cycles_and_reviewable_speed(
+    section: str,
+    cycles: str,
+    speed_text: str,
+) -> None:
+    detail = extract_row_details(
+        section=section,
+        section_text=(
+            f"{section} Durability. Number Cycles - {cycles} cycles. "
+            f"{speed_text} No damage."
+        ),
+        test_item="Durability",
+    )
+
+    expected_speed = "25.4 mm/min" if "25.4" in speed_text else "mm/min"
+    assert detail.condition == f"{cycles} cycles, {expected_speed}"
+    assert detail.requirement == "No damage"
+
+
+@pytest.mark.parametrize(
+    ("speed_text", "expected_speed"),
+    [
+        ("Displacement Speed - 25.4±6 mm max per minute.", "25.4 mm/min"),
+        ("Displacement Speed - mm max per minute.", "mm/min"),
+    ],
+)
+def test_offset_mating_force_extracts_repetitions_speed_and_requirement(
+    speed_text: str,
+    expected_speed: str,
+) -> None:
+    detail = extract_row_details(
+        section="7.4",
+        section_text=(
+            "7.4 Offset mating insertion force into floater. "
+            "The offset mating insertion force is no more than 60N. "
+            "Mate and un-mate receptacle male power pin 10 times in the offset position. "
+            f"{speed_text} Reference EIA-364-37."
+        ),
+        test_item="Offset mating insertion force into floater",
+    )
+
+    assert detail.condition == f"10 times, {expected_speed}"
+    assert detail.requirement == "≤ 60 N"
+
+
+@pytest.mark.parametrize(
+    ("section_text", "expected_condition", "expected_requirement"),
+    [
+        (
+            "The displacement force is not less than 10N and no more than 40N. "
+            "Displacement Speed - 25.4±6 mm per minute.",
+            "25.4 mm/min",
+            "10 N ≤ Displacement Force ≤ 40 N",
+        ),
+        (
+            "The displacement force is not less than N and no more than N. "
+            "Displacement Speed - mm per minute.",
+            None,
+            None,
+        ),
+    ],
+)
+def test_floater_displacement_force_extracts_speed_and_force_limits(
+    section_text: str,
+    expected_condition: str | None,
+    expected_requirement: str | None,
+) -> None:
+    detail = extract_row_details(
+        section="7.4",
+        section_text=f"7.4 Floater Displacement Force (Side Force). {section_text}",
+        test_item="Floater Displacement Force (Side Force)",
+    )
+
+    assert detail.condition == expected_condition
+    assert detail.requirement == expected_requirement
+
+
+@pytest.mark.parametrize(
+    ("speed_text", "expected_condition"),
+    [
+        ("Cross Head Speed - 25.4±6 mm per minute.", "25.4 mm/min"),
+        ("Cross Head Speed - mm per minute.", None),
+    ],
+)
+def test_mating_force_extracts_numeric_cross_head_speed(
+    speed_text: str,
+    expected_condition: str | None,
+) -> None:
+    detail = extract_row_details(
+        section="7.1",
+        section_text=f"7.1 Mating/Un-mating Force. {speed_text}",
+        test_item="Mating/Un-mating Force",
+    )
+
+    assert detail.condition == expected_condition
+
+
+def test_terminal_extraction_force_extracts_speed_and_minimum_force() -> None:
+    detail = extract_row_details(
+        section="7.6",
+        section_text=(
+            "7.6 Terminal extraction force. The minimum extraction force of a terminal "
+            "from barrel is 150N. Cross Head Speed - 50mm max per minute."
+        ),
+        test_item="Terminal extraction force",
+    )
+
+    assert detail.condition == "50 mm/min"
+    assert detail.requirement == "≥ 150 N"
+
+
+@pytest.mark.parametrize(
+    ("speed_text", "expected_condition"),
+    [
+        ("Displacement Speed - 25.4±6 mm per minute.", "25.4 mm/min"),
+        ("Displacement Speed - mm per minute.", "mm/min"),
+    ],
+)
+def test_normal_force_extracts_reviewable_displacement_speed(
+    speed_text: str,
+    expected_condition: str,
+) -> None:
+    detail = extract_row_details(
+        section="7.7",
+        section_text=(
+            "7.7 Normal Force. The minimum normal force is not less than 1.5N per beam. "
+            f"{speed_text} Reference EIA-364-04."
+        ),
+        test_item="Normal Force",
+    )
+
+    assert detail.condition == expected_condition
+    assert detail.requirement == "≥ 1.5 N per beam"
+
+
+@pytest.mark.parametrize(
+    ("section_text", "expected_condition"),
+    [
+        (
+            "8.7 Dust exposure - EIA-364-91. Benign Dust Composition. Duration - 1 hour.",
+            "Benign dust composition 1#, 1 hour, unmated for both connectors",
+        ),
+        (
+            "8.7 Dust exposure - EIA-364-91. Benign Dust Composition 2#. Duration - 1 hour.",
+            "Benign dust composition 2#, 1 hour, unmated for both connectors",
+        ),
+        (
+            "8.7 Dust exposure - EIA-364-91. Benign Dust Composition 2#. "
+            "Duration - 1 hour, unmated only Receptacle.",
+            "Benign dust composition 2#, 1 hour",
+        ),
+    ],
+)
+def test_dust_exposure_condition_uses_report_default_and_preserves_ambiguity(
+    section_text: str,
+    expected_condition: str,
+) -> None:
+    detail = extract_row_details(
+        section="8.7",
+        section_text=section_text,
+        test_item="Dust exposure",
+    )
+
+    assert detail.condition == expected_condition
 
 
 def test_family_coverage_safe_outputs() -> None:

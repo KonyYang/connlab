@@ -3681,7 +3681,7 @@ def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority
         assert required_label in matrix_editor_source
 
     matrix_editor_responsive_block = styles_source[
-        styles_source.index("@media (max-width: 1180px)") :
+        styles_source.index("@media (max-width: 1024px)") :
         styles_source.index(".matrix-editor-import-modal-backdrop")
     ]
     for required_responsive_style in [
@@ -3694,6 +3694,20 @@ def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority
         assert required_responsive_style in matrix_editor_responsive_block
 
     assert "runtime-console-shell" not in matrix_editor_source
+
+
+def test_matrix_editor_step_cards_stay_within_shared_workspace_width() -> None:
+    """Matrix step cards must shrink with their shared workspace instead of overflowing it."""
+    styles_source = (FRONTEND_ROOT / "src" / "workbench.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert ".matrix-editor-step-workspace {" in styles_source
+    assert ".matrix-step-quantity-panel {" in styles_source
+    assert ".matrix-editor-notes-card {" in styles_source
+    assert "min-width: 0;" in styles_source
+    assert "table-layout: fixed;" in styles_source
+    assert "grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 1fr)) minmax(0, 1.25fr);" in styles_source
 
 
 def test_task224_matrix_editor_structural_edit_interactions_are_present() -> None:

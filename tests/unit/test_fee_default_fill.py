@@ -249,6 +249,51 @@ def test_durability_parses_cycles_and_applies_cycle_tier() -> None:
     assert result.testing_fee == Decimal("500")
 
 
+def test_reseating_uses_explicit_cycles_with_sample_multiplier() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_reseating",
+            unit_label="cycle",
+            unit_price=Decimal("2"),
+            strategy="per_cycle",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Reseating",
+            condition="Manual 10 cycles",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("2")
+    assert result.unit_label == "cycle"
+    assert result.units == Decimal("50")
+    assert result.testing_fee == Decimal("100")
+
+
+def test_reseating_defaults_to_three_cycles_when_cycles_are_absent() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_reseating",
+            unit_label="cycle",
+            unit_price=Decimal("2"),
+            strategy="per_cycle",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Reseating",
+            condition="Manual",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_label == "cycle"
+    assert result.units == Decimal("15")
+    assert result.testing_fee == Decimal("30")
+
+
 def test_temperature_rise_prefills_current_tier_and_flags_base_fee_review() -> None:
     result = build_fee_default_fill(
         rule=_rule(

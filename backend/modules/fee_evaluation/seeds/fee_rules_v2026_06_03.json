@@ -84,6 +84,29 @@
       "review_reason": "Cycle-tier pricing and optional base fee depend on specimen count and fixturing complexity."
     },
     {
+      "rule_id": "fee_rule_reseating",
+      "display_name": "Reseating",
+      "aliases": [
+        "Reseating",
+        "Re-seating",
+        "Manual reseating"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": 2,
+        "text": "2/cycle"
+      },
+      "unit_label": "cycle",
+      "applicable_standard": "N/A",
+      "range_condition": "Manual cycles",
+      "calculation_strategy": "per_cycle",
+      "review_required": false,
+      "review_reason": null
+    },
+    {
       "rule_id": "fee_rule_thermal_shock",
       "display_name": "Thermal shock",
       "aliases": [

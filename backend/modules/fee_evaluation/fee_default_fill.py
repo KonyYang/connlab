@@ -64,6 +64,8 @@ def build_fee_default_fill(
         )
     if rule.rule_id == "fee_rule_durability":
         return _cycle_result(rule=rule, context=context)
+    if rule.rule_id == "fee_rule_reseating":
+        return _reseating_cycle_result(rule=rule, context=context)
     if rule.rule_id in {
         "fee_rule_high_temperature_life",
         "fee_rule_pre_high_temperature_life",
@@ -147,6 +149,29 @@ def _cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaul
             auto("discount_percent", rule.display_name),
             auto("testing_fee", rule.display_name),
         ),
+    )
+
+
+def _reseating_cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
+    sample_qty = _plain_decimal(context.sample_quantity_expression)
+    cycles = _first_decimal(_CYCLE_PATTERN, _combined_text(context)) or Decimal("3")
+    if sample_qty is None:
+        return manual_required(
+            rule=rule,
+            unit_label="cycle",
+            unit_price=rule.unit_price.amount or Decimal("2"),
+            base_fee=ZERO,
+            review_reason="Confirm sample quantity",
+            manual_fields=("units", "testing_fee"),
+        )
+    return calculated_result(
+        spend_time=None,
+        unit_label="cycle",
+        unit_price=rule.unit_price.amount or Decimal("2"),
+        units=sample_qty * cycles,
+        base_fee=ZERO,
+        discount_percent=ZERO,
+        source=rule.display_name,
     )
 
 
