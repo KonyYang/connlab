@@ -91,17 +91,21 @@ _SEMANTIC_INDEXES = (
     ),
 )
 
-_REQUIRED_CHECKS = {
-    "measurement_plan_target_snapshots": {
-        "ck_measurement_plan_group_anchor_xor",
-        "ck_measurement_plan_row_anchor_xor",
-        "ck_measurement_plan_target_key_shape",
-    },
-    "measurement_plan_impacts": {
-        "ck_measurement_plan_impact_subject_shape",
-        "ck_measurement_plan_impact_identity_shape",
-    },
-}
+@dataclass(frozen=True)
+class _CheckSpec:
+    name: str
+    table: str
+    expression: str
+    markers: tuple[str, ...]
+
+
+_CHECK_SPECS = (
+    _CheckSpec("ck_measurement_plan_group_anchor_xor", "measurement_plan_target_snapshots", "(source_group_snapshot_id IS NOT NULL AND length(trim(source_group_snapshot_id)) > 0 AND manual_group_anchor_id IS NULL) OR (source_group_snapshot_id IS NULL AND manual_group_anchor_id IS NOT NULL AND length(trim(manual_group_anchor_id)) > 0)", ("source_group_snapshot_id", "manual_group_anchor_id")),
+    _CheckSpec("ck_measurement_plan_row_anchor_xor", "measurement_plan_target_snapshots", "(source_row_snapshot_id IS NOT NULL AND length(trim(source_row_snapshot_id)) > 0 AND manual_row_anchor_id IS NULL) OR (source_row_snapshot_id IS NULL AND manual_row_anchor_id IS NOT NULL AND length(trim(manual_row_anchor_id)) > 0)", ("source_row_snapshot_id", "manual_row_anchor_id")),
+    _CheckSpec("ck_measurement_plan_target_key_shape", "measurement_plan_target_snapshots", "stable_target_key LIKE 'cmp-target:v1|%'", ("cmp-target:v1|",)),
+    _CheckSpec("ck_measurement_plan_impact_subject_shape", "measurement_plan_impacts", "impact_subject_key LIKE 'cmp-target:v1|%' OR impact_subject_key LIKE 'cmp-candidate:v1|%'", ("impact_subject_key",)),
+    _CheckSpec("ck_measurement_plan_impact_identity_shape", "measurement_plan_impacts", "impact_identity_key LIKE 'cmp-impact:v1|%'", ("impact_identity_key",)),
+)
 
 _REQUIRED_FOREIGN_KEY_TARGETS = {
     "measurement_plan_roots": {"projects", "measurement_plan_revisions"},
@@ -132,16 +136,32 @@ _REQUIRED_FOREIGN_KEY_SHAPES = {
     "measurement_plan_audits": {("measurement_plan_root_id", "measurement_plan_roots", "measurement_plan_root_id"), ("measurement_plan_revision_id", "measurement_plan_revisions", "measurement_plan_revision_id")},
 }
 
-_REQUIRED_CHECK_EXPRESSIONS = {
-    "measurement_plan_target_snapshots": (
-        ("ck_measurement_plan_group_anchor_xor", "(source_group_snapshot_id IS NOT NULL AND length(trim(source_group_snapshot_id)) > 0 AND manual_group_anchor_id IS NULL) OR (source_group_snapshot_id IS NULL AND manual_group_anchor_id IS NOT NULL AND length(trim(manual_group_anchor_id)) > 0)"),
-        ("ck_measurement_plan_row_anchor_xor", "(source_row_snapshot_id IS NOT NULL AND length(trim(source_row_snapshot_id)) > 0 AND manual_row_anchor_id IS NULL) OR (source_row_snapshot_id IS NULL AND manual_row_anchor_id IS NOT NULL AND length(trim(manual_row_anchor_id)) > 0)"),
-        ("ck_measurement_plan_target_key_shape", "stable_target_key LIKE 'cmp-target:v1|%'"),
-    ),
-    "measurement_plan_impacts": (
-        ("ck_measurement_plan_impact_subject_shape", "impact_subject_key LIKE 'cmp-target:v1|%' OR impact_subject_key LIKE 'cmp-candidate:v1|%'"),
-        ("ck_measurement_plan_impact_identity_shape", "impact_identity_key LIKE 'cmp-impact:v1|%'"),
-    ),
+_TARGET_COLUMNS = (
+    "source_group_snapshot_id", "manual_group_anchor_id",
+    "source_row_snapshot_id", "manual_row_anchor_id", "stable_target_key",
+)
+_IMPACT_COLUMNS = ("impact_subject_key", "impact_identity_key")
+
+
+def _new_expression(expression: str, columns: tuple[str, ...]) -> str:
+    for column in columns:
+        expression = re.sub(rf"\b{column}\b", f"NEW.{column}", expression)
+    return expression
+
+
+_TARGET_GUARD = " AND ".join(
+    f"({_new_expression(spec.expression, _TARGET_COLUMNS)})"
+    for spec in _CHECK_SPECS[:3]
+)
+_IMPACT_GUARD = " AND ".join(
+    f"({_new_expression(spec.expression, _IMPACT_COLUMNS)})"
+    for spec in _CHECK_SPECS[3:]
+)
+_TRIGGER_SQL = {
+    "trg_cmp_target_checks_insert_v1": f"CREATE TRIGGER trg_cmp_target_checks_insert_v1 BEFORE INSERT ON measurement_plan_target_snapshots FOR EACH ROW WHEN ({_TARGET_GUARD}) IS NOT 1 BEGIN SELECT RAISE(ABORT, 'authority_corrupt: target CHECK compatibility guard rejected row'); END",
+    "trg_cmp_target_checks_update_v1": f"CREATE TRIGGER trg_cmp_target_checks_update_v1 BEFORE UPDATE OF {', '.join(_TARGET_COLUMNS)} ON measurement_plan_target_snapshots FOR EACH ROW WHEN ({_TARGET_GUARD}) IS NOT 1 BEGIN SELECT RAISE(ABORT, 'authority_corrupt: target CHECK compatibility guard rejected row'); END",
+    "trg_cmp_impact_checks_insert_v1": f"CREATE TRIGGER trg_cmp_impact_checks_insert_v1 BEFORE INSERT ON measurement_plan_impacts FOR EACH ROW WHEN ({_IMPACT_GUARD}) IS NOT 1 BEGIN SELECT RAISE(ABORT, 'authority_corrupt: impact CHECK compatibility guard rejected row'); END",
+    "trg_cmp_impact_checks_update_v1": f"CREATE TRIGGER trg_cmp_impact_checks_update_v1 BEFORE UPDATE OF {', '.join(_IMPACT_COLUMNS)} ON measurement_plan_impacts FOR EACH ROW WHEN ({_IMPACT_GUARD}) IS NOT 1 BEGIN SELECT RAISE(ABORT, 'authority_corrupt: impact CHECK compatibility guard rejected row'); END",
 }
 
 
@@ -165,13 +185,6 @@ def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
                 "Contact measurement plan authority schema is incompatible: "
                 f"{table_name} is missing {', '.join(sorted(missing_columns))}."
             )
-    for table_name, required_checks in _REQUIRED_CHECKS.items():
-        checks = {item.get("name") for item in inspector.get_check_constraints(table_name)}
-        if required_checks - checks:
-            raise RuntimeError(
-                "Contact measurement plan authority schema is incompatible: "
-                f"{table_name} is missing required checks."
-            )
     with engine.connect() as connection:
         _validate_identity_columns_non_null(connection)
         for table_name, expected_targets in _REQUIRED_FOREIGN_KEY_TARGETS.items():
@@ -193,22 +206,13 @@ def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
                 raise RuntimeError(
                     "authority_corrupt: existing authority foreign-key shape is incompatible."
                 )
-        for table_name, required_checks in _REQUIRED_CHECK_EXPRESSIONS.items():
-            actual_checks = {
-                str(item.get("name")): _canonical_sql(str(item.get("sqltext") or ""))
-                for item in inspector.get_check_constraints(table_name)
-            }
-            if any(
-                actual_checks.get(name) != _canonical_sql(expression)
-                for name, expression in required_checks
-            ):
-                raise RuntimeError(
-                    "authority_corrupt: existing authority CHECK shape is incompatible."
-                )
+        missing_checks = _missing_check_specs(connection)
+        missing_triggers = _missing_guard_triggers(connection, missing_checks)
+        _preflight_missing_checks(connection, missing_checks)
         missing = _missing_semantic_indexes(connection)
         _preflight_missing_indexes(connection, missing)
 
-    if not missing:
+    if not missing and not missing_triggers:
         return
     with engine.connect() as connection:
         try:
@@ -220,16 +224,74 @@ def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
                 ) from exc
             raise
         try:
+            missing_checks = _missing_check_specs(connection)
+            missing_triggers = _missing_guard_triggers(connection, missing_checks)
+            _preflight_missing_checks(connection, missing_checks)
             missing = _missing_semantic_indexes(connection)
             _preflight_missing_indexes(connection, missing)
+            for trigger_name in missing_triggers:
+                connection.exec_driver_sql(_TRIGGER_SQL[trigger_name])
             for index in missing:
                 connection.exec_driver_sql(_create_index_sql(index))
+            if _missing_guard_triggers(connection, _missing_check_specs(connection)):
+                raise RuntimeError("authority_corrupt: authority CHECK bootstrap did not verify.")
             if _missing_semantic_indexes(connection):
                 raise RuntimeError("authority_corrupt: authority index bootstrap did not verify.")
         except BaseException:
             connection.rollback()
             raise
         connection.commit()
+
+
+def _missing_check_specs(connection) -> tuple[_CheckSpec, ...]:
+    actual_by_table = {
+        table_name: {
+            str(item.get("name")): _canonical_sql(str(item.get("sqltext") or ""))
+            for item in inspect(connection).get_check_constraints(table_name)
+        }
+        for table_name in {spec.table for spec in _CHECK_SPECS}
+    }
+    missing: list[_CheckSpec] = []
+    for spec in _CHECK_SPECS:
+        actual = actual_by_table[spec.table]
+        values = set(actual.values())
+        expected = _canonical_sql(spec.expression)
+        if expected in values:
+            continue
+        named = actual.get(spec.name)
+        if named is not None or any(
+            marker in expression for expression in values for marker in spec.markers
+        ):
+            raise RuntimeError("authority_corrupt: existing authority CHECK shape is incompatible.")
+        missing.append(spec)
+    return tuple(missing)
+
+
+def _missing_guard_triggers(
+    connection,
+    missing_checks: tuple[_CheckSpec, ...],
+) -> tuple[str, ...]:
+    required_tables = {spec.table for spec in missing_checks}
+    missing: list[str] = []
+    for name, expected_sql in _TRIGGER_SQL.items():
+        actual_sql = connection.exec_driver_sql(
+            "SELECT sql FROM sqlite_master WHERE type='trigger' AND name=?", (name,)
+        ).scalar_one_or_none()
+        if actual_sql is not None and _canonical_sql(str(actual_sql)) != _canonical_sql(expected_sql):
+            raise RuntimeError("authority_corrupt: existing authority CHECK trigger is incompatible.")
+        table_name = "measurement_plan_target_snapshots" if "target" in name else "measurement_plan_impacts"
+        if actual_sql is None and table_name in required_tables:
+            missing.append(name)
+    return tuple(missing)
+
+
+def _preflight_missing_checks(connection, missing: tuple[_CheckSpec, ...]) -> None:
+    for spec in missing:
+        invalid = connection.exec_driver_sql(
+            f"SELECT 1 FROM {spec.table} WHERE ({spec.expression}) IS NOT 1 LIMIT 1"
+        ).first()
+        if invalid is not None:
+            raise RuntimeError("authority_corrupt: existing authority row violates CHECK compatibility.")
 
 
 def _validate_identity_columns_non_null(connection) -> None:
