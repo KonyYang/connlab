@@ -15,6 +15,9 @@ from backend.infrastructure.storage.matrix_schedule_schema_migration import (
 from backend.infrastructure.storage.matrix_contact_measurement_schema_migration import (
     migrate_matrix_contact_measurement_columns,
 )
+from backend.infrastructure.storage.contact_measurement_plan_authority_schema_migration import (
+    migrate_contact_measurement_plan_authority_schema,
+)
 from backend.shared.config import Settings
 
 
@@ -52,6 +55,7 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models_confirmed_matrix_authority  # noqa: F401
     from backend.infrastructure.storage import models_project_matrix_draft  # noqa: F401
     from backend.infrastructure.storage import models_matrix_source  # noqa: F401
+    from backend.infrastructure.storage import models_contact_measurement_plan_authority  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     _migrate_project_no_optional(engine)
@@ -63,6 +67,7 @@ def init_db(engine: Engine) -> None:
     _migrate_project_matrix_draft_row_detail_columns(engine)
     migrate_matrix_schedule_planning_columns(engine)
     migrate_matrix_contact_measurement_columns(engine)
+    migrate_contact_measurement_plan_authority_schema(engine)
     _migrate_source_matrix_import_commit_fingerprint(engine)
     _migrate_source_matrix_import_preview_payload(engine)
     _migrate_source_matrix_row_detail_columns(engine)

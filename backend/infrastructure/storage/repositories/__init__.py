@@ -44,6 +44,9 @@ from backend.infrastructure.storage.repositories.project_matrix_draft import (
 from backend.infrastructure.storage.repositories.confirmed_matrix_authority import (
     ConfirmedMatrixAuthorityRepository,
 )
+from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import (
+    ContactMeasurementPlanAuthorityRepository,
+)
 from backend.infrastructure.storage.repositories.confirmed_fee_authority import (
     ConfirmedFeeAuthorityRepository,
 )
@@ -81,6 +84,7 @@ __all__ = [
     "ApplicationFormRepository",
     "ConfirmedFeeAuthorityRepository",
     "ConfirmedMatrixAuthorityRepository",
+    "ContactMeasurementPlanAuthorityRepository",
     "ExternalResourceRepository",
     "FeeEvaluationPricingDraftEditRepository",
     "FileAssetRepository",

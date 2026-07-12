@@ -854,6 +854,44 @@ def get_settings() -> Settings:
     return Settings.load()
 
 
+def get_contact_measurement_plan_projection_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Compose the task-scoped read boundary without exposing the feature flag to routes."""
+    from backend.application.contact_measurement_plan_projection_service import (
+        ContactMeasurementPlanProjectionService,
+    )
+    from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import (
+        ContactMeasurementPlanAuthorityRepository,
+    )
+    return ContactMeasurementPlanProjectionService(
+        ContactMeasurementPlanAuthorityRepository(session),
+        settings.contact_measurement_plan_authority_enabled,
+        ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def get_contact_measurement_plan_lifecycle_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    from datetime import datetime, timezone
+    from backend.application.contact_measurement_plan_bootstrap_service import ContactMeasurementPlanBootstrapService
+    from backend.application.contact_measurement_plan_lifecycle_service import ContactMeasurementPlanLifecycleService
+    from backend.infrastructure.storage.repositories import ConfirmedMatrixAuthorityRepository
+    from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import ContactMeasurementPlanAuthorityRepository
+    repository = ContactMeasurementPlanAuthorityRepository(session)
+    clock = lambda: datetime.now(timezone.utc).isoformat()
+    return ContactMeasurementPlanLifecycleService(
+        repository,
+        ConfirmedMatrixAuthorityRepository(session),
+        ContactMeasurementPlanBootstrapService(repository, clock),
+        clock,
+        enabled=settings.contact_measurement_plan_authority_enabled,
+    )
+
+
 def get_llcr_cr_record_workbook_artifact_store(
     settings: Settings = Depends(get_settings),
 ) -> LlcrCrSpecializedRecordArtifactStore:

@@ -16,6 +16,7 @@ def test_settings_load_defaults_and_create_directories() -> None:
         assert settings.projects_dir == workspace_tmp / "projects"
         assert settings.templates_dir == workspace_tmp / "templates"
         assert settings.log_level == DEFAULT_LOG_LEVEL
+        assert settings.contact_measurement_plan_authority_enabled is True
         assert settings.ltr_workbook.mode == "local_only"
         assert settings.ltr_workbook.write_enabled is False
         assert settings.ltr_workbook.path is None
@@ -159,6 +160,18 @@ backup_retention_count = 0
 
     try:
         with pytest.raises(ValueError, match="backup_retention_count"):
+            Settings.load(base_dir=workspace_tmp)
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_contact_measurement_plan_authority_flag_is_strict_and_env_only(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    try:
+        monkeypatch.setenv("CONNLAB_CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED", "off")
+        assert Settings.load(base_dir=workspace_tmp).contact_measurement_plan_authority_enabled is False
+        monkeypatch.setenv("CONNLAB_CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED", "not-a-bool")
+        with pytest.raises(ValueError, match="CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED"):
             Settings.load(base_dir=workspace_tmp)
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)

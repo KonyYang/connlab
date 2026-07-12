@@ -132,6 +132,7 @@ from backend.api.routes_test_record_fee_dataset_preview import (
 from backend.api.routes_test_record_fee_document_generation import (
     router as test_record_fee_document_generation_router,
 )
+from backend.api.routes_contact_measurement_plan import router as contact_measurement_plan_router
 
 
 app = FastAPI(title="ConnLab API")
@@ -189,6 +190,7 @@ app.include_router(project_folder_required_forms_router)
 app.include_router(project_application_form_write_back_router)
 app.include_router(test_record_fee_dataset_preview_router)
 app.include_router(test_record_fee_document_generation_router)
+app.include_router(contact_measurement_plan_router)
 
 
 @app.get("/health")

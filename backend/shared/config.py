@@ -80,6 +80,7 @@ class Settings:
     templates_dir: Path
     database_path: Path
     log_level: str = DEFAULT_LOG_LEVEL
+    contact_measurement_plan_authority_enabled: bool = True
     ltr_workbook: LtrWorkbookSettings = field(default_factory=LtrWorkbookSettings)
     test_record: TestRecordSettings = field(default_factory=TestRecordSettings)
 
@@ -111,6 +112,11 @@ class Settings:
             ),
             log_level=os.getenv("CONNLAB_LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
             or DEFAULT_LOG_LEVEL,
+            contact_measurement_plan_authority_enabled=(
+                _contact_measurement_plan_authority_enabled(
+                    os.getenv("CONNLAB_CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED")
+                )
+            ),
             ltr_workbook=_load_ltr_workbook_settings(root_dir, workbook_config),
             test_record=_load_test_record_settings(root_dir, test_record_config),
         )
@@ -283,6 +289,18 @@ def _bool_setting(raw_value: str | None, default: bool) -> bool:
     if raw_value is None:
         return default
     return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _contact_measurement_plan_authority_enabled(raw_value: str | None) -> bool:
+    """Parse the task-scoped rollback flag without widening shared config semantics."""
+    value = (raw_value or "").strip().lower()
+    if not value:
+        return True
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError("CONNLAB_CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED is invalid.")
 
 
 def _positive_int_setting(name: str, raw_value: str) -> int:
