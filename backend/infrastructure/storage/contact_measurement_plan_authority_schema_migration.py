@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 
 
 _REQUIRED_COLUMNS = {
@@ -56,14 +58,38 @@ _REQUIRED_COLUMNS = {
     },
 }
 
-_REQUIRED_INDEXES = {
-    "measurement_plan_revisions": {
+@dataclass(frozen=True)
+class _SemanticIndex:
+    name: str
+    table: str
+    columns: tuple[str, ...]
+    predicate: str | None = None
+
+
+_SEMANTIC_INDEXES = (
+    _SemanticIndex(
         "uq_measurement_plan_confirmed_per_root",
+        "measurement_plan_revisions",
+        ("measurement_plan_root_id",),
+        "state = 'confirmed'",
+    ),
+    _SemanticIndex(
         "uq_measurement_plan_editable_per_root",
-    },
-    "measurement_plan_target_snapshots": {"uq_measurement_plan_target_key"},
-    "measurement_plan_impacts": {"uq_measurement_plan_impact_identity"},
-}
+        "measurement_plan_revisions",
+        ("measurement_plan_root_id",),
+        "state IN ('draft', 'needs_review')",
+    ),
+    _SemanticIndex(
+        "uq_measurement_plan_target_key",
+        "measurement_plan_target_snapshots",
+        ("measurement_plan_revision_id", "stable_target_key"),
+    ),
+    _SemanticIndex(
+        "uq_measurement_plan_impact_identity",
+        "measurement_plan_impacts",
+        ("editable_revision_id", "impact_identity_key"),
+    ),
+)
 
 _REQUIRED_CHECKS = {
     "measurement_plan_target_snapshots": {
@@ -120,7 +146,9 @@ _REQUIRED_CHECK_EXPRESSIONS = {
 
 
 def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
-    """Fail clearly when an existing authority table is incompatible."""
+    """Bootstrap missing SQLite authority indexes without changing authority data."""
+    if engine.dialect.name != "sqlite":
+        return
     inspector = inspect(engine)
     names = set(inspector.get_table_names())
     missing_tables = set(_REQUIRED_COLUMNS) - names
@@ -137,16 +165,6 @@ def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
                 "Contact measurement plan authority schema is incompatible: "
                 f"{table_name} is missing {', '.join(sorted(missing_columns))}."
             )
-    for table_name, required_indexes in _REQUIRED_INDEXES.items():
-        indexes = {item["name"] for item in inspector.get_indexes(table_name)}
-        indexes.update(
-            item["name"] for item in inspector.get_unique_constraints(table_name)
-        )
-        if required_indexes - indexes:
-            raise RuntimeError(
-                "Contact measurement plan authority schema is incompatible: "
-                f"{table_name} is missing required indexes."
-            )
     for table_name, required_checks in _REQUIRED_CHECKS.items():
         checks = {item.get("name") for item in inspector.get_check_constraints(table_name)}
         if required_checks - checks:
@@ -155,6 +173,7 @@ def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
                 f"{table_name} is missing required checks."
             )
     with engine.connect() as connection:
+        _validate_identity_columns_non_null(connection)
         for table_name, expected_targets in _REQUIRED_FOREIGN_KEY_TARGETS.items():
             foreign_keys = connection.exec_driver_sql(
                 f"PRAGMA foreign_key_list({table_name})"
@@ -186,59 +205,115 @@ def migrate_contact_measurement_plan_authority_schema(engine: Engine) -> None:
                 raise RuntimeError(
                     "authority_corrupt: existing authority CHECK shape is incompatible."
                 )
-        for index_name, predicate in (
-            ("uq_measurement_plan_confirmed_per_root", "state = 'confirmed'"),
-            ("uq_measurement_plan_editable_per_root", "state IN ('draft', 'needs_review')"),
-        ):
-            _validate_partial_index_shape(connection, index_name, predicate)
-        _validate_unique_index_shape(
-            connection,
-            "measurement_plan_target_snapshots",
-            ("measurement_plan_revision_id", "stable_target_key"),
-        )
-        _validate_unique_index_shape(
-            connection,
-            "measurement_plan_impacts",
-            ("editable_revision_id", "impact_identity_key"),
-        )
+        missing = _missing_semantic_indexes(connection)
+        _preflight_missing_indexes(connection, missing)
+
+    if not missing:
+        return
+    with engine.connect() as connection:
+        try:
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
+        except OperationalError as exc:
+            if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+                raise RuntimeError(
+                    "Contact measurement plan authority schema bootstrap is locked."
+                ) from exc
+            raise
+        try:
+            missing = _missing_semantic_indexes(connection)
+            _preflight_missing_indexes(connection, missing)
+            for index in missing:
+                connection.exec_driver_sql(_create_index_sql(index))
+            if _missing_semantic_indexes(connection):
+                raise RuntimeError("authority_corrupt: authority index bootstrap did not verify.")
+        except BaseException:
+            connection.rollback()
+            raise
+        connection.commit()
 
 
-def _validate_unique_index_shape(connection, table_name: str, columns: tuple[str, ...]) -> None:
-    """Require one exact full unique index, not merely a same-named SQLite object."""
-    indexes = connection.exec_driver_sql(f"PRAGMA index_list({table_name})").all()
-    for row in indexes:
+def _validate_identity_columns_non_null(connection) -> None:
+    for index in _SEMANTIC_INDEXES:
+        columns = {
+            str(row[1]): bool(row[3])
+            for row in connection.exec_driver_sql(f"PRAGMA table_info({index.table})").all()
+        }
+        if any(not columns.get(column, False) for column in index.columns):
+            raise RuntimeError("authority_corrupt: authority identity columns must be non-null.")
+
+
+def _missing_semantic_indexes(connection) -> tuple[_SemanticIndex, ...]:
+    missing: list[_SemanticIndex] = []
+    for index in _SEMANTIC_INDEXES:
+        matches = _find_semantic_indexes(connection, index)
+        canonical = _index_row(connection, index.table, index.name)
+        if canonical is not None and index.name not in matches:
+            raise RuntimeError("authority_corrupt: existing authority unique-index shape is incompatible.")
+        if not matches:
+            missing.append(index)
+    return tuple(missing)
+
+
+def _find_semantic_indexes(connection, expected: _SemanticIndex) -> set[str]:
+    matches: set[str] = set()
+    for row in connection.exec_driver_sql(f"PRAGMA index_list({expected.table})").all():
         name, unique, partial = str(row[1]), bool(row[2]), bool(row[4])
-        if not unique or partial:
-            continue
-        actual_columns = tuple(
+        columns = tuple(
             str(item[2])
             for item in connection.exec_driver_sql(f"PRAGMA index_info({name})").all()
         )
-        if actual_columns == columns:
-            return
-    raise RuntimeError("authority_corrupt: existing authority unique-index shape is incompatible.")
+        predicate = _index_predicate(connection, name) if partial else None
+        exact = (
+            unique
+            and columns == expected.columns
+            and partial is (expected.predicate is not None)
+            and (expected.predicate is None or _canonical_sql(predicate or "") == _canonical_sql(expected.predicate))
+        )
+        if exact:
+            matches.add(name)
+        elif name == expected.name:
+            raise RuntimeError("authority_corrupt: existing authority unique-index shape is incompatible.")
+    return matches
 
 
-def _validate_partial_index_shape(connection, index_name: str, predicate: str) -> None:
-    """Require a unique single-root partial index with the exact canonical WHERE."""
-    table = "measurement_plan_revisions"
-    row = next(
-        (item for item in connection.exec_driver_sql(f"PRAGMA index_list({table})").all() if str(item[1]) == index_name),
+def _index_row(connection, table_name: str, index_name: str):
+    return next(
+        (
+            row
+            for row in connection.exec_driver_sql(f"PRAGMA index_list({table_name})").all()
+            if str(row[1]) == index_name
+        ),
         None,
     )
-    if row is None or not bool(row[2]) or not bool(row[4]):
-        raise RuntimeError("authority_corrupt: existing authority partial-index shape is incompatible.")
-    columns = tuple(
-        str(item[2])
-        for item in connection.exec_driver_sql(f"PRAGMA index_info({index_name})").all()
-    )
+
+
+def _index_predicate(connection, index_name: str) -> str:
     index_sql = connection.exec_driver_sql(
         "SELECT sql FROM sqlite_master WHERE type='index' AND name=?",
         (index_name,),
     ).scalar_one_or_none()
-    actual_predicate = _where_predicate(index_sql or "")
-    if columns != ("measurement_plan_root_id",) or _canonical_sql(predicate) != _canonical_sql(actual_predicate):
-        raise RuntimeError("authority_corrupt: existing authority partial-index shape is incompatible.")
+    return _where_predicate(index_sql or "")
+
+
+def _preflight_missing_indexes(connection, missing: tuple[_SemanticIndex, ...]) -> None:
+    for index in missing:
+        column_list = ", ".join(index.columns)
+        null_filter = " OR ".join(f"{column} IS NULL" for column in index.columns)
+        if connection.exec_driver_sql(
+            f"SELECT 1 FROM {index.table} WHERE {null_filter} LIMIT 1"
+        ).first() is not None:
+            raise RuntimeError("authority_corrupt: authority identity contains null values.")
+        where = f"WHERE {index.predicate}" if index.predicate else ""
+        duplicate = connection.exec_driver_sql(
+            f"SELECT 1 FROM {index.table} {where} GROUP BY {column_list} HAVING COUNT(*) > 1 LIMIT 1"
+        ).first()
+        if duplicate is not None:
+            raise RuntimeError("authority_corrupt: authority unique-index preflight found duplicates.")
+
+
+def _create_index_sql(index: _SemanticIndex) -> str:
+    predicate = f" WHERE {index.predicate}" if index.predicate else ""
+    return f"CREATE UNIQUE INDEX {index.name} ON {index.table} ({', '.join(index.columns)}){predicate}"
 
 
 def _canonical_sql(value: str) -> str:
