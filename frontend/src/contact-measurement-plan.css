@@ -1,0 +1,163 @@
+.contact-measurement-summary,
+.contact-measurement-setup-page {
+  min-width: 0;
+}
+
+.contact-measurement-summary {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border, #d8e0ea);
+  border-radius: 8px;
+  background: var(--surface, #fbfdff);
+}
+
+.contact-measurement-summary-header,
+.contact-measurement-setup-header,
+.contact-measurement-review-band,
+.contact-measurement-setup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contact-measurement-summary-header h3,
+.contact-measurement-setup-header h2,
+.contact-measurement-target-list h3,
+.contact-measurement-target-editor h3,
+.contact-measurement-impact-list h3 {
+  margin: 0;
+}
+
+.contact-measurement-summary-header span,
+.contact-measurement-setup-header p,
+.contact-measurement-summary-facts dt,
+.contact-measurement-summary-warning,
+.contact-measurement-target-list span,
+.contact-measurement-impact-list span {
+  color: var(--ink-muted, #647084);
+}
+
+.contact-measurement-summary-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.contact-measurement-summary-facts div {
+  min-width: 0;
+}
+
+.contact-measurement-summary-facts dt {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contact-measurement-summary-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.contact-measurement-summary-warning,
+.contact-measurement-setup-alert {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 1px solid var(--warning, #9a641c);
+  background: #fffaf1;
+}
+
+.contact-measurement-setup-page {
+  display: grid;
+  gap: 16px;
+  padding: 16px 20px 28px;
+}
+
+.contact-measurement-setup-header {
+  align-items: flex-start;
+}
+
+.contact-measurement-setup-header h2:focus {
+  outline: 2px solid var(--primary, #1f66d1);
+  outline-offset: 3px;
+}
+
+.contact-measurement-setup-header p {
+  margin: 4px 0 0;
+}
+
+.contact-measurement-setup-alert.is-error {
+  border-left-color: var(--danger, #c2413a);
+  background: #fff6f5;
+}
+
+.contact-measurement-setup-empty,
+.contact-measurement-target-list,
+.contact-measurement-target-editor,
+.contact-measurement-impact-list {
+  display: grid;
+  gap: 10px;
+}
+
+.contact-measurement-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.4fr);
+  gap: 16px;
+}
+
+.contact-measurement-target-list > button,
+.contact-measurement-impact-list > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--border, #d8e0ea);
+  border-radius: 6px;
+  background: var(--surface, #fbfdff);
+}
+
+.contact-measurement-target-list > button.is-selected {
+  border-color: var(--primary, #1f66d1);
+  background: #f4f8fd;
+}
+
+.contact-measurement-target-editor label,
+.contact-measurement-family-list > div {
+  display: grid;
+  gap: 6px;
+}
+
+.contact-measurement-family-list {
+  display: grid;
+  gap: 10px;
+}
+
+.contact-measurement-family-list > div {
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.4fr);
+}
+
+.contact-measurement-setup-actions {
+  position: sticky;
+  bottom: 0;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-top: 1px solid var(--border, #d8e0ea);
+  background: var(--canvas, #f4f7fb);
+}
+
+@media (max-width: 760px) {
+  .contact-measurement-summary-header,
+  .contact-measurement-setup-header,
+  .contact-measurement-review-band {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .contact-measurement-summary-facts,
+  .contact-measurement-setup-grid,
+  .contact-measurement-family-list > div {
+    grid-template-columns: 1fr;
+  }
+}

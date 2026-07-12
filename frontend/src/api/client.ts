@@ -2499,6 +2499,101 @@ export type ConfirmedMatrixAuthorityHistory = {
   entries: ConfirmedMatrixAuthorityHistoryEntry[];
 };
 
+export type ContactMeasurementPlanFamily = {
+  family_id: string;
+  family_ordinal: number;
+  label: string;
+  count_per_sample: number;
+  record_label: string;
+  record_prefix: string;
+  included: boolean;
+  is_custom: boolean;
+};
+
+export type ContactMeasurementPlanTarget = {
+  stable_target_key: string;
+  group_label: string;
+  test_item: string;
+  contact_kind: "llcr" | "cr_specified_current";
+  step_sequence: number;
+  step_suffix_note: string;
+  sample_quantity_expression: string;
+  eligible: boolean;
+  included: boolean;
+  exclusion_reason: string | null;
+  is_override: boolean;
+  coverage_state: string;
+  readings_per_sample: number;
+  target_review_state: string;
+  target_review_reason: string | null;
+  families: ContactMeasurementPlanFamily[];
+};
+
+export type ContactMeasurementPlanWorkspace = {
+  status: string;
+  project_id: string;
+  active_confirmed_revision_id: string | null;
+  editable_revision_id: string | null;
+  editable_revision_state: string | null;
+  editable_revision_fingerprint: string | null;
+  revision: {
+    revision_id: string;
+    revision_sequence: number;
+    state: string;
+    fingerprint: string;
+  } | null;
+  matrix_binding: {
+    base_confirmed_matrix_id: string;
+    base_matrix_revision: number;
+    current_confirmed_matrix_id: string | null;
+    current_matrix_revision: number | null;
+    matrix_binding_fingerprint: string;
+  } | null;
+  targets: ContactMeasurementPlanTarget[];
+  impacts: Array<{
+    impact_subject_key: string;
+    category: string;
+    severity: string;
+    resolution_state: string;
+    reason: string | null;
+    candidate: {
+      group_label: string;
+      test_item: string;
+      step_sequence: number;
+      step_suffix_note: string;
+    } | null;
+  }>;
+  summary: {
+    included_target_count: number;
+    total_target_count: number;
+    needs_review_count: number;
+    readings_by_kind: Record<string, number | null>;
+  };
+  diagnostics: string[];
+};
+
+export type ContactMeasurementPlanRevisionResponse = {
+  status: string;
+  revision_id: string;
+};
+
+export type ContactMeasurementPlanTargetPatchRequest = {
+  actor: string;
+  expected_revision_fingerprint: string;
+  stable_target_key: string;
+  included: boolean;
+  exclusion_reason?: string | null;
+  families?: Array<{
+    family_id: string;
+    label: string;
+    count_per_sample: number;
+    record_label: string;
+    record_prefix: string;
+    included: boolean;
+    is_custom: boolean;
+  }>;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiRequestError extends Error {
@@ -2703,6 +2798,117 @@ export function stopProject(
     {
       method: "POST",
       body: JSON.stringify(input)
+    }
+  );
+}
+
+export function fetchContactMeasurementPlanWorkspace(
+  projectId: string
+): Promise<ContactMeasurementPlanWorkspace> {
+  return requestJson<ContactMeasurementPlanWorkspace>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/workspace`
+  );
+}
+
+export function openContactMeasurementPlanRevision(
+  projectId: string,
+  actor: string
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions`,
+    { method: "POST", body: JSON.stringify({ actor }) }
+  );
+}
+
+export function saveContactMeasurementPlanRevision(
+  projectId: string,
+  revisionId: string,
+  actor: string,
+  expectedRevisionFingerprint: string
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ actor, expected_revision_fingerprint: expectedRevisionFingerprint }),
+    }
+  );
+}
+
+export function patchContactMeasurementPlanTarget(
+  projectId: string,
+  revisionId: string,
+  request: ContactMeasurementPlanTargetPatchRequest
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/targets`,
+    { method: "PATCH", body: JSON.stringify(request) }
+  );
+}
+
+export function confirmContactMeasurementPlanRevision(
+  projectId: string,
+  revisionId: string,
+  actor: string,
+  expectedRevisionFingerprint: string
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/confirm`,
+    {
+      method: "POST",
+      body: JSON.stringify({ actor, expected_revision_fingerprint: expectedRevisionFingerprint }),
+    }
+  );
+}
+
+export function refreshContactMeasurementPlanImpacts(
+  projectId: string,
+  revisionId: string,
+  actor: string,
+  expectedMatrixBindingFingerprint: string
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/impacts/refresh`,
+    {
+      method: "POST",
+      body: JSON.stringify({ actor, expected_matrix_binding_fingerprint: expectedMatrixBindingFingerprint }),
+    }
+  );
+}
+
+export function acceptCompatibleContactMeasurementPlanSuggestions(
+  projectId: string,
+  revisionId: string,
+  actor: string,
+  expectedRevisionFingerprint: string
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/suggestions/accept-compatible`,
+    {
+      method: "POST",
+      body: JSON.stringify({ actor, expected_revision_fingerprint: expectedRevisionFingerprint }),
+    }
+  );
+}
+
+export function rebindContactMeasurementPlanTarget(
+  projectId: string,
+  revisionId: string,
+  actor: string,
+  expectedRevisionFingerprint: string,
+  stableTargetKey: string,
+  candidateSubjectKey: string
+): Promise<ContactMeasurementPlanRevisionResponse> {
+  return requestJson<ContactMeasurementPlanRevisionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-measurement-plan/revisions/${encodeURIComponent(revisionId)}/targets/rebind`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        actor,
+        expected_revision_fingerprint: expectedRevisionFingerprint,
+        stable_target_key: stableTargetKey,
+        candidate_subject_key: candidateSubjectKey,
+      }),
     }
   );
 }

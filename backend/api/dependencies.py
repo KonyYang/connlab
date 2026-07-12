@@ -872,6 +872,25 @@ def get_contact_measurement_plan_projection_service(
     )
 
 
+def get_contact_measurement_plan_workspace_read_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Compose the narrow TASK_361C read-only operator workspace boundary."""
+    from backend.application.contact_measurement_plan_workspace_read_service import (
+        ContactMeasurementPlanWorkspaceReadService,
+    )
+    from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import (
+        ContactMeasurementPlanAuthorityRepository,
+    )
+
+    return ContactMeasurementPlanWorkspaceReadService(
+        repository=ContactMeasurementPlanAuthorityRepository(session),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        enabled=settings.contact_measurement_plan_authority_enabled,
+    )
+
+
 def get_contact_measurement_plan_lifecycle_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from backend.api.dependencies import (
     get_contact_measurement_plan_lifecycle_service,
     get_contact_measurement_plan_projection_service,
+    get_contact_measurement_plan_workspace_read_service,
 )
 from backend.application.contact_measurement_plan_lifecycle_service import (
     ContactMeasurementPlanLifecycleError,
@@ -44,6 +45,58 @@ class ContactMeasurementPlanTargetResponse(BaseModel):
     families: list[ContactMeasurementPlanFamilyResponse]
 
 
+class ContactMeasurementPlanWorkspaceTargetResponse(ContactMeasurementPlanTargetResponse):
+    group_label: str
+    test_item: str
+    step_sequence: int
+    step_suffix_note: str
+    sample_quantity_expression: str
+    eligible: bool
+    exclusion_reason: str | None = None
+    is_override: bool
+    coverage_state: str
+    target_review_state: str
+    target_review_reason: str | None = None
+
+
+class ContactMeasurementPlanRevisionWorkspaceResponse(BaseModel):
+    revision_id: str
+    revision_sequence: int
+    state: str
+    fingerprint: str
+
+
+class ContactMeasurementPlanMatrixBindingResponse(BaseModel):
+    base_confirmed_matrix_id: str
+    base_matrix_revision: int
+    current_confirmed_matrix_id: str | None = None
+    current_matrix_revision: int | None = None
+    matrix_binding_fingerprint: str
+
+
+class ContactMeasurementPlanCandidateResponse(BaseModel):
+    group_label: str
+    test_item: str
+    step_sequence: int
+    step_suffix_note: str
+
+
+class ContactMeasurementPlanImpactResponse(BaseModel):
+    impact_subject_key: str
+    category: str
+    severity: str
+    resolution_state: str
+    reason: str | None = None
+    candidate: ContactMeasurementPlanCandidateResponse | None = None
+
+
+class ContactMeasurementPlanWorkspaceSummaryResponse(BaseModel):
+    included_target_count: int
+    total_target_count: int
+    needs_review_count: int
+    readings_by_kind: dict[str, int | None] = Field(default_factory=dict)
+
+
 class EffectiveContactMeasurementPlanProjectionResponse(BaseModel):
     status: str
     project_id: str
@@ -60,7 +113,14 @@ class ContactMeasurementPlanWorkspaceResponse(BaseModel):
     editable_revision_id: str | None = None
     editable_revision_state: str | None = None
     editable_revision_fingerprint: str | None = None
-    targets: list[ContactMeasurementPlanTargetResponse] = Field(default_factory=list)
+    revision: ContactMeasurementPlanRevisionWorkspaceResponse | None = None
+    matrix_binding: ContactMeasurementPlanMatrixBindingResponse | None = None
+    targets: list[ContactMeasurementPlanWorkspaceTargetResponse] = Field(
+        default_factory=list
+    )
+    impacts: list[ContactMeasurementPlanImpactResponse] = Field(default_factory=list)
+    summary: ContactMeasurementPlanWorkspaceSummaryResponse
+    diagnostics: list[str] = Field(default_factory=list)
 
 
 class ContactMeasurementPlanSummaryResponse(BaseModel):
@@ -133,8 +193,8 @@ def get_summary(
 @router.get("/workspace", response_model=ContactMeasurementPlanWorkspaceResponse)
 def get_workspace(
     project_id: str,
-    service: ContactMeasurementPlanProjectionService = Depends(
-        get_contact_measurement_plan_projection_service
+    service=Depends(
+        get_contact_measurement_plan_workspace_read_service
     ),
 ) -> ContactMeasurementPlanWorkspaceResponse:
     """Read the draft or confirmed authority workspace without mutating Matrix."""

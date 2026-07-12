@@ -4,17 +4,20 @@ import { MatrixEditorWorkspace } from "../features/matrix-editor/MatrixEditorWor
 type ProjectMatrixEditorPageProps = {
   projectId: string;
   onBackToWorkbench: () => void;
+  onOpenContactMeasurementSetup?: () => void;
 };
 
 export function ProjectMatrixEditorPage({
   projectId,
   onBackToWorkbench,
+  onOpenContactMeasurementSetup,
 }: ProjectMatrixEditorPageProps): ReactElement {
   return (
     <MatrixEditorErrorBoundary onBackToWorkbench={onBackToWorkbench}>
       <MatrixEditorWorkspace
         projectId={projectId}
         onBackToWorkbench={onBackToWorkbench}
+        onOpenContactMeasurementSetup={onOpenContactMeasurementSetup}
       />
     </MatrixEditorErrorBoundary>
   );

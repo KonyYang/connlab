@@ -13,6 +13,7 @@ import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
 import { ProjectMatrixEditorPage } from "./pages/ProjectMatrixEditorPage";
 import { ProjectFeeEvaluationPage } from "./pages/ProjectFeeEvaluationPage";
 import { ProjectBasicInformationPage } from "./pages/ProjectBasicInformationPage";
+import { ProjectContactMeasurementSetupPage } from "./pages/ProjectContactMeasurementSetupPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
 import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
 import { RuntimeProjectionPrototypePage } from "./pages/RuntimeProjectionPrototypePage";
@@ -28,6 +29,7 @@ type Route =
   | { name: "projectMatrixEditor"; projectId: string }
   | { name: "projectFeeEvaluation"; projectId: string }
   | { name: "projectBasicInformation"; projectId: string }
+  | { name: "projectContactMeasurementSetup"; projectId: string }
   | { name: "runtimeProjection" }
   | { name: "settings" }
   | { name: "notFound" };
@@ -74,6 +76,16 @@ function parseRoute(pathname: string): Route {
     return {
       name: "projectBasicInformation",
       projectId: decodeURIComponent(basicInformationMatch[1]),
+    };
+  }
+
+  const contactMeasurementSetupMatch = pathname.match(
+    /^\/projects\/([^/]+)\/contact-measurement-setup$/
+  );
+  if (contactMeasurementSetupMatch) {
+    return {
+      name: "projectContactMeasurementSetup",
+      projectId: decodeURIComponent(contactMeasurementSetupMatch[1]),
     };
   }
 
@@ -142,6 +154,8 @@ export default function App(): ReactElement {
         ? "workbench"
       : route.name === "projectBasicInformation"
         ? "workbench"
+      : route.name === "projectContactMeasurementSetup"
+        ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
         : route.name === "runtimeProjection"
@@ -154,6 +168,8 @@ export default function App(): ReactElement {
         ? "Fee Evaluation"
       : route.name === "projectBasicInformation"
         ? "Basic Information"
+      : route.name === "projectContactMeasurementSetup"
+        ? "Contact measurement setup"
         : undefined;
 
   return (
@@ -231,6 +247,9 @@ export default function App(): ReactElement {
         <ProjectMatrixEditorPage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+          onOpenContactMeasurementSetup={() =>
+            navigate(`/projects/${encodeURIComponent(route.projectId)}/contact-measurement-setup`)
+          }
         />
       )}
       {route.name === "projectFeeEvaluation" && (
@@ -243,6 +262,14 @@ export default function App(): ReactElement {
         <ProjectBasicInformationPage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+        />
+      )}
+      {route.name === "projectContactMeasurementSetup" && (
+        <ProjectContactMeasurementSetupPage
+          projectId={route.projectId}
+          onBackToMatrix={() =>
+            navigate(`/projects/${encodeURIComponent(route.projectId)}/matrix-editor`)
+          }
         />
       )}
       {route.name === "settings" && <SettingsPage />}

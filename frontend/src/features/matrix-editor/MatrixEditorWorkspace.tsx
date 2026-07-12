@@ -42,7 +42,8 @@ import {
   type MatrixStepQuantityDefaults,
   type MatrixStepQuantityEditableField,
 } from "./matrixStepQuantitySelectors";
-import { MatrixContactMeasurementPlanCard } from "./MatrixContactMeasurementPlanCard";
+import { ContactMeasurementPlanSummaryCard } from "../contact-measurement-plan/ContactMeasurementPlanSummaryCard";
+import { useContactMeasurementPlanModel } from "../contact-measurement-plan/useContactMeasurementPlanModel";
 import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 import {
   DEFAULT_CONTACT_PLAN_PROFILES,
@@ -70,6 +71,7 @@ import "../../workbench.css";
 type MatrixEditorWorkspaceProps = {
   projectId: string;
   onBackToWorkbench: () => void;
+  onOpenContactMeasurementSetup?: () => void;
 };
 
 type GroupColumn = {
@@ -1619,6 +1621,7 @@ const REFERENCE_ROWS = [
 export function MatrixEditorWorkspace({
   projectId,
   onBackToWorkbench,
+  onOpenContactMeasurementSetup,
 }: MatrixEditorWorkspaceProps): ReactElement {
   const model = useProjectRuntimeConsoleModel(projectId);
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(model.lifecycle);
@@ -1686,6 +1689,7 @@ export function MatrixEditorWorkspace({
     DEFAULT_CONTACT_PLAN_PROFILES
   );
   const specializedRecordWorkbook = useLlcrCrSpecializedRecordWorkbookModel(projectId);
+  const contactMeasurementPlan = useContactMeasurementPlanModel({ projectId });
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -3807,40 +3811,54 @@ export function MatrixEditorWorkspace({
               {revisionDraftActionMessage}
             </p>
           ) : null}
-          <MatrixContactMeasurementPlanCard
-            items={stepQuantityItems}
-            profiles={contactPlanProfiles}
-            groupLabels={contactGroupLabels}
-            disabled={
-              isLifecycleReadonly ||
-              !savedEditorDraftId ||
-              stepQuantityLoading ||
-              stepQuantitySaving
-            }
-            workbookDisabled={isLifecycleReadonly}
-            saving={stepQuantitySaving}
-            message={contactPlanMessage}
-            error={stepQuantityError}
-            onFamilyCountChange={onContactFamilyCountChange}
-            onFamilyIncludedChange={onContactFamilyIncludedChange}
-            onFamilyLabelChange={onContactFamilyLabelChange}
-            onFamilyPrefixChange={onContactFamilyPrefixChange}
-            onAddCustomFamily={onAddCustomContactFamily}
-            onRemoveCustomFamily={onRemoveCustomContactFamily}
-            onTargetIncludedChange={onContactTargetIncludedChange}
-            onTargetExclusionReasonChange={onContactTargetExclusionReasonChange}
-            onApply={onApplyContactPlan}
-            onSave={() => void onSaveStepQuantities()}
-            workbook={{
-              busy: specializedRecordWorkbook.busy,
-              preview: specializedRecordWorkbook.preview,
-              generated: specializedRecordWorkbook.generated,
-              error: specializedRecordWorkbook.error,
-              canGenerate: specializedRecordWorkbook.canGenerate,
-              onPreview: () => void specializedRecordWorkbook.previewWorkbook(),
-              onGenerate: () => void specializedRecordWorkbook.generateWorkbook(),
-              onDownload: () => void specializedRecordWorkbook.downloadWorkbook(),
-            }}
+          <ContactMeasurementPlanSummaryCard
+            workspace={contactMeasurementPlan.workspace}
+            loading={contactMeasurementPlan.loading}
+            onOpenSetup={() => onOpenContactMeasurementSetup?.()}
+            compatibilityRow={activeConfirmedMatrixId ? (
+              <div className="matrix-contact-plan-workbook" aria-label="Specialized record workbook">
+                <div>
+                  <strong>Specialized LLCR/CR record</strong>
+                  <p>
+                    {specializedRecordWorkbook.preview?.status === "ready"
+                      ? `${specializedRecordWorkbook.preview.row_count} record rows ready`
+                      : "Preview confirmed contact-plan records before generation."}
+                  </p>
+                </div>
+                <div className="matrix-contact-plan-workbook-actions">
+                  <button
+                    type="button"
+                    disabled={isLifecycleReadonly || specializedRecordWorkbook.busy !== null}
+                    onClick={() => void specializedRecordWorkbook.previewWorkbook()}
+                  >
+                    Preview specialized record
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      isLifecycleReadonly ||
+                      specializedRecordWorkbook.busy !== null ||
+                      !specializedRecordWorkbook.canGenerate
+                    }
+                    onClick={() => void specializedRecordWorkbook.generateWorkbook()}
+                  >
+                    Generate workbook
+                  </button>
+                  {specializedRecordWorkbook.generated ? (
+                    <button
+                      type="button"
+                      disabled={isLifecycleReadonly || specializedRecordWorkbook.busy !== null}
+                      onClick={() => void specializedRecordWorkbook.downloadWorkbook()}
+                    >
+                      Download workbook
+                    </button>
+                  ) : null}
+                </div>
+                {specializedRecordWorkbook.error ? (
+                  <p className="matrix-contact-plan-error">{specializedRecordWorkbook.error}</p>
+                ) : null}
+              </div>
+            ) : null}
           />
         </section>
 
