@@ -65,3 +65,57 @@ Reviewer implementation-readiness gate after Planner source-of-truth reconciliat
 
 No design blocker. The board/task still show planned-only language and require
 reconciliation before any implementation authorization.
+
+## Implementation Pass
+
+Status: developer_implementation_complete - ready for Reviewer implementation gate.
+
+### Implemented Boundary
+
+- Added `ContactMeasurementPlanConfirmedConsumerAdapter`, a backend-only typed
+  effective projection join keyed by confirmed Group/Row/Step/normalized suffix.
+  It converts the approved confirmed target/family metadata into domain contact-plan
+  facts without parsing `cmp-target:v1` in Fee or workbook consumers.
+- Extended the existing read-only projection payload only with typed lineage fields
+  required by that adapter. It does not change authority storage, lifecycle, commands,
+  schema, feature-flag semantics, or any draft workspace behavior.
+- Fee now consults the effective confirmed lookup only for the existing LLCR and
+  specified-current CR rules. `complete`/partial/review/empty active authority has
+  no legacy fallback: omitted or excluded targets become review-required with no
+  contact units. `not_started` and `disabled` retain the frozen Confirmed Matrix
+  contact-plan path. Current Matrix group sample quantity remains the multiplier.
+- TASK_360B preview/generation now consumes the typed effective confirmed projection
+  when composed through dependencies. Complete output is confirmed; compatible
+  partial output is `PARTIAL COMPATIBLE`; corrupt/empty authority returns blocked or
+  empty without an artifact. The existing formal route/client/artifact lifecycle and
+  TASK_361D draft workflow remain separate.
+- Formal summary metadata now includes confirmed plan revision, sequence, projection
+  status, and omission diagnostics. Preview fingerprints include plan revision/status
+  and diagnostics in addition to the existing source projection.
+
+### Focused Tests And Verification
+
+- Added adapter unit coverage for explicit lineage lookup and the only two legacy
+  rollback states, plus formal effective projection coverage for partial-compatible
+  and corrupt authority.
+- Added Fee coverage proving an active partial authority omission does not fall back
+  to legacy contact readings, and workbook gateway coverage for partial-compatible
+  confirmed-plan metadata.
+- Focused backend suite:
+  `py -m pytest -p no:cacheprovider --basetemp=tmp\task_361e_full ... -q` ->
+  `62 passed`, covering projection, adapter, Fee contexts/draft/API/export,
+  formal projection/gateway/generation/API, Matrix session, and read-only Test Record
+  preview regressions on temporary fixtures.
+- `py_compile` passed for all touched backend modules and focused tests. Frontend is
+  unchanged, so `npm run build` is not applicable to this backend-only pass.
+- `git diff --check` passed with existing LF/CRLF warnings only. No real database,
+  real workbook/folder, or formal generation endpoint was invoked; all tests use
+  temporary SQLite and temporary artifact directories.
+
+### Scope And Residuals
+
+- No Fee rule/seed/pricing/default-fill/manual/export/UI behavior, frontend/API
+  client, TASK_361D draft files, generic Test Record/Report, schema/repository/
+  lifecycle, parser, LTR/public-drive, or external residual was modified.
+- Existing board/governance, parser/MCR, TASK_360Q-R-S, and superpowers residuals
+  remain external. No stage, commit, or push was performed.

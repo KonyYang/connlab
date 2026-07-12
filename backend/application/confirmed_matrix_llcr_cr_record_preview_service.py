@@ -8,6 +8,9 @@ from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
     build_llcr_cr_record_projection,
 )
+from backend.application.effective_contact_measurement_llcr_cr_record_projection import (
+    build_effective_llcr_cr_record_projection,
+)
 from backend.domain import ConfirmedMatrixSnapshot
 
 
@@ -25,8 +28,9 @@ class ConfirmedMatrixAuthorityStore(Protocol):
 class LlcrCrRecordWorkbookPreviewService:
     """Build no-write specialized record preview from confirmed contact authority."""
 
-    def __init__(self, *, confirmed_store: ConfirmedMatrixAuthorityStore) -> None:
+    def __init__(self, *, confirmed_store: ConfirmedMatrixAuthorityStore, consumer_adapter=None) -> None:
         self._confirmed_store = confirmed_store
+        self._consumer_adapter = consumer_adapter
 
     def preview(self, project_id: str) -> LlcrCrRecordProjection:
         """Return a deterministic no-write projection for one project."""
@@ -35,4 +39,9 @@ class LlcrCrRecordWorkbookPreviewService:
             raise LlcrCrRecordWorkbookPreviewNotFoundError(
                 "Active confirmed Matrix not found."
             )
-        return build_llcr_cr_record_projection(snapshot)
+        if self._consumer_adapter is None:
+            return build_llcr_cr_record_projection(snapshot)
+        effective = self._consumer_adapter.get_effective(project_id)
+        if effective is None:
+            return build_llcr_cr_record_projection(snapshot)
+        return build_effective_llcr_cr_record_projection(snapshot, effective)

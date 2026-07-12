@@ -26,6 +26,10 @@ from backend.application.confirmed_matrix_fee_step_quantities import (
     build_step_quantity_contexts,
     build_step_quantity_lookup,
 )
+from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
+    ContactMeasurementPlanConfirmedConsumerAdapter,
+    EffectiveContactMeasurementPlan,
+)
 from backend.domain import (
     ConfirmedMatrixGroup,
     ConfirmedMatrixRow,
@@ -77,9 +81,11 @@ class ConfirmedMatrixFeeDraftService:
         *,
         confirmed_store: ConfirmedMatrixAuthorityStore,
         rule_library: FeeRuleLibrary | None = None,
+        contact_measurement_adapter: ContactMeasurementPlanConfirmedConsumerAdapter | None = None,
     ) -> None:
         self._confirmed = confirmed_store
         self._rule_library = rule_library
+        self._contact_measurement_adapter = contact_measurement_adapter
 
     def build_draft(self, command: BuildConfirmedMatrixFeeDraftCommand) -> FeeEvaluationDraft:
         """Return one Fee Evaluation draft preview for a project."""
@@ -88,7 +94,16 @@ class ConfirmedMatrixFeeDraftService:
             raise ConfirmedMatrixFeeDraftNotFoundError("Active confirmed matrix not found.")
         library = self._rule_library or load_active_fee_rule_library()
         warnings = _root_warnings(snapshot)
-        groups = _build_groups(snapshot=snapshot, library=library)
+        effective_contact_plan = (
+            self._contact_measurement_adapter.get_effective(command.project_id)
+            if self._contact_measurement_adapter is not None
+            else None
+        )
+        groups = _build_groups(
+            snapshot=snapshot,
+            library=library,
+            effective_contact_plan=effective_contact_plan,
+        )
         manual_line_items = (
             build_report_preparation_line(
                 snapshot=snapshot,
@@ -164,6 +179,7 @@ def _build_groups(
     *,
     snapshot: ConfirmedMatrixSnapshot,
     library: FeeRuleLibrary,
+    effective_contact_plan: EffectiveContactMeasurementPlan | None,
 ) -> tuple[FeeEvaluationGroup, ...]:
     groups_by_id = {group.confirmed_group_id: group for group in snapshot.groups}
     rows_by_id = {row.confirmed_row_id: row for row in snapshot.rows}
@@ -183,6 +199,7 @@ def _build_groups(
             step_quantity_lookup=step_quantity_lookup,
             matcher=matcher,
             library=library,
+            effective_contact_plan=effective_contact_plan,
         )
         if not lines:
             continue
@@ -226,6 +243,7 @@ def _build_group_lines(
     step_quantity_lookup: StepQuantityLookup,
     matcher: FeeRuleMatcher,
     library: FeeRuleLibrary,
+    effective_contact_plan: EffectiveContactMeasurementPlan | None,
 ) -> list[FeeEvaluationLineItem]:
     lines: list[FeeEvaluationLineItem] = []
     for row in snapshot.rows:
@@ -236,14 +254,35 @@ def _build_group_lines(
         step_tokens = tuple(token.raw_token for token in parsed_tokens)
         if not step_tokens:
             continue
+        match = matcher.match_test_item(row.test_item)
+        rule = match.rule
+        active_lookup = (
+            {
+                key: target.contact_plan
+                for key, target in effective_contact_plan.lookup.items()
+            }
+            if effective_contact_plan is not None
+            and not effective_contact_plan.legacy_fallback_allowed
+            else None
+        )
         step_quantities = build_step_quantity_contexts(
             group=group,
             row=row,
             parsed_tokens=parsed_tokens,
             step_quantity_lookup=step_quantity_lookup,
+            effective_contact_targets=active_lookup,
+            effective_contact_status=(
+                effective_contact_plan.status if effective_contact_plan is not None else None
+            ),
+            is_llcr_or_specified_current=(
+                rule is not None
+                and rule.rule_id
+                in {
+                    "fee_rule_llcr",
+                    "fee_rule_contact_resistance_specified_current",
+                }
+            ),
         )
-        match = matcher.match_test_item(row.test_item)
-        rule = match.rule
         warnings = tuple(
             FeeEvaluationWarning(
                 code="step_token_parse_warning",

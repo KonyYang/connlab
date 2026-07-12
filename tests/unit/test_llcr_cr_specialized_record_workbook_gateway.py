@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from openpyxl import load_workbook
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
@@ -52,6 +54,28 @@ def test_gateway_writes_fixed_macro_free_sheets_blocks_and_guarded_formulas(tmp_
     assert sheet["H6"].value == '=IF(COUNT(H4:H5)=0,"",AVERAGE(H4:H5))'
     assert sheet["I6"].value == '=IF(COUNT(I4:I5)=0,"",AVERAGE(I4:I5))'
     assert sheet["J6"].value == '=IF(COUNTA(J4:J5)=0,"",COUNTIF(J4:J5,"PASS")&"/"&COUNTA(J4:J5))'
+
+
+def test_gateway_marks_partial_compatible_confirmed_measurement_plan_metadata(tmp_path) -> None:
+    output_path = tmp_path / "partial-record.xlsx"
+    projection = replace(
+        _projection(),
+        status="partial_compatible",
+        measurement_plan_revision_id="revision-3",
+        measurement_plan_revision_sequence=3,
+        effective_measurement_plan_status="partial_compatible",
+    )
+
+    LlcrCrSpecializedRecordWorkbookGateway().write(
+        output_path=output_path,
+        projection=projection,
+    )
+
+    summary = load_workbook(output_path, data_only=False)["Record Summary"]
+    assert summary["B7"].value == "PARTIAL COMPATIBLE"
+    assert summary["E3"].value == "revision-3"
+    assert summary["E4"].value == 3
+    assert summary["E5"].value == "partial_compatible"
 
 
 def _projection() -> LlcrCrRecordProjection:

@@ -68,6 +68,10 @@ class LlcrCrRecordProjection:
     sections: tuple[LlcrCrRecordSection, ...]
     diagnostics: tuple[LlcrCrRecordDiagnostic, ...]
     preview_fingerprint: str | None
+    measurement_plan_revision_id: str | None = None
+    measurement_plan_revision_sequence: int | None = None
+    effective_measurement_plan_status: str | None = None
+    omission_diagnostics: tuple[str, ...] = ()
 
     @property
     def row_count(self) -> int:

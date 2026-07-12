@@ -2,20 +2,18 @@
 
 ## Status
 
-Paused by explicit user instruction on 2026-07-13. Reviewer plan gate and the
-user-approved docs-only Developer planning-first pass remain completed historical
-facts. Reviewer implementation-readiness and Developer implementation routing are
-stopped; product implementation is not authorized. TASK_361F is accepted, and
-TASK_361G owns the independent CHECK compatibility corrective. Resume requires
-TASK_361G acceptance and a later explicit user decision.
+Complete / Integrator accepted on 2026-07-13. Developer implementation, Reviewer
+implementation gate, QA disposable cross-consumer smoke, and controlled Integrator
+package isolation passed. TASK_361F and TASK_361G remain separate accepted
+prerequisites. Remote push was intentionally not performed.
 
 ## Discovery Gate
 
 ### Current Phase / Active Task / Role / Why Allowed
 
 - Phase: Phase 11 controlled Matrix foundation.
-- Active task: TASK_361E paused by user; TASK_361F is the current planned corrective.
-- Role: paused; no TASK_361E role routing is legal.
+- Active task: TASK_361E complete/accepted.
+- Role: Integrator packaging/readiness closeout.
 - TASK_361A-D are complete/accepted. The frozen contract makes TASK_361E serial last
   because it changes formal consumer authority.
 - Reviewer plan gate passed, the user approved Developer planning-first, and the
@@ -156,9 +154,11 @@ external residual inclusion.
 
 ## Definition Of Ready
 
-Historically satisfied for Reviewer implementation-readiness, but the 2026-07-13
-user pause overrides that route. TASK_361E remains frozen and unauthorized until
-TASK_361F is accepted and the user explicitly resumes it.
+Satisfied for Developer implementation. The user lifted the pause after TASK_361F
+and TASK_361G acceptance, Reviewer readiness passed, and the user explicitly
+authorized reconciliation plus implementation. Authorization remains limited to the
+typed adapter, exact Fee/workbook consumer read points, metadata, dependency
+composition, and focused regressions defined here.
 
 ---
 

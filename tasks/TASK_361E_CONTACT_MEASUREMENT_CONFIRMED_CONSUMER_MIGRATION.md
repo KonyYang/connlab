@@ -2,12 +2,10 @@
 
 ## Status
 
-Paused by explicit user instruction on 2026-07-13. Reviewer plan gate and the
-docs-only Developer planning-first pass remain completed historical facts, but no
-Reviewer implementation-readiness routing or Developer implementation is allowed.
-Product implementation is not authorized. TASK_361F is accepted, and TASK_361G owns
-the new separate CHECK compatibility corrective; neither may be folded into this
-lane. Resume requires TASK_361G acceptance and a later explicit user decision.
+Complete / Integrator accepted on 2026-07-13. Developer implementation, Reviewer
+implementation gate, QA disposable cross-consumer smoke, and controlled Integrator
+package isolation passed. TASK_361F and TASK_361G remain accepted, separate
+prerequisites. Remote push was intentionally not performed.
 
 ## Lane
 
@@ -16,7 +14,7 @@ lane. Resume requires TASK_361G acceptance and a later explicit user decision.
 ## Current Phase / Role / Why Allowed
 
 - Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
-- Role: paused; no role routing is legal until an explicit user resume decision.
+- Role: Integrator packaging/readiness closeout.
 - TASK_361A/B/C/D are complete/accepted. TASK_361D local commit is
   `0fa429f53662addfe7fac86a12f73aad836c95fa`; remote was not pushed.
 - The accepted TASK_361A contract reserves TASK_361E as the serial-final lane that
@@ -231,12 +229,12 @@ residual hunk entered the package.
 
 ## Definition Of Ready
 
-Historically satisfied for Reviewer implementation-readiness review, but that route
-is overridden by the 2026-07-13 user pause. No TASK_361E gate may proceed until
-TASK_361F is accepted and the user explicitly resumes this lane. No implementation
-authorization is implied.
+Satisfied for the authorized Developer implementation pass. Reviewer readiness
+passed, the prior pause is lifted, accepted TASK_361F/TASK_361G satisfy the separate
+schema-bootstrap prerequisites, and the user explicitly authorized the scoped
+implementation. No scope beyond this task's May Touch is implied.
 
 ## Blocking Questions
 
-None in the frozen plan. Current stop reason is the explicit user pause, not a design
-question.
+None. Developer must stop after the authorized implementation/validation pass and
+return to Reviewer; no automatic cross-lane expansion is allowed.

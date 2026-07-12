@@ -4,8 +4,7 @@ Date: 2026-07-12
 
 Role: Planner
 
-Status: paused by explicit user instruction on 2026-07-13. Product implementation is
-not authorized.
+Status: implementation authorized; pending Developer implementation.
 
 ## 2026-07-13 User Pause Checkpoint
 
@@ -20,6 +19,31 @@ TASK_361F is now accepted at `983633b7`, but a later controlled smoke found a se
 missing-CHECK blocker. TASK_361G owns that corrective. The user explicitly continued
 the TASK_361E pause; resume now requires TASK_361G acceptance and another explicit
 user route decision.
+
+## 2026-07-13 User Resume Reconciliation
+
+The user explicitly lifted the TASK_361E pause. TASK_361F is accepted at
+`983633b7041ca77afb5f80672cfa168fc8b5cb4b`. TASK_361G product implementation is
+accepted at `cd41c3e3184b431ecd34696c0f5373459683e884`, and its Integrator
+evidence/board closeout is accepted at `e769f524ffa7b90f69c91671bda3382063a78de1`.
+These accepted corrective lanes remain separate prerequisites and are not absorbed
+into TASK_361E. At that resume checkpoint, the next legal gate was Reviewer
+implementation-readiness and product implementation remained unauthorized; the
+later authorization checkpoint below supersedes only that gate status.
+
+## 2026-07-13 Implementation Authorization Reconciliation
+
+Reviewer implementation-readiness re-gate passed with no blocker. The user then
+explicitly approved source-of-truth reconciliation and Developer implementation.
+Authorization is limited to the typed effective confirmed Measurement Plan consumer
+adapter, the exact Fee LLCR/CR readings read point, TASK_360B formal specialized
+workbook source/metadata migration, narrow dependency composition, and focused
+regressions. The complete/partial-compatible/needs-review/not-started/disabled/
+authority-corrupt no-silent-fallback and rollback policy remains mandatory.
+
+TASK_361D draft behavior, Fee pricing/rules/default-fill/manual/export/UI,
+frontend/API client, generic Test Record/Report, Matrix parser/import, LTR/public
+drive, real databases/files, and authority schema/storage/lifecycle remain locked.
 
 ## Reconciled Facts
 
@@ -55,8 +79,7 @@ frontend/API client, LTR/public drive, real files, release/settings, `.agents/**
 
 ## Next Role
 
-None for TASK_361E while paused. TASK_361F Reviewer plan gate is the next legal
-project action.
+Developer implementation pass for TASK_361E.
 
 ## Blockers
 

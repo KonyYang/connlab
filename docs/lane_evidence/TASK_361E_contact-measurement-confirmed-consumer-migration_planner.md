@@ -4,8 +4,7 @@ Date: 2026-07-12
 
 Role: Planner
 
-Status: paused by explicit user instruction on 2026-07-13. Implementation is not
-authorized; TASK_361F owns the independent startup/schema compatibility corrective.
+Status: implementation authorized; pending Developer implementation.
 
 ## Current Phase / Why Allowed
 
@@ -51,16 +50,19 @@ parser, LTR/public drive, real files, and external residuals remain excluded.
 
 ## Definition Of Ready
 
-Historical readiness was satisfied, but the 2026-07-13 user pause overrides all
-TASK_361E routing. Blocking questions remain none; implementation remains
-unauthorized, and TASK_361F must proceed independently.
+Reviewer implementation-readiness re-gate passed. The user explicitly approved
+source-of-truth reconciliation and Developer implementation after TASK_361F was
+accepted at `983633b7` and TASK_361G at `cd41c3e3` with Integrator evidence
+`e769f524`. Blocking questions remain none. Implementation authorization is limited
+to the task-defined backend consumer migration and focused regressions.
 
 ## Validation Summary
 
 - `git show --stat 0fa429f53662addfe7fac86a12f73aad836c95fa` confirmed
   TASK_361D Integrator acceptance and package boundaries; remote push remains absent.
-- Board/task/plan/evidence preserve Reviewer plan pass and docs-only planning-first as
-  history while recording the later user pause; implementation remains unauthorized.
+- Board/task/plan/evidence record Reviewer plan pass, user-approved docs-only
+  planning-first completion, the lifted pause, accepted TASK_361F/TASK_361G
+  prerequisites, Reviewer readiness pass, and explicit implementation approval.
 - `git diff --check` and no-index documentation checks passed with existing LF/CRLF
   working-copy warnings only.
 - UTF-8 trailing-whitespace scan is clean.
@@ -79,4 +81,4 @@ unauthorized, and TASK_361F must proceed independently.
 
 ## Next Legal Role
 
-None while paused. TASK_361F Reviewer plan gate is the next legal project action.
+Developer implementation pass for TASK_361E.

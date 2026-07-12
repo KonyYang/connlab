@@ -68,7 +68,7 @@ class LlcrCrRecordWorkbookGenerationService:
     ) -> LlcrCrRecordWorkbookGenerationResult:
         """Write one workbook only when the requested preview is still current."""
         projection = self._preview_service.preview(command.project_id)
-        if projection.status != "ready" or not projection.preview_fingerprint:
+        if projection.status not in {"ready", "complete", "partial_compatible"} or not projection.preview_fingerprint:
             raise LlcrCrRecordWorkbookGenerationError(
                 "LLCR/CR workbook preview requires review before generation."
             )

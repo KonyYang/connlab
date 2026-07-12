@@ -27,7 +27,7 @@ class LlcrCrSpecializedRecordWorkbookGateway:
         target = Path(output_path)
         if target.suffix.lower() != ".xlsx":
             raise ValueError("LLCR/CR specialized record output must be .xlsx.")
-        if projection.status != "ready":
+        if projection.status not in {"ready", "complete", "partial_compatible"}:
             raise ValueError("A ready LLCR/CR record preview is required for generation.")
         if not target.parent.is_dir():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
@@ -54,6 +54,20 @@ def _write_summary(sheet, projection: LlcrCrRecordProjection) -> None:
     sheet["B5"] = projection.confirmed_revision
     sheet["A6"] = "Generated rows"
     sheet["B6"] = projection.row_count
+    sheet["A7"] = "Measurement Plan"
+    sheet["B7"] = (
+        "PARTIAL COMPATIBLE"
+        if projection.effective_measurement_plan_status in {"partial_compatible", "needs_review"}
+        else "CONFIRMED"
+    )
+    sheet["D3"] = "Plan revision"
+    sheet["E3"] = projection.measurement_plan_revision_id or "legacy confirmed Matrix"
+    sheet["D4"] = "Plan sequence"
+    sheet["E4"] = projection.measurement_plan_revision_sequence or ""
+    sheet["D5"] = "Projection status"
+    sheet["E5"] = projection.effective_measurement_plan_status or "legacy confirmed Matrix"
+    sheet["D6"] = "Omissions"
+    sheet["E6"] = "; ".join(projection.omission_diagnostics)
     headers = (
         "Type",
         "Group",

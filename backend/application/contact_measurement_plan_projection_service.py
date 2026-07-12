@@ -113,6 +113,10 @@ class ContactMeasurementPlanProjectionService:
             targets.append(
                 {
                     "stable_target_key": target.stable_target_key,
+                    "confirmed_group_id": getattr(target, "confirmed_group_id", ""),
+                    "confirmed_row_id": getattr(target, "confirmed_row_id", ""),
+                    "step_sequence": getattr(target, "step_sequence", 0),
+                    "step_suffix_note": getattr(target, "step_suffix_note", ""),
                     "contact_kind": target.contact_kind,
                     "included": target.included,
                     "readings_per_sample": target.readings_per_sample,

@@ -205,3 +205,153 @@ reconciliation before Developer implementation. Do not route Developer implement
 from this gate.
 
 Blocking summary: none for implementation readiness.
+
+---
+
+# TASK_361E Reviewer Implementation-Readiness Re-Gate
+
+Status: reviewer_pass
+Task: `TASK_361E_CONTACT_MEASUREMENT_CONFIRMED_CONSUMER_MIGRATION`
+Lane: `contact-measurement-confirmed-consumer-migration`
+Date: 2026-07-13
+Role: Reviewer
+
+## Reconciled Preconditions
+
+The pause has been explicitly lifted. The board, task, plan, Planner reconciliation,
+and Developer evidence now agree that TASK_361E is the active lane, its prior
+planning-first pass was docs-only, and implementation remains unauthorized. Accepted
+TASK_361F (`983633b`) and TASK_361G (`cd41c3e3`, Integrator evidence `e769f524`) are
+completed bootstrap prerequisites and remain separate from this consumer migration.
+
+## Readiness Assessment
+
+The implementation boundary is concrete and remains appropriately backend-only. The
+new typed confirmed-consumer adapter combines `get_effective()` with active Confirmed
+Matrix Group/Row/Step/normalized-suffix context. It owns opaque-key isolation and
+provides target inclusion, effective readings/families, omissions, diagnostics, and
+both authority lineages. Fee and workbook consumers neither parse stable keys nor
+access independent-authority storage directly.
+
+Fee has one exact integration point: contact-reading selection inside
+`confirmed_matrix_fee_step_quantities.build_step_quantity_contexts()`. LLCR and CR
+specified-current retain current Matrix traversal and the Group sample multiplier,
+with no cross-Step aggregation. The plan preserves pricing, rules, defaults, manual
+edits, exports, and Fee UI unchanged.
+
+TASK_360B has one exact formal read boundary: its confirmed Matrix workbook projection
+is replaced internally by the typed effective consumer projection while routes,
+client, artifact root/lifecycle, macro-free layout, and existing workbook controls
+remain compatible. Complete output is `CONFIRMED`; structurally valid compatible
+partial/review output is `PARTIAL COMPATIBLE`, with plan/Matrix lineage and omission
+diagnostics in the fingerprinted preview. TASK_361D editable draft output remains
+entirely isolated.
+
+The status policy is safe and implementable after TASK_361F/G acceptance:
+`complete` consumes included targets; `partial_compatible` and `needs_review` allow
+only compatible targets and make omitted/excluded/missing current eligible contact
+Steps review-required without legacy or TASK_351 text fallback; `not_started` and
+explicit `disabled` use the frozen legacy adapter; `authority_corrupt` and empty
+active-root states block contact units/formal output without fallback. No schema,
+lifecycle, API-client, frontend, real-file, or corrective-bootstrap behavior is
+required by this lane.
+
+## Validation And Scope
+
+The planned temporary SQLite/temp-dir adapter, Fee no-bypass/current-sample/no-
+aggregation, formal partial/omission/stale/no-output, TASK_360B API/artifact, and
+TASK_361D/generic-Test-Record regression coverage is proportionate. The exact May
+Touch list is limited to the adapter, Fee contact-context bridge, effective formal
+projection/source metadata, narrow dependency composition, and named backend/API
+tests. TASK_361B schema/storage/lifecycle, TASK_361D, Fee pricing/rules/default-
+fill/UI, generic Test Record/Report, parser, LTR/public drive, frontend/API client,
+real files, release/settings, `.agents/**`, and `docs/project_management/**` remain
+locked.
+
+## Validation Performed
+
+- Re-read AGENTS, board, task, updated plan, Planner/reconciliation/Developer/prior
+  Reviewer evidence, and accepted TASK_361F/G closeout facts.
+- Reconfirmed the current repository boundaries: `ContactMeasurementPlanProjectionService`
+  is confirmed-only; Fee currently reads legacy `step_quantities[*].contact_plan` at
+  the declared bridge; and TASK_360B currently uses an active Confirmed Matrix
+  preview/projection behind stable routes.
+- Confirmed the visible working-tree changes are TASK_361E governance documents only;
+  no product, schema, API-client, test, real database, or file change is part of the
+  planning/reconciliation package. Existing external residuals remain excluded.
+- Targeted documentation diff-check has only known LF/CRLF warnings; no implementation
+  validation was run because this gate is documentation/readiness-only.
+
+## Decision
+
+`reviewer_pass`
+
+Recommended next role/action: wait for explicit User implementation approval. After
+that approval, route Planner/source-of-truth reconciliation for implementation
+authorization before Developer implementation. Do not route Developer implementation
+from this gate.
+
+Blocking summary: none for readiness. TASK_361E must not absorb TASK_361F/G work, and
+all locked paths remain locked.
+
+---
+
+# TASK_361E Reviewer Implementation Gate
+
+Status: reviewer_pass
+Task: `TASK_361E_CONTACT_MEASUREMENT_CONFIRMED_CONSUMER_MIGRATION`
+Lane: `contact-measurement-confirmed-consumer-migration`
+Date: 2026-07-13
+Role: Reviewer
+
+## Implementation Review
+
+The new backend-only `ContactMeasurementPlanConfirmedConsumerAdapter` joins only the
+effective confirmed authority to the active Confirmed Matrix through confirmed Group,
+Row, Step, and normalized suffix lineage. It is the single boundary that turns the
+projection payload into typed contact-plan facts; Fee and formal workbook consumers do
+not parse opaque target keys or query authority storage directly. `not_started` and
+`disabled` retain the frozen legacy read adapter, while an active `complete`,
+`partial_compatible`, `needs_review`, `empty`, or `authority_corrupt` root cannot
+silently return to legacy data.
+
+Fee changes are confined to the declared LLCR and specified-current CR read point.
+An included effective target supplies readings per sample; an omitted or excluded
+active-root target produces a review-required no-units context. Current Matrix sample
+quantity and per-Group-Step calculation remain unchanged, with no cross-Step
+aggregation and no Fee rule, pricing, default-fill, manual, export, or UI change.
+
+TASK_360B preview/generation now consumes the typed confirmed-plan projection through
+narrow dependency composition. Existing routes, API client behavior, artifact root,
+macro-free writer, layout, no-empty protection, and stale fingerprint flow remain
+intact. Complete output is confirmed; compatible partial/review output is marked
+`PARTIAL COMPATIBLE` with confirmed-plan revision/sequence/status and omission
+metadata. Corrupt or empty active authority creates no formal artifact. TASK_361D
+draft paths remain isolated.
+
+## Validation Performed
+
+- Re-ran a temporary backend cross-consumer suite: `73 passed`. It covers projection,
+  typed adapter, Fee contexts/draft/API, TASK_360B projection/gateway/generation/API,
+  Matrix session, and read-only confirmed Test Record preview regressions.
+- `py_compile` passed for all touched backend modules and focused tests.
+- All changed application modules are below the 500-line hard limit; the largest,
+  `confirmed_matrix_fee_draft_service.py`, is 452 lines.
+- `git diff --check` produced only existing LF/CRLF warnings; trailing-whitespace and
+  locked-path scans are clean. The candidate contains no frontend/API-client,
+  authority schema/lifecycle, TASK_361D, Fee pricing/rules/UI, generic Test Record/
+  Report, parser, LTR/public-drive, or real database/file mutation change.
+- No frontend files changed, so no frontend build is required for this backend-only
+  implementation gate.
+
+## Decision
+
+`reviewer_pass`
+
+Recommended next role/action: QA gate. Use disposable SQLite and temporary artifact
+fixtures to smoke complete, partial-compatible, corrupt, and explicit rollback
+states across Fee and TASK_360B preview/generate behavior. Do not route Integrator
+yet.
+
+Blocking summary: none. TASK_361F/G remain accepted prerequisites and are not part of
+this package.

@@ -555,10 +555,15 @@ def get_confirmed_matrix_test_record_preview_service(
 
 def get_confirmed_matrix_fee_draft_service(
     session: Session = Depends(get_session),
+    settings: Settings = Depends(lambda: get_settings()),
 ) -> ConfirmedMatrixFeeDraftService:
     """Build confirmed-authority Fee Evaluation draft read-only service."""
     return ConfirmedMatrixFeeDraftService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
+            session,
+            settings,
+        ),
     )
 
 
@@ -979,10 +984,12 @@ def get_llcr_cr_record_workbook_artifact_store(
 
 def get_llcr_cr_record_workbook_preview_service(
     session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
 ) -> LlcrCrRecordWorkbookPreviewService:
     """Build no-write preview from active confirmed Matrix contact authority."""
     return LlcrCrRecordWorkbookPreviewService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        consumer_adapter=_confirmed_contact_measurement_consumer_adapter(session, settings),
     )
 
 
@@ -994,11 +1001,27 @@ def get_llcr_cr_record_workbook_generation_service(
     return LlcrCrRecordWorkbookGenerationService(
         preview_service=LlcrCrRecordWorkbookPreviewService(
             confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+            consumer_adapter=_confirmed_contact_measurement_consumer_adapter(session, settings),
         ),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(
             settings.data_dir / "generated_llcr_cr_record_files"
         ),
+    )
+
+
+def _confirmed_contact_measurement_consumer_adapter(
+    session: Session,
+    settings: Settings,
+):
+    """Compose the formal-consumer authority boundary without route exposure."""
+    from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
+        ContactMeasurementPlanConfirmedConsumerAdapter,
+    )
+
+    return ContactMeasurementPlanConfirmedConsumerAdapter(
+        projection_service=get_contact_measurement_plan_projection_service(session, settings),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
     )
 
 
