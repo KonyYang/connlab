@@ -2,8 +2,14 @@
 
 from fastapi.testclient import TestClient
 
-from backend.api.dependencies import get_contact_measurement_plan_workspace_read_service
+from backend.api.dependencies import (
+    get_contact_measurement_plan_lifecycle_service,
+    get_contact_measurement_plan_workspace_read_service,
+)
 from backend.api.main import app
+from backend.application.contact_measurement_plan_lifecycle_service import (
+    ContactMeasurementPlanLifecycleError,
+)
 
 
 def test_workspace_endpoint_returns_operator_context_from_read_service() -> None:
@@ -22,6 +28,44 @@ def test_workspace_endpoint_returns_operator_context_from_read_service() -> None
     assert payload["matrix_binding"]["current_matrix_revision"] == 4
     assert payload["targets"][0]["group_label"] == "Qualification group"
     assert payload["impacts"][0]["candidate"]["test_item"] == "LLCR"
+    assert payload["family_id_high_water_by_kind"] == {
+        "llcr": 4,
+        "cr_specified_current": 1,
+    }
+
+
+def test_target_patch_keeps_freeform_identity_collision_as_typed_no_write_error() -> None:
+    app.dependency_overrides[get_contact_measurement_plan_lifecycle_service] = (
+        lambda: _ConflictingLifecycleService()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.patch(
+                "/api/projects/P1/contact-measurement-plan/revisions/draft-1/targets",
+                json={
+                    "actor": "operator",
+                    "expected_revision_fingerprint": "fingerprint-1",
+                    "stable_target_key": "cmp-target:v1|group:cg-1|row:cr-1|step:1|suffix:",
+                    "included": True,
+                    "families": [{
+                        "family_id": "ff-llcr-2",
+                        "label": "High Power",
+                        "count_per_sample": 1,
+                        "record_label": "High Power record",
+                        "record_prefix": "HP",
+                        "included": True,
+                        "is_custom": True,
+                    }],
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "contact_measurement_plan_conflict",
+        "message": "family_identity_collision: issued family id cannot change label or prefix.",
+    }
 
 
 class _WorkspaceReadService:
@@ -89,4 +133,12 @@ class _WorkspaceReadService:
                 "readings_by_kind": {"llcr": 2, "cr_specified_current": None},
             },
             "diagnostics": ["Contact measurement changes require review."],
+            "family_id_high_water_by_kind": {"llcr": 4, "cr_specified_current": 1},
         }
+
+
+class _ConflictingLifecycleService:
+    def set_target_inclusion(self, *args, **kwargs) -> None:
+        raise ContactMeasurementPlanLifecycleError(
+            "family_identity_collision: issued family id cannot change label or prefix."
+        )

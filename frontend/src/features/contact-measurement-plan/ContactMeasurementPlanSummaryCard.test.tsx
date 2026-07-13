@@ -53,5 +53,6 @@ function workspace(): ContactMeasurementPlanWorkspace {
       readings_by_kind: { llcr: null, cr_specified_current: 2 },
     },
     diagnostics: [],
+    family_id_high_water_by_kind: { llcr: 0, cr_specified_current: 0 },
   };
 }

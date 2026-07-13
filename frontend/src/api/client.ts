@@ -2570,6 +2570,10 @@ export type ContactMeasurementPlanWorkspace = {
     readings_by_kind: Record<string, number | null>;
   };
   diagnostics: string[];
+  family_id_high_water_by_kind: {
+    llcr: number;
+    cr_specified_current: number;
+  };
 };
 
 export type DraftMeasurementPlanWorkbookPreview = {

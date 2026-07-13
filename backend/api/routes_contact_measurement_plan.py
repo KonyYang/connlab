@@ -97,6 +97,11 @@ class ContactMeasurementPlanWorkspaceSummaryResponse(BaseModel):
     readings_by_kind: dict[str, int | None] = Field(default_factory=dict)
 
 
+class ContactMeasurementPlanFamilyHighWaterResponse(BaseModel):
+    llcr: int = Field(default=0, ge=0)
+    cr_specified_current: int = Field(default=0, ge=0)
+
+
 class EffectiveContactMeasurementPlanProjectionResponse(BaseModel):
     status: str
     project_id: str
@@ -121,6 +126,9 @@ class ContactMeasurementPlanWorkspaceResponse(BaseModel):
     impacts: list[ContactMeasurementPlanImpactResponse] = Field(default_factory=list)
     summary: ContactMeasurementPlanWorkspaceSummaryResponse
     diagnostics: list[str] = Field(default_factory=list)
+    family_id_high_water_by_kind: ContactMeasurementPlanFamilyHighWaterResponse = Field(
+        default_factory=ContactMeasurementPlanFamilyHighWaterResponse
+    )
 
 
 class ContactMeasurementPlanSummaryResponse(BaseModel):

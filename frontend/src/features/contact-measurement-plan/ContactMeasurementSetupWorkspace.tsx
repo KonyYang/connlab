@@ -85,8 +85,12 @@ export function ContactMeasurementSetupWorkspace({
               target={model.selectedTarget}
               disabled={controlsBusy}
               onChange={model.updateSelectedTarget}
-              onAddCustomFamily={model.addCustomFamily}
-              onRemoveCustomFamily={model.removeCustomFamily}
+              onAddFreeformFamily={model.addFreeformFamily}
+              onRemoveFamily={model.removeFamily}
+              onMoveFamily={model.moveFamily}
+              onResolvePrefix={model.resolveSelectedFamilyPrefix}
+              onFinalizeLabel={model.finalizeSelectedFamilyLabel}
+              onApplyToBlankTargets={() => void model.applySelectedFamiliesToBlankTargets()}
             />
           </div>
           {model.workspace.impacts.length > 0 ? (
@@ -122,14 +126,22 @@ function TargetEditor({
   target,
   disabled,
   onChange,
-  onAddCustomFamily,
-  onRemoveCustomFamily,
+  onAddFreeformFamily,
+  onRemoveFamily,
+  onMoveFamily,
+  onResolvePrefix,
+  onFinalizeLabel,
+  onApplyToBlankTargets,
 }: {
   target: ContactMeasurementPlanTarget | null;
   disabled: boolean;
   onChange: (update: (target: ContactMeasurementPlanTarget) => ContactMeasurementPlanTarget) => void;
-  onAddCustomFamily: () => void;
-  onRemoveCustomFamily: (familyId: string) => void;
+  onAddFreeformFamily: (template?: "high_power" | "low_power" | "signal") => void;
+  onRemoveFamily: (familyId: string) => void;
+  onMoveFamily: (familyId: string, direction: -1 | 1) => void;
+  onResolvePrefix: (familyId: string) => void;
+  onFinalizeLabel: (familyId: string) => void;
+  onApplyToBlankTargets: () => void;
 }) {
   if (!target) return <section className="contact-measurement-target-editor"><p>Select a target.</p></section>;
   return (
@@ -148,15 +160,24 @@ function TargetEditor({
               <input aria-label={`Include ${family.label} contact family`} type="checkbox" checked={family.included} disabled={disabled} onChange={(event) => updateFamily(onChange, index, { included: event.target.checked })} />
               Include family
             </label>
-            <label>Label<input aria-label={`${family.label} label`} value={family.label} disabled={disabled} onChange={(event) => updateFamily(onChange, index, { label: event.target.value })} /></label>
-            <label>Record label<input aria-label={`${family.label} record label`} value={family.record_label} disabled={disabled} onChange={(event) => updateFamily(onChange, index, { record_label: event.target.value })} /></label>
-            <label>Count per sample<input aria-label={`${family.label} count per sample`} type="number" min="0" value={family.count_per_sample} disabled={disabled || !family.included} onChange={(event) => updateFamily(onChange, index, { count_per_sample: numberValue(event) })} /></label>
-            <label>Prefix<input aria-label={`${family.label} prefix`} value={family.record_prefix} disabled={disabled} onChange={(event) => updateFamily(onChange, index, { record_prefix: event.target.value })} /></label>
-            {family.is_custom ? <button type="button" disabled={disabled} onClick={() => onRemoveCustomFamily(family.family_id)}>Remove custom contact</button> : null}
+            <label>Label<input aria-label={`${family.label || "Blank"} label`} value={family.label} disabled={disabled} onChange={(event) => updateFamily(onChange, index, { label: event.target.value })} onBlur={() => onFinalizeLabel(family.family_id)} /></label>
+            <label>Count per sample<input aria-label={`${family.label || "Blank"} count per sample`} type="number" min={family.included ? "1" : "0"} value={family.count_per_sample} disabled={disabled || !family.included} onChange={(event) => updateFamily(onChange, index, { count_per_sample: numberValue(event) })} /></label>
+            <label>Prefix (optional)<input aria-label={`${family.label || "Blank"} prefix`} value={family.record_prefix} disabled={disabled} onChange={(event) => updateFamily(onChange, index, { record_prefix: event.target.value })} onBlur={() => onResolvePrefix(family.family_id)} /></label>
+            <div className="contact-measurement-family-actions">
+              <button type="button" disabled={disabled || index === 0} onClick={() => onMoveFamily(family.family_id, -1)}>Move up</button>
+              <button type="button" disabled={disabled || index === target.families.length - 1} onClick={() => onMoveFamily(family.family_id, 1)}>Move down</button>
+              <button type="button" disabled={disabled} onClick={() => onRemoveFamily(family.family_id)}>Remove category</button>
+            </div>
           </div>
         ))}
       </div>
-      <button type="button" disabled={disabled} onClick={onAddCustomFamily}>Add custom contact</button>
+      <div className="contact-measurement-family-actions">
+        <button type="button" disabled={disabled} onClick={() => onAddFreeformFamily()}>Add category</button>
+        <button type="button" disabled={disabled} onClick={() => onAddFreeformFamily("high_power")}>Use High Power template</button>
+        <button type="button" disabled={disabled} onClick={() => onAddFreeformFamily("low_power")}>Use Low Power template</button>
+        <button type="button" disabled={disabled} onClick={() => onAddFreeformFamily("signal")}>Use Signal template</button>
+      </div>
+      {!target.is_override ? <button type="button" disabled={disabled} onClick={onApplyToBlankTargets}>Apply to blank eligible targets</button> : null}
       <p>{`Readings per sample: ${target.families.filter((family) => family.included).reduce((sum, family) => sum + family.count_per_sample, 0)}`}</p>
     </section>
   );

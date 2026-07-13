@@ -10,25 +10,26 @@ vi.mock("./useContactMeasurementPlanModel", () => ({
 }));
 
 describe("ContactMeasurementSetupWorkspace", () => {
-  it("renders editable family fields and explicit stale recovery actions", () => {
+  it("renders freeform category controls, optional templates, and stale recovery actions", () => {
     model.current = buildModel();
 
     render(<ContactMeasurementSetupWorkspace projectId="P1" onBackToMatrix={() => {}} />);
 
     expect(screen.getByLabelText("High Power label")).toBeTruthy();
-    expect(screen.getByLabelText("High Power record label")).toBeTruthy();
     expect(screen.getByLabelText("Include High Power contact family")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add custom contact" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add category" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use High Power template" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove category" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Reload latest" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Discard local edits" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Re-apply saved edits" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add custom contact" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     fireEvent.click(screen.getByRole("button", { name: "Reload latest" }));
     fireEvent.click(screen.getByRole("button", { name: "Discard local edits" }));
     fireEvent.click(screen.getByRole("button", { name: "Re-apply saved edits" }));
 
-    expect(model.current?.addCustomFamily).toHaveBeenCalledOnce();
+    expect(model.current?.addFreeformFamily).toHaveBeenCalledOnce();
     expect(model.current?.reloadLatest).toHaveBeenCalledOnce();
     expect(model.current?.discardStaleLocalEdits).toHaveBeenCalledOnce();
     expect(model.current?.reapplySavedEdits).toHaveBeenCalledOnce();
@@ -49,8 +50,11 @@ function buildModel(): Record<string, unknown> {
     selectTarget: vi.fn(),
     updateSelectedTarget: vi.fn(),
     cancelSelectedTarget: vi.fn(),
-    addCustomFamily: vi.fn(),
-    removeCustomFamily: vi.fn(),
+    addFreeformFamily: vi.fn(),
+    removeFamily: vi.fn(),
+    moveFamily: vi.fn(),
+    resolveSelectedFamilyPrefix: vi.fn(),
+    finalizeSelectedFamilyLabel: vi.fn(),
     openDraft: vi.fn(),
     saveSelectedTarget: vi.fn(),
     saveDraft: vi.fn(),
@@ -110,5 +114,6 @@ function workspaceFixture(): ContactMeasurementPlanWorkspace {
     impacts: [],
     summary: { included_target_count: 1, total_target_count: 1, needs_review_count: 0, readings_by_kind: { llcr: 4 } },
     diagnostics: [],
+    family_id_high_water_by_kind: { llcr: 0, cr_specified_current: 0 },
   };
 }

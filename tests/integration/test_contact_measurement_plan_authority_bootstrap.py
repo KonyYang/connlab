@@ -639,7 +639,6 @@ def _clock() -> Iterator[str]:
         ]
     ).__next__
 
-
 def _ids() -> Iterator[str]:
     return iter(
         [

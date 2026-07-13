@@ -15,6 +15,11 @@ from backend.application.contact_measurement_plan_revision_snapshot_helpers impo
     copy_targets,
     persist_impacts,
 )
+from backend.application.contact_measurement_plan_family_validation import (
+    ContactMeasurementPlanFamilyValidationError,
+    validate_contact_measurement_families,
+    validate_sibling_freeform_family_authorities,
+)
 from backend.application.contact_measurement_plan_revision_fingerprint import (
     editable_revision_fingerprint,
 )
@@ -283,12 +288,23 @@ class ContactMeasurementPlanLifecycleService:
             raise ContactMeasurementPlanLifecycleError(
                 "An exclusion reason is required when a target is excluded."
             )
-        if families is not None:
-            _validate_families(families)
         root = self._repository.get_root(project_id)
         assert root is not None
         now = self._clock()
         with self._repository.transaction():
+            if families is not None:
+                try:
+                    validate_contact_measurement_families(families)
+                    validate_sibling_freeform_family_authorities(
+                        families,
+                        self._repository.family_authorities_for_revision_kind(
+                            revision_id,
+                            target.contact_kind,
+                            target.measurement_plan_target_snapshot_id,
+                        ),
+                    )
+                except ContactMeasurementPlanFamilyValidationError as exc:
+                    raise ContactMeasurementPlanLifecycleError(str(exc)) from exc
             target.included = included
             target.coverage_state = "included" if included else "excluded"
             target.exclusion_reason = None if included else exclusion_reason.strip()
@@ -429,22 +445,3 @@ class ContactMeasurementPlanLifecycleService:
 
 def _matrix_fingerprint(snapshot) -> str:
     return f"{snapshot.version.confirmed_matrix_id}:{snapshot.version.confirmed_revision}"
-
-
-def _validate_families(families: tuple[dict[str, object], ...]) -> None:
-    ids: set[str] = set()
-    for family in families:
-        family_id = str(family["family_id"]).strip()
-        if not family_id or family_id in ids:
-            raise ContactMeasurementPlanLifecycleError(
-                "Contact family ids must be nonblank and unique."
-            )
-        ids.add(family_id)
-        if not str(family["label"]).strip() or not str(family["record_prefix"]).strip():
-            raise ContactMeasurementPlanLifecycleError(
-                "Contact family label and record prefix are required."
-            )
-        if int(family["count_per_sample"]) < 0:
-            raise ContactMeasurementPlanLifecycleError(
-                "Contact family count per sample must be non-negative."
-            )

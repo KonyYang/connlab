@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from collections.abc import Iterator
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,6 +17,9 @@ from backend.infrastructure.storage.models_contact_measurement_plan_authority im
     MeasurementPlanRootModel,
     MeasurementPlanTargetSnapshotModel,
 )
+
+
+_FREEFORM_FAMILY_ID = re.compile(r"ff-(?P<kind>llcr|cr)-(?P<number>[1-9][0-9]*)")
 
 
 class ContactMeasurementPlanAuthorityRepository:
@@ -74,6 +78,63 @@ class ContactMeasurementPlanAuthorityRepository:
             .order_by(MeasurementPlanFamilySnapshotModel.family_ordinal)
         )
         return list(self._session.scalars(statement).all())
+
+    def family_authorities_for_revision_kind(
+        self,
+        revision_id: str,
+        contact_kind: str,
+        excluding_target_id: str,
+    ) -> list[tuple[str, str, str]]:
+        """Return sibling freeform semantics before one target replacement."""
+        statement = (
+            select(
+                MeasurementPlanFamilySnapshotModel.family_id,
+                MeasurementPlanFamilySnapshotModel.label,
+                MeasurementPlanFamilySnapshotModel.record_prefix,
+            )
+            .join(
+                MeasurementPlanTargetSnapshotModel,
+                MeasurementPlanTargetSnapshotModel.measurement_plan_target_snapshot_id
+                == MeasurementPlanFamilySnapshotModel.measurement_plan_target_snapshot_id,
+            )
+            .where(
+                MeasurementPlanTargetSnapshotModel.measurement_plan_revision_id
+                == revision_id,
+                MeasurementPlanTargetSnapshotModel.contact_kind == contact_kind,
+                MeasurementPlanTargetSnapshotModel.measurement_plan_target_snapshot_id
+                != excluding_target_id,
+            )
+        )
+        return list(self._session.execute(statement).all())
+
+    def family_id_high_water_by_kind(self, root_id: str) -> dict[str, int]:
+        """Read historical freeform issuances without changing any authority rows."""
+        statement = (
+            select(
+                MeasurementPlanTargetSnapshotModel.contact_kind,
+                MeasurementPlanFamilySnapshotModel.family_id,
+            )
+            .join(
+                MeasurementPlanFamilySnapshotModel,
+                MeasurementPlanFamilySnapshotModel.measurement_plan_target_snapshot_id
+                == MeasurementPlanTargetSnapshotModel.measurement_plan_target_snapshot_id,
+            )
+            .join(
+                MeasurementPlanRevisionModel,
+                MeasurementPlanRevisionModel.measurement_plan_revision_id
+                == MeasurementPlanTargetSnapshotModel.measurement_plan_revision_id,
+            )
+            .where(MeasurementPlanRevisionModel.measurement_plan_root_id == root_id)
+        )
+        high_water = {"llcr": 0, "cr_specified_current": 0}
+        for contact_kind, family_id in self._session.execute(statement):
+            match = _FREEFORM_FAMILY_ID.fullmatch(family_id)
+            if match is None:
+                continue
+            expected_kind = "llcr" if match.group("kind") == "llcr" else "cr_specified_current"
+            if contact_kind == expected_kind:
+                high_water[expected_kind] = max(high_water[expected_kind], int(match.group("number")))
+        return high_water
 
     def impacts(self, revision_id: str) -> list[MeasurementPlanImpactModel]:
         statement = (

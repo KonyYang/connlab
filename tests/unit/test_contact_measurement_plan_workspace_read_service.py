@@ -86,6 +86,10 @@ def test_workspace_read_enriches_target_and_candidate_context_without_writes() -
         "needs_review_count": 1,
         "readings_by_kind": {"llcr": 4, "cr_specified_current": None},
     }
+    assert workspace["family_id_high_water_by_kind"] == {
+        "llcr": 3,
+        "cr_specified_current": 0,
+    }
     assert repository.write_calls == 0
 
 
@@ -95,6 +99,7 @@ class _Repository:
     def get_root(self, project_id: str):
         assert project_id == "P1"
         return SimpleNamespace(
+            measurement_plan_root_id="root-1",
             active_confirmed_revision_id="r-confirmed",
             editable_revision_id="r-draft",
         )
@@ -162,6 +167,10 @@ class _Repository:
                 reason="A new Matrix target needs review.",
             )
         ]
+
+    def family_id_high_water_by_kind(self, root_id: str):
+        assert root_id == "root-1"
+        return {"llcr": 3, "cr_specified_current": 0}
 
 
 class _ConfirmedStore:

@@ -66,6 +66,9 @@ class ContactMeasurementPlanWorkspaceReadService:
             "impacts": impacts,
             "summary": _summary(targets, open_review_count),
             "diagnostics": _diagnostics(status, current_matrix),
+            "family_id_high_water_by_kind": self._repository.family_id_high_water_by_kind(
+                root.measurement_plan_root_id
+            ),
         }
 
     def get_summary(self, project_id: str) -> dict[str, object]:
@@ -103,6 +106,7 @@ def _empty_workspace(
         "impacts": [],
         "summary": _summary([], 0),
         "diagnostics": list(diagnostics),
+        "family_id_high_water_by_kind": {"llcr": 0, "cr_specified_current": 0},
     }
 
 
