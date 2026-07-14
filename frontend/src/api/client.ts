@@ -4329,3 +4329,75 @@ export function fetchConfirmedMatrixAuthorityHistory(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/authority-history`
   );
 }
+
+export type ProjectPointProfileCategory = {
+  category_id: string | null;
+  category_ordinal: number;
+  label: string;
+  count_per_sample: number;
+  record_prefix: string;
+  included: boolean;
+};
+
+export type ProjectPointProfileRevision = {
+  revision_id: string;
+  revision_sequence: number;
+  state: string;
+  fingerprint: string;
+  created_at: string;
+  confirmed_at: string | null;
+  categories: ProjectPointProfileCategory[];
+  points_per_sample: number;
+};
+
+export type ProjectPointProfileWorkspace = {
+  status: string;
+  project_id: string;
+  editable_revision: ProjectPointProfileRevision | null;
+  confirmed_revision: ProjectPointProfileRevision | null;
+  has_unconfirmed_draft: boolean;
+  legacy_uniform_suggestion: ProjectPointProfileCategory[] | null;
+  diagnostics: string[];
+};
+
+export type ProjectPointProfileSummary = {
+  status: string;
+  project_id: string;
+  confirmed_revision: ProjectPointProfileRevision | null;
+  points_per_sample: number | null;
+  has_unconfirmed_draft: boolean;
+  diagnostics: string[];
+};
+
+export type ProjectPointProfileCommand = {
+  actor: string;
+  expected_revision_id: string | null;
+  expected_revision_fingerprint: string | null;
+  categories: ProjectPointProfileCategory[];
+};
+
+export function fetchProjectPointProfileWorkspace(projectId: string): Promise<ProjectPointProfileWorkspace> {
+  return requestJson<ProjectPointProfileWorkspace>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-point-profile/workspace`
+  );
+}
+
+export function fetchProjectPointProfileSummary(projectId: string): Promise<ProjectPointProfileSummary> {
+  return requestJson<ProjectPointProfileSummary>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-point-profile/summary`
+  );
+}
+
+export function saveProjectPointProfileDraft(projectId: string, command: ProjectPointProfileCommand): Promise<ProjectPointProfileRevision> {
+  return requestJson<ProjectPointProfileRevision>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-point-profile/draft`,
+    { method: "PUT", body: JSON.stringify(command) }
+  );
+}
+
+export function confirmProjectPointProfile(projectId: string, command: ProjectPointProfileCommand): Promise<ProjectPointProfileRevision> {
+  return requestJson<ProjectPointProfileRevision>(
+    `/api/projects/${encodeURIComponent(projectId)}/contact-point-profile/confirm`,
+    { method: "POST", body: JSON.stringify(command) }
+  );
+}

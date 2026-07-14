@@ -1,4 +1,5 @@
 import { ContactMeasurementSetupWorkspace } from "../features/contact-measurement-plan/ContactMeasurementSetupWorkspace";
+import "../contact-measurement-plan.css";
 
 export function ProjectContactMeasurementSetupPage({
   projectId,

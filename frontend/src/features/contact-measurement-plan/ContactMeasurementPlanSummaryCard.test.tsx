@@ -1,58 +1,41 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { ContactMeasurementPlanWorkspace } from "../../api/client";
+import type { ProjectPointProfileSummary } from "../../api/client";
 import { ContactMeasurementPlanSummaryCard } from "./ContactMeasurementPlanSummaryCard";
 
 describe("ContactMeasurementPlanSummaryCard", () => {
-  it("shows a compact review summary and opens the dedicated setup workspace", async () => {
+  it("shows only confirmed Point Profile values and opens the dedicated setup workspace", async () => {
     const user = userEvent.setup();
     const onOpenSetup = vi.fn();
 
     render(
       <ContactMeasurementPlanSummaryCard
-        workspace={workspace()}
+        summary={summary()}
         loading={false}
         onOpenSetup={onOpenSetup}
-        compatibilityRow={<span>Specialized record workbook</span>}
       />
     );
 
-    expect(screen.getByText("Needs review")).toBeTruthy();
-    expect(screen.getByText("2 / 3 targets")).toBeTruthy();
-    expect(screen.getByText("LLCR: -")).toBeTruthy();
-    expect(screen.getByText("Specialized record workbook")).toBeTruthy();
+    expect(screen.getByText("Confirmed revision 1")).toBeTruthy();
+    expect(screen.getByText("33 points / sample")).toBeTruthy();
+    expect(screen.getByText("High Power: 4")).toBeTruthy();
+    expect(screen.queryByText(/targets/i)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Contact measurement setup" }));
     expect(onOpenSetup).toHaveBeenCalledOnce();
   });
 });
 
-function workspace(): ContactMeasurementPlanWorkspace {
+function summary(): ProjectPointProfileSummary {
   return {
-    status: "needs_review",
+    status: "draft",
     project_id: "P1",
-    active_confirmed_revision_id: "confirmed-1",
-    editable_revision_id: "draft-2",
-    editable_revision_state: "needs_review",
-    editable_revision_fingerprint: "fingerprint-2",
-    revision: { revision_id: "draft-2", revision_sequence: 2, state: "needs_review", fingerprint: "fingerprint-2" },
-    matrix_binding: {
-      base_confirmed_matrix_id: "cmv-1",
-      base_matrix_revision: 1,
-      current_confirmed_matrix_id: "cmv-2",
-      current_matrix_revision: 2,
-      matrix_binding_fingerprint: "cmv-2:2",
+    confirmed_revision: {
+      revision_id: "confirmed-1", revision_sequence: 1, state: "confirmed", fingerprint: "fingerprint-1",
+      created_at: "2026-07-14T00:00:00Z", confirmed_at: "2026-07-14T00:00:00Z", points_per_sample: 33,
+      categories: [{ category_id: "ppc-1", category_ordinal: 0, label: "High Power", count_per_sample: 4, record_prefix: "HP", included: true }],
     },
-    targets: [],
-    impacts: [],
-    summary: {
-      included_target_count: 2,
-      total_target_count: 3,
-      needs_review_count: 1,
-      readings_by_kind: { llcr: null, cr_specified_current: 2 },
-    },
-    diagnostics: [],
-    family_id_high_water_by_kind: { llcr: 0, cr_specified_current: 0 },
+    points_per_sample: 33, has_unconfirmed_draft: true, diagnostics: [],
   };
 }

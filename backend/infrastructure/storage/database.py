@@ -18,6 +18,9 @@ from backend.infrastructure.storage.matrix_contact_measurement_schema_migration 
 from backend.infrastructure.storage.contact_measurement_plan_authority_schema_migration import (
     migrate_contact_measurement_plan_authority_schema,
 )
+from backend.infrastructure.storage.contact_point_profile_schema_migration import (
+    bootstrap_contact_point_profile_schema, migrate_contact_point_profile_schema,
+)
 from backend.shared.config import Settings
 
 
@@ -56,8 +59,13 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models_project_matrix_draft  # noqa: F401
     from backend.infrastructure.storage import models_matrix_source  # noqa: F401
     from backend.infrastructure.storage import models_contact_measurement_plan_authority  # noqa: F401
+    from backend.infrastructure.storage import models_contact_point_profile  # noqa: F401
 
-    Base.metadata.create_all(bind=engine)
+    profile_tables = {
+        "contact_point_profile_roots", "contact_point_profile_revisions", "contact_point_profile_categories",
+    }
+    non_profile_tables = [table for table in Base.metadata.tables.values() if table.name not in profile_tables]
+    Base.metadata.create_all(bind=engine, tables=non_profile_tables)
     _migrate_project_no_optional(engine)
     _migrate_file_asset_provenance_columns(engine)
     _migrate_project_output_record_file_metadata(engine)
@@ -68,6 +76,7 @@ def init_db(engine: Engine) -> None:
     migrate_matrix_schedule_planning_columns(engine)
     migrate_matrix_contact_measurement_columns(engine)
     migrate_contact_measurement_plan_authority_schema(engine)
+    bootstrap_contact_point_profile_schema(engine)
     _migrate_source_matrix_import_commit_fingerprint(engine)
     _migrate_source_matrix_import_preview_payload(engine)
     _migrate_source_matrix_row_detail_columns(engine)

@@ -877,6 +877,33 @@ def get_contact_measurement_plan_projection_service(
     )
 
 
+def get_contact_point_profile_read_service(
+    session: Session = Depends(get_session),
+):
+    """Compose the project-only Point Profile read boundary."""
+    from backend.application.contact_point_profile_legacy_suggestion import ContactPointProfileLegacySuggestionService
+    from backend.application.contact_point_profile_read_service import ContactPointProfileReadService
+    from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import ContactMeasurementPlanAuthorityRepository
+    from backend.infrastructure.storage.repositories.contact_point_profile_authority import ContactPointProfileAuthorityRepository
+    return ContactPointProfileReadService(
+        ContactPointProfileAuthorityRepository(session),
+        ContactPointProfileLegacySuggestionService(ContactMeasurementPlanAuthorityRepository(session)),
+    )
+
+
+def get_contact_point_profile_lifecycle_service(
+    session: Session = Depends(get_session),
+):
+    """Compose the narrowly scoped Point Profile lifecycle commands."""
+    from datetime import datetime, timezone
+    from backend.application.contact_point_profile_lifecycle_service import ContactPointProfileLifecycleService
+    from backend.infrastructure.storage.repositories.contact_point_profile_authority import ContactPointProfileAuthorityRepository
+    return ContactPointProfileLifecycleService(
+        ContactPointProfileAuthorityRepository(session),
+        clock=lambda: datetime.now(timezone.utc).isoformat(),
+    )
+
+
 def get_contact_measurement_plan_workspace_read_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),

@@ -1,61 +1,20 @@
-import type { ReactNode } from "react";
-import type { ContactMeasurementPlanWorkspace } from "../../api/client";
-import { selectContactMeasurementPlanSummary } from "./contactMeasurementPlanSelectors";
+import type { ProjectPointProfileSummary } from "../../api/client";
 import "../../contact-measurement-plan.css";
 
 type ContactMeasurementPlanSummaryCardProps = {
-  workspace: ContactMeasurementPlanWorkspace | null;
+  summary: ProjectPointProfileSummary | null;
   loading: boolean;
   onOpenSetup: () => void;
-  compatibilityRow: ReactNode;
 };
 
-export function ContactMeasurementPlanSummaryCard({
-  workspace,
-  loading,
-  onOpenSetup,
-  compatibilityRow,
-}: ContactMeasurementPlanSummaryCardProps) {
-  const view = selectContactMeasurementPlanSummary(workspace);
-  const matrixRevision = workspace?.matrix_binding?.current_matrix_revision ?? "-";
-  const planRevision = workspace?.revision?.revision_sequence ?? "-";
-  return (
-    <section className="contact-measurement-summary" aria-label="Contact Measurement Plan">
-      <div className="contact-measurement-summary-header">
-        <div>
-          <h3>Contact Measurement Plan</h3>
-          <span>{view.statusLabel}</span>
-        </div>
-        <button
-          type="button"
-          disabled={loading || !view.canOpenSetup}
-          onClick={onOpenSetup}
-        >
-          Contact measurement setup
-        </button>
-      </div>
-      <dl className="contact-measurement-summary-facts">
-        <div>
-          <dt>Coverage</dt>
-          <dd>
-            {workspace
-              ? `${workspace.summary.included_target_count} / ${workspace.summary.total_target_count} targets`
-              : "-"}
-          </dd>
-        </div>
-        <div>
-          <dt>Readings</dt>
-          <dd>{`LLCR: ${view.readings.llcr}`}</dd>
-          <dd>{`CR: ${view.readings.crSpecifiedCurrent}`}</dd>
-        </div>
-        <div>
-          <dt>Revisions</dt>
-          <dd>{`Plan ${planRevision}`}</dd>
-          <dd>{`Matrix ${matrixRevision}`}</dd>
-        </div>
-      </dl>
-      {view.warning ? <p className="contact-measurement-summary-warning" role="status">{view.warning}</p> : null}
-      <div className="contact-measurement-compatibility-row">{compatibilityRow}</div>
-    </section>
-  );
+export function ContactMeasurementPlanSummaryCard({ summary, loading, onOpenSetup }: ContactMeasurementPlanSummaryCardProps) {
+  const confirmed = summary?.confirmed_revision ?? null;
+  return <section className="contact-measurement-summary" aria-label="Project point profile">
+    <div className="contact-measurement-summary-header">
+      <div><h3>Project point profile</h3><span>{confirmed ? `Confirmed revision ${confirmed.revision_sequence}` : "Not confirmed"}</span></div>
+      <button type="button" disabled={loading} onClick={onOpenSetup}>Contact measurement setup</button>
+    </div>
+    {confirmed ? <><p>{`${confirmed.points_per_sample} points / sample`}</p><ul className="contact-measurement-summary-categories">{confirmed.categories.filter((category) => category.included).map((category) => <li key={category.category_id}>{`${category.label}: ${category.count_per_sample}`}</li>)}</ul></> : <p>Confirm a project point profile to make it available to Matrix summary.</p>}
+    {summary?.has_unconfirmed_draft ? <p className="contact-measurement-summary-warning" role="status">A newer Point Profile draft is not confirmed.</p> : null}
+  </section>;
 }

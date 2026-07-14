@@ -133,6 +133,7 @@ from backend.api.routes_test_record_fee_document_generation import (
     router as test_record_fee_document_generation_router,
 )
 from backend.api.routes_contact_measurement_plan import router as contact_measurement_plan_router
+from backend.api.routes_contact_point_profile import router as contact_point_profile_router
 from backend.api.routes_contact_measurement_plan_draft_workbook import (
     router as contact_measurement_plan_draft_workbook_router,
 )
@@ -194,6 +195,7 @@ app.include_router(project_application_form_write_back_router)
 app.include_router(test_record_fee_dataset_preview_router)
 app.include_router(test_record_fee_document_generation_router)
 app.include_router(contact_measurement_plan_router)
+app.include_router(contact_point_profile_router)
 app.include_router(contact_measurement_plan_draft_workbook_router)
 
 

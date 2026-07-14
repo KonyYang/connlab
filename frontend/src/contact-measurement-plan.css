@@ -167,6 +167,55 @@
   margin: 0;
 }
 
+.project-point-profile-editor,
+.project-point-profile-rows,
+.project-point-profile-row {
+  display: grid;
+  gap: 10px;
+}
+
+.project-point-profile-editor {
+  min-width: 0;
+}
+
+.project-point-profile-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, #d8e0ea);
+}
+
+.project-point-profile-header h2,
+.project-point-profile-header p {
+  margin: 0;
+}
+
+.project-point-profile-header p {
+  color: var(--ink-muted, #647084);
+  font-weight: 700;
+}
+
+.project-point-profile-row {
+  grid-template-columns: minmax(70px, auto) minmax(160px, 1fr) minmax(110px, 0.45fr) minmax(110px, 0.45fr) auto;
+  align-items: end;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border, #d8e0ea);
+}
+
+.project-point-profile-row label,
+.project-point-profile-row > div {
+  display: grid;
+  gap: 5px;
+}
+
+.project-point-profile-row > div {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: end;
+}
+
 @media (max-width: 760px) {
   .contact-measurement-summary-header,
   .contact-measurement-setup-header,
@@ -177,7 +226,14 @@
 
   .contact-measurement-summary-facts,
   .contact-measurement-setup-grid,
-  .contact-measurement-family-list > div {
+  .contact-measurement-family-list > div,
+  .project-point-profile-row {
     grid-template-columns: 1fr;
+  }
+
+  .project-point-profile-row > div {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(3, max-content);
   }
 }

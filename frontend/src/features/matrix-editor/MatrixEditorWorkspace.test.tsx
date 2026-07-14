@@ -29,6 +29,10 @@ const apiMocks = vi.hoisted(() => ({
   refreshContactMeasurementPlanImpacts: vi.fn(),
   acceptCompatibleContactMeasurementPlanSuggestions: vi.fn(),
   rebindContactMeasurementPlanTarget: vi.fn(),
+  fetchProjectPointProfileWorkspace: vi.fn(),
+  fetchProjectPointProfileSummary: vi.fn(),
+  saveProjectPointProfileDraft: vi.fn(),
+  confirmProjectPointProfile: vi.fn(),
   matrixPreviewPdfUrl: vi.fn((token: string) => `/api/pdf/${token}`),
 }));
 
@@ -82,6 +86,10 @@ vi.mock("../../api/client", () => {
     refreshContactMeasurementPlanImpacts: apiMocks.refreshContactMeasurementPlanImpacts,
     acceptCompatibleContactMeasurementPlanSuggestions: apiMocks.acceptCompatibleContactMeasurementPlanSuggestions,
     rebindContactMeasurementPlanTarget: apiMocks.rebindContactMeasurementPlanTarget,
+    fetchProjectPointProfileWorkspace: apiMocks.fetchProjectPointProfileWorkspace,
+    fetchProjectPointProfileSummary: apiMocks.fetchProjectPointProfileSummary,
+    saveProjectPointProfileDraft: apiMocks.saveProjectPointProfileDraft,
+    confirmProjectPointProfile: apiMocks.confirmProjectPointProfile,
     matrixPreviewPdfUrl: apiMocks.matrixPreviewPdfUrl,
     isProjectLifecycleReadonlyErrorDetail: (detail: unknown) =>
       Boolean(detail) &&
@@ -320,6 +328,18 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       },
       diagnostics: [],
     });
+    apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue({
+      status: "not_started",
+      project_id: "P1",
+      editable_revision: null,
+      confirmed_revision: null,
+      has_unconfirmed_draft: false,
+      legacy_suggestion: null,
+    });
+    apiMocks.fetchProjectPointProfileSummary.mockResolvedValue({
+      status: "not_started", project_id: "P1", confirmed_revision: null,
+      points_per_sample: null, has_unconfirmed_draft: false, diagnostics: [],
+    });
     apiMocks.saveMatrixStepQuantities.mockImplementation(async (_projectId, draftId, input) => ({
       project_id: "P1",
       project_matrix_draft_id: draftId,
@@ -494,16 +514,13 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(apiMocks.createMatrixRevisionDraft).not.toHaveBeenCalled();
   });
 
-  it("keeps confirmed specialized record preview available while draftless contact-plan editing is locked", async () => {
+  it("keeps the Matrix summary free of specialized workbook controls", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     expect(await screen.findByRole("button", { name: "Open editable Matrix draft" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
-    const preview = screen.getByRole("button", { name: "Preview specialized record" });
-    expect(preview).toHaveProperty("disabled", false);
-    fireEvent.click(preview);
-
-    await waitFor(() => expect(apiMocks.previewLlcrCrRecordWorkbook).toHaveBeenCalledWith("P1"));
+    expect(screen.queryByRole("button", { name: "Preview specialized record" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Generate workbook" })).toBeNull();
   });
 
   it("loads and saves Matrix Step quantity setup for the selected group", async () => {
@@ -664,7 +681,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("Contact Measurement Plan")).toBeTruthy();
+    expect(await screen.findByText("Project point profile")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save contact plan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Apply to blank contact targets" })).toBeNull();
@@ -719,7 +736,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("Contact Measurement Plan")).toBeTruthy();
+    expect(await screen.findByText("Project point profile")).toBeTruthy();
     expect(screen.queryByLabelText("LLCR High Power Pin count per sample")).toBeNull();
     expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
   });
@@ -807,7 +824,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("Contact Measurement Plan")).toBeTruthy();
+    expect(await screen.findByText("Project point profile")).toBeTruthy();
     expect(screen.queryByLabelText("LLCR High Power Pin count per sample")).toBeNull();
     expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
   });
