@@ -80,9 +80,12 @@ def point_profile_fingerprint(
     root_id: str,
     revision_id: str,
     categories: Iterable[Mapping[str, object]],
+    *,
+    version: str = "point-profile:v1",
 ) -> str:
     """Hash the ordered persisted category snapshot for stale-write detection."""
     payload = {
+        "version": version,
         "root_id": root_id,
         "revision_id": revision_id,
         "categories": [dict(item) for item in categories],

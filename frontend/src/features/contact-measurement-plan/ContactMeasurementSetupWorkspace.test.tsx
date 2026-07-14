@@ -9,38 +9,46 @@ vi.mock("./useProjectPointProfileModel", () => ({
 }));
 
 describe("ContactMeasurementSetupWorkspace", () => {
-  it("renders the Profile-first editor with a blank category and optional templates", () => {
+  it("renders the compact confirm-only editor and cancels without draft controls", () => {
     model.current = buildModel();
 
     render(<ContactMeasurementSetupWorkspace projectId="P1" onBackToMatrix={() => {}} />);
 
     expect(screen.getByRole("heading", { name: "Contact measurement setup" })).toBeTruthy();
-    expect(screen.getByLabelText("Category")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add category" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "High Power template" })).toBeTruthy();
+    expect(screen.getByLabelText("Prefix 1")).toBeTruthy();
+    expect(screen.getByLabelText("Test points 1")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add row" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete point profile row 1" }).getAttribute("title")).toBe("Delete row");
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save draft" })).toBeNull();
     expect(screen.queryByText("Target coverage")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
-    fireEvent.click(screen.getByRole("button", { name: "High Power template" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add row" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(model.current?.addCategory).toHaveBeenCalledOnce();
-    expect(model.current?.addTemplate).toHaveBeenCalledWith("high_power");
-    expect(model.current?.saveDraft).toHaveBeenCalledOnce();
+  });
+
+  it("disables Add row at the 256-category limit", () => {
+    model.current = buildModel(256);
+
+    render(<ContactMeasurementSetupWorkspace projectId="P1" onBackToMatrix={() => {}} />);
+
+    expect(screen.getByRole("button", { name: "Add row" }).hasAttribute("disabled")).toBe(true);
   });
 });
 
-function buildModel(): Record<string, unknown> {
+function buildModel(rowCount = 1): Record<string, unknown> {
   return {
     workspace: { has_unconfirmed_draft: false, editable_revision: null },
-    rows: [{
+    rows: Array.from({ length: rowCount }, (_, index) => ({
       category_id: null,
-      ordinal: 0,
+      ordinal: index,
       label: "",
       count_per_sample: 0,
       record_prefix: "",
       included: true,
-    }],
+    })),
     loading: false,
     busy: null,
     error: null,

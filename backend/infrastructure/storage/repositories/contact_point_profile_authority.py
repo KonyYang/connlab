@@ -68,6 +68,12 @@ class ContactPointProfileAuthorityRepository:
         )
         return set(self._session.scalars(statement).all())
 
+    def highest_revision_sequence(self, root_id: str) -> int:
+        statement = select(ContactPointProfileRevisionModel.revision_sequence).where(
+            ContactPointProfileRevisionModel.contact_point_profile_root_id == root_id
+        )
+        return max(self._session.scalars(statement).all(), default=0)
+
     def replace_categories(self, revision_id: str, categories: Sequence[dict[str, object]], id_factory) -> None:
         for row in self.categories(revision_id):
             self._session.delete(row)
@@ -84,6 +90,7 @@ class ContactPointProfileAuthorityRepository:
                 record_prefix=str(category["record_prefix"]),
                 normalized_prefix_key=str(category["normalized_prefix_key"]),
                 included=bool(category["included"]),
+                point_expression=category.get("point_expression"),
             ))
 
     def add(self, *rows: object) -> None:

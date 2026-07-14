@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.application.contact_point_profile_lifecycle_service import ContactPointProfileLifecycleService
@@ -83,11 +85,93 @@ def test_category_identity_is_monotonic_project_owned_and_stale_safe(tmp_path: P
         engine.dispose()
 
 
+def test_direct_confirm_canonicalizes_expressions_and_supersedes_prior_confirmed(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        lifecycle = ContactPointProfileLifecycleService(repository, clock=lambda: "2026-07-15T00:00:00Z", id_factory=_ids())
+        first = lifecycle.confirm_direct("P1", None, None, _direct_rows(), "operator")
+        assert [row["point_expression"] for row in first["categories"]] == ["1-4", "1-5", "1-24"]
+        assert first["points_per_sample"] == 33
+        second = lifecycle.confirm_direct(
+            "P1", first["revision_id"], first["fingerprint"],
+            [{"category_id": first["categories"][0]["category_id"], "prefix": "HP", "point_expression": "1-3,5"}], "operator",
+        )
+        assert second["categories"][0]["point_expression"] == "1-3,5"
+        assert second["categories"][0]["count_per_sample"] == 4
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_direct_confirm_rejects_duplicate_retained_ids_without_new_revision(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        lifecycle = ContactPointProfileLifecycleService(repository, clock=lambda: "2026-07-15T00:00:00Z", id_factory=_ids())
+        first = lifecycle.confirm_direct("P1", None, None, _direct_rows(), "operator")
+        duplicate = first["categories"][0]["category_id"]
+        before = _authority_counts(session)
+        with pytest.raises(ContactPointProfileLifecycleError, match="unique"):
+            lifecycle.confirm_direct("P1", first["revision_id"], first["fingerprint"], [
+                {"category_id": duplicate, "prefix": "HP", "point_expression": "1-4"},
+                {"category_id": duplicate, "prefix": "LP", "point_expression": "1-5"},
+            ], "operator")
+        assert repository.active_revision("P1").contact_point_profile_revision_id == first["revision_id"]
+        assert _authority_counts(session) == before
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_direct_confirm_allows_256_categories_and_rejects_257_without_writes(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        identifiers = iter(range(1, 600))
+        lifecycle = ContactPointProfileLifecycleService(
+            repository,
+            clock=lambda: "2026-07-15T00:00:00Z",
+            id_factory=lambda: f"id-{next(identifiers)}",
+        )
+        rows = [{"category_id": None, "prefix": f"P{index}", "point_expression": "1"} for index in range(1, 257)]
+        confirmed = lifecycle.confirm_direct("P1", None, None, rows, "operator")
+        assert len(confirmed["categories"]) == 256
+        before = _authority_counts(session)
+        rejected = rows + [{"category_id": None, "prefix": "P257", "point_expression": "1"}]
+        with pytest.raises(ContactPointProfileLifecycleError, match="256"):
+            lifecycle.confirm_direct("P1", confirmed["revision_id"], confirmed["fingerprint"], rejected, "operator")
+        assert _authority_counts(session) == before
+    finally:
+        session.close()
+        engine.dispose()
+
+
 def _rows(signal_count: int = 24) -> list[dict[str, object]]:
     return [
         {"category_id": None, "label": "High Power", "count_per_sample": 4, "record_prefix": "HP", "included": True},
         {"category_id": None, "label": "Low Power", "count_per_sample": 5, "record_prefix": "LP", "included": True},
         {"category_id": None, "label": "Signal", "count_per_sample": signal_count, "record_prefix": "SIG", "included": True},
+    ]
+
+
+def _direct_rows() -> list[dict[str, object]]:
+    return [
+        {"category_id": None, "prefix": "HP", "point_expression": "1-4"},
+        {"category_id": None, "prefix": "LP", "point_expression": "1,2,3,4,5"},
+        {"category_id": None, "prefix": "SIG", "point_expression": "1-24"},
     ]
 
 
@@ -98,6 +182,17 @@ def _ids():
         "category-8", "category-9",
     ])
     return lambda: next(values)
+
+
+def _authority_counts(session: Session) -> tuple[int, int, int]:
+    return tuple(
+        session.execute(text(f"SELECT count(*) FROM {table}")).scalar_one()
+        for table in (
+            "contact_point_profile_roots",
+            "contact_point_profile_revisions",
+            "contact_point_profile_categories",
+        )
+    )
 
 
 def _settings(tmp_path: Path) -> Settings:

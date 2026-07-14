@@ -60,6 +60,7 @@ class ContactPointProfileCategoryModel(Base):
         UniqueConstraint("contact_point_profile_revision_id", "category_id", name="uq_contact_point_profile_category_id"),
         CheckConstraint("category_ordinal >= 0 AND count_per_sample >= 0", name="ck_contact_point_profile_category_numbers"),
         CheckConstraint("included = 0 OR count_per_sample > 0", name="ck_contact_point_profile_included_count"),
+        CheckConstraint("point_expression IS NULL OR length(trim(point_expression)) > 0", name="ck_contact_point_profile_point_expression_nonblank"),
         Index("uq_contact_point_profile_included_label", "contact_point_profile_revision_id", "normalized_label_key", unique=True, sqlite_where=text("included = 1")),
         Index("uq_contact_point_profile_included_prefix", "contact_point_profile_revision_id", "normalized_prefix_key", unique=True, sqlite_where=text("included = 1")),
     )
@@ -76,3 +77,4 @@ class ContactPointProfileCategoryModel(Base):
     record_prefix: Mapped[str] = mapped_column(String(64), nullable=False)
     normalized_prefix_key: Mapped[str] = mapped_column(String(64), nullable=False)
     included: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    point_expression: Mapped[str | None] = mapped_column(Text)

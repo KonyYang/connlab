@@ -39,6 +39,22 @@ class PointProfileCategoryResponse(BaseModel):
     count_per_sample: int
     record_prefix: str
     included: bool
+    point_expression: str | None = None
+    expression_status: str = "legacy_count_only"
+    legacy_contiguous_suggestion: str | None = None
+
+
+class PointProfileDirectCategoryInput(BaseModel):
+    category_id: str | None = Field(default=None, max_length=64)
+    prefix: str = Field(min_length=1, max_length=64)
+    point_expression: str = Field(min_length=1, max_length=1024)
+
+
+class PointProfileDirectConfirmRequest(BaseModel):
+    actor: str = Field(min_length=1, max_length=255)
+    expected_confirmed_revision_id: str | None = Field(default=None, max_length=64)
+    expected_confirmed_revision_fingerprint: str | None = Field(default=None, max_length=128)
+    categories: list[PointProfileDirectCategoryInput] = Field(default_factory=list, max_length=256)
 
 
 class PointProfileRevisionResponse(BaseModel):
@@ -82,24 +98,15 @@ def get_summary(project_id: str, service=Depends(get_contact_point_profile_read_
 
 
 @router.put("/draft", response_model=PointProfileRevisionResponse)
-def save_draft(project_id: str, request: PointProfileCommandRequest, service=Depends(get_contact_point_profile_lifecycle_service)):
-    try:
-        result = service.save_draft(
-            project_id, request.expected_revision_id, request.expected_revision_fingerprint,
-            [item.model_dump() for item in request.categories], request.actor,
-        )
-    except (ContactPointProfileLifecycleError, ValueError) as exc:
-        _raise_command_error(exc)
-    return _command_response(result, "draft")
+def save_draft(project_id: str, request: PointProfileCommandRequest):
+    raise HTTPException(410, detail={"code": "contact_point_profile_draft_disabled", "message": "Point Profile drafts are no longer available."})
 
 
 @router.post("/confirm", response_model=PointProfileRevisionResponse)
-def confirm(project_id: str, request: PointProfileCommandRequest, service=Depends(get_contact_point_profile_lifecycle_service)):
-    if request.expected_revision_id is None or request.expected_revision_fingerprint is None:
-        raise HTTPException(422, detail={"code": "contact_point_profile_validation", "message": "Editable revision and fingerprint are required."})
+def confirm(project_id: str, request: PointProfileDirectConfirmRequest, service=Depends(get_contact_point_profile_lifecycle_service)):
     try:
-        result = service.confirm(
-            project_id, request.expected_revision_id, request.expected_revision_fingerprint,
+        result = service.confirm_direct(
+            project_id, request.expected_confirmed_revision_id, request.expected_confirmed_revision_fingerprint,
             [item.model_dump() for item in request.categories], request.actor,
         )
     except (ContactPointProfileLifecycleError, ValueError) as exc:

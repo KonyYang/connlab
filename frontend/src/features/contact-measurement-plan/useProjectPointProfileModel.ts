@@ -2,16 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   confirmProjectPointProfile,
   fetchProjectPointProfileWorkspace,
-  saveProjectPointProfileDraft,
-  type ProjectPointProfileCategory,
   type ProjectPointProfileWorkspace,
 } from "../../api/client";
 import {
-  addProjectPointProfileTemplate,
   emptyProjectPointProfileCategory,
-  moveProjectPointProfileCategory,
-  normalizeOrdinals,
-  parsePositiveCount,
+  localPointProfileRows,
   pointProfileValidation,
   projectPointProfileTotal,
   type ProjectPointProfileDraftCategory,
@@ -22,27 +17,20 @@ const ACTOR = "local-operator";
 export function useProjectPointProfileModel({ projectId }: { projectId: string }) {
   const [workspace, setWorkspace] = useState<ProjectPointProfileWorkspace | null>(null);
   const [rows, setRows] = useState<ProjectPointProfileDraftCategory[]>([emptyProjectPointProfileCategory()]);
-  const [baselineRows, setBaselineRows] = useState<ProjectPointProfileDraftCategory[]>([emptyProjectPointProfileCategory()]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"save" | "confirm" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const hydrate = useCallback((next: ProjectPointProfileWorkspace) => {
-    const nextRows = profileBaselineRows(next);
     setWorkspace(next);
-    setRows(nextRows);
-    setBaselineRows(nextRows);
+    setRows(localPointProfileRows(next.confirmed_revision?.categories));
   }, []);
 
-  const reload = useCallback(async () => {
-    hydrate(await fetchProjectPointProfileWorkspace(projectId));
-  }, [hydrate, projectId]);
+  const reload = useCallback(async () => hydrate(await fetchProjectPointProfileWorkspace(projectId)), [hydrate, projectId]);
 
   useEffect(() => {
     let current = true;
     setLoading(true);
-    setError(null);
     void fetchProjectPointProfileWorkspace(projectId)
       .then((next) => { if (current) hydrate(next); })
       .catch(() => { if (current) setError("Unable to load project point profile."); })
@@ -52,103 +40,39 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
 
   const total = useMemo(() => projectPointProfileTotal(rows), [rows]);
   const validation = useMemo(() => pointProfileValidation(rows), [rows]);
-  const editable = workspace?.editable_revision ?? null;
 
-  const command = () => ({
-    actor: ACTOR,
-    expected_revision_id: editable?.revision_id ?? null,
-    expected_revision_fingerprint: editable?.fingerprint ?? null,
-    categories: normalizeOrdinals(rows).map((row) => ({
-      ...row,
-      count_per_sample: parsePositiveCount(row.count_per_sample),
-    })) as ProjectPointProfileCategory[],
-  });
-
-  async function saveDraft(): Promise<void> {
+  async function confirm(): Promise<boolean> {
     if (validation || busy) {
       setError(validation);
-      return;
+      return false;
     }
-    setBusy("save");
+    setBusy(true);
     setError(null);
-    setMessage(null);
     try {
-      await saveProjectPointProfileDraft(projectId, command());
+      await confirmProjectPointProfile(projectId, {
+        actor: ACTOR,
+        expected_confirmed_revision_id: workspace?.confirmed_revision?.revision_id ?? null,
+        expected_confirmed_revision_fingerprint: workspace?.confirmed_revision?.fingerprint ?? null,
+        categories: rows.map((row) => ({ category_id: row.category_id, prefix: row.prefix.trim(), point_expression: row.point_expression })),
+      });
       await reload();
-      setMessage("Point Profile draft saved.");
+      return true;
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(cause instanceof Error && cause.message.includes("stale") ? "Point Profile changed. Cancel and reopen the latest confirmed profile." : "Unable to confirm Point Profile.");
+      return false;
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
-  }
-
-  async function confirm(): Promise<void> {
-    if (validation || total <= 0 || busy) {
-      setError(validation ?? "Confirm Point Profile requires an included positive total.");
-      return;
-    }
-    if (!editable) {
-      setError("Save the Point Profile draft before confirming it.");
-      return;
-    }
-    setBusy("confirm");
-    setError(null);
-    setMessage(null);
-    try {
-      await confirmProjectPointProfile(projectId, command());
-      await reload();
-      setMessage("Point Profile confirmed.");
-    } catch (cause) {
-      setError(messageFor(cause));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  function discard(): void {
-    setRows(baselineRows);
-    setError(null);
-    setMessage("Local changes discarded.");
   }
 
   return {
-    workspace,
-    rows,
-    loading,
-    busy,
-    error,
-    message,
-    total,
-    validation,
-    updateRow: (index: number, patch: Partial<ProjectPointProfileDraftCategory>) =>
-      setRows((current) => normalizeOrdinals(current.map((row, itemIndex) => itemIndex === index ? { ...row, ...patch } : row))),
-    addCategory: () => setRows((current) => normalizeOrdinals([...current, emptyProjectPointProfileCategory()])),
-    addTemplate: (template: "high_power" | "low_power" | "signal") =>
-      setRows((current) => addProjectPointProfileTemplate(current, template)),
-    removeCategory: (index: number) => setRows((current) => normalizeOrdinals(current.filter((_, itemIndex) => itemIndex !== index))),
-    moveCategory: (index: number, direction: -1 | 1) => setRows((current) => moveProjectPointProfileCategory(current, index, direction)),
-    saveDraft,
+    workspace, rows, loading, busy, error, total, validation,
+    updateRow: (index: number, patch: Partial<ProjectPointProfileDraftCategory>) => setRows((current) => current.map((row, itemIndex) => itemIndex === index ? { ...row, ...patch } : row)),
+    addCategory: () => setRows((current) => current.length < 256 ? [...current, emptyProjectPointProfileCategory()] : current),
+    removeCategory: (index: number) => setRows((current) => {
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      return next.length ? next : [emptyProjectPointProfileCategory()];
+    }),
     confirm,
-    discard,
   };
-}
-
-export function profileBaselineRows(workspace: ProjectPointProfileWorkspace): ProjectPointProfileDraftCategory[] {
-  const source = workspace.editable_revision?.categories.length
-    ? workspace.editable_revision.categories
-    : workspace.confirmed_revision?.categories.length
-      ? workspace.confirmed_revision.categories
-      : null;
-  return source ? source.map(toDraftRow) : [emptyProjectPointProfileCategory()];
-}
-
-function toDraftRow(row: ProjectPointProfileCategory): ProjectPointProfileDraftCategory {
-  return { ...row, category_id: row.category_id };
-}
-
-function messageFor(cause: unknown): string {
-  return cause instanceof Error && cause.message.includes("stale")
-    ? "Point Profile changed. Reload the latest draft before saving."
-    : "Unable to update Point Profile.";
 }

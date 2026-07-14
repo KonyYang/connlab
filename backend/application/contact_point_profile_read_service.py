@@ -22,11 +22,11 @@ class ContactPointProfileReadService:
         editable = self._repository.editable_revision(project_id)
         confirmed = self._repository.active_revision(project_id)
         return {
-            "status": "draft" if editable else ("confirmed" if confirmed else "authority_corrupt"),
+            "status": "confirmed" if confirmed else "authority_corrupt",
             "project_id": project_id,
             "editable_revision": _revision_payload(editable, self._repository) if editable else None,
             "confirmed_revision": _revision_payload(confirmed, self._repository) if confirmed else None,
-            "has_unconfirmed_draft": editable is not None,
+            "has_unconfirmed_draft": False,
             "legacy_uniform_suggestion": None,
             "diagnostics": [],
         }
@@ -39,7 +39,7 @@ class ContactPointProfileReadService:
             "project_id": project_id,
             "confirmed_revision": _revision_payload(confirmed, self._repository) if confirmed else None,
             "points_per_sample": _total(confirmed, self._repository),
-            "has_unconfirmed_draft": bool(root and root.editable_revision_id),
+            "has_unconfirmed_draft": False,
             "diagnostics": [],
         }
 
@@ -62,10 +62,17 @@ def _revision_payload(revision, repository) -> dict[str, object]:
 
 
 def _category_payload(row) -> dict[str, object]:
+    expression = row.point_expression
+    suggestion = None
+    if expression is None and row.included and row.count_per_sample > 0:
+        suggestion = "1" if row.count_per_sample == 1 else f"1-{row.count_per_sample}"
     return {
         "category_id": row.category_id, "category_ordinal": row.category_ordinal,
         "label": row.label, "count_per_sample": row.count_per_sample,
         "record_prefix": row.record_prefix, "included": row.included,
+        "point_expression": expression,
+        "expression_status": "explicit" if expression is not None else "legacy_count_only",
+        "legacy_contiguous_suggestion": suggestion,
     }
 
 

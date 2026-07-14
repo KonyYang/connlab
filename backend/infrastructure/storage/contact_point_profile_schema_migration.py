@@ -23,6 +23,7 @@ _TABLE_COLUMNS = {
         "category_id": ("VARCHAR(64)", 1, 0), "category_ordinal": ("INTEGER", 1, 0), "label": ("TEXT", 1, 0),
         "normalized_label_key": ("TEXT", 1, 0), "count_per_sample": ("INTEGER", 1, 0), "record_prefix": ("VARCHAR(64)", 1, 0),
         "normalized_prefix_key": ("VARCHAR(64)", 1, 0), "included": ("BOOLEAN", 1, 0),
+        "point_expression": ("TEXT", 0, 0),
     },
 }
 
@@ -51,7 +52,7 @@ _PARTIAL_INDEXES = {
 
 _CHECKS = {
     "contact_point_profile_revisions": (("ck_contact_point_profile_revision_positive", "revision_sequence > 0"), ("ck_contact_point_profile_revision_state", "state IN ('draft','confirmed','superseded')")),
-    "contact_point_profile_categories": (("ck_contact_point_profile_category_numbers", "category_ordinal >= 0 AND count_per_sample >= 0"), ("ck_contact_point_profile_included_count", "included = 0 OR count_per_sample > 0")),
+    "contact_point_profile_categories": (("ck_contact_point_profile_category_numbers", "category_ordinal >= 0 AND count_per_sample >= 0"), ("ck_contact_point_profile_included_count", "included = 0 OR count_per_sample > 0"), ("ck_contact_point_profile_point_expression_nonblank", "point_expression IS NULL OR length(trim(point_expression)) > 0")),
 }
 
 
@@ -87,12 +88,18 @@ def bootstrap_contact_point_profile_schema(engine) -> None:
         names = {row[0] for row in connection.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table'").all()}
         for table in tables:
             if table.name in names:
-                _validate_table(connection, table.name)
+                _validate_existing_table(connection, table.name)
         try:
             connection.exec_driver_sql("BEGIN IMMEDIATE")
             for table in tables:
                 if table.name not in names:
                     table.create(connection, checkfirst=False)
+            if "contact_point_profile_categories" in names and _is_v1_category_shape(connection):
+                connection.exec_driver_sql(
+                    "ALTER TABLE contact_point_profile_categories ADD COLUMN point_expression TEXT "
+                    "CONSTRAINT ck_contact_point_profile_point_expression_nonblank "
+                    "CHECK (point_expression IS NULL OR length(trim(point_expression)) > 0)"
+                )
             for table in _TABLE_COLUMNS:
                 _validate_table(connection, table)
             connection.commit()
@@ -117,6 +124,31 @@ def _validate_table(connection, table: str) -> None:
     ):
         _corrupt()
     _validate_indexes(connection, table)
+
+
+def _validate_existing_table(connection, table: str) -> None:
+    if table == "contact_point_profile_categories" and _is_v1_category_shape(connection):
+        _validate_category_v1(connection)
+        return
+    _validate_table(connection, table)
+
+
+def _is_v1_category_shape(connection) -> bool:
+    columns = {str(row[1]) for row in connection.exec_driver_sql("PRAGMA table_info(contact_point_profile_categories)").all()}
+    return columns == set(_TABLE_COLUMNS["contact_point_profile_categories"]) - {"point_expression"}
+
+
+def _validate_category_v1(connection) -> None:
+    expected = dict(_TABLE_COLUMNS["contact_point_profile_categories"])
+    expected.pop("point_expression")
+    columns = {str(row[1]): (str(row[2]).upper(), int(row[3]), int(row[5])) for row in connection.exec_driver_sql("PRAGMA table_info(contact_point_profile_categories)").all()}
+    if columns != expected:
+        _corrupt()
+    sql = connection.exec_driver_sql("SELECT sql FROM sqlite_master WHERE type='table' AND name='contact_point_profile_categories'").scalar_one_or_none() or ""
+    normalized_sql = _canonical_expression(sql)
+    if any(_canonical_expression(name) not in normalized_sql or _canonical_expression(check) not in normalized_sql for name, check in _CHECKS["contact_point_profile_categories"][:2]):
+        _corrupt()
+    _validate_indexes(connection, "contact_point_profile_categories")
 
 
 def _validate_indexes(connection, table: str) -> None:

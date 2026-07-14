@@ -19,7 +19,7 @@ describe("ContactMeasurementPlanSummaryCard", () => {
 
     expect(screen.getByText("Confirmed revision 1")).toBeTruthy();
     expect(screen.getByText("33 points / sample")).toBeTruthy();
-    expect(screen.getByText("High Power: 4")).toBeTruthy();
+    expect(screen.getByText("HP: 4")).toBeTruthy();
     expect(screen.queryByText(/targets/i)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Contact measurement setup" }));

@@ -14,7 +14,6 @@ export function ContactMeasurementPlanSummaryCard({ summary, loading, onOpenSetu
       <div><h3>Project point profile</h3><span>{confirmed ? `Confirmed revision ${confirmed.revision_sequence}` : "Not confirmed"}</span></div>
       <button type="button" disabled={loading} onClick={onOpenSetup}>Contact measurement setup</button>
     </div>
-    {confirmed ? <><p>{`${confirmed.points_per_sample} points / sample`}</p><ul className="contact-measurement-summary-categories">{confirmed.categories.filter((category) => category.included).map((category) => <li key={category.category_id}>{`${category.label}: ${category.count_per_sample}`}</li>)}</ul></> : <p>Confirm a project point profile to make it available to Matrix summary.</p>}
-    {summary?.has_unconfirmed_draft ? <p className="contact-measurement-summary-warning" role="status">A newer Point Profile draft is not confirmed.</p> : null}
+    {confirmed ? <><p>{`${confirmed.points_per_sample} points / sample`}</p><ul className="contact-measurement-summary-categories">{confirmed.categories.filter((category) => category.included).map((category) => <li key={category.category_id}>{`${category.record_prefix}: ${category.count_per_sample}`}</li>)}</ul></> : <p>Confirm a project point profile to make it available to Matrix summary.</p>}
   </section>;
 }

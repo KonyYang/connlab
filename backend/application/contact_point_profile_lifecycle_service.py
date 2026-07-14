@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from uuid import uuid4
 
 from backend.application.contact_point_profile_fingerprint import (
@@ -9,6 +10,10 @@ from backend.application.contact_point_profile_fingerprint import (
     canonicalize_categories,
     point_profile_fingerprint,
     points_per_sample,
+)
+from backend.application.contact_point_profile_expression import (
+    ContactPointExpressionError,
+    parse_point_expression,
 )
 from backend.infrastructure.storage.models_contact_point_profile import (
     ContactPointProfileRevisionModel,
@@ -63,6 +68,56 @@ class ContactPointProfileLifecycleService:
             root.updated_at = now
             self._repository.flush()
             return _result(revision, list(canonicalize_categories(saved["categories"])))
+
+    def confirm_direct(self, project_id: str, expected_revision_id: str | None, expected_fingerprint: str | None, rows, actor: str) -> dict[str, object]:
+        categories = _direct_categories(rows)
+        if not categories or points_per_sample(categories) <= 0:
+            raise ContactPointProfileLifecycleError("Confirm Point Profile requires an included positive total.")
+        with self._repository.transaction():
+            root = self._repository.get_root(project_id)
+            active = self._repository.active_revision(project_id) if root else None
+            self._assert_confirmed_expected(active, expected_revision_id, expected_fingerprint)
+            now = self._clock()
+            if root is None:
+                root = ContactPointProfileRootModel(
+                    contact_point_profile_root_id=f"cppr-{self._ids()}", project_id=project_id,
+                    active_confirmed_revision_id=None, editable_revision_id=None, created_at=now, updated_at=now,
+                )
+                self._repository.add(root)
+                self._repository.flush()
+            retained = {row.category_id for row in self._repository.categories(active.contact_point_profile_revision_id)} if active else set()
+            issued = self._issue_category_ids(root.contact_point_profile_root_id, categories, retained)
+            if root.editable_revision_id:
+                legacy_draft = self._repository.get_revision(root.editable_revision_id)
+                if legacy_draft:
+                    legacy_draft.state = "superseded"
+                    legacy_draft.superseded_at = now
+                    legacy_draft.superseded_reason = "Superseded by direct confirmed Point Profile revision."
+            if active:
+                active.state = "superseded"
+                active.superseded_at = now
+                active.superseded_reason = "Superseded by confirmed Point Profile revision."
+            revision = ContactPointProfileRevisionModel(
+                contact_point_profile_revision_id=f"cpprv-{self._ids()}",
+                contact_point_profile_root_id=root.contact_point_profile_root_id,
+                revision_sequence=self._repository.highest_revision_sequence(root.contact_point_profile_root_id) + 1,
+                parent_revision_id=active.contact_point_profile_revision_id if active else None,
+                state="confirmed", revision_fingerprint="pending", bootstrap_provenance=None,
+                created_by=actor, created_at=now, updated_at=now, confirmed_by=actor, confirmed_at=now,
+                superseded_at=None, superseded_reason=None,
+            )
+            self._repository.add(revision)
+            self._repository.flush()
+            self._repository.replace_categories(revision.contact_point_profile_revision_id, issued, self._ids)
+            revision.revision_fingerprint = point_profile_fingerprint(
+                root.contact_point_profile_root_id, revision.contact_point_profile_revision_id, issued,
+                version="point-profile:v2",
+            )
+            root.active_confirmed_revision_id = revision.contact_point_profile_revision_id
+            root.editable_revision_id = None
+            root.updated_at = now
+            self._repository.flush()
+            return _result(revision, issued)
 
     def _save_draft(
         self, project_id: str, expected_revision_id: str | None, expected_fingerprint: str | None,
@@ -136,6 +191,14 @@ class ContactPointProfileLifecycleService:
         if expected_id != revision.contact_point_profile_revision_id or expected_fingerprint != revision.revision_fingerprint:
             raise ContactPointProfileLifecycleError("Point Profile draft is stale.")
 
+    def _assert_confirmed_expected(self, revision, expected_id: str | None, expected_fingerprint: str | None) -> None:
+        if revision is None:
+            if expected_id is not None or expected_fingerprint is not None:
+                raise ContactPointProfileLifecycleError("Point Profile confirmed revision is stale.")
+            return
+        if expected_id != revision.contact_point_profile_revision_id or expected_fingerprint != revision.revision_fingerprint:
+            raise ContactPointProfileLifecycleError("Point Profile confirmed revision is stale.")
+
     def _issue_category_ids(
         self, root_id: str, categories: list[dict[str, object]], retained_ids: set[str]
     ) -> list[dict[str, object]]:
@@ -162,3 +225,44 @@ def _result(revision, categories: list[dict[str, object]]) -> dict[str, object]:
         "categories": categories,
         "points_per_sample": points_per_sample(categories),
     }
+
+
+def _direct_categories(rows) -> list[dict[str, object]]:
+    if not isinstance(rows, list):
+        raise ContactPointProfileLifecycleError("Point Profile categories are invalid.")
+    if len(rows) > 256:
+        raise ContactPointProfileLifecycleError("Point Profile supports at most 256 categories.")
+    categories: list[dict[str, object]] = []
+    prefixes: set[str] = set()
+    category_ids: set[str] = set()
+    total = 0
+    for ordinal, row in enumerate(rows):
+        try:
+            parsed = parse_point_expression(row.get("point_expression"))
+        except (AttributeError, ContactPointExpressionError) as exc:
+            raise ContactPointProfileLifecycleError(str(exc)) from exc
+        prefix = row.get("prefix")
+        if not isinstance(prefix, str):
+            raise ContactPointProfileLifecycleError("Point Profile prefix is required.")
+        prefix = prefix.strip()
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", prefix):
+            raise ContactPointProfileLifecycleError("Point Profile prefix is invalid.")
+        key = prefix.casefold()
+        if key in prefixes:
+            raise ContactPointProfileLifecycleError("Point Profile prefixes must be unique.")
+        prefixes.add(key)
+        total += parsed.count
+        if total > 8192:
+            raise ContactPointProfileLifecycleError("Point Profile total may not exceed 8192.")
+        category_id = row.get("category_id")
+        if category_id is not None:
+            if not isinstance(category_id, str) or category_id in category_ids:
+                raise ContactPointProfileLifecycleError("Point Profile category ids must be unique.")
+            category_ids.add(category_id)
+        categories.append({
+            "category_id": category_id, "category_ordinal": ordinal,
+            "label": prefix, "normalized_label_key": key, "count_per_sample": parsed.count,
+            "record_prefix": prefix, "normalized_prefix_key": key, "included": True,
+            "point_expression": parsed.canonical,
+        })
+    return categories

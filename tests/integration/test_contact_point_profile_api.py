@@ -24,7 +24,7 @@ def test_point_profile_workspace_and_summary_are_project_only_typed_reads() -> N
     assert summary.json()["has_unconfirmed_draft"] is True
 
 
-def test_point_profile_draft_write_returns_typed_stale_conflict() -> None:
+def test_point_profile_draft_write_returns_typed_disabled_no_write() -> None:
     app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: _StaleLifecycle()
     try:
         with TestClient(app) as client:
@@ -40,8 +40,44 @@ def test_point_profile_draft_write_returns_typed_stale_conflict() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "contact_point_profile_stale"
+    assert response.status_code == 410
+    assert response.json()["detail"]["code"] == "contact_point_profile_draft_disabled"
+
+
+def test_point_profile_direct_confirm_uses_confirmed_fingerprint_boundary() -> None:
+    app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: _DirectLifecycle()
+    try:
+        with TestClient(app) as client:
+            response = client.post("/api/projects/P1/contact-point-profile/confirm", json={
+                "actor": "operator", "expected_confirmed_revision_id": None,
+                "expected_confirmed_revision_fingerprint": None,
+                "categories": [{"category_id": None, "prefix": "HP", "point_expression": "1-4"}],
+            })
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["state"] == "confirmed"
+
+
+def test_point_profile_direct_confirm_maps_duplicate_retained_identity_to_typed_validation() -> None:
+    app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: _DuplicateIdentityLifecycle()
+    try:
+        with TestClient(app) as client:
+            response = client.post("/api/projects/P1/contact-point-profile/confirm", json={
+                "actor": "operator", "expected_confirmed_revision_id": "revision-1",
+                "expected_confirmed_revision_fingerprint": "fingerprint",
+                "categories": [
+                    {"category_id": "ppc-1", "prefix": "HP", "point_expression": "1-4"},
+                    {"category_id": "ppc-1", "prefix": "LP", "point_expression": "1-5"},
+                ],
+            })
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "contact_point_profile_validation",
+        "message": "Point Profile category ids must be unique.",
+    }
 
 
 class _ReadService:
@@ -65,6 +101,16 @@ class _ReadService:
 class _StaleLifecycle:
     def save_draft(self, *args, **kwargs):
         raise ContactPointProfileLifecycleError("Point Profile draft is stale.")
+
+
+class _DirectLifecycle:
+    def confirm_direct(self, _project_id, _revision_id, _fingerprint, categories, _actor):
+        return {"revision_id": "revision-1", "fingerprint": "fingerprint", "categories": [{"category_id": "ppc-1", "category_ordinal": 0, "label": "HP", "count_per_sample": 4, "record_prefix": "HP", "normalized_label_key": "hp", "normalized_prefix_key": "hp", "included": True, "point_expression": "1-4"}], "points_per_sample": 4}
+
+
+class _DuplicateIdentityLifecycle:
+    def confirm_direct(self, *_args):
+        raise ContactPointProfileLifecycleError("Point Profile category ids must be unique.")
 
 
 def _revision(state: str, sequence: int):

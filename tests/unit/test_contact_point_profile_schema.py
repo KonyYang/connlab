@@ -80,6 +80,46 @@ def test_root_and_revision_partial_profile_schema_bootstraps_and_is_idempotent(t
         engine.dispose()
 
 
+def test_exact_v1_category_table_upgrades_in_place_and_preserves_legacy_row(tmp_path: Path) -> None:
+    engine = _exact_v1_engine(tmp_path)
+    try:
+        v1_columns, v1_rows = _category_snapshot(engine)
+        assert "point_expression" not in v1_columns
+        init_db(engine)
+        with engine.connect() as connection:
+            ddl = connection.exec_driver_sql(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='contact_point_profile_categories'"
+            ).scalar_one()
+        v2_columns, v2_rows = _category_snapshot(engine)
+        assert v2_columns == (*v1_columns, "point_expression")
+        assert len(v2_rows) == len(v1_rows)
+        assert [row[:-1] for row in v2_rows] == v1_rows
+        assert [row[-1] for row in v2_rows] == [None] * len(v1_rows)
+        assert "ck_contact_point_profile_point_expression_nonblank" in ddl
+        init_db(engine)
+        assert _category_snapshot(engine) == (v2_columns, v2_rows)
+    finally:
+        engine.dispose()
+
+
+def test_malformed_exact_v1_category_shape_fails_before_additive_upgrade(tmp_path: Path) -> None:
+    engine = _exact_v1_engine(
+        tmp_path,
+        number_check="category_ordinal > 0 AND count_per_sample >= 0",
+        category_ordinal=1,
+    )
+    try:
+        before = _table_names(engine)
+        with pytest.raises(RuntimeError, match="authority_corrupt"):
+            init_db(engine)
+        assert _table_names(engine) == before
+        with engine.connect() as connection:
+            columns = {row[1] for row in connection.exec_driver_sql("PRAGMA table_info(contact_point_profile_categories)").all()}
+        assert "point_expression" not in columns
+    finally:
+        engine.dispose()
+
+
 def test_transaction_visible_final_verify_failure_rolls_back_new_profile_tables(tmp_path: Path, monkeypatch) -> None:
     from backend.infrastructure.storage import contact_point_profile_schema_migration as migration
     engine = _non_profile_engine(tmp_path)
@@ -152,6 +192,69 @@ def _partial_engine(tmp_path: Path, *, include_revision: bool):
     if include_revision:
         ContactPointProfileRevisionModel.__table__.create(engine)
     return engine
+
+
+def _exact_v1_engine(
+    tmp_path: Path,
+    *,
+    number_check: str = "category_ordinal >= 0 AND count_per_sample >= 0",
+    category_ordinal: int = 0,
+):
+    engine = _partial_engine(tmp_path, include_revision=True)
+    v1_category_ddl = (
+        "CREATE TABLE contact_point_profile_categories ("
+        "contact_point_profile_category_snapshot_id VARCHAR(64) NOT NULL, "
+        "contact_point_profile_revision_id VARCHAR(64) NOT NULL, category_id VARCHAR(64) NOT NULL, "
+        "category_ordinal INTEGER NOT NULL, label TEXT NOT NULL, normalized_label_key TEXT NOT NULL, "
+        "count_per_sample INTEGER NOT NULL, record_prefix VARCHAR(64) NOT NULL, "
+        "normalized_prefix_key VARCHAR(64) NOT NULL, included BOOLEAN NOT NULL, "
+        "PRIMARY KEY (contact_point_profile_category_snapshot_id), "
+        "CONSTRAINT uq_contact_point_profile_category_order UNIQUE (contact_point_profile_revision_id, category_ordinal), "
+        "CONSTRAINT uq_contact_point_profile_category_id UNIQUE (contact_point_profile_revision_id, category_id), "
+        f"CONSTRAINT ck_contact_point_profile_category_numbers CHECK ({number_check}), "
+        "CONSTRAINT ck_contact_point_profile_included_count CHECK (included = 0 OR count_per_sample > 0), "
+        "FOREIGN KEY(contact_point_profile_revision_id) REFERENCES contact_point_profile_revisions (contact_point_profile_revision_id))"
+    )
+    with engine.begin() as connection:
+        connection.exec_driver_sql(v1_category_ddl)
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX uq_contact_point_profile_included_label ON contact_point_profile_categories "
+            "(contact_point_profile_revision_id, normalized_label_key) WHERE included = 1"
+        )
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX uq_contact_point_profile_included_prefix ON contact_point_profile_categories "
+            "(contact_point_profile_revision_id, normalized_prefix_key) WHERE included = 1"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO contact_point_profile_roots "
+            "(contact_point_profile_root_id, project_id, active_confirmed_revision_id, editable_revision_id, created_at, updated_at) "
+            "VALUES ('root-1', 'project-1', 'revision-1', NULL, '2026-07-15T00:00:00Z', '2026-07-15T00:00:00Z')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO contact_point_profile_revisions "
+            "(contact_point_profile_revision_id, contact_point_profile_root_id, revision_sequence, parent_revision_id, state, "
+            "revision_fingerprint, bootstrap_provenance, created_by, created_at, updated_at, confirmed_by, confirmed_at, superseded_at, superseded_reason) "
+            "VALUES ('revision-1', 'root-1', 1, NULL, 'confirmed', 'legacy-fingerprint', NULL, 'operator', "
+            "'2026-07-15T00:00:00Z', '2026-07-15T00:00:00Z', 'operator', '2026-07-15T00:00:00Z', NULL, NULL)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO contact_point_profile_categories "
+            "(contact_point_profile_category_snapshot_id, contact_point_profile_revision_id, category_id, category_ordinal, "
+            "label, normalized_label_key, count_per_sample, record_prefix, normalized_prefix_key, included) "
+            f"VALUES ('category-1', 'revision-1', 'ppc-1', {category_ordinal}, 'High Power', 'high power', 4, 'HP', 'hp', 1)"
+        )
+    return engine
+
+
+def _category_snapshot(engine) -> tuple[tuple[str, ...], list[tuple[object, ...]]]:
+    with engine.connect() as connection:
+        columns = tuple(str(row[1]) for row in connection.exec_driver_sql("PRAGMA table_info(contact_point_profile_categories)").all())
+        quoted = ", ".join(f'"{column}"' for column in columns)
+        rows = connection.exec_driver_sql(
+            f"SELECT {quoted} FROM contact_point_profile_categories "
+            "ORDER BY category_ordinal, contact_point_profile_category_snapshot_id"
+        ).all()
+    return columns, rows
 
 
 def _non_profile_engine(tmp_path: Path, **engine_options):

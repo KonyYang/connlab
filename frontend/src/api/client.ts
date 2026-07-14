@@ -4337,6 +4337,9 @@ export type ProjectPointProfileCategory = {
   count_per_sample: number;
   record_prefix: string;
   included: boolean;
+  point_expression?: string | null;
+  expression_status?: "explicit" | "legacy_count_only";
+  legacy_contiguous_suggestion?: string | null;
 };
 
 export type ProjectPointProfileRevision = {
@@ -4376,6 +4379,19 @@ export type ProjectPointProfileCommand = {
   categories: ProjectPointProfileCategory[];
 };
 
+export type ProjectPointProfileDirectCategory = {
+  category_id: string | null;
+  prefix: string;
+  point_expression: string;
+};
+
+export type ProjectPointProfileDirectConfirmCommand = {
+  actor: string;
+  expected_confirmed_revision_id: string | null;
+  expected_confirmed_revision_fingerprint: string | null;
+  categories: ProjectPointProfileDirectCategory[];
+};
+
 export function fetchProjectPointProfileWorkspace(projectId: string): Promise<ProjectPointProfileWorkspace> {
   return requestJson<ProjectPointProfileWorkspace>(
     `/api/projects/${encodeURIComponent(projectId)}/contact-point-profile/workspace`
@@ -4395,7 +4411,7 @@ export function saveProjectPointProfileDraft(projectId: string, command: Project
   );
 }
 
-export function confirmProjectPointProfile(projectId: string, command: ProjectPointProfileCommand): Promise<ProjectPointProfileRevision> {
+export function confirmProjectPointProfile(projectId: string, command: ProjectPointProfileDirectConfirmCommand): Promise<ProjectPointProfileRevision> {
   return requestJson<ProjectPointProfileRevision>(
     `/api/projects/${encodeURIComponent(projectId)}/contact-point-profile/confirm`,
     { method: "POST", body: JSON.stringify(command) }
