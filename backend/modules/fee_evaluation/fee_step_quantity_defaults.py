@@ -31,7 +31,7 @@ def build_reading_result(
     step_quantities: tuple[FeeStepQuantityContext, ...],
 ):
     sample_qty = _plain_decimal(sample_quantity_expression)
-    readings_per_specimen, matrix_quantity_review = matrix_step_readings_per_sample(
+    readings_per_specimen, matrix_quantity_review, selected_source = matrix_step_readings_per_sample(
         step_quantities
     )
     source = rule.display_name
@@ -45,7 +45,8 @@ def build_reading_result(
             manual_fields=("unit_price", "units", "testing_fee"),
         )
     if readings_per_specimen is not None:
-        source = MATRIX_STEP_QUANTITY_SOURCE
+        assert selected_source is not None
+        source = selected_source
     else:
         readings_per_specimen = _first_decimal(_READING_PATTERN, source_text)
     if readings_per_specimen is None:
@@ -80,23 +81,41 @@ def build_reading_result(
 
 def matrix_step_readings_per_sample(
     step_quantities: tuple[FeeStepQuantityContext, ...],
-) -> tuple[Decimal | None, str | None]:
+) -> tuple[Decimal | None, str | None, str | None]:
     if not step_quantities:
-        return None, None
+        return None, None, None
     readings: list[Decimal] = []
+    sources: list[str] = []
     for quantity in step_quantities:
         if not quantity.matched or quantity.review_required:
-            return None, "Confirm Matrix Step quantity"
+            return None, "Confirm Matrix Step quantity", None
         value = _matrix_step_total_readings(quantity)
         if value is None:
-            return None, "Confirm Matrix Step quantity"
+            return None, "Confirm Matrix Step quantity", None
+        source = _selected_context_source(quantity.source)
+        if source is None:
+            return None, "Confirm one readings authority source.", None
         readings.append(value)
+        sources.append(source)
     if not readings:
-        return None, None
+        return None, None, None
     first = readings[0]
     if any(value != first for value in readings[1:]):
-        return None, "Confirm Matrix Step quantity"
-    return first, None
+        return None, "Confirm Matrix Step quantity", None
+    if any(source != sources[0] for source in sources[1:]):
+        return None, "Confirm one readings authority source.", None
+    return first, None, sources[0]
+
+
+def _selected_context_source(source: str | None) -> str | None:
+    value = (source or "").strip()
+    if not value:
+        return None
+    if value == "confirmed_measurement_plan":
+        return value
+    if value.startswith("Confirmed Project Point Profile: revision "):
+        return value
+    return MATRIX_STEP_QUANTITY_SOURCE
 
 
 def _matrix_step_total_readings(quantity: FeeStepQuantityContext) -> Decimal | None:

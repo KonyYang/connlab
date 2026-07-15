@@ -11,6 +11,9 @@ from backend.domain import (
     ConfirmedMatrixStepQuantity,
     MatrixStepContactPlan,
 )
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    EffectiveConfirmedPointProfile,
+)
 from backend.modules.fee_evaluation import FeeStepQuantityContext
 from backend.modules.test_plan.matrix_step_sequence_validation import ParsedStepToken
 
@@ -79,6 +82,49 @@ def build_step_quantity_contexts(
             continue
         contexts.append(_matched_context(token=token, quantity=quantity))
     return tuple(contexts) if matched_any else ()
+
+
+def build_profile_reading_contexts(
+    *,
+    parsed_tokens: tuple[ParsedStepToken, ...],
+    profile: EffectiveConfirmedPointProfile,
+) -> tuple[FeeStepQuantityContext, ...]:
+    """Build LLCR-only contexts without consulting legacy Step quantities."""
+    if profile.is_usable:
+        assert profile.readings_per_sample is not None
+        assert profile.lineage is not None
+        return tuple(
+            FeeStepQuantityContext(
+                step_token=token.raw_token,
+                step_sequence=token.sequence,
+                step_suffix_note=token.suffix_note,
+                test_points_per_sample=profile.readings_per_sample,
+                readings_per_point="1",
+                contact_points_per_sample=profile.readings_per_sample,
+                total_readings=profile.readings_per_sample,
+                source=profile.lineage,
+                review_required=False,
+                review_reason=None,
+                matched=True,
+            )
+            for token in parsed_tokens
+        )
+    return tuple(
+        FeeStepQuantityContext(
+            step_token=token.raw_token,
+            step_sequence=token.sequence,
+            step_suffix_note=token.suffix_note,
+            test_points_per_sample=None,
+            readings_per_point=None,
+            contact_points_per_sample=None,
+            total_readings=None,
+            source="confirmed_project_point_profile",
+            review_required=True,
+            review_reason=profile.message or "Point Profile authority requires review.",
+            matched=True,
+        )
+        for token in parsed_tokens
+    )
 
 
 def _matched_context(

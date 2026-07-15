@@ -228,6 +228,116 @@ def test_llcr_marks_units_review_required_when_readings_are_missing() -> None:
     assert _field_state(result, "units") == "manual_required"
 
 
+def test_llcr_preserves_confirmed_profile_lineage_in_calculated_metadata() -> None:
+    lineage = "Confirmed Project Point Profile: revision 3 (revision-1; sha256:profile)"
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_llcr",
+            unit_label="reading",
+            unit_price=None,
+            strategy="per_reading",
+            review_required=True,
+        ),
+        context=_context(
+            test_item="LLCR",
+            step_quantities=(
+                _step_quantity(
+                    test_points_per_sample="4",
+                    readings_per_point="1",
+                    source=lineage,
+                ),
+            ),
+        ),
+    )
+
+    assert result.units == Decimal("20")
+    assert _field_source(result, "units") == lineage
+
+
+def test_llcr_requires_one_homogeneous_selected_context_source() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_llcr",
+            unit_label="reading",
+            unit_price=None,
+            strategy="per_reading",
+            review_required=True,
+        ),
+        context=_context(
+            test_item="LLCR",
+            step_quantities=(
+                _step_quantity(
+                    step_token="1",
+                    test_points_per_sample="4",
+                    readings_per_point="1",
+                    source="Confirmed Project Point Profile: revision 3 (revision-1; sha256:profile)",
+                ),
+                _step_quantity(
+                    step_token="2",
+                    test_points_per_sample="4",
+                    readings_per_point="1",
+                    source="confirmed_measurement_plan",
+                ),
+            ),
+        ),
+    )
+
+    assert result.review_required is True
+    assert result.units is None
+    assert result.review_reason == "Confirm one readings authority source."
+
+
+def test_llcr_preserves_confirmed_measurement_plan_source() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_llcr",
+            unit_label="reading",
+            unit_price=None,
+            strategy="per_reading",
+            review_required=True,
+        ),
+        context=_context(
+            test_item="LLCR",
+            step_quantities=(
+                _step_quantity(
+                    test_points_per_sample="4",
+                    readings_per_point="1",
+                    source="confirmed_measurement_plan",
+                ),
+            ),
+        ),
+    )
+
+    assert result.units == Decimal("20")
+    assert _field_source(result, "units") == "confirmed_measurement_plan"
+
+
+def test_llcr_rejects_context_with_missing_source() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_llcr",
+            unit_label="reading",
+            unit_price=None,
+            strategy="per_reading",
+            review_required=True,
+        ),
+        context=_context(
+            test_item="LLCR",
+            step_quantities=(
+                _step_quantity(
+                    test_points_per_sample="4",
+                    readings_per_point="1",
+                    source="",
+                ),
+            ),
+        ),
+    )
+
+    assert result.review_required is True
+    assert result.units is None
+    assert result.review_reason == "Confirm one readings authority source."
+
+
 def test_durability_parses_cycles_and_applies_cycle_tier() -> None:
     result = build_fee_default_fill(
         rule=_rule(
@@ -402,6 +512,7 @@ def _step_quantity(
     contact_points_per_sample: str | None = None,
     review_required: bool = False,
     matched: bool = True,
+    source: str = "matrix_step_override",
 ) -> FeeStepQuantityContext:
     return FeeStepQuantityContext(
         step_token=step_token,
@@ -411,7 +522,7 @@ def _step_quantity(
         readings_per_point=readings_per_point,
         contact_points_per_sample=contact_points_per_sample,
         total_readings=None,
-        source="matrix_step_override",
+        source=source,
         review_required=review_required,
         review_reason=None,
         matched=matched,

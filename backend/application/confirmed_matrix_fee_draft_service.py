@@ -23,8 +23,13 @@ from backend.application.confirmed_matrix_fee_manual_defaults import (
 )
 from backend.application.confirmed_matrix_fee_step_quantities import (
     StepQuantityLookup,
+    build_profile_reading_contexts,
     build_step_quantity_contexts,
     build_step_quantity_lookup,
+)
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    ContactPointProfileConfirmedConsumerAdapter,
+    EffectiveConfirmedPointProfile,
 )
 from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
     ContactMeasurementPlanConfirmedConsumerAdapter,
@@ -82,10 +87,12 @@ class ConfirmedMatrixFeeDraftService:
         confirmed_store: ConfirmedMatrixAuthorityStore,
         rule_library: FeeRuleLibrary | None = None,
         contact_measurement_adapter: ContactMeasurementPlanConfirmedConsumerAdapter | None = None,
+        contact_point_profile_adapter: ContactPointProfileConfirmedConsumerAdapter | None = None,
     ) -> None:
         self._confirmed = confirmed_store
         self._rule_library = rule_library
         self._contact_measurement_adapter = contact_measurement_adapter
+        self._contact_point_profile_adapter = contact_point_profile_adapter
 
     def build_draft(self, command: BuildConfirmedMatrixFeeDraftCommand) -> FeeEvaluationDraft:
         """Return one Fee Evaluation draft preview for a project."""
@@ -99,10 +106,16 @@ class ConfirmedMatrixFeeDraftService:
             if self._contact_measurement_adapter is not None
             else None
         )
+        effective_point_profile = (
+            self._contact_point_profile_adapter.get_effective(command.project_id)
+            if self._contact_point_profile_adapter is not None
+            else None
+        )
         groups = _build_groups(
             snapshot=snapshot,
             library=library,
             effective_contact_plan=effective_contact_plan,
+            effective_point_profile=effective_point_profile,
         )
         manual_line_items = (
             build_report_preparation_line(
@@ -180,6 +193,7 @@ def _build_groups(
     snapshot: ConfirmedMatrixSnapshot,
     library: FeeRuleLibrary,
     effective_contact_plan: EffectiveContactMeasurementPlan | None,
+    effective_point_profile: EffectiveConfirmedPointProfile | None,
 ) -> tuple[FeeEvaluationGroup, ...]:
     groups_by_id = {group.confirmed_group_id: group for group in snapshot.groups}
     rows_by_id = {row.confirmed_row_id: row for row in snapshot.rows}
@@ -200,6 +214,7 @@ def _build_groups(
             matcher=matcher,
             library=library,
             effective_contact_plan=effective_contact_plan,
+            effective_point_profile=effective_point_profile,
         )
         if not lines:
             continue
@@ -244,6 +259,7 @@ def _build_group_lines(
     matcher: FeeRuleMatcher,
     library: FeeRuleLibrary,
     effective_contact_plan: EffectiveContactMeasurementPlan | None,
+    effective_point_profile: EffectiveConfirmedPointProfile | None,
 ) -> list[FeeEvaluationLineItem]:
     lines: list[FeeEvaluationLineItem] = []
     for row in snapshot.rows:
@@ -256,6 +272,12 @@ def _build_group_lines(
             continue
         match = matcher.match_test_item(row.test_item)
         rule = match.rule
+        is_llcr = rule is not None and rule.rule_id == "fee_rule_llcr"
+        uses_profile_default = (
+            is_llcr
+            and effective_contact_plan is not None
+            and effective_contact_plan.legacy_fallback_allowed
+        )
         active_lookup = (
             {
                 key: target.contact_plan
@@ -265,24 +287,30 @@ def _build_group_lines(
             and not effective_contact_plan.legacy_fallback_allowed
             else None
         )
-        step_quantities = build_step_quantity_contexts(
-            group=group,
-            row=row,
-            parsed_tokens=parsed_tokens,
-            step_quantity_lookup=step_quantity_lookup,
-            effective_contact_targets=active_lookup,
-            effective_contact_status=(
-                effective_contact_plan.status if effective_contact_plan is not None else None
-            ),
-            is_llcr_or_specified_current=(
-                rule is not None
-                and rule.rule_id
-                in {
-                    "fee_rule_llcr",
-                    "fee_rule_contact_resistance_specified_current",
-                }
-            ),
-        )
+        if uses_profile_default:
+            step_quantities = build_profile_reading_contexts(
+                parsed_tokens=parsed_tokens,
+                profile=effective_point_profile or _missing_point_profile(),
+            )
+        else:
+            step_quantities = build_step_quantity_contexts(
+                group=group,
+                row=row,
+                parsed_tokens=parsed_tokens,
+                step_quantity_lookup=step_quantity_lookup,
+                effective_contact_targets=active_lookup,
+                effective_contact_status=(
+                    effective_contact_plan.status if effective_contact_plan is not None else None
+                ),
+                is_llcr_or_specified_current=(
+                    rule is not None
+                    and rule.rule_id
+                    in {
+                        "fee_rule_llcr",
+                        "fee_rule_contact_resistance_specified_current",
+                    }
+                ),
+            )
         warnings = tuple(
             FeeEvaluationWarning(
                 code="step_token_parse_warning",
@@ -306,6 +334,18 @@ def _build_group_lines(
             )
         )
     return lines
+
+
+def _missing_point_profile() -> EffectiveConfirmedPointProfile:
+    return EffectiveConfirmedPointProfile(
+        status="missing",
+        readings_per_sample=None,
+        revision_id=None,
+        revision_sequence=None,
+        fingerprint=None,
+        lineage=None,
+        message="Confirm Point Profile before calculating LLCR units.",
+    )
 
 
 def _build_line_item(

@@ -135,10 +135,38 @@ def _run_export_with_session(
 
 def _build_direct_export_service(session: Session) -> ConfirmedMatrixFeeEvaluationExportService:
     """Build the direct in-process export service inside the child process."""
+    from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
+        ContactMeasurementPlanConfirmedConsumerAdapter,
+    )
+    from backend.application.contact_measurement_plan_projection_service import (
+        ContactMeasurementPlanProjectionService,
+    )
+    from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+        ContactPointProfileConfirmedConsumerAdapter,
+    )
+    from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import (
+        ContactMeasurementPlanAuthorityRepository,
+    )
+    from backend.infrastructure.storage.repositories.contact_point_profile_authority import (
+        ContactPointProfileAuthorityRepository,
+    )
+
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+    settings = Settings.load()
     return ConfirmedMatrixFeeEvaluationExportService(
         fee_draft_service=ConfirmedMatrixFeeDraftService(
             confirmed_store=confirmed_store,
+            contact_measurement_adapter=ContactMeasurementPlanConfirmedConsumerAdapter(
+                projection_service=ContactMeasurementPlanProjectionService(
+                    ContactMeasurementPlanAuthorityRepository(session),
+                    settings.contact_measurement_plan_authority_enabled,
+                    confirmed_store,
+                ),
+                confirmed_store=confirmed_store,
+            ),
+            contact_point_profile_adapter=ContactPointProfileConfirmedConsumerAdapter(
+                repository=ContactPointProfileAuthorityRepository(session),
+            ),
         ),
         confirmed_store=confirmed_store,
         project_output_service=ProjectOutputRecordService(

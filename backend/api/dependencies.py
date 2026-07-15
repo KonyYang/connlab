@@ -564,6 +564,9 @@ def get_confirmed_matrix_fee_draft_service(
             session,
             settings,
         ),
+        contact_point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(
+            session,
+        ),
     )
 
 
@@ -607,12 +610,20 @@ def get_confirmed_fee_version_service(
 
 def build_direct_confirmed_matrix_fee_evaluation_export_service(
     session: Session = Depends(get_session),
+    settings: Settings = Depends(lambda: get_settings()),
 ) -> ConfirmedMatrixFeeEvaluationExportService:
     """Build direct confirmed-authority Fee Evaluation export service."""
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
     return ConfirmedMatrixFeeEvaluationExportService(
         fee_draft_service=ConfirmedMatrixFeeDraftService(
             confirmed_store=confirmed_store,
+            contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
+                session,
+                settings,
+            ),
+            contact_point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(
+                session,
+            ),
         ),
         confirmed_store=confirmed_store,
         project_output_service=ProjectOutputRecordService(
@@ -681,6 +692,7 @@ def get_matrix_revision_flow_service(
 
 def get_matrix_editor_session_service(
     session: Session = Depends(get_session),
+    settings: Settings = Depends(lambda: get_settings()),
 ) -> MatrixEditorSessionService:
     """Build Matrix Editor temporary session service."""
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
@@ -729,6 +741,13 @@ def get_matrix_editor_session_service(
             pricing_draft_store=FeeEvaluationPricingDraftEditRepository(session),
             confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
             rebase_service=MatrixFeeDraftRebaseService(),
+            contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
+                session,
+                settings,
+            ),
+            contact_point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(
+                session,
+            ),
         ),
         lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
@@ -1049,6 +1068,20 @@ def _confirmed_contact_measurement_consumer_adapter(
     return ContactMeasurementPlanConfirmedConsumerAdapter(
         projection_service=get_contact_measurement_plan_projection_service(session, settings),
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
+def _confirmed_contact_point_profile_consumer_adapter(session: Session):
+    """Compose the confirmed Point Profile read boundary without route exposure."""
+    from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+        ContactPointProfileConfirmedConsumerAdapter,
+    )
+    from backend.infrastructure.storage.repositories.contact_point_profile_authority import (
+        ContactPointProfileAuthorityRepository,
+    )
+
+    return ContactPointProfileConfirmedConsumerAdapter(
+        repository=ContactPointProfileAuthorityRepository(session),
     )
 
 
@@ -1499,6 +1532,13 @@ def get_project_folder_required_forms_service(
     fee_service = ConfirmedMatrixFeeEvaluationExportService(
         fee_draft_service=ConfirmedMatrixFeeDraftService(
             confirmed_store=confirmed_store,
+            contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
+                session,
+                settings,
+            ),
+            contact_point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(
+                session,
+            ),
         ),
         confirmed_store=confirmed_store,
         project_output_service=_NoopProjectOutputService(output_service),

@@ -4,28 +4,27 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Literal, Protocol
 from uuid import uuid4
 
 from backend.application.confirmed_matrix_fee_draft_service import (
     BuildConfirmedMatrixFeeDraftCommand,
     ConfirmedMatrixFeeDraftService,
-    FeeEvaluationDraft,
-    FeeEvaluationGroup,
-    FeeEvaluationLineItem,
 )
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     build_basic_fill_from_confirmed_snapshot,
 )
+from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
+    ContactMeasurementPlanConfirmedConsumerAdapter,
+)
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    ContactPointProfileConfirmedConsumerAdapter,
+)
 from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
 from backend.application.fee_evaluation_edited_export_values import (
-    FeeEvaluationEditedExportRow,
-    FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
     FeeEvaluationEditedInactiveRow,
     FeeEvaluationEditedInactiveRowKey,
-    FeeEvaluationEditedManualRow,
     edited_row_lookup,
     validate_supported_manual_rows,
 )
@@ -48,8 +47,18 @@ from backend.application.matrix_fee_pending_rebase_service import (
     _target_rows_from_matrix_draft,
     pending_rebase_payload_from_json,
 )
+from backend.application.matrix_fee_rebase_promotion_values import (
+    active_only_edited_values,
+    blank_summary,
+    confirmed_fee_matches_snapshot,
+    edited_values_from_fee_draft,
+    index_new_basic_fill_by_draft_identity,
+    remap_manual_row,
+    remap_row,
+    summary_from_edited_values,
+)
 from backend.domain import ConfirmedMatrixSnapshot, ProjectMatrixDraftSnapshot
-from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
+from backend.domain.confirmed_fee import ConfirmedFeeVersion
 
 MatrixFeeRebasePromotionStatus = Literal[
     "not_required",
@@ -139,11 +148,15 @@ class MatrixFeeRebasePromotionService:
         pricing_draft_store: FeePricingDraftPromotionStore,
         confirmed_fee_store: ConfirmedFeePromotionStore | None = None,
         rebase_service: MatrixFeeDraftRebaseService | None = None,
+        contact_measurement_adapter: ContactMeasurementPlanConfirmedConsumerAdapter | None = None,
+        contact_point_profile_adapter: ContactPointProfileConfirmedConsumerAdapter | None = None,
     ) -> None:
         self._pending_store = pending_store
         self._pricing_draft_store = pricing_draft_store
         self._confirmed_fee_store = confirmed_fee_store
         self._rebase = rebase_service or MatrixFeeDraftRebaseService()
+        self._contact_measurement_adapter = contact_measurement_adapter
+        self._contact_point_profile_adapter = contact_point_profile_adapter
 
     def initialize_after_first_matrix_confirm(
         self,
@@ -322,7 +335,9 @@ class MatrixFeeRebasePromotionService:
         )
         now = datetime.now(timezone.utc).isoformat()
         draft = ConfirmedMatrixFeeDraftService(
-            confirmed_store=_SingleConfirmedMatrixStore(new_confirmed_matrix)
+            confirmed_store=_SingleConfirmedMatrixStore(new_confirmed_matrix),
+            contact_measurement_adapter=self._contact_measurement_adapter,
+            contact_point_profile_adapter=self._contact_point_profile_adapter,
         ).build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id=project_id))
         snapshot = FeeEvaluationPricingDraftSnapshot(
             draft_edit_id=existing.draft_edit_id if existing else uuid4().hex,
@@ -330,7 +345,7 @@ class MatrixFeeRebasePromotionService:
             confirmed_matrix_id=new_confirmed_matrix.version.confirmed_matrix_id,
             confirmed_revision=new_confirmed_matrix.version.confirmed_revision,
             fee_rule_version_id=fee_rule_version_id,
-            edited_values=_edited_values_from_fee_draft(draft),
+            edited_values=edited_values_from_fee_draft(draft),
             created_at=existing.created_at if existing else now,
             updated_at=now,
         )
@@ -345,7 +360,7 @@ class MatrixFeeRebasePromotionService:
         if self._confirmed_fee_store is None:
             return None
         latest = self._confirmed_fee_store.get_latest_by_project(project_id)
-        if latest is not None and _confirmed_fee_matches_snapshot(latest, snapshot):
+        if latest is not None and confirmed_fee_matches_snapshot(latest, snapshot):
             return latest
         versions = self._confirmed_fee_store.list_by_project(project_id)
         next_revision = (versions[-1].confirmed_fee_revision + 1) if versions else 1
@@ -358,9 +373,9 @@ class MatrixFeeRebasePromotionService:
             fee_rule_version_id=snapshot.fee_rule_version_id,
             pricing_draft_edit_id=snapshot.draft_edit_id,
             pricing_effective_from=None,
-            summary=_summary_from_edited_values(snapshot.edited_values),
+            summary=summary_from_edited_values(snapshot.edited_values),
             pricing_snapshot_json=edited_values_to_json(
-                _active_only_edited_values(snapshot.edited_values)
+                active_only_edited_values(snapshot.edited_values)
             ),
             confirmed_by="ConnLab Auto",
             confirmed_at=datetime.now(timezone.utc).isoformat(),
@@ -377,22 +392,22 @@ def remap_rebase_result_to_confirmed_matrix(
 ) -> FeeEvaluationEditedExportValues:
     """Project rebased rows onto the new Confirmed Matrix basic-fill identity."""
     basic_fill = build_basic_fill_from_confirmed_snapshot(new_confirmed_matrix)
-    line_by_draft_identity = _index_new_basic_fill_by_draft_identity(
+    line_by_draft_identity = index_new_basic_fill_by_draft_identity(
         new_confirmed_matrix
     )
     rows = tuple(
-        _remap_row(row, line_by_draft_identity)
+        remap_row(row, line_by_draft_identity)
         for row in rebase_result.active_rows
     )
     manual_rows = tuple(
-        _remap_manual_row(row, new_confirmed_matrix) for row in rebase_result.manual_rows
+        remap_manual_row(row, new_confirmed_matrix) for row in rebase_result.manual_rows
     )
     values = FeeEvaluationEditedExportValues(
         rows=rows,
         summary=(
             previous_pricing_draft.edited_values.summary
             if previous_pricing_draft is not None
-            else _blank_summary()
+            else blank_summary()
         ),
         manual_rows=manual_rows,
         inactive_rows=tuple(
@@ -453,264 +468,3 @@ class _SingleConfirmedMatrixStore:
         if self._snapshot.version.project_id != project_id:
             return None
         return self._snapshot
-
-
-def _edited_values_from_fee_draft(
-    draft: FeeEvaluationDraft,
-) -> FeeEvaluationEditedExportValues:
-    rows = tuple(
-        row
-        for group in draft.groups
-        for line in group.line_items
-        for row in _rows_from_fee_line(line)
-    )
-    manual_rows = tuple(
-        _sample_preparation_row(group)
-        for group in draft.groups
-        if group.line_items
-    ) + (_report_preparation_row(),)
-    return FeeEvaluationEditedExportValues(
-        rows=rows,
-        summary=_blank_summary(),
-        manual_rows=manual_rows,
-    )
-
-
-def _rows_from_fee_line(
-    line: FeeEvaluationLineItem,
-) -> tuple[FeeEvaluationEditedExportRow, ...]:
-    return tuple(
-        FeeEvaluationEditedExportRow(
-            source_line_id=f"{line.line_id}:{step_token}:{index}",
-            confirmed_group_id=line.confirmed_group_id,
-            confirmed_row_id=line.confirmed_row_id,
-            step_token=step_token,
-            step_index=index,
-            spend_time=_text_or_zero(line.spend_time),
-            unit_price=_decimal_text(line.unit_price, "0"),
-            unit_type=line.unit_label or line.calculation_strategy or "Pending",
-            units=_decimal_text(line.units, "1"),
-            base_fee=_decimal_text(line.base_fee, "0"),
-            discount=f"{_decimal_text(line.discount_percent, '0')}%",
-            testing_fee=_decimal_text(line.testing_fee, "0"),
-            notes="",
-        )
-        for index, step_token in enumerate(line.step_tokens)
-    )
-
-
-def _sample_preparation_row(group: FeeEvaluationGroup) -> FeeEvaluationEditedManualRow:
-    first_line = group.line_items[0]
-    return FeeEvaluationEditedManualRow(
-        row_kind="sample_preparation",
-        confirmed_group_id=first_line.confirmed_group_id,
-        group_key=group.group_key,
-        group_label=group.group_label,
-        spend_time="0",
-        unit_price="0",
-        unit_type="per sample",
-        units="1",
-        base_fee="0",
-        discount="0%",
-        testing_fee="0",
-        notes="",
-    )
-
-
-def _report_preparation_row() -> FeeEvaluationEditedManualRow:
-    return FeeEvaluationEditedManualRow(
-        row_kind="report_preparation",
-        spend_time="0",
-        unit_price="0",
-        unit_type="per report",
-        units="1",
-        base_fee="0",
-        discount="0%",
-        testing_fee="0",
-        notes="",
-    )
-
-
-def _confirmed_fee_matches_snapshot(
-    version: ConfirmedFeeVersion,
-    snapshot: FeeEvaluationPricingDraftSnapshot,
-) -> bool:
-    return (
-        version.project_id == snapshot.project_id
-        and version.confirmed_matrix_id == snapshot.confirmed_matrix_id
-        and version.confirmed_revision == snapshot.confirmed_revision
-        and version.fee_rule_version_id == snapshot.fee_rule_version_id
-        and version.pricing_draft_edit_id == snapshot.draft_edit_id
-    )
-
-
-def _active_only_edited_values(
-    values: FeeEvaluationEditedExportValues,
-) -> FeeEvaluationEditedExportValues:
-    return FeeEvaluationEditedExportValues(
-        rows=values.rows,
-        summary=values.summary,
-        manual_rows=values.manual_rows,
-    )
-
-
-def _summary_from_edited_values(
-    values: FeeEvaluationEditedExportValues,
-) -> ConfirmedFeeSummary:
-    rows = (*values.rows, *values.manual_rows)
-    testing_fee_total = sum((_decimal_value(row.testing_fee) for row in rows), Decimal("0"))
-    working_hours = sum((_decimal_value(row.spend_time) for row in rows), Decimal("0"))
-    working_hours += _decimal_value(
-        values.summary.condition_confirmation_spend_time or "0"
-    )
-    hourly_rate = _decimal_value(values.summary.lab_manpower_hourly_rate or "0")
-    lab_manpower_cost = working_hours * hourly_rate
-    external_cost = _decimal_value(values.summary.external_cost or "0")
-    grand_cost = testing_fee_total + external_cost
-    return ConfirmedFeeSummary(
-        testing_fee_total=_format_decimal(testing_fee_total, Decimal("0.01")),
-        working_hours=_format_decimal(working_hours, Decimal("0.1")),
-        lab_manpower_cost=_format_decimal(
-            lab_manpower_cost,
-            Decimal("1"),
-            rounding=ROUND_HALF_UP,
-        ),
-        external_cost=_format_decimal(external_cost, Decimal("0.01")),
-        grand_cost=_format_decimal(grand_cost, Decimal("0.01")),
-    )
-
-
-def _decimal_value(value: str) -> Decimal:
-    normalized = str(value).strip().replace("$", "").replace(",", "")
-    if not normalized or normalized.lower() == "pending":
-        return Decimal("0")
-    try:
-        return Decimal(normalized.rstrip("%"))
-    except InvalidOperation:
-        return Decimal("0")
-
-
-def _format_decimal(value: Decimal, quantum: Decimal, *, rounding=None) -> str:
-    if rounding is not None:
-        return str(value.quantize(quantum, rounding=rounding))
-    return str(value.quantize(quantum))
-
-
-def _decimal_text(value: Decimal | None, fallback: str) -> str:
-    return str(value) if value is not None else fallback
-
-
-def _text_or_zero(value: str | None) -> str:
-    text = (value or "").strip()
-    return text or "0"
-
-
-def _index_new_basic_fill_by_draft_identity(
-    snapshot: ConfirmedMatrixSnapshot,
-) -> dict[tuple[str, str, str, int], FeeEvaluationEditedExportRow]:
-    group_draft_by_confirmed = {
-        group.confirmed_group_id: group.draft_group_id for group in snapshot.groups
-    }
-    row_draft_by_confirmed = {
-        row.confirmed_row_id: row.draft_row_id for row in snapshot.rows
-    }
-    basic_fill = build_basic_fill_from_confirmed_snapshot(snapshot)
-    lookup: dict[tuple[str, str, str, int], FeeEvaluationEditedExportRow] = {}
-    for group in basic_fill.groups:
-        draft_group_id = group_draft_by_confirmed.get(group.confirmed_group_id, "")
-        for line in group.lines:
-            draft_row_id = row_draft_by_confirmed.get(line.confirmed_row_id, "")
-            step_token = line.step_tokens[0] if line.step_tokens else ""
-            lookup[(draft_group_id, draft_row_id, step_token, line.step_index)] = (
-                FeeEvaluationEditedExportRow(
-                    source_line_id=line.line_id,
-                    confirmed_group_id=line.confirmed_group_id,
-        confirmed_row_id=line.confirmed_row_id,
-        step_token=step_token,
-        step_index=line.step_index,
-        spend_time="0",
-        unit_price="0",
-        unit_type="Pending",
-        units="1",
-        base_fee="0",
-        discount="0%",
-        testing_fee="0",
-        notes="",
-    )
-            )
-    return lookup
-
-
-def _remap_row(
-    row: FeeEvaluationEditedExportRow,
-    line_by_draft_identity: dict[tuple[str, str, str, int], FeeEvaluationEditedExportRow],
-) -> FeeEvaluationEditedExportRow:
-    identity = (
-        row.confirmed_group_id,
-        row.confirmed_row_id,
-        row.step_token,
-        row.step_index,
-    )
-    target = line_by_draft_identity.get(identity)
-    if target is None:
-        raise ValueError("Rebased Fee row identity was not found in new Confirmed Matrix.")
-    return replace(
-        target,
-        spend_time=row.spend_time,
-        unit_price=row.unit_price,
-        unit_type=_saveable_unit_type(row.unit_type),
-        units=row.units,
-        base_fee=row.base_fee,
-        discount=row.discount,
-        testing_fee=row.testing_fee,
-        notes=row.notes,
-    )
-
-
-def _remap_manual_row(
-    row: FeeEvaluationEditedManualRow,
-    snapshot: ConfirmedMatrixSnapshot,
-) -> FeeEvaluationEditedManualRow:
-    if row.row_kind.strip() != "sample_preparation":
-        return row
-    target = _find_group_for_manual_row(row, snapshot)
-    if target is None:
-        return row
-    return replace(
-        row,
-        confirmed_group_id=target.confirmed_group_id,
-        group_key=target.group_key,
-        group_label=target.group_label,
-    )
-
-
-def _find_group_for_manual_row(
-    row: FeeEvaluationEditedManualRow,
-    snapshot: ConfirmedMatrixSnapshot,
-):
-    by_draft = {group.draft_group_id.strip(): group for group in snapshot.groups}
-    draft_id = row.confirmed_group_id.strip()
-    if draft_id in by_draft:
-        return by_draft[draft_id]
-    row_key = row.group_key.strip().casefold()
-    row_label = row.group_label.strip().casefold()
-    for group in snapshot.groups:
-        if row_key and group.group_key.strip().casefold() == row_key:
-            return group
-        if row_label and group.group_label.strip().casefold() == row_label:
-            return group
-    return None
-
-
-def _saveable_unit_type(value: str) -> str:
-    normalized = value.strip()
-    return normalized if normalized else "Pending"
-
-
-def _blank_summary() -> FeeEvaluationEditedExportSummary:
-    return FeeEvaluationEditedExportSummary(
-        condition_confirmation_spend_time="",
-        external_cost="",
-        external_cost_note="",
-        lab_manpower_hourly_rate="",
-    )

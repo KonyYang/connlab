@@ -1,7 +1,11 @@
 from backend.application.confirmed_matrix_fee_step_quantities import (
     _matched_context,
+    build_profile_reading_contexts,
     build_step_quantity_contexts,
     build_step_quantity_lookup,
+)
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    EffectiveConfirmedPointProfile,
 )
 from backend.domain import (
     ConfirmedMatrixGroup,
@@ -84,6 +88,45 @@ def test_effective_contact_authority_blocks_legacy_fallback_for_omitted_target()
     assert contexts[0].review_required is True
     assert contexts[0].total_readings is None
     assert contexts[0].source == "confirmed_measurement_plan"
+
+
+def test_profile_contexts_use_confirmed_lineage_without_step_quantity() -> None:
+    contexts = build_profile_reading_contexts(
+        parsed_tokens=(ParsedStepToken(sequence=1, raw_token="1", suffix_note=None),),
+        profile=EffectiveConfirmedPointProfile(
+            status="confirmed",
+            readings_per_sample="4",
+            revision_id="revision-1",
+            revision_sequence=3,
+            fingerprint="sha256:profile",
+            lineage="Confirmed Project Point Profile: revision 3 (revision-1; sha256:profile)",
+            message=None,
+        ),
+    )
+
+    assert contexts[0].matched is True
+    assert contexts[0].review_required is False
+    assert contexts[0].total_readings == "4"
+    assert contexts[0].source == "Confirmed Project Point Profile: revision 3 (revision-1; sha256:profile)"
+
+
+def test_profile_contexts_block_unconfirmed_profile_without_text_fallback() -> None:
+    contexts = build_profile_reading_contexts(
+        parsed_tokens=(ParsedStepToken(sequence=1, raw_token="1", suffix_note=None),),
+        profile=EffectiveConfirmedPointProfile(
+            status="draft",
+            readings_per_sample=None,
+            revision_id=None,
+            revision_sequence=None,
+            fingerprint=None,
+            lineage=None,
+            message="Confirm Point Profile before calculating LLCR units.",
+        ),
+    )
+
+    assert contexts[0].matched is True
+    assert contexts[0].review_required is True
+    assert contexts[0].review_reason == "Confirm Point Profile before calculating LLCR units."
 
 
 def _quantity() -> ConfirmedMatrixStepQuantity:
