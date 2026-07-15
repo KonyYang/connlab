@@ -57,6 +57,9 @@ class ConfirmedFeeVersionCreateRequest(BaseModel):
     confirmed_by: str
     expected_pricing_draft_edit_id: str
     summary: ConfirmedFeeSummaryRequest
+    expected_generation: int | None = None
+    expected_payload_fingerprint: str | None = None
+    expected_validation_token: str | None = None
     confirmation_note: str | None = None
 
 
@@ -126,6 +129,9 @@ def create_confirmed_fee_version(
                 confirmed_by=request.confirmed_by,
                 expected_pricing_draft_edit_id=request.expected_pricing_draft_edit_id,
                 summary=request.summary.to_domain(),
+                expected_generation=request.expected_generation,
+                expected_payload_fingerprint=request.expected_payload_fingerprint,
+                expected_validation_token=request.expected_validation_token,
                 confirmation_note=request.confirmation_note,
             )
         )

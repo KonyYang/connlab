@@ -14,7 +14,11 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+    FeeEvaluationPricingDraftSnapshot,
     edited_values_to_json,
+)
+from backend.application.confirmed_fee_pricing_snapshot import (
+    encode_confirmed_fee_pricing_snapshot,
 )
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
@@ -104,7 +108,9 @@ def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
             confirmed_by=None,
         ),
         confirmed_fee=SimpleNamespace(
-            pricing_snapshot_json=edited_values_to_json(_edited_values_with_notes())
+            pricing_snapshot_json=_confirmed_v2_pricing_snapshot_json(
+                _edited_values_with_notes()
+            )
         ),
     )
 
@@ -114,6 +120,28 @@ def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
     assert fee_export.command.edited_values.rows[0].notes == "阿第三方"
     assert fee_export.command.fill_mode == "matrix_basic"
     assert fee_export.command.template_path == template
+
+
+def _confirmed_v2_pricing_snapshot_json(
+    values: FeeEvaluationEditedExportValues,
+) -> str:
+    return encode_confirmed_fee_pricing_snapshot(
+        snapshot=FeeEvaluationPricingDraftSnapshot(
+            draft_edit_id="fed-1",
+            project_id="P1",
+            confirmed_matrix_id="cmv-1",
+            confirmed_revision=1,
+            fee_rule_version_id="fee_rules_v2026_06_03",
+            edited_values=values,
+            created_at="2026-07-15T00:00:00+00:00",
+            updated_at="2026-07-15T00:00:00+00:00",
+            generation=1,
+            payload_fingerprint="payload-fingerprint-1",
+            source_context_fingerprint="source-fingerprint-1",
+            validation_token="validation-token-1",
+        ),
+        edited_values=values,
+    )
 
 
 def test_required_forms_test_record_uses_settings_template_folder(

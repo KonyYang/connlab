@@ -20,6 +20,9 @@ from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service 
     result_from_payload,
     result_to_payload,
 )
+from backend.application.fee_evaluation_current_pricing_draft_guard import (
+    CurrentFeePricingDraftRequiredError,
+)
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
@@ -43,6 +46,10 @@ def test_command_payload_round_trip_preserves_export_options(tmp_path: Path) -> 
         approved_by="Lead",
         connlab_user="ConnLab User",
         fill_mode="matrix_basic",
+        pricing_draft_edit_id="fed-2",
+        pricing_draft_generation=3,
+        pricing_draft_payload_fingerprint="payload-fingerprint",
+        pricing_draft_validation_token="validation-token",
     )
 
     restored = command_from_payload(command_to_payload(command))
@@ -212,6 +219,25 @@ def test_timeout_service_maps_value_error() -> None:
     )
 
     with pytest.raises(ValueError, match="bad path"):
+        service.export(_command())
+
+
+def test_timeout_service_preserves_current_v2_conflict() -> None:
+    service = ConfirmedMatrixFeeEvaluationExportTimeoutService(
+        runner=_Runner(
+            FeeEvaluationExportProcessResult(
+                status="pricing_draft_conflict",
+                timed_out=False,
+                exit_code=1,
+                elapsed_seconds=0.1,
+                stdout="{}",
+                stderr="",
+                error_message="Reload and review before continuing.",
+            )
+        )
+    )
+
+    with pytest.raises(CurrentFeePricingDraftRequiredError, match="Reload and review"):
         service.export(_command())
 
 

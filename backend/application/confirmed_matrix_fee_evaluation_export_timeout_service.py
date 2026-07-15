@@ -23,6 +23,9 @@ from backend.application.fee_evaluation_edited_export_values import (
 from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
 )
+from backend.application.fee_evaluation_current_pricing_draft_guard import (
+    CurrentFeePricingDraftRequiredError,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +67,8 @@ class ConfirmedMatrixFeeEvaluationExportTimeoutService:
             payload = result.payload.get("result", result.payload)
             return result_from_payload(payload)
         message = _error_message(result)
+        if result.status == "pricing_draft_conflict":
+            raise CurrentFeePricingDraftRequiredError(message)
         if result.status == "business_error":
             raise ConfirmedMatrixFeeEvaluationExportError(message)
         if result.status == "not_found":
@@ -98,6 +103,10 @@ def command_to_payload(command: ExportConfirmedMatrixFeeEvaluationCommand) -> di
         "approved_by": command.approved_by,
         "connlab_user": command.connlab_user,
         "fill_mode": command.fill_mode,
+        "pricing_draft_edit_id": command.pricing_draft_edit_id,
+        "pricing_draft_generation": command.pricing_draft_generation,
+        "pricing_draft_payload_fingerprint": command.pricing_draft_payload_fingerprint,
+        "pricing_draft_validation_token": command.pricing_draft_validation_token,
         "edited_values": _edited_values_to_payload(command.edited_values),
         "basic_information_values": (
             dict(command.basic_information_values)
@@ -124,6 +133,14 @@ def command_from_payload(payload: dict[str, Any]) -> ExportConfirmedMatrixFeeEva
         approved_by=_optional_str(payload.get("approved_by")),
         connlab_user=_optional_str(payload.get("connlab_user")),
         fill_mode=fill_mode,  # type: ignore[arg-type]
+        pricing_draft_edit_id=_optional_str(payload.get("pricing_draft_edit_id")),
+        pricing_draft_generation=_optional_int(payload.get("pricing_draft_generation")),
+        pricing_draft_payload_fingerprint=_optional_str(
+            payload.get("pricing_draft_payload_fingerprint")
+        ),
+        pricing_draft_validation_token=_optional_str(
+            payload.get("pricing_draft_validation_token")
+        ),
         edited_values=_edited_values_from_payload(payload.get("edited_values")),
         basic_information_values=_basic_information_values_from_payload(
             payload.get("basic_information_values")
@@ -235,6 +252,12 @@ def _optional_str(value: Any) -> str | None:
         return None
     text = str(value)
     return text if text else None
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    return int(value)
 
 
 def _edited_values_to_payload(

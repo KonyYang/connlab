@@ -14,6 +14,11 @@ from backend.api.dependencies import (
     get_fee_evaluation_template_resource_store,
     get_settings,
 )
+from backend.api.fee_evaluation_pricing_draft_http import (
+    CurrentFeePricingDraftRequiredError,
+    FeePricingDraftAttestationRequest,
+    raise_fee_pricing_draft_not_current,
+)
 from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftNotFoundError,
 )
@@ -85,7 +90,7 @@ class FeeEvaluationExportServicePort(Protocol):
         """Export one Fee Evaluation workbook."""
 
 
-class ConfirmedMatrixFeeEvaluationExportRequest(BaseModel):
+class ConfirmedMatrixFeeEvaluationExportRequest(FeePricingDraftAttestationRequest):
     template_path: str
     output_dir: str | None = None
     output_file_name: str | None = None
@@ -300,7 +305,7 @@ class FeeEvaluationEditedSummaryExportRequest(BaseModel):
         )
 
 
-class ConfirmedMatrixFeeEvaluationEditedFileRequest(BaseModel):
+class ConfirmedMatrixFeeEvaluationEditedFileRequest(FeePricingDraftAttestationRequest):
     rows: list[FeeEvaluationEditedRowExportRequest] = []
     summary: FeeEvaluationEditedSummaryExportRequest
     manual_rows: list[FeeEvaluationEditedManualRowExportRequest] = []
@@ -365,6 +370,12 @@ def export_confirmed_matrix_fee_evaluation(
                 fill_mode=request.fill_mode,
                 prepared_by=request.prepared_by,
                 approved_by=request.approved_by,
+                pricing_draft_edit_id=request.pricing_draft_edit_id,
+                pricing_draft_generation=request.pricing_draft_generation,
+                pricing_draft_payload_fingerprint=(
+                    request.pricing_draft_payload_fingerprint
+                ),
+                pricing_draft_validation_token=request.pricing_draft_validation_token,
             )
         )
     except (
@@ -387,6 +398,8 @@ def export_confirmed_matrix_fee_evaluation(
                 "manual_cleanup_warning": exc.manual_cleanup_warning,
             },
         ) from exc
+    except CurrentFeePricingDraftRequiredError as exc:
+        raise_fee_pricing_draft_not_current(exc)
     except (ConfirmedMatrixFeeEvaluationExportError, ProjectOutputRecordError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
@@ -421,6 +434,14 @@ def generate_confirmed_matrix_fee_file(
                 allow_review_required=True,
                 fill_mode="matrix_basic",
                 edited_values=request.to_application() if request else None,
+                pricing_draft_edit_id=(request.pricing_draft_edit_id if request else None),
+                pricing_draft_generation=(request.pricing_draft_generation if request else None),
+                pricing_draft_payload_fingerprint=(
+                    request.pricing_draft_payload_fingerprint if request else None
+                ),
+                pricing_draft_validation_token=(
+                    request.pricing_draft_validation_token if request else None
+                ),
             )
         )
     except (
@@ -445,6 +466,8 @@ def generate_confirmed_matrix_fee_file(
                 "manual_cleanup_warning": exc.manual_cleanup_warning,
             },
         ) from exc
+    except CurrentFeePricingDraftRequiredError as exc:
+        raise_fee_pricing_draft_not_current(exc)
     except (ConfirmedMatrixFeeEvaluationExportError, ProjectOutputRecordError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:

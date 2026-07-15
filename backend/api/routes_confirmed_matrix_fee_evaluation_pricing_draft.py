@@ -65,6 +65,10 @@ class FeeEvaluationPricingDraftResponse(BaseModel):
     saved_fee_rule_version_id: str | None = None
     saved_draft_edit_id: str | None = None
     saved_updated_at: str | None = None
+    saved_generation: int | None = None
+    saved_payload_fingerprint: str | None = None
+    saved_validation_token: str | None = None
+    saved_source_context_fingerprint: str | None = None
     payload: ConfirmedMatrixFeeEvaluationEditedFileRequest | None = None
 
 
@@ -81,6 +85,10 @@ class FeeEvaluationPricingDraftSaveRequest(
     expected_confirmed_matrix_id: str | None = None
     expected_confirmed_revision: int | None = None
     expected_fee_rule_version_id: str | None = None
+    expected_pricing_draft_edit_id: str | None = None
+    expected_generation: int | None = None
+    expected_payload_fingerprint: str | None = None
+    expected_updated_at: str | None = None
 
 
 class FeeEvaluationPricingDraftDiscardResponse(BaseModel):
@@ -132,6 +140,14 @@ def save_fee_evaluation_pricing_draft(
                     ),
                     expected_confirmed_revision=request.expected_confirmed_revision,
                     expected_fee_rule_version_id=request.expected_fee_rule_version_id,
+                    expected_pricing_draft_edit_id=(
+                        request.expected_pricing_draft_edit_id
+                    ),
+                    expected_generation=request.expected_generation,
+                    expected_payload_fingerprint=(
+                        request.expected_payload_fingerprint
+                    ),
+                    expected_updated_at=request.expected_updated_at,
                 )
             )
         )
@@ -207,7 +223,18 @@ def _to_response(
         saved_fee_rule_version_id=snapshot.fee_rule_version_id if snapshot else None,
         saved_draft_edit_id=snapshot.draft_edit_id if snapshot else None,
         saved_updated_at=snapshot.updated_at if snapshot else None,
-        payload=_to_payload(snapshot) if result.status == "current" and snapshot else None,
+        saved_generation=snapshot.generation if snapshot else None,
+        saved_payload_fingerprint=(snapshot.payload_fingerprint if snapshot else None),
+        saved_validation_token=(snapshot.validation_token if snapshot else None),
+        saved_source_context_fingerprint=(
+            snapshot.source_context_fingerprint if snapshot else None
+        ),
+        payload=(
+            _to_payload(snapshot)
+            if result.status in {"current", "current_v2", "rebase_required"}
+            and snapshot
+            else None
+        ),
     )
 
 

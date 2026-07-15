@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from typing import TYPE_CHECKING
 
 from backend.application.confirmed_matrix_fee_draft_service import (
     FeeEvaluationDraft,
@@ -19,11 +20,16 @@ from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
     FeeEvaluationEditedManualRow,
 )
-from backend.application.fee_evaluation_pricing_draft_persistence_service import (
-    FeeEvaluationPricingDraftSnapshot,
+from backend.application.confirmed_fee_pricing_snapshot import (
+    matches_current_v2_pricing_snapshot,
 )
 from backend.domain import ConfirmedMatrixSnapshot
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
+
+if TYPE_CHECKING:
+    from backend.application.fee_evaluation_pricing_draft_persistence_service import (
+        FeeEvaluationPricingDraftSnapshot,
+    )
 
 
 def edited_values_from_fee_draft(
@@ -51,13 +57,18 @@ def confirmed_fee_matches_snapshot(
     version: ConfirmedFeeVersion,
     snapshot: FeeEvaluationPricingDraftSnapshot,
 ) -> bool:
-    return (
+    base_matches = (
         version.project_id == snapshot.project_id
         and version.confirmed_matrix_id == snapshot.confirmed_matrix_id
         and version.confirmed_revision == snapshot.confirmed_revision
         and version.fee_rule_version_id == snapshot.fee_rule_version_id
         and version.pricing_draft_edit_id == snapshot.draft_edit_id
     )
+    if not base_matches:
+        return False
+    if snapshot.generation is None:
+        return True
+    return matches_current_v2_pricing_snapshot(version.pricing_snapshot_json, snapshot)
 
 
 def active_only_edited_values(

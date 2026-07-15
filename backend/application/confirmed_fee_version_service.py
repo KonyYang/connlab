@@ -5,12 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-import json
 from typing import Callable, Protocol
 from uuid import uuid4
 
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
+)
+from backend.application.confirmed_fee_pricing_snapshot import (
+    edited_values_payload_from_confirmed_fee_snapshot,
+    encode_confirmed_fee_pricing_snapshot,
+    matches_current_v2_pricing_snapshot,
 )
 from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
@@ -38,6 +42,10 @@ class ConfirmedFeePricingDraftChangedError(ValueError):
     """Raised when the expected saved pricing draft no longer matches latest."""
 
 
+class ConfirmedFeeVersionConflictError(ConfirmedFeePricingDraftChangedError):
+    """Raised when a concurrent Confirm Fee wins with different lineage."""
+
+
 class ConfirmedFeeSummaryValidationError(ValueError):
     """Raised when confirmation totals are incomplete or non-numeric."""
 
@@ -50,6 +58,9 @@ class ConfirmFeeVersionCommand:
     confirmed_by: str
     expected_pricing_draft_edit_id: str
     summary: ConfirmedFeeSummary
+    expected_generation: int | None = None
+    expected_payload_fingerprint: str | None = None
+    expected_validation_token: str | None = None
     confirmation_note: str | None = None
 
 
@@ -68,6 +79,9 @@ class ConfirmedFeeVersionStore(Protocol):
 
     def create(self, version: ConfirmedFeeVersion) -> ConfirmedFeeVersion:
         """Persist one Confirmed Fee version."""
+
+    def create_or_get_exact(self, version: ConfirmedFeeVersion) -> ConfirmedFeeVersion:
+        """Atomically persist or return the exact confirmed version."""
 
     def get_latest_by_project(self, project_id: str) -> ConfirmedFeeVersion | None:
         """Return latest Confirmed Fee version for one project."""
@@ -109,9 +123,17 @@ class ConfirmedFeeVersionService:
                 "Fee Evaluation draft changed after totals were prepared. "
                 "Reload and confirm again."
             )
+        _validate_v2_pricing_snapshot(snapshot, command)
         _validate_summary(command.summary)
         _validate_summary_matches_saved_pricing_snapshot(command.summary, snapshot)
         versions = self._confirmed_fee_store.list_by_project(command.project_id)
+        existing = (
+            _matching_confirmed_fee(versions, snapshot, command.summary)
+            if snapshot.generation is not None
+            else None
+        )
+        if existing is not None:
+            return existing
         next_revision = (versions[-1].confirmed_fee_revision + 1) if versions else 1
         version = ConfirmedFeeVersion(
             confirmed_fee_id=self._id_factory(),
@@ -123,14 +145,13 @@ class ConfirmedFeeVersionService:
             pricing_draft_edit_id=snapshot.draft_edit_id,
             pricing_effective_from=None,
             summary=command.summary,
-            pricing_snapshot_json=edited_values_to_json(
-                _active_only_edited_values(snapshot.edited_values)
-            ),
+            pricing_snapshot_json=_confirmed_pricing_snapshot_json(snapshot),
             confirmed_by=confirmed_by,
             confirmed_at=self._clock(),
             confirmation_note=_normalize_optional_text(command.confirmation_note),
         )
-        return self._confirmed_fee_store.create(version)
+        atomic_create = getattr(self._confirmed_fee_store, "create_or_get_exact", None)
+        return atomic_create(version) if atomic_create is not None else self._confirmed_fee_store.create(version)
 
     def get_latest(self, project_id: str) -> ConfirmedFeeVersionReadResult:
         """Return the latest Confirmed Fee version and current/stale status."""
@@ -144,7 +165,7 @@ class ConfirmedFeeVersionService:
             )
         status: ConfirmedFeeStatus = (
             "current"
-            if _version_matches_context(latest, load_result.current_context)
+            if _confirmed_fee_is_current_v2(latest, load_result)
             else "stale"
         )
         return ConfirmedFeeVersionReadResult(
@@ -177,12 +198,69 @@ def _require_current_pricing_snapshot(
         raise ConfirmedFeePricingDraftMissingError(
             "Save Fee Evaluation pricing before confirming fee."
         )
-    if load_result.status == "stale":
+    if load_result.status not in {"current_v2", "current"}:
         raise ConfirmedFeePricingDraftStaleError(
             "Fee Evaluation pricing draft is stale. refresh and save it for the "
             "current Matrix and fee rules before confirming."
         )
     return load_result.saved_snapshot
+
+
+def _validate_v2_pricing_snapshot(
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+    command: ConfirmFeeVersionCommand,
+) -> None:
+    # Legacy in-memory ports remain available to pre-V2 unit fixtures only.
+    # Production loaders classify persisted V1 rows as legacy_unclassified.
+    if snapshot.generation is None and not command.expected_generation:
+        return
+    if snapshot.generation is None or not snapshot.validation_token:
+        raise ConfirmedFeePricingDraftStaleError(
+            "Fee Evaluation pricing draft requires a reviewed V2 rebase before confirming."
+        )
+    checks = (
+        (command.expected_generation, snapshot.generation),
+        (command.expected_payload_fingerprint, snapshot.payload_fingerprint),
+        (command.expected_validation_token, snapshot.validation_token),
+    )
+    if any(expected is None or expected != actual for expected, actual in checks):
+        raise ConfirmedFeePricingDraftChangedError(
+            "Fee Evaluation draft changed after totals were prepared. Reload and confirm again."
+        )
+
+
+def _confirmed_fee_is_current_v2(
+    version: ConfirmedFeeVersion,
+    load_result: FeeEvaluationPricingDraftLoadResult,
+) -> bool:
+    """Keep downstream Required Forms behind the same reviewed V2 boundary."""
+    snapshot = load_result.saved_snapshot
+    if snapshot is None:
+        return False
+    if load_result.status == "current" and snapshot.generation is None:
+        # Compatibility for pre-V2 in-memory test ports only. Persisted V1 rows are
+        # classified as legacy_unclassified by the pricing-draft repository.
+        return _version_matches_context(version, load_result.current_context)
+    return bool(
+        load_result.status == "current_v2"
+        and _version_matches_context(version, load_result.current_context)
+        and matches_current_v2_pricing_snapshot(version.pricing_snapshot_json, snapshot)
+    )
+
+
+def _matching_confirmed_fee(
+    versions: tuple[ConfirmedFeeVersion, ...],
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+    summary: ConfirmedFeeSummary,
+) -> ConfirmedFeeVersion | None:
+    expected_snapshot = _confirmed_pricing_snapshot_json(snapshot)
+    for version in reversed(versions):
+        if (
+            version.summary == summary
+            and version.pricing_snapshot_json == expected_snapshot
+        ):
+            return version
+    return None
 
 
 def _validate_summary(summary: ConfirmedFeeSummary) -> None:
@@ -259,11 +337,10 @@ def _auto_rebase_fee_review_required_count(version: ConfirmedFeeVersion) -> int:
     """Return rows that still need operator review after an automatic Matrix Fee rebase."""
     if (version.confirmation_note or "").strip() != AUTO_REBASE_FEE_CONFIRMATION_NOTE:
         return 0
-    try:
-        payload = json.loads(version.pricing_snapshot_json)
-    except (TypeError, json.JSONDecodeError):
-        return 0
-    if not isinstance(payload, dict):
+    payload = edited_values_payload_from_confirmed_fee_snapshot(
+        version.pricing_snapshot_json
+    )
+    if payload is None:
         return 0
     rows = payload.get("rows")
     manual_rows = payload.get("manual_rows")
@@ -337,6 +414,15 @@ def _version_matches_context(
         and version.confirmed_revision == context.confirmed_revision
         and version.fee_rule_version_id == context.fee_rule_version_id
     )
+
+
+def _confirmed_pricing_snapshot_json(
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+) -> str:
+    values = _active_only_edited_values(snapshot.edited_values)
+    if snapshot.generation is None:
+        return edited_values_to_json(values)
+    return encode_confirmed_fee_pricing_snapshot(snapshot=snapshot, edited_values=values)
 
 
 def _normalize_optional_text(value: str | None) -> str | None:

@@ -21,6 +21,9 @@ from backend.application.contact_point_profile_confirmed_consumer_adapter import
     ContactPointProfileConfirmedConsumerAdapter,
 )
 from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
+from backend.application.confirmed_fee_pricing_snapshot import (
+    encode_confirmed_fee_pricing_snapshot,
+)
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
     FeeEvaluationEditedInactiveRow,
@@ -30,6 +33,8 @@ from backend.application.fee_evaluation_edited_export_values import (
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftSnapshot,
+)
+from backend.application.fee_evaluation_pricing_draft_serialization import (
     edited_values_to_json,
 )
 from backend.application.matrix_fee_draft_rebase_service import (
@@ -57,6 +62,7 @@ from backend.application.matrix_fee_rebase_promotion_values import (
     remap_row,
     summary_from_edited_values,
 )
+from backend.application.matrix_fee_rebase_pricing_draft_bridge import FeePricingDraftPersistencePort, persist_current_v2_pricing_draft
 from backend.domain import ConfirmedMatrixSnapshot, ProjectMatrixDraftSnapshot
 from backend.domain.confirmed_fee import ConfirmedFeeVersion
 
@@ -150,6 +156,7 @@ class MatrixFeeRebasePromotionService:
         rebase_service: MatrixFeeDraftRebaseService | None = None,
         contact_measurement_adapter: ContactMeasurementPlanConfirmedConsumerAdapter | None = None,
         contact_point_profile_adapter: ContactPointProfileConfirmedConsumerAdapter | None = None,
+        pricing_draft_persistence_service: FeePricingDraftPersistencePort | None = None,
     ) -> None:
         self._pending_store = pending_store
         self._pricing_draft_store = pricing_draft_store
@@ -157,6 +164,7 @@ class MatrixFeeRebasePromotionService:
         self._rebase = rebase_service or MatrixFeeDraftRebaseService()
         self._contact_measurement_adapter = contact_measurement_adapter
         self._contact_point_profile_adapter = contact_point_profile_adapter
+        self._pricing_draft_persistence_service = pricing_draft_persistence_service
 
     def initialize_after_first_matrix_confirm(
         self,
@@ -300,6 +308,13 @@ class MatrixFeeRebasePromotionService:
         command: PromoteMatrixFeeRebaseCommand,
         edited_values: FeeEvaluationEditedExportValues,
     ) -> FeeEvaluationPricingDraftSnapshot:
+        persisted = persist_current_v2_pricing_draft(
+            persistence_service=self._pricing_draft_persistence_service,
+            project_id=command.project_id,
+            edited_values=edited_values,
+        )
+        if persisted is not None:
+            return persisted
         new_version = command.new_confirmed_matrix.version
         existing = self._pricing_draft_store.get_by_context(
             project_id=command.project_id,
@@ -339,13 +354,21 @@ class MatrixFeeRebasePromotionService:
             contact_measurement_adapter=self._contact_measurement_adapter,
             contact_point_profile_adapter=self._contact_point_profile_adapter,
         ).build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id=project_id))
+        values = edited_values_from_fee_draft(draft)
+        persisted = persist_current_v2_pricing_draft(
+            persistence_service=self._pricing_draft_persistence_service,
+            project_id=project_id,
+            edited_values=values,
+        )
+        if persisted is not None:
+            return persisted
         snapshot = FeeEvaluationPricingDraftSnapshot(
             draft_edit_id=existing.draft_edit_id if existing else uuid4().hex,
             project_id=project_id,
             confirmed_matrix_id=new_confirmed_matrix.version.confirmed_matrix_id,
             confirmed_revision=new_confirmed_matrix.version.confirmed_revision,
             fee_rule_version_id=fee_rule_version_id,
-            edited_values=edited_values_from_fee_draft(draft),
+            edited_values=values,
             created_at=existing.created_at if existing else now,
             updated_at=now,
         )
@@ -374,15 +397,19 @@ class MatrixFeeRebasePromotionService:
             pricing_draft_edit_id=snapshot.draft_edit_id,
             pricing_effective_from=None,
             summary=summary_from_edited_values(snapshot.edited_values),
-            pricing_snapshot_json=edited_values_to_json(
-                active_only_edited_values(snapshot.edited_values)
+            pricing_snapshot_json=(
+                encode_confirmed_fee_pricing_snapshot(
+                    snapshot=snapshot,
+                    edited_values=active_only_edited_values(snapshot.edited_values),
+                )
+                if snapshot.generation is not None
+                else edited_values_to_json(active_only_edited_values(snapshot.edited_values))
             ),
             confirmed_by="ConnLab Auto",
             confirmed_at=datetime.now(timezone.utc).isoformat(),
             confirmation_note=AUTO_REBASE_FEE_CONFIRMATION_NOTE,
         )
         return self._confirmed_fee_store.create(version)
-
 
 def remap_rebase_result_to_confirmed_matrix(
     *,

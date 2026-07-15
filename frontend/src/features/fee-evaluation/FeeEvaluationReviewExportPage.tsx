@@ -82,6 +82,14 @@ type FeePricingDraftSaveState =
 
 type PricingDraftLoadStatus = "loading" | "missing" | "current" | "stale" | "error";
 
+type PricingDraftCasState = {
+  draftEditId: string;
+  generation: number;
+  payloadFingerprint: string;
+  updatedAt: string;
+  validationToken: string;
+};
+
 type PricingDraftContext = {
   confirmedMatrixId: string;
   confirmedRevision: number;
@@ -152,6 +160,7 @@ export function FeeEvaluationReviewExportPage({
   const baselinePricingPayloadRef =
     useRef<FeeEvaluationEditedFileExportRequest | null>(null);
   const baselinePricingContextRef = useRef<PricingDraftContext | null>(null);
+  const pricingDraftCasRef = useRef<PricingDraftCasState | null>(null);
   const hasSessionEditedPricingDraftRef = useRef(false);
   const autosaveTimeoutRef = useRef<number | null>(null);
   const autosaveGenerationRef = useRef(0);
@@ -294,9 +303,10 @@ export function FeeEvaluationReviewExportPage({
         if (!active) {
           return;
         }
-        if (result.status === "current") {
+        if (isCurrentPricingDraftResponse(result)) {
           baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
           setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
+          pricingDraftCasRef.current = pricingDraftCasStateFromResponse(result);
           setPricingDraftLoadStatus("current");
           setHasUserEditedPricingDraft(false);
           setNeedsInitialSeedSave(false);
@@ -345,9 +355,35 @@ export function FeeEvaluationReviewExportPage({
           }
           return;
         }
-        if (result.status === "stale") {
+        if (result.status === "rebase_required" && result.payload) {
+          const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+            sourcePreviewRows,
+            result.payload
+          );
+          const reviewedPayload = buildEditedExportPayload(
+            applyFeeEvaluationPreviewEdits(sourcePreviewRows, hydrated.edits),
+            hydrated.costPreviewValues
+          );
+          setPreviewEdits(hydrated.edits);
+          setCostPreviewValues(hydrated.costPreviewValues);
+          baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
+          setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
+          pricingDraftCasRef.current = pricingDraftCasStateFromResponse(result);
+          setPricingDraftLoadStatus("stale");
+          setSavedLocalPricingSignature(pricingDraftSignature(reviewedPayload));
+          setHasUserEditedPricingDraft(false);
+          setNeedsInitialSeedSave(false);
+          setSaveState({
+            kind: "stale",
+            message:
+              "Automatic Fee defaults changed. Review the refreshed values, then save before updating Fee.",
+          });
+          return;
+        }
+        if (!isCurrentPricingDraftResponse(result) && result.status !== "missing") {
           baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
           setLatestSavedPricingDraftId(null);
+          pricingDraftCasRef.current = null;
           setPricingDraftLoadStatus("stale");
           setSavedLocalPricingSignature(null);
           baselinePricingPayloadRef.current = buildEditedExportPayload(
@@ -577,9 +613,10 @@ export function FeeEvaluationReviewExportPage({
     result: FeeEvaluationPricingDraftResponse,
     signature: string
   ): void {
-    if (result.status === "current") {
+    if (isCurrentPricingDraftResponse(result)) {
       const savedDraftId = result.saved_draft_edit_id ?? null;
       setLatestSavedPricingDraftId(savedDraftId);
+      pricingDraftCasRef.current = pricingDraftCasStateFromResponse(result);
       setPricingDraftLoadStatus("current");
       setSavedLocalPricingSignature(savedDraftId ? signature : null);
       setHasUserEditedPricingDraft(false);
@@ -595,6 +632,7 @@ export function FeeEvaluationReviewExportPage({
       return;
     }
     setLatestSavedPricingDraftId(null);
+    pricingDraftCasRef.current = null;
     setPricingDraftLoadStatus("stale");
     setSavedLocalPricingSignature(null);
     setNeedsInitialSeedSave(false);
@@ -631,7 +669,10 @@ export function FeeEvaluationReviewExportPage({
       }
       setSaveState({ kind: "saving" });
       const abortController = new AbortController();
-      const saveRequest = saveFeeEvaluationPricingDraft(projectId, payload, {
+      const saveRequest = saveFeeEvaluationPricingDraft(projectId, {
+        ...payload,
+        ...pricingDraftCasRequest(pricingDraftCasRef.current),
+      }, {
         signal: abortController.signal,
       })
         .then((result) => {
@@ -691,7 +732,19 @@ export function FeeEvaluationReviewExportPage({
     try {
       const response = await generateConfirmedMatrixFeeFileDownload(
         projectId,
-        buildEditedExportPayload(previewRows, costPreviewValues)
+        {
+          ...buildEditedExportPayload(previewRows, costPreviewValues),
+          ...(pricingDraftCasRef.current && latestSavedPricingDraftId
+            ? {
+                pricing_draft_edit_id: latestSavedPricingDraftId,
+                pricing_draft_generation: pricingDraftCasRef.current.generation,
+                pricing_draft_payload_fingerprint:
+                  pricingDraftCasRef.current.payloadFingerprint,
+                pricing_draft_validation_token:
+                  pricingDraftCasRef.current.validationToken,
+              }
+            : {}),
+        }
       );
       const downloadFileName = feeFileNameFromPageContext({
         projectId,
@@ -753,6 +806,15 @@ export function FeeEvaluationReviewExportPage({
       const result = await confirmFeeVersion(projectId, {
         confirmed_by: FEE_CONFIRM_INTERNAL_ACTOR,
         expected_pricing_draft_edit_id: savedDraftId,
+        ...(pricingDraftCasRef.current
+          ? {
+              expected_generation: pricingDraftCasRef.current.generation,
+              expected_payload_fingerprint:
+                pricingDraftCasRef.current.payloadFingerprint,
+              expected_validation_token:
+                pricingDraftCasRef.current.validationToken,
+            }
+          : {}),
         summary: {
           testing_fee_total: allPreviewTotal,
           working_hours: allWorkingHoursLabel,
@@ -770,6 +832,34 @@ export function FeeEvaluationReviewExportPage({
       );
       setConfirmFeeActionState({ kind: "error", message });
       setSaveState({ kind: "error", message });
+    }
+  }
+
+  async function handleSaveReviewedPricingDraft(): Promise<void> {
+    const cas = pricingDraftCasRef.current;
+    if (
+      isLifecycleReadonly ||
+      !cas ||
+      pricingDraftLoadStatus !== "stale" ||
+      saveState.kind === "saving"
+    ) {
+      return;
+    }
+    setSaveState({ kind: "saving" });
+    try {
+      const result = await saveFeeEvaluationPricingDraft(projectId, {
+        ...currentPricingDraftPayload,
+        ...pricingDraftCasRequest(cas),
+      });
+      applySavedPricingDraftResult(result, currentPricingDraftSignature);
+    } catch (error: unknown) {
+      setSaveState({
+        kind: "error",
+        message: readonlyAwareErrorMessage(
+          error,
+          "Unable to save reviewed pricing defaults."
+        ),
+      });
     }
   }
 
@@ -962,6 +1052,17 @@ export function FeeEvaluationReviewExportPage({
           >
             {isCancellingPricingSession ? "Cancelling..." : "Cancel"}
           </button>
+          {pricingDraftLoadStatus === "stale" && pricingDraftCasRef.current ? (
+            <button
+              type="button"
+              onClick={() => void handleSaveReviewedPricingDraft()}
+              disabled={isLifecycleReadonly || saveState.kind === "saving"}
+            >
+              {saveState.kind === "saving"
+                ? "Saving review..."
+                : "Save reviewed defaults"}
+            </button>
+          ) : null}
           <button
             className="fee-evaluation-primary-action"
             type="button"
@@ -1114,6 +1215,46 @@ function pricingDraftSignature(payload: FeeEvaluationEditedFileExportRequest): s
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isCurrentPricingDraftResponse(
+  response: FeeEvaluationPricingDraftResponse
+): boolean {
+  return response.status === "current_v2" || response.status === "current";
+}
+
+function pricingDraftCasStateFromResponse(
+  response: FeeEvaluationPricingDraftResponse
+): PricingDraftCasState | null {
+  const draftEditId = response.saved_draft_edit_id ?? null;
+  const generation = response.saved_generation ?? null;
+  const payloadFingerprint = response.saved_payload_fingerprint ?? null;
+  const updatedAt = response.saved_updated_at ?? null;
+  const validationToken = response.saved_validation_token ?? null;
+  if (!draftEditId || generation === null || !payloadFingerprint || !updatedAt || !validationToken) {
+    return null;
+  }
+  return { draftEditId, generation, payloadFingerprint, updatedAt, validationToken };
+}
+
+function pricingDraftCasRequest(
+  state: PricingDraftCasState | null
+): Pick<
+  FeeEvaluationPricingDraftSaveRequest,
+  | "expected_pricing_draft_edit_id"
+  | "expected_generation"
+  | "expected_payload_fingerprint"
+  | "expected_updated_at"
+> {
+  if (!state) {
+    return {};
+  }
+  return {
+    expected_pricing_draft_edit_id: state.draftEditId,
+    expected_generation: state.generation,
+    expected_payload_fingerprint: state.payloadFingerprint,
+    expected_updated_at: state.updatedAt,
+  };
 }
 
 function readonlyAwareErrorMessage(error: unknown, fallback: string): string {

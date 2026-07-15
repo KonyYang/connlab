@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
+import pytest
 
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
 from backend.infrastructure.storage.database import Base
@@ -9,6 +10,7 @@ from backend.infrastructure.storage.models import ConfirmedFeeVersionModel
 from backend.infrastructure.storage.repositories.confirmed_fee_authority import (
     ConfirmedFeeAuthorityRepository,
 )
+from backend.application.confirmed_fee_version_service import ConfirmedFeeVersionConflictError
 
 
 def test_confirmed_fee_repository_creates_and_lists_versions_by_revision() -> None:
@@ -29,6 +31,39 @@ def test_confirmed_fee_repository_creates_and_lists_versions_by_revision() -> No
     assert latest is not None
     assert latest.summary.testing_fee_total == "52"
     assert latest.pricing_snapshot_json == '{"rows":[]}'
+
+
+def test_repository_returns_exact_confirmation_after_revision_conflict() -> None:
+    engine = create_engine("sqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    original = _version("cfv-1", revision=1, testing_fee_total="41")
+    with Session(engine) as first_session:
+        ConfirmedFeeAuthorityRepository(first_session).create(original)
+        first_session.commit()
+    with Session(engine) as second_session:
+        duplicate = ConfirmedFeeAuthorityRepository(second_session).create_or_get_exact(
+            _version("cfv-2", revision=1, testing_fee_total="41")
+        )
+        row_count = len(second_session.scalars(select(ConfirmedFeeVersionModel)).all())
+
+    assert duplicate == original
+    assert row_count == 1
+
+
+def test_repository_rejects_conflicting_revision_without_raw_integrity_error() -> None:
+    engine = create_engine("sqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    with Session(engine) as first_session:
+        ConfirmedFeeAuthorityRepository(first_session).create(
+            _version("cfv-1", revision=1, testing_fee_total="41")
+        )
+        first_session.commit()
+    with Session(engine) as second_session:
+        with pytest.raises(ConfirmedFeeVersionConflictError, match="concurrently"):
+            ConfirmedFeeAuthorityRepository(second_session).create_or_get_exact(
+                _version("cfv-2", revision=1, testing_fee_total="52")
+            )
+        assert len(second_session.scalars(select(ConfirmedFeeVersionModel)).all()) == 1
 
 
 def _version(

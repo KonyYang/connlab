@@ -488,6 +488,49 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Fee authority is current.")).toBeNull();
   });
 
+  it("saves a reviewed rebase candidate with the latest CAS metadata", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
+      createDraftWithEditableSingleLine()
+    );
+    apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(
+      currentPricingDraftResponse({
+        status: "rebase_required",
+        saved_generation: 4,
+        saved_payload_fingerprint: "payload-4",
+        saved_validation_token: "token-4",
+        payload: promotedPricingDraftPayload({ units: "15", testing_fee: "150" }),
+      })
+    );
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(
+      currentPricingDraftResponse({
+        status: "current_v2",
+        saved_generation: 5,
+        saved_payload_fingerprint: "payload-5",
+        saved_validation_token: "token-5",
+      })
+    );
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    const reviewButton = await screen.findByRole("button", {
+      name: "Save reviewed defaults",
+    });
+    fireEvent.click(reviewButton);
+
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          expected_pricing_draft_edit_id: "fed-1",
+          expected_generation: 4,
+          expected_payload_fingerprint: "payload-4",
+          expected_updated_at: "2026-06-14T09:00:00+00:00",
+        }),
+      );
+    });
+  });
+
   it("blocks Update Fee at the incomplete Report preparation row without duplicate alerts", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(

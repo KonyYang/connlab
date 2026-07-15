@@ -220,6 +220,24 @@ def test_confirm_fee_read_model_does_not_report_manual_update_for_review() -> No
     assert result.fee_review_required_count == 0
 
 
+def test_confirm_fee_read_model_blocks_required_form_consumers_for_non_current_v2() -> None:
+    store = _ConfirmedFeeStore()
+    store.create(_auto_rebase_version())
+    service = _service(
+        store=store,
+        load_result=FeeEvaluationPricingDraftLoadResult(
+            status="legacy_unclassified",
+            current_context=_context(),
+            saved_snapshot=_pricing_snapshot(),
+        ),
+    )
+
+    result = service.get_latest("P1")
+
+    assert result.status == "stale"
+    assert result.fee_review_required_count == 0
+
+
 def _service(
     *,
     store: "_ConfirmedFeeStore | None" = None,

@@ -42,8 +42,8 @@ def test_save_then_load_current_pricing_draft_preserves_notes() -> None:
     )
     loaded = service.load("P1")
 
-    assert saved.status == "current"
-    assert loaded.status == "current"
+    assert saved.status == "current_v2"
+    assert loaded.status == "current_v2"
     assert loaded.saved_snapshot is not None
     assert loaded.saved_snapshot.confirmed_matrix_id == "cmv-1"
     assert loaded.saved_snapshot.confirmed_revision == 1
@@ -113,7 +113,7 @@ def test_load_uses_current_context_when_newer_stale_row_exists() -> None:
 
     result = service.load("P1")
 
-    assert result.status == "current"
+    assert result.status == "legacy_unclassified"
     assert result.saved_snapshot is not None
     assert result.saved_snapshot.draft_edit_id == "fed-1"
 

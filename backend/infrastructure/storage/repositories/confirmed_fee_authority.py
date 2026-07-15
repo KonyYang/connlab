@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
+from backend.application.confirmed_fee_version_service import ConfirmedFeeVersionConflictError
 from backend.infrastructure.storage.models import ConfirmedFeeVersionModel
 
 
@@ -22,6 +24,25 @@ class ConfirmedFeeAuthorityRepository:
         self._session.add(_to_model(version))
         self._session.flush()
         return version
+
+    def create_or_get_exact(self, version: ConfirmedFeeVersion) -> ConfirmedFeeVersion:
+        """Insert once or re-read an exact V2 lineage after SQLite revision contention."""
+        try:
+            return self.create(version)
+        except IntegrityError as exc:
+            self._session.rollback()
+            existing = self._session.scalar(
+                select(ConfirmedFeeVersionModel).where(
+                    ConfirmedFeeVersionModel.project_id == version.project_id,
+                    ConfirmedFeeVersionModel.confirmed_fee_revision
+                    == version.confirmed_fee_revision,
+                )
+            )
+            if existing is not None and _same_confirmation(_to_domain(existing), version):
+                return _to_domain(existing)
+            raise ConfirmedFeeVersionConflictError(
+                "Fee Evaluation confirmation changed concurrently. Reload and confirm again."
+            ) from exc
 
     def get_latest_by_project(self, project_id: str) -> ConfirmedFeeVersion | None:
         """Return the latest Confirmed Fee version for one project."""
@@ -108,4 +129,16 @@ def _summary_from_json(payload_json: str) -> ConfirmedFeeSummary:
         lab_manpower_cost=str(payload["lab_manpower_cost"]),
         external_cost=str(payload["external_cost"]),
         grand_cost=str(payload["grand_cost"]),
+    )
+
+
+def _same_confirmation(left: ConfirmedFeeVersion, right: ConfirmedFeeVersion) -> bool:
+    return (
+        left.project_id == right.project_id
+        and left.confirmed_matrix_id == right.confirmed_matrix_id
+        and left.confirmed_revision == right.confirmed_revision
+        and left.fee_rule_version_id == right.fee_rule_version_id
+        and left.pricing_draft_edit_id == right.pricing_draft_edit_id
+        and left.summary == right.summary
+        and left.pricing_snapshot_json == right.pricing_snapshot_json
     )

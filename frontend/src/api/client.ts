@@ -2368,6 +2368,10 @@ export type FeeEvaluationEditedFileExportRequest = {
   rows: FeeEvaluationEditedRowExportInput[];
   summary: FeeEvaluationEditedSummaryExportInput;
   manual_rows?: FeeEvaluationEditedManualRowExportInput[];
+  pricing_draft_edit_id?: string | null;
+  pricing_draft_generation?: number | null;
+  pricing_draft_payload_fingerprint?: string | null;
+  pricing_draft_validation_token?: string | null;
 };
 
 export type FeeEvaluationPricingDraftSaveRequest =
@@ -2375,9 +2379,21 @@ export type FeeEvaluationPricingDraftSaveRequest =
     expected_confirmed_matrix_id?: string | null;
     expected_confirmed_revision?: number | null;
     expected_fee_rule_version_id?: string | null;
+    expected_pricing_draft_edit_id?: string | null;
+    expected_generation?: number | null;
+    expected_payload_fingerprint?: string | null;
+    expected_updated_at?: string | null;
   };
 
-export type FeeEvaluationPricingDraftStatus = "missing" | "current" | "stale";
+export type FeeEvaluationPricingDraftStatus =
+  | "missing"
+  | "current_v2"
+  | "rebase_required"
+  | "legacy_unclassified"
+  | "blocked"
+  // Compatibility only for an in-flight pre-V2 server during desktop upgrades.
+  | "current"
+  | "stale";
 
 export type FeeEvaluationPricingDraftResponse = {
   status: FeeEvaluationPricingDraftStatus;
@@ -2389,6 +2405,10 @@ export type FeeEvaluationPricingDraftResponse = {
   saved_fee_rule_version_id?: string | null;
   saved_draft_edit_id?: string | null;
   saved_updated_at?: string | null;
+  saved_generation?: number | null;
+  saved_payload_fingerprint?: string | null;
+  saved_validation_token?: string | null;
+  saved_source_context_fingerprint?: string | null;
   payload?: FeeEvaluationEditedFileExportRequest | null;
 };
 
@@ -2444,6 +2464,9 @@ export type ConfirmFeeVersionRequest = {
   confirmed_by: string;
   expected_pricing_draft_edit_id: string;
   summary: ConfirmedFeeSummary;
+  expected_generation?: number | null;
+  expected_payload_fingerprint?: string | null;
+  expected_validation_token?: string | null;
   confirmation_note?: string | null;
 };
 

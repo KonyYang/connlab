@@ -163,9 +163,15 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftPersistenceService,
     edited_values_from_json,
 )
+from backend.application.confirmed_fee_pricing_snapshot import (
+    edited_values_json_from_confirmed_fee_snapshot,
+)
 from backend.application.fee_evaluation_template_resource import (
     FeeEvaluationTemplateResourceStore,
     resolve_fee_evaluation_template_path,
+)
+from backend.application.fee_evaluation_current_pricing_draft_guard import (
+    CurrentFeePricingDraftGuard,
 )
 from backend.application.test_record_template_resource import (
     TestRecordTemplateResourceStore,
@@ -583,13 +589,7 @@ def get_fee_evaluation_pricing_draft_service(
     session: Session = Depends(get_session),
 ) -> FeeEvaluationPricingDraftPersistenceService:
     """Build the Fee Evaluation pricing draft persistence service."""
-    return FeeEvaluationPricingDraftPersistenceService(
-        basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
-            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
-        ),
-        draft_store=FeeEvaluationPricingDraftEditRepository(session),
-        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
-    )
+    return _build_fee_evaluation_pricing_draft_service(session)
 
 
 def get_confirmed_fee_version_service(
@@ -597,13 +597,7 @@ def get_confirmed_fee_version_service(
 ) -> ConfirmedFeeVersionService:
     """Build the Confirmed Fee authority version service."""
     return ConfirmedFeeVersionService(
-        pricing_draft_loader=FeeEvaluationPricingDraftPersistenceService(
-            basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
-                confirmed_store=ConfirmedMatrixAuthorityRepository(session),
-            ),
-            draft_store=FeeEvaluationPricingDraftEditRepository(session),
-            lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
-        ),
+        pricing_draft_loader=_build_fee_evaluation_pricing_draft_service(session),
         confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
     )
 
@@ -632,6 +626,9 @@ def build_direct_confirmed_matrix_fee_evaluation_export_service(
             output_store=ProjectOutputRecordRepository(session),
         ),
         workbook_writer=FeeEvaluationWorkbookGateway(),
+        current_pricing_draft_guard=CurrentFeePricingDraftGuard(
+            pricing_draft_loader=_build_fee_evaluation_pricing_draft_service(session),
+        ),
     )
 
 
@@ -748,8 +745,35 @@ def get_matrix_editor_session_service(
             contact_point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(
                 session,
             ),
+            pricing_draft_persistence_service=_build_fee_evaluation_pricing_draft_service(
+                session
+            ),
         ),
         lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
+    )
+
+
+def _build_fee_evaluation_pricing_draft_service(
+    session: Session,
+) -> FeeEvaluationPricingDraftPersistenceService:
+    """Compose V2 pricing drafts from the same confirmed authorities as Fee defaults."""
+    confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+    point_profile_adapter = _confirmed_contact_point_profile_consumer_adapter(session)
+    return FeeEvaluationPricingDraftPersistenceService(
+        basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
+            confirmed_store=confirmed_store,
+        ),
+        draft_store=FeeEvaluationPricingDraftEditRepository(session),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
+        automatic_defaults_provider=ConfirmedMatrixFeeDraftService(
+            confirmed_store=confirmed_store,
+            contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
+                session,
+                get_settings(),
+            ),
+            contact_point_profile_adapter=point_profile_adapter,
+        ),
+        point_profile_provider=point_profile_adapter,
     )
 
 
@@ -1458,7 +1482,9 @@ class _RequiredFormsStagingGenerator:
         if key == "fee_form":
             try:
                 edited_values = edited_values_from_json(
-                    str(getattr(confirmed_fee, "pricing_snapshot_json"))
+                    edited_values_json_from_confirmed_fee_snapshot(
+                        str(getattr(confirmed_fee, "pricing_snapshot_json"))
+                    )
                 )
             except (AttributeError, KeyError, TypeError, ValueError) as exc:
                 raise ValueError(

@@ -33,6 +33,15 @@ from backend.application.fee_evaluation_edited_export_values import (
     edited_row_lookup,
     validate_supported_manual_rows,
 )
+from backend.application.confirmed_matrix_fee_evaluation_export_policy import (
+    require_output_dir,
+    require_template,
+    resolve_prepared_by as _resolve_prepared_by,
+)
+from backend.application.fee_evaluation_current_pricing_draft_guard import (
+    CurrentFeePricingDraftGuard,
+    bind_command_to_current_pricing_draft,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordService,
     RegisterProjectOutputCommand,
@@ -88,6 +97,10 @@ class ExportConfirmedMatrixFeeEvaluationCommand:
     fill_mode: Literal["fee_draft", "matrix_basic"] = "fee_draft"
     edited_values: FeeEvaluationEditedExportValues | None = None
     basic_information_values: dict[str, str] | None = None
+    pricing_draft_edit_id: str | None = None
+    pricing_draft_generation: int | None = None
+    pricing_draft_payload_fingerprint: str | None = None
+    pricing_draft_validation_token: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +151,12 @@ class FeeEvaluationWorkbookWriter(Protocol):
         """Generate a workbook from Matrix basic-fill rows."""
 
 
+def resolve_prepared_by(*, prepared_by: str | None = None, connlab_user: str | None = None) -> tuple[str | None, tuple[str, ...]]:
+    return _resolve_prepared_by(
+        prepared_by=prepared_by, connlab_user=connlab_user, user_getter=getpass.getuser
+    )
+
+
 class ConfirmedMatrixFeeEvaluationExportService:
     """Export active Confirmed Matrix fee draft data to a workbook output."""
 
@@ -148,6 +167,7 @@ class ConfirmedMatrixFeeEvaluationExportService:
         confirmed_store: ConfirmedMatrixAuthorityStore,
         project_output_service: ProjectOutputRecordService,
         workbook_writer: FeeEvaluationWorkbookWriter,
+        current_pricing_draft_guard: CurrentFeePricingDraftGuard | None = None,
     ) -> None:
         self._fee_draft_service = fee_draft_service
         self._basic_fill_service = ConfirmedMatrixFeeTemplateBasicFillService(
@@ -155,13 +175,22 @@ class ConfirmedMatrixFeeEvaluationExportService:
         )
         self._project_output_service = project_output_service
         self._writer = workbook_writer
+        self._current_pricing_draft_guard = current_pricing_draft_guard
 
     def export(
         self, command: ExportConfirmedMatrixFeeEvaluationCommand
     ) -> ExportConfirmedMatrixFeeEvaluationResult:
         """Generate one fee evaluation workbook and register output lineage."""
-        template_path = _require_template(command.template_path)
-        output_dir = _require_output_dir(command.output_dir)
+        command = bind_command_to_current_pricing_draft(
+            command, self._current_pricing_draft_guard
+        )
+        try:
+            template_path = require_template(command.template_path)
+            output_dir = require_output_dir(command.output_dir)
+        except FileNotFoundError as exc:
+            raise ConfirmedMatrixFeeEvaluationExportNotFoundError(str(exc)) from exc
+        except ValueError as exc:
+            raise ConfirmedMatrixFeeEvaluationExportError(str(exc)) from exc
         if command.fill_mode == "fee_draft":
             draft = self._fee_draft_service.build_draft(
                 BuildConfirmedMatrixFeeDraftCommand(project_id=command.project_id)
@@ -288,6 +317,7 @@ class ConfirmedMatrixFeeEvaluationExportService:
             edited_values=command.edited_values,
             basic_information_values=command.basic_information_values,
         )
+
         warnings.extend(
             warning for warning in write.warnings if warning not in warnings
         )
@@ -367,53 +397,6 @@ class ConfirmedMatrixFeeEvaluationExportService:
             )
         )
         return getattr(record, "output_record_id", None)
-
-
-def resolve_prepared_by(
-    *,
-    prepared_by: str | None = None,
-    connlab_user: str | None = None,
-) -> tuple[str | None, tuple[str, ...]]:
-    """Resolve Prepared by using explicit value, ConnLab user, then OS user."""
-    explicit = _normalize_optional_text(prepared_by)
-    if explicit:
-        return explicit, ()
-    user = _normalize_optional_text(connlab_user)
-    if user:
-        return user, ()
-    try:
-        os_user = _normalize_optional_text(getpass.getuser())
-    except Exception:
-        return None, ("Prepared by could not be resolved from the current user.",)
-    if os_user:
-        return os_user, ()
-    return None, ("Prepared by could not be resolved from the current user.",)
-
-
-def _require_template(path: Path) -> Path:
-    template = Path(path)
-    if template.suffix.lower() not in {".xls", ".xlsx"}:
-        raise ConfirmedMatrixFeeEvaluationExportError(
-            f"Unsupported fee template type: {template}"
-        )
-    if not template.is_file():
-        raise ConfirmedMatrixFeeEvaluationExportNotFoundError(
-            f"Template does not exist: {template}"
-        )
-    return template
-
-
-def _require_output_dir(path: Path | None) -> Path:
-    if path is None:
-        raise ConfirmedMatrixFeeEvaluationExportError(
-            "output_dir is required for fee evaluation export."
-        )
-    output_dir = Path(path)
-    if not output_dir.is_dir():
-        raise ConfirmedMatrixFeeEvaluationExportNotFoundError(
-            f"Output directory does not exist: {output_dir}"
-        )
-    return output_dir
 
 
 def _require_exportable_draft(

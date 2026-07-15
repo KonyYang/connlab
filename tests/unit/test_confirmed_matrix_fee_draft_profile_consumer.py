@@ -46,6 +46,25 @@ def test_fee_draft_uses_confirmed_profile_for_llcr_without_step_quantity() -> No
     assert any(metadata.field == "units" and metadata.source == lineage for metadata in line.field_metadata)
 
 
+def test_fee_draft_uses_confirmed_point_profile_readings_for_each_group_quantity() -> None:
+    profile = _confirmed_profile(readings_per_sample="3")
+    group_five = _service_with_profile(
+        _fixture_row("Contact Resistance (Low Level)"),
+        "not_started",
+        profile,
+        sample_quantity_expression="5",
+    ).build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+    group_three = _service_with_profile(
+        _fixture_row("Contact Resistance (Low Level)"),
+        "disabled",
+        profile,
+        sample_quantity_expression="3",
+    ).build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    assert group_five.groups[0].line_items[0].units == Decimal("15")
+    assert group_three.groups[0].line_items[0].units == Decimal("9")
+
+
 def test_fee_draft_uses_profile_when_measurement_plan_is_disabled() -> None:
     service = _service_with_profile(_fixture_row("Contact Resistance (Low Level)"), "disabled")
 
@@ -97,11 +116,13 @@ def _service_with_profile(
 
 
 def _confirmed_profile(
-    *, lineage: str = "Confirmed Project Point Profile: revision 3 (revision-1; sha256:profile)"
+    *,
+    lineage: str = "Confirmed Project Point Profile: revision 3 (revision-1; sha256:profile)",
+    readings_per_sample: str = "4",
 ) -> EffectiveConfirmedPointProfile:
     return EffectiveConfirmedPointProfile(
         status="confirmed",
-        readings_per_sample="4",
+        readings_per_sample=readings_per_sample,
         revision_id="revision-1",
         revision_sequence=3,
         fingerprint="sha256:profile",

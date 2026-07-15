@@ -25,6 +25,9 @@ from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service 
     command_from_payload,
     result_to_payload,
 )
+from backend.application.fee_evaluation_current_pricing_draft_guard import (
+    CurrentFeePricingDraftRequiredError,
+)
 from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
     ProjectOutputRecordNotFoundError,
@@ -112,6 +115,9 @@ def _run_export_with_session(
         ) as exc:
             session.rollback()
             return _error_payload("business_error", exc)
+        except CurrentFeePricingDraftRequiredError as exc:
+            session.rollback()
+            return _error_payload("pricing_draft_conflict", exc)
         except (
             ConfirmedMatrixFeeEvaluationExportNotFoundError,
             ConfirmedMatrixFeeDraftNotFoundError,
@@ -144,6 +150,10 @@ def _build_direct_export_service(session: Session) -> ConfirmedMatrixFeeEvaluati
     from backend.application.contact_point_profile_confirmed_consumer_adapter import (
         ContactPointProfileConfirmedConsumerAdapter,
     )
+    from backend.application.fee_evaluation_current_pricing_draft_guard import (
+        CurrentFeePricingDraftGuard,
+    )
+    from backend.api.dependencies import _build_fee_evaluation_pricing_draft_service
     from backend.infrastructure.storage.repositories.contact_measurement_plan_authority import (
         ContactMeasurementPlanAuthorityRepository,
     )
@@ -175,6 +185,9 @@ def _build_direct_export_service(session: Session) -> ConfirmedMatrixFeeEvaluati
             output_store=ProjectOutputRecordRepository(session),
         ),
         workbook_writer=FeeEvaluationWorkbookGateway(),
+        current_pricing_draft_guard=CurrentFeePricingDraftGuard(
+            pricing_draft_loader=_build_fee_evaluation_pricing_draft_service(session)
+        ),
     )
 
 

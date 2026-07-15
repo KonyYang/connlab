@@ -8,6 +8,7 @@ from backend.application.confirmed_fee_version_service import (
     ConfirmFeeVersionCommand,
     ConfirmedFeePricingDraftChangedError,
     ConfirmedFeePricingDraftMissingError,
+    ConfirmedFeeVersionConflictError,
     ConfirmedFeeVersionReadResult,
 )
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
@@ -79,6 +80,28 @@ def test_confirmed_fee_post_rejects_expected_draft_id_mismatch() -> None:
 
     assert response.status_code == 409
     assert "changed" in response.json()["detail"].lower()
+
+
+def test_confirmed_fee_post_maps_concurrent_lineage_conflict_to_typed_409() -> None:
+    app.dependency_overrides[get_confirmed_fee_version_service] = lambda: _FailingService(
+        ConfirmedFeeVersionConflictError(
+            "Fee Evaluation confirmation changed concurrently. Reload and confirm again."
+        )
+    )
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-fee/versions",
+            json={
+                "confirmed_by": "Lab User",
+                "expected_pricing_draft_edit_id": "fed-1",
+                "summary": _summary_payload(),
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert "concurrently" in response.json()["detail"].lower()
 
 
 def test_confirmed_fee_post_rejects_missing_saved_pricing_draft() -> None:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-import json
 from typing import Literal, Protocol
 from uuid import uuid4
 
@@ -14,22 +13,53 @@ from backend.application.confirmed_matrix_fee_template_basic_fill_service import
     MatrixBasicFillWorkbook,
 )
 from backend.application.fee_evaluation_edited_export_values import (
-    FeeEvaluationEditedInactiveRow,
-    FeeEvaluationEditedInactiveRowKey,
-    FeeEvaluationEditedExportRow,
-    FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
-    FeeEvaluationEditedManualRow,
     edited_row_lookup,
     validate_supported_manual_rows,
+)
+from backend.application.fee_evaluation_pricing_draft_serialization import (
+    edited_values_from_json,
+    edited_values_to_json,
+    edited_values_to_payload,
+)
+from backend.application.fee_evaluation_pricing_draft_cas_policy import (
+    save_cas_conflict_message,
+)
+from backend.application.fee_evaluation_pricing_draft_expectations import (
+    context_conflict_message,
+    discard_conflict_message,
+)
+from backend.application.fee_evaluation_pricing_draft_v2_contract import (
+    FeePricingDraftSourceContext,
+    decode_pricing_draft_payload,
+    encode_pricing_draft_v2,
+    validation_token_for,
+)
+from backend.application.fee_evaluation_pricing_draft_v2_policy import (
+    infer_operator_provenance,
+)
+from backend.application.fee_evaluation_pricing_draft_v2_authority_context import (
+    build_authority_source_context,
+    current_automatic_values,
 )
 from backend.application.project_lifecycle_write_guard import (
     LifecycleWriteOperation,
     ProjectLifecycleWriteGuard,
 )
+from backend.application.fee_evaluation_pricing_draft_v2_rebase import (
+    rebase_reviewed_values,
+)
 from backend.modules.fee_evaluation import load_active_fee_rule_library
 
-FeeEvaluationPricingDraftStatus = Literal["missing", "current", "stale"]
+FeeEvaluationPricingDraftStatus = Literal[
+    "missing",
+    "current_v2",
+    "rebase_required",
+    "legacy_unclassified",
+    "blocked",
+    "current",
+    "stale",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +71,10 @@ class SaveFeeEvaluationPricingDraftCommand:
     expected_confirmed_matrix_id: str | None = None
     expected_confirmed_revision: int | None = None
     expected_fee_rule_version_id: str | None = None
+    expected_pricing_draft_edit_id: str | None = None
+    expected_generation: int | None = None
+    expected_payload_fingerprint: str | None = None
+    expected_updated_at: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +96,7 @@ class FeeEvaluationPricingDraftContext:
     confirmed_matrix_id: str
     confirmed_revision: int
     fee_rule_version_id: str
+    source_context: FeePricingDraftSourceContext | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +111,35 @@ class FeeEvaluationPricingDraftSnapshot:
     edited_values: FeeEvaluationEditedExportValues
     created_at: str
     updated_at: str
+    generation: int | None = None
+    payload_json: str | None = None
+    payload_fingerprint: str | None = None
+    source_context_fingerprint: str | None = None
+    validation_token: str | None = None
+    source_context: FeePricingDraftSourceContext | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class FeeEvaluationPricingDraftCasExpectation:
+    """Exact persisted state required before a V2 pricing-draft replacement."""
+
+    draft_edit_id: str
+    generation: int | None
+    payload_fingerprint: str | None
+    updated_at: str
+    payload_json: str | None
+
+    @classmethod
+    def from_snapshot(
+        cls, snapshot: FeeEvaluationPricingDraftSnapshot
+    ) -> "FeeEvaluationPricingDraftCasExpectation":
+        return cls(
+            draft_edit_id=snapshot.draft_edit_id,
+            generation=snapshot.generation,
+            payload_fingerprint=snapshot.payload_fingerprint,
+            updated_at=snapshot.updated_at,
+            payload_json=snapshot.payload_json,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +170,13 @@ class FeeEvaluationPricingDraftStore(Protocol):
         self, snapshot: FeeEvaluationPricingDraftSnapshot
     ) -> FeeEvaluationPricingDraftSnapshot:
         """Create or replace the current draft for one authority/rule tuple."""
+
+    def compare_and_swap(
+        self,
+        snapshot: FeeEvaluationPricingDraftSnapshot,
+        expectation: FeeEvaluationPricingDraftCasExpectation | None,
+    ) -> FeeEvaluationPricingDraftSnapshot | None:
+        """Save only when the exact previous snapshot still exists."""
 
     def get_latest_by_project(
         self, project_id: str
@@ -142,10 +213,14 @@ class FeeEvaluationPricingDraftPersistenceService:
         basic_fill_service: ConfirmedMatrixFeeTemplateBasicFillService,
         draft_store: FeeEvaluationPricingDraftStore,
         lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
+        automatic_defaults_provider: object | None = None,
+        point_profile_provider: object | None = None,
     ) -> None:
         self._basic_fill_service = basic_fill_service
         self._draft_store = draft_store
         self._lifecycle_write_guard = lifecycle_write_guard
+        self._automatic_defaults_provider = automatic_defaults_provider
+        self._point_profile_provider = point_profile_provider
 
     def save(
         self, command: SaveFeeEvaluationPricingDraftCommand
@@ -158,7 +233,9 @@ class FeeEvaluationPricingDraftPersistenceService:
         basic_fill = self._build_basic_fill(command.project_id)
         _validate_edited_values(command.edited_values, basic_fill)
         context = _context_from_basic_fill(basic_fill)
-        _validate_save_expectations(command, context)
+        context_conflict = context_conflict_message(command, context, operation="save")
+        if context_conflict is not None:
+            raise FeeEvaluationPricingDraftConflictError(context_conflict)
         now = datetime.now(timezone.utc).isoformat()
         existing = self._draft_store.get_by_context(
             project_id=context.project_id,
@@ -172,6 +249,19 @@ class FeeEvaluationPricingDraftPersistenceService:
             incoming=command.edited_values,
             existing=existing.edited_values if existing is not None else None,
         )
+        conflict_message = save_cas_conflict_message(command, existing)
+        if conflict_message is not None:
+            raise FeeEvaluationPricingDraftConflictError(conflict_message)
+        generation = (existing.generation or 0) + 1 if existing is not None else 1
+        source_context = self._source_context(context, edited_values)
+        payload_json = encode_pricing_draft_v2(
+            generation=generation,
+            source_context=source_context,
+            edited_values_payload=edited_values_to_payload(edited_values),
+            row_provenance=infer_operator_provenance(edited_values),
+            summary_provenance=(),
+        )
+        decoded = decode_pricing_draft_payload(payload_json)
         snapshot = FeeEvaluationPricingDraftSnapshot(
             draft_edit_id=draft_edit_id,
             project_id=context.project_id,
@@ -181,10 +271,21 @@ class FeeEvaluationPricingDraftPersistenceService:
             edited_values=edited_values,
             created_at=created_at,
             updated_at=now,
+            generation=generation,
+            payload_json=payload_json,
+            payload_fingerprint=decoded.payload_fingerprint,
+            source_context_fingerprint=decoded.source_context_fingerprint,
+            validation_token=validation_token_for(
+                draft_edit_id=draft_edit_id,
+                generation=generation,
+                source_context_fingerprint=decoded.source_context_fingerprint or "",
+                payload_fingerprint=decoded.payload_fingerprint or "",
+            ),
+            source_context=source_context,
         )
-        saved = self._draft_store.upsert_current(snapshot)
+        saved = self._save_snapshot(snapshot, existing)
         return FeeEvaluationPricingDraftLoadResult(
-            status="current",
+            status="current_v2",
             current_context=context,
             saved_snapshot=saved,
         )
@@ -205,8 +306,31 @@ class FeeEvaluationPricingDraftPersistenceService:
                 current_context=context,
                 saved_snapshot=None,
             )
+        if snapshot.generation is None or snapshot.source_context is None:
+            return FeeEvaluationPricingDraftLoadResult(
+                status="legacy_unclassified",
+                current_context=context,
+                saved_snapshot=snapshot,
+            )
+        current_source_context = self._source_context(context, snapshot.edited_values)
+        if snapshot.source_context != current_source_context:
+            # A review is required, but the operator must see the deterministic merge
+            # rather than the obsolete values-only payload. This remains read-only.
+            rebased_values = rebase_reviewed_values(
+                saved=snapshot.edited_values,
+                current_defaults=current_automatic_values(
+                    project_id,
+                    self._automatic_defaults_provider,
+                    snapshot.edited_values,
+                ),
+            )
+            return FeeEvaluationPricingDraftLoadResult(
+                status="rebase_required",
+                current_context=context,
+                saved_snapshot=replace(snapshot, edited_values=rebased_values),
+            )
         return FeeEvaluationPricingDraftLoadResult(
-            status="current",
+            status="current_v2",
             current_context=context,
             saved_snapshot=snapshot,
         )
@@ -232,7 +356,12 @@ class FeeEvaluationPricingDraftPersistenceService:
                 discarded=False,
                 current_context=context,
             )
-        _validate_discard_expectations(command, snapshot, context)
+        draft_conflict = discard_conflict_message(command, snapshot)
+        context_conflict = context_conflict_message(command, context, operation="discard")
+        if draft_conflict is not None:
+            raise FeeEvaluationPricingDraftConflictError(draft_conflict)
+        if context_conflict is not None:
+            raise FeeEvaluationPricingDraftConflictError(context_conflict)
         discarded = self._draft_store.delete_current(
             project_id=context.project_id,
             confirmed_matrix_id=context.confirmed_matrix_id,
@@ -258,182 +387,40 @@ class FeeEvaluationPricingDraftPersistenceService:
             BuildMatrixBasicFeeTemplateCommand(project_id=project_id)
         )
 
+    def _source_context(
+        self,
+        context: FeeEvaluationPricingDraftContext,
+        fallback_values: FeeEvaluationEditedExportValues,
+    ) -> FeePricingDraftSourceContext:
+        return build_authority_source_context(
+            project_id=context.project_id,
+            confirmed_matrix_id=context.confirmed_matrix_id,
+            confirmed_revision=context.confirmed_revision,
+            fee_rule_version_id=context.fee_rule_version_id,
+            fallback_values=fallback_values,
+            automatic_defaults_provider=self._automatic_defaults_provider,
+            point_profile_provider=self._point_profile_provider,
+        )
 
-def edited_values_to_json(values: FeeEvaluationEditedExportValues) -> str:
-    """Serialize edited values to a stable JSON payload."""
-    payload = {
-        "rows": [
-            {
-                "source_line_id": row.source_line_id,
-                "confirmed_group_id": row.confirmed_group_id,
-                "confirmed_row_id": row.confirmed_row_id,
-                "step_token": row.step_token,
-                "step_index": row.step_index,
-                "spend_time": row.spend_time,
-                "unit_price": row.unit_price,
-                "unit_type": row.unit_type,
-                "units": row.units,
-                "base_fee": row.base_fee,
-                "discount": row.discount,
-                "testing_fee": row.testing_fee,
-                "notes": row.notes,
-            }
-            for row in values.rows
-        ],
-        "summary": {
-            "condition_confirmation_spend_time": (
-                values.summary.condition_confirmation_spend_time
-            ),
-            "external_cost": values.summary.external_cost,
-            "external_cost_note": values.summary.external_cost_note,
-            "lab_manpower_hourly_rate": values.summary.lab_manpower_hourly_rate,
-        },
-        "manual_rows": [
-            {
-                "row_kind": row.row_kind,
-                "spend_time": row.spend_time,
-                "unit_price": row.unit_price,
-                "unit_type": row.unit_type,
-                "units": row.units,
-                "base_fee": row.base_fee,
-                "discount": row.discount,
-                "testing_fee": row.testing_fee,
-                "notes": row.notes,
-                "confirmed_group_id": row.confirmed_group_id,
-                "group_key": row.group_key,
-                "group_label": row.group_label,
-            }
-            for row in values.manual_rows
-        ],
-        "inactive_rows": [
-            {
-                "previous_row": _row_to_dict(row.previous_row),
-                "rebase_key": {
-                    "group_identity": row.rebase_key.group_identity,
-                    "row_identity": row.rebase_key.row_identity,
-                    "step_token": row.rebase_key.step_token,
-                    "step_index": row.rebase_key.step_index,
-                },
-                "group_key": row.group_key,
-                "group_label": row.group_label,
-                "group_signature": row.group_signature,
-                "inactive_reason": row.inactive_reason,
-            }
-            for row in values.inactive_rows
-        ],
-    }
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
-
-
-def edited_values_from_json(payload_json: str) -> FeeEvaluationEditedExportValues:
-    """Deserialize a saved JSON payload into application edited values."""
-    payload = json.loads(payload_json)
-    summary = payload["summary"]
-    return FeeEvaluationEditedExportValues(
-        rows=tuple(
-            FeeEvaluationEditedExportRow(
-                source_line_id=str(row["source_line_id"]),
-                confirmed_group_id=str(row["confirmed_group_id"]),
-                confirmed_row_id=str(row["confirmed_row_id"]),
-                step_token=str(row.get("step_token", "")),
-                step_index=int(row["step_index"]),
-                spend_time=str(row["spend_time"]),
-                unit_price=str(row["unit_price"]),
-                unit_type=str(row["unit_type"]),
-                units=str(row["units"]),
-                base_fee=str(row["base_fee"]),
-                discount=str(row["discount"]),
-                testing_fee=str(row["testing_fee"]),
-                notes=str(row.get("notes", "")),
+    def _save_snapshot(
+        self,
+        snapshot: FeeEvaluationPricingDraftSnapshot,
+        existing: FeeEvaluationPricingDraftSnapshot | None,
+    ) -> FeeEvaluationPricingDraftSnapshot:
+        expectation = (
+            FeeEvaluationPricingDraftCasExpectation.from_snapshot(existing)
+            if existing is not None
+            else None
+        )
+        compare_and_swap = getattr(self._draft_store, "compare_and_swap", None)
+        if compare_and_swap is None:
+            return self._draft_store.upsert_current(snapshot)
+        saved = compare_and_swap(snapshot, expectation)
+        if saved is None:
+            raise FeeEvaluationPricingDraftConflictError(
+                "Fee Evaluation pricing draft changed before save. Reload and review again."
             )
-            for row in payload.get("rows", [])
-        ),
-        summary=FeeEvaluationEditedExportSummary(
-            condition_confirmation_spend_time=str(
-                summary["condition_confirmation_spend_time"]
-            ),
-            external_cost=str(summary["external_cost"]),
-            external_cost_note=str(summary.get("external_cost_note", "")),
-            lab_manpower_hourly_rate=str(summary["lab_manpower_hourly_rate"]),
-        ),
-        manual_rows=tuple(
-            FeeEvaluationEditedManualRow(
-                row_kind=str(row["row_kind"]),
-                spend_time=str(row["spend_time"]),
-                unit_price=str(row["unit_price"]),
-                unit_type=str(row["unit_type"]),
-                units=str(row["units"]),
-                base_fee=str(row["base_fee"]),
-                discount=str(row["discount"]),
-                testing_fee=str(row["testing_fee"]),
-                notes=str(row.get("notes", "")),
-                confirmed_group_id=str(row.get("confirmed_group_id", "")),
-                group_key=str(row.get("group_key", "")),
-                group_label=str(row.get("group_label", "")),
-            )
-            for row in payload.get("manual_rows", [])
-        ),
-        inactive_rows=tuple(
-            _inactive_row_from_dict(row)
-            for row in payload.get("inactive_rows", [])
-        ),
-    )
-
-
-def _row_to_dict(row: FeeEvaluationEditedExportRow) -> dict[str, object]:
-    """Serialize one edited active or inactive Fee row."""
-    return {
-        "source_line_id": row.source_line_id,
-        "confirmed_group_id": row.confirmed_group_id,
-        "confirmed_row_id": row.confirmed_row_id,
-        "step_token": row.step_token,
-        "step_index": row.step_index,
-        "spend_time": row.spend_time,
-        "unit_price": row.unit_price,
-        "unit_type": row.unit_type,
-        "units": row.units,
-        "base_fee": row.base_fee,
-        "discount": row.discount,
-        "testing_fee": row.testing_fee,
-        "notes": row.notes,
-    }
-
-
-def _inactive_row_from_dict(payload: dict[str, object]) -> FeeEvaluationEditedInactiveRow:
-    """Deserialize one hidden inactive Fee row."""
-    previous = payload.get("previous_row")
-    key = payload.get("rebase_key") or payload.get("key")
-    if not isinstance(previous, dict):
-        previous = {}
-    if not isinstance(key, dict):
-        key = {}
-    return FeeEvaluationEditedInactiveRow(
-        previous_row=FeeEvaluationEditedExportRow(
-            source_line_id=str(previous.get("source_line_id", "")),
-            confirmed_group_id=str(previous.get("confirmed_group_id", "")),
-            confirmed_row_id=str(previous.get("confirmed_row_id", "")),
-            step_token=str(previous.get("step_token", "")),
-            step_index=int(previous.get("step_index", 0)),
-            spend_time=str(previous.get("spend_time", "")),
-            unit_price=str(previous.get("unit_price", "")),
-            unit_type=str(previous.get("unit_type", "")),
-            units=str(previous.get("units", "")),
-            base_fee=str(previous.get("base_fee", "")),
-            discount=str(previous.get("discount", "")),
-            testing_fee=str(previous.get("testing_fee", "")),
-            notes=str(previous.get("notes", "")),
-        ),
-        rebase_key=FeeEvaluationEditedInactiveRowKey(
-            group_identity=str(key.get("group_identity", "")),
-            row_identity=str(key.get("row_identity", "")),
-            step_token=str(key.get("step_token", "")),
-            step_index=int(key.get("step_index", 0)),
-        ),
-        group_key=str(payload.get("group_key", "")),
-        group_label=str(payload.get("group_label", "")),
-        group_signature=str(payload.get("group_signature", "")),
-        inactive_reason=str(payload.get("inactive_reason", "removed_from_matrix")),
-    )
+        return saved
 
 
 def _validate_edited_values(
@@ -465,79 +452,3 @@ def _context_from_basic_fill(
         confirmed_revision=basic_fill.header.confirmed_revision,
         fee_rule_version_id=library.version.version_id,
     )
-
-
-def _snapshot_matches_context(
-    snapshot: FeeEvaluationPricingDraftSnapshot,
-    context: FeeEvaluationPricingDraftContext,
-) -> bool:
-    return (
-        snapshot.project_id == context.project_id
-        and snapshot.confirmed_matrix_id == context.confirmed_matrix_id
-        and snapshot.confirmed_revision == context.confirmed_revision
-        and snapshot.fee_rule_version_id == context.fee_rule_version_id
-    )
-
-
-def _validate_discard_expectations(
-    command: DiscardFeeEvaluationPricingDraftCommand,
-    snapshot: FeeEvaluationPricingDraftSnapshot,
-    context: FeeEvaluationPricingDraftContext,
-) -> None:
-    """Validate optimistic discard tokens against the current saved draft."""
-    if (
-        command.expected_pricing_draft_edit_id
-        and command.expected_pricing_draft_edit_id != snapshot.draft_edit_id
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft changed before discard. Reload Fee Evaluation."
-        )
-    if (
-        command.expected_confirmed_matrix_id
-        and command.expected_confirmed_matrix_id != context.confirmed_matrix_id
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft Matrix context changed before discard."
-        )
-    if (
-        command.expected_confirmed_revision is not None
-        and command.expected_confirmed_revision != context.confirmed_revision
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft Matrix revision changed before discard."
-        )
-    if (
-        command.expected_fee_rule_version_id
-        and command.expected_fee_rule_version_id != context.fee_rule_version_id
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft fee rule version changed before discard."
-        )
-
-
-def _validate_save_expectations(
-    command: SaveFeeEvaluationPricingDraftCommand,
-    context: FeeEvaluationPricingDraftContext,
-) -> None:
-    """Validate optimistic save tokens before writing the current draft."""
-    if (
-        command.expected_confirmed_matrix_id
-        and command.expected_confirmed_matrix_id != context.confirmed_matrix_id
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft Matrix context changed before save."
-        )
-    if (
-        command.expected_confirmed_revision is not None
-        and command.expected_confirmed_revision != context.confirmed_revision
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft Matrix revision changed before save."
-        )
-    if (
-        command.expected_fee_rule_version_id
-        and command.expected_fee_rule_version_id != context.fee_rule_version_id
-    ):
-        raise FeeEvaluationPricingDraftConflictError(
-            "Pricing draft fee rule version changed before save."
-        )
