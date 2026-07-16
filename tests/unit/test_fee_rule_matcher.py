@@ -3,6 +3,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import get_args
 
+import pytest
+
 from backend.modules.fee_evaluation import FeeRuleMatcher, load_active_fee_rule_library, normalize_fee_rule_text
 from backend.modules.fee_evaluation.fee_rule_models import (
     FeeAmount,
@@ -74,6 +76,56 @@ def test_fee_rule_matcher_treats_reseating_as_reseating_rule() -> None:
     assert result.match_reason == "exact_alias_match"
 
 
+def test_fee_rule_matcher_treats_dust_exposure_as_dust_benign_rule() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("Dust exposure")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_dust_benign"
+    assert result.match_reason == "exact_alias_match"
+
+
+def test_fee_rule_matcher_treats_dust_as_dust_benign_rule() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("Dust")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_dust_benign"
+    assert result.match_reason == "exact_alias_match"
+
+
+def test_fee_rule_matcher_treats_normal_force_as_mechanical_force_rule() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("Normal Force")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_mechanical_force"
+    assert result.match_reason == "exact_alias_match"
+
+
+def test_fee_rule_matcher_treats_force_variants_as_mechanical_force_rule() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    for test_item in (
+        "Terminal force",
+        "Terminal extraction force",
+        "Floater Displacement Force (Side Force)",
+        "Offset mating insertion force into floater",
+        "Latch retention force",
+    ):
+        result = matcher.match_test_item(test_item)
+
+        assert result.status == "matched"
+        assert result.rule is not None
+        assert result.rule.rule_id == "fee_rule_mechanical_force"
+
+
 def test_fee_rule_matcher_returns_no_match_for_ambiguous_token_match() -> None:
     matcher = FeeRuleMatcher(_ambiguous_library())
 
@@ -104,11 +156,67 @@ def test_fee_rule_match_status_values_remain_unchanged() -> None:
 def test_fee_rule_matcher_returns_stable_no_match_when_unmatched() -> None:
     matcher = FeeRuleMatcher(load_active_fee_rule_library())
 
-    result = matcher.match_test_item("Laser welding cross section simulation")
+    result = matcher.match_test_item("Laser welding simulation")
 
     assert result.status == "no_rule_match"
     assert result.rule is None
     assert result.review_reason == "No fee rule match."
+
+
+@pytest.mark.parametrize(
+    "test_item",
+    [
+        "high temperature life",
+        "Low temperature life",
+        "Temperature & Humidity",
+        "Steam aging",
+        "Thermal shock",
+        "Thermal cycling (Ramp rating 3.5C/min)",
+        "Thermal cycling (Ramp rating 5C/min)",
+        "Whisker testing (Environmental stress)",
+        "Salt spray (NSS)",
+        "MFG (Class IIA)",
+        "MFG (Class IIIA) VW75174 TG19",
+        "Dust (Benign)",
+        "Vibration",
+        "Shock (half sine)",
+        "Shock (Trapzoidal)",
+        "Vibration + Temp cycling",
+        "Microsecond discontinuity",
+        "Nanosecond dicontinuity",
+        "Mechanical force",
+        "Automotive connector Mechanical force",
+        "Offset durability",
+        "Cable bending",
+        "Durability",
+        "LLCR",
+        "DCR",
+        "Contact resistance (CR)",
+        "Insulation Resistance (IR)",
+        "Dielectric withstanding voltage (DWV)",
+        "Capacitance/Inductance",
+        "Temperature rise",
+        "Temperature rise with thermography",
+        "Current cycling (Current ON and OFF)",
+        "Solderability",
+        "Resistance to solder heat",
+        "Porosity",
+        "SEM/EDS analysis",
+        "FTIR analysis",
+        "Cross section",
+        "Compressive Whisker (Mechanical Stress)",
+        "Hardness Testing",
+        "Plating Thickness Measuring",
+        "Visual exam",
+        "PCB and test fixture design",
+        "Report preparation",
+    ],
+)
+def test_every_effective_source_description_matches(test_item: str) -> None:
+    result = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+
+    assert result.status == "matched"
+    assert result.rule is not None
 
 
 def _ambiguous_library() -> FeeRuleLibrary:

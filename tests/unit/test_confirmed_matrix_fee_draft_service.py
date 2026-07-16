@@ -34,8 +34,8 @@ def test_fee_draft_header_uses_confirmed_matrix_version_sample_received_date() -
     assert draft.header.project_id == "P1"
     assert draft.header.confirmed_matrix_id == "cmv-1"
     assert draft.header.confirmed_revision == 1
-    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_06_03"
-    assert draft.header.pricing_source_file_name == "Testing Fee Evaluation-Even.xls"
+    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_07_16"
+    assert draft.header.pricing_source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     assert draft.header.pricing_effective_from == "2026-06-03"
     assert draft.draft_status == "ready"
 
@@ -69,7 +69,7 @@ def test_fee_draft_autofills_visual_exam_defaults() -> None:
     assert line.status == "calculated"
     assert line.review_required is False
     assert line.matched_rule_id == "fee_rule_visual_exam"
-    assert line.matched_rule_version_id == "fee_rules_v2026_06_03"
+    assert line.matched_rule_version_id == "fee_rules_v2026_07_16"
     assert line.calculation_strategy == "per_photo"
     assert line.unit_price == Decimal("10")
     assert line.units == Decimal("3")
@@ -227,6 +227,22 @@ def test_fee_draft_marks_unmatched_row_as_no_rule_match() -> None:
     assert line.matched_rule_id is None
     assert line.matched_rule_version_id is None
     assert line.review_reason == "No fee rule match."
+
+
+def test_fee_draft_maps_insulation_resistance_to_known_review_rule() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(row=_fixture_row("INSULATION RESISTANCE"))
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+    line = draft.groups[0].line_items[0]
+
+    assert line.matched_rule_id == "fee_rule_insulation_resistance"
+    assert line.status == "review_required"
+    assert line.unit_label == "reading"
+    assert line.unit_price is None
 
 
 def test_fee_draft_calculates_fixed_per_group_when_rule_is_deterministic() -> None:

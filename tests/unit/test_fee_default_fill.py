@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from backend.modules.fee_evaluation import FeeStepQuantityContext
+import pytest
+
+from backend.modules.fee_evaluation import (
+    FeeRuleMatcher,
+    FeeStepQuantityContext,
+    load_active_fee_rule_library,
+)
 from backend.modules.fee_evaluation.fee_default_fill import (
     FeeDefaultFillContext,
     build_fee_default_fill,
@@ -30,6 +36,28 @@ def test_visual_examination_default_fill_is_deterministic() -> None:
     assert result.discount_percent == Decimal("100")
     assert result.testing_fee == Decimal("0")
     assert _field_state(result, "units") == "auto_filled"
+
+
+@pytest.mark.parametrize(
+    ("test_item", "rule_id"),
+    [
+        ("INSULATION RESISTANCE", "fee_rule_insulation_resistance"),
+        ("DIELECTRIC WITHSTANDING VOLTAGE", "fee_rule_dielectric_withstanding_voltage"),
+    ],
+)
+def test_ir_and_dwv_expose_per_reading_without_inventing_duration_price(
+    test_item: str,
+    rule_id: str,
+) -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+    assert match.rule is not None and match.rule.rule_id == rule_id
+
+    result = build_fee_default_fill(rule=match.rule, context=_context(test_item=test_item))
+
+    assert result.unit_label == "reading"
+    assert result.unit_price is None
+    assert result.review_required is True
+    assert "1-minute/2-minute" in (result.review_reason or "")
 
 
 def test_llcr_derives_total_readings_when_readings_per_specimen_is_explicit() -> None:
@@ -123,9 +151,9 @@ def test_contact_resistance_specified_current_uses_matrix_step_quantity() -> Non
         rule=_rule(
             "fee_rule_contact_resistance_specified_current",
             unit_label="reading",
-            unit_price=None,
+            unit_price=Decimal("10"),
             strategy="per_reading",
-            review_required=True,
+            review_required=False,
         ),
         context=_context(
             test_item="Contact Resistance (Power)",
@@ -140,9 +168,29 @@ def test_contact_resistance_specified_current_uses_matrix_step_quantity() -> Non
     )
 
     assert result.review_required is False
-    assert result.unit_price == Decimal("1")
+    assert result.unit_price == Decimal("10")
     assert result.units == Decimal("125")
-    assert result.testing_fee == Decimal("125")
+    assert result.testing_fee == Decimal("1250")
+
+
+def test_contact_resistance_specified_current_preserves_default_price_when_units_need_review() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_contact_resistance_specified_current",
+            unit_label="reading",
+            unit_price=Decimal("10"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(test_item="Contact Resistance, Specified Current"),
+    )
+
+    assert result.review_required is True
+    assert result.unit_price == Decimal("10")
+    assert result.unit_label == "reading"
+    assert result.units is None
+    assert result.testing_fee is None
+    assert result.review_reason == "Enter readings/specimen"
 
 
 def test_llcr_marks_review_when_matrix_step_quantity_requires_review() -> None:
@@ -431,6 +479,141 @@ def test_temperature_rise_prefills_current_tier_and_flags_base_fee_review() -> N
     assert _field_state(result, "base_fee") == "suggested_review"
 
 
+def test_dust_benign_defaults_to_one_hour() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_dust_benign",
+            unit_label="hour",
+            unit_price=Decimal("1800"),
+            strategy="per_hour",
+            review_required=False,
+        ),
+        context=_context(test_item="Dust exposure", step_tokens=("5",)),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("1800")
+    assert result.unit_label == "hour"
+    assert result.units == Decimal("1")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("1800")
+
+
+def test_dust_benign_uses_explicit_hour_duration() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_dust_benign",
+            unit_label="hour",
+            unit_price=Decimal("1800"),
+            strategy="per_hour",
+            review_required=False,
+        ),
+        context=_context(test_item="Dust", condition="2 hours", step_tokens=("5",)),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("1800")
+    assert result.unit_label == "hour"
+    assert result.units == Decimal("2")
+    assert result.testing_fee == Decimal("3600")
+
+
+def test_mechanical_force_defaults_to_per_reading_pricing() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_mechanical_force",
+            unit_label="reading",
+            unit_price=Decimal("20"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Normal Force",
+            sample_quantity_expression="5",
+            step_quantities=(
+                _step_quantity(
+                    test_points_per_sample="3",
+                    readings_per_point="2",
+                ),
+            ),
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.units == Decimal("30")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("600")
+
+
+def test_mechanical_force_mating_unmating_defaults_to_per_sample_pricing() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_mechanical_force",
+            unit_label="reading",
+            unit_price=Decimal("20"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Mating/Un-mating Force",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("50")
+    assert result.unit_label == "sample"
+    assert result.units == Decimal("5")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("250")
+
+
+def test_mechanical_force_latch_defaults_to_per_sample_pricing() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_mechanical_force",
+            unit_label="reading",
+            unit_price=Decimal("20"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Latch retention force",
+            sample_quantity_expression="4",
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("50")
+    assert result.unit_label == "sample"
+    assert result.units == Decimal("4")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("200")
+
+
+def test_mechanical_force_preserves_per_reading_price_when_units_need_review() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_mechanical_force",
+            unit_label="reading",
+            unit_price=Decimal("20"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(test_item="Normal Force"),
+    )
+
+    assert result.review_required is True
+    assert result.review_reason == "Enter readings/specimen"
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.base_fee == Decimal("0")
+    assert result.units is None
+    assert result.testing_fee is None
+
+
 def test_sample_preparation_default_fill_uses_group_sample_quantity() -> None:
     result = build_fee_default_fill(
         rule=_rule(
@@ -491,6 +674,7 @@ def _context(
     requirement: str = "",
     sample_quantity_expression: str = "5",
     spend_time: str = "",
+    step_tokens: tuple[str, ...] = (),
     step_quantities: tuple[FeeStepQuantityContext, ...] = (),
 ) -> FeeDefaultFillContext:
     return FeeDefaultFillContext(
@@ -500,6 +684,7 @@ def _context(
         requirement=requirement,
         sample_quantity_expression=sample_quantity_expression,
         spend_time=spend_time,
+        step_tokens=step_tokens,
         step_quantities=step_quantities,
     )
 

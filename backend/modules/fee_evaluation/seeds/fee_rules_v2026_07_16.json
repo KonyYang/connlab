@@ -714,7 +714,7 @@
       "range_condition": "6000V AC/DC",
       "calculation_strategy": "manual_required",
       "review_required": true,
-      "review_reason": "Confirm whether each reading uses the 1-minute or 2-minute price.",
+      "review_reason": "Confirm whether each reading uses the 1-minute/2-minute price.",
       "source_kind": "unit_price_reference",
       "source_row": 30
     },
@@ -741,7 +741,7 @@
       "range_condition": "6000V AC/DC",
       "calculation_strategy": "manual_required",
       "review_required": true,
-      "review_reason": "Confirm whether each reading uses the 1-minute or 2-minute price.",
+      "review_reason": "Confirm whether each reading uses the 1-minute/2-minute price.",
       "source_kind": "unit_price_reference",
       "source_row": 31
     },

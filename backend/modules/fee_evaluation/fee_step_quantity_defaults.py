@@ -14,13 +14,13 @@ from backend.modules.fee_evaluation.fee_default_fill_models import FeeStepQuanti
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
 
 MATRIX_STEP_QUANTITY_SOURCE = "Matrix Step quantity"
-
-_PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
-_READING_PATTERN = re.compile(
+READING_PATTERN = re.compile(
     r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:reading|readings|point|points|contact|contacts)"
     r"\s*(?:/|per)\s*(?:specimen|sample)\b",
     re.I,
 )
+
+_PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 
 
 def build_reading_result(
@@ -48,7 +48,7 @@ def build_reading_result(
         assert selected_source is not None
         source = selected_source
     else:
-        readings_per_specimen = _first_decimal(_READING_PATTERN, source_text)
+        readings_per_specimen = _first_decimal(READING_PATTERN, source_text)
     if readings_per_specimen is None:
         return manual_required(
             rule=rule,

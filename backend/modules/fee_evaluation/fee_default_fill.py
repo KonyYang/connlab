@@ -18,6 +18,9 @@ from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeFieldMetadata,
 )
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
+from backend.modules.fee_evaluation.fee_reviewed_extension_defaults import (
+    build_reviewed_extension_default_fill,
+)
 from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
     build_reading_result,
 )
@@ -55,13 +58,16 @@ def build_fee_default_fill(
             discount_percent=ONE_HUNDRED,
             source=rule.display_name,
         )
-    if rule.rule_id in {"fee_rule_llcr", "fee_rule_contact_resistance_specified_current"}:
+    if rule.rule_id == "fee_rule_llcr":
         return build_reading_result(
             rule=rule,
             sample_quantity_expression=context.sample_quantity_expression,
             source_text=_combined_text(context),
             step_quantities=context.step_quantities,
         )
+    extension_result = build_reviewed_extension_default_fill(rule=rule, context=context)
+    if extension_result is not None:
+        return extension_result
     if rule.rule_id == "fee_rule_durability":
         return _cycle_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_reseating":
@@ -95,8 +101,6 @@ def build_fee_default_fill(
             review_reason="Confirm units",
             manual_fields=("units", "testing_fee"),
         )
-    if rule.rule_id == "fee_rule_mechanical_force":
-        return _per_sample_result(rule=rule, context=context, unit_price=Decimal("50"))
     if rule.rule_id == "fee_rule_temperature_rise":
         return _temperature_rise_result(rule=rule, context=context)
     return _fallback_result(rule=rule, context=context)
