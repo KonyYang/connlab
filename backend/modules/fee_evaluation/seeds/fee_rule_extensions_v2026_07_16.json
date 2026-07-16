@@ -532,6 +532,19 @@
       "calculation_strategy": "manual_required",
       "review_required": true,
       "review_reason": "Confirm waveform, shock level, and occurrence count."
+    },
+    {
+      "rule_id": "fee_rule_sem_eds_analysis",
+      "display_name": "SEM/EDS analysis (legacy compatibility)",
+      "aliases": ["Legacy SEM EDS pricing rule"],
+      "base_fee": {"amount": "0", "text": "0"},
+      "unit_price": {"amount": null, "text": "Use fee_rule_sem_eds for current source pricing"},
+      "unit_label": "specimen",
+      "applicable_standard": "Reviewed ConnLab compatibility extension",
+      "range_condition": "Preserves the prior rule ID; current matching uses source row 39",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Use the current SEM/EDS source rule and confirm billing mode."
     }
   ]
 }

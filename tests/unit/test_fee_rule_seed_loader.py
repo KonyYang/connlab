@@ -15,33 +15,36 @@ from backend.modules.fee_evaluation import (
 from backend.modules.fee_evaluation.fee_rule_seed_loader import _parse_active_seed_name
 
 
-def test_load_active_fee_rule_library_keeps_original_reference_snapshot_metadata() -> None:
+_SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds"
+
+
+def test_load_active_fee_rule_library_uses_complete_reference_snapshot() -> None:
     library = load_active_fee_rule_library()
 
-    # TASK_289 optimized the Testing Prices sheet only; Unit Price Reference
-    # remains the reviewed TASK_285 source snapshot until a controlled update.
-    assert library.version.version_id == "fee_rules_v2026_06_03"
-    assert library.version.source_file_name == "Testing Fee Evaluation-Even.xls"
+    assert library.version.version_id == "fee_rules_v2026_07_16"
+    assert library.version.source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     assert library.version.source_sheet == "Unit Price Reference"
-    assert library.version.source_hash == "sha256:b19cce35f774ad3a83260805f7b717d5446f23ca1a90c209a08d8cb7f91fe226"
+    assert library.version.source_hash == (
+        "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d"
+    )
     assert library.version.effective_from_basis == "project.sample_received_date"
     assert any(rule.rule_id == "fee_rule_report_preparation" for rule in library.rules)
 
 
 def test_old_seed_loads_with_backward_compatible_provenance_defaults() -> None:
-    seed_path = (
-        Path(__file__).parents[2]
-        / "backend"
-        / "modules"
-        / "fee_evaluation"
-        / "seeds"
-        / "fee_rules_v2026_06_03.json"
-    )
-
-    library = load_fee_rule_library(seed_path)
+    library = load_fee_rule_library(_SEEDS / "fee_rules_v2026_06_03.json")
 
     assert all(rule.source_kind == "legacy_seed" for rule in library.rules)
     assert all(rule.source_row is None for rule in library.rules)
+
+
+def test_compiled_production_seed_is_complete_and_reloadable() -> None:
+    library = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_16.json")
+
+    base_rules = [rule for rule in library.rules if rule.source_kind == "unit_price_reference"]
+
+    assert len(base_rules) == 44
+    assert {rule.source_row for rule in base_rules} == set(range(4, 48))
 
 
 def test_active_seed_manifest_accepts_file_name_only() -> None:

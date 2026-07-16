@@ -1,0 +1,1259 @@
+{
+  "version": {
+    "version_id": "fee_rules_v2026_07_16",
+    "source_file_name": "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls",
+    "source_sheet": "Unit Price Reference",
+    "source_hash": "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d",
+    "effective_from_basis": "project.sample_received_date",
+    "created_at": "2026-07-16T00:00:00+08:00"
+  },
+  "rules": [
+    {
+      "rule_id": "fee_rule_high_temperature_life",
+      "display_name": "high temperature life",
+      "aliases": [
+        "high temperature life",
+        "高温老化",
+        "Pre-High temperature Life",
+        "High temperature Life (Preconditioning)",
+        "Preconditioning high temperature life"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "<96hours  300\n       ≥96hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "15",
+        "text": "15/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-17",
+      "range_condition": "40~300C",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm the planned duration before applying the hourly price.",
+      "source_kind": "unit_price_reference",
+      "source_row": 4
+    },
+    {
+      "rule_id": "fee_rule_low_temperature_life",
+      "display_name": "Low temperature life",
+      "aliases": [
+        "Low temperature life",
+        "低温寿命",
+        "Low temperature aging"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<96hours  300\n       ≥96hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "20",
+        "text": "20/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-59,IEC60512-11-10",
+      "range_condition": "-70~150C",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and the 96-hour base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 5
+    },
+    {
+      "rule_id": "fee_rule_temperature_humidity",
+      "display_name": "Temperature & Humidity",
+      "aliases": [
+        "Temperature & Humidity",
+        "温湿度",
+        "Steady state temperature humidity",
+        "Cyclic temperature humidity",
+        "Cycling Temperature & Humidity",
+        "Thermal Disturbance"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<96hours  300\n       ≥96hour 免基本金"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "Steady state稳态温湿度:20/h\nCyclic state交变湿热: 25/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-31",
+      "range_condition": "-40~180C, 10~98%RH",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm steady-state or cyclic mode, duration, and base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 6
+    },
+    {
+      "rule_id": "fee_rule_steam_aging",
+      "display_name": "Steam aging",
+      "aliases": [
+        "Steam aging",
+        "蒸汽老化"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<16hours  300\n       ≥16hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "20",
+        "text": "20/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "J-STD-002",
+      "range_condition": "100℃ max.",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and the 16-hour base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 7
+    },
+    {
+      "rule_id": "fee_rule_thermal_shock",
+      "display_name": "Thermal shock",
+      "aliases": [
+        "Thermal shock",
+        "冷热冲击",
+        "Cold thermal shock"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<10hours  300\n       ≥10hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "30",
+        "text": "30/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-32",
+      "range_condition": "-80~220C",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and the 10-hour base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 8
+    },
+    {
+      "rule_id": "fee_rule_thermal_cycling_3_5c",
+      "display_name": "Thermal cycling \n(Ramp rating 3.5C/min)",
+      "aliases": [
+        "Thermal cycling \n(Ramp rating 3.5C/min)",
+        "热循环 \n(变化速度小于3.5度/分钟）",
+        "Thermal cycling 3.5C/min"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<24hours  300\n       ≥24hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "25",
+        "text": "25/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-110",
+      "range_condition": "-40~180C, 3.5C/minute max",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and the 24-hour base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 9
+    },
+    {
+      "rule_id": "fee_rule_thermal_cycling_5c",
+      "display_name": "Thermal cycling \n(Ramp rating 5C/min)",
+      "aliases": [
+        "Thermal cycling \n(Ramp rating 5C/min)",
+        "热循环 \n(变化速度5度/分钟）",
+        "Thermal cycling 5C/min"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<24hours  300\n       ≥24hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "40",
+        "text": "40/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-110",
+      "range_condition": "-40~150C, E145C/minute max",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and the 24-hour base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 10
+    },
+    {
+      "rule_id": "fee_rule_whisker_environmental",
+      "display_name": "Whisker testing\n(Environmental stress)",
+      "aliases": [
+        "Whisker testing\n(Environmental stress)",
+        "锡须\n(环境应力)",
+        "Environmental whisker testing"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "1. JEDEC standard \na. Two conditions testing:\n     SEM examination: 12600RMB per P/N;\nb. Three conditions testing:\n     SEM examination: 20300RMB per P/N;\n2. Continental specification:\na. Three conditions,4000hours duration: \n19700RMB per P/N.\nb. Three conditions,1000hours reduced duration: 11800RMB per P/N \n（以上价格为10个以上的样品同时开展测试的优惠费用， 如果单独申请， 以实际开展测试的样品的数量给予合适的折扣，Continental的双85测试按5个样品并箱测试给予优惠）"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "JEDEC JESD22-A121A\n\nContinental QPR\n",
+      "range_condition": "",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Select the applicable JEDEC or Continental condition package and specimen discount.",
+      "source_kind": "unit_price_reference",
+      "source_row": 11
+    },
+    {
+      "rule_id": "fee_rule_salt_spray_nss",
+      "display_name": "Salt spray (NSS)",
+      "aliases": [
+        "Salt spray (NSS)",
+        "中性盐雾",
+        "Neutral salt spray",
+        "Salt spray"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<48hours或样品数量>5个  300\n       ≥48hour  免基本金\n如多料号同时测试， 可以每个料号加收100~200的基本金"
+      },
+      "unit_price": {
+        "amount": "20",
+        "text": "20/h"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-26",
+      "range_condition": "25~35C, 75%RH max",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration, specimen count, part-number count, and base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 12
+    },
+    {
+      "rule_id": "fee_rule_mfg_class_iia",
+      "display_name": "MFG (Class IIA)",
+      "aliases": [
+        "MFG (Class IIA)",
+        "混合流动气体(等级2A)",
+        "MFG",
+        "Mixed Flowing Gas Class IIA"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<48hours  300\n       ≥48hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "1000",
+        "text": "1000/day"
+      },
+      "unit_label": "day",
+      "applicable_standard": "EIA-364-65",
+      "range_condition": "20~50C, 75~95%RH",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm MFG class, planned days, and base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 13
+    },
+    {
+      "rule_id": "fee_rule_mfg_class_iiia",
+      "display_name": "MFG (Class IIIA)\nVW75174 TG19",
+      "aliases": [
+        "MFG (Class IIIA)\nVW75174 TG19",
+        "混合流动气体(等级3A)\nor 其它的两气体或三气体MFG测试",
+        "MFG Class IIIA",
+        "VW75174 TG19"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<48hours  300\n       ≥48hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "1600",
+        "text": "1600/day"
+      },
+      "unit_label": "day",
+      "applicable_standard": "EIA-364-65/\nVW75174",
+      "range_condition": "20~50C, 75~95%RH",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm Class IIIA or VW75174 scope, planned days, and base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 14
+    },
+    {
+      "rule_id": "fee_rule_dust_benign",
+      "display_name": "Dust (Benign)",
+      "aliases": [
+        "Dust (Benign)",
+        "良性粉尘",
+        "Dust exposure",
+        "Dust"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "免基本金"
+      },
+      "unit_price": {
+        "amount": "1800",
+        "text": "1800/runing (1hour)"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-91",
+      "range_condition": "N/A",
+      "calculation_strategy": "per_hour",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 15
+    },
+    {
+      "rule_id": "fee_rule_vibration",
+      "display_name": "Vibration",
+      "aliases": [
+        "Vibration",
+        "振动",
+        "Random Vibration"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "≤2hours  300~500\n       >2hour per axis 免基本金"
+      },
+      "unit_price": {
+        "amount": "300",
+        "text": "300"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-28",
+      "range_condition": "5~2000Hz, 15G",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm vibration duration, axes, and base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 16
+    },
+    {
+      "rule_id": "fee_rule_shock_half_sine",
+      "display_name": "Shock (half sine)",
+      "aliases": [
+        "Shock (half sine)",
+        "机械冲击(半正弦波)",
+        "Half sine shock"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "300~500"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "30/time (≤50G), 60/time (>50G)"
+      },
+      "unit_label": "time",
+      "applicable_standard": "EIA-364-27",
+      "range_condition": "50G, 11ms",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm shock level, occurrences, and the applicable 30/60 per-time tier.",
+      "source_kind": "unit_price_reference",
+      "source_row": 17
+    },
+    {
+      "rule_id": "fee_rule_shock_trapezoidal",
+      "display_name": "Shock (Trapzoidal)",
+      "aliases": [
+        "Shock (Trapzoidal)",
+        "机械冲击(梯形波)",
+        "Trapezoidal shock",
+        "Shock (Trapezoidal)"
+      ],
+      "base_fee": {
+        "amount": "500",
+        "text": "500"
+      },
+      "unit_price": {
+        "amount": "60",
+        "text": "60/time"
+      },
+      "unit_label": "time",
+      "applicable_standard": "EIA-364-27",
+      "range_condition": "50G, 11ms",
+      "calculation_strategy": "fixed_per_group",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 18
+    },
+    {
+      "rule_id": "fee_rule_vibration_temperature_cycling",
+      "display_name": "Vibration + Temp cycling",
+      "aliases": [
+        "Vibration + Temp cycling",
+        "三综合测试",
+        "Combined vibration and temperature cycling"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "按测试的复杂度适当收取"
+      },
+      "unit_price": {
+        "amount": "350",
+        "text": "350/hour"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "VW75174, USCAR-2",
+      "range_condition": "2~2000Hz, 15G",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and complexity-based base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 19
+    },
+    {
+      "rule_id": "fee_rule_microsecond_discontinuity",
+      "display_name": "Microsecond discontinuity",
+      "aliases": [
+        "Microsecond discontinuity",
+        "微秒瞬断",
+        "Microsecond interruption"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "300",
+        "text": "300/time"
+      },
+      "unit_label": "time",
+      "applicable_standard": "EIA-364-46",
+      "range_condition": "0.1~99.9us",
+      "calculation_strategy": "fixed_per_group",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 20
+    },
+    {
+      "rule_id": "fee_rule_nanosecond_discontinuity",
+      "display_name": "Nanosecond dicontinuity",
+      "aliases": [
+        "Nanosecond dicontinuity",
+        "钠秒瞬断",
+        "Nanosecond discontinuity",
+        "Nanosecond interruption"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "500",
+        "text": "500/time"
+      },
+      "unit_label": "time",
+      "applicable_standard": "EIA-364-87",
+      "range_condition": "1, 10, 50ns",
+      "calculation_strategy": "fixed_per_group",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 21
+    },
+    {
+      "rule_id": "fee_rule_mechanical_force",
+      "display_name": "Mechanical force",
+      "aliases": [
+        "Mechanical force",
+        "机械测试\n（插拔力/正向力/保持力等）",
+        "Insertion force",
+        "Withdrawal force",
+        "Mating/Un-mating Force",
+        "Mating Force",
+        "Unmating Force",
+        "Latch",
+        "Latch Force",
+        "Latch strength",
+        "Latch retention force",
+        "Normal Force",
+        "Terminal force",
+        "Terminal extraction force",
+        "Floater Displacement Force",
+        "Floater Displacement Force (Side Force)",
+        "Side Force",
+        "Offset mating insertion force into floater",
+        "MATE MALE & FEMALE"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "简单: 100\n一般: 200\n复杂: 200~400 "
+      },
+      "unit_price": {
+        "amount": "20",
+        "text": "按照读数: 20/reading\n按照样品数: 50/specimen"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-13/04/29…",
+      "range_condition": "20kN max",
+      "calculation_strategy": "per_reading",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 22
+    },
+    {
+      "rule_id": "fee_rule_automotive_mechanical_force",
+      "display_name": "Automotive connector\nMechanical force",
+      "aliases": [
+        "Automotive connector\nMechanical force",
+        "汽车连接器机械力测试\n（For CPA and TPA）",
+        "CPA force",
+        "TPA force",
+        "Automotive mechanical force"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "简单: 100\n一般: 200\n复杂: 200~400 "
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "按照读数: 50~100/reading \n(取决于具体测试的类别）"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "USCAR-2， VW75174",
+      "range_condition": "20kN max",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm force category, readings, and the applicable 50-100 per-reading price.",
+      "source_kind": "unit_price_reference",
+      "source_row": 23
+    },
+    {
+      "rule_id": "fee_rule_offset_durability",
+      "display_name": "Offset durability",
+      "aliases": [
+        "Offset durability",
+        "偏移错位耐久",
+        "Offset misalignment durability"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "按样品安装的复杂程度收取\n300~500的基本金"
+      },
+      "unit_price": {
+        "amount": "100",
+        "text": "100元/样品/条件"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "Customer specified",
+      "range_condition": "offset, rotation and tilt miaslignment",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm specimen conditions and setup-complexity base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 24
+    },
+    {
+      "rule_id": "fee_rule_cable_bending",
+      "display_name": "Cable bending",
+      "aliases": [
+        "Cable bending",
+        "摇摆测试",
+        "Cable flexing",
+        "Bending test"
+      ],
+      "base_fee": {
+        "amount": "200",
+        "text": "200"
+      },
+      "unit_price": {
+        "amount": "200",
+        "text": "200/specimen (<100times)"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "EIA-364-41",
+      "range_condition": "45,60,90 dgrees",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm cycle count is below 100 and the number of specimens.",
+      "source_kind": "unit_price_reference",
+      "source_row": 25
+    },
+    {
+      "rule_id": "fee_rule_durability",
+      "display_name": "Durability",
+      "aliases": [
+        "Durability",
+        "耐久性",
+        "Mating Durability",
+        "Durability Preconditioning"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "如果每个样品次数<250次, 且装夹费时， 可适当收取基本金50~100元\n如果每个样品次数 ≥250次, 免收基本金"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "≤50cycle/specimen : 2/cycle\n50~250cycle/specimen: 1/cycle\n>250次/specimen: 0.5/cycle\n"
+      },
+      "unit_label": "cycle",
+      "applicable_standard": "EIA-364-09/13",
+      "range_condition": "750mm/minute max",
+      "calculation_strategy": "per_cycle",
+      "review_required": true,
+      "review_reason": "Confirm cycles per specimen and any fixturing base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 26
+    },
+    {
+      "rule_id": "fee_rule_llcr",
+      "display_name": "LLCR",
+      "aliases": [
+        "LLCR",
+        "低阶接触电阻",
+        "Low Level Contact Resistance",
+        "Contact Resistance (Low Level)"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "≤20readings/specimen, 1.5/reading\n>20readings/specimen, 1/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-23",
+      "range_condition": "20mV max, 100mA max",
+      "calculation_strategy": "per_reading",
+      "review_required": true,
+      "review_reason": "Confirm readings per specimen for the 1.5/1 per-reading tier.",
+      "source_kind": "unit_price_reference",
+      "source_row": 27
+    },
+    {
+      "rule_id": "fee_rule_dcr",
+      "display_name": "DCR",
+      "aliases": [
+        "DCR",
+        "干电路电阻\n(低阶接触电阻)",
+        "Dry Circuit Resistance"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "可按样品准备状况适当收取"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "BTB： 2/reading\nWTB： 3/reading\nWtB: 6/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "USCAR-2\nVW75174",
+      "range_condition": "20mV max, 100mA max",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm BTB/WTB connector type, readings, and base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 28
+    },
+    {
+      "rule_id": "fee_rule_contact_resistance_specified_current",
+      "display_name": "Contact resistance (CR)",
+      "aliases": [
+        "Contact resistance (CR)",
+        "接触电阻(指定电流)",
+        "Contact Resistance",
+        "Contact Resistance (Power)",
+        "Contact Resistance, Specified Current",
+        "CR"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "100~300, 取决于电力大小\n（如果连同温升测试， 则免基本金）"
+      },
+      "unit_price": {
+        "amount": "10",
+        "text": "≤10readings/specimen, 10/reading\n>10readings/specimen, 5/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-06",
+      "range_condition": "1200A maximum",
+      "calculation_strategy": "per_reading",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 29
+    },
+    {
+      "rule_id": "fee_rule_insulation_resistance",
+      "display_name": "Insulation Resistance (IR)",
+      "aliases": [
+        "Insulation Resistance (IR)",
+        "绝缘电阻",
+        "IR",
+        "INSULATION RESISTANCE"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "（100~300）\n基于样品准备状况决定"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "测试规格为1分钟/reading: 5/reading\n测试规格为2分钟/reading: 10/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-21",
+      "range_condition": "6000V AC/DC",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm whether each reading uses the 1-minute or 2-minute price.",
+      "source_kind": "unit_price_reference",
+      "source_row": 30
+    },
+    {
+      "rule_id": "fee_rule_dielectric_withstanding_voltage",
+      "display_name": "Dielectric withstanding voltage\n(DWV)",
+      "aliases": [
+        "Dielectric withstanding voltage\n(DWV)",
+        "介质耐压",
+        "DWV",
+        "DIELECTRIC WITHSTANDING VOLTAGE",
+        "Dielectric Withstand Voltage"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "（100~300）\n基于样品准备状况决定"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "测试规格为1分钟/reading: 5/reading\n测试规格为2分钟/reading: 10/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-20\nUL4128",
+      "range_condition": "6000V AC/DC",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm whether each reading uses the 1-minute or 2-minute price.",
+      "source_kind": "unit_price_reference",
+      "source_row": 31
+    },
+    {
+      "rule_id": "fee_rule_capacitance_inductance",
+      "display_name": "Capacitance/Inductance",
+      "aliases": [
+        "Capacitance/Inductance",
+        "电容/电感",
+        "Capacitance",
+        "Inductance"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "（100~300）\n基于样品准备状况决定"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "≤10readings/specimen, 20/reading\n>10readings/specimen, 10/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-30",
+      "range_condition": "20Hz~1MHz,0.01fF~9.99999F",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm readings per specimen and the applicable per-reading tier.",
+      "source_kind": "unit_price_reference",
+      "source_row": 32
+    },
+    {
+      "rule_id": "fee_rule_temperature_rise",
+      "display_name": "Temperature rise",
+      "aliases": [
+        "Temperature rise",
+        "温升",
+        "T-rise",
+        "Temperature Rise Test",
+        "Current carrying temperature rise"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "常规: 500 (三个以上样品同时测试，样品准备无特别要求，免收基本金）\n复杂: 500~1000 （针对样品的准备）"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "500/specimen  ≤ 240A\n600/specimen  ≤ 500A\n700/specimen  ≤ 1000A\n800/specimen  ≤ 2000A"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "EIA-364-70 method 2&3",
+      "range_condition": "1200A maximum",
+      "calculation_strategy": "per_specimen",
+      "review_required": true,
+      "review_reason": "Confirm test current tier and specimen-preparation base fee.",
+      "source_kind": "unit_price_reference",
+      "source_row": 33
+    },
+    {
+      "rule_id": "fee_rule_temperature_rise_thermography",
+      "display_name": "Temperature rise \nwith thermography ",
+      "aliases": [
+        "Temperature rise \nwith thermography",
+        "温升 (红外热像）",
+        "Temperature rise with IR thermography",
+        "T-rise with thermography"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "常规: 0 (6个以上样品同时测试，样品准备无特别要求，免收基本金）\n复杂: 按情况收取300~500元"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "300/specimen ≤ 240A\n400/specimen ≤ 500A\n500/specimen ≤ 1000A\n600/specimen ≤ 2000A"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "EIA-364-70 Method 1，\n UL1977，UL4128",
+      "range_condition": "2000A maximum",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm current tier, specimen count, and preparation complexity.",
+      "source_kind": "unit_price_reference",
+      "source_row": 34
+    },
+    {
+      "rule_id": "fee_rule_current_cycling",
+      "display_name": "Current cycling\n(Current ON and OFF)",
+      "aliases": [
+        "Current cycling\n(Current ON and OFF)",
+        "电流循环",
+        "Current ON and OFF",
+        "Current cycling test"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "<24hours  200\n ≥24hour 免基本金"
+      },
+      "unit_price": {
+        "amount": "10",
+        "text": "10/hour"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "USCAR-2、USCAR-21",
+      "range_condition": "",
+      "calculation_strategy": "per_hour",
+      "review_required": true,
+      "review_reason": "Confirm duration and the 24-hour base-fee threshold.",
+      "source_kind": "unit_price_reference",
+      "source_row": 35
+    },
+    {
+      "rule_id": "fee_rule_solderability",
+      "display_name": "Solderability",
+      "aliases": [
+        "Solderability",
+        "可焊性"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "200\n≥5样品 免基本金"
+      },
+      "unit_price": {
+        "amount": "100",
+        "text": "100/Specimen"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "J-STD-002",
+      "range_condition": "300℃ max",
+      "calculation_strategy": "per_specimen",
+      "review_required": true,
+      "review_reason": "Confirm specimen count, preprocessing, and base-fee waiver.",
+      "source_kind": "unit_price_reference",
+      "source_row": 36
+    },
+    {
+      "rule_id": "fee_rule_resistance_to_solder_heat",
+      "display_name": "Resistance to solder heat",
+      "aliases": [
+        "Resistance to solder heat",
+        "耐焊热",
+        "Solder heat resistance"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "200\n≥5样品 免基本金"
+      },
+      "unit_price": {
+        "amount": "100",
+        "text": "100/Specimen"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "J-STD-020 / EIA-364-56",
+      "range_condition": "350℃ max",
+      "calculation_strategy": "per_specimen",
+      "review_required": true,
+      "review_reason": "Confirm specimen count and base-fee waiver.",
+      "source_kind": "unit_price_reference",
+      "source_row": 37
+    },
+    {
+      "rule_id": "fee_rule_porosity",
+      "display_name": "Porosity",
+      "aliases": [
+        "Porosity",
+        "孔隙率",
+        "Porosity test"
+      ],
+      "base_fee": {
+        "amount": "300",
+        "text": "300\n(样品清洗/药水配置/仪器清洗)"
+      },
+      "unit_price": {
+        "amount": "500",
+        "text": "500 per P/N"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "EIA-364-53/GS-19-049",
+      "range_condition": "",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm part-number count before applying the per-P/N price.",
+      "source_kind": "unit_price_reference",
+      "source_row": 38
+    },
+    {
+      "rule_id": "fee_rule_sem_eds",
+      "display_name": "SEM/EDS analysis",
+      "aliases": [
+        "SEM/EDS analysis",
+        "扫描电镜/能谱分析",
+        "Scanning Electron Microscopy",
+        "EDS analysis"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "300/specimen/point\n500/h"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "N/A",
+      "range_condition": "2小时以上可给予10%的折扣， 5小时以上可给予20%的折扣",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm per-point or hourly billing mode and any duration discount.",
+      "source_kind": "unit_price_reference",
+      "source_row": 39
+    },
+    {
+      "rule_id": "fee_rule_ftir",
+      "display_name": "FTIR analysis",
+      "aliases": [
+        "FTIR analysis",
+        "红外傅立叶光谱分析",
+        "FTIR",
+        "Micro FTIR"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "400/specimen/point\n（visible by naked eye)\n500/specimen for micro FTIR"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "N/A",
+      "range_condition": "2个以上样品可10%的折扣； 5个以上的样品可20%的折扣",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm visible or micro-FTIR mode and specimen-count discount.",
+      "source_kind": "unit_price_reference",
+      "source_row": 40
+    },
+    {
+      "rule_id": "fee_rule_cross_section",
+      "display_name": "Cross section",
+      "aliases": [
+        "Cross section",
+        "切片",
+        "Cross-section analysis"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "350",
+        "text": "350/section"
+      },
+      "unit_label": "sample",
+      "applicable_standard": "EIA/ IPC",
+      "range_condition": "1.额外的尺寸测量可按10元/measurement收取费用；\n2.如需预镀镍保护层，则增加\n100元/sample",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm section count and any measurement or nickel-protection additions.",
+      "source_kind": "unit_price_reference",
+      "source_row": 41
+    },
+    {
+      "rule_id": "fee_rule_compressive_whisker",
+      "display_name": "Compressive Whisker\n(Mechanical Stress)",
+      "aliases": [
+        "Compressive Whisker\n(Mechanical Stress)",
+        "压力锡须测试\n（机械应力）",
+        "Compressive whisker testing",
+        "Mechanical stress whisker"
+      ],
+      "base_fee": {
+        "amount": "300",
+        "text": "300\n（不包含测试后的SEM观察）"
+      },
+      "unit_price": {
+        "amount": "100",
+        "text": "100/day"
+      },
+      "unit_label": "day",
+      "applicable_standard": "JEITA RC-524/13",
+      "range_condition": "500g, 2000g,5cs probe",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm planned days and whether post-test SEM is required.",
+      "source_kind": "unit_price_reference",
+      "source_row": 42
+    },
+    {
+      "rule_id": "fee_rule_hardness_testing",
+      "display_name": "Hardness Testing",
+      "aliases": [
+        "Hardness Testing",
+        "硬度测试",
+        "Hardness test"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "300\n≥3样品 免基本金"
+      },
+      "unit_price": {
+        "amount": "100",
+        "text": "100/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "ISO 6507-1:2018 Part 1",
+      "range_condition": "5HV~3000HV, 10,25,50,100,200,300,500,1000g",
+      "calculation_strategy": "per_reading",
+      "review_required": true,
+      "review_reason": "Confirm readings and the three-specimen base-fee waiver.",
+      "source_kind": "unit_price_reference",
+      "source_row": 43
+    },
+    {
+      "rule_id": "fee_rule_plating_thickness",
+      "display_name": "Plating Thickness Measuring",
+      "aliases": [
+        "Plating Thickness Measuring",
+        "镀层膜厚测量",
+        "Plating Thickness",
+        "XRF plating thickness"
+      ],
+      "base_fee": {
+        "amount": null,
+        "text": "100\n≥20reading 免基本金"
+      },
+      "unit_price": {
+        "amount": "10",
+        "text": "10/reading"
+      },
+      "unit_label": "reading",
+      "applicable_standard": "EIA-364-48A\nXRF, Method C ",
+      "range_condition": "如需要新建程式并验证则需要额外收取基本金",
+      "calculation_strategy": "per_reading",
+      "review_required": true,
+      "review_reason": "Confirm reading count and whether a new validated program is required.",
+      "source_kind": "unit_price_reference",
+      "source_row": 44
+    },
+    {
+      "rule_id": "fee_rule_visual_exam",
+      "display_name": "Visual exam",
+      "aliases": [
+        "Visual exam",
+        "外观检查",
+        "Visual Examination",
+        "Visual Inspection",
+        "Visual Examination after test",
+        "Examination of Product",
+        "Product Examination"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "10",
+        "text": "数码显微镜拍照 (Digital Microscope): 10/张(典型照片)"
+      },
+      "unit_label": "photo",
+      "applicable_standard": "EIA-364-18",
+      "range_condition": "常规测试后典型样品外观检查拍照免费， 仅需要对所有测试样品进行拍照时可适当收取费用",
+      "calculation_strategy": "per_photo",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 45
+    },
+    {
+      "rule_id": "fee_rule_pcb_fixture_design",
+      "display_name": "PCB and test fixture design",
+      "aliases": [
+        "PCB and test fixture design",
+        "PCB和夹具设计",
+        "PCB design",
+        "Test fixture design"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "180",
+        "text": "180/hour"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "N/A",
+      "range_condition": "",
+      "calculation_strategy": "per_hour",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 46
+    },
+    {
+      "rule_id": "fee_rule_report_preparation",
+      "display_name": "Report preparation",
+      "aliases": [
+        "Report preparation",
+        "报告准备",
+        "Internal report",
+        "Customer report"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "600",
+        "text": "多组Group测试: 免收\n单组Group测试: 400(报告<10页)\n600(报告≥10页)\nNote: 同时出具内部和客户报告，只收内部报告费用\n如需编制中英文报告，可加收费用 (50%)\nFA summary over 20 slide: 1000"
+      },
+      "unit_label": "report",
+      "applicable_standard": "N/A",
+      "range_condition": "",
+      "calculation_strategy": "fixed_per_group",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "unit_price_reference",
+      "source_row": 47
+    },
+    {
+      "rule_id": "fee_rule_sample_preparation",
+      "display_name": "Sample preparation",
+      "aliases": [
+        "Sample preparation",
+        "Specimen preparation"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "50",
+        "text": "50/sample"
+      },
+      "unit_label": "sample",
+      "applicable_standard": "Reviewed ConnLab extension",
+      "range_condition": "Matrix group sample quantity; 100% discount default",
+      "calculation_strategy": "per_sample",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "reviewed_extension",
+      "source_row": null
+    },
+    {
+      "rule_id": "fee_rule_reseating",
+      "display_name": "Reseating",
+      "aliases": [
+        "Reseating",
+        "Re-seating",
+        "Manual reseating"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "2",
+        "text": "2/cycle"
+      },
+      "unit_label": "cycle",
+      "applicable_standard": "Reviewed ConnLab extension",
+      "range_condition": "Matrix group sample quantity multiplied by parsed cycles; fallback 3 cycles",
+      "calculation_strategy": "per_cycle",
+      "review_required": false,
+      "review_reason": null,
+      "source_kind": "reviewed_extension",
+      "source_row": null
+    },
+    {
+      "rule_id": "fee_rule_mechanical_shock",
+      "display_name": "Mechanical shock",
+      "aliases": [
+        "Mechanical Shock",
+        "Shock"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": "30",
+        "text": "30/time reviewed fallback"
+      },
+      "unit_label": "time",
+      "applicable_standard": "Reviewed ConnLab compatibility extension",
+      "range_condition": "Generic Matrix wording without a confirmed waveform",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Confirm waveform, shock level, and occurrence count.",
+      "source_kind": "reviewed_extension",
+      "source_row": null
+    },
+    {
+      "rule_id": "fee_rule_sem_eds_analysis",
+      "display_name": "SEM/EDS analysis (legacy compatibility)",
+      "aliases": [
+        "Legacy SEM EDS pricing rule"
+      ],
+      "base_fee": {
+        "amount": "0",
+        "text": "0"
+      },
+      "unit_price": {
+        "amount": null,
+        "text": "Use fee_rule_sem_eds for current source pricing"
+      },
+      "unit_label": "specimen",
+      "applicable_standard": "Reviewed ConnLab compatibility extension",
+      "range_condition": "Preserves the prior rule ID; current matching uses source row 39",
+      "calculation_strategy": "manual_required",
+      "review_required": true,
+      "review_reason": "Use the current SEM/EDS source rule and confirm billing mode.",
+      "source_kind": "reviewed_extension",
+      "source_row": null
+    }
+  ]
+}

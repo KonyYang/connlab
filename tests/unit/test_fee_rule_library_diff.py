@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from pathlib import Path
 
 from backend.modules.fee_evaluation import (
     FeeAmount,
@@ -9,7 +10,11 @@ from backend.modules.fee_evaluation import (
     FeeRuleLibrary,
     FeeRuleVersion,
     diff_fee_rule_libraries,
+    load_fee_rule_library,
 )
+
+
+_SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds"
 
 
 def test_fee_rule_library_diff_classifies_added_removed_changed_and_unchanged() -> None:
@@ -78,6 +83,15 @@ def test_fee_rule_library_diff_reports_source_provenance_changes() -> None:
         "source_kind",
         "source_row",
     }
+
+
+def test_candidate_diff_preserves_every_existing_rule_id() -> None:
+    active = load_fee_rule_library(_SEEDS / "fee_rules_v2026_06_03.json")
+    candidate = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_16.json")
+
+    diff = diff_fee_rule_libraries(active, candidate)
+
+    assert diff.removed_count == 0
 
 
 def _version(version_id: str) -> FeeRuleVersion:
