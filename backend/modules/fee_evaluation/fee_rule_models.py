@@ -18,6 +18,12 @@ CalculationStrategy = Literal[
     "unknown",
 ]
 
+FeeRuleSourceKind = Literal[
+    "legacy_seed",
+    "unit_price_reference",
+    "reviewed_extension",
+]
+
 FeeRuleMatchStatus = Literal["matched", "no_rule_match"]
 
 ALLOWED_CALCULATION_STRATEGIES: tuple[CalculationStrategy, ...] = (
@@ -88,6 +94,8 @@ class FeeRule:
     calculation_strategy: CalculationStrategy
     review_required: bool
     review_reason: str | None
+    source_kind: FeeRuleSourceKind = "legacy_seed"
+    source_row: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

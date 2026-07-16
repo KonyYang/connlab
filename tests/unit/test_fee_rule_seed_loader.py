@@ -28,6 +28,22 @@ def test_load_active_fee_rule_library_keeps_original_reference_snapshot_metadata
     assert any(rule.rule_id == "fee_rule_report_preparation" for rule in library.rules)
 
 
+def test_old_seed_loads_with_backward_compatible_provenance_defaults() -> None:
+    seed_path = (
+        Path(__file__).parents[2]
+        / "backend"
+        / "modules"
+        / "fee_evaluation"
+        / "seeds"
+        / "fee_rules_v2026_06_03.json"
+    )
+
+    library = load_fee_rule_library(seed_path)
+
+    assert all(rule.source_kind == "legacy_seed" for rule in library.rules)
+    assert all(rule.source_row is None for rule in library.rules)
+
+
 def test_active_seed_manifest_accepts_file_name_only() -> None:
     assert _parse_active_seed_name({"active_seed_name": "fee_rules_v2026_06_03.json"}) == (
         "fee_rules_v2026_06_03.json"
@@ -181,6 +197,19 @@ def test_load_fee_rule_library_rejects_unknown_strategy(tmp_path: Path) -> None:
     seed_path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(FeeRuleSeedValidationError, match="unsupported calculation_strategy"):
+        load_fee_rule_library(seed_path)
+
+
+def test_load_fee_rule_library_requires_row_for_reference_provenance(tmp_path: Path) -> None:
+    seed_path = tmp_path / "missing_source_row.json"
+    rule = _valid_rule("rule_a")
+    rule.update(source_kind="unit_price_reference", source_row=None)
+    seed_path.write_text(
+        json.dumps({"version": _valid_version(), "rules": [rule]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(FeeRuleSeedValidationError, match="source_row"):
         load_fee_rule_library(seed_path)
 
 

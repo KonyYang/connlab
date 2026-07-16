@@ -75,6 +75,23 @@ def test_fee_rule_library_to_seed_json_is_stable_and_loadable() -> None:
     assert payload["rules"][0]["unit_price"] == {"amount": "10", "text": "10/sample"}
 
 
+def test_candidate_serialization_preserves_source_provenance() -> None:
+    row = _candidate_row(
+        "fee_rule_ir",
+        source_kind="unit_price_reference",
+        source_row=30,
+    )
+    library = build_fee_rule_library_candidate(
+        version=_version("fee_rules_v2026_07_16"),
+        rows=(row,),
+    )
+
+    payload = json.loads(fee_rule_library_to_seed_json(library))
+
+    assert payload["rules"][0]["source_kind"] == "unit_price_reference"
+    assert payload["rules"][0]["source_row"] == 30
+
+
 def _version(version_id: str) -> FeeRuleVersion:
     return FeeRuleVersion(
         version_id=version_id,
@@ -95,6 +112,8 @@ def _candidate_row(
     unit_label: str = "sample",
     review_required: bool = False,
     review_reason: str | None = None,
+    source_kind: str = "legacy_seed",
+    source_row: int | None = None,
 ) -> FeeReferenceCandidateRow:
     return FeeReferenceCandidateRow(
         rule_id=rule_id,
@@ -110,4 +129,6 @@ def _candidate_row(
         calculation_strategy="per_sample",
         review_required=review_required,
         review_reason=review_reason,
+        source_kind=source_kind,
+        source_row=source_row,
     )

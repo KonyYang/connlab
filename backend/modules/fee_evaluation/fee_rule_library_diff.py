@@ -106,6 +106,12 @@ def _field_changes(active_rule: FeeRule, candidate_rule: FeeRule) -> list[FeeRul
         ("calculation_strategy", active_rule.calculation_strategy, candidate_rule.calculation_strategy),
         ("review_required", str(active_rule.review_required), str(candidate_rule.review_required)),
         ("review_reason", active_rule.review_reason or "", candidate_rule.review_reason or ""),
+        ("source_kind", active_rule.source_kind, candidate_rule.source_kind),
+        (
+            "source_row",
+            str(active_rule.source_row) if active_rule.source_row is not None else "",
+            str(candidate_rule.source_row) if candidate_rule.source_row is not None else "",
+        ),
     )
     return [
         FeeRuleFieldChange(field_name=field_name, before=before, after=after)

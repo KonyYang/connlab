@@ -30,6 +30,7 @@ from backend.modules.fee_evaluation.fee_rule_models import (
     FeeRule,
     FeeRuleLibrary,
     FeeRuleMatchStatus,
+    FeeRuleSourceKind,
     FeeRuleSeedValidationError,
     FeeRuleVersion,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "FeeRuleLibraryDiff",
     "FeeRuleMatchResult",
     "FeeRuleMatchStatus",
+    "FeeRuleSourceKind",
     "FeeRuleMatcher",
     "FeeRuleSeedLoaderError",
     "FeeRuleSeedValidationError",

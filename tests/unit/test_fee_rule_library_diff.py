@@ -59,6 +59,27 @@ def test_fee_rule_library_diff_reports_alias_and_price_changes() -> None:
     assert {change.field_name for change in entry.field_changes} == {"aliases", "unit_price"}
 
 
+def test_fee_rule_library_diff_reports_source_provenance_changes() -> None:
+    active = FeeRuleLibrary(version=_version("active"), rules=(_rule("rule_a"),))
+    candidate = FeeRuleLibrary(
+        version=_version("candidate"),
+        rules=(
+            replace(
+                _rule("rule_a"),
+                source_kind="unit_price_reference",
+                source_row=30,
+            ),
+        ),
+    )
+
+    entry = diff_fee_rule_libraries(active, candidate).entries[0]
+
+    assert {change.field_name for change in entry.field_changes} == {
+        "source_kind",
+        "source_row",
+    }
+
+
 def _version(version_id: str) -> FeeRuleVersion:
     return FeeRuleVersion(
         version_id=version_id,

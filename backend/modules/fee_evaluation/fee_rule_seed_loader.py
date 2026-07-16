@@ -17,6 +17,7 @@ from backend.modules.fee_evaluation.fee_rule_models import (
     FeeAmount,
     FeeRule,
     FeeRuleLibrary,
+    FeeRuleSourceKind,
     FeeRuleSeedValidationError,
     FeeRuleVersion,
 )
@@ -118,6 +119,15 @@ def validate_fee_rule_library(library: FeeRuleLibrary) -> None:
             raise FeeRuleSeedValidationError(
                 f"Rule {rule.rule_id} has unsupported unit_label: {rule.unit_label}"
             )
+        if rule.source_kind == "unit_price_reference":
+            if rule.source_row not in range(4, 48):
+                raise FeeRuleSeedValidationError(
+                    f"Rule {rule.rule_id} source_row must be between 4 and 47."
+                )
+        elif rule.source_row is not None:
+            raise FeeRuleSeedValidationError(
+                f"Rule {rule.rule_id} source_row is only valid for unit_price_reference rules."
+            )
         if rule.review_required and not (rule.review_reason or "").strip():
             raise FeeRuleSeedValidationError(
                 f"Rule {rule.rule_id} must provide review_reason when review_required is true."
@@ -181,7 +191,28 @@ def _parse_rule(payload: Any, *, index: int) -> FeeRule:
         calculation_strategy=_require_string(rule_payload, "calculation_strategy", context=context),
         review_required=review_required,
         review_reason=review_reason,
+        source_kind=_parse_source_kind(rule_payload.get("source_kind"), context),
+        source_row=_optional_int(rule_payload.get("source_row"), f"{context}.source_row"),
     )
+
+
+def _parse_source_kind(value: Any, context: str) -> FeeRuleSourceKind:
+    """Parse optional source provenance while keeping old seeds compatible."""
+    if value is None:
+        return "legacy_seed"
+    source_kind = _require_string_value(value, f"{context}.source_kind")
+    if source_kind not in {"legacy_seed", "unit_price_reference", "reviewed_extension"}:
+        raise FeeRuleSeedValidationError(f"{context}.source_kind is unsupported: {source_kind}")
+    return source_kind  # type: ignore[return-value]
+
+
+def _optional_int(value: Any, context: str) -> int | None:
+    """Parse an optional integer while rejecting booleans."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise FeeRuleSeedValidationError(f"{context} must be an integer or null.")
+    return value
 
 
 def _parse_amount(payload: Any, context: str) -> FeeAmount:

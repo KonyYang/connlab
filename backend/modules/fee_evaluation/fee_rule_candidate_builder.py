@@ -11,6 +11,7 @@ from backend.modules.fee_evaluation.fee_rule_models import (
     FeeAmount,
     FeeRule,
     FeeRuleLibrary,
+    FeeRuleSourceKind,
     FeeRuleVersion,
 )
 from backend.modules.fee_evaluation.fee_rule_seed_loader import validate_fee_rule_library
@@ -33,6 +34,8 @@ class FeeReferenceCandidateRow:
     calculation_strategy: CalculationStrategy
     review_required: bool
     review_reason: str | None
+    source_kind: FeeRuleSourceKind = "legacy_seed"
+    source_row: int | None = None
 
 
 def build_fee_rule_library_candidate(
@@ -68,6 +71,8 @@ def _candidate_row_to_rule(row: FeeReferenceCandidateRow) -> FeeRule:
         calculation_strategy=row.calculation_strategy,
         review_required=row.review_required,
         review_reason=row.review_reason,
+        source_kind=row.source_kind,
+        source_row=row.source_row,
     )
 
 
@@ -95,6 +100,8 @@ def _library_to_payload(library: FeeRuleLibrary) -> dict[str, object]:
                 "calculation_strategy": rule.calculation_strategy,
                 "review_required": rule.review_required,
                 "review_reason": rule.review_reason,
+                "source_kind": rule.source_kind,
+                "source_row": rule.source_row,
             }
             for rule in library.rules
         ],
