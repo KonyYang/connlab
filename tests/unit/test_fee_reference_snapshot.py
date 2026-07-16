@@ -15,6 +15,15 @@ from backend.modules.fee_evaluation.fee_reference_snapshot import (
 
 
 _SOURCE_HASH = "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d"
+_SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds"
+_DISCOUNT_POLICY = (
+    "对于价格的打折， 请执行以下的原则：\n"
+    "1. 对于仅仅是单项的总金额比较低的测试， 原则上不打折；\n"
+    "2. 对于总金额比较大，但样品数量比较多或样品尺寸比较大的或测试条件独特不可并箱测试的， 原则上不额外给予折扣 ；\n"
+    "3. 虽然金额比较大， 但测试条件相同， 样品数量和外形都比较小， 实验室方便并箱测试的， 可给予最多额外40%的折扣；\n"
+    "4. 同意申请者或同一Site相同的产品， 但不同的配置同时安排测试， 如环境测试并箱执行，可以基于项目的数量给与相应的折扣， 比如4个项目同时执行， 可给予最多70%的折扣\n"
+    "5. 虽然金额比较大且测试条件相同，但外形尺寸相对较大（如HSIO的Cable assembly）并箱会减少其它并箱样品的数量，可给予额外20%的折扣.\n"
+)
 
 
 def _row(source_row: int) -> dict[str, object]:
@@ -52,6 +61,19 @@ def test_load_fee_reference_snapshot_requires_exact_authority_rows(tmp_path: Pat
     assert snapshot.source.source_hash == _SOURCE_HASH
     assert tuple(row.source_row for row in snapshot.rows) == tuple(range(4, 48))
     assert tuple(policy.source_row for policy in snapshot.policies) == (49,)
+
+
+def test_production_snapshot_has_exact_source_coverage_and_policy_text() -> None:
+    snapshot = load_fee_reference_snapshot(_SEEDS / "fee_reference_rows_v2026_07_16.json")
+
+    assert len(snapshot.rows) == 44
+    assert tuple(row.source_row for row in snapshot.rows) == tuple(range(4, 48))
+    assert snapshot.policies[0].source_row == 49
+    assert snapshot.policies[0].text == _DISCOUNT_POLICY
+    assert snapshot.rows[26].english_description == "Insulation Resistance (IR)"
+    assert snapshot.rows[26].unit_price_text == (
+        "测试规格为1分钟/reading: 5/reading\n测试规格为2分钟/reading: 10/reading"
+    )
 
 
 @pytest.mark.parametrize(
@@ -122,4 +144,3 @@ def _snapshot_payload(
         "rows": rows,
         "policies": policies,
     }
-

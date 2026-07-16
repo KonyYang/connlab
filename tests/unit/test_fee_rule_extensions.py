@@ -13,6 +13,9 @@ from backend.modules.fee_evaluation.fee_rule_extensions import (
 )
 
 
+_SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds"
+
+
 def test_extension_loader_requires_one_mapping_for_every_source_row(tmp_path: Path) -> None:
     path = _write_extensions(tmp_path, source_rules=_source_rules(4, 47))
 
@@ -20,6 +23,27 @@ def test_extension_loader_requires_one_mapping_for_every_source_row(tmp_path: Pa
 
     assert tuple(item.source_row for item in extensions.source_rules) == tuple(range(4, 48))
     assert "fee_rule_reseating" in {rule.rule_id for rule in extensions.extension_rules}
+
+
+def test_production_extensions_cover_source_and_protect_reviewed_rules() -> None:
+    extensions = load_fee_rule_extensions(_SEEDS / "fee_rule_extensions_v2026_07_16.json")
+    protected = {
+        "fee_rule_sample_preparation",
+        "fee_rule_reseating",
+        "fee_rule_dust_benign",
+        "fee_rule_mechanical_force",
+        "fee_rule_contact_resistance_specified_current",
+        "fee_rule_visual_exam",
+        "fee_rule_temperature_rise",
+        "fee_rule_report_preparation",
+    }
+
+    all_ids = {item.rule_id for item in extensions.source_rules} | {
+        rule.rule_id for rule in extensions.extension_rules
+    }
+
+    assert protected <= all_ids
+    assert len(extensions.source_rules) == 44
 
 
 def test_extension_loader_rejects_missing_source_mapping(tmp_path: Path) -> None:

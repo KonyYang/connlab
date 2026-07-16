@@ -27,6 +27,7 @@ from backend.modules.fee_evaluation.fee_rule_seed_compiler import (
 
 
 _HASH = "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d"
+_SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds"
 
 
 def test_compiler_creates_one_base_rule_per_source_row() -> None:
@@ -76,6 +77,28 @@ def test_compile_file_preserves_output_when_input_validation_fails(tmp_path: Pat
         )
 
     assert output_path.read_text(encoding="utf-8") == "preserve-me"
+
+
+def test_production_inputs_compile_to_complete_traceable_library() -> None:
+    from backend.modules.fee_evaluation.fee_reference_snapshot import load_fee_reference_snapshot
+    from backend.modules.fee_evaluation.fee_rule_extensions import load_fee_rule_extensions
+
+    library = compile_fee_rule_library(
+        load_fee_reference_snapshot(_SEEDS / "fee_reference_rows_v2026_07_16.json"),
+        load_fee_rule_extensions(_SEEDS / "fee_rule_extensions_v2026_07_16.json"),
+    )
+
+    base_rules = [rule for rule in library.rules if rule.source_kind == "unit_price_reference"]
+    ir = next(rule for rule in library.rules if rule.rule_id == "fee_rule_insulation_resistance")
+    dwv = next(
+        rule for rule in library.rules if rule.rule_id == "fee_rule_dielectric_withstanding_voltage"
+    )
+
+    assert len(base_rules) == 44
+    assert {rule.source_row for rule in base_rules} == set(range(4, 48))
+    assert ir.unit_label == dwv.unit_label == "reading"
+    assert ir.unit_price.amount is dwv.unit_price.amount is None
+    assert ir.review_required is dwv.review_required is True
 
 
 def _snapshot() -> FeeReferenceSnapshot:

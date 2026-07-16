@@ -1,0 +1,457 @@
+{
+  "source": {
+    "source_file_name": "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls",
+    "source_sheet": "Unit Price Reference",
+    "source_hash": "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d",
+    "captured_at": "2026-07-16T00:00:00+08:00"
+  },
+  "rows": [
+    {
+      "source_row": 4,
+      "english_description": "high temperature life",
+      "chinese_description": "高温老化",
+      "base_fee_text": "<96hours  300\n       ≥96hour 免基本金",
+      "unit_price_text": "15/h",
+      "applicable_standard": "EIA-364-17",
+      "range_condition": "40~300C",
+      "chamber_or_note": "450x470x450"
+    },
+    {
+      "source_row": 5,
+      "english_description": "Low temperature life",
+      "chinese_description": "低温寿命",
+      "base_fee_text": "<96hours  300\n       ≥96hour 免基本金",
+      "unit_price_text": "20/h",
+      "applicable_standard": "EIA-364-59,IEC60512-11-10",
+      "range_condition": "-70~150C",
+      "chamber_or_note": "380x350x350"
+    },
+    {
+      "source_row": 6,
+      "english_description": "Temperature & Humidity",
+      "chinese_description": "温湿度",
+      "base_fee_text": "<96hours  300\n       ≥96hour 免基本金",
+      "unit_price_text": "Steady state稳态温湿度:20/h\nCyclic state交变湿热: 25/h",
+      "applicable_standard": "EIA-364-31",
+      "range_condition": "-40~180C, 10~98%RH",
+      "chamber_or_note": "580x450x750"
+    },
+    {
+      "source_row": 7,
+      "english_description": "Steam aging",
+      "chinese_description": "蒸汽老化",
+      "base_fee_text": "<16hours  300\n       ≥16hour 免基本金",
+      "unit_price_text": "20/h",
+      "applicable_standard": "J-STD-002",
+      "range_condition": "100℃ max.",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 8,
+      "english_description": "Thermal shock",
+      "chinese_description": "冷热冲击",
+      "base_fee_text": "<10hours  300\n       ≥10hour 免基本金",
+      "unit_price_text": "30/h",
+      "applicable_standard": "EIA-364-32",
+      "range_condition": "-80~220C",
+      "chamber_or_note": "600x500x400"
+    },
+    {
+      "source_row": 9,
+      "english_description": "Thermal cycling \n(Ramp rating 3.5C/min)",
+      "chinese_description": "热循环 \n(变化速度小于3.5度/分钟）",
+      "base_fee_text": "<24hours  300\n       ≥24hour 免基本金",
+      "unit_price_text": "25/h",
+      "applicable_standard": "EIA-364-110",
+      "range_condition": "-40~180C, 3.5C/minute max",
+      "chamber_or_note": "580x450x750\n使用温湿度箱"
+    },
+    {
+      "source_row": 10,
+      "english_description": "Thermal cycling \n(Ramp rating 5C/min)",
+      "chinese_description": "热循环 \n(变化速度5度/分钟）",
+      "base_fee_text": "<24hours  300\n       ≥24hour 免基本金",
+      "unit_price_text": "40/h",
+      "applicable_standard": "EIA-364-110",
+      "range_condition": "-40~150C, E145C/minute max",
+      "chamber_or_note": "使用三综合箱"
+    },
+    {
+      "source_row": 11,
+      "english_description": "Whisker testing\n(Environmental stress)",
+      "chinese_description": "锡须\n(环境应力)",
+      "base_fee_text": "0",
+      "unit_price_text": "1. JEDEC standard \na. Two conditions testing:\n     SEM examination: 12600RMB per P/N;\nb. Three conditions testing:\n     SEM examination: 20300RMB per P/N;\n2. Continental specification:\na. Three conditions,4000hours duration: \n19700RMB per P/N.\nb. Three conditions,1000hours reduced duration: 11800RMB per P/N \n（以上价格为10个以上的样品同时开展测试的优惠费用， 如果单独申请， 以实际开展测试的样品的数量给予合适的折扣，Continental的双85测试按5个样品并箱测试给予优惠）",
+      "applicable_standard": "JEDEC JESD22-A121A\n\nContinental QPR\n",
+      "range_condition": "",
+      "chamber_or_note": "高温高湿单价20元/小时；25度，50%RH， 按10元/小时。冷热冲击按30元/小时。数码显微镜检查300元每次， SEM检查600元每次收取费用"
+    },
+    {
+      "source_row": 12,
+      "english_description": "Salt spray (NSS)",
+      "chinese_description": "中性盐雾",
+      "base_fee_text": "<48hours或样品数量>5个  300\n       ≥48hour  免基本金\n如多料号同时测试， 可以每个料号加收100~200的基本金",
+      "unit_price_text": "20/h",
+      "applicable_standard": "EIA-364-26",
+      "range_condition": "25~35C, 75%RH max",
+      "chamber_or_note": "870x590x730"
+    },
+    {
+      "source_row": 13,
+      "english_description": "MFG (Class IIA)",
+      "chinese_description": "混合流动气体(等级2A)",
+      "base_fee_text": "<48hours  300\n       ≥48hour 免基本金",
+      "unit_price_text": "1000/day",
+      "applicable_standard": "EIA-364-65",
+      "range_condition": "20~50C, 75~95%RH",
+      "chamber_or_note": "500x500x720"
+    },
+    {
+      "source_row": 14,
+      "english_description": "MFG (Class IIIA)\nVW75174 TG19",
+      "chinese_description": "混合流动气体(等级3A)\nor 其它的两气体或三气体MFG测试",
+      "base_fee_text": "<48hours  300\n       ≥48hour 免基本金",
+      "unit_price_text": "1600/day",
+      "applicable_standard": "EIA-364-65/\nVW75174",
+      "range_condition": "20~50C, 75~95%RH",
+      "chamber_or_note": "500x500x720"
+    },
+    {
+      "source_row": 15,
+      "english_description": "Dust (Benign)",
+      "chinese_description": "良性粉尘",
+      "base_fee_text": "免基本金",
+      "unit_price_text": "1800/runing (1hour)",
+      "applicable_standard": "EIA-364-91",
+      "range_condition": "N/A",
+      "chamber_or_note": "600x600x600"
+    },
+    {
+      "source_row": 16,
+      "english_description": "Vibration",
+      "chinese_description": "振动",
+      "base_fee_text": "≤2hours  300~500\n       >2hour per axis 免基本金",
+      "unit_price_text": "300",
+      "applicable_standard": "EIA-364-28",
+      "range_condition": "5~2000Hz, 15G",
+      "chamber_or_note": "200x200"
+    },
+    {
+      "source_row": 17,
+      "english_description": "Shock (half sine)",
+      "chinese_description": "机械冲击(半正弦波)",
+      "base_fee_text": "300~500",
+      "unit_price_text": "30/time (≤50G), 60/time (>50G)",
+      "applicable_standard": "EIA-364-27",
+      "range_condition": "50G, 11ms",
+      "chamber_or_note": "200x200"
+    },
+    {
+      "source_row": 18,
+      "english_description": "Shock (Trapzoidal)",
+      "chinese_description": "机械冲击(梯形波)",
+      "base_fee_text": "500",
+      "unit_price_text": "60/time",
+      "applicable_standard": "EIA-364-27",
+      "range_condition": "50G, 11ms",
+      "chamber_or_note": "200x200"
+    },
+    {
+      "source_row": 19,
+      "english_description": "Vibration + Temp cycling",
+      "chinese_description": "三综合测试",
+      "base_fee_text": "按测试的复杂度适当收取",
+      "unit_price_text": "350/hour",
+      "applicable_standard": "VW75174, USCAR-2",
+      "range_condition": "2~2000Hz, 15G",
+      "chamber_or_note": "600X600, "
+    },
+    {
+      "source_row": 20,
+      "english_description": "Microsecond discontinuity",
+      "chinese_description": "微秒瞬断",
+      "base_fee_text": "0",
+      "unit_price_text": "300/time",
+      "applicable_standard": "EIA-364-46",
+      "range_condition": "0.1~99.9us",
+      "chamber_or_note": "10 loops， 常规振动测试3小时以上免收瞬断监测费用"
+    },
+    {
+      "source_row": 21,
+      "english_description": "Nanosecond dicontinuity",
+      "chinese_description": "钠秒瞬断",
+      "base_fee_text": "0",
+      "unit_price_text": "500/time",
+      "applicable_standard": "EIA-364-87",
+      "range_condition": "1, 10, 50ns",
+      "chamber_or_note": "10 loops"
+    },
+    {
+      "source_row": 22,
+      "english_description": "Mechanical force",
+      "chinese_description": "机械测试\n（插拔力/正向力/保持力等）",
+      "base_fee_text": "简单: 100\n一般: 200\n复杂: 200~400 ",
+      "unit_price_text": "按照读数: 20/reading\n按照样品数: 50/specimen",
+      "applicable_standard": "EIA-364-13/04/29…",
+      "range_condition": "20kN max",
+      "chamber_or_note": "仅针对常规连接器按EIA标准执行测试"
+    },
+    {
+      "source_row": 23,
+      "english_description": "Automotive connector\nMechanical force",
+      "chinese_description": "汽车连接器机械力测试\n（For CPA and TPA）",
+      "base_fee_text": "简单: 100\n一般: 200\n复杂: 200~400 ",
+      "unit_price_text": "按照读数: 50~100/reading \n(取决于具体测试的类别）",
+      "applicable_standard": "USCAR-2， VW75174",
+      "range_condition": "20kN max",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 24,
+      "english_description": "Offset durability",
+      "chinese_description": "偏移错位耐久",
+      "base_fee_text": "按样品安装的复杂程度收取\n300~500的基本金",
+      "unit_price_text": "100元/样品/条件",
+      "applicable_standard": "Customer specified",
+      "range_condition": "offset, rotation and tilt miaslignment",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 25,
+      "english_description": "Cable bending",
+      "chinese_description": "摇摆测试",
+      "base_fee_text": "200",
+      "unit_price_text": "200/specimen (<100times)",
+      "applicable_standard": "EIA-364-41",
+      "range_condition": "45,60,90 dgrees",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 26,
+      "english_description": "Durability",
+      "chinese_description": "耐久性",
+      "base_fee_text": "如果每个样品次数<250次, 且装夹费时， 可适当收取基本金50~100元\n如果每个样品次数 ≥250次, 免收基本金",
+      "unit_price_text": "≤50cycle/specimen : 2/cycle\n50~250cycle/specimen: 1/cycle\n>250次/specimen: 0.5/cycle\n",
+      "applicable_standard": "EIA-364-09/13",
+      "range_condition": "750mm/minute max",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 27,
+      "english_description": "LLCR",
+      "chinese_description": "低阶接触电阻",
+      "base_fee_text": "0",
+      "unit_price_text": "≤20readings/specimen, 1.5/reading\n>20readings/specimen, 1/reading",
+      "applicable_standard": "EIA-364-23",
+      "range_condition": "20mV max, 100mA max",
+      "chamber_or_note": "仅适用于Common  buss方式设计的测试板的LLCR测试"
+    },
+    {
+      "source_row": 28,
+      "english_description": "DCR",
+      "chinese_description": "干电路电阻\n(低阶接触电阻)",
+      "base_fee_text": "可按样品准备状况适当收取",
+      "unit_price_text": "BTB： 2/reading\nWTB： 3/reading\nWtB: 6/reading",
+      "applicable_standard": "USCAR-2\nVW75174",
+      "range_condition": "20mV max, 100mA max",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 29,
+      "english_description": "Contact resistance (CR)",
+      "chinese_description": "接触电阻(指定电流)",
+      "base_fee_text": "100~300, 取决于电力大小\n（如果连同温升测试， 则免基本金）",
+      "unit_price_text": "≤10readings/specimen, 10/reading\n>10readings/specimen, 5/reading",
+      "applicable_standard": "EIA-364-06",
+      "range_condition": "1200A maximum",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 30,
+      "english_description": "Insulation Resistance (IR)",
+      "chinese_description": "绝缘电阻",
+      "base_fee_text": "（100~300）\n基于样品准备状况决定",
+      "unit_price_text": "测试规格为1分钟/reading: 5/reading\n测试规格为2分钟/reading: 10/reading",
+      "applicable_standard": "EIA-364-21",
+      "range_condition": "6000V AC/DC",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 31,
+      "english_description": "Dielectric withstanding voltage\n(DWV)",
+      "chinese_description": "介质耐压",
+      "base_fee_text": "（100~300）\n基于样品准备状况决定",
+      "unit_price_text": "测试规格为1分钟/reading: 5/reading\n测试规格为2分钟/reading: 10/reading",
+      "applicable_standard": "EIA-364-20\nUL4128",
+      "range_condition": "6000V AC/DC",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 32,
+      "english_description": "Capacitance/Inductance",
+      "chinese_description": "电容/电感",
+      "base_fee_text": "（100~300）\n基于样品准备状况决定",
+      "unit_price_text": "≤10readings/specimen, 20/reading\n>10readings/specimen, 10/reading",
+      "applicable_standard": "EIA-364-30",
+      "range_condition": "20Hz~1MHz,0.01fF~9.99999F",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 33,
+      "english_description": "Temperature rise",
+      "chinese_description": "温升",
+      "base_fee_text": "常规: 500 (三个以上样品同时测试，样品准备无特别要求，免收基本金）\n复杂: 500~1000 （针对样品的准备）",
+      "unit_price_text": "500/specimen  ≤ 240A\n600/specimen  ≤ 500A\n700/specimen  ≤ 1000A\n800/specimen  ≤ 2000A",
+      "applicable_standard": "EIA-364-70 method 2&3",
+      "range_condition": "1200A maximum",
+      "chamber_or_note": "风洞测试按每小时40元收取费用，但是单次费用不低于500元， 自然对流温升测试按20元每小时收取费用， 但单次费用不低于300元。"
+    },
+    {
+      "source_row": 34,
+      "english_description": "Temperature rise \nwith thermography ",
+      "chinese_description": "温升 (红外热像）",
+      "base_fee_text": "常规: 0 (6个以上样品同时测试，样品准备无特别要求，免收基本金）\n复杂: 按情况收取300~500元",
+      "unit_price_text": "300/specimen ≤ 240A\n400/specimen ≤ 500A\n500/specimen ≤ 1000A\n600/specimen ≤ 2000A",
+      "applicable_standard": "EIA-364-70 Method 1，\n UL1977，UL4128",
+      "range_condition": "2000A maximum",
+      "chamber_or_note": "基于测试电流的大小分阶梯收取费用"
+    },
+    {
+      "source_row": 35,
+      "english_description": "Current cycling\n(Current ON and OFF)",
+      "chinese_description": "电流循环",
+      "base_fee_text": "<24hours  200\n ≥24hour 免基本金",
+      "unit_price_text": "10/hour",
+      "applicable_standard": "USCAR-2、USCAR-21",
+      "range_condition": "",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 36,
+      "english_description": "Solderability",
+      "chinese_description": "可焊性",
+      "base_fee_text": "200\n≥5样品 免基本金",
+      "unit_price_text": "100/Specimen",
+      "applicable_standard": "J-STD-002",
+      "range_condition": "300℃ max",
+      "chamber_or_note": "预处理另外收取费用"
+    },
+    {
+      "source_row": 37,
+      "english_description": "Resistance to solder heat",
+      "chinese_description": "耐焊热",
+      "base_fee_text": "200\n≥5样品 免基本金",
+      "unit_price_text": "100/Specimen",
+      "applicable_standard": "J-STD-020 / EIA-364-56",
+      "range_condition": "350℃ max",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 38,
+      "english_description": "Porosity",
+      "chinese_description": "孔隙率",
+      "base_fee_text": "300\n(样品清洗/药水配置/仪器清洗)",
+      "unit_price_text": "500 per P/N",
+      "applicable_standard": "EIA-364-53/GS-19-049",
+      "range_condition": "",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 39,
+      "english_description": "SEM/EDS analysis",
+      "chinese_description": "扫描电镜/能谱分析",
+      "base_fee_text": "0",
+      "unit_price_text": "300/specimen/point\n500/h",
+      "applicable_standard": "N/A",
+      "range_condition": "2小时以上可给予10%的折扣， 5小时以上可给予20%的折扣",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 40,
+      "english_description": "FTIR analysis",
+      "chinese_description": "红外傅立叶光谱分析",
+      "base_fee_text": "0",
+      "unit_price_text": "400/specimen/point\n（visible by naked eye)\n500/specimen for micro FTIR",
+      "applicable_standard": "N/A",
+      "range_condition": "2个以上样品可10%的折扣； 5个以上的样品可20%的折扣",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 41,
+      "english_description": "Cross section",
+      "chinese_description": "切片",
+      "base_fee_text": "0",
+      "unit_price_text": "350/section",
+      "applicable_standard": "EIA/ IPC",
+      "range_condition": "1.额外的尺寸测量可按10元/measurement收取费用；\n2.如需预镀镍保护层，则增加\n100元/sample",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 42,
+      "english_description": "Compressive Whisker\n(Mechanical Stress)",
+      "chinese_description": "压力锡须测试\n（机械应力）",
+      "base_fee_text": "300\n（不包含测试后的SEM观察）",
+      "unit_price_text": "100/day",
+      "applicable_standard": "JEITA RC-524/13",
+      "range_condition": "500g, 2000g,5cs probe",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 43,
+      "english_description": "Hardness Testing",
+      "chinese_description": "硬度测试",
+      "base_fee_text": "300\n≥3样品 免基本金",
+      "unit_price_text": "100/reading",
+      "applicable_standard": "ISO 6507-1:2018 Part 1",
+      "range_condition": "5HV~3000HV, 10,25,50,100,200,300,500,1000g",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 44,
+      "english_description": "Plating Thickness Measuring",
+      "chinese_description": "镀层膜厚测量",
+      "base_fee_text": "100\n≥20reading 免基本金",
+      "unit_price_text": "10/reading",
+      "applicable_standard": "EIA-364-48A\nXRF, Method C ",
+      "range_condition": "如需要新建程式并验证则需要额外收取基本金",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 45,
+      "english_description": "Visual exam",
+      "chinese_description": "外观检查",
+      "base_fee_text": "0",
+      "unit_price_text": "数码显微镜拍照 (Digital Microscope): 10/张(典型照片)",
+      "applicable_standard": "EIA-364-18",
+      "range_condition": "常规测试后典型样品外观检查拍照免费， 仅需要对所有测试样品进行拍照时可适当收取费用",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 46,
+      "english_description": "PCB and test fixture design",
+      "chinese_description": "PCB和夹具设计",
+      "base_fee_text": "0",
+      "unit_price_text": "180/hour",
+      "applicable_standard": "N/A",
+      "range_condition": "",
+      "chamber_or_note": ""
+    },
+    {
+      "source_row": 47,
+      "english_description": "Report preparation",
+      "chinese_description": "报告准备",
+      "base_fee_text": "0",
+      "unit_price_text": "多组Group测试: 免收\n单组Group测试: 400(报告<10页)\n600(报告≥10页)\nNote: 同时出具内部和客户报告，只收内部报告费用\n如需编制中英文报告，可加收费用 (50%)\nFA summary over 20 slide: 1000",
+      "applicable_standard": "N/A",
+      "range_condition": "",
+      "chamber_or_note": "基于测试费用与工时花费决定是否收取报告的费用"
+    }
+  ],
+  "policies": [
+    {
+      "source_row": 49,
+      "policy_type": "discount_principles",
+      "text": "对于价格的打折， 请执行以下的原则：\n1. 对于仅仅是单项的总金额比较低的测试， 原则上不打折；\n2. 对于总金额比较大，但样品数量比较多或样品尺寸比较大的或测试条件独特不可并箱测试的， 原则上不额外给予折扣 ；\n3. 虽然金额比较大， 但测试条件相同， 样品数量和外形都比较小， 实验室方便并箱测试的， 可给予最多额外40%的折扣；\n4. 同意申请者或同一Site相同的产品， 但不同的配置同时安排测试， 如环境测试并箱执行，可以基于项目的数量给与相应的折扣， 比如4个项目同时执行， 可给予最多70%的折扣\n5. 虽然金额比较大且测试条件相同，但外形尺寸相对较大（如HSIO的Cable assembly）并箱会减少其它并箱样品的数量，可给予额外20%的折扣.\n"
+    }
+  ]
+}
