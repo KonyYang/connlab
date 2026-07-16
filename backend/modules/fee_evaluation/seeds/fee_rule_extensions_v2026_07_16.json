@@ -1,11 +1,11 @@
 {
   "version": {
-    "version_id": "fee_rules_v2026_07_16",
+    "version_id": "fee_rules_v2026_07_16_r3",
     "source_file_name": "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls",
     "source_sheet": "Unit Price Reference",
     "source_hash": "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d",
     "effective_from_basis": "project.sample_received_date",
-    "created_at": "2026-07-16T00:00:00+08:00"
+    "created_at": "2026-07-17T00:00:00+08:00"
   },
   "source_rules": [
     {
@@ -330,7 +330,12 @@
     {
       "source_row": 33,
       "rule_id": "fee_rule_temperature_rise",
-      "aliases": ["T-rise", "Temperature Rise Test", "Current carrying temperature rise"],
+      "aliases": [
+        "T-rise",
+        "Temperature Rise Test",
+        "Current carrying temperature rise",
+        "Current Rating"
+      ],
       "base_fee_amount": null,
       "unit_price_amount": null,
       "unit_label": "specimen",

@@ -541,3 +541,71 @@ old saved Units `1` suppression, V2 currentness/Required Forms guard, and Confir
 duplicate/conflict behavior. Do not route Integrator directly.
 
 Blocking summary: none for Reviewer implementation re-gate.
+
+---
+
+# TASK_361L Reviewer Focused Implementation Re-Gate: Integrator Line-Count Split
+
+Date: 2026-07-16
+
+Role: Reviewer
+
+Status: reviewer_blocked
+
+Task: `TASK_361L_POINT_PROFILE_FEE_PRICING_DRAFT_REBASE_CORRECTIVE`
+
+Lane: `point-profile-fee-pricing-draft-rebase-corrective`
+
+## Blocking Finding
+
+### B5: The physical Python line counts still exceed the AGENTS hard limit
+
+The helper extraction and V2 test relocation are mechanically coherent, and the two
+API modules pass together. However, the claimed `495`/`494` counts are not physical
+source-line counts: they result from a pipeline that suppresses blank lines. Reading
+the checked-out UTF-8 files shows:
+
+- `backend/api/routes_confirmed_matrix_fee_evaluation_export.py`: `542` lines;
+- `tests/integration/test_fee_evaluation_pricing_draft_api.py`: `556` lines;
+- `backend/api/fee_evaluation_pricing_draft_http.py`: `31` lines;
+- `tests/integration/test_fee_evaluation_pricing_draft_v2_api.py`: `228` lines.
+
+The first two remain over the `AGENTS.md` 500-line Python hard limit. The Integrator
+blocker therefore remains open, despite the nonblank-line count of the committed Git
+blob being below 500. The exact working-tree physical-line measurement, including
+blank lines, is the applicable maintainability gate.
+
+**Required bounded Developer fix:**
+
+1. Further split the export route and the historical pricing-draft API test module so
+   each checked-out Python file is at or below 500 physical UTF-8 lines. Keep route
+   coordination, request DTO/API behavior, and V2 regression semantics unchanged.
+2. Use a physical-line check that includes blank lines for every TASK_361L candidate
+   Python file, and record that command/result in Developer evidence.
+3. Re-run the two API modules together, focused compile/diff/trailing/locked-scope
+   checks, and preserve the already-passed QA behavior package. Do not re-run QA until
+   this structural blocker is actually closed.
+
+## Validation Notes
+
+- Directly reviewed the `411a5f59` helper extraction and V2 API-test move. The
+  attestation DTO/error mapping is self-contained, and the three moved historical
+  API tests retain their assertions in the dedicated V2 module.
+- Re-ran both pricing-draft API modules together: `14 passed`.
+- Focused `py_compile` for the export route, helper, and pricing-draft route passed.
+- A direct UTF-8 physical-line scan reported the above `542`/`556` counts. The
+  Developer's Git-pipeline count reports `495`/`494` because blank output lines are
+  suppressed; it is not a valid hard-limit check.
+- QA evidence remains `qa_pass` and Integrator evidence remains `integrator_blocked`.
+  This fix is structural-only, but it does not close the stated packaging gate yet.
+  No real database/file was accessed and no product code was changed by Reviewer.
+
+## Decision
+
+`reviewer_blocked`
+
+Recommended next role/action: Developer bounded fix pass for B5, then Reviewer
+focused implementation re-gate. Do not route QA or Integrator.
+
+Blocking summary: the mechanical split is sound, but the actual route and historical
+API test module still exceed the 500-line hard limit.

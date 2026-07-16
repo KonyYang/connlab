@@ -98,6 +98,17 @@ def test_fee_rule_matcher_treats_dust_as_dust_benign_rule() -> None:
     assert result.match_reason == "exact_alias_match"
 
 
+def test_fee_rule_matcher_treats_current_rating_as_temperature_rise() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("CURRENT RATING")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_temperature_rise"
+    assert result.match_reason == "exact_alias_match"
+
+
 def test_fee_rule_matcher_treats_normal_force_as_mechanical_force_rule() -> None:
     matcher = FeeRuleMatcher(load_active_fee_rule_library())
 

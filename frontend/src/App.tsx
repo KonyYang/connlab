@@ -169,7 +169,7 @@ export default function App(): ReactElement {
       : route.name === "projectBasicInformation"
         ? "Basic Information"
       : route.name === "projectContactMeasurementSetup"
-        ? "Contact measurement setup"
+        ? "Test Points Setup"
         : undefined;
 
   return (

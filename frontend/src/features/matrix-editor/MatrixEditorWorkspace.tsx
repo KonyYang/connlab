@@ -3790,21 +3790,7 @@ export function MatrixEditorWorkspace({
               setSchedulePlan(nextPlan);
             }}
           />
-          {activeConfirmedMatrixId && !savedEditorDraftId ? (
-            <div className="matrix-editor-revision-draft-bridge">
-              <p role="status">
-                {revisionDraftActionMessage ?? "Open an editable Matrix draft to update contact targets."}
-              </p>
-              <button
-                type="button"
-                disabled={isLifecycleReadonly || draftLoading || revisionDraftActionState === "opening"}
-                title={isLifecycleReadonly ? lifecycleReadonlyView.message : ""}
-                onClick={() => void onOpenEditableMatrixDraft()}
-              >
-                Open editable Matrix draft
-              </button>
-            </div>
-          ) : revisionDraftActionMessage ? (
+          {revisionDraftActionMessage ? (
             <p className="matrix-editor-revision-draft-message" role="status">
               {revisionDraftActionMessage}
             </p>

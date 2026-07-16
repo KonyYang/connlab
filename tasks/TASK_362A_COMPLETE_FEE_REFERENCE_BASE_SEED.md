@@ -1,6 +1,6 @@
 # TASK_362A Complete Fee Reference Base Seed
 
-Status: planned; written design approved, implementation plan awaiting user approval
+Status: complete/accepted on 2026-07-16
 
 Phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
 
@@ -121,3 +121,23 @@ task and cannot start automatically.
 ## Implementation Plan Reference
 
 `docs/superpowers/plans/2026-07-16-complete-fee-reference-base-seed.md`
+
+## Completion Summary
+
+- All 44 effective source rows and row 49 policy metadata are captured and compiled
+  into active version `fee_rules_v2026_07_16_r3` with source provenance.
+- Existing reviewed defaults remain available as the extension layer.
+- IR/DWV recognize explicit 1 minute/60 seconds as `5/reading` and explicit
+  2 minutes/120 seconds as `10/reading`. Absent, unsupported, or conflicting
+  durations leave Unit Price and Testing Fee Pending for review.
+- A calculated IR/DWV row defaults Base Fee to `0`, Units to `1`, and calculates
+  Testing Fee without a Base Fee or duration reminder.
+- Frontend manual-required Unit Price and Units remain Pending instead of becoming
+  `0` or `1`; Thermal Shock without duration therefore leaves Units Pending.
+- IR/DWV specification sections extract `Test Voltage` into source-faithful Condition
+  values such as `500VDC` and `1500VAC` for future Matrix drafts.
+- `Current Rating` maps to the source Temperature rise rule and uses its existing
+  numeric-current pricing tiers; a missing numeric current remains review-required.
+- Backend Fee `337 passed, 1 skipped`, Matrix/parser `123 passed`, frontend `57 passed`, Python
+  compilation, frontend build, and local browser smoke passed.
+- Evidence: `docs/lane_evidence/TASK_362A_complete-fee-reference-base-seed_*.md`.

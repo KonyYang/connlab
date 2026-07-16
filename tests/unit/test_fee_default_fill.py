@@ -45,16 +45,104 @@ def test_visual_examination_default_fill_is_deterministic() -> None:
         ("DIELECTRIC WITHSTANDING VOLTAGE", "fee_rule_dielectric_withstanding_voltage"),
     ],
 )
-def test_ir_and_dwv_expose_per_reading_without_inventing_duration_price(
+@pytest.mark.parametrize("condition", ["", "1mA"])
+def test_ir_and_dwv_leave_price_pending_without_duration_text(
+    test_item: str,
+    rule_id: str,
+    condition: str,
+) -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+    assert match.rule is not None and match.rule.rule_id == rule_id
+
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item=test_item, condition=condition),
+    )
+
+    assert result.unit_label == "reading"
+    assert result.unit_price is None
+    assert result.units == Decimal("1")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee is None
+    assert result.review_required is True
+    assert result.review_reason == "Confirm 1-minute/2-minute price."
+    assert _field_state(result, "unit_price") == "manual_required"
+
+
+@pytest.mark.parametrize(
+    ("condition", "expected_unit_price"),
+    [
+        ("1 minute", Decimal("5")),
+        ("1 minutes", Decimal("5")),
+        ("1 min", Decimal("5")),
+        ("1 mins", Decimal("5")),
+        ("60 second", Decimal("5")),
+        ("60 seconds", Decimal("5")),
+        ("60 sec", Decimal("5")),
+        ("60 secs", Decimal("5")),
+        ("60s", Decimal("5")),
+        ("60 s", Decimal("5")),
+        ("2 minute", Decimal("10")),
+        ("2 minutes", Decimal("10")),
+        ("2 min", Decimal("10")),
+        ("2 mins", Decimal("10")),
+        ("120 second", Decimal("10")),
+        ("120 seconds", Decimal("10")),
+        ("120 sec", Decimal("10")),
+        ("120 secs", Decimal("10")),
+        ("120s", Decimal("10")),
+        ("TEST: 120 S; 500V", Decimal("10")),
+    ],
+)
+@pytest.mark.parametrize(
+    ("test_item", "rule_id"),
+    [
+        ("INSULATION RESISTANCE", "fee_rule_insulation_resistance"),
+        ("DIELECTRIC WITHSTANDING VOLTAGE", "fee_rule_dielectric_withstanding_voltage"),
+    ],
+)
+def test_ir_and_dwv_select_duration_price_from_matrix_condition(
+    condition: str,
+    expected_unit_price: Decimal,
     test_item: str,
     rule_id: str,
 ) -> None:
     match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
     assert match.rule is not None and match.rule.rule_id == rule_id
 
-    result = build_fee_default_fill(rule=match.rule, context=_context(test_item=test_item))
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item=test_item, condition=condition),
+    )
 
     assert result.unit_label == "reading"
+    assert result.unit_price == expected_unit_price
+    assert result.units == Decimal("1")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == expected_unit_price
+    assert result.review_required is False
+    assert result.review_reason is None
+    assert _field_state(result, "unit_price") == "auto_filled"
+    assert _field_state(result, "base_fee") == "auto_filled"
+
+
+@pytest.mark.parametrize("condition", ["90 seconds", "60 seconds / 120 seconds"])
+@pytest.mark.parametrize(
+    "test_item",
+    ["INSULATION RESISTANCE", "DIELECTRIC WITHSTANDING VOLTAGE"],
+)
+def test_ir_and_dwv_keep_duration_price_for_review_when_condition_is_not_decisive(
+    condition: str,
+    test_item: str,
+) -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+    assert match.rule is not None
+
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item=test_item, condition=condition),
+    )
+
     assert result.unit_price is None
     assert result.review_required is True
     assert "1-minute/2-minute" in (result.review_reason or "")

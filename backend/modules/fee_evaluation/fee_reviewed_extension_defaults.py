@@ -7,12 +7,14 @@ import re
 
 from backend.modules.fee_evaluation.fee_default_fill_common import (
     ZERO,
+    auto,
     calculated_result,
     manual_required,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultFillContext,
     FeeDefaultFillResult,
+    FeeFieldMetadata,
 )
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
 from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
@@ -24,6 +26,15 @@ from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
 
 _PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 _HOUR_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b", re.I)
+_READING_DURATION_PATTERN = re.compile(
+    r"(?<![a-z0-9.])(?P<value>\d+(?:\.\d+)?)\s*"
+    r"(?P<unit>minutes?|mins?|seconds?|secs?|s)(?![a-z0-9])",
+    re.I,
+)
+_DURATION_READING_RULE_IDS = {
+    "fee_rule_insulation_resistance",
+    "fee_rule_dielectric_withstanding_voltage",
+}
 
 
 def build_reviewed_extension_default_fill(
@@ -38,7 +49,81 @@ def build_reviewed_extension_default_fill(
         return _dust_hour_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_mechanical_force":
         return _mechanical_force_result(rule=rule, context=context)
+    if rule.rule_id in _DURATION_READING_RULE_IDS:
+        return _duration_reading_result(rule=rule, context=context)
     return None
+
+
+def _duration_reading_result(
+    *,
+    rule: FeeRule,
+    context: FeeDefaultFillContext,
+) -> FeeDefaultFillResult | None:
+    """Select an explicit IR/DWV tier or leave its duration price pending."""
+    durations = _duration_seconds(context.condition)
+    if not durations:
+        return _pending_duration_reading_result(rule=rule)
+    if durations == {Decimal("60")}:
+        duration_seconds = Decimal("60")
+    elif durations == {Decimal("120")}:
+        duration_seconds = Decimal("120")
+    else:
+        return None
+    unit_price = Decimal("5") if duration_seconds == Decimal("60") else Decimal("10")
+    return calculated_result(
+        spend_time=None,
+        unit_label="reading",
+        unit_price=unit_price,
+        units=Decimal("1"),
+        base_fee=ZERO,
+        discount_percent=ZERO,
+        source=rule.display_name,
+    )
+
+
+def _pending_duration_reading_result(*, rule: FeeRule) -> FeeDefaultFillResult:
+    """Keep the duration-dependent price pending while retaining known fields."""
+    review_reason = "Confirm 1-minute/2-minute price."
+    return FeeDefaultFillResult(
+        status="review_required",
+        review_required=True,
+        review_reason=review_reason,
+        spend_time=None,
+        unit_label="reading",
+        unit_price=None,
+        units=Decimal("1"),
+        base_fee=ZERO,
+        discount_percent=ZERO,
+        testing_fee=None,
+        field_metadata=(
+            FeeFieldMetadata(
+                field="unit_price",
+                state="manual_required",
+                source=rule.display_name,
+                message=review_reason,
+            ),
+            auto("unit_label", rule.display_name),
+            auto("units", rule.display_name),
+            auto("base_fee", rule.display_name),
+            auto("discount_percent", rule.display_name),
+            FeeFieldMetadata(
+                field="testing_fee",
+                state="manual_required",
+                source=rule.display_name,
+                message=review_reason,
+            ),
+        ),
+    )
+
+
+def _duration_seconds(condition: str) -> set[Decimal]:
+    """Return every explicit minute/second duration found in one Matrix condition."""
+    durations: set[Decimal] = set()
+    for match in _READING_DURATION_PATTERN.finditer(condition or ""):
+        value = Decimal(match.group("value"))
+        unit = match.group("unit").lower()
+        durations.add(value * Decimal("60") if unit.startswith("min") else value)
+    return durations
 
 
 def _mechanical_force_result(

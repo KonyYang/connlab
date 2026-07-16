@@ -404,6 +404,184 @@ describe("feeEvaluationPreviewModel", () => {
     });
   });
 
+  it("keeps a manually required base fee blank and blocks final fee calculation", () => {
+    const draft = createDraft();
+    const rows = applyFeeEvaluationPreviewEdits(
+      buildFeeEvaluationPreviewRows({
+        ...draft,
+        groups: [
+          {
+            ...draft.groups[0],
+            line_items: [
+              createLine({
+                line_id: "manual-base-fee",
+                status: "review_required",
+                review_required: true,
+                review_reason: "Confirm base fee",
+                test_item: "Manual ranged fee",
+                unit_label: "reading",
+                unit_price: "10",
+                units: "1",
+                base_fee: null,
+                discount_percent: "0",
+                testing_fee: null,
+                field_metadata: [
+                  {
+                    field: "unit_price",
+                    state: "auto_filled",
+                    source: "Manual ranged fee rule",
+                    message: null,
+                  },
+                  {
+                    field: "base_fee",
+                    state: "manual_required",
+                    source: "Manual ranged fee rule",
+                    message: "Confirm base fee",
+                  },
+                  {
+                    field: "testing_fee",
+                    state: "manual_required",
+                    source: "Manual ranged fee rule",
+                    message: "Confirm base fee",
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      }),
+      {}
+    );
+
+    const manualBaseFeeRow = rows.find(
+      (row) => row.lineId === "manual-base-fee:1:0"
+    );
+    expect(manualBaseFeeRow).toMatchObject({
+      unitPrice: "10",
+      unitType: "per reading",
+      baseFee: "",
+      testingFee: "Pending",
+    });
+    expect(
+      buildFeeEvaluationUpdateBlockers({
+        rows,
+        totals: {
+          testingFeeTotal: "Pending",
+          workingHours: "0",
+          labManpowerCost: "0",
+          externalCost: "0",
+          grandCost: "Pending",
+        },
+      })[0]?.fields
+    ).toEqual(["Base Fee"]);
+  });
+
+  it("keeps a manually required unit price pending instead of defaulting it to zero", () => {
+    const draft = createDraft();
+    const rows = applyFeeEvaluationPreviewEdits(
+      buildFeeEvaluationPreviewRows({
+        ...draft,
+        groups: [
+          {
+            ...draft.groups[0],
+            line_items: [
+              createLine({
+                line_id: "manual-unit-price",
+                status: "review_required",
+                review_required: true,
+                review_reason: "Confirm 1-minute/2-minute price.",
+                test_item: "DIELECTRIC WITHSTANDING VOLTAGE",
+                unit_label: "reading",
+                unit_price: null,
+                units: "1",
+                base_fee: "0",
+                discount_percent: "0",
+                testing_fee: null,
+                field_metadata: [
+                  {
+                    field: "unit_price",
+                    state: "manual_required",
+                    source: "DWV",
+                    message: "Confirm 1-minute/2-minute price.",
+                  },
+                  {
+                    field: "testing_fee",
+                    state: "manual_required",
+                    source: "DWV",
+                    message: "Confirm 1-minute/2-minute price.",
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      }),
+      {}
+    );
+
+    const row = rows.find((candidate) => candidate.lineId === "manual-unit-price:1:0");
+    expect(row).toMatchObject({
+      unitPrice: "",
+      unitType: "per reading",
+      units: "1",
+      baseFee: "0",
+      testingFee: "Pending",
+    });
+  });
+
+  it("keeps manually required units pending instead of defaulting them to one", () => {
+    const draft = createDraft();
+    const rows = applyFeeEvaluationPreviewEdits(
+      buildFeeEvaluationPreviewRows({
+        ...draft,
+        groups: [
+          {
+            ...draft.groups[0],
+            line_items: [
+              createLine({
+                line_id: "manual-units",
+                status: "review_required",
+                review_required: true,
+                review_reason: "Confirm duration.",
+                test_item: "Thermal Shock",
+                unit_label: "hour",
+                unit_price: "30",
+                units: null,
+                base_fee: "0",
+                discount_percent: "0",
+                testing_fee: null,
+                field_metadata: [
+                  {
+                    field: "units",
+                    state: "manual_required",
+                    source: "Thermal Shock",
+                    message: "Confirm duration.",
+                  },
+                  {
+                    field: "testing_fee",
+                    state: "manual_required",
+                    source: "Thermal Shock",
+                    message: "Confirm duration.",
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      }),
+      {}
+    );
+
+    const row = rows.find((candidate) => candidate.lineId === "manual-units:1:0");
+    expect(row).toMatchObject({
+      unitPrice: "30",
+      unitType: "per hour",
+      units: "",
+      baseFee: "0",
+      testingFee: "Pending",
+    });
+  });
+
   it("names the first incomplete Report preparation blocker before Update Fee", () => {
     const rows = applyFeeEvaluationPreviewEdits(
       buildFeeEvaluationPreviewRows({
@@ -655,6 +833,84 @@ describe("feeEvaluationPreviewModel", () => {
       externalCost: "150",
       externalCostNote: "tooling",
       labManpowerHourlyRate: "220",
+    });
+  });
+
+  it("does not let legacy placeholder saved rows overwrite refreshed defaults", () => {
+    const rows = buildFeeEvaluationPreviewRows(createDraft());
+
+    const result = hydrateFeeEvaluationPreviewEditsFromSavedDraft(rows, {
+      rows: [
+        {
+          source_line_id: "visual:2:0",
+          confirmed_group_id: "cmg-1",
+          confirmed_row_id: "row-1",
+          step_token: "2",
+          step_index: 0,
+          spend_time: "0",
+          unit_price: "0",
+          unit_type: "Pending",
+          units: "1",
+          base_fee: "0",
+          discount: "0%",
+          testing_fee: "0",
+          notes: "",
+        },
+      ],
+      summary: {
+        condition_confirmation_spend_time: "0",
+        external_cost: "0",
+        external_cost_note: "",
+        lab_manpower_hourly_rate: "200",
+      },
+    });
+
+    const hydratedRows = applyFeeEvaluationPreviewEdits(rows, result.edits);
+    const visualRow = hydratedRows.find((row) => row.lineId === "visual:2:0");
+
+    expect(result.appliedRowCount).toBe(0);
+    expect(result.unmatchedRowCount).toBe(0);
+    expect(visualRow).toMatchObject({
+      unitPrice: "10.00",
+      unitType: "per photo",
+      units: "1",
+    });
+  });
+
+  it("keeps deliberate saved row edits even when refreshed defaults exist", () => {
+    const rows = buildFeeEvaluationPreviewRows(createDraft());
+
+    const result = hydrateFeeEvaluationPreviewEditsFromSavedDraft(rows, {
+      rows: [
+        {
+          source_line_id: "visual:2:0",
+          confirmed_group_id: "cmg-1",
+          confirmed_row_id: "row-1",
+          step_token: "2",
+          step_index: 0,
+          spend_time: "0",
+          unit_price: "25",
+          unit_type: "per sample",
+          units: "2",
+          base_fee: "0",
+          discount: "0%",
+          testing_fee: "50",
+          notes: "",
+        },
+      ],
+      summary: {
+        condition_confirmation_spend_time: "0",
+        external_cost: "0",
+        external_cost_note: "",
+        lab_manpower_hourly_rate: "200",
+      },
+    });
+
+    expect(result.appliedRowCount).toBe(1);
+    expect(result.edits["visual:2:0"]).toMatchObject({
+      unitPrice: "25",
+      unitType: "per sample",
+      units: "2",
     });
   });
 

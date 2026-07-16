@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 from backend.application.confirmed_matrix_fee_draft_service import (
@@ -9,6 +10,7 @@ from backend.application.confirmed_matrix_fee_draft_service import (
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     EffectiveConfirmedPointProfile,
 )
+from backend.domain import ConfirmedMatrixCell
 from tests.unit.test_confirmed_matrix_fee_draft_service import (
     _ConfirmedStore,
     _fixture_row,
@@ -30,6 +32,72 @@ def test_fee_draft_preserves_text_fallback_when_step_quantities_are_absent() -> 
     assert line.unit_price == Decimal("1.5")
     assert line.units == Decimal("25")
     assert line.testing_fee == Decimal("37.5")
+
+
+def test_plain_contact_resistance_uses_llcr_when_matrix_has_no_explicit_llcr() -> None:
+    service = _service_with_profile(_fixture_row("CONTACT RESISTANCE"), "not_started")
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.matched_rule_id == "fee_rule_llcr"
+    assert line.unit_price == Decimal("1.5")
+    assert line.unit_label == "reading"
+    assert line.units == Decimal("20")
+    assert line.testing_fee == Decimal("30")
+
+
+def test_plain_contact_resistance_stays_cr_when_matrix_has_explicit_llcr() -> None:
+    plain_row = _fixture_row("CONTACT RESISTANCE")
+    llcr_row = replace(
+        _fixture_row("Contact Resistance (Low Level)"),
+        row_order=2,
+    )
+    snapshot = _snapshot(row=plain_row)
+    snapshot = replace(
+        snapshot,
+        rows=(plain_row, llcr_row),
+        cells=(
+            snapshot.cells[0],
+            ConfirmedMatrixCell(
+                confirmed_cell_id="cmc-llcr",
+                confirmed_matrix_id="cmv-1",
+                confirmed_row_id=llcr_row.confirmed_row_id,
+                confirmed_group_id="cmg-1",
+                draft_row_id=llcr_row.draft_row_id,
+                draft_group_id="pmdg-1",
+                cell_value="2",
+            ),
+        ),
+    )
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(active=snapshot),
+        contact_measurement_adapter=_ContactAdapter("not_started"),
+        contact_point_profile_adapter=_ProfileAdapter(_confirmed_profile()),
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    lines_by_item = {line.test_item: line for line in draft.groups[0].line_items}
+    assert lines_by_item["CONTACT RESISTANCE"].matched_rule_id == (
+        "fee_rule_contact_resistance_specified_current"
+    )
+    assert lines_by_item["Contact Resistance (Low Level)"].matched_rule_id == (
+        "fee_rule_llcr"
+    )
+
+
+def test_specified_current_contact_resistance_never_uses_llcr_fallback() -> None:
+    service = _service_with_profile(
+        _fixture_row("CONTACT RESISTANCE, SPECIFIED CURRENT"),
+        "not_started",
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.matched_rule_id == "fee_rule_contact_resistance_specified_current"
+    assert line.unit_price == Decimal("10")
 
 
 def test_fee_draft_uses_confirmed_profile_for_llcr_without_step_quantity() -> None:

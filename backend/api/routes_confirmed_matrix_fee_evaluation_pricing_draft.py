@@ -12,7 +12,7 @@ from backend.api.lifecycle_errors import (
     lifecycle_guard_not_found,
     lifecycle_readonly_conflict,
 )
-from backend.api.routes_confirmed_matrix_fee_evaluation_export import (
+from backend.api.confirmed_matrix_fee_evaluation_export_dtos import (
     ConfirmedMatrixFeeEvaluationEditedFileRequest,
     FeeEvaluationEditedManualRowExportRequest,
     FeeEvaluationEditedRowExportRequest,

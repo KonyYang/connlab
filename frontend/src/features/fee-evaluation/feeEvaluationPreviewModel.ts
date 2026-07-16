@@ -290,9 +290,16 @@ export function applyFeeEvaluationPreviewEdits(
 ): FeeEvaluationPreviewRow[] {
   return rows.map((row) => {
     const rowEdits = edits[row.lineId] ?? {};
-    const unitPrice = rowEdits.unitPrice ?? editableDefault(row.unitPrice, "0");
-    const units = rowEdits.units ?? editableDefault(row.units, "1");
-    const baseFee = rowEdits.baseFee ?? editableDefault(row.baseFee, "0");
+    const unitPriceRequired = fieldIsManualRequired(row, "unitPrice");
+    const unitPrice =
+      rowEdits.unitPrice ??
+      editableDefault(row.unitPrice, unitPriceRequired ? "" : "0");
+    const unitsRequired = fieldIsManualRequired(row, "units");
+    const units =
+      rowEdits.units ?? editableDefault(row.units, unitsRequired ? "" : "1");
+    const baseFeeRequired = fieldIsManualRequired(row, "baseFee");
+    const baseFee =
+      rowEdits.baseFee ?? editableDefault(row.baseFee, baseFeeRequired ? "" : "0");
     const discount = rowEdits.discount ?? editableDefault(row.discount, "0%");
     return {
       ...row,
@@ -302,12 +309,15 @@ export function applyFeeEvaluationPreviewEdits(
       units,
       baseFee,
       discount,
-      testingFee: calculateFeePreviewTestingFee({
-        unitPrice,
-        units,
-        baseFee,
-        discount,
-      }),
+      testingFee:
+        baseFeeRequired && baseFee.trim().length === 0
+          ? "Pending"
+          : calculateFeePreviewTestingFee({
+              unitPrice,
+              units,
+              baseFee,
+              discount,
+            }),
       notes: rowEdits.notes ?? row.notes,
     };
   });
@@ -352,6 +362,9 @@ export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
     const previewRow = byIdentity.get(identity);
     if (!previewRow) {
       unmatchedRowCount += 1;
+      continue;
+    }
+    if (savedMatrixRowIsLegacyPlaceholder(row) && previewRowHasDefaultPricing(previewRow)) {
       continue;
     }
     edits[previewRow.lineId] = {
@@ -811,6 +824,30 @@ function hydratedUnitType(value: string, fallback: string): string {
   return normalized.length > 0 ? normalized : formatUnitTypeForPreview(fallback);
 }
 
+function savedMatrixRowIsLegacyPlaceholder(
+  row: FeeEvaluationEditedFileExportRequest["rows"][number]
+): boolean {
+  return (
+    editableDefault(row.spend_time, "0") === "0" &&
+    editableDefault(row.unit_price, "0") === "0" &&
+    formatUnitTypeForPreview(row.unit_type) === "Pending" &&
+    editableDefault(row.units, "1") === "1" &&
+    editableDefault(row.base_fee, "0") === "0" &&
+    hydratedEditableDiscount(row.discount, "0%") === "0%" &&
+    row.notes.trim().length === 0
+  );
+}
+
+function previewRowHasDefaultPricing(row: FeeEvaluationPreviewRow): boolean {
+  return (
+    editableDefault(row.unitPrice, "0") !== "0" ||
+    formatUnitTypeForPreview(row.unitType) !== "Pending" ||
+    editableDefault(row.units, "1") !== "1" ||
+    editableDefault(row.baseFee, "0") !== "0" ||
+    hydratedEditableDiscount(row.discount, "0%") !== "0%"
+  );
+}
+
 function hydratedEditableNumber(
   value: string,
   fallback: string,
@@ -903,6 +940,9 @@ function formatPreviewWholeAmount(value: number): string {
 
 function incompleteUpdateFields(row: FeeEvaluationPreviewRow): string[] {
   const fields: string[] = [];
+  const baseFeeIncomplete = fieldIsManualRequired(row, "baseFee")
+    ? !isCompleteNumber(row.baseFee)
+    : !isCompleteOptionalNumber(row.baseFee);
   if (!isCompleteNumber(row.spendTime)) {
     fields.push("Man-hour");
   }
@@ -915,16 +955,25 @@ function incompleteUpdateFields(row: FeeEvaluationPreviewRow): string[] {
   if (!isCompleteNumber(row.units)) {
     fields.push("Units");
   }
-  if (!isCompleteOptionalNumber(row.baseFee)) {
+  if (baseFeeIncomplete) {
     fields.push("Base Fee");
   }
   if (!isCompleteDiscount(row.discount)) {
     fields.push("Discount");
   }
-  if (!isCompleteNumber(row.testingFee)) {
+  if (!baseFeeIncomplete && !isCompleteNumber(row.testingFee)) {
     fields.push("Testing Fee");
   }
   return fields;
+}
+
+function fieldIsManualRequired(
+  row: FeeEvaluationPreviewRow,
+  field: FeeEvaluationPreviewFieldMetadata["field"]
+): boolean {
+  return row.fieldMetadata.some(
+    (metadata) => metadata.field === field && metadata.state === "manual_required"
+  );
 }
 
 function updateRowLabel(row: FeeEvaluationPreviewRow): string {

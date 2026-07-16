@@ -566,4 +566,5 @@ def test_product_spec_matrix_parser_applies_no_section_fallback_for_manual_rows(
     assert visual.requirement == "No detrimental condition"
     assert llcr.method == "EIA-364-23"
     assert llcr.requirement is None
-    assert mating.requirement is None
+    assert mating.condition == "mm/min"
+    assert mating.requirement == "N"

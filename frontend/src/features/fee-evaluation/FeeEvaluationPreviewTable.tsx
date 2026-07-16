@@ -409,6 +409,13 @@ function FeePricingDraftSaveStatus({
   if (suppressedMessage && state.message === suppressedMessage) {
     return null;
   }
+  if (state.kind === "stale") {
+    return (
+      <p className="fee-evaluation-save-notice" role="status">
+        {state.message}
+      </p>
+    );
+  }
   return (
     <p className="fee-evaluation-save-error" role="alert">
       {state.message}

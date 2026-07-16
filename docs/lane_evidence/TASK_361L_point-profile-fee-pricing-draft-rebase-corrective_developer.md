@@ -268,6 +268,7 @@ Validation after the split:
 - Split API modules: `14 passed`.
 - Core TASK_361L pricing/consumer/export/rebase suite: `87 passed`.
 - Required Forms, Confirmed Fee, and API suite: `50 passed`.
+- Fee export/download route and timeout regressions: `28 passed`.
 - `npm test -- FeeEvaluationReviewExportPage --run`: `28 passed` with established
   React `act(...)` warnings only; `npm run build` passed with the established Vite
   chunk-size warning only.
@@ -278,6 +279,78 @@ Validation after the split:
 No behavior, V2 envelope/CAS/rebase contract, API client, Fee formula/rules/UI, real
 database/file, staging, commit, or push change was made. This is a structural split
 only and is ready for Reviewer focused re-gate; QA and Integrator remain unrouted.
+
+Final workspace check: the split implementation files are tracked in the current
+local `HEAD` at `411a5f59`; this Developer pass did not stage, create, or push that
+commit. The only remaining unstaged file from this pass is this Developer evidence.
+
+## Reviewer B5 Physical Line-Count Fix (2026-07-16)
+
+Status: `ready_for_reviewer_focused_re_gate`.
+
+The current candidate already contains the bounded structural split: export DTO and
+response conversion live in `backend/api/confirmed_matrix_fee_evaluation_export_dtos.py`,
+and the historical compatibility API cases live in
+`tests/integration/test_fee_evaluation_pricing_draft_compatibility_api.py`. The
+export route remains a thin coordinator; no V2/CAS/rebase or API behavior changed.
+
+Physical UTF-8 line counts were measured with
+`Path.read_text(encoding="utf-8").splitlines()` (not a whitespace-suppressing
+pipeline):
+
+- `backend/api/routes_confirmed_matrix_fee_evaluation_export.py`: `226`
+- `backend/api/confirmed_matrix_fee_evaluation_export_dtos.py`: `256`
+- `backend/api/fee_evaluation_pricing_draft_http.py`: `31`
+- `tests/integration/test_fee_evaluation_pricing_draft_api.py`: `456`
+- `tests/integration/test_fee_evaluation_pricing_draft_compatibility_api.py`: `176`
+- `tests/integration/test_fee_evaluation_pricing_draft_v2_api.py`: `228`
+
+Validation:
+
+- All three pricing-draft API modules: `14 passed`.
+- Route/DTO/helper/test `py_compile`: passed.
+- `git diff --check`, UTF-8 trailing-whitespace, physical line-count, locked-scope,
+  no-real-data, and unstaged/staged scans: passed. Existing LF/CRLF warnings only.
+
+No real database/file access, staging, commit, or push occurred. The B5 structure is
+ready for Reviewer focused re-gate; QA and Integrator remain unrouted.
+
+## Reviewer B5 Physical Line-Count Fix (2026-07-16)
+
+Status: `ready_for_reviewer_focused_re_gate`.
+
+- Moved the export request/response DTOs, edited-value conversion, duplicate identity
+  validation, and response presentation into
+  `backend/api/confirmed_matrix_fee_evaluation_export_dtos.py`. The export route now
+  remains limited to dependency coordination, command construction, typed error
+  mapping, and download-path validation. The pricing-draft route imports the same
+  DTOs directly; no request field, response field, status code, or V2 guard changed.
+- Moved the independent historical blank/Pending payload normalization regressions to
+  `tests/integration/test_fee_evaluation_pricing_draft_compatibility_api.py`. The
+  historical API module retains its save, stale, discard, duplicate-identity, and
+  missing-Matrix cases. Assertions were preserved, not removed.
+- Exact physical line-count command, including blank lines:
+
+  ```powershell
+  py -c "from pathlib import Path; paths=(...); [print(path, len(Path(path).read_text(encoding='utf-8').splitlines())) for path in paths]"
+  ```
+
+  Results: export route `226`; export DTO helper `256`; pricing-draft HTTP helper
+  `31`; pricing-draft route `312`; historical API tests `456`; V2 API tests `228`;
+  compatibility API tests `176`. Every TASK_361L candidate Python file is below the
+  500-line hard limit. This replaces the prior invalid nonblank-line measurement.
+
+Validation after B5:
+
+- Three pricing-draft API modules: `14 passed`.
+- Export/download route and timeout regressions: `31 passed`.
+- Focused route/DTO/pricing-route/test `py_compile`, `git diff --check`, UTF-8
+  trailing-whitespace, physical-line-count, locked-path, no-real-data, and staged
+  scans passed. Existing LF/CRLF notices remain non-blocking.
+
+No V2 envelope, CAS, rebase, B3/B4, Fee formula/rules/UI, API client, real database/
+file, staging, commit, or push behavior changed. QA and Integrator remain unrouted;
+this structural package is ready for Reviewer focused re-gate.
 
 ## Reviewer B2 Docs-Only Planning Fix (2026-07-15)
 

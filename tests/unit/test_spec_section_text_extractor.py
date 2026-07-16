@@ -54,6 +54,71 @@ def test_llcr_condition_defaults_when_source_has_no_measurement_condition() -> N
     assert detail.condition == "20 mV, 100 mA"
 
 
+@pytest.mark.parametrize(
+    ("test_item", "section_text", "expected_condition"),
+    [
+        (
+            "INSULATION RESISTANCE",
+            (
+                "6.2 Insulation Resistance. a. Test Voltage \u6bcf 500 volts DC. "
+                "Electrification Time - 2 minutes."
+            ),
+            "500VDC, 2 minutes",
+        ),
+        (
+            "DIELECTRIC WITHSTANDING VOLTAGE",
+            (
+                "6.3 Dielectric Withstanding Voltage. "
+                "a. Test Voltage - 1500 volts AC for power contact. "
+                "Test Duration - 60 seconds. There shall be no evidence of "
+                "arc-over or excessive leakage current >1mA."
+            ),
+            "1500VAC, 60 seconds",
+        ),
+    ],
+)
+def test_ir_and_dwv_condition_extracts_test_voltage(
+    test_item: str,
+    section_text: str,
+    expected_condition: str,
+) -> None:
+    detail = extract_row_details(
+        section="6.2",
+        section_text=section_text,
+        test_item=test_item,
+    )
+
+    assert detail.condition == expected_condition
+
+
+def test_ir_condition_preserves_explicit_voltage_when_duration_is_missing() -> None:
+    detail = extract_row_details(
+        section="6.2",
+        section_text="6.2 Insulation Resistance. Test Voltage - 500 volts DC.",
+        test_item="INSULATION RESISTANCE",
+    )
+
+    assert detail.condition == "500VDC"
+
+
+def test_dwv_condition_keeps_leakage_current_in_requirement() -> None:
+    detail = extract_row_details(
+        section="6.3",
+        section_text=(
+            "6.3 Dielectric Withstanding Voltage. "
+            "Test Voltage - 1500 volts AC. Test Duration - 60 seconds. "
+            "There shall be no evidence of arc-over, insulation breakdown, or "
+            "excessive leakage current >1mA."
+        ),
+        test_item="DIELECTRIC WITHSTANDING VOLTAGE",
+    )
+
+    assert detail.condition == "1500VAC, 60 seconds"
+    assert detail.requirement == (
+        "No evidence of arc-over, insulation breakdown, or leakage current >1mA"
+    )
+
+
 def test_extract_row_details_supports_uscar_j_std_and_iec_methods() -> None:
     details = extract_row_details_by_section(
         [
@@ -282,8 +347,8 @@ def test_offset_mating_force_extracts_repetitions_speed_and_requirement(
         (
             "The displacement force is not less than N and no more than N. "
             "Displacement Speed - mm per minute.",
-            None,
-            None,
+            "mm/min",
+            "N",
         ),
     ],
 )
@@ -306,7 +371,7 @@ def test_floater_displacement_force_extracts_speed_and_force_limits(
     ("speed_text", "expected_condition"),
     [
         ("Cross Head Speed - 25.4±6 mm per minute.", "25.4 mm/min"),
-        ("Cross Head Speed - mm per minute.", None),
+        ("Cross Head Speed - mm per minute.", "mm/min"),
     ],
 )
 def test_mating_force_extracts_numeric_cross_head_speed(
@@ -358,6 +423,89 @@ def test_normal_force_extracts_reviewable_displacement_speed(
 
     assert detail.condition == expected_condition
     assert detail.requirement == "≥ 1.5 N per beam"
+
+
+@pytest.mark.parametrize(
+    "test_item",
+    [
+        "Floater Displacement Force (Side Force)",
+        "Terminal extraction force",
+        "Latch Retention Force",
+    ],
+)
+def test_force_family_uses_review_placeholders_when_values_are_missing(
+    test_item: str,
+) -> None:
+    detail = extract_row_details(
+        section="7.9",
+        section_text="7.9 Placeholder section without numeric test details.",
+        test_item=test_item,
+    )
+
+    assert detail.condition == "mm/min"
+    assert detail.requirement == "N"
+
+
+def test_force_family_rejects_label_only_speed_as_a_condition() -> None:
+    detail = extract_row_details(
+        section="7.5",
+        section_text="7.5 Lateral Force. Cross Head Speed -.",
+        test_item="Lateral Force",
+    )
+
+    assert detail.condition == "mm/min"
+    assert detail.requirement == "N"
+
+
+def test_explicit_mating_unmating_pair_without_force_uses_review_placeholders() -> None:
+    detail = extract_row_details(
+        section="7.1",
+        section_text="7.1 Mating/Un-mating. Test details require operator review.",
+        test_item="Mating/Un-mating",
+    )
+
+    assert detail.condition == "mm/min"
+    assert detail.requirement == "N"
+
+
+@pytest.mark.parametrize("test_item", ["Mating cycles", "Un-mating cycles", "Unmating cycles"])
+def test_single_mating_concept_non_force_family_does_not_receive_force_placeholders(
+    test_item: str,
+) -> None:
+    detail = extract_row_details(
+        section="7.3",
+        section_text=f"7.3 {test_item}. Test details require operator review.",
+        test_item=test_item,
+    )
+
+    assert detail.condition is None
+    assert detail.requirement is None
+
+
+def test_force_family_preserves_meaningful_no_damage_requirement() -> None:
+    detail = extract_row_details(
+        section="7.4",
+        section_text="7.4 Lateral Force. Cross Head Speed -. No damage.",
+        test_item="Lateral Force",
+    )
+
+    assert detail.condition == "mm/min"
+    assert detail.requirement == "No damage."
+
+
+def test_force_family_preserves_specialized_composite_condition() -> None:
+    detail = extract_row_details(
+        section="7.4",
+        section_text=(
+            "7.4 Offset mating insertion force into floater. "
+            "Mate and un-mate receptacle male power pin 10 times. "
+            "Displacement Speed - mm per minute."
+        ),
+        test_item="Offset mating insertion force into floater",
+    )
+
+    assert detail.condition == "10 times, mm/min"
+    assert detail.requirement == "N"
 
 
 @pytest.mark.parametrize(

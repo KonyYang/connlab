@@ -443,82 +443,14 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByText("Confirm As Active Matrix")).toBeNull();
     expect(screen.queryByText("Create Revision Draft")).toBeNull();
     expect(screen.queryByText("Confirm Revision")).toBeNull();
-    expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
-  });
-
-  it("opens an editable revision draft and reloads the Matrix Editor session", async () => {
-    const currentDraftSeed = {
-      ...buildSessionSeed(),
-      editor_draft_id: "revision-draft-1",
-      draft_status: "current",
-      loaded_source: "draft",
-      saved_payload_signature: "revision-signature",
-    };
-    apiMocks.fetchMatrixEditorSession
-      .mockResolvedValueOnce(buildSessionSeed())
-      .mockResolvedValueOnce(currentDraftSeed);
-
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-
-    const openDraft = await screen.findByRole("button", { name: "Open editable Matrix draft" });
-    fireEvent.click(openDraft);
-
-    await waitFor(() => expect(apiMocks.createMatrixRevisionDraft).toHaveBeenCalledWith("P1"));
-    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("Editable Matrix draft opened.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Open editable Matrix draft" })).toBeNull();
-    expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "revision-draft-1");
-  });
-
-  it("recovers an existing revision draft conflict by reloading the Matrix Editor session", async () => {
-    const currentDraftSeed = {
-      ...buildSessionSeed(),
-      editor_draft_id: "revision-draft-existing",
-      draft_status: "current",
-      loaded_source: "draft",
-      saved_payload_signature: "revision-signature",
-    };
-    apiMocks.fetchMatrixEditorSession
-      .mockResolvedValueOnce(buildSessionSeed())
-      .mockResolvedValueOnce(currentDraftSeed);
-    apiMocks.createMatrixRevisionDraft.mockRejectedValueOnce(
-      new ApiRequestError("existing revision", 409, "Revision draft already exists")
-    );
-
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-
-    fireEvent.click(await screen.findByRole("button", { name: "Open editable Matrix draft" }));
-
-    await waitFor(() => expect(apiMocks.createMatrixRevisionDraft).toHaveBeenCalledWith("P1"));
-    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("Editable Matrix draft opened.")).toBeTruthy();
-    expect(screen.queryByText("Revision draft already exists")).toBeNull();
-    expect(apiMocks.fetchMatrixStepQuantities).toHaveBeenCalledWith("P1", "revision-draft-existing");
-  });
-
-  it("does not request an editable revision draft while the project is readonly", async () => {
-    runtimeModelState.lifecycle = {
-      ...runtimeModelState.lifecycle,
-      lifecycle_state: "closed",
-      closure_type: "completed",
-      status: "closed",
-      allowed_actions: [],
-      readonly: true,
-    };
-
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-
-    const openDraft = await screen.findByRole("button", { name: "Open editable Matrix draft" });
-    expect(openDraft).toHaveProperty("disabled", true);
-    fireEvent.click(openDraft);
-    expect(apiMocks.createMatrixRevisionDraft).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
   });
 
   it("keeps the Matrix summary free of specialized workbook controls", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByRole("button", { name: "Open editable Matrix draft" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Setup" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open editable Matrix draft" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Preview specialized record" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate workbook" })).toBeNull();
   });
@@ -681,8 +613,8 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("Project point profile")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Test points" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save contact plan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Apply to blank contact targets" })).toBeNull();
   });
@@ -736,9 +668,9 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("Project point profile")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Test points" })).toBeTruthy();
     expect(screen.queryByLabelText("LLCR High Power Pin count per sample")).toBeNull();
-    expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
   });
 
   it("does not render persisted overrides as editable Matrix summary inputs", async () => {
@@ -824,9 +756,9 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("Project point profile")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Test points" })).toBeTruthy();
     expect(screen.queryByLabelText("LLCR High Power Pin count per sample")).toBeNull();
-    expect(screen.getByRole("button", { name: "Contact measurement setup" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
   });
 
   it("opens the import file selector without native confirmation", async () => {

@@ -71,6 +71,7 @@
 .contact-measurement-setup-page {
   display: grid;
   gap: 16px;
+  min-height: calc(100dvh - 112px);
   padding: 16px 20px 28px;
 }
 
@@ -141,8 +142,11 @@
 .contact-measurement-setup-actions {
   position: sticky;
   bottom: 0;
+  z-index: 6;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
+  margin-top: auto;
   padding: 12px 0;
   border-top: 1px solid var(--border, #d8e0ea);
   background: var(--canvas, #f4f7fb);
@@ -239,6 +243,16 @@
 
 .project-point-profile-editor {
   min-width: 0;
+  min-height: 100%;
+}
+
+.project-point-profile-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border, #d8e0ea);
+  border-radius: 8px;
+  background: var(--surface, #fbfdff);
 }
 
 .project-point-profile-header {
@@ -257,6 +271,7 @@
 
 .project-point-profile-table {
   width: 100%;
+  max-width: 760px;
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -269,10 +284,18 @@
   vertical-align: middle;
 }
 
-.project-point-profile-table input {
+.project-point-profile-table textarea {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  min-height: 42px;
+  max-height: 160px;
+  field-sizing: content;
+  resize: none;
+}
+
+.project-point-profile-table th:first-child {
+  width: 32%;
 }
 
 .project-point-profile-action {

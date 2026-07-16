@@ -155,6 +155,30 @@
       "review_reason": "Steady-state and cyclic pricing diverge and require operator confirmation."
     },
     {
+      "rule_id": "fee_rule_dust_benign",
+      "display_name": "Dust (Benign)",
+      "aliases": [
+        "Dust (Benign)",
+        "Dust exposure",
+        "Dust",
+        "良性粉尘"
+      ],
+      "base_fee": {
+        "amount": 0,
+        "text": "免基本金"
+      },
+      "unit_price": {
+        "amount": 1800,
+        "text": "1800/runing (1hour)"
+      },
+      "unit_label": "hour",
+      "applicable_standard": "EIA-364-91",
+      "range_condition": "N/A",
+      "calculation_strategy": "per_hour",
+      "review_required": false,
+      "review_reason": null
+    },
+    {
       "rule_id": "fee_rule_high_temperature_life",
       "display_name": "High temperature life",
       "aliases": [
@@ -238,23 +262,34 @@
         "Mating / Unmating Force",
         "Mating Force",
         "Unmating Force",
+        "Latch",
+        "Latch Force",
+        "Latch strength",
+        "Latch retention force",
+        "Normal Force",
+        "Terminal force",
+        "Terminal extraction force",
+        "Floater Displacement Force",
+        "Floater Displacement Force (Side Force)",
+        "Side Force",
+        "Offset mating insertion force into floater",
         "机械测试",
         "插拔力"
       ],
       "base_fee": {
-        "amount": null,
+        "amount": 0,
         "text": "Simple 100; normal 200; complex 200~400"
       },
       "unit_price": {
-        "amount": null,
+        "amount": 20,
         "text": "20/reading or 50/specimen depending on pricing mode"
       },
       "unit_label": "reading",
       "applicable_standard": "EIA-364-13/04/29",
       "range_condition": "20kN max",
-      "calculation_strategy": "manual_required",
-      "review_required": true,
-      "review_reason": "Mechanical-force pricing can be per reading or per specimen and depends on test complexity."
+      "calculation_strategy": "per_reading",
+      "review_required": false,
+      "review_reason": null
     },
     {
       "rule_id": "fee_rule_mechanical_shock",
@@ -317,15 +352,15 @@
         "text": "0"
       },
       "unit_price": {
-        "amount": null,
-        "text": "Unit Price Reference tier by readings/specimen when facts are explicit"
+        "amount": 10,
+        "text": "10/reading default for Contact resistance (CR)"
       },
       "unit_label": "reading",
       "applicable_standard": "EIA-364-06",
       "range_condition": "Specified current contact resistance",
       "calculation_strategy": "per_reading",
-      "review_required": true,
-      "review_reason": "Specified-current contact resistance pricing requires explicit readings/specimen."
+      "review_required": false,
+      "review_reason": null
     },
     {
       "rule_id": "fee_rule_microsecond_discontinuity",

@@ -488,10 +488,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Fee authority is current.")).toBeNull();
   });
 
-  it("saves a reviewed rebase candidate with the latest CAS metadata", async () => {
+  it("saves a reviewed rebase candidate before updating Fee", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
-      createDraftWithEditableSingleLine()
+      createDraftWithResolvedSingleLine()
     );
     apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(
       currentPricingDraftResponse({
@@ -505,18 +505,43 @@ describe("FeeEvaluationReviewExportPage", () => {
     apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(
       currentPricingDraftResponse({
         status: "current_v2",
+        saved_draft_edit_id: "fed-rebased",
         saved_generation: 5,
         saved_payload_fingerprint: "payload-5",
         saved_validation_token: "token-5",
       })
     );
+    apiMocks.confirmFeeVersion.mockResolvedValue(
+      createConfirmedFeeLatest({
+        status: "current",
+        pricingDraftEditId: "fed-rebased",
+        testingFeeTotal: "10.00",
+      })
+    );
+    const onBackToWorkbench = vi.fn();
 
-    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    render(
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={onBackToWorkbench}
+      />
+    );
 
-    const reviewButton = await screen.findByRole("button", {
-      name: "Save reviewed defaults",
+    const updateButton = await screen.findByRole("button", { name: "Update Fee" });
+    expect(screen.getByLabelText("Unit Price for Visual Examination")).toHaveProperty(
+      "value",
+      "10.00"
+    );
+    expect(screen.getByLabelText("Units for Visual Examination")).toHaveProperty(
+      "value",
+      "1"
+    );
+    expect(screen.queryByDisplayValue("15")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save reviewed defaults" })).toBeNull();
+    await waitFor(() => {
+      expect(updateButton).toHaveProperty("disabled", false);
     });
-    fireEvent.click(reviewButton);
+    fireEvent.click(updateButton);
 
     await waitFor(() => {
       expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
@@ -526,9 +551,28 @@ describe("FeeEvaluationReviewExportPage", () => {
           expected_generation: 4,
           expected_payload_fingerprint: "payload-4",
           expected_updated_at: "2026-06-14T09:00:00+00:00",
+          rows: expect.arrayContaining([
+            expect.objectContaining({
+              unit_price: "10.00",
+              units: "1",
+              testing_fee: "10",
+            }),
+          ]),
         }),
       );
     });
+    await waitFor(() => {
+      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          expected_pricing_draft_edit_id: "fed-rebased",
+          expected_generation: 5,
+          expected_payload_fingerprint: "payload-5",
+          expected_validation_token: "token-5",
+        })
+      );
+    });
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
   it("blocks Update Fee at the incomplete Report preparation row without duplicate alerts", async () => {
@@ -866,7 +910,11 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("returns to Workbench without deleting the current pricing draft when unchanged", async () => {
-    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        payload: promotedPricingDraftPayload(),
+      }),
+    });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     const onBackToWorkbench = vi.fn();
 
@@ -972,7 +1020,11 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("stays on Fee Evaluation when baseline restore fails", async () => {
-    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        payload: promotedPricingDraftPayload(),
+      }),
+    });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.saveFeeEvaluationPricingDraft.mockRejectedValue(
       new Error("Unable to restore Fee Evaluation pricing before leaving.")
@@ -985,11 +1037,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitFor(() => {
+      expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    });
     fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
-    await screen.findByText("Saving pricing draft before update.");
-
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
@@ -1061,10 +1114,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitFor(() => {
+      expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    });
     fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
-    await screen.findByText("Saving pricing draft before update.");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
@@ -1498,6 +1553,36 @@ function createDraftWithEditableSingleLine() {
             base_fee: null,
             discount_percent: null,
             testing_fee: null,
+          }),
+        ],
+      },
+    ],
+  };
+}
+
+function createDraftWithResolvedSingleLine() {
+  return {
+    ...createDraft(),
+    groups: [
+      {
+        group_key: "g1",
+        group_label: "Group 1",
+        sample_quantity_expression: "5",
+        manual_line_items: [createSamplePreparationLine()],
+        line_items: [
+          createLine({
+            line_id: "cmv-1:g1:row-1",
+            test_item: "Visual Examination",
+            matched_rule_name: "Visual Examination",
+            matched_rule_id: "fee_rule_visual_exam",
+            calculation_strategy: "per_photo",
+            spend_time: "0",
+            unit_label: "photo",
+            unit_price: "10.00",
+            units: "1",
+            base_fee: "0",
+            discount_percent: "0",
+            testing_fee: "10",
           }),
         ],
       },

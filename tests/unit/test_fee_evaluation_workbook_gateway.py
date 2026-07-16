@@ -718,6 +718,7 @@ def _draft() -> FeeEvaluationDraft:
         base_fee=Decimal("0"),
         discount_percent=Decimal("0"),
         testing_fee=Decimal("100"),
+        field_metadata=(),
         warnings=(),
     )
     return FeeEvaluationDraft(
@@ -740,8 +741,10 @@ def _draft() -> FeeEvaluationDraft:
                 group_label="Group 1",
                 sample_quantity_expression="1",
                 line_items=(line,),
+                manual_line_items=(),
             ),
-        ),
+            ),
+        manual_line_items=(),
         warnings=(),
     )
 

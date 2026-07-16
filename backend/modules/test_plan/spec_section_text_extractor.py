@@ -151,6 +151,13 @@ def extract_row_details(
     condition = normalized.condition
     requirement = normalized.requirement
 
+    condition, requirement = _apply_force_review_defaults(
+        test_item=test_item,
+        condition=condition,
+        requirement=requirement,
+        notes=notes,
+    )
+
     extracted_count = sum(1 for value in (method, condition, requirement) if value)
     if extracted_count == 0:
         status = "missing"
@@ -246,6 +253,10 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
         current = re.search(r"(?:test\s+current\s*[-:]?\s*|at\s+)(\d+(?:\.\d+)?\s*(?:ADC|A|amperes?))", text, re.IGNORECASE)
         if current:
             return _clean(current.group(1).replace("amperes", "A"))
+    if "dielectric withstanding voltage" in lowered or "dwv" in lowered:
+        return _extract_electrical_condition(text, duration_labels=("test duration",))
+    if "insulation resistance" in lowered:
+        return _extract_electrical_condition(text, duration_labels=("electrification time",))
     if "dust exposure" in lowered:
         return _extract_dust_exposure_condition(text)
     if "current rating" in lowered:
@@ -274,8 +285,8 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
         return _extract_terminal_extraction_condition(text)
     if "normal force" in lowered:
         return _extract_normal_force_condition(text)
-    if "mating" in lowered or "force" in lowered:
-        return _collect_condition_segments(text, ("speed", "mm/min", "cross head"))
+    if _is_force_or_mating_pair(test_item):
+        return _extract_force_speed_condition(text)
     if "vibration" in lowered:
         return _collect_condition_segments(text, ("condition", "hz", "grms", "axis", "minutes"))
     if "shock" in lowered:
@@ -283,6 +294,30 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
     if not test_item:
         return None
     return _collect_condition_tokens(text)
+
+
+def _extract_electrical_condition(text: str, *, duration_labels: tuple[str, ...]) -> str | None:
+    """Build a DWV or IR condition from explicit voltage and duration labels."""
+    voltage = re.search(
+        r"\btest\s+voltage\b\s*(?:[:\-–—]|\u6bcf)?\s*"
+        r"(?P<value>\d+(?:\.\d+)?)\s*(?:volts?|v)\s*(?P<kind>ac|dc)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if voltage is None:
+        return None
+    voltage_text = f"{voltage.group('value')}V{voltage.group('kind').upper()}"
+    labels = "|".join(re.escape(label) for label in duration_labels)
+    duration = re.search(
+        rf"\b(?:{labels})\b\s*[:\-–—]?\s*"
+        r"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>seconds?|minutes?)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if duration is None:
+        return voltage_text
+    duration_text = f"{duration.group('value')} {duration.group('unit').lower()}"
+    return f"{voltage_text}, {duration_text}"
 
 
 def _extract_temperature_rise_current(text: str) -> str | None:
@@ -338,46 +373,30 @@ def _extract_durability_condition(text: str) -> str | None:
 def _extract_offset_mating_condition(text: str) -> str | None:
     """Extract offset-position repetitions and displacement speed."""
     repetitions = re.search(r"\b(\d+(?:\.\d+)?)\s*times\b", text, re.IGNORECASE)
-    speed = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
-        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
-        text,
-        re.IGNORECASE,
-    )
+    speed = _extract_force_speed_condition(text)
     if not repetitions:
-        return f"{speed.group(1)} mm/min" if speed else "mm/min"
-    speed_text = f"{speed.group(1)} mm/min" if speed else "mm/min"
+        return speed or "mm/min"
+    speed_text = speed or "mm/min"
     return f"{repetitions.group(1)} times, {speed_text}"
 
 
 def _extract_floater_displacement_condition(text: str) -> str | None:
     """Extract numeric displacement speed for the floater side-force test."""
-    speed = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
-        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if not speed:
-        return None
-    return f"{speed.group(1)} mm/min"
+    return _extract_force_speed_condition(text)
 
 
 def _extract_mating_force_condition(text: str) -> str | None:
     """Extract numeric cross-head speed for mating-force tests."""
-    speed = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
-        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if not speed:
-        return None
-    return f"{speed.group(1)} mm/min"
+    return _extract_force_speed_condition(text)
 
 
 def _extract_terminal_extraction_condition(text: str) -> str | None:
     """Extract numeric cross-head speed for terminal extraction tests."""
+    return _extract_force_speed_condition(text)
+
+
+def _extract_force_speed_condition(text: str) -> str | None:
+    """Return a normalized numeric displacement or cross-head speed."""
     speed = re.search(
         r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
         r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
@@ -391,13 +410,45 @@ def _extract_terminal_extraction_condition(text: str) -> str | None:
 
 def _extract_normal_force_condition(text: str) -> str:
     """Extract normal-force displacement speed or its review placeholder."""
-    speed = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*(?:±\s*\d+(?:\.\d+)?)?\s*"
-        r"mm\s*(?:max\s*)?(?:per\s+minute|/\s*min(?:ute)?)\b",
-        text,
-        re.IGNORECASE,
+    return _extract_force_speed_condition(text) or "mm/min"
+
+
+def _apply_force_review_defaults(
+    *,
+    test_item: str | None,
+    condition: str | None,
+    requirement: str | None,
+    notes: list[str],
+) -> tuple[str | None, str | None]:
+    """Fill operator-review placeholders for Force and mating/un-mating rows."""
+    if not _is_force_or_mating_pair(test_item):
+        return condition, requirement
+    next_condition = condition or "mm/min"
+    next_requirement = requirement or "N"
+    if next_condition != condition:
+        notes.append("force-default-condition")
+    if next_requirement != requirement:
+        notes.append("force-default-requirement")
+    return next_condition, next_requirement
+
+
+def _is_force_or_mating_pair(test_item: str | None) -> bool:
+    """Match Force labels or labels explicitly naming mating and un-mating."""
+    normalized = normalize_test_item(test_item)
+    if not normalized:
+        return False
+    tokens = normalized.split()
+    if "force" in tokens:
+        return True
+    has_mating = any(
+        token in {"mate", "mating"} and (index == 0 or tokens[index - 1] != "un")
+        for index, token in enumerate(tokens)
     )
-    return f"{speed.group(1)} mm/min" if speed else "mm/min"
+    has_unmating = any(token in {"unmate", "unmating"} for token in tokens) or any(
+        token == "un" and index + 1 < len(tokens) and tokens[index + 1] in {"mate", "mating"}
+        for index, token in enumerate(tokens)
+    )
+    return has_mating and has_unmating
 
 
 def _extract_requirement(text: str) -> str | None:

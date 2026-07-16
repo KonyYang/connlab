@@ -69,6 +69,8 @@ def normalize_condition_requirement(
     normalized_condition = _normalize_condition(condition)
     if family == "cr" and "specified current" in _normalize_family_label(test_item):
         normalized_condition = _normalize_specified_current_condition(normalized_condition)
+    elif family in {"insulation_resistance", "dwv"} and normalized_condition is None:
+        normalized_condition = _extract_test_voltage_condition(source_text)
     normalized_requirement = _normalize_requirement(requirement)
     normalized_requirement = _normalize_initial_voltage_requirement(
         source_text=source_text,
@@ -162,6 +164,19 @@ def _normalize_specified_current_condition(condition: str | None) -> str | None:
         condition,
         flags=re.IGNORECASE,
     )
+
+
+def _extract_test_voltage_condition(source_text: str) -> str | None:
+    """Extract an IR/DWV test voltage while preserving the source AC/DC type."""
+    match = re.search(
+        r"\btest\s+voltage\b\s*[:\-–—]?\s*"
+        r"(?P<value>\d+(?:\.\d+)?)\s*(?:volts?|v)\s*(?P<kind>ac|dc)\b",
+        source_text,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    return f"{match.group('value')}V{match.group('kind').upper()}"
 
 
 def _normalize_requirement(requirement: str | None) -> str | None:
