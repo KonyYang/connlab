@@ -1,6 +1,6 @@
 # TASK_362A Complete Fee Reference Base Seed
 
-Status: planned; awaiting written design and implementation-plan approval
+Status: planned; written design approved, implementation plan awaiting user approval
 
 Phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation
 
@@ -117,3 +117,7 @@ task and cannot start automatically.
 ## Design Reference
 
 `docs/superpowers/specs/2026-07-16-complete-fee-reference-base-seed-design.md`
+
+## Implementation Plan Reference
+
+`docs/superpowers/plans/2026-07-16-complete-fee-reference-base-seed.md`
