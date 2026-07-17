@@ -234,7 +234,7 @@ def test_confirmed_matrix_fee_evaluation_export_api_registers_output_status(
         assert fee_item["draft_id"] == "D1"
         assert _latest_fee_output_note("P1", tmp_path) is not None
         assert "confirmed_matrix_id=cmv-1" in (_latest_fee_output_note("P1", tmp_path) or "")
-        assert "fee_rule_version_id=fee_rules_v2026_07_16_r3" in (
+        assert "fee_rule_version_id=fee_rules_v2026_07_17_r6" in (
             _latest_fee_output_note("P1", tmp_path) or ""
         )
 

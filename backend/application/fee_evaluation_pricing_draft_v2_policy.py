@@ -38,8 +38,10 @@ def source_context_for_values(
 
 def infer_operator_provenance(
     values: FeeEvaluationEditedExportValues,
+    *,
+    automatic_defaults: FeeEvaluationEditedExportValues | None = None,
 ) -> dict[str, tuple[str, ...]]:
-    """Persist only fields that may survive a reviewed automatic-default refresh."""
+    """Persist fields that differ from the server's current automatic defaults."""
     fields = (
         "spend_time",
         "unit_price",
@@ -48,4 +50,15 @@ def infer_operator_provenance(
         "discount",
         "notes",
     )
-    return {row.source_line_id: fields for row in values.rows}
+    if automatic_defaults is None:
+        return {row.source_line_id: fields for row in values.rows}
+    defaults = {row.source_line_id: row for row in automatic_defaults.rows}
+    return {
+        row.source_line_id: tuple(
+            field
+            for field in fields
+            if (default := defaults.get(row.source_line_id)) is None
+            or getattr(row, field) != getattr(default, field)
+        )
+        for row in values.rows
+    }

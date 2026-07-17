@@ -759,6 +759,10 @@ def _build_fee_evaluation_pricing_draft_service(
     """Compose V2 pricing drafts from the same confirmed authorities as Fee defaults."""
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
     point_profile_adapter = _confirmed_contact_point_profile_consumer_adapter(session)
+    measurement_plan_adapter = _confirmed_contact_measurement_consumer_adapter(
+        session,
+        get_settings(),
+    )
     return FeeEvaluationPricingDraftPersistenceService(
         basic_fill_service=ConfirmedMatrixFeeTemplateBasicFillService(
             confirmed_store=confirmed_store,
@@ -767,13 +771,11 @@ def _build_fee_evaluation_pricing_draft_service(
         lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
         automatic_defaults_provider=ConfirmedMatrixFeeDraftService(
             confirmed_store=confirmed_store,
-            contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
-                session,
-                get_settings(),
-            ),
+            contact_measurement_adapter=measurement_plan_adapter,
             contact_point_profile_adapter=point_profile_adapter,
         ),
         point_profile_provider=point_profile_adapter,
+        measurement_plan_provider=measurement_plan_adapter,
     )
 
 

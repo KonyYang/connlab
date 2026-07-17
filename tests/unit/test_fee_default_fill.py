@@ -658,7 +658,7 @@ def test_mechanical_force_mating_unmating_defaults_to_per_sample_pricing() -> No
     assert result.testing_fee == Decimal("250")
 
 
-def test_mechanical_force_latch_defaults_to_per_sample_pricing() -> None:
+def test_mechanical_force_latch_does_not_default_to_per_sample_pricing() -> None:
     result = build_fee_default_fill(
         rule=_rule(
             "fee_rule_mechanical_force",
@@ -673,12 +673,12 @@ def test_mechanical_force_latch_defaults_to_per_sample_pricing() -> None:
         ),
     )
 
-    assert result.review_required is False
-    assert result.unit_price == Decimal("50")
-    assert result.unit_label == "sample"
-    assert result.units == Decimal("4")
+    assert result.review_required is True
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.units is None
     assert result.base_fee == Decimal("0")
-    assert result.testing_fee == Decimal("200")
+    assert result.testing_fee is None
 
 
 def test_mechanical_force_preserves_per_reading_price_when_units_need_review() -> None:

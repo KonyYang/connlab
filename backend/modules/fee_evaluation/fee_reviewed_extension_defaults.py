@@ -17,6 +17,7 @@ from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeFieldMetadata,
 )
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
+from backend.modules.fee_evaluation.fee_rule_matcher import normalize_fee_rule_text
 from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
     READING_PATTERN,
     build_reading_result,
@@ -259,21 +260,8 @@ def _dust_hour_result(
 
 
 def _is_mechanical_force_per_sample(context: FeeDefaultFillContext) -> bool:
-    """Identify the reviewed mating/latch force path from Matrix text."""
-    normalized = _combined_text(context).lower()
-    return any(
-        phrase in normalized
-        for phrase in (
-            "mating/un-mating",
-            "mating / un-mating",
-            "mating / unmating",
-            "mating force",
-            "unmating force",
-            "insertion force",
-            "withdrawal force",
-            "latch",
-        )
-    )
+    """Keep the 50/sample path for the one approved exact business label."""
+    return normalize_fee_rule_text(context.test_item) == "mating un mating force"
 
 
 def _combined_text(context: FeeDefaultFillContext) -> str:

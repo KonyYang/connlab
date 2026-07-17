@@ -24,6 +24,10 @@ class FeePricingDraftSourceContext:
     point_profile_revision_sequence: int | None
     point_profile_fingerprint: str | None
     automatic_defaults_fingerprint: str
+    measurement_plan_status: str = "not_started"
+    measurement_plan_revision_id: str | None = None
+    measurement_plan_revision_sequence: int | None = None
+    measurement_plan_fingerprint: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +170,10 @@ def _source_context_payload(context: FeePricingDraftSourceContext) -> dict[str, 
         "point_profile_revision_sequence": context.point_profile_revision_sequence,
         "point_profile_fingerprint": context.point_profile_fingerprint,
         "automatic_defaults_fingerprint": context.automatic_defaults_fingerprint,
+        "measurement_plan_status": context.measurement_plan_status,
+        "measurement_plan_revision_id": context.measurement_plan_revision_id,
+        "measurement_plan_revision_sequence": context.measurement_plan_revision_sequence,
+        "measurement_plan_fingerprint": context.measurement_plan_fingerprint,
     }
 
 
@@ -182,6 +190,12 @@ def _source_context_from_payload(payload: Mapping[str, object]) -> FeePricingDra
             ),
             point_profile_fingerprint=_optional_text(payload.get("point_profile_fingerprint")),
             automatic_defaults_fingerprint=str(payload["automatic_defaults_fingerprint"]),
+            measurement_plan_status=str(payload.get("measurement_plan_status", "not_started")),
+            measurement_plan_revision_id=_optional_text(payload.get("measurement_plan_revision_id")),
+            measurement_plan_revision_sequence=_optional_int(
+                payload.get("measurement_plan_revision_sequence")
+            ),
+            measurement_plan_fingerprint=_optional_text(payload.get("measurement_plan_fingerprint")),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise FeePricingDraftEnvelopeError("Pricing draft V2 source context is invalid.") from exc

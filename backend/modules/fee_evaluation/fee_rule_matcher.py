@@ -11,6 +11,12 @@ from backend.modules.fee_evaluation.fee_rule_models import (
 )
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]+")
+_TOKEN_FALLBACK_BLOCKED_RULE_IDS = frozenset(
+    {
+        "fee_rule_mechanical_force",
+        "fee_rule_automotive_mechanical_force",
+    }
+)
 
 
 def normalize_fee_rule_text(value: str | None) -> str:
@@ -70,6 +76,8 @@ class FeeRuleMatcher:
         text_tokens = set(normalized_text.split())
         candidates: list[_TokenCandidate] = []
         for rule in self._library.rules:
+            if rule.rule_id in _TOKEN_FALLBACK_BLOCKED_RULE_IDS:
+                continue
             best_alias: str | None = None
             best_score = -1
             for alias in rule.aliases:

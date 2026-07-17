@@ -46,8 +46,8 @@ from backend.application.project_lifecycle_write_guard import (
     LifecycleWriteOperation,
     ProjectLifecycleWriteGuard,
 )
-from backend.application.fee_evaluation_pricing_draft_v2_rebase import (
-    rebase_reviewed_values,
+from backend.application.fee_rule_transition_safe_rebase import (
+    load_rebase_candidate,
 )
 from backend.modules.fee_evaluation import load_active_fee_rule_library
 
@@ -215,12 +215,14 @@ class FeeEvaluationPricingDraftPersistenceService:
         lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
         automatic_defaults_provider: object | None = None,
         point_profile_provider: object | None = None,
+        measurement_plan_provider: object | None = None,
     ) -> None:
         self._basic_fill_service = basic_fill_service
         self._draft_store = draft_store
         self._lifecycle_write_guard = lifecycle_write_guard
         self._automatic_defaults_provider = automatic_defaults_provider
         self._point_profile_provider = point_profile_provider
+        self._measurement_plan_provider = measurement_plan_provider
 
     def save(
         self, command: SaveFeeEvaluationPricingDraftCommand
@@ -249,6 +251,11 @@ class FeeEvaluationPricingDraftPersistenceService:
             incoming=command.edited_values,
             existing=existing.edited_values if existing is not None else None,
         )
+        automatic_defaults = current_automatic_values(
+            context.project_id,
+            self._automatic_defaults_provider,
+            edited_values,
+        )
         conflict_message = save_cas_conflict_message(command, existing)
         if conflict_message is not None:
             raise FeeEvaluationPricingDraftConflictError(conflict_message)
@@ -258,7 +265,10 @@ class FeeEvaluationPricingDraftPersistenceService:
             generation=generation,
             source_context=source_context,
             edited_values_payload=edited_values_to_payload(edited_values),
-            row_provenance=infer_operator_provenance(edited_values),
+            row_provenance=infer_operator_provenance(
+                edited_values,
+                automatic_defaults=automatic_defaults,
+            ),
             summary_provenance=(),
         )
         decoded = decode_pricing_draft_payload(payload_json)
@@ -301,6 +311,14 @@ class FeeEvaluationPricingDraftPersistenceService:
             fee_rule_version_id=context.fee_rule_version_id,
         )
         if snapshot is None:
+            latest = self._draft_store.get_latest_by_project(project_id)
+            if (
+                latest is not None
+                and latest.project_id == project_id
+                and latest.generation is not None
+                and latest.source_context is not None
+            ):
+                return self._load_rebase_candidate(latest, context, project_id)
             return FeeEvaluationPricingDraftLoadResult(
                 status="missing",
                 current_context=context,
@@ -316,24 +334,28 @@ class FeeEvaluationPricingDraftPersistenceService:
         if snapshot.source_context != current_source_context:
             # A review is required, but the operator must see the deterministic merge
             # rather than the obsolete values-only payload. This remains read-only.
-            rebased_values = rebase_reviewed_values(
-                saved=snapshot.edited_values,
-                current_defaults=current_automatic_values(
-                    project_id,
-                    self._automatic_defaults_provider,
-                    snapshot.edited_values,
-                ),
-            )
-            return FeeEvaluationPricingDraftLoadResult(
-                status="rebase_required",
-                current_context=context,
-                saved_snapshot=replace(snapshot, edited_values=rebased_values),
-            )
+            return self._load_rebase_candidate(snapshot, context, project_id)
         return FeeEvaluationPricingDraftLoadResult(
             status="current_v2",
             current_context=context,
             saved_snapshot=snapshot,
         )
+
+    def _load_rebase_candidate(
+        self,
+        snapshot: FeeEvaluationPricingDraftSnapshot,
+        context: FeeEvaluationPricingDraftContext,
+        project_id: str,
+    ) -> FeeEvaluationPricingDraftLoadResult:
+        return load_rebase_candidate(
+            snapshot=snapshot,
+            context=context,
+            project_id=project_id,
+            automatic_defaults_provider=self._automatic_defaults_provider,
+            current_source_context=self._source_context(context, snapshot.edited_values),
+            result_type=FeeEvaluationPricingDraftLoadResult,
+        )
+
 
     def discard(
         self, command: DiscardFeeEvaluationPricingDraftCommand
@@ -400,6 +422,7 @@ class FeeEvaluationPricingDraftPersistenceService:
             fallback_values=fallback_values,
             automatic_defaults_provider=self._automatic_defaults_provider,
             point_profile_provider=self._point_profile_provider,
+            measurement_plan_provider=self._measurement_plan_provider,
         )
 
     def _save_snapshot(

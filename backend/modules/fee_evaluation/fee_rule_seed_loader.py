@@ -55,6 +55,22 @@ def load_fee_rule_library(path: Path) -> FeeRuleLibrary:
     return library
 
 
+def load_bundled_fee_rule_library(version_id: str) -> FeeRuleLibrary | None:
+    """Find one immutable bundled seed by its version identity for safe rebases."""
+    package = resources.files(_ACTIVE_SEED_PACKAGE)
+    for entry in package.iterdir():
+        if not entry.name.endswith(".json") or entry.name == _ACTIVE_SEED_MANIFEST_NAME:
+            continue
+        with resources.as_file(entry) as path:
+            try:
+                library = load_fee_rule_library(path)
+            except (FeeRuleSeedLoaderError, FeeRuleSeedValidationError):
+                continue
+        if library.version.version_id == version_id:
+            return library
+    return None
+
+
 def _load_active_seed_name() -> str:
     manifest_path = resources.files(_ACTIVE_SEED_PACKAGE).joinpath(_ACTIVE_SEED_MANIFEST_NAME)
     with resources.as_file(manifest_path) as resolved_path:
