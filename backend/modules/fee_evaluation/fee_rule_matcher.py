@@ -11,6 +11,14 @@ from backend.modules.fee_evaluation.fee_rule_models import (
 )
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]+")
+_MATING_UNMATING_FORCE_PATTERN = re.compile(
+    r"^\s*mating\s*/\s*un\s*-?\s*mating\s+force\s*$",
+    re.IGNORECASE,
+)
+_SINGLE_PIN_MATING_UNMATING_FORCE_PATTERN = re.compile(
+    r"^\s*single\s+pin\s+mating\s*/\s*un\s*-?\s*mating\s+force\s*$",
+    re.IGNORECASE,
+)
 _TOKEN_FALLBACK_BLOCKED_RULE_IDS = frozenset(
     {
         "fee_rule_mechanical_force",
@@ -23,8 +31,28 @@ def normalize_fee_rule_text(value: str | None) -> str:
     """Normalize alias and Matrix test-item text for deterministic matching."""
     if value is None:
         return ""
+    single_pin_key = _canonical_single_pin_mating_unmating_force(value)
+    if single_pin_key is not None:
+        return single_pin_key
+    base_key = _canonical_mating_unmating_force(value)
+    if base_key is not None:
+        return base_key
     lowered = value.strip().lower()
     return " ".join(_TOKEN_PATTERN.findall(lowered))
+
+
+def _canonical_mating_unmating_force(value: str) -> str | None:
+    """Canonicalize only the complete base Mating/Un-mating Force label."""
+    if _MATING_UNMATING_FORCE_PATTERN.fullmatch(value):
+        return "mating un mating force"
+    return None
+
+
+def _canonical_single_pin_mating_unmating_force(value: str) -> str | None:
+    """Canonicalize only the complete combined Single Pin force label."""
+    if _SINGLE_PIN_MATING_UNMATING_FORCE_PATTERN.fullmatch(value):
+        return "single pin mating force"
+    return None
 
 
 class FeeRuleMatcher:
