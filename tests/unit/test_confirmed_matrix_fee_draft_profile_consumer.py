@@ -94,10 +94,10 @@ def test_specified_current_contact_resistance_never_uses_llcr_fallback() -> None
     )
 
     draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
-
     line = draft.groups[0].line_items[0]
-    assert line.matched_rule_id == "fee_rule_contact_resistance_specified_current"
-    assert line.unit_price == Decimal("10")
+    assert (line.status, line.review_required) == ("review_required", True)
+    assert (line.unit_price, line.units, line.testing_fee) == (None, None, None)
+    assert "Confirmed CR Measurement Plan" in (line.review_reason or "")
 
 
 def test_fee_draft_uses_confirmed_profile_for_llcr_without_step_quantity() -> None:

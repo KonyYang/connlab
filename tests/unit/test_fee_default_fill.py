@@ -234,7 +234,7 @@ def test_llcr_marks_review_when_matrix_step_quantities_conflict() -> None:
     assert _field_state(result, "units") == "manual_required"
 
 
-def test_contact_resistance_specified_current_uses_matrix_step_quantity() -> None:
+def test_contact_resistance_specified_current_requires_typed_authority() -> None:
     result = build_fee_default_fill(
         rule=_rule(
             "fee_rule_contact_resistance_specified_current",
@@ -255,13 +255,12 @@ def test_contact_resistance_specified_current_uses_matrix_step_quantity() -> Non
         ),
     )
 
-    assert result.review_required is False
-    assert result.unit_price == Decimal("10")
-    assert result.units == Decimal("125")
-    assert result.testing_fee == Decimal("1250")
+    assert result.review_required is True
+    assert (result.unit_price, result.units, result.testing_fee) == (None, None, None)
+    assert "CR Measurement Plan" in (result.review_reason or "")
 
 
-def test_contact_resistance_specified_current_preserves_default_price_when_units_need_review() -> None:
+def test_contact_resistance_specified_current_has_no_default_without_typed_authority() -> None:
     result = build_fee_default_fill(
         rule=_rule(
             "fee_rule_contact_resistance_specified_current",
@@ -274,11 +273,9 @@ def test_contact_resistance_specified_current_preserves_default_price_when_units
     )
 
     assert result.review_required is True
-    assert result.unit_price == Decimal("10")
     assert result.unit_label == "reading"
-    assert result.units is None
-    assert result.testing_fee is None
-    assert result.review_reason == "Enter readings/specimen"
+    assert (result.unit_price, result.units, result.testing_fee) == (None, None, None)
+    assert "CR Measurement Plan" in (result.review_reason or "")
 
 
 def test_llcr_marks_review_when_matrix_step_quantity_requires_review() -> None:

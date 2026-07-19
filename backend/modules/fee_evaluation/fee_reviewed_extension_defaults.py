@@ -194,34 +194,22 @@ def _specified_current_resistance_result(
     rule: FeeRule,
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
-    """Apply the reviewed CR 10-per-reading fallback without LLCR tiers."""
-    unit_price = rule.unit_price.amount or Decimal("10")
+    """Apply exact confirmed CR readings and its reviewed price tier."""
+    authority = context.cr_authority
+    if authority is None or not authority.is_valid:
+        return manual_required(
+            rule=rule,
+            unit_label="reading",
+            unit_price=None,
+            base_fee=ZERO,
+            review_reason=(authority.diagnostic if authority is not None else None)
+            or "Confirm CR Measurement Plan authority.",
+            manual_fields=("unit_price", "units", "testing_fee"),
+        )
+    readings_per_specimen = Decimal(authority.readings_per_sample)
+    unit_price = Decimal("10") if readings_per_specimen <= Decimal("10") else Decimal("5")
     sample_quantity = _plain_decimal(context.sample_quantity_expression)
-    readings_per_specimen, quantity_review, selected_source = matrix_step_readings_per_sample(
-        context.step_quantities
-    )
-    source = selected_source or rule.display_name
-    if quantity_review is not None:
-        return manual_required(
-            rule=rule,
-            unit_label="reading",
-            unit_price=unit_price,
-            base_fee=ZERO,
-            review_reason=quantity_review,
-            manual_fields=("units", "testing_fee"),
-        )
-    if readings_per_specimen is None:
-        readings_per_specimen = _first_decimal(READING_PATTERN, _combined_text(context))
-    if readings_per_specimen is None:
-        return manual_required(
-            rule=rule,
-            unit_label="reading",
-            unit_price=unit_price,
-            base_fee=ZERO,
-            review_reason="Enter readings/specimen",
-            manual_fields=("units", "testing_fee"),
-        )
-    if sample_quantity is None:
+    if sample_quantity is None or sample_quantity <= ZERO or sample_quantity != sample_quantity.to_integral_value():
         return manual_required(
             rule=rule,
             unit_label="reading",
@@ -237,7 +225,7 @@ def _specified_current_resistance_result(
         units=sample_quantity * readings_per_specimen,
         base_fee=ZERO,
         discount_percent=ZERO,
-        source=source,
+        source=authority.source,
     )
 
 

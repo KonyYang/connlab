@@ -35,6 +35,9 @@ from backend.application.confirmed_matrix_fee_step_quantities import (
     build_step_quantity_contexts,
     build_step_quantity_lookup,
 )
+from backend.application.confirmed_matrix_fee_cr_specified_current import (
+    resolve_cr_specified_current_readings,
+)
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     ContactPointProfileConfirmedConsumerAdapter,
     EffectiveConfirmedPointProfile,
@@ -55,6 +58,7 @@ from backend.modules.fee_evaluation import (
     FeeRuleLibrary,
     FeeRuleMatcher,
     FeeStepQuantityContext,
+    CrSpecifiedCurrentAuthority,
     build_fee_default_fill,
     load_active_fee_rule_library,
 )
@@ -281,6 +285,16 @@ def _build_group_lines(
                 parsed_tokens=parsed_tokens,
                 profile=effective_point_profile or _missing_point_profile(),
             )
+        elif (
+            rule is not None
+            and rule.rule_id == "fee_rule_contact_resistance_specified_current"
+        ):
+            step_quantities = resolve_cr_specified_current_readings(
+                group=group,
+                row=row,
+                parsed_tokens=parsed_tokens,
+                effective_plan=effective_contact_plan,
+            )
         else:
             step_quantities = build_step_quantity_contexts(
                 group=group,
@@ -350,6 +364,7 @@ def _build_line_item(
     unmatched_review_reason: str | None,
     warnings: tuple[FeeEvaluationWarning, ...],
 ) -> FeeEvaluationLineItem:
+    cr_authority = step_quantities[0].cr_authority if step_quantities else None
     calculation = (
         _no_rule_match(unmatched_review_reason)
         if rule is None
@@ -359,6 +374,7 @@ def _build_line_item(
             row=row,
             step_tokens=step_tokens,
             step_quantities=step_quantities,
+            cr_authority=cr_authority,
             warnings=warnings,
         )
     )
@@ -406,6 +422,7 @@ def _calculate_line(
     row: ConfirmedMatrixRow,
     step_tokens: tuple[str, ...],
     step_quantities: tuple[FeeStepQuantityContext, ...],
+    cr_authority: CrSpecifiedCurrentAuthority | None,
     warnings: tuple[FeeEvaluationWarning, ...],
 ) -> _CalculationResult:
     if warnings:
@@ -421,6 +438,7 @@ def _calculate_line(
             spend_time=_text(row.day_expression),
             step_tokens=step_tokens,
             step_quantities=step_quantities,
+            cr_authority=cr_authority,
         ),
     )
     status: FeeLineStatus = default_fill.status

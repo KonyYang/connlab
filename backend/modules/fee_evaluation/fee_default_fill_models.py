@@ -34,6 +34,41 @@ class FeeFieldMetadata:
 
 
 @dataclass(frozen=True, slots=True)
+class CrSpecifiedCurrentAuthority:
+    """Typed, exact confirmed CR Measurement Plan authority."""
+
+    confirmed_group_id: str
+    confirmed_row_id: str
+    step_sequence: int
+    step_suffix_note: str
+    contact_kind: str
+    readings_per_sample: str | None
+    revision_id: str | None
+    revision_sequence: int | None
+    fingerprint: str | None
+    diagnostic: str | None = None
+
+    @property
+    def is_valid(self) -> bool:
+        return bool(
+            self.readings_per_sample
+            and self.revision_id
+            and self.revision_sequence is not None
+            and self.fingerprint
+            and self.contact_kind == "cr_specified_current"
+            and self.diagnostic is None
+        )
+
+    @property
+    def source(self) -> str:
+        """Return deterministic confirmed CR authority lineage metadata."""
+        return (
+            "Confirmed CR Measurement Plan: "
+            f"revision {self.revision_sequence} ({self.revision_id}; {self.fingerprint})"
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FeeStepQuantityContext:
     """Read-only Matrix Step quantity fact available to fee default-fill."""
 
@@ -48,6 +83,7 @@ class FeeStepQuantityContext:
     review_required: bool
     review_reason: str | None
     matched: bool
+    cr_authority: CrSpecifiedCurrentAuthority | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +98,7 @@ class FeeDefaultFillContext:
     spend_time: str = ""
     step_tokens: tuple[str, ...] = ()
     step_quantities: tuple[FeeStepQuantityContext, ...] = ()
+    cr_authority: CrSpecifiedCurrentAuthority | None = None
 
 
 @dataclass(frozen=True, slots=True)
