@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
+from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
+    MatrixBasicFillWorkbook,
+)
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
 )
@@ -11,6 +14,8 @@ from backend.application.fee_evaluation_pricing_draft_v2_policy import (
     source_context_for_values,
 )
 from backend.application.fee_evaluation_pricing_draft_v2_contract import canonical_fingerprint
+from backend.domain import ConfirmedMatrixSnapshot
+from backend.modules.fee_evaluation import load_active_fee_rule_library
 
 
 def build_authority_source_context(
@@ -61,6 +66,71 @@ def build_authority_source_context(
         measurement_plan_revision_id=getattr(measurement_plan, "revision_id", None),
         measurement_plan_revision_sequence=getattr(measurement_plan, "revision_sequence", None),
         measurement_plan_fingerprint=_measurement_plan_fingerprint(measurement_plan),
+    )
+
+
+def build_legacy_source_context(
+    *,
+    context: object,
+    fallback_values: FeeEvaluationEditedExportValues,
+    automatic_defaults_provider: object | None,
+    point_profile_provider: object | None,
+    measurement_plan_provider: object | None,
+):
+    """Retain the pre-attestation provider path for compatibility callers."""
+    return build_authority_source_context(
+        project_id=str(getattr(context, "project_id")),
+        confirmed_matrix_id=str(getattr(context, "confirmed_matrix_id")),
+        confirmed_revision=int(getattr(context, "confirmed_revision")),
+        fee_rule_version_id=str(getattr(context, "fee_rule_version_id")),
+        fallback_values=fallback_values,
+        automatic_defaults_provider=automatic_defaults_provider,
+        point_profile_provider=point_profile_provider,
+        measurement_plan_provider=measurement_plan_provider,
+    )
+
+
+def basic_fill_context_values(basic_fill: MatrixBasicFillWorkbook) -> dict[str, object]:
+    """Return current context constructor values from one basic-fill snapshot."""
+    library = load_active_fee_rule_library()
+    return {
+        "project_id": basic_fill.header.project_id,
+        "confirmed_matrix_id": basic_fill.header.confirmed_matrix_id,
+        "confirmed_revision": basic_fill.header.confirmed_revision,
+        "fee_rule_version_id": library.version.version_id,
+    }
+
+
+def build_authority_source_context_from_facts(
+    *,
+    confirmed_matrix: ConfirmedMatrixSnapshot,
+    fee_rule_version_id: str,
+    automatic_defaults: FeeEvaluationEditedExportValues,
+    point_profile: object | None,
+    measurement_plan: object | None,
+):
+    """Build source context without rereading any authority provider."""
+    context = source_context_for_values(
+        confirmed_matrix_id=confirmed_matrix.version.confirmed_matrix_id,
+        confirmed_revision=confirmed_matrix.version.confirmed_revision,
+        fee_rule_version_id=fee_rule_version_id,
+        values=automatic_defaults,
+    )
+    profile = point_profile or type("MissingProfile", (), {"status": "not_started"})()
+    plan = measurement_plan or type("MissingPlan", (), {"status": "not_started"})()
+    return type(context)(
+        confirmed_matrix_id=context.confirmed_matrix_id,
+        confirmed_revision=context.confirmed_revision,
+        fee_rule_version_id=context.fee_rule_version_id,
+        point_profile_status=str(getattr(profile, "status", "authority_corrupt")),
+        point_profile_revision_id=getattr(profile, "revision_id", None),
+        point_profile_revision_sequence=getattr(profile, "revision_sequence", None),
+        point_profile_fingerprint=getattr(profile, "fingerprint", None),
+        automatic_defaults_fingerprint=context.automatic_defaults_fingerprint,
+        measurement_plan_status=str(getattr(plan, "status", "authority_corrupt")),
+        measurement_plan_revision_id=getattr(plan, "revision_id", None),
+        measurement_plan_revision_sequence=getattr(plan, "revision_sequence", None),
+        measurement_plan_fingerprint=_measurement_plan_fingerprint(plan),
     )
 
 

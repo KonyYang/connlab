@@ -5,11 +5,27 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 import json
-from typing import Literal, Mapping
+from typing import TYPE_CHECKING, Literal, Mapping
+
+if TYPE_CHECKING:
+    from backend.application.fee_evaluation_pricing_draft_prior_defaults_attestation import (
+        FeePricingDraftPriorDefaultsAttestation,
+    )
 
 
 class FeePricingDraftEnvelopeError(ValueError):
     """Raised when a persisted V2 pricing-draft envelope is malformed."""
+
+
+FeeEvaluationPricingDraftStatus = Literal[
+    "missing",
+    "current_v2",
+    "rebase_required",
+    "legacy_unclassified",
+    "blocked",
+    "current",
+    "stale",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +58,7 @@ class DecodedFeePricingDraftPayload:
     summary_provenance: tuple[str, ...] = ()
     payload_fingerprint: str | None = None
     source_context_fingerprint: str | None = None
+    automatic_defaults_attestation: FeePricingDraftPriorDefaultsAttestation | None = None
 
     def __post_init__(self) -> None:
         if self.row_provenance is None:
@@ -55,6 +72,7 @@ def encode_pricing_draft_v2(
     edited_values_payload: Mapping[str, object],
     row_provenance: Mapping[str, tuple[str, ...]],
     summary_provenance: tuple[str, ...],
+    automatic_defaults_attestation: FeePricingDraftPriorDefaultsAttestation | None = None,
 ) -> str:
     """Return canonical JSON for a V2 pricing draft."""
     if generation < 1:
@@ -72,6 +90,18 @@ def encode_pricing_draft_v2(
             "summary": sorted({str(field) for field in summary_provenance}),
         },
     }
+    if automatic_defaults_attestation is not None:
+        from backend.application.fee_evaluation_pricing_draft_prior_defaults_attestation import (
+            attestation_to_payload,
+        )
+
+        if automatic_defaults_attestation.attested_generation != generation:
+            raise FeePricingDraftEnvelopeError(
+                "Pricing draft attestation generation does not match envelope."
+            )
+        payload["automatic_defaults_attestation"] = attestation_to_payload(
+            automatic_defaults_attestation
+        )
     payload["canonical_payload_fingerprint"] = canonical_fingerprint(payload)
     return canonical_json(payload)
 
@@ -136,6 +166,21 @@ def _decode_v2(payload: Mapping[str, object]) -> DecodedFeePricingDraftPayload:
     if canonical_fingerprint(payload_without_fingerprint) != expected_fingerprint:
         raise FeePricingDraftEnvelopeError("Pricing draft V2 fingerprint is invalid.")
     context = _source_context_from_payload(context_payload)
+    attestation = None
+    if "automatic_defaults_attestation" in payload:
+        from backend.application.fee_evaluation_pricing_draft_prior_defaults_attestation import (
+            FeePricingDraftPriorDefaultsAttestationError,
+            attestation_from_payload,
+        )
+
+        try:
+            attestation = attestation_from_payload(
+                payload["automatic_defaults_attestation"],
+                generation=generation,
+                source_context=context,
+            )
+        except FeePricingDraftPriorDefaultsAttestationError as exc:
+            raise FeePricingDraftEnvelopeError(str(exc)) from exc
     rows = provenance.get("rows", {})
     summary = provenance.get("summary", [])
     if not isinstance(rows, dict) or not isinstance(summary, list):
@@ -157,6 +202,7 @@ def _decode_v2(payload: Mapping[str, object]) -> DecodedFeePricingDraftPayload:
         summary_provenance=tuple(sorted({str(field) for field in summary})),
         payload_fingerprint=expected_fingerprint,
         source_context_fingerprint=source_context_fingerprint,
+        automatic_defaults_attestation=attestation,
     )
 
 

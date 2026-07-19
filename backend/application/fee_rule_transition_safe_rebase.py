@@ -20,6 +20,9 @@ from backend.application.fee_evaluation_edited_export_values import (
     edited_row_identity,
     manual_row_identity,
 )
+from backend.application.fee_evaluation_pricing_draft_serialization import (
+    edited_values_from_payload,
+)
 
 
 class FeeRuleRebaseAttestationError(ValueError):
@@ -55,6 +58,7 @@ def load_rebase_candidate(
     project_id: str,
     automatic_defaults_provider: object | None,
     current_source_context: Any | None = None,
+    current_automatic_build: Any | None = None,
     result_type: type,
 ):
     """Build a typed read-only load result for an eligible old V2 draft."""
@@ -74,35 +78,49 @@ def load_rebase_candidate(
     ):
         return _blocked(result_type, context)
     try:
-        if current_source_context is not None and not _same_non_rule_lineage(
-            source, current_source_context
-        ):
-            raise FeeRuleRebaseAttestationError("Non-rule authority lineage changed.")
         decoded = decode_pricing_draft_payload(snapshot.payload_json or "")
         if decoded.kind != "v2" or decoded.source_context is None:
             raise FeeRuleRebaseAttestationError("Saved pricing draft V2 attestation is missing.")
-        prior_defaults = _rebuild_prior_defaults(
-            snapshot=snapshot,
-            project_id=project_id,
-            automatic_defaults_provider=automatic_defaults_provider,
-        )
-        expected_defaults_fingerprint = source.automatic_defaults_fingerprint
-        actual_defaults_fingerprint = canonical_fingerprint(
-            _values_payload(prior_defaults)
-        )
-        if actual_defaults_fingerprint != expected_defaults_fingerprint:
-            raise FeeRuleRebaseAttestationError("Prior automatic defaults fingerprint changed.")
-        if _row_identities(prior_defaults) != _row_identities(snapshot.edited_values):
-            raise FeeRuleRebaseAttestationError("Prior automatic default row identity changed.")
-        rebased = rebase_reviewed_values(
-            saved=snapshot.edited_values,
-            current_defaults=current_automatic_values(
-                project_id,
-                automatic_defaults_provider,
-                snapshot.edited_values,
-            ),
-            row_provenance=decoded.row_provenance,
-        )
+        if _is_attested_measurement_plan_transition(
+            source, current_source_context, current_automatic_build
+        ):
+            rebased = _rebase_attested_measurement_plan(
+                snapshot=snapshot,
+                decoded=decoded,
+                current_automatic_build=current_automatic_build,
+            )
+        else:
+            if current_source_context is not None and not _same_non_rule_lineage(
+                source, current_source_context
+            ):
+                raise FeeRuleRebaseAttestationError("Non-rule authority lineage changed.")
+            prior_defaults = _rebuild_prior_defaults(
+                snapshot=snapshot,
+                project_id=project_id,
+                automatic_defaults_provider=automatic_defaults_provider,
+            )
+            expected_defaults_fingerprint = source.automatic_defaults_fingerprint
+            actual_defaults_fingerprint = canonical_fingerprint(
+                _values_payload(prior_defaults)
+            )
+            if actual_defaults_fingerprint != expected_defaults_fingerprint:
+                raise FeeRuleRebaseAttestationError("Prior automatic defaults fingerprint changed.")
+            if _row_identities(prior_defaults) != _row_identities(snapshot.edited_values):
+                raise FeeRuleRebaseAttestationError("Prior automatic default row identity changed.")
+            current_defaults = (
+                current_automatic_build.automatic_values
+                if current_automatic_build is not None
+                else current_automatic_values(
+                    project_id,
+                    automatic_defaults_provider,
+                    snapshot.edited_values,
+                )
+            )
+            rebased = rebase_reviewed_values(
+                saved=snapshot.edited_values,
+                current_defaults=current_defaults,
+                row_provenance=decoded.row_provenance,
+            )
     except (
         FeeRuleRebaseAttestationError,
         ValueError,
@@ -130,6 +148,86 @@ def _same_non_rule_lineage(saved: Any, current: Any) -> bool:
         "measurement_plan_revision_sequence", "measurement_plan_fingerprint",
     )
     return all(getattr(saved, field, None) == getattr(current, field, None) for field in fields)
+
+
+def _is_attested_measurement_plan_transition(
+    saved: Any,
+    current: Any | None,
+    current_build: Any | None,
+) -> bool:
+    if current is None or current_build is None:
+        return False
+    stable_fields = (
+        "confirmed_matrix_id",
+        "confirmed_revision",
+        "fee_rule_version_id",
+        "point_profile_status",
+        "point_profile_revision_id",
+        "point_profile_revision_sequence",
+        "point_profile_fingerprint",
+    )
+    if any(getattr(saved, field, None) != getattr(current, field, None) for field in stable_fields):
+        return False
+    measurement_fields = (
+        "measurement_plan_status",
+        "measurement_plan_revision_id",
+        "measurement_plan_revision_sequence",
+        "measurement_plan_fingerprint",
+    )
+    return any(
+        getattr(saved, field, None) != getattr(current, field, None)
+        for field in measurement_fields
+    )
+
+
+def _rebase_attested_measurement_plan(
+    *,
+    snapshot: Any,
+    decoded: Any,
+    current_automatic_build: Any,
+):
+    attestation = decoded.automatic_defaults_attestation
+    if attestation is None or snapshot.generation != attestation.attested_generation:
+        raise FeeRuleRebaseAttestationError("Prior automatic defaults attestation is missing.")
+    if attestation.source_context_fingerprint != decoded.source_context_fingerprint:
+        raise FeeRuleRebaseAttestationError("Prior automatic source context changed.")
+    saved_identities = _flat_row_identities(snapshot.edited_values)
+    if attestation.ordered_row_identities != saved_identities:
+        raise FeeRuleRebaseAttestationError("Prior automatic default row identity changed.")
+    current_identities = tuple(current_automatic_build.ordered_row_identities)
+    if current_identities != saved_identities:
+        raise FeeRuleRebaseAttestationError("Current automatic default row identity changed.")
+    if not attestation.row_safety or not all(
+        row.safe_for_rebase for row in attestation.row_safety
+    ):
+        raise FeeRuleRebaseAttestationError("Prior automatic authority is unsafe.")
+    if not current_automatic_build.row_safety or not all(
+        row.safe_for_rebase for row in current_automatic_build.row_safety
+    ):
+        raise FeeRuleRebaseAttestationError("Current automatic authority is unsafe.")
+    saved_safety_identity = tuple(
+        (row.identity, row.matched_rule_id) for row in attestation.row_safety
+    )
+    current_safety_identity = tuple(
+        (row.identity, row.matched_rule_id) for row in current_automatic_build.row_safety
+    )
+    if saved_safety_identity != current_safety_identity:
+        raise FeeRuleRebaseAttestationError("Automatic authority safety identity changed.")
+    prior_defaults = edited_values_from_payload(
+        dict(attestation.automatic_values_payload)
+    )
+    if _flat_row_identities(prior_defaults) != saved_identities:
+        raise FeeRuleRebaseAttestationError("Attested automatic row identity changed.")
+    return rebase_reviewed_values(
+        saved=snapshot.edited_values,
+        current_defaults=current_automatic_build.automatic_values,
+        row_provenance=decoded.row_provenance,
+    )
+
+
+def _flat_row_identities(values: Any) -> tuple[object, ...]:
+    matrix_rows, manual_rows = _row_identities(values)
+    return (*matrix_rows, *manual_rows)
 
 
 def _rebuild_prior_defaults(*, snapshot: Any, project_id: str, automatic_defaults_provider: object):

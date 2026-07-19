@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Literal, Protocol
+from typing import Protocol
 from uuid import uuid4
 
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     BuildMatrixBasicFeeTemplateCommand,
     ConfirmedMatrixFeeTemplateBasicFillService,
     MatrixBasicFillWorkbook,
+    build_basic_fill_from_confirmed_snapshot,
+)
+from backend.application.fee_evaluation_pricing_draft_automatic_build import (
+    build_current_pricing_defaults_if_supported,
+    merge_existing_inactive_rows,
+    validate_edited_values_against_captured_matrix,
+)
+from backend.application.fee_evaluation_pricing_draft_prior_defaults_attestation import (
+    build_prior_defaults_attestation,
 )
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
-    edited_row_lookup,
-    validate_supported_manual_rows,
 )
 from backend.application.fee_evaluation_pricing_draft_serialization import (
     edited_values_from_json,
@@ -30,6 +37,7 @@ from backend.application.fee_evaluation_pricing_draft_expectations import (
     discard_conflict_message,
 )
 from backend.application.fee_evaluation_pricing_draft_v2_contract import (
+    FeeEvaluationPricingDraftStatus,
     FeePricingDraftSourceContext,
     decode_pricing_draft_payload,
     encode_pricing_draft_v2,
@@ -39,7 +47,8 @@ from backend.application.fee_evaluation_pricing_draft_v2_policy import (
     infer_operator_provenance,
 )
 from backend.application.fee_evaluation_pricing_draft_v2_authority_context import (
-    build_authority_source_context,
+    basic_fill_context_values,
+    build_legacy_source_context,
     current_automatic_values,
 )
 from backend.application.project_lifecycle_write_guard import (
@@ -49,18 +58,6 @@ from backend.application.project_lifecycle_write_guard import (
 from backend.application.fee_rule_transition_safe_rebase import (
     load_rebase_candidate,
 )
-from backend.modules.fee_evaluation import load_active_fee_rule_library
-
-FeeEvaluationPricingDraftStatus = Literal[
-    "missing",
-    "current_v2",
-    "rebase_required",
-    "legacy_unclassified",
-    "blocked",
-    "current",
-    "stale",
-]
-
 
 @dataclass(frozen=True, slots=True)
 class SaveFeeEvaluationPricingDraftCommand:
@@ -232,8 +229,15 @@ class FeeEvaluationPricingDraftPersistenceService:
             command.project_id,
             LifecycleWriteOperation.FEE_PRICING_DRAFT_SAVE,
         )
-        basic_fill = self._build_basic_fill(command.project_id)
-        _validate_edited_values(command.edited_values, basic_fill)
+        automatic_build = build_current_pricing_defaults_if_supported(
+            command.project_id, self._automatic_defaults_provider
+        )
+        basic_fill = (
+            build_basic_fill_from_confirmed_snapshot(automatic_build.confirmed_matrix)
+            if automatic_build is not None
+            else self._build_basic_fill(command.project_id)
+        )
+        validate_edited_values_against_captured_matrix(command.edited_values, basic_fill)
         context = _context_from_basic_fill(basic_fill)
         context_conflict = context_conflict_message(command, context, operation="save")
         if context_conflict is not None:
@@ -247,20 +251,39 @@ class FeeEvaluationPricingDraftPersistenceService:
         )
         draft_edit_id = existing.draft_edit_id if existing is not None else uuid4().hex
         created_at = existing.created_at if existing is not None else now
-        edited_values = _merge_existing_inactive_rows(
+        edited_values = merge_existing_inactive_rows(
             incoming=command.edited_values,
             existing=existing.edited_values if existing is not None else None,
         )
-        automatic_defaults = current_automatic_values(
-            context.project_id,
-            self._automatic_defaults_provider,
-            edited_values,
+        automatic_defaults = (
+            automatic_build.automatic_values
+            if automatic_build is not None
+            else current_automatic_values(
+                context.project_id,
+                self._automatic_defaults_provider,
+                edited_values,
+            )
         )
         conflict_message = save_cas_conflict_message(command, existing)
         if conflict_message is not None:
             raise FeeEvaluationPricingDraftConflictError(conflict_message)
         generation = (existing.generation or 0) + 1 if existing is not None else 1
-        source_context = self._source_context(context, edited_values)
+        source_context = (
+            automatic_build.source_context
+            if automatic_build is not None
+            else self._legacy_source_context(context, edited_values)
+        )
+        attestation = (
+            build_prior_defaults_attestation(
+                generation=generation,
+                source_context=source_context,
+                automatic_values_payload=edited_values_to_payload(automatic_defaults),
+                ordered_row_identities=automatic_build.ordered_row_identities,
+                row_safety=automatic_build.row_safety,
+            )
+            if automatic_build is not None
+            else None
+        )
         payload_json = encode_pricing_draft_v2(
             generation=generation,
             source_context=source_context,
@@ -270,6 +293,7 @@ class FeeEvaluationPricingDraftPersistenceService:
                 automatic_defaults=automatic_defaults,
             ),
             summary_provenance=(),
+            automatic_defaults_attestation=attestation,
         )
         decoded = decode_pricing_draft_payload(payload_json)
         snapshot = FeeEvaluationPricingDraftSnapshot(
@@ -302,7 +326,14 @@ class FeeEvaluationPricingDraftPersistenceService:
 
     def load(self, project_id: str) -> FeeEvaluationPricingDraftLoadResult:
         """Load the saved pricing draft for the current authority context."""
-        basic_fill = self._build_basic_fill(project_id)
+        automatic_build = build_current_pricing_defaults_if_supported(
+            project_id, self._automatic_defaults_provider
+        )
+        basic_fill = (
+            build_basic_fill_from_confirmed_snapshot(automatic_build.confirmed_matrix)
+            if automatic_build is not None
+            else self._build_basic_fill(project_id)
+        )
         context = _context_from_basic_fill(basic_fill)
         snapshot = self._draft_store.get_by_context(
             project_id=context.project_id,
@@ -318,7 +349,9 @@ class FeeEvaluationPricingDraftPersistenceService:
                 and latest.generation is not None
                 and latest.source_context is not None
             ):
-                return self._load_rebase_candidate(latest, context, project_id)
+                return self._load_rebase_candidate(
+                    latest, context, project_id, automatic_build
+                )
             return FeeEvaluationPricingDraftLoadResult(
                 status="missing",
                 current_context=context,
@@ -330,11 +363,17 @@ class FeeEvaluationPricingDraftPersistenceService:
                 current_context=context,
                 saved_snapshot=snapshot,
             )
-        current_source_context = self._source_context(context, snapshot.edited_values)
+        current_source_context = (
+            automatic_build.source_context
+            if automatic_build is not None
+            else self._legacy_source_context(context, snapshot.edited_values)
+        )
         if snapshot.source_context != current_source_context:
             # A review is required, but the operator must see the deterministic merge
             # rather than the obsolete values-only payload. This remains read-only.
-            return self._load_rebase_candidate(snapshot, context, project_id)
+            return self._load_rebase_candidate(
+                snapshot, context, project_id, automatic_build
+            )
         return FeeEvaluationPricingDraftLoadResult(
             status="current_v2",
             current_context=context,
@@ -346,16 +385,21 @@ class FeeEvaluationPricingDraftPersistenceService:
         snapshot: FeeEvaluationPricingDraftSnapshot,
         context: FeeEvaluationPricingDraftContext,
         project_id: str,
+        automatic_build: object | None,
     ) -> FeeEvaluationPricingDraftLoadResult:
         return load_rebase_candidate(
             snapshot=snapshot,
             context=context,
             project_id=project_id,
             automatic_defaults_provider=self._automatic_defaults_provider,
-            current_source_context=self._source_context(context, snapshot.edited_values),
+            current_source_context=(
+                automatic_build.source_context
+                if automatic_build is not None
+                else self._legacy_source_context(context, snapshot.edited_values)
+            ),
+            current_automatic_build=automatic_build,
             result_type=FeeEvaluationPricingDraftLoadResult,
         )
-
 
     def discard(
         self, command: DiscardFeeEvaluationPricingDraftCommand
@@ -409,16 +453,13 @@ class FeeEvaluationPricingDraftPersistenceService:
             BuildMatrixBasicFeeTemplateCommand(project_id=project_id)
         )
 
-    def _source_context(
+    def _legacy_source_context(
         self,
         context: FeeEvaluationPricingDraftContext,
         fallback_values: FeeEvaluationEditedExportValues,
     ) -> FeePricingDraftSourceContext:
-        return build_authority_source_context(
-            project_id=context.project_id,
-            confirmed_matrix_id=context.confirmed_matrix_id,
-            confirmed_revision=context.confirmed_revision,
-            fee_rule_version_id=context.fee_rule_version_id,
+        return build_legacy_source_context(
+            context=context,
             fallback_values=fallback_values,
             automatic_defaults_provider=self._automatic_defaults_provider,
             point_profile_provider=self._point_profile_provider,
@@ -446,32 +487,7 @@ class FeeEvaluationPricingDraftPersistenceService:
         return saved
 
 
-def _validate_edited_values(
-    values: FeeEvaluationEditedExportValues,
-    basic_fill: MatrixBasicFillWorkbook,
-) -> None:
-    edited_row_lookup(values, basic_fill)
-    validate_supported_manual_rows(values.manual_rows, basic_fill)
-
-
-def _merge_existing_inactive_rows(
-    *,
-    incoming: FeeEvaluationEditedExportValues,
-    existing: FeeEvaluationEditedExportValues | None,
-) -> FeeEvaluationEditedExportValues:
-    """Preserve server-side hidden rows when clients save active Fee rows only."""
-    if incoming.inactive_rows or existing is None or not existing.inactive_rows:
-        return incoming
-    return replace(incoming, inactive_rows=existing.inactive_rows)
-
-
 def _context_from_basic_fill(
     basic_fill: MatrixBasicFillWorkbook,
 ) -> FeeEvaluationPricingDraftContext:
-    library = load_active_fee_rule_library()
-    return FeeEvaluationPricingDraftContext(
-        project_id=basic_fill.header.project_id,
-        confirmed_matrix_id=basic_fill.header.confirmed_matrix_id,
-        confirmed_revision=basic_fill.header.confirmed_revision,
-        fee_rule_version_id=library.version.version_id,
-    )
+    return FeeEvaluationPricingDraftContext(**basic_fill_context_values(basic_fill))

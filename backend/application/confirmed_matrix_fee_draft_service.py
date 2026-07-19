@@ -17,6 +17,14 @@ from backend.application.confirmed_matrix_fee_draft_models import (
     FeeEvaluationWarning,
     FeeLineStatus,
 )
+from backend.application.confirmed_matrix_fee_draft_build_result import (
+    ConfirmedMatrixFeeAuthorityBuildResult,
+)
+from backend.application.confirmed_matrix_fee_draft_build_support import (
+    draft_status as _draft_status,
+    now_iso as _now_iso,
+    root_warnings as _root_warnings,
+)
 from backend.application.confirmed_matrix_fee_manual_defaults import (
     build_report_preparation_line,
     build_sample_preparation_line,
@@ -96,6 +104,13 @@ class ConfirmedMatrixFeeDraftService:
 
     def build_draft(self, command: BuildConfirmedMatrixFeeDraftCommand) -> FeeEvaluationDraft:
         """Return one Fee Evaluation draft preview for a project."""
+        return self.build_authority_result(command).draft
+
+    def build_authority_result(
+        self,
+        command: BuildConfirmedMatrixFeeDraftCommand,
+    ) -> ConfirmedMatrixFeeAuthorityBuildResult:
+        """Return the draft and every authority fact read by this build."""
         snapshot = self._confirmed.get_active_by_project(command.project_id)
         if snapshot is None:
             raise ConfirmedMatrixFeeDraftNotFoundError("Active confirmed matrix not found.")
@@ -135,7 +150,7 @@ class ConfirmedMatrixFeeDraftService:
             if calculated_values and review_required_count == 0 and not warnings
             else None
         )
-        return FeeEvaluationDraft(
+        draft = FeeEvaluationDraft(
             header=FeeEvaluationHeader(
                 project_id=snapshot.version.project_id,
                 confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
@@ -153,39 +168,13 @@ class ConfirmedMatrixFeeDraftService:
             manual_line_items=manual_line_items,
             warnings=tuple(warnings),
         )
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _root_warnings(snapshot: ConfirmedMatrixSnapshot) -> list[FeeEvaluationWarning]:
-    if snapshot.version.sample_received_date:
-        return []
-    return [
-        FeeEvaluationWarning(
-            code="missing_pricing_effective_from",
-            message="Sample received date is missing from active Confirmed Matrix authority.",
-            scope="confirmed_matrix",
+        return ConfirmedMatrixFeeAuthorityBuildResult(
+            draft=draft,
+            confirmed_matrix=snapshot,
+            rule_library=library,
+            effective_measurement_plan=effective_contact_plan,
+            effective_point_profile=effective_point_profile,
         )
-    ]
-
-
-def _draft_status(
-    groups: tuple[FeeEvaluationGroup, ...],
-    warnings: list[FeeEvaluationWarning],
-) -> FeeDraftStatus:
-    if warnings:
-        return "needs_review"
-    if not groups:
-        return "empty"
-    if any(
-        item.review_required
-        for group in groups
-        for item in (*group.manual_line_items, *group.line_items)
-    ):
-        return "needs_review"
-    return "ready"
 
 
 def _build_groups(
@@ -465,7 +454,6 @@ def _review(reason: str, rule: FeeRule) -> _CalculationResult:
         field_metadata=(),
     )
 
-
 def _no_rule_match(review_reason: str | None) -> _CalculationResult:
     return _CalculationResult(
         status="no_rule_match",
@@ -484,7 +472,6 @@ def _no_rule_match(review_reason: str | None) -> _CalculationResult:
 
 def _text(value: str | None) -> str:
     return (value or "").strip()
-
 
 def _decimal_text(value: Decimal | None) -> str:
     if value is None:
