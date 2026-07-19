@@ -4,7 +4,11 @@ Date: 2026-07-19
 
 Role: Planner source-of-truth reconciliation
 
-Status: `implementation authorized / pending Developer hunk-level replay and fix pass`
+Status: `complete / accepted`
+
+Accepted commit: `2dac189d9b45eb68382af216e8144c6140869a71`
+
+Remote push: not performed
 
 TASK_ID: `TASK_363C_CONTACT_RESISTANCE_SPECIFIED_CURRENT_FEE_UNITS_AUTHORITY`
 
@@ -19,29 +23,32 @@ Lane: `contact-resistance-specified-current-fee-units-authority`
   generation/CAS/token validation, and reviewed rebase/reload as `current_v2`.
 - Integrator evidence records `154 passed`, `py_compile` passed, service size `479`,
   staged scope/trailing/no-real-mutation checks passed, and no remote push.
-- This accepted baseline resolves TASK_363C's missing B4 persistence prerequisite. It
-  does not accept TASK_363C product/test candidates or restore implementation authority.
+- This accepted baseline resolved TASK_363C's missing B4 persistence prerequisite. At
+  that historical checkpoint it did not yet accept TASK_363C product/test candidates.
 
-## Current TASK_363C Candidate State
+## Historical/Superseded Pre-Implementation Candidate State
 
-- B1/B2 candidate remains unaccepted: bounded target-first CR resolver, typed
+The following state was current at dependency release and is retained only for audit.
+It is superseded by the completion closeout below.
+
+- B1/B2 candidate was unaccepted: bounded target-first CR resolver, typed
   `CrSpecifiedCurrentAuthority`, hunk-only CR service routing, CR-only default-fill, and
   the unit/API test modules.
-- B3 remains an unaccepted hunk-only correction to exactly two existing tests:
+- B3 was an unaccepted hunk-only correction to exactly two existing tests:
   `test_contact_resistance_specified_current_requires_typed_authority` and
   `test_contact_resistance_specified_current_has_no_default_without_typed_authority`.
-  The prior checkpoint reported the full file green at `77 passed`; it must be replayed
-  and rerun from the accepted HEAD package boundary.
-- The third candidate test,
+  The prior checkpoint reported the full file green at `77 passed`; the two nodes were
+  later replayed and rerun from the accepted HEAD package boundary.
+- At that checkpoint the third candidate test,
   `tests/integration/test_fee_pricing_draft_cr_measurement_plan_rebase.py`, is not an
   acceptable B4 regression yet. It only compares source-context fingerprints and calls
   `rebase_reviewed_values()` with manually supplied defaults.
-- B4 must instead use TASK_363D production persistence: save an attested old
+- B4 was required to use TASK_363D production persistence: save an attested old
   `current_v2` draft, change the exact confirmed CR target/readings, load
   `rebase_required`, perform reviewed CAS save, reload `current_v2`, refresh automatic
   Units/Testing Fee, and preserve only proven compatible manual fields.
 
-## Candidate Package Boundary For Reviewer
+## Historical/Superseded Candidate Package Boundary For Reviewer
 
 Candidate May Touch, not implementation authorization:
 
@@ -57,7 +64,7 @@ Candidate May Touch, not implementation authorization:
 - TASK_363C governance/evidence/board
 
 The worktree service diff is mixed. Its CR resolver import/rule branch/context plumbing
-must be replayed hunk-by-hunk on accepted TASK_363D while preserving
+was required to be replayed hunk-by-hunk on accepted TASK_363D while preserving
 `build_authority_result()` and the single-build contract. Do not stage the whole file.
 
 ## Locked / Excluded
@@ -85,7 +92,7 @@ must be replayed hunk-by-hunk on accepted TASK_363D while preserving
 3. Can the candidate be replayed and packaged from HEAD with all mixed external hunks
    excluded and the service remaining below 500 physical UTF-8 lines?
 
-## Validation Summary
+## Historical Dependency-Reconciliation Validation
 
 Read-only reconciliation confirmed HEAD equals the accepted TASK_363D commit and
 identified all TASK_363C candidates as unaccepted worktree changes. Product tests were
@@ -94,7 +101,7 @@ current-stage/stale-planned-only, status, and staging scans passed. The only rem
 `planned-only` occurrences are inside explicitly labeled historical/superseded gate
 chains. Staging remains empty.
 
-## B5 Source-Of-Truth Correction
+## Historical B5 Source-Of-Truth Correction
 
 - Reviewer B5 identified one current-stage sentence that still described TASK_363D as
   planned-only. It is superseded by TASK_363D complete/accepted commit
@@ -106,7 +113,7 @@ chains. Staging remains empty.
   TASK_363C implementation approval. B1-B4 replay, production attestation persistence,
   mixed-hunk isolation, and the external LLCR residual exclusion remain unchanged.
 
-## Final Renewed Authorization Reconciliation
+## Historical Renewed Authorization Reconciliation
 
 - Authorized scope is limited to B1/B2 target-first typed CR authority, exact CR Fee
   routing, CR-only structured default/tier, the two exact B3 legacy-test nodes, and the
@@ -116,8 +123,9 @@ chains. Staging remains empty.
 - B4 must exercise saved attested V2 -> changed confirmed CR authority -> non-current ->
   reviewed rebase -> CAS save -> reload/current_v2, refreshing automatic Units/Testing
   Fee while preserving proven compatible manual Unit Price/discount fields.
-- The mixed Fee draft service must be replayed hunk-by-hunk from accepted TASK_363D;
-  wholesale staging is forbidden. TASK_363D production files remain read-only.
+- The mixed Fee draft service was authorized for hunk-by-hunk replay from accepted
+  TASK_363D; wholesale staging was forbidden. TASK_363D production files remained
+  read-only.
 - LLCR/Point Profile, the external LLCR API residual, CR Base Fee automation, seeds,
   frontend/API client, outputs, parser/LTR, real data/files, and all parallel residuals
   remain excluded.
@@ -125,7 +133,22 @@ chains. Staging remains empty.
   stale current unauthorized state, clean trailing whitespace and board diff-check,
   and an empty staging area. No product/test or real-data operation was performed.
 
+## Completion Closeout
+
+- TASK_363C passed Reviewer and QA gates and Integrator accepted the isolated local
+  package at `2dac189d9b45eb68382af216e8144c6140869a71`.
+- Integrator recorded focused CR authority/default-fill `96 passed`, profile-consumer
+  `9 passed`, TASK_363D attestation/rebase `27 passed`, successful compile and staged
+  isolation checks, and no remote push.
+- B1-B4 and the B6 LLCR no-fallback assertion are accepted. TASK_363D remains accepted
+  and unchanged at `754b79bc7370e4cecd4fc01dd576e6e7e67080fc`.
+- The external LLCR API residual (`expected Units 20`, actual `None`) remains excluded,
+  unmodified, and unattributed to TASK_363C.
+- Completion reconciliation verified all five governance files are tracked, tracked
+  diff-check and UTF-8 trailing checks are clean, current TASK_363C pending/replay
+  status is absent, and staging is empty. No product/test/real-data operation occurred.
+
 ## Next Legal Role
 
-Developer implementation replay/fix pass. No later Reviewer/QA/Integrator role is
-executed by this reconciliation.
+User/Orchestrator route decision only. TASK_363C closeout does not activate another
+product lane.

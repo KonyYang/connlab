@@ -2,7 +2,7 @@
 
 ## Status
 
-`complete / Integrator accepted`
+`complete / accepted`
 
 Reviewer plan gate passed, the user approved Developer planning-first, Developer
 completed the docs-only planning-first pass, Reviewer implementation-readiness passed,
@@ -10,7 +10,9 @@ and the user approved the original bounded product scope. That authorization was
 suspended when B4 proved a persisted prior automatic-default/authority attestation was
 required. TASK_363D is now complete/accepted at `754b79bc`; Reviewer passed the
 dependency-release/readiness re-gate and the user renewed explicit implementation
-approval for the bounded replay/fix package.
+approval for the bounded replay/fix package. That package subsequently passed Reviewer,
+QA, and Integrator gates and was accepted locally as
+`2dac189d9b45eb68382af216e8144c6140869a71`; remote push was not performed.
 
 ## Dependency Release Reconciliation
 
@@ -18,17 +20,15 @@ approval for the bounded replay/fix package.
   safety, typed prior-default attestation, generation/CAS/token, and reviewed rebase
   baseline required by B4.
 - B1/B2 CR resolver, typed authority transport, service routing, CR default-fill, and
-  three focused test modules remain unaccepted worktree candidates.
+  three focused test modules were accepted in the TASK_363C package.
 - B3's two exact `test_fee_default_fill.py` corrections were validated at `77 passed`
-  before TASK_363D acceptance but remain unaccepted and require hunk-only replay/rerun.
-- The current B4 test only compares source contexts and calls a pure merge helper. It
-  does not exercise TASK_363D persistence and cannot satisfy acceptance as written.
-- The future B4 test must create an attested old `current_v2` draft through production
-  save, change the confirmed CR target/readings, load a `rebase_required` candidate,
-  perform reviewed CAS save, reload `current_v2`, refresh automatic Units/Testing Fee,
-  and preserve only proven compatible manual fields.
-- No TASK_363D production file change is planned. Failure against the accepted
-  attestation boundary returns to Planner/Reviewer rather than weakening it.
+  before TASK_363D acceptance and were later accepted through exact hunk isolation
+  without absorbing unrelated legacy-test changes.
+- B4 was replaced by the production attestation persistence regression: attested old
+  `current_v2` save, changed confirmed CR target/readings, `rebase_required`, reviewed
+  CAS save, `current_v2` reload, automatic Units/Testing Fee refresh, and compatible
+  manual-field preservation.
+- TASK_363D production attestation files remained unchanged and read-only.
 
 ## 1. Discovery Summary
 
@@ -187,7 +187,7 @@ TASK_363D already supplies the production pricing-draft composition; no
 
 ## 6. File-Level Design
 
-Authorized TASK_363C Developer replay/fix sequence:
+Accepted TASK_363C implementation sequence (historical execution record):
 
 1. Add `backend/application/confirmed_matrix_fee_cr_specified_current.py` with a
    bounded target-first context builder and typed CR authority diagnostics.
@@ -219,8 +219,9 @@ Authorized TASK_363C Developer replay/fix sequence:
 Current physical line facts use
 `(Get-Content <path> -Encoding UTF8 | Measure-Object -Line).Lines`:
 
-- accepted HEAD `confirmed_matrix_fee_draft_service.py`: 479 physical lines; the
-  current mixed worktree version is 478 and must not be staged wholesale
+- accepted TASK_363D baseline `confirmed_matrix_fee_draft_service.py`: 479 physical
+  lines; accepted TASK_363C hunk-isolated package: 497 physical lines, below the 500-line
+  hard limit
 - `confirmed_matrix_fee_step_quantities.py`: 204
 - `contact_measurement_plan_confirmed_consumer_adapter.py`: 94
 - `fee_reviewed_extension_defaults.py`: 264
@@ -232,9 +233,9 @@ Fee draft service below its 500-line hard limit.
 
 ## 7. May Touch / Must Not Touch / Locked Paths
 
-### Authorized TASK_363C May Touch
+### Accepted TASK_363C Package Boundary
 
-Developer may replay or modify only the following exact package:
+Integrator accepted only the following exact package:
 
 - new bounded CR application helper;
 - narrow CR routing hunk in `confirmed_matrix_fee_draft_service.py`;
@@ -312,8 +313,8 @@ are accepted.
 TASK_364B is not a Fee authority dependency, but it remains a separate implementation
 lane and overlaps the dirty workspace. The prior TASK_363C approval did not include
 persisted prior defaults/authority. TASK_363D has now released that dependency, but
-Reviewer dependency-release/readiness re-gate passed and renewed explicit user
-approval is recorded. Developer may proceed only with the exact authorized package.
+Reviewer dependency-release/readiness re-gate passed, renewed explicit user approval
+was recorded, and the exact bounded package subsequently passed Reviewer/QA/Integrator.
 
 Gate chain (historical/superseded through TASK_363D acceptance, current from the
 TASK_363C readiness reconciliation onward):
@@ -381,7 +382,7 @@ Planner planned-only
 
 ### May Touch and package isolation
 
-Authorized TASK_363C implementation May Touch:
+Accepted TASK_363C package files/hunks:
 
 - new bounded `backend/application/confirmed_matrix_fee_cr_specified_current.py`;
 - one narrow CR-only routing hunk in `backend/application/confirmed_matrix_fee_draft_service.py`;
@@ -399,9 +400,8 @@ build/attestation/persistence/rebase files, `backend/api/dependencies.py`,
 lifecycle/API/UI, Point Profile/TASK_364B, Fee seeds/manifest, frontend/API client,
 workbooks, generic outputs, parser/import, LTR/public drive, and real DB/files are
 read-only or locked. The package must not absorb external base-fee/rule-resolution/MFG,
-old service-test, LLCR, TASK_364B/365A/365B, or other worktree hunks. Developer must
-replay only TASK_363C-owned hunks from accepted HEAD and must not stage mixed files
-wholesale.
+old service-test, LLCR, TASK_364B/365A/365B, or other worktree hunks. Integrator staged
+only TASK_363C-owned hunks from accepted HEAD and did not stage mixed files wholesale.
 
 Every new Python helper/test module must be below 500 physical UTF-8 lines. Validate
 with `Path.read_text(encoding="utf-8").splitlines()` without suppressing blank lines,
@@ -410,11 +410,12 @@ scans.
 
 ## 12. Definition Of Ready
 
-Ready for bounded Developer replay/fix. TASK_363D is accepted, Reviewer dependency-
-release/readiness passed, and renewed user approval is recorded. All TASK_363C product/
-test hunks remain unaccepted: B3 must be replayed and rerun hunk-only, and B4 must be
-rewritten against the accepted production attestation flow.
+Complete/accepted. TASK_363D remains accepted at `754b79bc`; TASK_363C completed its
+dependency-release/readiness, renewed approval, Developer, Reviewer, QA, and Integrator
+gates. Integrator recorded `96 + 9 + 27` passing tests, package isolation, local commit
+`2dac189d9b45eb68382af216e8144c6140869a71`, and no remote push.
 
 ## 13. Next Legal Role
 
-Developer implementation replay/fix pass for TASK_363C.
+User/Orchestrator route decision only. No later product lane is activated by this
+closeout.

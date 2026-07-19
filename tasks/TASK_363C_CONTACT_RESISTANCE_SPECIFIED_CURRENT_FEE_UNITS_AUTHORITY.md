@@ -2,21 +2,22 @@
 
 ## Status
 
-`complete / Integrator accepted`
+`complete / accepted`
 
 Reviewer plan gate passed, the user approved Developer planning-first, the Developer
 docs-only planning-first pass completed, Reviewer implementation-readiness passed, and
 the user approved the original bounded implementation. That authorization was suspended
 when B4 proved a persisted prior automatic-default/authority attestation was required.
-TASK_363D is now complete/accepted at
+TASK_363D completed/was accepted at
 `754b79bc7370e4cecd4fc01dd576e6e7e67080fc`; the dependency-release/readiness re-gate
-passed, and the user renewed explicit product implementation approval. TASK_363C is
-authorized only for the bounded replay/fix package below.
+passed, the user renewed approval, and TASK_363C subsequently passed Developer,
+Reviewer, QA, and Integrator gates. The accepted local commit is
+`2dac189d9b45eb68382af216e8144c6140869a71`; remote push was not performed.
 
-B3's two obsolete fallback-test corrections exist only as unaccepted worktree hunks.
-B4's current candidate test is still a disconnected source-context/pure-rebase example
-and must be replaced after authorization with a production persistence test based on
-the accepted TASK_363D attestation flow.
+The accepted package includes B1/B2, the exact B3 legacy-test corrections, and the B4
+production attestation persistence regression. Earlier unaccepted/replay descriptions
+below are historical implementation-contract context and are superseded by this
+closeout.
 
 ## Lane
 
@@ -25,13 +26,13 @@ the accepted TASK_363D attestation flow.
 ## Current Phase / Role / Why Allowed
 
 - Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
-- Current board active lane: TASK_365C, pending user acceptance. TASK_365A/B and TASK_364B retain their
-  separate parallel gate states. TASK_363C is a separately isolated backend lane and
-  must not absorb any of their files or residuals.
+- Current board active task: none is selected by TASK_363C closeout. TASK_364B and
+  TASK_365A/B retain their independent states; this reconciliation does not choose
+  among them or activate another product lane.
 - TASK_363D is complete/accepted at
   `754b79bc7370e4cecd4fc01dd576e6e7e67080fc`. Reviewer passed the dependency-release/
-  readiness re-gate and the user renewed explicit approval, so this governance-only
-  pass authorizes the bounded TASK_363C replay/fix package without changing products.
+  readiness re-gate and the user renewed explicit approval. The bounded package is now
+  accepted at `2dac189d9b45eb68382af216e8144c6140869a71`; this pass records closeout only.
 - Upstream accepted facts include TASK_361E confirmed Measurement Plan consumers,
   TASK_361L V2 pricing-draft currentness, TASK_362A/r6 Fee rules, and TASK_363B at
   `1961d2760640c64424bd4b7b51fc3447b2ace18e`.
@@ -91,9 +92,9 @@ another target, or another Group from supplying CR Units.
 - TASK_364B project Point Profile CR coverage explicitly excludes Measurement Plan
   target authority and Fee consumption. It is not a CR readings source.
 
-## Authorized May Touch
+## Accepted Package Boundary
 
-Developer may replay or modify only this exact package:
+The accepted commit contains only this reviewed package:
 
 - a new bounded CR authority helper under `backend/application/`, preferably
   `backend/application/confirmed_matrix_fee_cr_specified_current.py`
@@ -211,18 +212,17 @@ dependency-release/readiness re-gate -> renewed user approval -> Developer fix
 continuation.
 
 TASK_363D is accepted, the TASK_363C Reviewer dependency-release/readiness re-gate
-passed, and renewed user approval is recorded. Developer may proceed only within the
-authorized hunk-level replay/fix package.
+passed, renewed user approval was recorded, and the bounded package completed all
+remaining gates before Integrator acceptance.
 Every TASK_364B/TASK_365A/TASK_365B and external worktree hunk remains excluded.
 
 ## Definition Of Ready
 
-Satisfied for bounded Developer replay/fix. TASK_363D is accepted; Reviewer readiness
-passed; renewed user approval is recorded. B3 was previously validated at `77 passed`
-but its exact two test hunks remain unaccepted; the CR helper/routing/default-fill and
-three focused modules also remain unaccepted. B4 must be replayed against TASK_363D's
-accepted production attestation flow.
+Complete/accepted. Integrator recorded focused CR authority/default-fill `96 passed`,
+profile-consumer `9 passed`, TASK_363D attestation/rebase `27 passed`, successful
+compile/package-isolation checks, local commit
+`2dac189d9b45eb68382af216e8144c6140869a71`, and no remote push.
 
 ## Next Legal Role
 
-Developer implementation replay/fix pass.
+User/Orchestrator route decision only. No new product lane is activated automatically.
