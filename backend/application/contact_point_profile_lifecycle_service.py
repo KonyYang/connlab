@@ -69,8 +69,19 @@ class ContactPointProfileLifecycleService:
             self._repository.flush()
             return _result(revision, list(canonicalize_categories(saved["categories"])))
 
-    def confirm_direct(self, project_id: str, expected_revision_id: str | None, expected_fingerprint: str | None, rows, actor: str) -> dict[str, object]:
-        categories = _direct_categories(rows)
+    def confirm_direct(
+        self,
+        project_id: str,
+        expected_revision_id: str | None,
+        expected_fingerprint: str | None,
+        rows,
+        actor: str,
+        *,
+        cr_coverage_mode: str = "follow_llcr",
+    ) -> dict[str, object]:
+        direct_categories = _direct_categories(rows)
+        _validate_cr_coverage(cr_coverage_mode, direct_categories)
+        categories = [_without_cr_selection(category) for category in direct_categories]
         if not categories or points_per_sample(categories) <= 0:
             raise ContactPointProfileLifecycleError("Confirm Point Profile requires an included positive total.")
         with self._repository.transaction():
@@ -108,16 +119,33 @@ class ContactPointProfileLifecycleService:
             )
             self._repository.add(revision)
             self._repository.flush()
+            selected_category_ids = [
+                str(issued_category["category_id"])
+                for source_category, issued_category in zip(direct_categories, issued, strict=True)
+                if bool(source_category["cr_selected"])
+            ]
             self._repository.replace_categories(revision.contact_point_profile_revision_id, issued, self._ids)
+            self._repository.flush()
+            self._repository.replace_cr_category_selections(
+                revision.contact_point_profile_revision_id,
+                selected_category_ids if cr_coverage_mode == "custom" else (),
+                self._ids,
+            )
             revision.revision_fingerprint = point_profile_fingerprint(
                 root.contact_point_profile_root_id, revision.contact_point_profile_revision_id, issued,
-                version="point-profile:v2",
+                version="point-profile:v3",
+                cr_coverage_mode=cr_coverage_mode,
+                cr_selected_category_ids=selected_category_ids,
             )
             root.active_confirmed_revision_id = revision.contact_point_profile_revision_id
             root.editable_revision_id = None
             root.updated_at = now
             self._repository.flush()
-            return _result(revision, issued)
+            return _result(
+                revision,
+                issued,
+                cr_coverage=_cr_coverage(cr_coverage_mode, issued, selected_category_ids),
+            )
 
     def _save_draft(
         self, project_id: str, expected_revision_id: str | None, expected_fingerprint: str | None,
@@ -218,13 +246,24 @@ class ContactPointProfileLifecycleService:
         return issued
 
 
-def _result(revision, categories: list[dict[str, object]]) -> dict[str, object]:
-    return {
+def _result(
+    revision,
+    categories: list[dict[str, object]],
+    *,
+    cr_coverage: dict[str, object] | None = None,
+) -> dict[str, object]:
+    result = {
         "revision_id": revision.contact_point_profile_revision_id,
+        "revision_sequence": revision.revision_sequence,
         "fingerprint": revision.revision_fingerprint,
+        "created_at": revision.created_at,
+        "confirmed_at": revision.confirmed_at,
         "categories": categories,
         "points_per_sample": points_per_sample(categories),
     }
+    if cr_coverage is not None:
+        result["cr_coverage"] = cr_coverage
+    return result
 
 
 def _direct_categories(rows) -> list[dict[str, object]]:
@@ -259,10 +298,54 @@ def _direct_categories(rows) -> list[dict[str, object]]:
             if not isinstance(category_id, str) or category_id in category_ids:
                 raise ContactPointProfileLifecycleError("Point Profile category ids must be unique.")
             category_ids.add(category_id)
+        cr_selected = row.get("cr_selected", False)
+        if not isinstance(cr_selected, bool):
+            raise ContactPointProfileLifecycleError("CR category selection must be true or false.")
         categories.append({
             "category_id": category_id, "category_ordinal": ordinal,
             "label": prefix, "normalized_label_key": key, "count_per_sample": parsed.count,
             "record_prefix": prefix, "normalized_prefix_key": key, "included": True,
             "point_expression": parsed.canonical,
+            "cr_selected": cr_selected,
         })
     return categories
+
+
+def _validate_cr_coverage(mode: str, categories: list[dict[str, object]]) -> None:
+    if mode not in {"follow_llcr", "custom"}:
+        raise ContactPointProfileLifecycleError("CR coverage mode is invalid.")
+    selected = [category for category in categories if bool(category["cr_selected"])]
+    if mode == "follow_llcr" and selected:
+        raise ContactPointProfileLifecycleError(
+            "CR category selections must be empty while CR follows LLCR."
+        )
+    if mode == "custom" and not selected:
+        raise ContactPointProfileLifecycleError(
+            "Custom CR coverage requires at least one category."
+        )
+
+
+def _without_cr_selection(category: dict[str, object]) -> dict[str, object]:
+    return {key: value for key, value in category.items() if key != "cr_selected"}
+
+
+def _cr_coverage(
+    mode: str,
+    categories: list[dict[str, object]],
+    custom_category_ids: list[str],
+) -> dict[str, object]:
+    selected = (
+        [str(category["category_id"]) for category in categories if bool(category["included"])]
+        if mode == "follow_llcr"
+        else custom_category_ids
+    )
+    selected_set = set(selected)
+    return {
+        "mode": mode,
+        "selected_category_ids": selected,
+        "points_per_sample": sum(
+            int(category["count_per_sample"])
+            for category in categories
+            if str(category["category_id"]) in selected_set and bool(category["included"])
+        ),
+    }

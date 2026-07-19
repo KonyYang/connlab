@@ -82,6 +82,8 @@ def point_profile_fingerprint(
     categories: Iterable[Mapping[str, object]],
     *,
     version: str = "point-profile:v1",
+    cr_coverage_mode: str | None = None,
+    cr_selected_category_ids: Iterable[str] = (),
 ) -> str:
     """Hash the ordered persisted category snapshot for stale-write detection."""
     payload = {
@@ -90,6 +92,11 @@ def point_profile_fingerprint(
         "revision_id": revision_id,
         "categories": [dict(item) for item in categories],
     }
+    if cr_coverage_mode is not None:
+        payload["cr_coverage"] = {
+            "mode": cr_coverage_mode,
+            "selected_category_ids": list(cr_selected_category_ids),
+        }
     encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 

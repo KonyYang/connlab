@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -48,13 +50,21 @@ class PointProfileDirectCategoryInput(BaseModel):
     category_id: str | None = Field(default=None, max_length=64)
     prefix: str = Field(min_length=1, max_length=64)
     point_expression: str = Field(min_length=1, max_length=1024)
+    cr_selected: bool = False
 
 
 class PointProfileDirectConfirmRequest(BaseModel):
     actor: str = Field(min_length=1, max_length=255)
     expected_confirmed_revision_id: str | None = Field(default=None, max_length=64)
     expected_confirmed_revision_fingerprint: str | None = Field(default=None, max_length=128)
+    cr_coverage_mode: Literal["follow_llcr", "custom"] = "follow_llcr"
     categories: list[PointProfileDirectCategoryInput] = Field(default_factory=list, max_length=256)
+
+
+class PointProfileCrCoverageResponse(BaseModel):
+    mode: Literal["follow_llcr", "custom"]
+    selected_category_ids: list[str] = Field(default_factory=list)
+    points_per_sample: int
 
 
 class PointProfileRevisionResponse(BaseModel):
@@ -66,6 +76,7 @@ class PointProfileRevisionResponse(BaseModel):
     confirmed_at: str | None = None
     categories: list[PointProfileCategoryResponse] = Field(default_factory=list)
     points_per_sample: int
+    cr_coverage: PointProfileCrCoverageResponse
 
 
 class PointProfileWorkspaceResponse(BaseModel):
@@ -108,6 +119,7 @@ def confirm(project_id: str, request: PointProfileDirectConfirmRequest, service=
         result = service.confirm_direct(
             project_id, request.expected_confirmed_revision_id, request.expected_confirmed_revision_fingerprint,
             [item.model_dump() for item in request.categories], request.actor,
+            cr_coverage_mode=request.cr_coverage_mode,
         )
     except (ContactPointProfileLifecycleError, ValueError) as exc:
         _raise_command_error(exc)
@@ -120,6 +132,7 @@ def _command_response(result: dict[str, object], state: str) -> dict[str, object
         "state": state, "fingerprint": result["fingerprint"], "created_at": result.get("created_at", ""),
         "confirmed_at": result.get("confirmed_at"), "categories": result["categories"],
         "points_per_sample": result["points_per_sample"],
+        "cr_coverage": result["cr_coverage"],
     }
 
 

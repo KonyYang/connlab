@@ -97,6 +97,11 @@ def test_direct_confirm_canonicalizes_expressions_and_supersedes_prior_confirmed
         first = lifecycle.confirm_direct("P1", None, None, _direct_rows(), "operator")
         assert [row["point_expression"] for row in first["categories"]] == ["1-4", "1-5", "1-24"]
         assert first["points_per_sample"] == 33
+        assert first["cr_coverage"] == {
+            "mode": "follow_llcr",
+            "selected_category_ids": ["ppc-1", "ppc-2", "ppc-3"],
+            "points_per_sample": 33,
+        }
         second = lifecycle.confirm_direct(
             "P1", first["revision_id"], first["fingerprint"],
             [{"category_id": first["categories"][0]["category_id"], "prefix": "HP", "point_expression": "1-3,5"}], "operator",
@@ -159,6 +164,200 @@ def test_direct_confirm_allows_256_categories_and_rejects_257_without_writes(tmp
         engine.dispose()
 
 
+def test_direct_confirm_persists_dynamic_custom_cr_categories_atomically(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        lifecycle = ContactPointProfileLifecycleService(repository, clock=lambda: "2026-07-18T00:00:00Z", id_factory=_ids())
+        read = ContactPointProfileReadService(repository)
+
+        confirmed = lifecycle.confirm_direct(
+            "P1", None, None,
+            [
+                {"category_id": None, "prefix": "AUX", "point_expression": "1-4", "cr_selected": True},
+                {"category_id": None, "prefix": "SIG", "point_expression": "1-5", "cr_selected": False},
+                {"category_id": None, "prefix": "PWR", "point_expression": "1-20", "cr_selected": True},
+            ],
+            "operator",
+            cr_coverage_mode="custom",
+        )
+
+        assert confirmed["cr_coverage"] == {
+            "mode": "custom",
+            "selected_category_ids": ["ppc-1", "ppc-3"],
+            "points_per_sample": 24,
+        }
+        assert read.get_summary("P1")["confirmed_revision"]["cr_coverage"] == confirmed["cr_coverage"]
+        assert repository.cr_category_ids(confirmed["revision_id"]) == ["ppc-1", "ppc-3"]
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_direct_confirm_rejects_empty_custom_cr_without_writes(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        lifecycle = ContactPointProfileLifecycleService(repository, clock=lambda: "2026-07-18T00:00:00Z", id_factory=_ids())
+
+        with pytest.raises(ContactPointProfileLifecycleError, match="at least one"):
+            lifecycle.confirm_direct(
+                "P1", None, None,
+                [{"category_id": None, "prefix": "AUX", "point_expression": "1-4", "cr_selected": False}],
+                "operator",
+                cr_coverage_mode="custom",
+            )
+
+        assert repository.get_root("P1") is None
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_custom_all_retains_identity_excludes_later_row_and_can_return_to_follow(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        identifiers = iter(range(1, 100))
+        lifecycle = ContactPointProfileLifecycleService(
+            repository,
+            clock=lambda: "2026-07-18T00:00:00Z",
+            id_factory=lambda: f"id-{next(identifiers)}",
+        )
+        read = ContactPointProfileReadService(repository)
+
+        custom_all = lifecycle.confirm_direct(
+            "P1", None, None,
+            [dict(row, cr_selected=True) for row in _direct_rows()],
+            "operator",
+            cr_coverage_mode="custom",
+        )
+        retained_ids = [str(row["category_id"]) for row in custom_all["categories"]]
+        assert custom_all["cr_coverage"] == {
+            "mode": "custom",
+            "selected_category_ids": retained_ids,
+            "points_per_sample": 33,
+        }
+
+        renamed_and_added = [
+            {
+                "category_id": retained_ids[0],
+                "prefix": "AUX",
+                "point_expression": "1-4",
+                "cr_selected": True,
+            },
+            *[
+                {
+                    "category_id": retained_ids[index],
+                    "prefix": prefix,
+                    "point_expression": expression,
+                    "cr_selected": True,
+                }
+                for index, (prefix, expression) in enumerate(
+                    (("LP", "1-5"), ("SIG", "1-24")), start=1
+                )
+            ],
+            {
+                "category_id": None,
+                "prefix": "NEW",
+                "point_expression": "1-2",
+                "cr_selected": False,
+            },
+        ]
+        custom_with_new_row = lifecycle.confirm_direct(
+            "P1", custom_all["revision_id"], custom_all["fingerprint"],
+            renamed_and_added, "operator", cr_coverage_mode="custom",
+        )
+        assert custom_with_new_row["cr_coverage"] == {
+            "mode": "custom",
+            "selected_category_ids": retained_ids,
+            "points_per_sample": 33,
+        }
+        assert custom_with_new_row["categories"][0]["record_prefix"] == "AUX"
+        assert custom_with_new_row["categories"][3]["category_id"] not in retained_ids
+
+        follow_rows = [
+            {
+                "category_id": row["category_id"],
+                "prefix": row["record_prefix"],
+                "point_expression": row["point_expression"],
+                "cr_selected": False,
+            }
+            for row in custom_with_new_row["categories"]
+        ]
+        follow = lifecycle.confirm_direct(
+            "P1", custom_with_new_row["revision_id"], custom_with_new_row["fingerprint"],
+            follow_rows, "operator", cr_coverage_mode="follow_llcr",
+        )
+        expected_all_ids = [str(row["category_id"]) for row in follow["categories"]]
+        assert follow["cr_coverage"] == {
+            "mode": "follow_llcr",
+            "selected_category_ids": expected_all_ids,
+            "points_per_sample": 35,
+        }
+        assert repository.cr_category_ids(follow["revision_id"]) == []
+        assert read.get_workspace("P1")["confirmed_revision"]["cr_coverage"] == follow["cr_coverage"]
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_follow_with_selection_and_stale_custom_fail_without_partial_write(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        identifiers = iter(range(1, 100))
+        lifecycle = ContactPointProfileLifecycleService(
+            repository,
+            clock=lambda: "2026-07-18T00:00:00Z",
+            id_factory=lambda: f"id-{next(identifiers)}",
+        )
+        confirmed = lifecycle.confirm_direct("P1", None, None, _direct_rows(), "operator")
+        retained_rows = [
+            {
+                "category_id": row["category_id"],
+                "prefix": row["record_prefix"],
+                "point_expression": row["point_expression"],
+                "cr_selected": index == 0,
+            }
+            for index, row in enumerate(confirmed["categories"])
+        ]
+        before = _authority_counts(session)
+
+        with pytest.raises(ContactPointProfileLifecycleError, match="must be empty"):
+            lifecycle.confirm_direct(
+                "P1", confirmed["revision_id"], confirmed["fingerprint"],
+                retained_rows, "operator", cr_coverage_mode="follow_llcr",
+            )
+        with pytest.raises(ContactPointProfileLifecycleError, match="stale"):
+            lifecycle.confirm_direct(
+                "P1", confirmed["revision_id"], "stale-fingerprint",
+                retained_rows, "operator", cr_coverage_mode="custom",
+            )
+
+        assert _authority_counts(session) == before
+        assert repository.active_revision("P1").contact_point_profile_revision_id == confirmed["revision_id"]
+    finally:
+        session.close()
+        engine.dispose()
+
+
 def _rows(signal_count: int = 24) -> list[dict[str, object]]:
     return [
         {"category_id": None, "label": "High Power", "count_per_sample": 4, "record_prefix": "HP", "included": True},
@@ -184,13 +383,14 @@ def _ids():
     return lambda: next(values)
 
 
-def _authority_counts(session: Session) -> tuple[int, int, int]:
+def _authority_counts(session: Session) -> tuple[int, int, int, int]:
     return tuple(
         session.execute(text(f"SELECT count(*) FROM {table}")).scalar_one()
         for table in (
             "contact_point_profile_roots",
             "contact_point_profile_revisions",
             "contact_point_profile_categories",
+            "contact_point_profile_cr_category_selections",
         )
     )
 

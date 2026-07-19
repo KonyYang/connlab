@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.infrastructure.storage.models_contact_point_profile import (
     ContactPointProfileCategoryModel,
+    ContactPointProfileCrCategorySelectionModel,
     ContactPointProfileRevisionModel,
     ContactPointProfileRootModel,
 )
@@ -47,6 +48,29 @@ class ContactPointProfileAuthorityRepository:
             .where(ContactPointProfileCategoryModel.contact_point_profile_revision_id == revision_id)
             .order_by(ContactPointProfileCategoryModel.category_ordinal)
         ).all())
+
+    def cr_category_ids(self, revision_id: str) -> list[str]:
+        """Return custom CR category ids in the owning category order."""
+        statement = (
+            select(ContactPointProfileCrCategorySelectionModel.category_id)
+            .join(
+                ContactPointProfileCategoryModel,
+                (
+                    ContactPointProfileCategoryModel.contact_point_profile_revision_id
+                    == ContactPointProfileCrCategorySelectionModel.contact_point_profile_revision_id
+                )
+                & (
+                    ContactPointProfileCategoryModel.category_id
+                    == ContactPointProfileCrCategorySelectionModel.category_id
+                ),
+            )
+            .where(
+                ContactPointProfileCrCategorySelectionModel.contact_point_profile_revision_id
+                == revision_id
+            )
+            .order_by(ContactPointProfileCategoryModel.category_ordinal)
+        )
+        return list(self._session.scalars(statement).all())
 
     def highest_category_number(self, root_id: str) -> int:
         statement = (
@@ -91,6 +115,27 @@ class ContactPointProfileAuthorityRepository:
                 normalized_prefix_key=str(category["normalized_prefix_key"]),
                 included=bool(category["included"]),
                 point_expression=category.get("point_expression"),
+            ))
+
+    def replace_cr_category_selections(
+        self, revision_id: str, category_ids: Sequence[str], id_factory,
+    ) -> None:
+        """Replace the ordered custom CR selection snapshot for one revision."""
+        rows = self._session.scalars(
+            select(ContactPointProfileCrCategorySelectionModel).where(
+                ContactPointProfileCrCategorySelectionModel.contact_point_profile_revision_id
+                == revision_id
+            )
+        ).all()
+        for row in rows:
+            self._session.delete(row)
+        self._session.flush()
+        for ordinal, category_id in enumerate(category_ids):
+            self._session.add(ContactPointProfileCrCategorySelectionModel(
+                contact_point_profile_cr_selection_id=f"cppcr-{id_factory()}",
+                contact_point_profile_revision_id=revision_id,
+                category_id=category_id,
+                selection_ordinal=ordinal,
             ))
 
     def add(self, *rows: object) -> None:

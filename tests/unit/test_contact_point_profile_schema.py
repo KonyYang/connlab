@@ -33,6 +33,96 @@ def test_point_profile_schema_registers_three_additive_tables(tmp_path: Path) ->
         engine.dispose()
 
 
+def test_point_profile_schema_registers_cr_category_selection_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from backend.infrastructure.storage import database
+
+    engine = create_database_engine(_settings(tmp_path))
+    bootstrap = database.bootstrap_contact_point_profile_schema
+    bootstrap_calls: list[bool] = []
+
+    def observed_bootstrap(target_engine) -> None:
+        bootstrap_calls.append(
+            "contact_point_profile_cr_category_selections" not in _table_names(target_engine)
+        )
+        bootstrap(target_engine)
+
+    monkeypatch.setattr(database, "bootstrap_contact_point_profile_schema", observed_bootstrap)
+    try:
+        init_db(engine)
+        inspector = inspect(engine)
+        assert bootstrap_calls == [True]
+        assert "contact_point_profile_cr_category_selections" in inspector.get_table_names()
+        assert {
+            ("contact_point_profile_revision_id", "category_id"),
+            ("contact_point_profile_revision_id", "selection_ordinal"),
+        } <= {
+            tuple(item["column_names"])
+            for item in inspector.get_unique_constraints(
+                "contact_point_profile_cr_category_selections"
+            )
+        }
+        assert {
+            tuple(item["constrained_columns"])
+            for item in inspector.get_foreign_keys(
+                "contact_point_profile_cr_category_selections"
+            )
+        } == {("contact_point_profile_revision_id", "category_id")}
+    finally:
+        engine.dispose()
+
+
+def test_exact_three_table_v2_authority_adds_only_cr_selection_table(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    try:
+        init_db(engine)
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DROP TABLE contact_point_profile_cr_category_selections")
+            before = {
+                table: connection.exec_driver_sql(f"SELECT count(*) FROM {table}").scalar_one()
+                for table in (
+                    "contact_point_profile_roots",
+                    "contact_point_profile_revisions",
+                    "contact_point_profile_categories",
+                )
+            }
+
+        init_db(engine)
+
+        assert "contact_point_profile_cr_category_selections" in _table_names(engine)
+        with engine.connect() as connection:
+            after = {
+                table: connection.exec_driver_sql(f"SELECT count(*) FROM {table}").scalar_one()
+                for table in before
+            }
+        assert after == before
+    finally:
+        engine.dispose()
+
+
+def test_malformed_cr_selection_table_fails_closed(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    try:
+        init_db(engine)
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DROP TABLE contact_point_profile_cr_category_selections")
+            connection.exec_driver_sql(
+                "CREATE TABLE contact_point_profile_cr_category_selections ("
+                "contact_point_profile_cr_selection_id VARCHAR(64) PRIMARY KEY, "
+                "contact_point_profile_revision_id VARCHAR(64) NOT NULL, "
+                "category_id VARCHAR(64) NOT NULL)"
+            )
+        before = _table_names(engine)
+
+        with pytest.raises(RuntimeError, match="authority_corrupt"):
+            init_db(engine)
+
+        assert _table_names(engine) == before
+    finally:
+        engine.dispose()
+
+
 def test_existing_malformed_point_profile_table_fails_closed_before_create_all(tmp_path: Path) -> None:
     engine = create_database_engine(_settings(tmp_path))
     try:
@@ -261,13 +351,23 @@ def _non_profile_engine(tmp_path: Path, **engine_options):
     from backend.infrastructure.storage import models, models_confirmed_matrix_authority, models_contact_measurement_plan_authority
     from backend.infrastructure.storage import models_matrix_source, models_project_matrix_draft
     engine = create_database_engine(_settings(tmp_path), **engine_options)
-    profile = {"contact_point_profile_roots", "contact_point_profile_revisions", "contact_point_profile_categories"}
+    profile = {
+        "contact_point_profile_roots",
+        "contact_point_profile_revisions",
+        "contact_point_profile_categories",
+        "contact_point_profile_cr_category_selections",
+    }
     Base.metadata.create_all(engine, tables=[table for table in Base.metadata.tables.values() if table.name not in profile])
     return engine
 
 
 def _assert_profile_tables(engine) -> None:
-    assert {"contact_point_profile_roots", "contact_point_profile_revisions", "contact_point_profile_categories"} <= _table_names(engine)
+    assert {
+        "contact_point_profile_roots",
+        "contact_point_profile_revisions",
+        "contact_point_profile_categories",
+        "contact_point_profile_cr_category_selections",
+    } <= _table_names(engine)
 
 
 def _table_names(engine) -> set[str]:

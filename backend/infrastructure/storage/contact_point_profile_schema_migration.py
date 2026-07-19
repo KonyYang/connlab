@@ -25,18 +25,32 @@ _TABLE_COLUMNS = {
         "normalized_prefix_key": ("VARCHAR(64)", 1, 0), "included": ("BOOLEAN", 1, 0),
         "point_expression": ("TEXT", 0, 0),
     },
+    "contact_point_profile_cr_category_selections": {
+        "contact_point_profile_cr_selection_id": ("VARCHAR(64)", 1, 1),
+        "contact_point_profile_revision_id": ("VARCHAR(64)", 1, 0),
+        "category_id": ("VARCHAR(64)", 1, 0),
+        "selection_ordinal": ("INTEGER", 1, 0),
+    },
 }
 
 _FOREIGN_KEYS = {
     "contact_point_profile_roots": {("project_id", "projects", "project_id"), ("active_confirmed_revision_id", "contact_point_profile_revisions", "contact_point_profile_revision_id"), ("editable_revision_id", "contact_point_profile_revisions", "contact_point_profile_revision_id")},
     "contact_point_profile_revisions": {("contact_point_profile_root_id", "contact_point_profile_roots", "contact_point_profile_root_id"), ("parent_revision_id", "contact_point_profile_revisions", "contact_point_profile_revision_id")},
     "contact_point_profile_categories": {("contact_point_profile_revision_id", "contact_point_profile_revisions", "contact_point_profile_revision_id")},
+    "contact_point_profile_cr_category_selections": {
+        ("contact_point_profile_revision_id", "contact_point_profile_categories", "contact_point_profile_revision_id"),
+        ("category_id", "contact_point_profile_categories", "category_id"),
+    },
 }
 
 _UNIQUE_COLUMNS = {
     "contact_point_profile_roots": {("project_id",)},
     "contact_point_profile_revisions": {("contact_point_profile_root_id", "revision_sequence"), ("bootstrap_provenance",)},
     "contact_point_profile_categories": {("contact_point_profile_revision_id", "category_ordinal"), ("contact_point_profile_revision_id", "category_id")},
+    "contact_point_profile_cr_category_selections": {
+        ("contact_point_profile_revision_id", "category_id"),
+        ("contact_point_profile_revision_id", "selection_ordinal"),
+    },
 }
 
 _PARTIAL_INDEXES = {
@@ -53,6 +67,9 @@ _PARTIAL_INDEXES = {
 _CHECKS = {
     "contact_point_profile_revisions": (("ck_contact_point_profile_revision_positive", "revision_sequence > 0"), ("ck_contact_point_profile_revision_state", "state IN ('draft','confirmed','superseded')")),
     "contact_point_profile_categories": (("ck_contact_point_profile_category_numbers", "category_ordinal >= 0 AND count_per_sample >= 0"), ("ck_contact_point_profile_included_count", "included = 0 OR count_per_sample > 0"), ("ck_contact_point_profile_point_expression_nonblank", "point_expression IS NULL OR length(trim(point_expression)) > 0")),
+    "contact_point_profile_cr_category_selections": (
+        ("ck_contact_point_profile_cr_selection_ordinal", "selection_ordinal >= 0"),
+    ),
 }
 
 
@@ -78,11 +95,14 @@ def bootstrap_contact_point_profile_schema(engine) -> None:
     if engine.dialect.name != "sqlite":
         return
     from backend.infrastructure.storage.models_contact_point_profile import (
-        ContactPointProfileCategoryModel, ContactPointProfileRevisionModel, ContactPointProfileRootModel,
+        ContactPointProfileCategoryModel,
+        ContactPointProfileCrCategorySelectionModel,
+        ContactPointProfileRevisionModel,
+        ContactPointProfileRootModel,
     )
     tables = [
         ContactPointProfileRootModel.__table__, ContactPointProfileRevisionModel.__table__,
-        ContactPointProfileCategoryModel.__table__,
+        ContactPointProfileCategoryModel.__table__, ContactPointProfileCrCategorySelectionModel.__table__,
     ]
     with engine.connect() as connection:
         names = {row[0] for row in connection.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table'").all()}

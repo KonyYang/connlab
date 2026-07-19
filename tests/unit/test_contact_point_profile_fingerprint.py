@@ -39,3 +39,25 @@ def test_backend_issued_category_id_controls_unparseable_prefix_fallback() -> No
     ])[0]
 
     assert category["record_prefix"] == "C24"
+
+
+def test_v3_fingerprint_changes_with_cr_coverage_mode_and_selection() -> None:
+    categories = canonicalize_categories([
+        {"category_id": "ppc-1", "label": "Alpha", "count_per_sample": 4, "record_prefix": "A", "included": True},
+        {"category_id": "ppc-2", "label": "Beta", "count_per_sample": 5, "record_prefix": "B", "included": True},
+    ])
+
+    following = point_profile_fingerprint(
+        "root-1", "revision-1", categories,
+        version="point-profile:v3",
+        cr_coverage_mode="follow_llcr",
+        cr_selected_category_ids=(),
+    )
+    custom = point_profile_fingerprint(
+        "root-1", "revision-1", categories,
+        version="point-profile:v3",
+        cr_coverage_mode="custom",
+        cr_selected_category_ids=("ppc-2",),
+    )
+
+    assert following != custom

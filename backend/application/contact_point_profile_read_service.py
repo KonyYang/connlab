@@ -49,6 +49,14 @@ class ContactPointProfileReadService:
 
 def _revision_payload(revision, repository) -> dict[str, object]:
     categories = [_category_payload(row) for row in repository.categories(revision.contact_point_profile_revision_id)]
+    custom_category_ids = repository.cr_category_ids(revision.contact_point_profile_revision_id)
+    mode = "custom" if custom_category_ids else "follow_llcr"
+    effective_category_ids = (
+        custom_category_ids
+        if mode == "custom"
+        else [str(category["category_id"]) for category in categories if bool(category["included"])]
+    )
+    selected = set(effective_category_ids)
     return {
         "revision_id": revision.contact_point_profile_revision_id,
         "revision_sequence": revision.revision_sequence,
@@ -58,6 +66,15 @@ def _revision_payload(revision, repository) -> dict[str, object]:
         "confirmed_at": revision.confirmed_at,
         "categories": categories,
         "points_per_sample": points_per_sample(categories),
+        "cr_coverage": {
+            "mode": mode,
+            "selected_category_ids": effective_category_ids,
+            "points_per_sample": sum(
+                int(category["count_per_sample"])
+                for category in categories
+                if str(category["category_id"]) in selected and bool(category["included"])
+            ),
+        },
     }
 
 

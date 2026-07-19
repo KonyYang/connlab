@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.infrastructure.storage.database import Base
@@ -78,3 +89,38 @@ class ContactPointProfileCategoryModel(Base):
     normalized_prefix_key: Mapped[str] = mapped_column(String(64), nullable=False)
     included: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     point_expression: Mapped[str | None] = mapped_column(Text)
+
+
+class ContactPointProfileCrCategorySelectionModel(Base):
+    """Ordered whole-category CR coverage within one immutable profile revision."""
+
+    __tablename__ = "contact_point_profile_cr_category_selections"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["contact_point_profile_revision_id", "category_id"],
+            [
+                "contact_point_profile_categories.contact_point_profile_revision_id",
+                "contact_point_profile_categories.category_id",
+            ],
+            name="fk_contact_point_profile_cr_selection_category",
+        ),
+        UniqueConstraint(
+            "contact_point_profile_revision_id",
+            "category_id",
+            name="uq_contact_point_profile_cr_selection_category",
+        ),
+        UniqueConstraint(
+            "contact_point_profile_revision_id",
+            "selection_ordinal",
+            name="uq_contact_point_profile_cr_selection_order",
+        ),
+        CheckConstraint(
+            "selection_ordinal >= 0",
+            name="ck_contact_point_profile_cr_selection_ordinal",
+        ),
+    )
+
+    contact_point_profile_cr_selection_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    contact_point_profile_revision_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    category_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    selection_ordinal: Mapped[int] = mapped_column(Integer, nullable=False)

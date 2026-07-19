@@ -45,18 +45,25 @@ def test_point_profile_draft_write_returns_typed_disabled_no_write() -> None:
 
 
 def test_point_profile_direct_confirm_uses_confirmed_fingerprint_boundary() -> None:
-    app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: _DirectLifecycle()
+    lifecycle = _DirectLifecycle()
+    app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: lifecycle
     try:
         with TestClient(app) as client:
             response = client.post("/api/projects/P1/contact-point-profile/confirm", json={
                 "actor": "operator", "expected_confirmed_revision_id": None,
                 "expected_confirmed_revision_fingerprint": None,
-                "categories": [{"category_id": None, "prefix": "HP", "point_expression": "1-4"}],
+                "cr_coverage_mode": "custom",
+                "categories": [
+                    {"category_id": None, "prefix": "HP", "point_expression": "1-4", "cr_selected": True}
+                ],
             })
     finally:
         app.dependency_overrides.clear()
     assert response.status_code == 200
     assert response.json()["state"] == "confirmed"
+    assert response.json()["cr_coverage"]["mode"] == "custom"
+    assert lifecycle.cr_coverage_mode == "custom"
+    assert lifecycle.categories[0]["cr_selected"] is True
 
 
 def test_point_profile_direct_confirm_maps_duplicate_retained_identity_to_typed_validation() -> None:
@@ -104,12 +111,25 @@ class _StaleLifecycle:
 
 
 class _DirectLifecycle:
-    def confirm_direct(self, _project_id, _revision_id, _fingerprint, categories, _actor):
-        return {"revision_id": "revision-1", "fingerprint": "fingerprint", "categories": [{"category_id": "ppc-1", "category_ordinal": 0, "label": "HP", "count_per_sample": 4, "record_prefix": "HP", "normalized_label_key": "hp", "normalized_prefix_key": "hp", "included": True, "point_expression": "1-4"}], "points_per_sample": 4}
+    def __init__(self) -> None:
+        self.cr_coverage_mode = ""
+        self.categories = []
+
+    def confirm_direct(
+        self, _project_id, _revision_id, _fingerprint, categories, _actor, *, cr_coverage_mode,
+    ):
+        self.cr_coverage_mode = cr_coverage_mode
+        self.categories = categories
+        return {
+            "revision_id": "revision-1", "fingerprint": "fingerprint",
+            "categories": [{"category_id": "ppc-1", "category_ordinal": 0, "label": "HP", "count_per_sample": 4, "record_prefix": "HP", "normalized_label_key": "hp", "normalized_prefix_key": "hp", "included": True, "point_expression": "1-4"}],
+            "points_per_sample": 4,
+            "cr_coverage": {"mode": "custom", "selected_category_ids": ["ppc-1"], "points_per_sample": 4},
+        }
 
 
 class _DuplicateIdentityLifecycle:
-    def confirm_direct(self, *_args):
+    def confirm_direct(self, *_args, **_kwargs):
         raise ContactPointProfileLifecycleError("Point Profile category ids must be unique.")
 
 
@@ -124,4 +144,9 @@ def _revision(state: str, sequence: int):
             {"category_id": "ppc-3", "category_ordinal": 2, "label": "Signal", "count_per_sample": 24, "record_prefix": "SIG", "included": True},
         ],
         "points_per_sample": 33,
+        "cr_coverage": {
+            "mode": "follow_llcr",
+            "selected_category_ids": ["ppc-1", "ppc-2", "ppc-3"],
+            "points_per_sample": 33,
+        },
     }

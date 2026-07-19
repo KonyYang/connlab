@@ -63,6 +63,7 @@ def init_db(engine: Engine) -> None:
 
     profile_tables = {
         "contact_point_profile_roots", "contact_point_profile_revisions", "contact_point_profile_categories",
+        "contact_point_profile_cr_category_selections",
     }
     non_profile_tables = [table for table in Base.metadata.tables.values() if table.name not in profile_tables]
     Base.metadata.create_all(bind=engine, tables=non_profile_tables)
