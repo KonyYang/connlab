@@ -50,6 +50,18 @@ METHOD_TEMPLATE_LIBRARY: tuple[MethodTemplateEntry, ...] = (
         provenance="approved-family-fallback",
     ),
     MethodTemplateEntry(
+        family="thermal_shock",
+        aliases=("thermal shock",),
+        fallback_requirement="No damage",
+        provenance="approved-empty-requirement-fallback",
+    ),
+    MethodTemplateEntry(
+        family="temperature_life",
+        aliases=("temperature life",),
+        fallback_requirement="No damage",
+        provenance="approved-empty-requirement-fallback",
+    ),
+    MethodTemplateEntry(
         family="durability",
         aliases=("durability", "mechanical operation", "mating durability", "unmating durability"),
         fallback_method="EIA-364-09",

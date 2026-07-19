@@ -43,6 +43,7 @@ NO_DAMAGE_REQUIREMENT_FAMILIES = {
     "temperature humidity",
     "high temperature life",
     "pre high temperature life",
+    "temperature life",
     "thermal disturbance",
     "mfg",
     "mixed flowing gas corrosion",
@@ -53,6 +54,11 @@ NO_DAMAGE_DISCONTINUITY_REQUIREMENT_FAMILIES = {
     "random vibration",
     "vibration random",
     "mechanical shock",
+}
+
+EMPTY_ONLY_NO_DAMAGE_REQUIREMENT_FAMILIES = {
+    "thermal shock",
+    "temperature life",
 }
 
 
@@ -67,7 +73,15 @@ def normalize_condition_requirement(
     family = _family(test_item, source_text)
     notes: list[str] = []
     normalized_condition = _normalize_condition(condition)
-    if family == "cr" and "specified current" in _normalize_family_label(test_item):
+    normalized_test_item = _normalize_family_label(test_item)
+    if normalized_test_item == "voltage surge" and normalized_condition is not None:
+        normalized_condition = re.sub(
+            r"(?<=\d)\s*/\s*(?P<tail>\d+(?:\.\d+)?)\s*us\b",
+            r"/\g<tail> μs",
+            normalized_condition,
+            flags=re.IGNORECASE,
+        )
+    if family == "cr" and "specified current" in normalized_test_item:
         normalized_condition = _normalize_specified_current_condition(normalized_condition)
     elif family in {"insulation_resistance", "dwv"} and normalized_condition is None:
         normalized_condition = _extract_test_voltage_condition(source_text)
@@ -103,7 +117,10 @@ def normalize_condition_requirement(
             normalized_requirement = normalized
             notes.append("normalized-mating-unmating-requirement")
     else:
-        report_style = _normalize_report_style_family_requirement(test_item)
+        report_style = _normalize_report_style_family_requirement(
+            test_item,
+            current_requirement=normalized_requirement,
+        )
         if report_style is not None:
             normalized_requirement = report_style
             notes.append("normalized-report-style-requirement")
@@ -324,11 +341,21 @@ def _normalize_dwv_requirement(source_text: str, current_requirement: str | None
     return f"No evidence of arc-over, insulation breakdown, or leakage current {op}{value}mA"
 
 
-def _normalize_report_style_family_requirement(test_item: str | None) -> str | None:
+def _normalize_report_style_family_requirement(
+    test_item: str | None,
+    *,
+    current_requirement: str | None,
+) -> str | None:
     normalized = _normalize_family_label(test_item)
     if normalized in NO_DAMAGE_DISCONTINUITY_REQUIREMENT_FAMILIES:
         return "No damage, No discontinuity >1us"
     if normalized in NO_DAMAGE_REQUIREMENT_FAMILIES:
+        if (
+            normalized in EMPTY_ONLY_NO_DAMAGE_REQUIREMENT_FAMILIES
+            and current_requirement is not None
+            and not re.search(r"\bmaximum\s+change\b", current_requirement, re.IGNORECASE)
+        ):
+            return current_requirement
         return "No damage"
     return None
 
@@ -337,6 +364,8 @@ def _family(test_item: str | None, source_text: str) -> str:
     text = _collapse_ws((test_item or "").lower())
     source = _collapse_ws(source_text.lower())
     combined = f"{text} {source}".strip()
+    if _normalize_family_label(test_item) in EMPTY_ONLY_NO_DAMAGE_REQUIREMENT_FAMILIES:
+        return "other"
     if _is_llcr_family(text=text, combined=combined):
         return "llcr"
     if _is_cr_family(text=text, combined=combined):

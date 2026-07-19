@@ -10,6 +10,12 @@ from backend.modules.test_plan.method_template_matcher import (
     normalize_test_item,
 )
 from backend.modules.test_plan.mcr_text_normalizer import normalize_condition_requirement
+from backend.modules.test_plan.thermal_shock_condition_parser import (
+    extract_thermal_shock_condition,
+)
+from backend.modules.test_plan.voltage_surge_condition_parser import (
+    extract_voltage_surge_condition,
+)
 
 @dataclass(frozen=True, slots=True)
 class MatrixRowDetailExtraction:
@@ -241,10 +247,14 @@ def _extract_iec_method(text: str) -> str | None:
 
 
 def _extract_condition(text: str, *, test_item: str | None) -> str | None:
+    lowered = (test_item or "").lower()
+    if "thermal shock" in lowered:
+        return extract_thermal_shock_condition(text)
+    if "voltage surge" in lowered:
+        return extract_voltage_surge_condition(text)
     llcr_generic = re.search(r"(\d+(?:\.\d+)?\s*mV\s*max\s*,\s*\d+(?:\.\d+)?\s*mA\s*max)", text, re.IGNORECASE)
     if llcr_generic:
         return _clean(llcr_generic.group(1))
-    lowered = (test_item or "").lower()
     if "low level" in lowered or "llcr" in lowered:
         if llcr_generic:
             return _clean(llcr_generic.group(1))
@@ -267,8 +277,6 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
         return _collect_condition_segments(text, ("temperature", "humidity", "rh", "duration", "dwell", "ramp", "cycles"))
     if "mfg" in lowered or "mixed flowing gas" in lowered:
         return _collect_condition_segments(text, ("class", "duration", "unmated", "mated"))
-    if "thermal shock" in lowered:
-        return _collect_condition_segments(text, ("temperature", "range", "cycles", "dwell"))
     if "thermal disturbance" in lowered:
         return _collect_condition_segments(text, ("temperature", "range", "ramp", "dwell", "cycles"))
     if "high temperature" in lowered:

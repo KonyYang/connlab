@@ -43,15 +43,35 @@ def test_apply_fill_empty_fallback_does_not_override_non_empty_values() -> None:
 
 
 def test_thermal_shock_does_not_match_mechanical_shock_template() -> None:
-    no_match = apply_fill_empty_fallback(
+    matched = apply_fill_empty_fallback(
         test_item="Thermal Shock",
         method=None,
         condition=None,
         requirement=None,
     )
 
-    assert no_match.method is None
-    assert no_match.matched_family is None
+    assert matched.method is None
+    assert matched.condition is None
+    assert matched.requirement == "No damage"
+    assert matched.matched_family == "thermal_shock"
+
+
+def test_temperature_life_fills_only_empty_requirement() -> None:
+    filled = apply_fill_empty_fallback(
+        test_item="Temperature life",
+        method=None,
+        condition=None,
+        requirement=None,
+    )
+    preserved = apply_fill_empty_fallback(
+        test_item="Temperature life",
+        method=None,
+        condition=None,
+        requirement="Custom acceptance criterion",
+    )
+
+    assert filled.requirement == "No damage"
+    assert preserved.requirement == "Custom acceptance criterion"
 
 
 def test_dimension_and_final_inspection_do_not_match_visual_template() -> None:

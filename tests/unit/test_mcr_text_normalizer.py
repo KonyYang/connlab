@@ -275,6 +275,30 @@ def test_report_style_allowlist_does_not_guess_from_section_text_only() -> None:
     assert result.requirement == original
 
 
+def test_environmental_test_item_outranks_incidental_contact_resistance_text() -> None:
+    result = normalize_condition_requirement(
+        test_item="Thermal Shock",
+        condition=None,
+        requirement="Maximum Change: 0.17 mΩ",
+        source_text=(
+            "Contact resistance maximum change is 0.17 mΩ after thermal exposure."
+        ),
+    )
+
+    assert result.requirement == "No damage"
+
+
+def test_empty_only_environmental_default_preserves_explicit_requirement() -> None:
+    result = normalize_condition_requirement(
+        test_item="Temperature life",
+        condition=None,
+        requirement="Connector shall remain functional",
+        source_text="Temperature life at 105 C for 1000 hours.",
+    )
+
+    assert result.requirement == "Connector shall remain functional"
+
+
 def test_unsupported_family_remains_unchanged() -> None:
     original = "Custom requirement text without conversion"
     result = normalize_condition_requirement(
