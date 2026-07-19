@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from backend.infrastructure.files.pdf_section_paragraph_rebuilder import (
+    rebuild_pdf_paragraphs,
+)
 from backend.modules.test_plan import ProductSpecMatrixParser
 
 
@@ -543,6 +546,66 @@ def test_product_spec_matrix_parser_applies_template_fallback_without_overriding
     assert "template-fallback-method" in mfg.detail_extraction_notes
     assert visual.method == "IEC 60512-1-1"
     assert "template-fallback-method" not in visual.detail_extraction_notes
+
+
+def test_product_spec_matrix_parser_produces_pdf_docx_detail_parity() -> None:
+    tables = [
+        [
+            ["test Items", "Section", "Group 1"],
+            ["CURRENT RATING", "6.4", "1"],
+            ["MFG", "8.2", "2"],
+            ["Long-term damp heat", "8.9", "3"],
+        ]
+    ]
+    docx_paragraphs = [
+        "6.4 CURRENT RATING EIA 364-70",
+        (
+            "8.2 MFG EIA-364-65 Test Condition: CLASS IIA "
+            "Expose the connector in unmated condition for 224h. "
+            "Expose the connector in mated condition for 112h."
+        ),
+        (
+            "8.9 Long-term damp heat Damp Heat Condition: 85C, 85% RH, "
+            "1000h (mated test). After aging: No visible cracks."
+        ),
+    ]
+    pdf_paragraphs = rebuild_pdf_paragraphs(
+        [
+            "6.4 CURRENT RATING",
+            (
+                "EIA 364-70 8.2 MFG EIA-364-65 Test Condition: CLASS IIA "
+                "The mixed gas conditions refer to Clause 4.8 Industrial Mixed Gas."
+            ),
+            (
+                "Expose the connector in unmated condition for 224h. "
+                "Expose the connector in mated condition for 112h. "
+                "8.9 Long-term damp heat Damp Heat Condition: 85C, 85% RH, "
+                "1000h (mated test). After aging: No visible cracks."
+            ),
+        ]
+    )
+
+    parser = ProductSpecMatrixParser()
+    docx_result = parser.parse_tables(tables, paragraphs=docx_paragraphs)
+    pdf_result = parser.parse_tables(tables, paragraphs=list(pdf_paragraphs))
+
+    assert [
+        (
+            row.method,
+            row.condition,
+            row.requirement,
+            row.detail_extraction_status,
+        )
+        for row in pdf_result.rows
+    ] == [
+        (
+            row.method,
+            row.condition,
+            row.requirement,
+            row.detail_extraction_status,
+        )
+        for row in docx_result.rows
+    ]
 
 
 def test_product_spec_matrix_parser_applies_no_section_fallback_for_manual_rows() -> None:

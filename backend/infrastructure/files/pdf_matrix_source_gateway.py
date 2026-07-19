@@ -7,6 +7,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from backend.infrastructure.files.pdf_section_paragraph_rebuilder import (
+    clean_pdf_text as _clean_text,
+    rebuild_pdf_paragraphs,
+    split_pdf_page_paragraphs as _split_paragraphs,
+)
+
 
 class PdfMatrixSourceGatewayError(ValueError):
     """Raised when a PDF cannot produce a text Matrix source snapshot."""
@@ -53,7 +59,7 @@ class PdfMatrixSourceGateway:
                 "Cannot read this PDF for Matrix import on this workstation."
             ) from exc
 
-        paragraphs: list[str] = []
+        page_texts: list[str] = []
         raw_text_parts: list[str] = []
         tables: list[tuple[tuple[str, ...], ...]] = []
         locations: list[PdfTableLocation] = []
@@ -61,11 +67,12 @@ class PdfMatrixSourceGateway:
         try:
             with pdfplumber.open(path) as pdf:
                 for page_number, page in enumerate(pdf.pages, start=1):
-                    page_text = _clean_text(page.extract_text() or "")
+                    extracted_page_text = page.extract_text() or ""
+                    page_text = _clean_text(extracted_page_text)
                     if page_text:
                         raw_text_parts.append(page_text)
+                        page_texts.append(extracted_page_text)
                     page_paragraphs = _split_paragraphs(page_text)
-                    paragraphs.extend(page_paragraphs)
                     page_table_index = 0
                     for raw_table in _extract_page_tables(page):
                         table = _normalize_table(raw_table)
@@ -93,6 +100,7 @@ class PdfMatrixSourceGateway:
             ) from exc
 
         raw_text = "\n".join(raw_text_parts)
+        paragraphs = rebuild_pdf_paragraphs(page_texts)
         if not raw_text.strip():
             raise PdfMatrixSourceGatewayError(
                 "This PDF has no extractable text. OCR is not supported in this version."
@@ -103,7 +111,7 @@ class PdfMatrixSourceGateway:
         tables, locations = _merge_matrix_continuation_tables(tables, locations)
 
         return PdfDocumentSnapshot(
-            paragraphs=tuple(paragraphs),
+            paragraphs=paragraphs,
             tables=tuple(tables),
             table_locations=tuple(locations),
             raw_text=raw_text,
@@ -157,18 +165,6 @@ def _normalize_table(raw_table: Any) -> tuple[tuple[str, ...], ...]:
     if _looks_like_revision_record_table(normalized):
         return ()
     return _repair_split_sample_quantity_tail(_collapse_fragmented_matrix_header(normalized))
-
-
-def _split_paragraphs(page_text: str) -> list[str]:
-    """Split extracted page text into parser-friendly paragraph lines."""
-    paragraphs: list[str] = []
-    for line in (_clean_text(line) for line in page_text.splitlines()):
-        if not line:
-            continue
-        paragraphs.append(line)
-        paragraphs.extend(_inline_section_paragraphs(line))
-        paragraphs.extend(_inline_note_paragraphs(line))
-    return paragraphs
 
 
 def _table_text_preview(table: tuple[tuple[str, ...], ...]) -> str:
@@ -280,12 +276,6 @@ def _merged_table_preview(
     return _clean_text(f"{preview} Continued on page {pages}")[:500]
 
 
-def _clean_text(value: str) -> str:
-    """Normalize whitespace in extracted PDF text."""
-    text = " ".join(value.replace("\x00", " ").replace("\u040e\u045e", "、").split())
-    return re.sub(r"\bSECTIO\s+N\b", "SECTION", text, flags=re.IGNORECASE)
-
-
 def _collapse_fragmented_matrix_header(
     rows: tuple[tuple[str, ...], ...],
 ) -> tuple[tuple[str, ...], ...]:
@@ -367,45 +357,6 @@ def _looks_like_pcs_unit_row(row: tuple[str, ...]) -> bool:
 def _repair_sample_marker(value: str) -> str:
     text = _clean_text(value)
     return re.sub(r"^(\d+)([a-z])\)$", r"\1(\2)", text, flags=re.IGNORECASE)
-
-
-def _inline_section_paragraphs(line: str) -> list[str]:
-    """Split dense PDF page text into Word-like numbered section paragraphs."""
-    matches = list(
-        re.finditer(
-            r"(?<![\d.])(?P<section>[1-9]\d*(?:\.\d+)+)\s+(?=[A-Za-z])",
-            line,
-        )
-    )
-    paragraphs: list[str] = []
-    for index, match in enumerate(matches):
-        start = match.start()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(line)
-        paragraph = _clean_text(line[start:end])
-        if paragraph:
-            paragraphs.append(paragraph)
-    return paragraphs
-
-
-def _inline_note_paragraphs(line: str) -> list[str]:
-    """Extract compact inline PDF notes into Word-parser marker paragraphs."""
-    match = re.search(r"\bnotes?\s*:\s*(.+)", line, flags=re.IGNORECASE)
-    if not match:
-        return []
-    note_text = re.split(r"\brevision\s+record\b", match.group(1), maxsplit=1, flags=re.IGNORECASE)[0]
-    note_matches = list(
-        re.finditer(
-            r"(?P<marker>[a-z])[\.)]\s*(?P<body>.*?)(?=(?:\s+[a-z][\.)]\s*)|$)",
-            note_text,
-            flags=re.IGNORECASE,
-        )
-    )
-    paragraphs: list[str] = []
-    for item in note_matches:
-        body = _clean_text(item.group("body"))
-        if body:
-            paragraphs.append(f"({item.group('marker').lower()}) {body}")
-    return paragraphs
 
 
 def _looks_like_matrix_description_header(row: tuple[str, ...]) -> bool:

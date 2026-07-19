@@ -43,6 +43,24 @@ def test_matrix_preview_api_extracts_docx_matrix(tmp_path: Path) -> None:
     assert group_1["steps"][1]["source_section"] == "6.1"
 
 
+def test_matrix_preview_api_extracts_cross_page_pdf_details(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "cross-page-mfg.pdf"
+    _write_cross_page_mfg_pdf(pdf_path)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/test-plan/matrix-preview-from-path",
+        json={"source_path": str(pdf_path), "project_id": "P-pdf-cross-page"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["capability_status"] == "supported"
+    mfg = next(row for row in payload["rows"] if row["test_item"] == "MFG")
+    assert mfg["method"] == "EIA-364-65"
+    assert mfg["condition"] == "Class IIA; unmated 224 hours; mated 112 hours"
+
+
 def test_matrix_preview_api_reports_doc_as_deferred_and_no_text_pdf_as_unsupported(tmp_path: Path) -> None:
     doc_path = tmp_path / "spec.doc"
     pdf_path = tmp_path / "spec.pdf"
@@ -234,6 +252,37 @@ def _write_product_spec_docx(path: Path) -> None:
 
 def _write_blank_pdf(path: Path) -> None:
     c = canvas.Canvas(str(path), pagesize=letter)
+    c.showPage()
+    c.save()
+
+
+def _write_cross_page_mfg_pdf(path: Path) -> None:
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.drawString(72, 740, "8.2 MFG Reference - EIA-364-65")
+    c.drawString(72, 720, "Mixed gas conditions refer to Clause 4.8 Industrial Mixed Gas.")
+    c.drawString(72, 700, "Test Condition: CLASS IIA")
+    c.showPage()
+    c.drawString(72, 740, "Expose the connector in unmated condition for 224h.")
+    c.drawString(72, 720, "Expose the connector in mated condition for 112h.")
+    c.drawString(72, 700, "8.3 Voltage surge Power Pin 10 kA.")
+    c.showPage()
+
+    rows = [
+        ["test Items", "Section", "Group 1"],
+        ["MFG", "8.2", "1"],
+    ]
+    x0 = 72
+    y0 = 700
+    col_widths = [180, 70, 80]
+    row_height = 26
+    for row_index, row in enumerate(rows):
+        y = y0 - row_index * row_height
+        x = x0
+        for col_index, value in enumerate(row):
+            width = col_widths[col_index]
+            c.rect(x, y - row_height, width, row_height)
+            c.drawString(x + 4, y - 17, value)
+            x += width
     c.showPage()
     c.save()
 

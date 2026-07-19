@@ -243,6 +243,27 @@ def test_pdf_gateway_splits_dense_page_text_into_section_blocks() -> None:
     assert parsed.rows[1].requirement == "≤ 30 ℃"
 
 
+def test_pdf_gateway_carries_cross_page_mfg_condition_into_shared_parser(
+    tmp_path: Path,
+) -> None:
+    pdf_path = tmp_path / "cross-page-mfg.pdf"
+    _write_cross_page_mfg_pdf(pdf_path)
+
+    snapshot = PdfMatrixSourceGateway().read_pdf_document(pdf_path)
+    parsed = ProductSpecMatrixParser().parse_tables(
+        [[list(row) for row in table] for table in snapshot.tables],
+        paragraphs=list(snapshot.paragraphs),
+        table_contexts={
+            location.table_index: location.preceding_paragraph or ""
+            for location in snapshot.table_locations
+        },
+    )
+
+    row = next(item for item in parsed.rows if item.test_item == "MFG")
+    assert row.method == "EIA-364-65"
+    assert row.condition == "Class IIA; unmated 224 hours; mated 112 hours"
+
+
 def test_pdf_revision_record_table_is_not_a_matrix_candidate() -> None:
     raw_table = [
         ["Rev", "Page", "Description", "EC#", "Date"],
@@ -264,6 +285,40 @@ def _write_matrix_pdf(path: Path) -> None:
     x0 = 72
     y0 = 700
     col_widths = [180, 70, 80, 80]
+    row_height = 26
+    for row_index, row in enumerate(rows):
+        y = y0 - row_index * row_height
+        x = x0
+        for col_index, value in enumerate(row):
+            width = col_widths[col_index]
+            c.rect(x, y - row_height, width, row_height)
+            c.drawString(x + 4, y - 17, value)
+            x += width
+    c.showPage()
+    c.save()
+
+
+def _write_cross_page_mfg_pdf(path: Path) -> None:
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.drawString(72, 760, "7.2 Single Pin Mating/Unmating Force")
+    c.drawString(72, 740, "Current-carrying pin extraction force: 4 N to 19.5 N")
+    c.drawString(72, 720, "7.3 contact retention force")
+    c.drawString(72, 700, "8.2 MFG Reference - EIA-364-65")
+    c.drawString(72, 680, "Mixed gas conditions refer to Clause 4.8 Industrial Mixed Gas.")
+    c.drawString(72, 660, "Test Condition: CLASS IIA")
+    c.showPage()
+    c.drawString(72, 740, "Expose the connector in unmated condition for 224h.")
+    c.drawString(72, 720, "Expose the connector in mated condition for 112h.")
+    c.drawString(72, 700, "8.3 Voltage surge Power Pin 10 kA.")
+    c.showPage()
+
+    rows = [
+        ["test Items", "Section", "Group 1"],
+        ["MFG", "8.2", "1"],
+    ]
+    x0 = 72
+    y0 = 700
+    col_widths = [180, 70, 80]
     row_height = 26
     for row_index, row in enumerate(rows):
         y = y0 - row_index * row_height
