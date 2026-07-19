@@ -35,6 +35,7 @@ function summary(): ProjectPointProfileSummary {
       revision_id: "confirmed-1", revision_sequence: 1, state: "confirmed", fingerprint: "fingerprint-1",
       created_at: "2026-07-14T00:00:00Z", confirmed_at: "2026-07-14T00:00:00Z", points_per_sample: 33,
       categories: [{ category_id: "ppc-1", category_ordinal: 0, label: "High Power", count_per_sample: 4, record_prefix: "HP", included: true }],
+      cr_coverage: { mode: "custom", selected_category_ids: ["ppc-1"], points_per_sample: 4 },
     },
     points_per_sample: 33, has_unconfirmed_draft: true, diagnostics: [],
   };

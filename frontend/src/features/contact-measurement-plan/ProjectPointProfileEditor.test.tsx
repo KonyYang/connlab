@@ -6,12 +6,35 @@ import { ProjectPointProfileEditor } from "./ProjectPointProfileEditor";
 import type { ProjectPointProfileModel } from "./projectPointProfileModelTypes";
 
 const initialRows = [
-  { category_id: "ppc-1", prefix: "HP", point_expression: "1-4" },
-  { category_id: "ppc-2", prefix: "LP", point_expression: "1-5" },
-  { category_id: "ppc-3", prefix: "Signal", point_expression: "1-24" },
+  { category_id: "ppc-1", prefix: "HP", point_expression: "1-4", cr_selected: true },
+  { category_id: "ppc-2", prefix: "LP", point_expression: "1-5", cr_selected: false },
+  { category_id: "ppc-3", prefix: "Signal", point_expression: "1-24", cr_selected: true },
 ];
 
 describe("ProjectPointProfileEditor delete activation", () => {
+  it("uses the shared inline editor and icon-button vocabulary", () => {
+    render(<EditorHarness onRemove={vi.fn()} />);
+
+    expect(screen.getByRole("heading", { name: "LLCR" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "LLCR Test Point Confirmation" })).toBeNull();
+    expect(screen.getByLabelText("Prefix 1").classList.contains("project-point-profile-input")).toBe(true);
+    expect(screen.getByLabelText("Test points 1").classList.contains("project-point-profile-input")).toBe(true);
+
+    const deleteButton = screen.getByRole("button", { name: "Delete point profile row HP" });
+    expect(deleteButton.classList.contains("project-point-profile-delete")).toBe(true);
+    expect(deleteButton.querySelector("svg")).not.toBeNull();
+    expect(deleteButton.textContent).not.toContain("🗑");
+  });
+
+  it("explains that point expressions identify numbers rather than a quantity", () => {
+    render(<EditorHarness onRemove={vi.fn()} />);
+
+    expect(screen.getByRole("columnheader", { name: "Range" })).toBeTruthy();
+    expect(screen.queryByText("Enter point numbers or ranges, for example 1-5. Entering 5 means point 5 only.")).toBeNull();
+    expect(screen.getByLabelText("Test points 1").getAttribute("placeholder")).toBe("Example: 1-5 or 1,3,5");
+    expect(screen.getByLabelText("Test points 1").hasAttribute("aria-describedby")).toBe(false);
+  });
+
   it.each([
     ["{Enter}", "Delete point profile row Signal", 2],
     [" ", "Delete point profile row Signal", 2],
@@ -56,6 +79,26 @@ describe("ProjectPointProfileEditor delete activation", () => {
     render(<EditorHarness rows={[]} onRemove={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /Delete point profile row/ })).toBeNull();
   });
+
+  it("shows one row-level CR column without a separate coverage section", async () => {
+    const user = userEvent.setup();
+    render(<EditorHarness onRemove={vi.fn()} />);
+
+    expect(screen.getByRole("columnheader", { name: "Point category" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Range" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "CR" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "LLCR" })).toBeNull();
+    expect((screen.getByRole("checkbox", { name: "Include HP in CR" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: "Include LP in CR" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("checkbox", { name: "Include Signal in CR" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(3);
+    expect(screen.queryByRole("heading", { name: "CR coverage" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Customize CR" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use same as LLCR" })).toBeNull();
+
+    await user.click(screen.getByRole("checkbox", { name: "Include Signal in CR" }));
+    expect((screen.getByRole("checkbox", { name: "Include Signal in CR" }) as HTMLInputElement).checked).toBe(false);
+  });
 });
 
 function EditorHarness({
@@ -68,6 +111,7 @@ function EditorHarness({
   onRemove: (index: number) => void;
 }) {
   const [rows, setRows] = useState(initial);
+  const crCoverageMode = rows.every((row) => row.cr_selected) ? "follow_llcr" : "custom";
   const model = {
     workspace: null,
     rows,
@@ -75,9 +119,15 @@ function EditorHarness({
     busy,
     error: null,
     total: rows.length,
+    crTotal: rows.filter((row) => row.cr_selected).length,
+    crSelectedCount: rows.filter((row) => row.cr_selected).length,
+    crCoverageMode,
     validation: null,
     updateRow: vi.fn(),
     addCategory: vi.fn(),
+    setCrSelected: (index: number, selected: boolean) => setRows((current) => current.map(
+      (row, currentIndex) => currentIndex === index ? { ...row, cr_selected: selected } : row,
+    )),
     removeCategory: (index: number) => {
       onRemove(index);
       setRows((current) => current.filter((_, currentIndex) => currentIndex !== index));

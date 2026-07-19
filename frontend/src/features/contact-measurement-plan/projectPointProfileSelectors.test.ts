@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parsePointExpression, pointProfileValidation, projectPointProfileTotal } from "./projectPointProfileSelectors";
+import {
+  emptyProjectPointProfileCategory,
+  parsePointExpression,
+  pointProfileValidation,
+  projectPointProfileCrCoverageMode,
+  projectPointProfileCrTotal,
+  projectPointProfileTotal,
+} from "./projectPointProfileSelectors";
 
 describe("projectPointProfileSelectors", () => {
   it("derives the compact total without expanding point previews", () => {
@@ -20,5 +27,32 @@ describe("projectPointProfileSelectors", () => {
   it("blocks 257 profile rows before confirm", () => {
     const rows = Array.from({ length: 257 }, (_, index) => ({ category_id: null, prefix: `P${index + 1}`, point_expression: "1" }));
     expect(pointProfileValidation(rows)).toMatch(/256/i);
+  });
+
+  it("derives CR totals from dynamic whole-category selection", () => {
+    const rows = [
+      { category_id: "ppc-1", prefix: "AUX", point_expression: "1-4", cr_selected: true },
+      { category_id: "ppc-2", prefix: "SIG", point_expression: "1-5", cr_selected: false },
+      { category_id: "ppc-3", prefix: "PWR", point_expression: "1-20", cr_selected: true },
+    ];
+
+    expect(projectPointProfileCrTotal(rows, "follow_llcr")).toBe(29);
+    expect(projectPointProfileCrTotal(rows, "custom")).toBe(24);
+    expect(pointProfileValidation(rows, "custom")).toBeNull();
+    expect(pointProfileValidation(rows.map((row) => ({ ...row, cr_selected: false })), "custom")).toMatch(/at least one/i);
+  });
+
+  it("defaults new rows to CR and derives mode from visible row selection", () => {
+    const allSelected = [
+      { category_id: "ppc-1", prefix: "AUX", point_expression: "1-4", cr_selected: true },
+      { category_id: "ppc-2", prefix: "SIG", point_expression: "1-5", cr_selected: true },
+    ];
+
+    expect(emptyProjectPointProfileCategory().cr_selected).toBe(true);
+    expect(projectPointProfileCrCoverageMode(allSelected)).toBe("follow_llcr");
+    expect(projectPointProfileCrCoverageMode([
+      allSelected[0],
+      { ...allSelected[1], cr_selected: false },
+    ])).toBe("custom");
   });
 });

@@ -8,6 +8,8 @@ import {
   emptyProjectPointProfileCategory,
   localPointProfileRows,
   pointProfileValidation,
+  projectPointProfileCrCoverageMode,
+  projectPointProfileCrTotal,
   projectPointProfileTotal,
   type ProjectPointProfileDraftCategory,
 } from "./projectPointProfileSelectors";
@@ -23,7 +25,11 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
 
   const hydrate = useCallback((next: ProjectPointProfileWorkspace) => {
     setWorkspace(next);
-    setRows(localPointProfileRows(next.confirmed_revision?.categories));
+    const coverage = next.confirmed_revision?.cr_coverage;
+    setRows(localPointProfileRows(
+      next.confirmed_revision?.categories,
+      coverage?.selected_category_ids ?? [],
+    ));
   }, []);
 
   const reload = useCallback(async () => hydrate(await fetchProjectPointProfileWorkspace(projectId)), [hydrate, projectId]);
@@ -39,7 +45,22 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
   }, [hydrate, projectId]);
 
   const total = useMemo(() => projectPointProfileTotal(rows), [rows]);
-  const validation = useMemo(() => pointProfileValidation(rows), [rows]);
+  const crCoverageMode = useMemo(
+    () => projectPointProfileCrCoverageMode(rows),
+    [rows],
+  );
+  const crTotal = useMemo(
+    () => projectPointProfileCrTotal(rows, crCoverageMode),
+    [crCoverageMode, rows],
+  );
+  const crSelectedCount = useMemo(
+    () => rows.filter((row) => row.cr_selected).length,
+    [rows],
+  );
+  const validation = useMemo(
+    () => pointProfileValidation(rows, crCoverageMode),
+    [crCoverageMode, rows],
+  );
 
   async function confirm(): Promise<boolean> {
     if (validation || busy) {
@@ -53,7 +74,13 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
         actor: ACTOR,
         expected_confirmed_revision_id: workspace?.confirmed_revision?.revision_id ?? null,
         expected_confirmed_revision_fingerprint: workspace?.confirmed_revision?.fingerprint ?? null,
-        categories: rows.map((row) => ({ category_id: row.category_id, prefix: row.prefix.trim(), point_expression: row.point_expression })),
+        cr_coverage_mode: crCoverageMode,
+        categories: rows.map((row) => ({
+          category_id: row.category_id,
+          prefix: row.prefix.trim(),
+          point_expression: row.point_expression,
+          cr_selected: crCoverageMode === "custom" && Boolean(row.cr_selected),
+        })),
       });
       await reload();
       return true;
@@ -66,13 +93,17 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
   }
 
   return {
-    workspace, rows, loading, busy, error, total, validation,
+    workspace, rows, loading, busy, error, total, crTotal, crSelectedCount,
+    crCoverageMode, validation,
     updateRow: (index: number, patch: Partial<ProjectPointProfileDraftCategory>) => setRows((current) => current.map((row, itemIndex) => itemIndex === index ? { ...row, ...patch } : row)),
     addCategory: () => setRows((current) => current.length < 256 ? [...current, emptyProjectPointProfileCategory()] : current),
     removeCategory: (index: number) => setRows((current) => {
       const next = current.filter((_, itemIndex) => itemIndex !== index);
       return next.length ? next : [emptyProjectPointProfileCategory()];
     }),
+    setCrSelected: (index: number, selected: boolean) => setRows((current) => current.map(
+      (row, itemIndex) => itemIndex === index ? { ...row, cr_selected: selected } : row,
+    )),
     confirm,
   };
 }

@@ -16,7 +16,10 @@ describe("useProjectPointProfileModel", () => {
     act(() => result.current.updateRow(0, { prefix: "HP", point_expression: "1-4" }));
     expect(apiMocks.confirmProjectPointProfile).not.toHaveBeenCalled();
     await act(async () => { await result.current.confirm(); });
-    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({ categories: [{ category_id: null, prefix: "HP", point_expression: "1-4" }] }));
+    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
+      cr_coverage_mode: "follow_llcr",
+      categories: [{ category_id: null, prefix: "HP", point_expression: "1-4", cr_selected: false }],
+    }));
   });
 
   it("blocks a hydrated 257th category before confirming and disables further adds", async () => {
@@ -30,9 +33,58 @@ describe("useProjectPointProfileModel", () => {
     await act(async () => { await result.current.confirm(); });
     expect(apiMocks.confirmProjectPointProfile).not.toHaveBeenCalled();
   });
+
+  it("derives custom coverage from row selection and keeps later new rows selected", async () => {
+    apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue(workspaceWithCategories(3));
+    apiMocks.confirmProjectPointProfile.mockResolvedValue(revision());
+    const { result } = renderHook(() => useProjectPointProfileModel({ projectId: "P1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.crCoverageMode).toBe("follow_llcr");
+    expect(result.current.rows.every((row) => row.cr_selected)).toBe(true);
+    act(() => result.current.setCrSelected(1, false));
+    expect(result.current.crCoverageMode).toBe("custom");
+    act(() => result.current.addCategory());
+    expect(result.current.rows.at(-1)?.cr_selected).toBe(true);
+    act(() => result.current.updateRow(3, { prefix: "AUX", point_expression: "1-4" }));
+
+    await act(async () => { await result.current.confirm(); });
+    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
+      cr_coverage_mode: "custom",
+      categories: [
+        expect.objectContaining({ category_id: "ppc-1", cr_selected: true }),
+        expect.objectContaining({ category_id: "ppc-2", cr_selected: false }),
+        expect.objectContaining({ category_id: "ppc-3", cr_selected: true }),
+        expect.objectContaining({ category_id: null, cr_selected: true }),
+      ],
+    }));
+  });
+
+  it("normalizes all selected rows back to follow mode", async () => {
+    apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue(workspaceWithCategories(3));
+    apiMocks.confirmProjectPointProfile.mockResolvedValue(revision());
+    const { result } = renderHook(() => useProjectPointProfileModel({ projectId: "P1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => result.current.setCrSelected(1, false));
+    expect(result.current.crCoverageMode).toBe("custom");
+    act(() => result.current.setCrSelected(1, true));
+    expect(result.current.crCoverageMode).toBe("follow_llcr");
+
+    await act(async () => { await result.current.confirm(); });
+    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
+      cr_coverage_mode: "follow_llcr",
+      categories: expect.arrayContaining([
+        expect.objectContaining({ cr_selected: false }),
+      ]),
+    }));
+    expect(apiMocks.confirmProjectPointProfile.mock.calls[0][1].categories.every(
+      (row) => row.cr_selected === false,
+    )).toBe(true);
+  });
 });
 
-function revision() { return { revision_id: "R1", revision_sequence: 1, state: "confirmed", fingerprint: "F1", created_at: "", confirmed_at: "", categories: [], points_per_sample: 0 }; }
+function revision() { return { revision_id: "R1", revision_sequence: 1, state: "confirmed", fingerprint: "F1", created_at: "", confirmed_at: "", categories: [], points_per_sample: 0, cr_coverage: { mode: "follow_llcr" as const, selected_category_ids: [], points_per_sample: 0 } }; }
 function workspace() { return { status: "not_started", project_id: "P1", editable_revision: null, confirmed_revision: null, has_unconfirmed_draft: false, legacy_uniform_suggestion: null, diagnostics: [] }; }
 function workspaceWithCategories(length: number) {
   const categories = Array.from({ length }, (_, index) => ({
@@ -41,7 +93,10 @@ function workspaceWithCategories(length: number) {
   }));
   return {
     status: "confirmed", project_id: "P1", editable_revision: null,
-    confirmed_revision: { ...revision(), categories, points_per_sample: length },
+    confirmed_revision: {
+      ...revision(), categories, points_per_sample: length,
+      cr_coverage: { mode: "follow_llcr" as const, selected_category_ids: categories.map((item) => item.category_id), points_per_sample: length },
+    },
     has_unconfirmed_draft: false, legacy_uniform_suggestion: null, diagnostics: [],
   };
 }

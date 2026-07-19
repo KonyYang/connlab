@@ -4365,6 +4365,14 @@ export type ProjectPointProfileCategory = {
   legacy_contiguous_suggestion?: string | null;
 };
 
+export type ProjectPointProfileCrCoverageMode = "follow_llcr" | "custom";
+
+export type ProjectPointProfileCrCoverage = {
+  mode: ProjectPointProfileCrCoverageMode;
+  selected_category_ids: string[];
+  points_per_sample: number;
+};
+
 export type ProjectPointProfileRevision = {
   revision_id: string;
   revision_sequence: number;
@@ -4374,6 +4382,7 @@ export type ProjectPointProfileRevision = {
   confirmed_at: string | null;
   categories: ProjectPointProfileCategory[];
   points_per_sample: number;
+  cr_coverage: ProjectPointProfileCrCoverage;
 };
 
 export type ProjectPointProfileWorkspace = {
@@ -4406,12 +4415,14 @@ export type ProjectPointProfileDirectCategory = {
   category_id: string | null;
   prefix: string;
   point_expression: string;
+  cr_selected: boolean;
 };
 
 export type ProjectPointProfileDirectConfirmCommand = {
   actor: string;
   expected_confirmed_revision_id: string | null;
   expected_confirmed_revision_fingerprint: string | null;
+  cr_coverage_mode: ProjectPointProfileCrCoverageMode;
   categories: ProjectPointProfileDirectCategory[];
 };
 

@@ -5,7 +5,7 @@
 
 .contact-measurement-summary {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   padding: 16px;
   border: 1px solid var(--border, #d8e0ea);
   border-radius: 8px;
@@ -249,6 +249,9 @@
 .project-point-profile-card {
   display: grid;
   gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 600px;
   padding: 16px;
   border: 1px solid var(--border, #d8e0ea);
   border-radius: 8px;
@@ -271,7 +274,6 @@
 
 .project-point-profile-table {
   width: 100%;
-  max-width: 760px;
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -284,14 +286,67 @@
   vertical-align: middle;
 }
 
-.project-point-profile-table textarea {
+.project-point-profile-input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   min-height: 42px;
   max-height: 160px;
+  padding: 8px 10px;
+  border: 1px solid #cfd7e3;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: var(--ink, #172033);
+  font: inherit;
+  line-height: 1.3;
   field-sizing: content;
   resize: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.project-point-profile-input:focus {
+  outline: none;
+  border-color: #6ea2ef;
+  box-shadow: 0 0 0 3px rgba(110, 162, 239, 0.28);
+  background: #fbfdff;
+}
+
+.project-point-profile-input:disabled {
+  border-color: #d3dbe8;
+  background: #eef3f9;
+  color: #7988a0;
+}
+
+.project-point-profile-delete {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid #c7d8f2;
+  border-radius: 8px;
+  background: #fbfdff;
+  color: var(--primary, #1f66d1);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.project-point-profile-delete:hover:not(:disabled) {
+  border-color: #9abce9;
+  background: #edf4ff;
+}
+
+.project-point-profile-delete:focus-visible {
+  outline: none;
+  border-color: #6ea2ef;
+  box-shadow: 0 0 0 3px rgba(110, 162, 239, 0.28);
+}
+
+.project-point-profile-delete:disabled {
+  border-color: #d3dbe8;
+  color: #87a7dc;
+  cursor: not-allowed;
 }
 
 .project-point-profile-table th:first-child {
@@ -301,6 +356,63 @@
 .project-point-profile-action {
   width: 98px;
   text-align: right !important;
+}
+
+.project-point-profile-cr-cell {
+  width: 52px;
+  text-align: center !important;
+}
+
+.project-point-profile-cr-cell input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary, #1f66d1);
+  cursor: pointer;
+}
+
+.project-point-profile-cr-cell input:focus-visible {
+  outline: 3px solid rgba(110, 162, 239, 0.32);
+  outline-offset: 2px;
+}
+
+.project-point-profile-cr-cell input:disabled {
+  cursor: not-allowed;
+}
+
+.contact-measurement-summary-cr {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #d8e0ea);
+  color: var(--ink-muted, #647084);
+  font-weight: 700;
+}
+
+.contact-measurement-summary-points {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.contact-measurement-summary-points > div {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.contact-measurement-summary-points dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink, #172033);
+}
+
+.contact-measurement-summary-points dd {
+  margin: 0;
+  color: var(--ink-muted, #647084);
+  overflow-wrap: anywhere;
 }
 
 .sr-only {
@@ -348,6 +460,7 @@
   }
 
   .contact-measurement-summary-facts,
+  .contact-measurement-summary-points,
   .contact-measurement-setup-grid,
   .contact-measurement-family-list > div,
   .project-point-profile-row {
@@ -367,6 +480,10 @@
 
   .project-point-profile-action {
     width: 82px;
+  }
+
+  .project-point-profile-cr-cell {
+    width: 44px;
   }
 
   .contact-measurement-setup-actions {
