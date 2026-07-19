@@ -105,6 +105,67 @@ def test_fee_draft_autofills_examination_of_product_as_visual_exam_defaults() ->
     assert line.testing_fee == Decimal("0")
 
 
+def test_fee_draft_converts_mfg_labeled_phase_hours_to_days() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row(
+                    "MFG",
+                    condition="Class IIA; unmated 224 hours; mated 112 hours",
+                )
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.review_required is False
+    assert line.matched_rule_id == "fee_rule_mfg_class_iia"
+    assert line.unit_price == Decimal("1000")
+    assert line.unit_label == "day"
+    assert line.units == Decimal("14")
+    assert line.base_fee == Decimal("0")
+    assert line.discount_percent == Decimal("0")
+    assert line.testing_fee == Decimal("14000")
+
+
+def test_fee_draft_preserves_explicit_mfg_days() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(row=_fixture_row("MFG", condition="Class IIA, 14 days"))
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.units == Decimal("14")
+    assert line.testing_fee == Decimal("14000")
+
+
+def test_fee_draft_keeps_incomplete_mfg_phase_duration_pending() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row("MFG", condition="Class IIA; unmated 224 hours")
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "review_required"
+    assert line.review_required is True
+    assert line.unit_price == Decimal("1000")
+    assert line.unit_label == "day"
+    assert line.units is None
+    assert line.testing_fee is None
+
+
 def test_fee_draft_autofills_preconditioning_durability_cycles() -> None:
     service = ConfirmedMatrixFeeDraftService(
         confirmed_store=_ConfirmedStore(

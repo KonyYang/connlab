@@ -21,13 +21,13 @@ from backend.modules.fee_evaluation.fee_rule_models import FeeRule
 from backend.modules.fee_evaluation.fee_reviewed_extension_defaults import (
     build_reviewed_extension_default_fill,
 )
+from backend.modules.fee_evaluation.mfg_duration import resolve_mfg_duration_days
 from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
     build_reading_result,
 )
 
 _PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 _HOUR_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b", re.I)
-_DAY_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:d|day|days)\b", re.I)
 _CYCLE_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:cycle|cycles)\b", re.I)
 _CURRENT_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:a|amp|amps)\b", re.I)
 def build_fee_default_fill(
@@ -202,7 +202,7 @@ def _duration_hour_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> F
 
 
 def _duration_day_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
-    days = _first_decimal(_DAY_PATTERN, _combined_text(context))
+    days = resolve_mfg_duration_days(_combined_text(context))
     if days is None:
         return manual_required(
             rule=rule,

@@ -10,6 +10,7 @@ from backend.modules.test_plan.method_template_matcher import (
     normalize_test_item,
 )
 from backend.modules.test_plan.mcr_text_normalizer import normalize_condition_requirement
+from backend.modules.test_plan.mfg_condition_parser import extract_mfg_condition
 from backend.modules.test_plan.thermal_shock_condition_parser import (
     extract_thermal_shock_condition,
 )
@@ -276,7 +277,7 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
     if "humidity" in lowered:
         return _collect_condition_segments(text, ("temperature", "humidity", "rh", "duration", "dwell", "ramp", "cycles"))
     if "mfg" in lowered or "mixed flowing gas" in lowered:
-        return _collect_condition_segments(text, ("class", "duration", "unmated", "mated"))
+        return extract_mfg_condition(text)
     if "thermal disturbance" in lowered:
         return _collect_condition_segments(text, ("temperature", "range", "ramp", "dwell", "cycles"))
     if "high temperature" in lowered:

@@ -235,9 +235,8 @@ def test_mfg_extraction_does_not_emit_numeric_letter_fragment() -> None:
     )
 
     assert detail.method == "EIA-364-65"
-    assert detail.condition is not None
+    assert detail.condition == "Class IIA; unmated 224 hours; mated 112 hours"
     assert "65 a" not in (detail.condition or "").lower()
-    assert "Class IIA" in (detail.condition or "")
     assert detail.requirement is not None
     assert detail.requirement != "Maximum Change: 0"
     assert detail.requirement == "No damage"
