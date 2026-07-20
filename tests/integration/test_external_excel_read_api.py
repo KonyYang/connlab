@@ -5,10 +5,21 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
+from backend.api.dependencies import get_external_excel_read_service
 from backend.api.main import app
+from backend.application.external_excel_read_service import StandardRecordReadResult
+from backend.application.external_excel_read_service import StandardRecordRow
+from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
+    LegacyExcelCleanupError,
+    LegacyExcelComUnavailableError,
+    LegacyExcelRangeError,
+    LegacyExcelReadError,
+    LegacyExcelReadOnlyOpenError,
+)
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -96,6 +107,51 @@ def test_external_excel_read_api_returns_404_for_unregistered_resource(
         engine.dispose()
 
 
+def test_external_excel_read_api_maps_legacy_xls_rows_without_route_changes(
+    tmp_path: Path,
+) -> None:
+    client, engine = _client(tmp_path)
+    service = _FakeReadService()
+    app.dependency_overrides[get_external_excel_read_service] = lambda: service
+    try:
+        response = client.get("/api/external-resources/standard-record/rows")
+
+        assert response.status_code == 200
+        assert response.json()["resource_path"].endswith("standard.xls")
+        assert response.json()["rows"][0]["standard_code"] == "EIA-364-01"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        LegacyExcelComUnavailableError("Excel COM unavailable"),
+        LegacyExcelReadOnlyOpenError("Workbook is damaged"),
+        LegacyExcelRangeError("UsedRange exceeds the row limit"),
+        LegacyExcelReadError("Expected headers were not found"),
+        LegacyExcelCleanupError("Excel cleanup failed"),
+    ],
+)
+def test_external_excel_read_api_maps_legacy_read_errors_to_http_400(
+    tmp_path: Path,
+    error: ValueError,
+) -> None:
+    client, engine = _client(tmp_path)
+    app.dependency_overrides[get_external_excel_read_service] = lambda: _FakeReadService(
+        error
+    )
+    try:
+        response = client.get("/api/external-resources/standard-record/rows")
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == str(error)
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _client(tmp_path: Path) -> tuple[TestClient, object]:
     settings = Settings(
         data_dir=tmp_path / "data",
@@ -119,6 +175,27 @@ def _client(tmp_path: Path) -> tuple[TestClient, object]:
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
     return TestClient(app), engine
+
+
+class _FakeReadService:
+    def __init__(self, error: Exception | None = None) -> None:
+        self._error = error
+
+    def read_standard_records(self, _query: str | None = None) -> StandardRecordReadResult:
+        if self._error is not None:
+            raise self._error
+        return StandardRecordReadResult(
+            resource_path="C:/temp/standard.xls",
+            matched_sheets=("Standard Records",),
+            rows=(
+                StandardRecordRow(
+                    standard_code="EIA-364-01",
+                    test_item="Contact resistance",
+                    sample_description=None,
+                    source_sheet="Standard Records",
+                ),
+            ),
+        )
 
 
 def _write_minimal_xlsx(

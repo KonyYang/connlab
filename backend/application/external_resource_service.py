@@ -137,8 +137,8 @@ class ExternalResourceService:
             if suffix == ".xls":
                 return None if path.stat().st_size > 0 else f"Excel file is empty: {path}"
         else:
-            if suffix != ".xlsx":
-                return f"Expected a .xlsx Excel file: {path}"
+            if suffix not in {".xlsx", ".xls"}:
+                return f"Expected an Excel file (.xlsx or .xls): {path}"
         try:
             self._probe_excel_resource(path, resource_type)
         except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:

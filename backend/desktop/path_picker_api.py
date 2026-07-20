@@ -102,6 +102,10 @@ def _first_selected_path(selection: object) -> Path | None:
 def _file_types(resource_type: str) -> tuple[str, ...]:
     if resource_type == "application_form_template":
         return ("Word documents (*.docx)", "All files (*.*)")
-    if resource_type == "ltr_workbook":
+    if resource_type in {
+        "ltr_workbook",
+        "standard_record_excel",
+        "equipment_calibration_excel",
+    }:
         return ("Excel workbooks (*.xlsx;*.xls)", "All files (*.*)")
     return ("Excel workbooks (*.xlsx)", "All files (*.*)")

@@ -14,6 +14,7 @@ from backend.domain import (
     ExternalResourceType,
     ExternalResourceValidationStatus,
 )
+from backend.infrastructure.office.models import ExcelTabularReadResult
 
 
 def test_read_standard_records_returns_structured_rows_with_query(tmp_path: Path) -> None:
@@ -77,6 +78,36 @@ def test_read_equipment_rows_returns_structured_rows(tmp_path: Path) -> None:
     assert result.rows[0].calibration_due_date == "2026-08-10"
 
 
+def test_read_standard_records_maps_legacy_xls_gateway_rows(tmp_path: Path) -> None:
+    workbook = tmp_path / "standard.xls"
+    workbook.touch()
+    office = _FakeOffice(
+        ExcelTabularReadResult(
+            workbook_path=workbook,
+            matched_sheet_names=("Standard Records",),
+            headers=("LTR Number", "Test Item", "Sample Description"),
+            rows=(
+                {
+                    "LTR Number": "EIA-364-09",
+                    "Test Item": "Insulation resistance",
+                    "Sample Description": "Housing",
+                    "__sheet_name": "Standard Records",
+                },
+            ),
+        )
+    )
+    service = ExternalExcelReadService(
+        _Store([_resource(ExternalResourceType.STANDARD_RECORD_EXCEL, workbook)]),
+        office=office,
+    )
+
+    result = service.read_standard_records(query="insulation")
+
+    assert result.resource_path == str(workbook)
+    assert result.rows[0].standard_code == "EIA-364-09"
+    assert office.paths == [workbook]
+
+
 def test_read_requires_active_registered_resource(tmp_path: Path) -> None:
     workbook = tmp_path / "standard.xlsx"
     _write_minimal_xlsx(
@@ -108,6 +139,16 @@ class _Store:
 
     def get_by_type(self, resource_type: ExternalResourceType) -> ExternalResource | None:
         return self._resources.get(resource_type)
+
+
+class _FakeOffice:
+    def __init__(self, result: ExcelTabularReadResult) -> None:
+        self._result = result
+        self.paths: list[Path] = []
+
+    def read_excel_tabular_rows(self, path: Path, **_kwargs: object) -> ExcelTabularReadResult:
+        self.paths.append(path)
+        return self._result
 
 
 def _resource(resource_type: ExternalResourceType, path: Path) -> ExternalResource:

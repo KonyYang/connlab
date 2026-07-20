@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from xml.sax.saxutils import escape
 
 from docx import Document
@@ -163,14 +164,15 @@ def test_external_resource_service_rejects_xlsx_with_missing_structure(
     assert "Missing required headers" in (validated.validation_failure_reason or "")
 
 
-def test_external_resource_service_rejects_legacy_xls_for_standard_and_equipment(
+def test_external_resource_service_probes_legacy_xls_for_standard_and_equipment(
     tmp_path: Path,
 ) -> None:
     standard = tmp_path / "standard-record.xls"
     equipment = tmp_path / "equipment.xls"
     standard.write_bytes(b"legacy")
     equipment.write_bytes(b"legacy")
-    service = ExternalResourceService(_Store())
+    office = _FakeOffice()
+    service = ExternalResourceService(_Store(), office=office)
     service.upsert_resource(
         ExternalResourceType.STANDARD_RECORD_EXCEL,
         standard,
@@ -189,14 +191,9 @@ def test_external_resource_service_rejects_legacy_xls_for_standard_and_equipment
         ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL
     )
 
-    assert standard_validated.validation_status is ExternalResourceValidationStatus.INVALID
-    assert "Expected a .xlsx Excel file" in (
-        standard_validated.validation_failure_reason or ""
-    )
-    assert equipment_validated.validation_status is ExternalResourceValidationStatus.INVALID
-    assert "Expected a .xlsx Excel file" in (
-        equipment_validated.validation_failure_reason or ""
-    )
+    assert standard_validated.validation_status is ExternalResourceValidationStatus.VALID
+    assert equipment_validated.validation_status is ExternalResourceValidationStatus.VALID
+    assert office.excel_probes == [standard, equipment]
 
 
 def test_external_resource_service_rejects_unregistered_resource() -> None:
@@ -239,6 +236,7 @@ class _FakeOffice:
     def __init__(self) -> None:
         self.word_reads: list[Path] = []
         self.excel_reads: list[Path] = []
+        self.excel_probes: list[Path] = []
 
     def read_word_document(self, source_path: Path) -> object:
         """Record Word reads."""
@@ -249,6 +247,11 @@ class _FakeOffice:
         """Record Excel reads."""
         self.excel_reads.append(source_path)
         return object()
+
+    def probe_excel_structure(self, source_path: Path, **_rules: object) -> object:
+        """Record structure probes."""
+        self.excel_probes.append(source_path)
+        return SimpleNamespace(valid=True, failure_reason=None)
 
 
 def _write_minimal_xlsx(

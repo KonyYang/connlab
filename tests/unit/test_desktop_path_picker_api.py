@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from backend.desktop.shell import desktop_bridge_script, run_desktop_shell
-from backend.desktop.path_picker_api import DesktopPathPickerApi
+from backend.desktop.path_picker_api import DesktopPathPickerApi, _file_types
 
 
 def test_desktop_path_picker_api_routes_folder_resources_to_directory_picker() -> None:
@@ -65,6 +65,24 @@ def test_desktop_bridge_script_installs_frontend_contract() -> None:
 
     assert "window.connlabDesktopPathPicker" in script
     assert "window.pywebview.api.pickExternalResourcePath" in script
+
+
+@pytest.mark.parametrize(
+    "resource_type",
+    ["standard_record_excel", "equipment_calibration_excel", "ltr_workbook"],
+)
+def test_excel_resource_picker_accepts_xlsx_and_xls(resource_type: str) -> None:
+    assert _file_types(resource_type) == (
+        "Excel workbooks (*.xlsx;*.xls)",
+        "All files (*.*)",
+    )
+
+
+def test_unrelated_file_picker_filter_remains_xlsx_only() -> None:
+    assert _file_types("other_excel_resource") == (
+        "Excel workbooks (*.xlsx)",
+        "All files (*.*)",
+    )
 
 
 class _Picker:

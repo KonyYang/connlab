@@ -6,6 +6,10 @@ import mimetypes
 from pathlib import Path
 
 from backend.infrastructure.office.excel_workbook_gateway import ExcelWorkbookGateway
+from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
+    ExcelComReadonlyTabularGateway,
+    UnsupportedExternalExcelTabularFormatError,
+)
 from backend.infrastructure.office.models import (
     ExcelTabularReadResult,
     ExcelStructureProbeResult,
@@ -41,12 +45,16 @@ class OfficeFacade:
         outlook_gateway: OutlookMsgGateway | None = None,
         excel_gateway: ExcelWorkbookGateway | None = None,
         lifecycle: OfficeLifecycleManager | None = None,
+        legacy_excel_gateway: ExcelComReadonlyTabularGateway | None = None,
     ) -> None:
         """Create the facade with optional gateway overrides for tests."""
         self._word_gateway = word_gateway or WordDocumentGateway()
         self._outlook_gateway = outlook_gateway or OutlookMsgGateway()
         self._excel_gateway = excel_gateway or ExcelWorkbookGateway()
         self._lifecycle = lifecycle or OfficeLifecycleManager()
+        self._legacy_excel_gateway = legacy_excel_gateway or ExcelComReadonlyTabularGateway(
+            self._lifecycle
+        )
 
     def classify_file(self, source_path: Path) -> OfficeFileClassification:
         """Classify an office-related file by extension and size."""
@@ -150,7 +158,7 @@ class OfficeFacade:
         expected_sheet_name_patterns: tuple[str, ...] = (),
     ) -> ExcelStructureProbeResult:
         """Probe workbook sheets and headers through the Excel gateway."""
-        return self._excel_gateway.probe_structure(
+        return self._tabular_gateway(Path(source_path)).probe_structure(
             source_path,
             expected_headers=expected_headers,
             expected_date_headers=expected_date_headers,
@@ -167,7 +175,7 @@ class OfficeFacade:
         expected_sheet_name_patterns: tuple[str, ...] = (),
     ) -> ExcelTabularReadResult:
         """Read header-aligned worksheet rows through the Excel gateway."""
-        return self._excel_gateway.read_tabular_rows(
+        return self._tabular_gateway(Path(source_path)).read_tabular_rows(
             source_path,
             expected_headers=expected_headers,
             expected_sheet_names=expected_sheet_names,
@@ -186,6 +194,16 @@ class OfficeFacade:
             Path(source_path),
             modify_password=modify_password,
             read_only=read_only,
+        )
+
+    def _tabular_gateway(self, source_path: Path) -> object:
+        suffix = source_path.suffix.lower()
+        if suffix == ".xlsx":
+            return self._excel_gateway
+        if suffix == ".xls":
+            return self._legacy_excel_gateway
+        raise UnsupportedExternalExcelTabularFormatError(
+            f"Expected an Excel file (.xlsx or .xls): {source_path}"
         )
 
 
