@@ -26,6 +26,7 @@ class ProjectMatrixDraftRecord:
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
+    method_sync_context_json: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

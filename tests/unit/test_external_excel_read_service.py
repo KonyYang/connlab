@@ -21,11 +21,12 @@ def test_read_standard_records_returns_structured_rows_with_query(tmp_path: Path
     workbook = tmp_path / "standard.xlsx"
     _write_minimal_xlsx(
         workbook,
-        sheet_name="Standard Records",
+        sheet_name="认可标准",
         rows=[
-            ["LTR Number", "Test Item", "Sample Description"],
-            ["EIA-364-01", "Contact resistance", "Power connector"],
-            ["EIA-364-02", "Thermal shock", "Signal connector"],
+            ["Standard record catalog"],
+            ["", "文 件 编 号", "文 件 名 称", "备注"],
+            ["", "EIA-364-01", "Contact resistance", "Power connector"],
+            ["", "EIA-364-02", "Thermal shock", "Signal connector"],
         ],
     )
     service = ExternalExcelReadService(
@@ -42,10 +43,10 @@ def test_read_standard_records_returns_structured_rows_with_query(tmp_path: Path
     result = service.read_standard_records(query="thermal")
 
     assert result.resource_path == str(workbook)
-    assert result.matched_sheets == ("Standard Records",)
+    assert result.matched_sheets == ("认可标准",)
     assert len(result.rows) == 1
     assert result.rows[0].standard_code == "EIA-364-02"
-    assert result.rows[0].source_sheet == "Standard Records"
+    assert result.rows[0].source_sheet == "认可标准"
 
 
 def test_read_equipment_rows_returns_structured_rows(tmp_path: Path) -> None:
@@ -84,14 +85,15 @@ def test_read_standard_records_maps_legacy_xls_gateway_rows(tmp_path: Path) -> N
     office = _FakeOffice(
         ExcelTabularReadResult(
             workbook_path=workbook,
-            matched_sheet_names=("Standard Records",),
-            headers=("LTR Number", "Test Item", "Sample Description"),
+            matched_sheet_names=("认可标准",),
+            headers=("文 件 编 号", "文 件 名 称", "备注"),
             rows=(
                 {
-                    "LTR Number": "EIA-364-09",
-                    "Test Item": "Insulation resistance",
-                    "Sample Description": "Housing",
-                    "__sheet_name": "Standard Records",
+                    "文 件 编 号": "EIA-364-09",
+                    "文 件 名 称": "Insulation resistance",
+                    "备注": "Housing",
+                    "__sheet_name": "认可标准",
+                    "__row_number": "3",
                 },
             ),
         )
@@ -112,8 +114,8 @@ def test_read_requires_active_registered_resource(tmp_path: Path) -> None:
     workbook = tmp_path / "standard.xlsx"
     _write_minimal_xlsx(
         workbook,
-        sheet_name="Standard Records",
-        rows=[["LTR Number", "Test Item", "Sample Description"]],
+        sheet_name="认可标准",
+        rows=[["Standard record catalog"], ["", "文 件 编 号"]],
     )
     service = ExternalExcelReadService(
         _Store(

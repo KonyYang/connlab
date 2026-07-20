@@ -431,7 +431,7 @@ class MatrixEditorSessionService:
             draft_status: Literal["missing", "current", "stale"] = "current"
             loaded_source: Literal["authority", "draft"] = "draft"
             draft_updated_at = current_draft.record.updated_at
-            saved_payload_signature = _build_signature_from_project_draft(current_draft)
+            saved_payload_signature = build_project_matrix_draft_payload_signature(current_draft)
             schedule_source = current_draft.record
         else:
             editor_draft = _build_editor_draft_from_active(active)
@@ -528,7 +528,7 @@ class MatrixEditorSessionService:
             expected_command,
             draft_record.project_matrix_draft_id,
         )
-        saved_payload_signature = _build_signature_from_project_draft(saved)
+        saved_payload_signature = build_project_matrix_draft_payload_signature(saved)
         fee_rebase_result = self._pending_fee_rebase.rebase_after_matrix_autosave(
             RebaseAfterMatrixAutosaveCommand(
                 project_id=command.project_id,
@@ -744,7 +744,7 @@ class MatrixEditorSessionService:
                     project_id=project_id,
                     saved_matrix_draft=saved_draft,
                     saved_matrix_draft_payload_signature=(
-                        _build_signature_from_project_draft(saved_draft)
+                        build_project_matrix_draft_payload_signature(saved_draft)
                     ),
                     previous_confirmed_matrix=previous_active,
                     new_confirmed_matrix=confirmed,
@@ -918,7 +918,7 @@ class MatrixEditorSessionService:
             raise MatrixEditorSessionDraftConflictError(
                 "Saved Matrix draft is stale relative to current active Matrix."
             )
-        if _build_signature_from_project_draft(draft) != expected_signature:
+        if build_project_matrix_draft_payload_signature(draft) != expected_signature:
             raise MatrixEditorSessionDraftConflictError(
                 "Saved Matrix draft changed. Reload or save again before confirming."
             )
@@ -937,7 +937,7 @@ class MatrixEditorSessionService:
             raise MatrixEditorSessionDraftConflictError(
                 "Matrix draft changed before cancel. Reload the latest Matrix."
             )
-        if expected_signature and _build_signature_from_project_draft(draft) != expected_signature:
+        if expected_signature and build_project_matrix_draft_payload_signature(draft) != expected_signature:
             raise MatrixEditorSessionDraftConflictError(
                 "Matrix draft changed before cancel. Reload the latest Matrix."
             )
@@ -1582,7 +1582,10 @@ def _build_signature_from_confirmed(snapshot: ConfirmedMatrixSnapshot) -> str:
     return repr(payload)
 
 
-def _build_signature_from_project_draft(draft: ProjectMatrixDraftSnapshot) -> str:
+def build_project_matrix_draft_payload_signature(
+    draft: ProjectMatrixDraftSnapshot,
+) -> str:
+    """Return the canonical saved-payload signature for one persisted draft."""
     command = MatrixEditorSessionConfirmCommand(
         project_id=draft.record.project_id,
         expected_active_confirmed_matrix_id=draft.record.base_confirmed_matrix_id,
@@ -1637,6 +1640,9 @@ def _build_signature_from_project_draft(draft: ProjectMatrixDraftSnapshot) -> st
         estimated_completion_date=draft.record.estimated_completion_date,
     )
     return _build_signature_from_session_payload(command)
+
+
+_build_signature_from_project_draft = build_project_matrix_draft_payload_signature
 
 
 def _build_manual_preview_payload(

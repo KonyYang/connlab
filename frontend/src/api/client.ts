@@ -1052,6 +1052,43 @@ export type ExternalResource = {
   validation_status: ExternalResourceValidationStatus;
   last_validated_at: string | null;
   validation_failure_reason: string | null;
+  worksheet_name: string | null;
+};
+
+export type MatrixMethodVersionSyncRow = {
+  draft_row_id: string;
+  row_order: number;
+  test_item: string;
+  current_method: string | null;
+  method_core: string | null;
+  matched_standard_code: string | null;
+  catalog_revision: string | null;
+  catalog_year: number | null;
+  source_row_number: number | null;
+  proposed_method: string | null;
+  status: string;
+  reason: string | null;
+  selectable: boolean;
+};
+
+export type MatrixMethodVersionSyncPreview = {
+  project_id: string;
+  project_matrix_draft_id: string;
+  base_confirmed_matrix_id: string | null;
+  resource_id: string;
+  resource_path: string;
+  worksheet_name: string;
+  catalog_fingerprint: string;
+  target_fingerprint: string;
+  preview_fingerprint: string;
+  generated_at: string;
+  rows: MatrixMethodVersionSyncRow[];
+};
+
+export type MatrixMethodVersionSyncApplyResponse = {
+  project_matrix_draft_id: string;
+  saved_payload_signature: string;
+  applied_row_ids: string[];
 };
 
 export type ExternalResourcePickResult = {
@@ -3308,7 +3345,7 @@ export function listExternalResources(): Promise<ExternalResource[]> {
 
 export function saveExternalResource(
   resourceType: ExternalResourceType,
-  input: { path: string; active: boolean }
+  input: { path: string; active: boolean; worksheet_name?: string | null }
 ): Promise<ExternalResource> {
   return requestJson<ExternalResource>(
     `/api/external-resources/${encodeURIComponent(resourceType)}`,
@@ -3334,6 +3371,35 @@ export function pickExternalResourcePath(
   return requestJson<ExternalResourcePickResult>(
     `/api/external-resources/${encodeURIComponent(resourceType)}/pick`,
     { method: "POST" }
+  );
+}
+
+export function previewMatrixMethodVersionSync(
+  projectId: string,
+  input: {
+    project_matrix_draft_id: string;
+    expected_saved_payload_signature: string;
+  }
+): Promise<MatrixMethodVersionSyncPreview> {
+  return requestJson<MatrixMethodVersionSyncPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-method-version-sync/preview`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function applyMatrixMethodVersionSync(
+  projectId: string,
+  input: {
+    project_matrix_draft_id: string;
+    expected_saved_payload_signature: string;
+    preview_fingerprint: string;
+    selected_draft_row_ids: string[];
+    applied_by: string;
+  }
+): Promise<MatrixMethodVersionSyncApplyResponse> {
+  return requestJson<MatrixMethodVersionSyncApplyResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-method-version-sync/apply`,
+    { method: "POST", body: JSON.stringify(input) }
   );
 }
 

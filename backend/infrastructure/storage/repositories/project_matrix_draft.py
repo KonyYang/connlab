@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from backend.domain import (
@@ -57,6 +57,7 @@ class ProjectMatrixDraftRepository:
         record_row.planned_test_start_date = snapshot.record.planned_test_start_date
         record_row.planned_test_complete_date = snapshot.record.planned_test_complete_date
         record_row.estimated_completion_date = snapshot.record.estimated_completion_date
+        record_row.method_sync_context_json = snapshot.record.method_sync_context_json
         self._session.execute(
             delete(ProjectMatrixDraftStepQuantityModel).where(
                 ProjectMatrixDraftStepQuantityModel.project_matrix_draft_id
@@ -87,6 +88,64 @@ class ProjectMatrixDraftRepository:
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.flush()
         return snapshot
+
+    def apply_method_sync(
+        self,
+        *,
+        project_matrix_draft_id: str,
+        expected_updated_at: str,
+        expected_status: str,
+        expected_base_confirmed_matrix_id: str | None,
+        updated_at: str,
+        method_sync_context_json: str,
+        updates: tuple[tuple[str, str | None, str], ...],
+    ) -> bool:
+        """Conditionally update selected row Methods and root provenance."""
+        savepoint = self._session.begin_nested()
+        try:
+            root_result = self._session.execute(
+                update(ProjectMatrixDraftRecordModel)
+                .where(
+                    ProjectMatrixDraftRecordModel.project_matrix_draft_id
+                    == project_matrix_draft_id,
+                    ProjectMatrixDraftRecordModel.updated_at == expected_updated_at,
+                    ProjectMatrixDraftRecordModel.status == expected_status,
+                    ProjectMatrixDraftRecordModel.base_confirmed_matrix_id
+                    == expected_base_confirmed_matrix_id,
+                )
+                .values(
+                    updated_at=updated_at,
+                    method_sync_context_json=method_sync_context_json,
+                )
+            )
+            if root_result.rowcount != 1:
+                savepoint.rollback()
+                return False
+            for row_id, old_method, new_method in updates:
+                old_predicate = (
+                    ProjectMatrixDraftRowModel.method.is_(None)
+                    if old_method is None
+                    else ProjectMatrixDraftRowModel.method == old_method
+                )
+                row_result = self._session.execute(
+                    update(ProjectMatrixDraftRowModel)
+                    .where(
+                        ProjectMatrixDraftRowModel.project_matrix_draft_id
+                        == project_matrix_draft_id,
+                        ProjectMatrixDraftRowModel.draft_row_id == row_id,
+                        old_predicate,
+                    )
+                    .values(method=new_method)
+                )
+                if row_result.rowcount != 1:
+                    savepoint.rollback()
+                    return False
+            self._session.flush()
+            savepoint.commit()
+            return True
+        except Exception:
+            savepoint.rollback()
+            raise
 
     def get(self, project_matrix_draft_id: str) -> ProjectMatrixDraftSnapshot | None:
         """Return one draft aggregate by draft id."""
@@ -227,6 +286,7 @@ def _to_record_model(record: ProjectMatrixDraftRecord) -> ProjectMatrixDraftReco
         planned_test_start_date=record.planned_test_start_date,
         planned_test_complete_date=record.planned_test_complete_date,
         estimated_completion_date=record.estimated_completion_date,
+        method_sync_context_json=record.method_sync_context_json,
     )
 
 
@@ -322,6 +382,7 @@ def _to_record_domain(row: ProjectMatrixDraftRecordModel) -> ProjectMatrixDraftR
         planned_test_start_date=row.planned_test_start_date,
         planned_test_complete_date=row.planned_test_complete_date,
         estimated_completion_date=row.estimated_completion_date,
+        method_sync_context_json=row.method_sync_context_json,
     )
 
 

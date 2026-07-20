@@ -19,7 +19,7 @@ type SettingsExternalResourcesPanelProps = {
   onPathChange: (resourceType: ExternalResourceType) => void;
   onSave: (
     resourceType: ExternalResourceType,
-    input: { path: string; active: boolean }
+    input: { path: string; active: boolean; worksheet_name?: string | null }
   ) => Promise<void>;
   onPasswordSave: (password: string) => Promise<void>;
   onBrowse: (resourceType: ExternalResourceType) => Promise<string | null>;
@@ -27,6 +27,7 @@ type SettingsExternalResourcesPanelProps = {
 
 type DraftValue = {
   path: string;
+  worksheetName: string;
 };
 
 export function SettingsExternalResourcesPanel({
@@ -59,6 +60,7 @@ export function SettingsExternalResourcesPanel({
       ...current,
       [resourceType]: {
         path: current[resourceType]?.path ?? "",
+        worksheetName: current[resourceType]?.worksheetName ?? "",
         ...value
       }
     }));
@@ -83,7 +85,10 @@ export function SettingsExternalResourcesPanel({
             <div className="settings-resource-list">
               {categoryRows.map((row) => (
                 <ResourceRow
-                  draft={drafts[row.resourceType] ?? { path: row.path }}
+                  draft={drafts[row.resourceType] ?? {
+                    path: row.path,
+                    worksheetName: row.worksheetName ?? ""
+                  }}
                   key={row.resourceType}
                   row={row}
                   saving={savingType === row.resourceType}
@@ -91,10 +96,13 @@ export function SettingsExternalResourcesPanel({
                   validationMessage={pathValidationMessages[row.resourceType] ?? null}
                   onDraftChange={(value) => updateDraft(row.resourceType, value)}
                   onPathChange={() => onPathChange(row.resourceType)}
-                  onSave={(nextPath) =>
+                  onSave={(input) =>
                     onSave(row.resourceType, {
-                      path: nextPath,
-                      active: true
+                      path: input.path,
+                      active: true,
+                      ...(input.worksheetNameSupplied
+                        ? { worksheet_name: input.worksheetName }
+                        : {})
                     })
                   }
                   onBrowse={() => onBrowse(row.resourceType)}
@@ -133,7 +141,11 @@ function ResourceRow({
   validationMessage: string | null;
   onDraftChange: (value: Partial<DraftValue>) => void;
   onPathChange: () => void;
-  onSave: (path: string) => void;
+  onSave: (input: {
+    path: string;
+    worksheetNameSupplied?: boolean;
+    worksheetName?: string | null;
+  }) => void;
   onBrowse: () => Promise<string | null>;
 }): ReactElement {
   const isFolder = row.expectedKind === "Folder";
@@ -148,7 +160,19 @@ function ResourceRow({
     if (!normalized || saving) {
       return;
     }
-    void onSave(normalized);
+    void onSave({ path: normalized });
+  }
+
+  function saveWorksheetName(value: string): void {
+    if (!draft.path.trim() || saving) {
+      return;
+    }
+    const normalized = value.trim();
+    void onSave({
+      path: draft.path.trim(),
+      worksheetNameSupplied: true,
+      worksheetName: normalized || null
+    });
   }
 
   async function browseForPath(): Promise<void> {
@@ -215,6 +239,25 @@ function ResourceRow({
           ) : null}
         </div>
       </label>
+      {row.resourceType === "standard_record_excel" ? (
+        <label className="settings-standard-sheet-field">
+          <span>Standard record sheet</span>
+          <input
+            aria-label="Standard record sheet"
+            disabled={saving}
+            maxLength={31}
+            value={draft.worksheetName}
+            onChange={(event) => onDraftChange({ worksheetName: event.target.value })}
+            onBlur={(event) => saveWorksheetName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                saveWorksheetName((event.target as HTMLInputElement).value);
+                event.preventDefault();
+              }
+            }}
+          />
+        </label>
+      ) : null}
     </article>
   );
 }
@@ -301,7 +344,8 @@ function initialDrafts(rows: SettingsResourceRow[]): Record<ExternalResourceType
     (drafts, config) => {
       const row = rows.find((item) => item.resourceType === config.resourceType);
       drafts[config.resourceType] = {
-        path: row?.path ?? ""
+        path: row?.path ?? "",
+        worksheetName: row?.worksheetName ?? ""
       };
       return drafts;
     },

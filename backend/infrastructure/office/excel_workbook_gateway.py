@@ -14,6 +14,19 @@ from backend.infrastructure.office.models import (
     LtrWorkbookFormat,
     LtrWorkbookSnapshot,
 )
+from backend.infrastructure.office.excel_tabular_layout import (
+    ExcelTabularLayout,
+    ExcelTabularLayoutError,
+    first_non_empty_row,
+    header_index_map,
+    map_explicit_layout_rows,
+    matching_sheet_pairs,
+    normalize_header,
+    probe_failure,
+    probe_explicit_xlsx_layout,
+    row_is_header,
+    sheet_strategy,
+)
 from backend.modules.ltr import LtrNumberError, parse_ltr_number
 
 
@@ -69,7 +82,7 @@ class ExcelWorkbookGateway:
             modified_time=datetime.fromtimestamp(stat.st_mtime),
             sheet_names=tuple(sheet_names),
             readable_sheet_names=tuple(readable_sheets),
-            sheet_strategy=_sheet_strategy(sheet_names),
+            sheet_strategy=sheet_strategy(sheet_names),
             existing_ltr_numbers=tuple(dict.fromkeys(ltr_numbers)),
         )
 
@@ -81,6 +94,7 @@ class ExcelWorkbookGateway:
         expected_date_headers: tuple[str, ...] = (),
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
+        layout: ExcelTabularLayout | None = None,
     ) -> ExcelStructureProbeResult:
         """Probe workbook sheets and headers without writing."""
         path = Path(source_path)
@@ -91,29 +105,54 @@ class ExcelWorkbookGateway:
                 f"Excel structure probe supports .xlsx only: {path.suffix or '<none>'}"
             )
         sheet_names, sheet_xml_paths = _read_xlsx_workbook_manifest(path)
-        matched_pairs = _matching_sheets(
+        matched_pairs = matching_sheet_pairs(
             sheet_names,
             sheet_xml_paths,
             expected_sheet_names,
             expected_sheet_name_patterns,
+            normalize_exact=bool(layout and layout.require_unique_sheet_match),
         )
+        if layout and layout.require_unique_sheet_match and len(matched_pairs) != 1:
+            return ExcelStructureProbeResult(
+                workbook_path=path,
+                sheet_names=tuple(sheet_names),
+                matched_sheet_names=tuple(name for name, _path in matched_pairs),
+                observed_headers=(),
+                missing_headers=expected_headers,
+                missing_date_headers=expected_date_headers,
+                valid=False,
+                failure_reason="Configured worksheet must match exactly one sheet.",
+            )
         shared_strings = _read_xlsx_shared_strings(path)
+        if layout:
+            return probe_explicit_xlsx_layout(
+                path,
+                tuple(sheet_names),
+                matched_pairs,
+                shared_strings,
+                expected_headers,
+                expected_date_headers,
+                layout,
+                lambda workbook, sheet, strings: _read_xlsx_sheet_rows(
+                    workbook, sheet, strings, preserve_positions=True
+                ),
+            )
         observed_headers: list[str] = []
         for _sheet_name, sheet_xml_path in matched_pairs:
             rows = _read_xlsx_sheet_rows(path, sheet_xml_path, shared_strings)
-            observed_headers.extend(_first_non_empty_row(rows))
-        normalized_observed = {_normalize_header(value) for value in observed_headers}
+            observed_headers.extend(first_non_empty_row(rows))
+        normalized_observed = {normalize_header(value) for value in observed_headers}
         missing_headers = tuple(
             header
             for header in expected_headers
-            if _normalize_header(header) not in normalized_observed
+            if normalize_header(header) not in normalized_observed
         )
         missing_date_headers = tuple(
             header
             for header in expected_date_headers
-            if _normalize_header(header) not in normalized_observed
+            if normalize_header(header) not in normalized_observed
         )
-        failure = _probe_failure(matched_pairs, missing_headers, missing_date_headers)
+        failure = probe_failure(matched_pairs, missing_headers, missing_date_headers)
         return ExcelStructureProbeResult(
             workbook_path=path,
             sheet_names=tuple(sheet_names),
@@ -132,6 +171,7 @@ class ExcelWorkbookGateway:
         expected_headers: tuple[str, ...],
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
+        layout: ExcelTabularLayout | None = None,
     ) -> ExcelTabularReadResult:
         """Read header-aligned worksheet rows from matching worksheets."""
         path = Path(source_path)
@@ -142,40 +182,67 @@ class ExcelWorkbookGateway:
                 f"Excel tabular read supports .xlsx only: {path.suffix or '<none>'}"
             )
         sheet_names, sheet_xml_paths = _read_xlsx_workbook_manifest(path)
-        matched_pairs = _matching_sheets(
+        matched_pairs = matching_sheet_pairs(
             sheet_names,
             sheet_xml_paths,
             expected_sheet_names,
             expected_sheet_name_patterns,
+            normalize_exact=bool(layout and layout.require_unique_sheet_match),
         )
         if not matched_pairs:
             raise UnsupportedLtrWorkbookError(
                 "No worksheet matched the expected sheet rules."
             )
         shared_strings = _read_xlsx_shared_strings(path)
+        if layout:
+            if layout.require_unique_sheet_match and len(matched_pairs) != 1:
+                raise UnsupportedLtrWorkbookError(
+                    "Configured worksheet must match exactly one sheet."
+                )
+            collected: list[dict[str, str]] = []
+            headers: tuple[str, ...] = ()
+            names: list[str] = []
+            try:
+                for sheet_name, sheet_xml_path in matched_pairs:
+                    rows = _read_xlsx_sheet_rows(
+                        path, sheet_xml_path, shared_strings, preserve_positions=True
+                    )
+                    headers, mapped = map_explicit_layout_rows(
+                        rows, sheet_name=sheet_name, layout=layout
+                    )
+                    collected.extend(mapped)
+                    names.append(sheet_name)
+            except ExcelTabularLayoutError as exc:
+                raise UnsupportedLtrWorkbookError(str(exc)) from exc
+            if not collected:
+                raise UnsupportedLtrWorkbookError(
+                    "Configured worksheet has no nonblank data rows."
+                )
+            return ExcelTabularReadResult(
+                workbook_path=path,
+                matched_sheet_names=tuple(names),
+                headers=headers,
+                rows=tuple(collected),
+            )
         canonical_headers = tuple(expected_headers)
-        normalized_canonical = [_normalize_header(value) for value in canonical_headers]
+        normalized_canonical = [normalize_header(value) for value in canonical_headers]
         collected_rows: list[dict[str, str]] = []
         matched_sheet_names: list[str] = []
         for sheet_name, sheet_xml_path in matched_pairs:
             rows = _read_xlsx_sheet_rows(path, sheet_xml_path, shared_strings)
-            header_row = _first_non_empty_row(rows)
+            header_row = first_non_empty_row(rows)
             if not header_row:
                 continue
-            index_map = _header_index_map(
-                header_row,
-                canonical_headers,
-                normalized_canonical,
-            )
+            index_map = header_index_map(header_row, normalized_canonical)
             if index_map is None:
                 continue
             matched_sheet_names.append(sheet_name)
             for raw_row in rows:
-                row = [_normalize_cell(value) for value in raw_row]
+                row = [value.strip() for value in raw_row]
                 if not any(row):
                     continue
                 # Skip the header row itself.
-                if _row_is_header(row, header_row):
+                if row_is_header(row, header_row):
                     continue
                 mapped: dict[str, str] = {}
                 has_value = False
@@ -292,6 +359,7 @@ def _read_xlsx_sheet_rows(
     path: Path,
     sheet_xml_path: str,
     shared_strings: list[str],
+    preserve_positions: bool = False,
 ) -> list[list[str]]:
     """Read plain worksheet rows from one XLSX sheet."""
     try:
@@ -303,8 +371,30 @@ def _read_xlsx_sheet_rows(
         ) from exc
     rows: list[list[str]] = []
     for row in root.findall(".//{*}row"):
-        rows.append([_cell_text(cell, shared_strings) for cell in row.findall("{*}c")])
+        if not preserve_positions:
+            rows.append([_cell_text(cell, shared_strings) for cell in row.findall("{*}c")])
+            continue
+        row_number = int(row.attrib.get("r", len(rows) + 1))
+        while len(rows) < row_number - 1:
+            rows.append([])
+        values: list[str] = []
+        for cell in row.findall("{*}c"):
+            column = _xlsx_column_number(cell.attrib.get("r", "A1"))
+            while len(values) < column:
+                values.append("")
+            values[column - 1] = _cell_text(cell, shared_strings)
+        rows.append(values)
     return rows
+
+
+def _xlsx_column_number(reference: str) -> int:
+    letters = re.match(r"[A-Za-z]+", reference)
+    if letters is None:
+        return 1
+    result = 0
+    for letter in letters.group(0).upper():
+        result = result * 26 + ord(letter) - ord("A") + 1
+    return result
 
 
 def _cell_text(cell: ElementTree.Element, shared_strings: list[str]) -> str:
@@ -341,95 +431,3 @@ def _normalize_xlsx_target(target: str) -> str:
     if target.startswith("xl/"):
         return target
     return f"xl/{target}"
-
-
-def _matching_sheets(
-    sheet_names: list[str],
-    sheet_xml_paths: list[str],
-    expected_sheet_names: tuple[str, ...],
-    expected_sheet_name_patterns: tuple[str, ...],
-) -> list[tuple[str, str]]:
-    """Return sheet names and paths matching probe rules."""
-    if not expected_sheet_names and not expected_sheet_name_patterns:
-        return list(zip(sheet_names, sheet_xml_paths, strict=True))
-    exact = {name.lower() for name in expected_sheet_names}
-    patterns = [
-        re.compile(pattern, flags=re.IGNORECASE)
-        for pattern in expected_sheet_name_patterns
-    ]
-    matched: list[tuple[str, str]] = []
-    for sheet_name, sheet_xml_path in zip(sheet_names, sheet_xml_paths, strict=True):
-        if sheet_name.lower() in exact or any(
-            pattern.fullmatch(sheet_name) for pattern in patterns
-        ):
-            matched.append((sheet_name, sheet_xml_path))
-    return matched
-
-
-def _first_non_empty_row(rows: list[list[str]]) -> list[str]:
-    """Return the first row with at least one non-empty value."""
-    for row in rows:
-        cleaned = [value.strip() for value in row if value.strip()]
-        if cleaned:
-            return cleaned
-    return []
-
-
-def _normalize_header(value: str) -> str:
-    """Normalize a workbook header for comparison."""
-    return re.sub(r"\s+", " ", value.strip().lower())
-
-
-def _probe_failure(
-    matched_pairs: list[tuple[str, str]],
-    missing_headers: tuple[str, ...],
-    missing_date_headers: tuple[str, ...],
-) -> str | None:
-    """Return a probe failure reason, or None when structure is acceptable."""
-    if not matched_pairs:
-        return "No worksheet matched the expected sheet rules."
-    if missing_headers:
-        return f"Missing required headers: {', '.join(missing_headers)}"
-    if missing_date_headers:
-        return f"Missing required date headers: {', '.join(missing_date_headers)}"
-    return None
-
-
-def _header_index_map(
-    header_row: list[str],
-    canonical_headers: tuple[str, ...],
-    normalized_canonical: list[str],
-) -> tuple[int, ...] | None:
-    """Return canonical header indexes for one sheet header row."""
-    normalized_header = [_normalize_header(value) for value in header_row]
-    indexes: list[int] = []
-    for normalized_name in normalized_canonical:
-        try:
-            indexes.append(normalized_header.index(normalized_name))
-        except ValueError:
-            return None
-    return tuple(indexes)
-
-
-def _normalize_cell(value: str) -> str:
-    """Return stripped cell text."""
-    return value.strip()
-
-
-def _row_is_header(row: list[str], header_row: list[str]) -> bool:
-    """Return whether a row equals the header row after trimming."""
-    if len(row) < len(header_row):
-        return False
-    return all(
-        _normalize_cell(row[index]) == _normalize_cell(header_row[index])
-        for index in range(len(header_row))
-    )
-
-
-def _sheet_strategy(sheet_names: list[str]) -> str:
-    """Describe the visible workbook sheet strategy."""
-    if any(re.fullmatch(r"\d{4}", name) for name in sheet_names):
-        return "year_sheets"
-    if any(re.fullmatch(r"\d{4}[-_]\d{2}", name) for name in sheet_names):
-        return "year_month_sheets"
-    return "flat_or_unknown"

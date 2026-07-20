@@ -56,6 +56,7 @@ class ExternalResourceRepository:
             row.validation_status = resource.validation_status.value
             row.last_validated_at = resource.last_validated_at
             row.validation_failure_reason = resource.validation_failure_reason
+            row.worksheet_name = resource.worksheet_name
         self._session.flush()
         return resource
 
@@ -70,6 +71,7 @@ def _to_model(resource: ExternalResource) -> ExternalResourceModel:
         validation_status=resource.validation_status.value,
         last_validated_at=resource.last_validated_at,
         validation_failure_reason=resource.validation_failure_reason,
+        worksheet_name=resource.worksheet_name,
     )
 
 
@@ -83,4 +85,5 @@ def _to_domain(row: ExternalResourceModel) -> ExternalResource:
         validation_status=ExternalResourceValidationStatus(row.validation_status),
         last_validated_at=row.last_validated_at,
         validation_failure_reason=row.validation_failure_reason,
+        worksheet_name=row.worksheet_name,
     )

@@ -11,6 +11,12 @@ from typing import Protocol
 
 from backend.infrastructure.office.models import ExcelStructureProbeResult
 from backend.infrastructure.office.models import ExcelTabularReadResult
+from backend.infrastructure.office.excel_tabular_layout import (
+    ExcelTabularLayout,
+    ExcelTabularLayoutError,
+    map_explicit_layout_rows,
+    normalized_sheet_name,
+)
 from backend.infrastructure.office.office_lifecycle import ExcelWorkbookHandle
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 
@@ -72,11 +78,19 @@ class ExcelComReadonlyTabularGateway:
         expected_date_headers: tuple[str, ...] = (),
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
+        layout: ExcelTabularLayout | None = None,
     ) -> ExcelStructureProbeResult:
         path = self._validated_path(source_path)
         sheet_names, sheets = self._read_matching_sheets(
-            path, expected_sheet_names, expected_sheet_name_patterns
+            path,
+            expected_sheet_names,
+            expected_sheet_name_patterns,
+            normalize_exact=bool(layout and layout.require_unique_sheet_match),
         )
+        if layout:
+            return _probe_explicit_layout(
+                path, sheet_names, sheets, expected_headers, expected_date_headers, layout
+            )
         observed: list[str] = []
         for _name, rows in sheets:
             observed.extend(_first_non_empty_row(rows))
@@ -108,13 +122,42 @@ class ExcelComReadonlyTabularGateway:
         expected_headers: tuple[str, ...],
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
+        layout: ExcelTabularLayout | None = None,
     ) -> ExcelTabularReadResult:
         path = self._validated_path(source_path)
         _sheet_names, sheets = self._read_matching_sheets(
-            path, expected_sheet_names, expected_sheet_name_patterns
+            path,
+            expected_sheet_names,
+            expected_sheet_name_patterns,
+            normalize_exact=bool(layout and layout.require_unique_sheet_match),
         )
         if not sheets:
             raise LegacyExcelReadError("No worksheet matched the expected sheet rules.")
+        if layout:
+            if layout.require_unique_sheet_match and len(sheets) != 1:
+                raise LegacyExcelReadError(
+                    "Configured worksheet must match exactly one sheet."
+                )
+            collected: list[dict[str, str]] = []
+            headers: tuple[str, ...] = ()
+            try:
+                for sheet_name, rows in sheets:
+                    headers, mapped = map_explicit_layout_rows(
+                        rows, sheet_name=sheet_name, layout=layout
+                    )
+                    collected.extend(mapped)
+            except ExcelTabularLayoutError as exc:
+                raise LegacyExcelReadError(str(exc)) from exc
+            if not collected:
+                raise LegacyExcelReadError(
+                    "Configured worksheet has no nonblank data rows."
+                )
+            return ExcelTabularReadResult(
+                workbook_path=path,
+                matched_sheet_names=tuple(name for name, _rows in sheets),
+                headers=headers,
+                rows=tuple(collected),
+            )
         normalized_headers = [_normalize_header(value) for value in expected_headers]
         matched: list[str] = []
         collected: list[dict[str, str]] = []
@@ -158,6 +201,7 @@ class ExcelComReadonlyTabularGateway:
         path: Path,
         expected_names: tuple[str, ...],
         expected_patterns: tuple[str, ...],
+        normalize_exact: bool = False,
     ) -> tuple[tuple[str, ...], list[tuple[str, list[list[str]]]]]:
         try:
             handle = self._lifecycle.open_excel_workbook(
@@ -174,7 +218,7 @@ class ExcelComReadonlyTabularGateway:
 
         try:
             result = _read_workbook_sheets(
-                handle.workbook, expected_names, expected_patterns
+                handle.workbook, expected_names, expected_patterns, normalize_exact
             )
         except ExternalExcelTabularGatewayError as primary:
             _close_after_primary(handle, primary)
@@ -198,10 +242,14 @@ def _read_workbook_sheets(
     workbook: object,
     expected_names: tuple[str, ...],
     expected_patterns: tuple[str, ...],
+    normalize_exact: bool = False,
 ) -> tuple[tuple[str, ...], list[tuple[str, list[list[str]]]]]:
     worksheets = workbook.Worksheets
     count = _count_value(worksheets.Count, "worksheet")
-    exact = {name.lower() for name in expected_names}
+    exact = {
+        normalized_sheet_name(name) if normalize_exact else name.lower()
+        for name in expected_names
+    }
     patterns = [re.compile(value, re.IGNORECASE) for value in expected_patterns]
     names: list[str] = []
     matched: list[tuple[str, list[list[str]]]] = []
@@ -210,13 +258,58 @@ def _read_workbook_sheets(
         name = str(sheet.Name)
         names.append(name)
         selected = not exact and not patterns
-        selected = selected or name.lower() in exact
+        candidate = normalized_sheet_name(name) if normalize_exact else name.lower()
+        selected = selected or candidate in exact
         selected = selected or any(pattern.fullmatch(name) for pattern in patterns)
         if selected:
             matched.append((name, _read_used_range(sheet, name)))
         sheet = None
     worksheets = None
     return tuple(names), matched
+
+
+def _probe_explicit_layout(
+    path: Path,
+    sheet_names: tuple[str, ...],
+    sheets: list[tuple[str, list[list[str]]]],
+    expected_headers: tuple[str, ...],
+    expected_date_headers: tuple[str, ...],
+    layout: ExcelTabularLayout,
+) -> ExcelStructureProbeResult:
+    if layout.require_unique_sheet_match and len(sheets) != 1:
+        return ExcelStructureProbeResult(
+            workbook_path=path,
+            sheet_names=sheet_names,
+            matched_sheet_names=tuple(name for name, _rows in sheets),
+            observed_headers=(),
+            missing_headers=expected_headers,
+            missing_date_headers=expected_date_headers,
+            valid=False,
+            failure_reason="Configured worksheet must match exactly one sheet.",
+        )
+    observed: tuple[str, ...] = ()
+    matched: list[str] = []
+    failure: str | None = None
+    try:
+        for sheet_name, rows in sheets:
+            observed, mapped = map_explicit_layout_rows(
+                rows, sheet_name=sheet_name, layout=layout
+            )
+            matched.append(sheet_name)
+            if not mapped:
+                failure = "Configured worksheet has no nonblank data rows."
+    except ExcelTabularLayoutError as exc:
+        failure = str(exc)
+    return ExcelStructureProbeResult(
+        workbook_path=path,
+        sheet_names=sheet_names,
+        matched_sheet_names=tuple(matched),
+        observed_headers=observed,
+        missing_headers=() if failure is None else expected_headers,
+        missing_date_headers=() if failure is None else expected_date_headers,
+        valid=failure is None,
+        failure_reason=failure,
+    )
 
 
 def _read_used_range(sheet: object, sheet_name: str) -> list[list[str]]:

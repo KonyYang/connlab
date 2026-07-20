@@ -8,6 +8,8 @@ from typing import Protocol
 
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.infrastructure.office import OfficeFacade
+from backend.application.external_resource_service import effective_standard_worksheet_name
+from backend.infrastructure.office.excel_tabular_layout import ExcelTabularLayout
 
 
 class ExternalExcelReadError(ValueError):
@@ -36,6 +38,7 @@ class StandardRecordRow:
     test_item: str
     sample_description: str | None
     source_sheet: str
+    source_row_number: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,23 +83,34 @@ class ExternalExcelReadService:
     def read_standard_records(self, query: str | None = None) -> StandardRecordReadResult:
         """Read configured standard record Excel rows with optional query filter."""
         resource = self._require_resource(ExternalResourceType.STANDARD_RECORD_EXCEL)
+        worksheet_name = effective_standard_worksheet_name(resource) or "认可标准"
         table = self._office.read_excel_tabular_rows(
             resource.path,
-            expected_headers=("LTR Number", "Test Item", "Sample Description"),
-            expected_sheet_name_patterns=(r".*record.*", r".*standard.*"),
+            expected_headers=("文 件 编 号",),
+            expected_sheet_names=(worksheet_name,),
+            layout=ExcelTabularLayout(
+                header_row_number=2,
+                required_header_columns=(("文 件 编 号", 2),),
+                optional_headers=("文 件 名 称", "备注"),
+                include_row_number=True,
+                require_unique_sheet_match=True,
+            ),
         )
         rows: list[StandardRecordRow] = []
         for row in table.rows:
-            code = row.get("LTR Number", "").strip()
-            item = row.get("Test Item", "").strip()
-            sample = row.get("Sample Description", "").strip() or None
-            if not code and not item:
+            code = row.get("文 件 编 号", "").strip()
+            item = row.get("文 件 名 称", "").strip()
+            sample = row.get("备注", "").strip() or None
+            if not code:
                 continue
             mapped = StandardRecordRow(
                 standard_code=code,
                 test_item=item,
                 sample_description=sample,
                 source_sheet=row.get("__sheet_name", ""),
+                source_row_number=(
+                    int(row["__row_number"]) if row.get("__row_number") else None
+                ),
             )
             if _matched_query(query, mapped.standard_code, mapped.test_item, sample or ""):
                 rows.append(mapped)

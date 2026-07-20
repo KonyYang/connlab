@@ -13,6 +13,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.application.exception_workflow_service import ExceptionWorkflowService
 from backend.application.external_excel_read_service import ExternalExcelReadService
+from backend.application.matrix_method_version_sync_service import (
+    MatrixMethodVersionSyncService,
+)
 from backend.application.local_path_picker_service import LocalPathPickerService
 from backend.application.external_resource_service import ExternalResourceService
 from backend.application.frozen_field_revision_request_service import (
@@ -1676,6 +1679,19 @@ def get_external_excel_read_service(
 ) -> ExternalExcelReadService:
     """Build the read-only external Excel structured read service."""
     return ExternalExcelReadService(ExternalResourceRepository(session))
+
+
+def get_matrix_method_version_sync_service(
+    session: Session = Depends(get_session),
+) -> MatrixMethodVersionSyncService:
+    """Build the Standard-catalog Matrix Method synchronization service."""
+    resources = ExternalResourceRepository(session)
+    return MatrixMethodVersionSyncService(
+        draft_store=ProjectMatrixDraftRepository(session),
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        resource_store=resources,
+        catalog_reader=ExternalExcelReadService(resources),
+    )
 
 
 def get_local_path_picker_service() -> LocalPathPickerService:

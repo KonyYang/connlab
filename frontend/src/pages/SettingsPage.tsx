@@ -63,7 +63,7 @@ export function SettingsPage(): ReactElement {
 
   async function handleSave(
     resourceType: ExternalResourceType,
-    input: { path: string; active: boolean }
+    input: { path: string; active: boolean; worksheet_name?: string | null }
   ): Promise<void> {
     if (input.path.trim().length === 0) {
       setError("Please enter a path.");
@@ -75,7 +75,10 @@ export function SettingsPage(): ReactElement {
     try {
       const saved = await saveExternalResource(resourceType, {
         path: input.path.trim(),
-        active: input.active
+        active: input.active,
+        ...(Object.prototype.hasOwnProperty.call(input, "worksheet_name")
+          ? { worksheet_name: input.worksheet_name }
+          : {})
       });
       upsertResource(saved);
       const validated = await validateExternalResource(resourceType);

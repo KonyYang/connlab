@@ -372,6 +372,7 @@ class ExternalResource:
     )
     last_validated_at: str | None = None
     validation_failure_reason: str | None = None
+    worksheet_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

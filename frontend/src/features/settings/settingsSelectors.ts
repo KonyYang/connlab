@@ -8,6 +8,7 @@ export type SettingsResourceRow = SettingsResourceConfig & {
   resource: ExternalResource | null;
   path: string;
   active: boolean;
+  worksheetName: string | null;
 };
 
 export function buildSettingsResourceRows(
@@ -23,7 +24,11 @@ export function buildSettingsResourceRows(
       ...config,
       resource,
       path: resource?.path ?? "",
-      active: resource?.active ?? true
+      active: resource?.active ?? true,
+      worksheetName:
+        config.resourceType === "standard_record_excel"
+          ? resource?.worksheet_name ?? "认可标准"
+          : null
     };
   });
 }

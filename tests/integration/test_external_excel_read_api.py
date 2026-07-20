@@ -33,10 +33,11 @@ def test_external_excel_read_api_returns_standard_rows(tmp_path: Path) -> None:
     workbook = tmp_path / "standard.xlsx"
     _write_minimal_xlsx(
         workbook,
-        sheet_name="Standard Records",
+        sheet_name="认可标准",
         rows=[
-            ["LTR Number", "Test Item", "Sample Description"],
-            ["EIA-364-09", "Insulation resistance", "Housing sample"],
+            ["Standard record catalog"],
+            ["", "文 件 编 号", "文 件 名 称", "备注"],
+            ["", "EIA-364-09", "Insulation resistance", "Housing sample"],
         ],
     )
     try:
@@ -51,9 +52,9 @@ def test_external_excel_read_api_returns_standard_rows(tmp_path: Path) -> None:
         assert validate.status_code == 200
         assert response.status_code == 200
         payload = response.json()
-        assert payload["matched_sheets"] == ["Standard Records"]
+        assert payload["matched_sheets"] == ["认可标准"]
         assert payload["rows"][0]["standard_code"] == "EIA-364-09"
-        assert payload["rows"][0]["source_sheet"] == "Standard Records"
+        assert payload["rows"][0]["source_sheet"] == "认可标准"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

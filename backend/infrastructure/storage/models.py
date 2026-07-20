@@ -561,6 +561,7 @@ class ExternalResourceModel(Base):
     validation_status: Mapped[str] = mapped_column(String(64), nullable=False)
     last_validated_at: Mapped[str | None] = mapped_column(String(64))
     validation_failure_reason: Mapped[str | None] = mapped_column(Text)
+    worksheet_name: Mapped[str | None] = mapped_column(String(31), nullable=True)
 
 
 class FrozenFieldRevisionRequestModel(Base):

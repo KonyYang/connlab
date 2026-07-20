@@ -9284,3 +9284,172 @@
   color: #1f4058;
   font-weight: 700;
 }
+.settings-standard-sheet-field {
+  display: grid;
+  gap: 4px;
+  grid-column: 2;
+  max-width: 320px;
+}
+
+.settings-standard-sheet-field span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.settings-standard-sheet-field input {
+  min-width: 0;
+}
+
+.matrix-method-sync {
+  border-top: 1px solid var(--color-border);
+  padding: 16px 0;
+}
+
+.matrix-method-sync-header,
+.matrix-method-sync-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.matrix-method-sync-header h3 {
+  font-size: 15px;
+  margin: 0 0 3px;
+}
+
+.matrix-method-sync-header span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.matrix-method-sync-table-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.matrix-method-sync-table {
+  border-collapse: collapse;
+  min-width: 680px;
+  width: 100%;
+}
+
+.matrix-method-sync-table th,
+.matrix-method-sync-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px;
+  text-align: left;
+}
+
+.matrix-method-sync-error {
+  color: var(--color-danger);
+}
+
+.matrix-method-sync-message {
+  color: var(--color-success);
+}
+
+@media (max-width: 600px) {
+  .settings-standard-sheet-field {
+    grid-column: 1;
+    max-width: none;
+  }
+
+  .matrix-method-sync-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .matrix-method-sync-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matrix-method-sync-table-wrap {
+    overflow-x: visible;
+  }
+
+  .matrix-method-sync-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .matrix-method-sync-table thead {
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .matrix-method-sync-table tbody {
+    display: grid;
+  }
+
+  .matrix-method-sync-table tbody tr {
+    column-gap: 10px;
+    display: grid;
+    grid-template-areas:
+      "select item status"
+      "select current current"
+      "select proposed proposed";
+    grid-template-columns: 28px minmax(0, 1fr) minmax(88px, auto);
+    padding: 10px 0;
+    row-gap: 6px;
+  }
+
+  .matrix-method-sync-table tbody td {
+    border-bottom: 0;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .matrix-method-sync-table .matrix-method-sync-select {
+    align-self: start;
+    grid-area: select;
+    padding-top: 2px;
+  }
+
+  .matrix-method-sync-item {
+    font-weight: 700;
+    grid-area: item;
+    overflow-wrap: anywhere;
+  }
+
+  .matrix-method-sync-status {
+    align-self: start;
+    color: var(--color-ink-muted);
+    font-size: 12px;
+    grid-area: status;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  .matrix-method-sync-current,
+  .matrix-method-sync-proposed {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 64px minmax(0, 1fr);
+    overflow-wrap: anywhere;
+  }
+
+  .matrix-method-sync-current {
+    grid-area: current;
+  }
+
+  .matrix-method-sync-proposed {
+    grid-area: proposed;
+  }
+
+  .matrix-method-sync-current::before,
+  .matrix-method-sync-proposed::before {
+    color: var(--color-ink-muted);
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 700;
+  }
+}

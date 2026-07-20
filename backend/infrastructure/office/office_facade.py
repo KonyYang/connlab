@@ -10,6 +10,7 @@ from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
     ExcelComReadonlyTabularGateway,
     UnsupportedExternalExcelTabularFormatError,
 )
+from backend.infrastructure.office.excel_tabular_layout import ExcelTabularLayout
 from backend.infrastructure.office.models import (
     ExcelTabularReadResult,
     ExcelStructureProbeResult,
@@ -156,6 +157,7 @@ class OfficeFacade:
         expected_date_headers: tuple[str, ...] = (),
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
+        layout: ExcelTabularLayout | None = None,
     ) -> ExcelStructureProbeResult:
         """Probe workbook sheets and headers through the Excel gateway."""
         return self._tabular_gateway(Path(source_path)).probe_structure(
@@ -164,6 +166,7 @@ class OfficeFacade:
             expected_date_headers=expected_date_headers,
             expected_sheet_names=expected_sheet_names,
             expected_sheet_name_patterns=expected_sheet_name_patterns,
+            layout=layout,
         )
 
     def read_excel_tabular_rows(
@@ -173,6 +176,7 @@ class OfficeFacade:
         expected_headers: tuple[str, ...],
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
+        layout: ExcelTabularLayout | None = None,
     ) -> ExcelTabularReadResult:
         """Read header-aligned worksheet rows through the Excel gateway."""
         return self._tabular_gateway(Path(source_path)).read_tabular_rows(
@@ -180,6 +184,7 @@ class OfficeFacade:
             expected_headers=expected_headers,
             expected_sheet_names=expected_sheet_names,
             expected_sheet_name_patterns=expected_sheet_name_patterns,
+            layout=layout,
         )
 
     def open_excel_workbook(

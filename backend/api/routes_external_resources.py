@@ -14,7 +14,10 @@ from backend.api.dependencies import (
 )
 from backend.application.external_resource_service import (
     ExternalResourceNotFoundError,
+    ExternalResourceWorksheetNameError,
     ExternalResourceService,
+    WorksheetNameUpdate,
+    effective_standard_worksheet_name,
 )
 from backend.application.ltr_workbook_local_config_service import (
     LtrWorkbookLocalConfigService,
@@ -31,6 +34,7 @@ class ExternalResourceUpsertRequest(BaseModel):
 
     path: str = Field(min_length=1)
     active: bool = True
+    worksheet_name: str | None = None
 
 
 class ExternalResourceResponse(BaseModel):
@@ -43,6 +47,7 @@ class ExternalResourceResponse(BaseModel):
     validation_status: str
     last_validated_at: str | None
     validation_failure_reason: str | None
+    worksheet_name: str | None
 
 
 class ExternalResourcePickResponse(BaseModel):
@@ -75,7 +80,18 @@ def upsert_external_resource(
     ),
 ) -> ExternalResourceResponse:
     """Register or update an external resource path."""
-    resource = service.upsert_resource(resource_type, Path(request.path), request.active)
+    try:
+        resource = service.upsert_resource(
+            resource_type,
+            Path(request.path),
+            request.active,
+            worksheet_name=WorksheetNameUpdate(
+                supplied="worksheet_name" in request.model_fields_set,
+                value=request.worksheet_name,
+            ),
+        )
+    except ExternalResourceWorksheetNameError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if resource_type is ExternalResourceType.LTR_WORKBOOK:
         ltr_config.sync_workbook_path(resource.path)
     return _to_response(resource)
@@ -119,4 +135,5 @@ def _to_response(resource: ExternalResource) -> ExternalResourceResponse:
         validation_status=resource.validation_status.value,
         last_validated_at=resource.last_validated_at,
         validation_failure_reason=resource.validation_failure_reason,
+        worksheet_name=effective_standard_worksheet_name(resource),
     )

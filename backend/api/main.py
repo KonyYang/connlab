@@ -83,6 +83,9 @@ from backend.api.routes_confirmed_matrix_active_snapshot import (
 from backend.api.routes_matrix_editor_session import (
     router as matrix_editor_session_router,
 )
+from backend.api.routes_matrix_method_version_sync import (
+    router as matrix_method_version_sync_router,
+)
 from backend.api.routes_matrix_editor_test_record_generation import (
     router as matrix_editor_test_record_generation_router,
 )
@@ -177,6 +180,7 @@ app.include_router(confirmed_matrix_test_record_generation_router)
 app.include_router(confirmed_matrix_authority_history_router)
 app.include_router(confirmed_matrix_active_snapshot_router)
 app.include_router(matrix_editor_session_router)
+app.include_router(matrix_method_version_sync_router)
 app.include_router(matrix_editor_test_record_generation_router)
 app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)

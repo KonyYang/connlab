@@ -22,6 +22,9 @@ from backend.infrastructure.storage.contact_point_profile_schema_migration impor
     bootstrap_contact_point_profile_schema, migrate_contact_point_profile_schema,
 )
 from backend.shared.config import Settings
+from backend.infrastructure.storage.standard_record_method_sync_schema_migration import (
+    migrate_standard_record_method_sync_schema,
+)
 
 
 class Base(DeclarativeBase):
@@ -67,6 +70,7 @@ def init_db(engine: Engine) -> None:
     }
     non_profile_tables = [table for table in Base.metadata.tables.values() if table.name not in profile_tables]
     Base.metadata.create_all(bind=engine, tables=non_profile_tables)
+    migrate_standard_record_method_sync_schema(engine)
     _migrate_project_no_optional(engine)
     _migrate_file_asset_provenance_columns(engine)
     _migrate_project_output_record_file_metadata(engine)

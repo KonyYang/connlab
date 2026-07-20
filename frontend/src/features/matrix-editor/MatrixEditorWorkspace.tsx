@@ -34,6 +34,8 @@ import {
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
+import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
+import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
 import {
   applyStepQuantityDefaultsToBlankFields,
   filterStepQuantitiesForGroup,
@@ -2437,6 +2439,15 @@ export function MatrixEditorWorkspace({
     Boolean(savedEditorDraftId) &&
     Boolean(savedPayloadSignature) &&
     savedLocalSignature === currentSaveSignature;
+  const methodVersionSync = useMatrixMethodVersionSync({
+    projectId,
+    draftId: savedEditorDraftId,
+    savedPayloadSignature,
+    disabled: isLifecycleReadonly || draftLoading || !hasCurrentSavedDraft,
+    onApplied: () => {
+      setSessionReloadGeneration((previous) => previous + 1);
+    },
+  });
   const requiresCurrentSavedDraft =
     Boolean(activeConfirmedMatrixId) &&
     !isSourceLineageReplacement &&
@@ -3776,6 +3787,17 @@ export function MatrixEditorWorkspace({
               </div>
             ) : null}
           </div>
+          <MatrixMethodVersionSyncPanel
+            preview={methodVersionSync.preview}
+            selectedRowIds={methodVersionSync.selectedRowIds}
+            busy={methodVersionSync.busy}
+            error={methodVersionSync.error}
+            message={methodVersionSync.message}
+            disabled={isLifecycleReadonly || draftLoading || !hasCurrentSavedDraft}
+            onPreview={() => void methodVersionSync.previewMethods()}
+            onToggle={methodVersionSync.toggleRow}
+            onApply={() => void methodVersionSync.applySelected()}
+          />
           <MatrixSchedulePlanningCard
             plan={schedulePlan}
             groups={groupColumns.map((group) => ({
