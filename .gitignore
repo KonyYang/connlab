@@ -22,6 +22,7 @@ env/
 node_modules/
 dist/
 build/
+/dist_release/
 *.tsbuildinfo
 
 # =========================
