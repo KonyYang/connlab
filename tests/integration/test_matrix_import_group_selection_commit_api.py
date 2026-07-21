@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
@@ -29,6 +30,20 @@ def test_matrix_import_commit_api_creates_selected_only_draft_and_reuses_same_in
     client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
+        standard_path = tmp_path / "standard-records.xlsx"
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "认可标准"
+        worksheet.append(["Standard record catalog"])
+        worksheet.append(["", "文 件 编 号", "文 件 名 称", "备注"])
+        worksheet.append(["", "EIA-364-18C", "Visual", ""])
+        workbook.save(standard_path)
+        workbook.close()
+        registered = client.put(
+            "/api/external-resources/standard_record_excel",
+            json={"path": str(standard_path), "active": True},
+        )
+        assert registered.status_code == 200
         payload = _request_payload(selected_group_keys=["g1"])
         response = client.post("/api/projects/P1/matrix-import/commit", json=payload)
         assert response.status_code == 201

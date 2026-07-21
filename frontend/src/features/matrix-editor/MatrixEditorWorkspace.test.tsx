@@ -231,6 +231,17 @@ function buildCommitResponse(
     source_snapshot_id: "snapshot-test",
     selected_group_keys_committed: preview.groups.map((group) => group.group_key),
     commit_status: "created",
+    method_authority_sync: {
+      status: "review_required",
+      updated_count: 1,
+      current_count: 0,
+      review_count: 2,
+      standard_resource_id: "standard-1",
+      effective_worksheet_name: "认可标准",
+      catalog_fingerprint: "catalog-fingerprint",
+      context_fingerprint: "context-fingerprint",
+      rows: [],
+    },
     project_matrix_draft: {
       record: {
         project_matrix_draft_id: "draft-test",
@@ -976,6 +987,17 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       source_snapshot_id: "snapshot-b",
       selected_group_keys_committed: ["g1"],
       commit_status: "created",
+      method_authority_sync: {
+        status: "review_required",
+        updated_count: 1,
+        current_count: 0,
+        review_count: 2,
+        standard_resource_id: "standard-1",
+        effective_worksheet_name: "认可标准",
+        catalog_fingerprint: "catalog-fingerprint",
+        context_fingerprint: "context-fingerprint",
+        rows: [],
+      },
       project_matrix_draft: {
         record: {
           project_matrix_draft_id: "draft-b",
@@ -1027,6 +1049,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
     await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
     expect(screen.getByText("spec_b.docx")).toBeTruthy();
+    expect(screen.getByText("Matrix replaced. 1 Method updated; 2 rows need review.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Selected Groups" })).toBeNull();
   });
 

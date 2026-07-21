@@ -2,18 +2,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
 import pytest
 
+from backend.application.external_excel_read_service import (
+    StandardRecordReadResult,
+    StandardRecordRow,
+)
 from backend.application.matrix_import_commit_service import (
     MatrixImportCommitCommand,
     MatrixImportCommitError,
     MatrixImportCommitService,
 )
+from backend.application.matrix_import_method_authority import (
+    MatrixImportMethodAuthorityResolver,
+)
 from backend.application.source_matrix_import_persistence_service import (
-    SourceMatrixPersistResult,
+    SourceMatrixImportPersistenceService,
 )
 from backend.domain import (
+    ExternalResource,
+    ExternalResourceType,
     Project,
     ProjectMatrixDraftRecord,
     ProjectMatrixDraftSnapshot,
@@ -43,12 +53,13 @@ def test_commit_creates_selected_only_draft_and_persists_full_source() -> None:
     )
     source_store = _SourceStore()
     draft_store = _DraftStore()
-    source_persistence = _SourcePersistence(source_store)
+    source_persistence = SourceMatrixImportPersistenceService(store=source_store)
     service = MatrixImportCommitService(
         project_store=project_store,
         source_store=source_store,
         draft_store=draft_store,
         source_persistence_service=source_persistence,
+        method_authority=_method_authority(),
     )
 
     result = service.commit(
@@ -87,12 +98,13 @@ def test_commit_reuses_existing_commit_for_same_fingerprint() -> None:
     )
     source_store = _SourceStore()
     draft_store = _DraftStore()
-    source_persistence = _SourcePersistence(source_store)
+    source_persistence = SourceMatrixImportPersistenceService(store=source_store)
     service = MatrixImportCommitService(
         project_store=project_store,
         source_store=source_store,
         draft_store=draft_store,
         source_persistence_service=source_persistence,
+        method_authority=_method_authority(),
     )
 
     first = service.commit(
@@ -140,7 +152,10 @@ def test_commit_rejects_invalid_selected_group_keys() -> None:
         ),
         source_store=_SourceStore(),
         draft_store=_DraftStore(),
-        source_persistence_service=_SourcePersistence(_SourceStore()),
+        source_persistence_service=SourceMatrixImportPersistenceService(
+            store=_SourceStore()
+        ),
+        method_authority=_method_authority(),
     )
     base = MatrixImportCommitCommand(
         project_id="P1",
@@ -274,93 +289,49 @@ class _SourceStore:
     def get_snapshot_by_import(self, import_id: str) -> SourceMatrixSnapshot | None:
         return self.snapshots_by_import.get(import_id)
 
-
-class _SourcePersistence:
-    def __init__(self, source_store: _SourceStore) -> None:
-        self._source_store = source_store
-        self._counter = 0
-
-    def compute_task261_fingerprint(
+    def create_import_snapshot(
         self,
-        *,
-        payload: dict,
-        selected_group_keys: tuple[str, ...],
-    ) -> str:
-        return f"{payload['groups'][0]['group_key']}|{','.join(selected_group_keys)}"
+        import_record: SourceMatrixImportRecord,
+        snapshot: SourceMatrixSnapshot,
+    ) -> None:
+        self.imports_by_id[import_record.import_id] = import_record
+        if import_record.task261_commit_fingerprint:
+            self.imports_by_fingerprint[
+                (import_record.project_id, import_record.task261_commit_fingerprint)
+            ] = import_record
+        self.snapshots_by_import[import_record.import_id] = snapshot
 
-    def persist_from_preview(self, command):  # noqa: ANN001
-        self._counter += 1
-        import_id = f"smi-{self._counter}"
-        snapshot_id = f"sms-{self._counter}"
-        groups = tuple(
-            SourceMatrixGroupSnapshot(
-                group_snapshot_id=f"smg-{index}",
-                group_order=index,
-                group_key=group["group_key"],
-                group_label=group["group_label"],
-                sample_quantity_expression=group.get("sample_quantity_expression"),
-            )
-            for index, group in enumerate(command.payload["groups"], start=1)
+
+def _method_authority() -> MatrixImportMethodAuthorityResolver:
+    return MatrixImportMethodAuthorityResolver(
+        resource_store=_ResourceStore(),
+        catalog_reader=_CatalogReader(),
+        now=lambda: "2026-07-21T00:00:00+00:00",
+    )
+
+
+class _ResourceStore:
+    def get_by_type(self, resource_type: ExternalResourceType) -> ExternalResource | None:
+        return ExternalResource(
+            resource_id="standard-1",
+            resource_type=resource_type,
+            path=Path("C:/standards.xlsx"),
+            worksheet_name="认可标准",
         )
-        rows = (
-            SourceMatrixRowSnapshot(
-                row_snapshot_id="smr-1",
-                row_order=1,
-                source_row_index=1,
-                test_item="Visual",
-                source_section="6.1",
-                is_sample_row=False,
+
+
+class _CatalogReader:
+    def read_standard_records(self) -> StandardRecordReadResult:
+        return StandardRecordReadResult(
+            resource_path="C:/standards.xlsx",
+            matched_sheets=("认可标准",),
+            rows=(
+                StandardRecordRow(
+                    standard_code="EIA-364-18B-2020",
+                    test_item="Visual",
+                    sample_description=None,
+                    source_sheet="认可标准",
+                    source_row_number=3,
+                ),
             ),
         )
-        cells = (
-            SourceMatrixCellSnapshot(
-                cell_snapshot_id="smc-1",
-                row_snapshot_id="smr-1",
-                group_snapshot_id="smg-1",
-                cell_value="1",
-            ),
-            SourceMatrixCellSnapshot(
-                cell_snapshot_id="smc-2",
-                row_snapshot_id="smr-1",
-                group_snapshot_id="smg-2",
-                cell_value="2",
-            ),
-        )
-        snapshot = SourceMatrixSnapshot(
-            snapshot_id=snapshot_id,
-            import_id=import_id,
-            project_id=command.project_id,
-            source_table_index=1,
-            rows=rows,
-            groups=groups,
-            cells=cells,
-            created_at=command.created_at,
-        )
-        import_record = SourceMatrixImportRecord(
-            import_id=import_id,
-            project_id=command.project_id,
-            draft_id=None,
-            source_document_path=command.source_document_path,
-            source_document_name=command.source_document_name,
-            source_format=command.source_format,
-            source_asset_id=None,
-            source_case_id=None,
-            source_draft_id=None,
-            import_status=SourceMatrixImportStatus.IMPORTED,
-            source_spec_number=None,
-            source_spec_revision=None,
-            parse_time=command.created_at,
-            parser_version="parser-v1",
-            payload_schema_version="1.0",
-            warnings=(),
-            blockers=(),
-            selected_group_keys_at_import=command.selected_group_keys,
-            task261_commit_fingerprint=command.task261_commit_fingerprint,
-            created_at=command.created_at,
-        )
-        self._source_store.imports_by_id[import_id] = import_record
-        self._source_store.imports_by_fingerprint[
-            (command.project_id, command.task261_commit_fingerprint)
-        ] = import_record
-        self._source_store.snapshots_by_import[import_id] = snapshot
-        return SourceMatrixPersistResult(import_id=import_id, snapshot_id=snapshot_id)

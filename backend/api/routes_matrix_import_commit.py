@@ -95,6 +95,35 @@ class ProjectMatrixDraftResponse(BaseModel):
     cells: list[ProjectMatrixDraftCellResponse]
 
 
+class MatrixImportMethodAuthorityRowResponse(BaseModel):
+    """One row-level Method authority result."""
+
+    stable_source_row_key: str
+    row_order: int
+    test_item: str
+    current_method: str | None
+    status: str
+    resulting_method: str | None
+    matched_standard_code: str | None
+    source_row_number: int | None
+    reason: str | None
+    applied: bool
+
+
+class MatrixImportMethodAuthoritySummaryResponse(BaseModel):
+    """Server-derived Method synchronization summary."""
+
+    status: str
+    updated_count: int
+    current_count: int
+    review_count: int
+    standard_resource_id: str
+    effective_worksheet_name: str
+    catalog_fingerprint: str
+    context_fingerprint: str
+    rows: list[MatrixImportMethodAuthorityRowResponse]
+
+
 class MatrixImportCommitResponse(BaseModel):
     """Matrix import commit response model."""
 
@@ -103,6 +132,7 @@ class MatrixImportCommitResponse(BaseModel):
     selected_group_keys_committed: list[str]
     commit_status: str
     project_matrix_draft: ProjectMatrixDraftResponse
+    method_authority_sync: MatrixImportMethodAuthoritySummaryResponse
 
 
 @router.post("/commit", response_model=MatrixImportCommitResponse, status_code=201)
@@ -139,6 +169,33 @@ def _to_response(result: MatrixImportCommitResult) -> MatrixImportCommitResponse
         selected_group_keys_committed=list(result.selected_group_keys_committed),
         commit_status=result.commit_status,
         project_matrix_draft=_to_draft_response(result.project_matrix_draft),
+        method_authority_sync=MatrixImportMethodAuthoritySummaryResponse(
+            status=result.method_authority_sync.status,
+            updated_count=result.method_authority_sync.updated_count,
+            current_count=result.method_authority_sync.current_count,
+            review_count=result.method_authority_sync.review_count,
+            standard_resource_id=result.method_authority_sync.standard_resource_id,
+            effective_worksheet_name=(
+                result.method_authority_sync.effective_worksheet_name
+            ),
+            catalog_fingerprint=result.method_authority_sync.catalog_fingerprint,
+            context_fingerprint=result.method_authority_sync.context_fingerprint,
+            rows=[
+                MatrixImportMethodAuthorityRowResponse(
+                    stable_source_row_key=row.stable_source_row_key,
+                    row_order=row.row_order,
+                    test_item=row.test_item,
+                    current_method=row.current_method,
+                    status=row.status,
+                    resulting_method=row.resulting_method,
+                    matched_standard_code=row.matched_standard_code,
+                    source_row_number=row.source_row_number,
+                    reason=row.reason,
+                    applied=row.applied,
+                )
+                for row in result.method_authority_sync.rows
+            ],
+        ),
     )
 
 

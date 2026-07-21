@@ -1850,6 +1850,28 @@ export type MatrixImportCommitResponse = {
   selected_group_keys_committed: string[];
   commit_status: "created" | "reused";
   project_matrix_draft: ProjectMatrixDraft;
+  method_authority_sync: {
+    status: "synchronized" | "review_required";
+    updated_count: number;
+    current_count: number;
+    review_count: number;
+    standard_resource_id: string;
+    effective_worksheet_name: string;
+    catalog_fingerprint: string;
+    context_fingerprint: string;
+    rows: Array<{
+      stable_source_row_key: string;
+      row_order: number;
+      test_item: string;
+      current_method: string | null;
+      status: string;
+      resulting_method: string | null;
+      matched_standard_code: string | null;
+      source_row_number: number | null;
+      reason: string | null;
+      applied: boolean;
+    }>;
+  };
 };
 
 export type MatrixSourceCandidate = {

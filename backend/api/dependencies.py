@@ -128,6 +128,10 @@ from backend.application.project_test_plan_matrix_preview_service import (
 from backend.application.matrix_import_commit_service import (
     MatrixImportCommitService,
 )
+from backend.application.matrix_import_method_authority import (
+    CachedStandardResourceStore,
+    MatrixImportMethodAuthorityResolver,
+)
 from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftPersistenceService,
 )
@@ -496,8 +500,9 @@ def get_project_test_plan_matrix_preview_service(
 def get_matrix_import_commit_service(
     session: Session = Depends(get_session),
 ) -> MatrixImportCommitService:
-    """Build TASK_261 matrix import group-selection commit service."""
+    """Build atomic Import Matrix Replace commit service."""
     source_store = SourceMatrixImportRepository(session)
+    resources = CachedStandardResourceStore(ExternalResourceRepository(session))
     return MatrixImportCommitService(
         project_store=ProjectRepository(session),
         source_store=source_store,
@@ -505,6 +510,11 @@ def get_matrix_import_commit_service(
         source_persistence_service=SourceMatrixImportPersistenceService(
             store=source_store
         ),
+        method_authority=MatrixImportMethodAuthorityResolver(
+            resource_store=resources,
+            catalog_reader=ExternalExcelReadService(resources),
+        ),
+        transaction_scope=session.begin_nested,
     )
 
 

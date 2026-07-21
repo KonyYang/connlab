@@ -1646,6 +1646,7 @@ export function MatrixEditorWorkspace({
   const [importError, setImportError] = useState<string | null>(null);
   const [importLookupMessage, setImportLookupMessage] = useState<string>("");
   const [importLookupTone, setImportLookupTone] = useState<"success" | "error" | "idle">("idle");
+  const [importCommitMessage, setImportCommitMessage] = useState<string>("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [committingImport, setCommittingImport] = useState(false);
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
@@ -2654,6 +2655,12 @@ export function MatrixEditorWorkspace({
     setSavedLocalSignature(null);
     latestAutosaveResultRef.current = null;
     setSaveState("saved");
+    const methodSummary = response.method_authority_sync;
+    const updatedLabel = `${methodSummary.updated_count} Method${methodSummary.updated_count === 1 ? "" : "s"} updated`;
+    const reviewLabel = `${methodSummary.review_count} row${methodSummary.review_count === 1 ? "" : "s"} need review`;
+    setImportCommitMessage(
+      `${response.commit_status === "reused" ? "Matrix import reused" : "Matrix replaced"}. ${updatedLabel}; ${reviewLabel}.`
+    );
     setImportError(null);
     setShowImportDialog(false);
   };
@@ -3449,6 +3456,11 @@ export function MatrixEditorWorkspace({
             </div>
           </article>
         </section>
+      ) : null}
+      {importCommitMessage ? (
+        <p aria-live="polite" className="matrix-editor-import-status-success" role="status">
+          {importCommitMessage}
+        </p>
       ) : null}
       <section className="matrix-editor-studio">
         <section className="matrix-editor-grid-surface">
