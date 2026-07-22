@@ -24,7 +24,26 @@ datas = [
     ),
 ]
 
-hiddenimports = collect_submodules("backend") + ["backend.desktop.packaged_server"]
+BROWSER_EXCLUDED_BACKEND_PREFIXES = (
+    "backend.desktop.packaged_launcher",
+    "backend.desktop.path_picker_api",
+    "backend.desktop.shell",
+)
+
+
+def is_browser_backend_submodule(name):
+    return not any(
+        name == prefix or name.startswith(f"{prefix}.")
+        for prefix in BROWSER_EXCLUDED_BACKEND_PREFIXES
+    )
+
+
+hiddenimports = collect_submodules(
+    "backend",
+    filter=is_browser_backend_submodule,
+)
+if "backend.desktop.packaged_server" not in hiddenimports:
+    hiddenimports.append("backend.desktop.packaged_server")
 
 a = Analysis(
     [str(repo_root / "backend" / "desktop" / "packaged_server.py")],
@@ -35,7 +54,12 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        "webview",
+        "PyQt5",
+        "pythonnet",
+        "clr_loader",
+    ],
     noarchive=False,
     optimize=0,
 )
