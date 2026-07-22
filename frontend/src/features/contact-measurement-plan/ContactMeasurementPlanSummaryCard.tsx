@@ -9,11 +9,22 @@ type ContactMeasurementPlanSummaryCardProps = {
 
 export function ContactMeasurementPlanSummaryCard({ summary, loading, onOpenSetup }: ContactMeasurementPlanSummaryCardProps) {
   const confirmed = summary?.confirmed_revision ?? null;
-  return <section className="contact-measurement-summary" aria-label="Test points">
+  const crCoverage = confirmed?.cr_coverage ?? null;
+  const crSummary = crCoverage?.mode === "follow_llcr"
+    ? `Same as LLCR · ${crCoverage.points_per_sample} points / sample`
+    : crCoverage
+      ? `${crCoverage.selected_category_ids.length} ${crCoverage.selected_category_ids.length === 1 ? "category" : "categories"} · ${crCoverage.points_per_sample} points / sample`
+      : "Not set";
+  return <section className="contact-measurement-summary" aria-label="Test points" aria-busy={loading}>
     <div className="contact-measurement-summary-header">
-      <div><h3>Test points</h3><span>{confirmed ? `Confirmed revision ${confirmed.revision_sequence}` : "Not confirmed"}</span></div>
+      <div><h3>Test points</h3></div>
       <button type="button" disabled={loading} onClick={onOpenSetup}>Setup</button>
     </div>
-    {confirmed ? <><p>{`${confirmed.points_per_sample} points / sample`}</p><ul className="contact-measurement-summary-categories">{confirmed.categories.filter((category) => category.included).map((category) => <li key={category.category_id}>{`${category.record_prefix}: ${category.count_per_sample}`}</li>)}</ul></> : <p>Confirm a project point profile to make it available to Matrix summary.</p>}
+    {confirmed ? <dl className="contact-measurement-summary-points">
+      <div><dt>LLCR</dt><dd>{`${confirmed.points_per_sample} points / sample`}</dd></div>
+      <div><dt>CR</dt><dd>{crSummary}</dd></div>
+      <div><dt>IR</dt><dd>Not set</dd></div>
+      <div><dt>DWV</dt><dd>Not set</dd></div>
+    </dl> : <p>Test point summary is not available.</p>}
   </section>;
 }
