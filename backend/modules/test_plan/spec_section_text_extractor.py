@@ -5,6 +5,15 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from backend.modules.test_plan.condition_text_collectors import (
+    collect_condition_segments,
+    collect_condition_tokens,
+    extract_durability_condition,
+    extract_dust_exposure_condition,
+    extract_electrical_condition,
+    extract_temperature_rise_current,
+)
+from backend.modules.test_plan.damp_heat_condition_parser import extract_damp_heat_condition
 from backend.modules.test_plan.method_template_matcher import (
     apply_fill_empty_fallback,
     normalize_test_item,
@@ -61,10 +70,6 @@ _REQUIREMENT_PATTERNS = (
     ),
     re.compile(r"((?:Initial|After\s+test|maximum\s+change|change)\s*[:]?\s*[^.;]+)", re.IGNORECASE),
     re.compile(rf"([<>≤≥]\s*[\d.]+\s*{_LIMIT_UNITS})", re.IGNORECASE),
-)
-_CONDITION_TOKEN_RE = re.compile(
-    r"\b(\d+(?:\.\d+)?\s*(?:mV|mA|A|ADC|mm/min|cycles?|hours?|minutes?|mins?|G|ms|RH|℃))\b",
-    re.IGNORECASE,
 )
 
 
@@ -265,25 +270,27 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
         if current:
             return _clean(current.group(1).replace("amperes", "A"))
     if "dielectric withstanding voltage" in lowered or "dwv" in lowered:
-        return _extract_electrical_condition(text, duration_labels=("test duration",))
+        return extract_electrical_condition(text, duration_labels=("test duration",))
     if "insulation resistance" in lowered:
-        return _extract_electrical_condition(text, duration_labels=("electrification time",))
+        return extract_electrical_condition(text, duration_labels=("electrification time",))
     if "dust exposure" in lowered:
-        return _extract_dust_exposure_condition(text)
+        return extract_dust_exposure_condition(text)
     if "current rating" in lowered:
-        return _extract_temperature_rise_current(text) or "A"
+        return extract_temperature_rise_current(text) or "A"
     if "temperature rise" in lowered or re.search(r"\bt[-\s]?rise\b", lowered):
-        return _extract_temperature_rise_current(text) or "A"
+        return extract_temperature_rise_current(text) or "A"
+    if "damp heat" in lowered:
+        return extract_damp_heat_condition(text)
     if "humidity" in lowered:
-        return _collect_condition_segments(text, ("temperature", "humidity", "rh", "duration", "dwell", "ramp", "cycles"))
+        return collect_condition_segments(text, ("temperature", "humidity", "rh", "duration", "dwell", "ramp", "cycles"))
     if "mfg" in lowered or "mixed flowing gas" in lowered:
         return extract_mfg_condition(text)
     if "thermal disturbance" in lowered:
-        return _collect_condition_segments(text, ("temperature", "range", "ramp", "dwell", "cycles"))
+        return collect_condition_segments(text, ("temperature", "range", "ramp", "dwell", "cycles"))
     if "high temperature" in lowered:
-        return _collect_condition_segments(text, ("temperature", "duration", "hours"))
+        return collect_condition_segments(text, ("temperature", "duration", "hours"))
     if "durability" in lowered:
-        return _extract_durability_condition(text)
+        return extract_durability_condition(text)
     if "offset mating insertion force" in lowered:
         return _extract_offset_mating_condition(text)
     if "floater displacement force" in lowered or "side force" in lowered:
@@ -297,86 +304,12 @@ def _extract_condition(text: str, *, test_item: str | None) -> str | None:
     if _is_force_or_mating_pair(test_item):
         return _extract_force_speed_condition(text)
     if "vibration" in lowered:
-        return _collect_condition_segments(text, ("condition", "hz", "grms", "axis", "minutes"))
+        return collect_condition_segments(text, ("condition", "hz", "grms", "axis", "minutes"))
     if "shock" in lowered:
-        return _collect_condition_segments(text, ("50g", "11", "shock", "axis"))
+        return collect_condition_segments(text, ("50g", "11", "shock", "axis"))
     if not test_item:
         return None
-    return _collect_condition_tokens(text)
-
-
-def _extract_electrical_condition(text: str, *, duration_labels: tuple[str, ...]) -> str | None:
-    """Build a DWV or IR condition from explicit voltage and duration labels."""
-    voltage = re.search(
-        r"\btest\s+voltage\b\s*(?:[:\-–—]|\u6bcf)?\s*"
-        r"(?P<value>\d+(?:\.\d+)?)\s*(?:volts?|v)\s*(?P<kind>ac|dc)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if voltage is None:
-        return None
-    voltage_text = f"{voltage.group('value')}V{voltage.group('kind').upper()}"
-    labels = "|".join(re.escape(label) for label in duration_labels)
-    duration = re.search(
-        rf"\b(?:{labels})\b\s*[:\-–—]?\s*"
-        r"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>seconds?|minutes?)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if duration is None:
-        return voltage_text
-    duration_text = f"{duration.group('value')} {duration.group('unit').lower()}"
-    return f"{voltage_text}, {duration_text}"
-
-
-def _extract_temperature_rise_current(text: str) -> str | None:
-    """Extract the first current value governing a temperature-rise section."""
-    current = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*(A|amps?|amperes?)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if not current:
-        return None
-    return f"{current.group(1)}A"
-
-
-def _extract_dust_exposure_condition(text: str) -> str:
-    """Build the report-style dust condition while flagging ambiguous states."""
-    composition = re.search(
-        r"\bbenign\s+dust\s+composition(?:\s*(?P<number>\d+)\s*#?)?",
-        text,
-        re.IGNORECASE,
-    )
-    composition_number = composition.group("number") if composition and composition.group("number") else "1"
-    duration = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\b", text, re.IGNORECASE)
-    duration_text = f"{duration.group(1)} hour" if duration else "1 hour"
-    prefix = f"Benign dust composition {composition_number}#, {duration_text}"
-
-    lowered = text.lower()
-    both_unmated = bool(re.search(r"\bunmated\s+for\s+both\s+connectors?\b", lowered))
-    ambiguous_state = bool(
-        re.search(r"\bmated\b", lowered)
-        or re.search(r"\bunmated\b[^.]*\bonly\b", lowered)
-        or re.search(r"\bonly\b[^.]*\b(?:receptacle|connector)\b", lowered)
-    )
-    if both_unmated or not ambiguous_state:
-        return f"{prefix}, unmated for both connectors"
-    return prefix
-
-
-def _extract_durability_condition(text: str) -> str | None:
-    """Extract cycle count and a reviewable displacement-speed slot."""
-    cycles = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*\*?\s*(?:mating\s*/\s*un-?mating\s+)?cycles\b",
-        text,
-        re.IGNORECASE,
-    )
-    if not cycles:
-        return None
-    speed = re.search(r"\b(\d+(?:\.\d+)?)\s*mm\s*/\s*min(?:ute)?\b", text, re.IGNORECASE)
-    speed_text = f"{speed.group(1)} mm/min" if speed else " mm/min"
-    return f"{cycles.group(1)} cycles, {speed_text}"
+    return collect_condition_tokens(text)
 
 
 def _extract_offset_mating_condition(text: str) -> str | None:
@@ -511,42 +444,6 @@ def _extract_requirement(text: str) -> str | None:
         if match:
             return _clean(match.group(1).strip(" ,;"))
     return None
-
-
-def _collect_condition_segments(text: str, keywords: tuple[str, ...]) -> str | None:
-    parts: list[str] = []
-    for segment in re.split(r"[.;]", text):
-        cleaned = _clean(segment)
-        if not cleaned:
-            continue
-        lowered = cleaned.lower()
-        if any(keyword in lowered for keyword in keywords):
-            if lowered.startswith("eia ") or "in accordance with eia" in lowered:
-                continue
-            if "eia 364" in lowered or "eia-364" in lowered:
-                continue
-            parts.append(cleaned)
-    if not parts:
-        return None
-    return "; ".join(parts[:2])
-
-
-def _collect_condition_tokens(text: str) -> str | None:
-    tokens: list[str] = []
-    for match in _CONDITION_TOKEN_RE.finditer(text):
-        token = _clean(match.group(1))
-        if re.fullmatch(r"\d+\s*a", token.lower()):
-            continue
-        tokens.append(token)
-    if not tokens:
-        return None
-    unique: list[str] = []
-    for token in tokens:
-        if token not in unique:
-            unique.append(token)
-    if len(unique) > 3:
-        unique = unique[:3]
-    return ", ".join(unique)
 
 
 def _apply_reseating_default(
