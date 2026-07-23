@@ -368,14 +368,47 @@ def test_fee_draft_uses_temperature_rise_rule_for_current_rating() -> None:
     line = draft.groups[0].line_items[0]
 
     assert line.matched_rule_id == "fee_rule_temperature_rise"
-    assert line.status == "review_required"
-    assert line.review_reason == "Review base fee"
+    assert (line.status, line.review_required, line.review_reason) == ("calculated", False, None)
     assert line.spend_time == "4"
     assert line.unit_label == "sample"
     assert line.unit_price == Decimal("600")
     assert line.units == Decimal("5")
-    assert line.base_fee == Decimal("500")
-    assert line.testing_fee == Decimal("3500")
+    assert line.base_fee == Decimal("0")
+    assert line.testing_fee == Decimal("3000")
+
+
+@pytest.mark.parametrize("test_item", ("Long-term high temperature zone load", "Long-term temperature cycle with load", "Long-term damp heat"))
+def test_fee_draft_defaults_non_rise_temperature_items_to_per_hour(
+    test_item: str,
+) -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row(
+                    test_item,
+                    condition="Damp Heat Condition: 85C, 85% RH, 1000h (mated test).",
+                )
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+    line = draft.groups[0].line_items[0]
+
+    if test_item != "Long-term high temperature zone load":
+        assert line.matched_rule_id is None
+        assert line.status == "no_rule_match"
+        assert line.review_required is True
+        assert line.review_reason == "No fee rule match."
+        assert (line.unit_price, line.units, line.base_fee, line.testing_fee) == (None, None, Decimal("0"), None)
+        return
+    assert line.matched_rule_id == "fee_rule_high_temperature_life"
+    assert line.status == "calculated"
+    assert line.unit_price == Decimal("15")
+    assert line.unit_label == "hour"
+    assert line.units == Decimal("1000")
+    assert line.base_fee == Decimal("0")
+    assert line.testing_fee == Decimal("15000")
 
 
 def test_fee_draft_calculates_fixed_per_group_when_rule_is_deterministic() -> None:

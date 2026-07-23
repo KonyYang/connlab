@@ -40,11 +40,11 @@ def test_plain_contact_resistance_uses_llcr_when_matrix_has_no_explicit_llcr() -
     draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
 
     line = draft.groups[0].line_items[0]
-    assert line.matched_rule_id == "fee_rule_llcr"
-    assert line.unit_price == Decimal("1.5")
+    assert line.matched_rule_id == "fee_rule_contact_resistance_specified_current"
+    assert (line.status, line.review_required) == ("review_required", True)
+    assert line.review_reason == "Confirmed CR Measurement Plan lineage is unavailable."
     assert line.unit_label == "reading"
-    assert line.units == Decimal("20")
-    assert line.testing_fee == Decimal("30")
+    assert (line.unit_price, line.units, line.base_fee, line.testing_fee) == (None, None, Decimal("0"), None)
 
 
 def test_plain_contact_resistance_stays_cr_when_matrix_has_explicit_llcr() -> None:

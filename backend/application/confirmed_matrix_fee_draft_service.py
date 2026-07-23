@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from decimal import Decimal
+
+from backend.application.confirmed_matrix_fee_base_fee_policy import (
+    FeeCalculationResult as _CalculationResult,
+    apply_matrix_fee_line_policies as _apply_matrix_fee_line_policies,
+)
 
 from backend.application.confirmed_matrix_fee_draft_models import (
     BuildConfirmedMatrixFeeDraftCommand,
     ConfirmedMatrixAuthorityStore,
-    FeeDraftStatus,
     FeeEvaluationDraft,
     FeeEvaluationGroup,
     FeeEvaluationHeader,
     FeeEvaluationLineItem,
     FeeEvaluationWarning,
-    FeeLineStatus,
 )
 from backend.application.confirmed_matrix_fee_draft_build_result import (
     ConfirmedMatrixFeeAuthorityBuildResult,
@@ -26,9 +27,12 @@ from backend.application.confirmed_matrix_fee_draft_build_support import (
     root_warnings as _root_warnings,
 )
 from backend.application.confirmed_matrix_fee_manual_defaults import (
+    _decimal_text,
+    _text,
     build_report_preparation_line,
     build_sample_preparation_line,
 )
+from backend.application import confirmed_matrix_fee_rule_resolution
 from backend.application.confirmed_matrix_fee_step_quantities import (
     StepQuantityLookup,
     build_profile_reading_contexts,
@@ -53,9 +57,9 @@ from backend.domain import (
 )
 from backend.modules.fee_evaluation import (
     FeeDefaultFillContext,
-    FeeFieldMetadata,
     FeeRule,
     FeeRuleLibrary,
+    FeeRuleMatchResult,
     FeeRuleMatcher,
     FeeStepQuantityContext,
     CrSpecifiedCurrentAuthority,
@@ -73,21 +77,6 @@ class ConfirmedMatrixFeeDraftNotFoundError(LookupError):
 
 class ConfirmedMatrixFeeDraftError(ValueError):
     """Raised when confirmed Matrix fee draft data cannot be built."""
-
-
-@dataclass(frozen=True, slots=True)
-class _CalculationResult:
-    status: FeeLineStatus
-    review_required: bool
-    review_reason: str | None
-    spend_time: Decimal | None
-    unit_label: str
-    unit_price: Decimal | None
-    units: Decimal | None
-    base_fee: Decimal | None
-    discount_percent: Decimal | None
-    testing_fee: Decimal | None
-    field_metadata: tuple[FeeFieldMetadata, ...]
 
 
 class ConfirmedMatrixFeeDraftService:
@@ -197,6 +186,11 @@ def _build_groups(
     )
     step_quantity_lookup = build_step_quantity_lookup(snapshot)
     matcher = FeeRuleMatcher(library)
+    rule_matches = confirmed_matrix_fee_rule_resolution.build_matrix_fee_rule_matches(
+        rows=snapshot.rows,
+        matcher=matcher,
+        library=library,
+    )
     groups: list[FeeEvaluationGroup] = []
     for group in snapshot.groups:
         lines = _build_group_lines(
@@ -204,7 +198,7 @@ def _build_groups(
             snapshot=snapshot,
             cell_lookup=cell_lookup,
             step_quantity_lookup=step_quantity_lookup,
-            matcher=matcher,
+            rule_matches=rule_matches,
             library=library,
             effective_contact_plan=effective_contact_plan,
             effective_point_profile=effective_point_profile,
@@ -249,7 +243,7 @@ def _build_group_lines(
     snapshot: ConfirmedMatrixSnapshot,
     cell_lookup: dict[tuple[str, str], str],
     step_quantity_lookup: StepQuantityLookup,
-    matcher: FeeRuleMatcher,
+    rule_matches: dict[str, FeeRuleMatchResult],
     library: FeeRuleLibrary,
     effective_contact_plan: EffectiveContactMeasurementPlan | None,
     effective_point_profile: EffectiveConfirmedPointProfile | None,
@@ -263,7 +257,7 @@ def _build_group_lines(
         step_tokens = tuple(token.raw_token for token in parsed_tokens)
         if not step_tokens:
             continue
-        match = matcher.match_test_item(row.test_item)
+        match = rule_matches[row.confirmed_row_id]
         rule = match.rule
         is_llcr = rule is not None and rule.rule_id == "fee_rule_llcr"
         uses_profile_default = (
@@ -378,6 +372,18 @@ def _build_line_item(
             warnings=warnings,
         )
     )
+    calculation = _apply_matrix_fee_line_policies(
+        calculation=calculation,
+        rule=rule,
+        testing_fee_source=(
+            cr_authority.source
+            if rule is not None
+            and rule.rule_id == "fee_rule_contact_resistance_specified_current"
+            and cr_authority is not None
+            and cr_authority.is_valid
+            else rule.display_name if rule is not None else "No fee rule match"
+        ),
+    )
     return FeeEvaluationLineItem(
         line_id=f"{snapshot.version.confirmed_matrix_id}:{group.group_key}:{row.confirmed_row_id}",
         status=calculation.status,
@@ -441,9 +447,8 @@ def _calculate_line(
             cr_authority=cr_authority,
         ),
     )
-    status: FeeLineStatus = default_fill.status
     return _CalculationResult(
-        status=status,
+        status=default_fill.status,
         review_required=default_fill.review_required,
         review_reason=default_fill.review_reason,
         spend_time=default_fill.spend_time,
@@ -486,12 +491,3 @@ def _no_rule_match(review_reason: str | None) -> _CalculationResult:
         testing_fee=None,
         field_metadata=(),
     )
-
-
-def _text(value: str | None) -> str:
-    return (value or "").strip()
-
-def _decimal_text(value: Decimal | None) -> str:
-    if value is None:
-        return ""
-    return format(value, "f")
