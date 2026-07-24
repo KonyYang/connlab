@@ -69,6 +69,46 @@ class CrSpecifiedCurrentAuthority:
 
 
 @dataclass(frozen=True, slots=True)
+class FeeDurationAuthority:
+    """Exact confirmed duration fact available to one Fee line."""
+
+    confirmed_matrix_id: str
+    confirmed_group_id: str
+    confirmed_row_id: str
+    step_sequence: int
+    step_suffix_note: str
+    duration_value: Decimal | None
+    duration_unit: str | None
+    normalized_hours: Decimal | None
+    authority_revision: str | None
+    lineage_fingerprint: str | None
+    status: str
+    diagnostic: str | None = None
+
+    @property
+    def is_valid(self) -> bool:
+        return bool(
+            self.status == "usable"
+            and self.duration_value is not None
+            and self.duration_value > 0
+            and self.duration_unit
+            and self.normalized_hours is not None
+            and self.normalized_hours > 0
+            and self.authority_revision
+            and self.lineage_fingerprint
+            and self.diagnostic is None
+        )
+
+    @property
+    def source(self) -> str:
+        return (
+            "Confirmed Matrix duration authority: "
+            f"revision {self.authority_revision} "
+            f"({self.confirmed_matrix_id}; {self.lineage_fingerprint})"
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FeeStepQuantityContext:
     """Read-only Matrix Step quantity fact available to fee default-fill."""
 
@@ -99,6 +139,7 @@ class FeeDefaultFillContext:
     step_tokens: tuple[str, ...] = ()
     step_quantities: tuple[FeeStepQuantityContext, ...] = ()
     cr_authority: CrSpecifiedCurrentAuthority | None = None
+    duration_authority: FeeDurationAuthority | None = None
 
 
 @dataclass(frozen=True, slots=True)

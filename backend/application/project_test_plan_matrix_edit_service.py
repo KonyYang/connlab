@@ -322,7 +322,25 @@ def _normalized_step(
         "source_row_index": _int_or_none(step.get("source_row_index")),
         "source_trace": _text(step.get("source_trace")),
         "note": _text(step.get("note")),
+        "duration_authorities": _structured_duration_authorities(
+            step.get("duration_authorities")
+        ),
     }
+
+
+def _structured_duration_authorities(value: Any) -> list[dict[str, Any]] | None:
+    """Preserve only a typed collection; duration prose is never promoted."""
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ProjectTestPlanMatrixEditError(
+            "duration_authorities must be an array or null."
+        )
+    if not all(isinstance(item, dict) for item in value):
+        raise ProjectTestPlanMatrixEditError(
+            "Each duration authority must be an object."
+        )
+    return [dict(item) for item in value]
 
 
 def _duration_value_and_unit(step: dict[str, Any]) -> tuple[float | None, str | None]:

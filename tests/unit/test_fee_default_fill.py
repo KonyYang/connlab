@@ -537,6 +537,68 @@ def test_reseating_defaults_to_three_cycles_when_cycles_are_absent() -> None:
     assert result.testing_fee == Decimal("30")
 
 
+@pytest.mark.parametrize(
+    ("rule_id", "test_item", "unit_price"),
+    (
+        ("fee_rule_high_temperature_life", "Temperature life", Decimal("15")),
+        (
+            "fee_rule_temperature_humidity",
+            "Humidity- Temperature Cycling",
+            Decimal("25"),
+        ),
+    ),
+)
+def test_temperature_named_duration_rules_default_base_fee_to_zero_without_duration(
+    rule_id: str,
+    test_item: str,
+    unit_price: Decimal,
+) -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            rule_id,
+            unit_label="hour",
+            unit_price=unit_price,
+            strategy="per_hour",
+            review_required=False,
+        ),
+        context=_context(test_item=test_item),
+    )
+
+    assert result.review_required is True
+    assert result.review_reason == ("Missing confirmed duration authority" if rule_id == "fee_rule_high_temperature_life" else "Confirm duration")
+    assert result.unit_price == unit_price
+    assert result.unit_label == "hour"
+    assert result.units is None
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee is None
+    assert _field_state(result, "base_fee") == "auto_filled"
+    assert _field_state(result, "units") == "manual_required"
+
+
+def test_salt_spray_uses_hour_duration_from_matrix_condition() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_salt_spray_nss",
+            unit_label="hour",
+            unit_price=Decimal("20"),
+            strategy="per_hour",
+            review_required=True,
+        ),
+        context=_context(
+            test_item="Salt Spray",
+            condition="72 hours",
+        ),
+    )
+
+    assert (result.review_required, result.review_reason) == (True, "Missing confirmed duration authority")
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "hour"
+    assert result.units is None
+    assert result.base_fee is None
+    assert result.testing_fee is None
+    assert _field_state(result, "units") == "manual_required"
+
+
 def test_temperature_rise_prefills_current_tier_and_flags_base_fee_review() -> None:
     result = build_fee_default_fill(
         rule=_rule(
@@ -562,6 +624,31 @@ def test_temperature_rise_prefills_current_tier_and_flags_base_fee_review() -> N
     assert result.base_fee == Decimal("500")
     assert result.testing_fee == Decimal("3500")
     assert _field_state(result, "base_fee") == "suggested_review"
+
+
+def test_temperature_rise_uses_group_sample_quantity_while_current_is_pending() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_temperature_rise",
+            unit_label="specimen",
+            unit_price=None,
+            strategy="per_specimen",
+            review_required=True,
+        ),
+        context=_context(
+            test_item="CURRENT RATING",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.review_required is True
+    assert result.review_reason == "Confirm current"
+    assert result.unit_price is None
+    assert result.unit_label == "sample"
+    assert result.units == Decimal("5")
+    assert result.testing_fee is None
+    assert _field_state(result, "unit_price") == "manual_required"
+    assert _field_state(result, "units") == "auto_filled"
 
 
 def test_dust_benign_defaults_to_one_hour() -> None:

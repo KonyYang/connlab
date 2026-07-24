@@ -9,7 +9,9 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
     ONE_HUNDRED,
     ZERO,
     auto,
+    build_legacy_duration_hour_result,
     calculated_result,
+    hour_unit_price,
     manual_required,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import (
@@ -74,12 +76,19 @@ def build_fee_default_fill(
         return _reseating_cycle_result(rule=rule, context=context)
     if rule.rule_id in {
         "fee_rule_high_temperature_life",
+        "fee_rule_salt_spray_nss",
+    }:
+        return _duration_hour_result(rule=rule, context=context)
+    if rule.rule_id in {
         "fee_rule_pre_high_temperature_life",
         "fee_rule_thermal_shock",
         "fee_rule_temperature_humidity",
         "fee_rule_vibration",
     }:
-        return _duration_hour_result(rule=rule, context=context)
+        return build_legacy_duration_hour_result(
+            rule=rule,
+            source_text=_combined_text(context),
+        )
     if rule.rule_id == "fee_rule_mfg_class_iia":
         return _duration_day_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_microsecond_discontinuity":
@@ -180,24 +189,42 @@ def _reseating_cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) ->
 
 
 def _duration_hour_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
-    hours = _first_decimal(_HOUR_PATTERN, _combined_text(context))
-    if hours is None:
+    authority = context.duration_authority
+    if authority is None or not authority.is_valid:
+        diagnostic = authority.diagnostic if authority is not None else "missing"
+        review_reason = {
+            "missing": "Missing confirmed duration authority",
+            "stale": "Duration authority is stale",
+            "conflict": "Duration authority is conflicting",
+            "wrong_row": "Duration authority belongs to another Matrix row",
+            "wrong_group": "Duration authority belongs to another Matrix group",
+            "invalid": "Duration authority is invalid",
+            "missing_lineage": "Duration authority lineage is incomplete",
+        }.get(diagnostic or "", "Duration authority is unavailable")
+        temperature_base_fee = (
+            ZERO if re.search(r"\btemperature\b", context.test_item, re.I) else None
+        )
+        manual_fields = (
+            ("units", "testing_fee")
+            if temperature_base_fee is not None
+            else ("units", "base_fee", "testing_fee")
+        )
         return manual_required(
             rule=rule,
             unit_label="hour",
-            unit_price=_hour_unit_price(rule),
-            base_fee=None,
-            review_reason="Confirm duration",
-            manual_fields=("units", "base_fee", "testing_fee"),
+            unit_price=hour_unit_price(rule),
+            base_fee=temperature_base_fee,
+            review_reason=review_reason,
+            manual_fields=manual_fields,
         )
     return calculated_result(
         spend_time=None,
         unit_label="hour",
-        unit_price=_hour_unit_price(rule),
-        units=hours,
+        unit_price=hour_unit_price(rule),
+        units=authority.normalized_hours,
         base_fee=ZERO,
         discount_percent=ZERO,
-        source=rule.display_name,
+        source=authority.source,
     )
 
 
@@ -282,15 +309,23 @@ def _temperature_rise_result(
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
     sample_qty = _plain_decimal(context.sample_quantity_expression)
+    if sample_qty is not None and sample_qty <= 0:
+        sample_qty = None
     current = _first_decimal(_CURRENT_PATTERN, _combined_text(context))
     if current is None:
+        manual_fields = (
+            ("unit_price", "base_fee", "testing_fee")
+            if sample_qty is not None
+            else ("unit_price", "units", "base_fee", "testing_fee")
+        )
         return manual_required(
             rule=rule,
             unit_label="sample",
             unit_price=None,
             base_fee=Decimal("500"),
             review_reason="Confirm current",
-            manual_fields=("unit_price", "units", "base_fee", "testing_fee"),
+            manual_fields=manual_fields,
+            units=sample_qty,
         )
     if sample_qty is None:
         return manual_required(
@@ -415,17 +450,6 @@ def _fallback_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDef
         manual_fields=("units", "testing_fee"),
     )
 
-
-def _hour_unit_price(rule: FeeRule) -> Decimal:
-    if rule.rule_id in {"fee_rule_temperature_humidity"}:
-        return Decimal("25")
-    if rule.rule_id in {"fee_rule_thermal_shock"}:
-        return Decimal("30")
-    if rule.rule_id in {"fee_rule_high_temperature_life", "fee_rule_pre_high_temperature_life"}:
-        return Decimal("15")
-    if rule.rule_id == "fee_rule_vibration":
-        return Decimal("300")
-    return rule.unit_price.amount or ZERO
 
 def _combined_text(context: FeeDefaultFillContext) -> str:
     return " ".join(

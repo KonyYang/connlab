@@ -14,6 +14,9 @@ from backend.domain import (
     ProjectMatrixDraftStatus,
     SourceMatrixSnapshot,
 )
+from backend.domain.project_matrix_draft_models import (
+    ProjectMatrixDraftDurationAuthority,
+)
 
 
 def build_selected_only_draft(
@@ -100,6 +103,33 @@ def build_selected_only_draft(
         groups=tuple(groups),
         rows=tuple(rows),
         cells=tuple(cells),
+        duration_authorities=tuple(
+            ProjectMatrixDraftDurationAuthority(
+                draft_duration_authority_id=f"pmda-{uuid4().hex}",
+                project_matrix_draft_id=draft_id,
+                draft_group_id=group_id_by_source[item.source_group_snapshot_id],
+                draft_row_id=row_id_by_source[item.source_row_snapshot_id],
+                step_sequence=item.step_sequence,
+                step_suffix_note=item.step_suffix_note,
+                duration_value=item.duration_value,
+                duration_unit=item.duration_unit,
+                normalized_hours=item.normalized_hours,
+                source_kind=item.source_kind,
+                source_field=item.source_field,
+                source_import_id=item.source_import_id,
+                source_fingerprint=item.source_fingerprint,
+                lineage_fingerprint=item.lineage_fingerprint,
+                authority_revision=item.authority_revision,
+                status=item.status,
+                diagnostic_code=item.diagnostic_code,
+                diagnostic_message=item.diagnostic_message,
+                created_at=created_at,
+                updated_at=created_at,
+            )
+            for item in source_snapshot.duration_authorities
+            if item.source_group_snapshot_id in group_id_by_source
+            and item.source_row_snapshot_id in row_id_by_source
+        ),
     )
 
 

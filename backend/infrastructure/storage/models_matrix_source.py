@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.infrastructure.storage.database import Base
@@ -145,3 +154,59 @@ class SourceMatrixCellSnapshotModel(Base):
         nullable=False,
     )
     cell_value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class SourceMatrixDurationAuthorityModel(Base):
+    """Structured duration authority captured with one source snapshot."""
+
+    __tablename__ = "source_matrix_duration_authorities"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_snapshot_id",
+            "source_group_snapshot_id",
+            "source_row_snapshot_id",
+            "step_sequence",
+            "step_suffix_note",
+            name="uq_source_matrix_duration_authority_identity",
+        ),
+        CheckConstraint("step_sequence > 0", name="ck_source_duration_step_positive"),
+        CheckConstraint("duration_value > 0", name="ck_source_duration_value_positive"),
+        CheckConstraint(
+            "normalized_hours > 0",
+            name="ck_source_duration_hours_positive",
+        ),
+        CheckConstraint("status = 'usable'", name="ck_source_duration_status"),
+    )
+
+    source_duration_authority_id: Mapped[str] = mapped_column(
+        String(64), primary_key=True
+    )
+    source_snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("source_matrix_snapshots.snapshot_id"),
+        nullable=False,
+        index=True,
+    )
+    source_group_snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("source_matrix_group_snapshots.group_snapshot_id"),
+        nullable=False,
+    )
+    source_row_snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("source_matrix_row_snapshots.row_snapshot_id"),
+        nullable=False,
+    )
+    step_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_suffix_note: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    duration_value: Mapped[object] = mapped_column(Numeric, nullable=False)
+    duration_unit: Mapped[str] = mapped_column(String(16), nullable=False)
+    normalized_hours: Mapped[object] = mapped_column(Numeric, nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_field: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_import_id: Mapped[str | None] = mapped_column(String(64))
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    lineage_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    authority_revision: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    diagnostic_code: Mapped[str | None] = mapped_column(String(64))
+    diagnostic_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)

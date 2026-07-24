@@ -28,6 +28,18 @@ router = APIRouter(
 )
 
 
+class MatrixDurationAuthorityInput(BaseModel):
+    """Structured per-group duration fact; never inferred from step prose."""
+
+    owning_group_key: str
+    step_sequence: int
+    step_suffix_note: str | None = None
+    duration_value: float
+    duration_unit: str
+    source_field: str
+    source_identity: dict[str, Any]
+
+
 class MatrixStepInput(BaseModel):
     """One editable Matrix step input row."""
 
@@ -56,6 +68,7 @@ class MatrixStepInput(BaseModel):
     source_row_index: int | None = None
     source_trace: str | None = None
     note: str | None = None
+    duration_authorities: list[MatrixDurationAuthorityInput] | None = None
 
 
 class MatrixGroupInput(BaseModel):

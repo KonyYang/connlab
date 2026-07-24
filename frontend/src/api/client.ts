@@ -1377,11 +1377,32 @@ export type ProjectMatrixDraftCell = {
   cell_value: string;
 };
 
+export type MatrixDurationAuthority = {
+  duration_authority_id: string;
+  group_id: string;
+  row_id: string;
+  step_sequence: number;
+  step_suffix_note: string;
+  duration_value: string;
+  duration_unit: string;
+  normalized_hours: string;
+  source_kind: string;
+  source_field: string;
+  source_import_id?: string | null;
+  source_fingerprint: string;
+  lineage_fingerprint: string;
+  authority_revision: string;
+  status: string;
+  diagnostic_code?: string | null;
+  diagnostic_message?: string | null;
+};
+
 export type ProjectMatrixDraft = {
   record: ProjectMatrixDraftRecord;
   groups: ProjectMatrixDraftGroup[];
   rows: ProjectMatrixDraftRow[];
   cells: ProjectMatrixDraftCell[];
+  duration_authorities?: MatrixDurationAuthority[];
 };
 
 export type MatrixStepQuantityItem = {
@@ -1540,12 +1561,29 @@ export type ProjectMatrixDraftSaveRequest = {
   groups: ProjectMatrixDraftSaveGroupInput[];
   rows: ProjectMatrixDraftSaveRowInput[];
   cells: ProjectMatrixDraftSaveCellInput[];
+  duration_authorities?: ProjectMatrixDraftDurationAuthorityInput[] | null;
   pre_test_buffer_days?: string | null;
   post_test_buffer_days?: string | null;
   sample_received_date?: string | null;
   planned_test_start_date?: string | null;
   planned_test_complete_date?: string | null;
   estimated_completion_date?: string | null;
+};
+
+export type ProjectMatrixDraftDurationAuthorityInput = {
+  draft_duration_authority_id?: string | null;
+  draft_group_id: string;
+  draft_row_id: string;
+  step_sequence: number;
+  step_suffix_note?: string | null;
+  duration_value: string;
+  duration_unit: string;
+  source_kind: string;
+  source_field: string;
+  source_import_id?: string | null;
+  source_fingerprint: string;
+  lineage_fingerprint: string;
+  authority_revision: string;
 };
 
 export type MatrixEditorSessionDraftGroup = {
@@ -1578,10 +1616,29 @@ export type MatrixEditorSessionDraftCell = {
   cell_value: string;
 };
 
+export type MatrixEditorSessionDurationAuthority = {
+  draft_duration_authority_id?: string | null;
+  draft_group_id: string;
+  draft_row_id: string;
+  step_sequence: number;
+  step_suffix_note: string;
+  duration_value: string;
+  duration_unit: string;
+  normalized_hours: string;
+  source_kind: string;
+  source_field: string;
+  source_import_id?: string | null;
+  source_fingerprint: string;
+  lineage_fingerprint: string;
+  authority_revision: string;
+  status: string;
+};
+
 export type MatrixEditorSessionDraft = {
   groups: MatrixEditorSessionDraftGroup[];
   rows: MatrixEditorSessionDraftRow[];
   cells: MatrixEditorSessionDraftCell[];
+  duration_authorities?: MatrixEditorSessionDurationAuthority[];
 };
 
 export type MatrixEditorSessionSeed = {
@@ -1622,6 +1679,7 @@ export type MatrixEditorSessionConfirmRequest = {
   groups: MatrixEditorSessionDraftGroup[];
   rows: MatrixEditorSessionDraftRow[];
   cells: MatrixEditorSessionDraftCell[];
+  duration_authorities?: MatrixEditorSessionDurationAuthority[];
   pre_test_buffer_days?: string | null;
   post_test_buffer_days?: string | null;
   sample_received_date?: string | null;
@@ -1748,6 +1806,7 @@ export type ConfirmedMatrixSnapshot = {
   groups: ConfirmedMatrixGroup[];
   rows: ConfirmedMatrixRow[];
   cells: ConfirmedMatrixCell[];
+  duration_authorities?: MatrixDurationAuthority[];
 };
 
 export type MatrixValidationSummary = {

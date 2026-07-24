@@ -18,6 +18,9 @@ from backend.application.matrix_schedule_planning import (
 from backend.application.matrix_step_quantity_authority_builder import (
     build_confirmed_step_quantities,
 )
+from backend.application.matrix_revision_snapshot_builder import (
+    build_confirmed_duration_authorities,
+)
 from backend.domain import (
     ConfirmedMatrixCell,
     ConfirmedMatrixGroup,
@@ -256,6 +259,13 @@ def _build_confirmed_snapshot(
         rows=tuple(rows),
         cells=tuple(cells),
         step_quantities=tuple(step_quantities),
+        duration_authorities=build_confirmed_duration_authorities(
+            draft=draft,
+            confirmed_matrix_id=confirmed_matrix_id,
+            confirmed_at=confirmed_at,
+            confirmed_group_id_by_draft_group=confirmed_group_id_by_draft_group,
+            confirmed_row_id_by_draft_row=confirmed_row_id_by_draft_row,
+        ),
     )
 
 

@@ -52,9 +52,9 @@ def test_approved_temperature_alias_uses_hours_and_common_base_fee(
     assert all(line.matched_rule_id == "fee_rule_high_temperature_life" for line in lines)
     assert all(line.unit_label == "hour" for line in lines)
     assert all(line.unit_price == Decimal("15") for line in lines)
-    assert all(line.units == Decimal("1000") for line in lines)
+    assert all((line.status, line.review_reason, line.units) == ("review_required", "Missing confirmed duration authority", None) for line in lines)
     assert all(line.base_fee == Decimal("0") for line in lines)
-    assert all(line.testing_fee == Decimal("15000") for line in lines)
+    assert all(line.testing_fee is None for line in lines)
     assert all(_source(line, "base_fee") == "high temperature life" for line in lines)
 
 
@@ -89,7 +89,7 @@ def test_approved_temperature_alias_without_hours_keeps_dependencies_pending() -
 
     assert line.matched_rule_id == "fee_rule_high_temperature_life"
     assert line.status == "review_required"
-    assert line.review_reason == "Confirm duration"
+    assert line.review_reason == "Missing confirmed duration authority"
     assert line.unit_price == Decimal("15")
     assert line.units is None
     assert line.base_fee == Decimal("0")

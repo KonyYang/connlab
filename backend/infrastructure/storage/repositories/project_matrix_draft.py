@@ -16,12 +16,16 @@ from backend.domain import (
     ProjectMatrixDraftStatus,
     ProjectMatrixDraftStepQuantity,
 )
+from backend.domain.project_matrix_draft_models import (
+    ProjectMatrixDraftDurationAuthority,
+)
 from backend.infrastructure.storage.models_project_matrix_draft import (
     ProjectMatrixDraftCellModel,
     ProjectMatrixDraftGroupModel,
     ProjectMatrixDraftRecordModel,
     ProjectMatrixDraftRowModel,
     ProjectMatrixDraftStepQuantityModel,
+    ProjectMatrixDraftDurationAuthorityModel,
 )
 
 
@@ -38,6 +42,7 @@ class ProjectMatrixDraftRepository:
         self._session.add_all(_to_row_models(snapshot.rows))
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
+        self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
         self._session.flush()
         return snapshot
 
@@ -58,6 +63,12 @@ class ProjectMatrixDraftRepository:
         record_row.planned_test_complete_date = snapshot.record.planned_test_complete_date
         record_row.estimated_completion_date = snapshot.record.estimated_completion_date
         record_row.method_sync_context_json = snapshot.record.method_sync_context_json
+        self._session.execute(
+            delete(ProjectMatrixDraftDurationAuthorityModel).where(
+                ProjectMatrixDraftDurationAuthorityModel.project_matrix_draft_id
+                == snapshot.record.project_matrix_draft_id
+            )
+        )
         self._session.execute(
             delete(ProjectMatrixDraftStepQuantityModel).where(
                 ProjectMatrixDraftStepQuantityModel.project_matrix_draft_id
@@ -86,6 +97,7 @@ class ProjectMatrixDraftRepository:
         self._session.add_all(_to_row_models(snapshot.rows))
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
+        self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
         self._session.flush()
         return snapshot
 
@@ -178,12 +190,21 @@ class ProjectMatrixDraftRepository:
                 ProjectMatrixDraftStepQuantityModel.step_sequence.asc(),
             )
         ).all()
+        duration_rows = self._session.scalars(
+            select(ProjectMatrixDraftDurationAuthorityModel)
+            .where(ProjectMatrixDraftDurationAuthorityModel.project_matrix_draft_id == project_matrix_draft_id)
+            .order_by(
+                ProjectMatrixDraftDurationAuthorityModel.draft_group_id.asc(), ProjectMatrixDraftDurationAuthorityModel.draft_row_id.asc(),
+                ProjectMatrixDraftDurationAuthorityModel.step_sequence.asc(), ProjectMatrixDraftDurationAuthorityModel.step_suffix_note.asc()
+            )
+        ).all()
         return ProjectMatrixDraftSnapshot(
             record=_to_record_domain(record_row),
             groups=tuple(_to_group_domain(row) for row in group_rows),
             rows=tuple(_to_row_domain(row) for row in row_rows),
             cells=tuple(_to_cell_domain(row) for row in cell_rows),
             step_quantities=tuple(_to_step_quantity_domain(row) for row in quantity_rows),
+            duration_authorities=tuple(_to_duration_authority_domain(row) for row in duration_rows),
         )
 
     def delete(self, project_matrix_draft_id: str) -> bool:
@@ -191,6 +212,12 @@ class ProjectMatrixDraftRepository:
         record_row = self._session.get(ProjectMatrixDraftRecordModel, project_matrix_draft_id)
         if record_row is None:
             return False
+        self._session.execute(
+            delete(ProjectMatrixDraftDurationAuthorityModel).where(
+                ProjectMatrixDraftDurationAuthorityModel.project_matrix_draft_id
+                == project_matrix_draft_id
+            )
+        )
         self._session.execute(
             delete(ProjectMatrixDraftStepQuantityModel).where(
                 ProjectMatrixDraftStepQuantityModel.project_matrix_draft_id
@@ -366,6 +393,10 @@ def _to_step_quantity_models(
     ]
 
 
+def _to_duration_authority_models(authorities: tuple[ProjectMatrixDraftDurationAuthority, ...]) -> list[ProjectMatrixDraftDurationAuthorityModel]:
+    return [ProjectMatrixDraftDurationAuthorityModel(**_duration_values(item)) for item in authorities]
+
+
 def _to_record_domain(row: ProjectMatrixDraftRecordModel) -> ProjectMatrixDraftRecord:
     return ProjectMatrixDraftRecord(
         project_matrix_draft_id=row.project_matrix_draft_id,
@@ -446,6 +477,15 @@ def _to_step_quantity_domain(
         updated_at=row.updated_at,
         contact_plan=contact_plan_from_json(row.contact_plan_json),
     )
+
+
+def _to_duration_authority_domain(row: ProjectMatrixDraftDurationAuthorityModel) -> ProjectMatrixDraftDurationAuthority:
+    return ProjectMatrixDraftDurationAuthority(**_duration_values(row))
+
+
+def _duration_values(item: object) -> dict[str, object]:
+    columns = ProjectMatrixDraftDurationAuthorityModel.__table__.columns
+    return {column.name: getattr(item, column.name) for column in columns}
 
 
 def _optional_text(value: str | None) -> str | None:

@@ -15,12 +15,14 @@ from backend.domain import (
     SourceMatrixRowSnapshot,
     SourceMatrixSnapshot,
 )
+from backend.domain.source_matrix_models import SourceMatrixDurationAuthority
 from backend.infrastructure.storage.models_matrix_source import (
     SourceMatrixCellSnapshotModel,
     SourceMatrixGroupSnapshotModel,
     SourceMatrixImportRecordModel,
     SourceMatrixRowSnapshotModel,
     SourceMatrixSnapshotModel,
+    SourceMatrixDurationAuthorityModel,
 )
 
 
@@ -41,6 +43,7 @@ class SourceMatrixImportRepository:
         self._session.add_all(_to_row_models(snapshot))
         self._session.add_all(_to_group_models(snapshot))
         self._session.add_all(_to_cell_models(snapshot))
+        self._session.add_all(_to_duration_authority_models(snapshot))
         self._session.flush()
 
     def get_import(self, import_id: str) -> SourceMatrixImportRecord | None:
@@ -72,6 +75,9 @@ class SourceMatrixImportRepository:
             .where(SourceMatrixCellSnapshotModel.snapshot_id == snapshot_row.snapshot_id)
             .order_by(SourceMatrixCellSnapshotModel.cell_snapshot_id.asc())
         ).all()
+        duration_rows = _load_duration_authority_rows(
+            self._session, snapshot_row.snapshot_id
+        )
         return SourceMatrixSnapshot(
             snapshot_id=snapshot_row.snapshot_id,
             import_id=snapshot_row.import_id,
@@ -80,6 +86,9 @@ class SourceMatrixImportRepository:
             rows=tuple(_to_row_domain(row) for row in row_rows),
             groups=tuple(_to_group_domain(group) for group in group_rows),
             cells=tuple(_to_cell_domain(cell) for cell in cell_rows),
+            duration_authorities=tuple(
+                _to_duration_authority_domain(row) for row in duration_rows
+            ),
             created_at=snapshot_row.created_at,
         )
 
@@ -103,6 +112,9 @@ class SourceMatrixImportRepository:
             .where(SourceMatrixCellSnapshotModel.snapshot_id == snapshot_row.snapshot_id)
             .order_by(SourceMatrixCellSnapshotModel.cell_snapshot_id.asc())
         ).all()
+        duration_rows = _load_duration_authority_rows(
+            self._session, snapshot_row.snapshot_id
+        )
         return SourceMatrixSnapshot(
             snapshot_id=snapshot_row.snapshot_id,
             import_id=snapshot_row.import_id,
@@ -111,6 +123,9 @@ class SourceMatrixImportRepository:
             rows=tuple(_to_row_domain(row) for row in row_rows),
             groups=tuple(_to_group_domain(group) for group in group_rows),
             cells=tuple(_to_cell_domain(cell) for cell in cell_rows),
+            duration_authorities=tuple(
+                _to_duration_authority_domain(row) for row in duration_rows
+            ),
             created_at=snapshot_row.created_at,
         )
 
@@ -233,6 +248,20 @@ def _to_cell_models(snapshot: SourceMatrixSnapshot) -> list[SourceMatrixCellSnap
     ]
 
 
+def _to_duration_authority_models(
+    snapshot: SourceMatrixSnapshot,
+) -> list[SourceMatrixDurationAuthorityModel]:
+    return [
+        SourceMatrixDurationAuthorityModel(
+            **{
+                column.name: getattr(item, column.name)
+                for column in SourceMatrixDurationAuthorityModel.__table__.columns
+            }
+        )
+        for item in snapshot.duration_authorities
+    ]
+
+
 def _to_import_domain(row: SourceMatrixImportRecordModel) -> SourceMatrixImportRecord:
     return SourceMatrixImportRecord(
         import_id=row.import_id,
@@ -293,6 +322,37 @@ def _to_cell_domain(row: SourceMatrixCellSnapshotModel) -> SourceMatrixCellSnaps
         row_snapshot_id=row.row_snapshot_id,
         group_snapshot_id=row.group_snapshot_id,
         cell_value=row.cell_value,
+    )
+
+
+def _load_duration_authority_rows(
+    session: Session,
+    snapshot_id: str,
+) -> list[SourceMatrixDurationAuthorityModel]:
+    return list(
+        session.scalars(
+            select(SourceMatrixDurationAuthorityModel)
+            .where(
+                SourceMatrixDurationAuthorityModel.source_snapshot_id == snapshot_id
+            )
+            .order_by(
+                SourceMatrixDurationAuthorityModel.source_group_snapshot_id.asc(),
+                SourceMatrixDurationAuthorityModel.source_row_snapshot_id.asc(),
+                SourceMatrixDurationAuthorityModel.step_sequence.asc(),
+                SourceMatrixDurationAuthorityModel.step_suffix_note.asc(),
+            )
+        ).all()
+    )
+
+
+def _to_duration_authority_domain(
+    row: SourceMatrixDurationAuthorityModel,
+) -> SourceMatrixDurationAuthority:
+    return SourceMatrixDurationAuthority(
+        **{
+            column.name: getattr(row, column.name)
+            for column in SourceMatrixDurationAuthorityModel.__table__.columns
+        }
     )
 
 

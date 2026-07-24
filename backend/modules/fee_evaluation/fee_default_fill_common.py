@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import re
 
 from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultField,
@@ -13,6 +14,10 @@ from backend.modules.fee_evaluation.fee_rule_models import FeeRule
 
 ZERO = Decimal("0")
 ONE_HUNDRED = Decimal("100")
+_HOUR_PATTERN = re.compile(
+    r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b",
+    re.I,
+)
 
 
 def calculated_result(
@@ -59,6 +64,7 @@ def manual_required(
     base_fee: Decimal | None,
     review_reason: str,
     manual_fields: tuple[FeeDefaultField, ...],
+    units: Decimal | None = None,
 ) -> FeeDefaultFillResult:
     metadata = [
         auto("unit_label", rule.display_name),
@@ -76,6 +82,8 @@ def manual_required(
         metadata.append(auto("unit_price", rule.display_name))
     if base_fee is not None and "base_fee" not in manual_fields:
         metadata.append(auto("base_fee", rule.display_name))
+    if units is not None and "units" not in manual_fields:
+        metadata.append(auto("units", rule.display_name))
     return FeeDefaultFillResult(
         status="review_required",
         review_required=True,
@@ -83,7 +91,7 @@ def manual_required(
         spend_time=None,
         unit_label=unit_label,
         unit_price=unit_price,
-        units=None,
+        units=units,
         base_fee=base_fee,
         discount_percent=ZERO,
         testing_fee=None,
@@ -93,3 +101,45 @@ def manual_required(
 
 def auto(field: FeeDefaultField, source: str) -> FeeFieldMetadata:
     return FeeFieldMetadata(field=field, state="auto_filled", source=source, message=None)
+
+
+def build_legacy_duration_hour_result(
+    *,
+    rule: FeeRule,
+    source_text: str,
+) -> FeeDefaultFillResult:
+    """Preserve accepted text-hour defaults for rules outside typed authority."""
+    match = _HOUR_PATTERN.search(source_text)
+    if match is None:
+        return manual_required(
+            rule=rule,
+            unit_label="hour",
+            unit_price=hour_unit_price(rule),
+            base_fee=ZERO,
+            review_reason="Confirm duration",
+            manual_fields=("units", "testing_fee"),
+        )
+    return calculated_result(
+        spend_time=None,
+        unit_label="hour",
+        unit_price=hour_unit_price(rule),
+        units=Decimal(match.group(1)),
+        base_fee=ZERO,
+        discount_percent=ZERO,
+        source=rule.display_name,
+    )
+
+
+def hour_unit_price(rule: FeeRule) -> Decimal:
+    if rule.rule_id == "fee_rule_temperature_humidity":
+        return Decimal("25")
+    if rule.rule_id == "fee_rule_thermal_shock":
+        return Decimal("30")
+    if rule.rule_id in {
+        "fee_rule_high_temperature_life",
+        "fee_rule_pre_high_temperature_life",
+    }:
+        return Decimal("15")
+    if rule.rule_id == "fee_rule_vibration":
+        return Decimal("300")
+    return rule.unit_price.amount or ZERO

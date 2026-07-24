@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 from backend.domain.enums import ConfirmedMatrixStatus
 from backend.domain.matrix_contact_measurement_models import MatrixStepContactPlan
@@ -102,6 +103,32 @@ class ConfirmedMatrixStepQuantity:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfirmedMatrixDurationAuthority:
+    """Immutable typed duration authority owned by a confirmed row and group."""
+
+    confirmed_duration_authority_id: str
+    confirmed_matrix_id: str
+    confirmed_group_id: str
+    confirmed_row_id: str
+    step_sequence: int
+    step_suffix_note: str
+    duration_value: Decimal
+    duration_unit: str
+    normalized_hours: Decimal
+    source_kind: str
+    source_field: str
+    source_import_id: str | None
+    source_fingerprint: str
+    lineage_fingerprint: str
+    authority_revision: str
+    status: str
+    diagnostic_code: str | None
+    diagnostic_message: str | None
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class ConfirmedMatrixSnapshot:
     """Aggregate immutable confirmed Matrix authority snapshot."""
 
@@ -110,5 +137,8 @@ class ConfirmedMatrixSnapshot:
     rows: tuple[ConfirmedMatrixRow, ...] = field(default_factory=tuple)
     cells: tuple[ConfirmedMatrixCell, ...] = field(default_factory=tuple)
     step_quantities: tuple[ConfirmedMatrixStepQuantity, ...] = field(
+        default_factory=tuple
+    )
+    duration_authorities: tuple[ConfirmedMatrixDurationAuthority, ...] = field(
         default_factory=tuple
     )

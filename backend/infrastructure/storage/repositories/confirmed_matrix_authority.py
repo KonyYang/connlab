@@ -16,12 +16,16 @@ from backend.domain import (
     ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
 )
+from backend.domain.confirmed_matrix_authority_models import (
+    ConfirmedMatrixDurationAuthority,
+)
 from backend.infrastructure.storage.models_confirmed_matrix_authority import (
     ConfirmedMatrixCellModel,
     ConfirmedMatrixGroupModel,
     ConfirmedMatrixRowModel,
     ConfirmedMatrixStepQuantityModel,
     ConfirmedMatrixVersionModel,
+    ConfirmedMatrixDurationAuthorityModel,
 )
 
 
@@ -38,6 +42,7 @@ class ConfirmedMatrixAuthorityRepository:
         self._session.add_all(_to_row_models(snapshot.rows))
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
+        self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
         self._session.flush()
         return snapshot
 
@@ -117,12 +122,28 @@ class ConfirmedMatrixAuthorityRepository:
                 ConfirmedMatrixStepQuantityModel.step_sequence.asc(),
             )
         ).all()
+        duration_rows = self._session.scalars(
+            select(ConfirmedMatrixDurationAuthorityModel)
+            .where(
+                ConfirmedMatrixDurationAuthorityModel.confirmed_matrix_id
+                == version_row.confirmed_matrix_id
+            )
+            .order_by(
+                ConfirmedMatrixDurationAuthorityModel.confirmed_group_id.asc(),
+                ConfirmedMatrixDurationAuthorityModel.confirmed_row_id.asc(),
+                ConfirmedMatrixDurationAuthorityModel.step_sequence.asc(),
+                ConfirmedMatrixDurationAuthorityModel.step_suffix_note.asc(),
+            )
+        ).all()
         return ConfirmedMatrixSnapshot(
             version=_to_version_domain(version_row),
             groups=tuple(_to_group_domain(row) for row in group_rows),
             rows=tuple(_to_row_domain(row) for row in row_rows),
             cells=tuple(_to_cell_domain(row) for row in cell_rows),
             step_quantities=tuple(_to_step_quantity_domain(row) for row in quantity_rows),
+            duration_authorities=tuple(
+                _to_duration_authority_domain(row) for row in duration_rows
+            ),
         )
 
 
@@ -232,6 +253,20 @@ def _to_step_quantity_models(
     ]
 
 
+def _to_duration_authority_models(
+    authorities: tuple[ConfirmedMatrixDurationAuthority, ...],
+) -> list[ConfirmedMatrixDurationAuthorityModel]:
+    return [
+        ConfirmedMatrixDurationAuthorityModel(
+            **{
+                column.name: getattr(item, column.name)
+                for column in ConfirmedMatrixDurationAuthorityModel.__table__.columns
+            }
+        )
+        for item in authorities
+    ]
+
+
 def _to_version_domain(row: ConfirmedMatrixVersionModel) -> ConfirmedMatrixVersion:
     return ConfirmedMatrixVersion(
         confirmed_matrix_id=row.confirmed_matrix_id,
@@ -319,6 +354,17 @@ def _to_step_quantity_domain(
         review_reason=row.review_reason,
         confirmed_at=row.confirmed_at,
         contact_plan=contact_plan_from_json(row.contact_plan_json),
+    )
+
+
+def _to_duration_authority_domain(
+    row: ConfirmedMatrixDurationAuthorityModel,
+) -> ConfirmedMatrixDurationAuthority:
+    return ConfirmedMatrixDurationAuthority(
+        **{
+            column.name: getattr(row, column.name)
+            for column in ConfirmedMatrixDurationAuthorityModel.__table__.columns
+        }
     )
 
 

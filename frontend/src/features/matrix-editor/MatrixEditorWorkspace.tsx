@@ -23,10 +23,12 @@ import {
   type MatrixStepQuantityItem,
   type MatrixEditorTestRecordDraftRequest,
   type MatrixEditorSessionDraft,
+  type MatrixEditorSessionDurationAuthority,
   type MatrixEditorSessionSeed,
   type MatrixEditorSessionConfirmResponse,
   type MatrixEditorSessionDraftSaveRequest,
   type MatrixEditorSessionDraftSaveResponse,
+  type MatrixDurationAuthority,
   type ProjectMatrixDraft,
   type MatrixPreviewResponse,
   type MatrixImportCommitResponse,
@@ -674,14 +676,40 @@ function buildSessionDraftFromProjectMatrixDraft(
       draft_group_id: cell.draft_group_id,
       cell_value: cell.cell_value,
     })),
+    duration_authorities: mapProjectDurationAuthoritiesForSession(
+      draft.duration_authorities
+    ),
   };
+}
+
+export function mapProjectDurationAuthoritiesForSession(
+  authorities: MatrixDurationAuthority[] | undefined
+): MatrixEditorSessionDurationAuthority[] {
+  return (authorities ?? []).map((item) => ({
+    draft_duration_authority_id: item.duration_authority_id,
+    draft_group_id: item.group_id,
+    draft_row_id: item.row_id,
+    step_sequence: item.step_sequence,
+    step_suffix_note: item.step_suffix_note,
+    duration_value: item.duration_value,
+    duration_unit: item.duration_unit,
+    normalized_hours: item.normalized_hours,
+    source_kind: item.source_kind,
+    source_field: item.source_field,
+    source_import_id: item.source_import_id ?? null,
+    source_fingerprint: item.source_fingerprint,
+    lineage_fingerprint: item.lineage_fingerprint,
+    authority_revision: item.authority_revision,
+    status: item.status,
+  }));
 }
 
 function buildDraftSavePayload(
   rows: EditableMatrixRow[],
   groups: GroupColumn[],
   samples: Record<string, string>,
-  schedulePlan: MatrixSchedulePlan
+  schedulePlan: MatrixSchedulePlan,
+  durationAuthorities: MatrixEditorSessionDurationAuthority[] = []
 ): ProjectMatrixDraftSaveRequest {
   const payloadGroups = groups.map((group, index) => ({
     draft_group_id: group.draftGroupId ?? group.id,
@@ -728,6 +756,21 @@ function buildDraftSavePayload(
     groups: payloadGroups,
     rows: payloadRows,
     cells: payloadCells,
+    duration_authorities: durationAuthorities.map((item) => ({
+      draft_duration_authority_id: item.draft_duration_authority_id ?? null,
+      draft_group_id: item.draft_group_id,
+      draft_row_id: item.draft_row_id,
+      step_sequence: item.step_sequence,
+      step_suffix_note: item.step_suffix_note,
+      duration_value: item.duration_value,
+      duration_unit: item.duration_unit,
+      source_kind: item.source_kind,
+      source_field: item.source_field,
+      source_import_id: item.source_import_id ?? null,
+      source_fingerprint: item.source_fingerprint,
+      lineage_fingerprint: item.lineage_fingerprint,
+      authority_revision: item.authority_revision,
+    })),
   };
 }
 
@@ -1672,6 +1715,8 @@ export function MatrixEditorWorkspace({
   const [activeConfirmedRevision, setActiveConfirmedRevision] = useState<number | null>(null);
   const [sessionSourceImportId, setSessionSourceImportId] = useState<string | null>(null);
   const [sessionSourceSnapshotId, setSessionSourceSnapshotId] = useState<string | null>(null);
+  const [durationAuthorities, setDurationAuthorities] =
+    useState<MatrixEditorSessionDurationAuthority[]>([]);
   const [activeAuthoritySourceImportId, setActiveAuthoritySourceImportId] = useState<string | null>(null);
   const [savedEditorDraftId, setSavedEditorDraftId] = useState<string | null>(null);
   const [savedPayloadSignature, setSavedPayloadSignature] = useState<string | null>(null);
@@ -1714,11 +1759,18 @@ export function MatrixEditorWorkspace({
     setGroupColumns(nextGroups);
     setEditableRows(nextRows);
     setSampleValues(nextSamples);
+    setDurationAuthorities(draft.duration_authorities ?? []);
     setSampleMergeNotes({});
     setSchedulePlan(nextSchedulePlan);
     setSelectedGroupId(nextGroups[0]?.id ?? null);
     setSelectedRowId(null);
-    const baselinePayload = buildDraftSavePayload(nextRows, nextGroups, nextSamples, nextSchedulePlan);
+    const baselinePayload = buildDraftSavePayload(
+      nextRows,
+      nextGroups,
+      nextSamples,
+      nextSchedulePlan,
+      draft.duration_authorities ?? []
+    );
     setSaveBaselineSignature(JSON.stringify(baselinePayload));
     setSaveState("saved");
     setActiveAuthorityConfirmed(false);
@@ -1742,7 +1794,8 @@ export function MatrixEditorWorkspace({
             buildMatrixFromSessionSeedDraft(seed.editor_draft, seed.source_preview_payload ?? null).rows,
             buildMatrixFromSessionSeedDraft(seed.editor_draft, seed.source_preview_payload ?? null).groups,
             buildMatrixFromSessionSeedDraft(seed.editor_draft, seed.source_preview_payload ?? null).samples,
-            loadedSchedulePlan
+            loadedSchedulePlan,
+            seed.editor_draft.duration_authorities ?? []
           );
           const loadedSignature = JSON.stringify(loadedPayload);
           setSavedEditorDraftId(seed.editor_draft_id ?? null);
@@ -1762,6 +1815,7 @@ export function MatrixEditorWorkspace({
           setGroupColumns(defaultGroups);
           setSampleValues(defaultSamples);
           setSampleMergeNotes({});
+          setDurationAuthorities([]);
           setSchedulePlan(defaultSchedulePlan);
           setSelectedGroupId(defaultGroups[0]?.id ?? null);
           setSelectedRowId(null);
@@ -2252,7 +2306,8 @@ export function MatrixEditorWorkspace({
     editableRows,
     groupColumns,
     sampleValues,
-    schedulePlan
+    schedulePlan,
+    durationAuthorities
   );
   const currentSaveSignature = JSON.stringify(currentSavePayload);
   const hasUnsavedChanges =
@@ -2298,6 +2353,7 @@ export function MatrixEditorWorkspace({
       is_sample_row: Boolean(row.is_sample_row),
     })),
     cells: currentSavePayload.cells,
+    duration_authorities: durationAuthorities,
   });
 
   useEffect(() => {

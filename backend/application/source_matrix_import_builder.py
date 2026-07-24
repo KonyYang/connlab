@@ -17,7 +17,10 @@ from backend.domain import (
     SourceMatrixRowSnapshot,
     SourceMatrixSnapshot,
 )
-
+from backend.domain.source_matrix_models import SourceMatrixDurationAuthority
+from backend.application.source_matrix_duration_authority_payload import (
+    build_source_duration_authorities,
+)
 DEFAULT_MATRIX_PARSER_VERSION = "product_spec_matrix_parser:v1"
 DEFAULT_MATRIX_PAYLOAD_SCHEMA_VERSION = "1.0"
 
@@ -26,7 +29,6 @@ DEFAULT_MATRIX_PAYLOAD_SCHEMA_VERSION = "1.0"
 class PreparedSourceMatrixImport:
     import_record: SourceMatrixImportRecord
     snapshot: SourceMatrixSnapshot
-
 
 @dataclass(slots=True)
 class _DerivedRow:
@@ -39,7 +41,7 @@ class _DerivedRow:
     condition: str | None = None
     requirement: str | None = None
     tokens_by_group: dict[int, list[str]] = field(default_factory=dict)
-
+    duration_authorities: list[dict[str, Any]] = field(default_factory=list)
 
 def prepare_source_matrix_import(
     *,
@@ -60,7 +62,13 @@ def prepare_source_matrix_import(
     import_id = f"smi-{uuid4().hex}"
     snapshot_id = f"sms-{uuid4().hex}"
     groups = _build_groups(payload)
-    rows, cells = _build_rows_and_cells(payload, groups)
+    rows, cells, duration_authorities = _build_rows_and_cells(
+        payload,
+        groups,
+        snapshot_id=snapshot_id,
+        import_id=import_id,
+        created_at=created_at,
+    )
     metadata = _extract_import_metadata(
         payload,
         groups,
@@ -101,6 +109,7 @@ def prepare_source_matrix_import(
             rows=rows,
             groups=groups,
             cells=cells,
+            duration_authorities=duration_authorities,
             created_at=created_at,
         ),
     )
@@ -143,6 +152,23 @@ def fingerprint_source_snapshot(snapshot: SourceMatrixSnapshot) -> str:
                     cell.cell_value,
                 ]
                 for cell in snapshot.cells
+            ),
+            "duration_authorities": sorted(
+                [
+                    row_keys[item.source_row_snapshot_id],
+                    group_keys[item.source_group_snapshot_id],
+                    item.step_sequence,
+                    item.step_suffix_note,
+                    format(item.duration_value, "f"),
+                    item.duration_unit,
+                    format(item.normalized_hours, "f"),
+                    item.source_kind,
+                    item.source_field,
+                    item.source_fingerprint,
+                    item.lineage_fingerprint,
+                    item.authority_revision,
+                ]
+                for item in snapshot.duration_authorities
             ),
         }
     )
@@ -202,16 +228,46 @@ def _build_groups(payload: dict[str, Any]) -> tuple[SourceMatrixGroupSnapshot, .
 def _build_rows_and_cells(
     payload: dict[str, Any],
     groups: tuple[SourceMatrixGroupSnapshot, ...],
-) -> tuple[tuple[SourceMatrixRowSnapshot, ...], tuple[SourceMatrixCellSnapshot, ...]]:
+    *,
+    snapshot_id: str,
+    import_id: str,
+    created_at: str,
+) -> tuple[
+    tuple[SourceMatrixRowSnapshot, ...],
+    tuple[SourceMatrixCellSnapshot, ...],
+    tuple[SourceMatrixDurationAuthority, ...],
+]:
     raw_rows = payload.get("rows")
     if isinstance(raw_rows, list) and raw_rows:
-        return _build_rows_and_cells_from_rows(raw_rows, groups)
-    return _build_rows_and_cells_from_steps(payload, groups)
+        rows, cells, authorities = _build_rows_and_cells_from_rows(
+            raw_rows,
+            groups,
+            snapshot_id=snapshot_id,
+            import_id=import_id,
+            created_at=created_at,
+        )
+        return rows, cells, authorities
+    return _build_rows_and_cells_from_steps(
+        payload,
+        groups,
+        snapshot_id=snapshot_id,
+        import_id=import_id,
+        created_at=created_at,
+    )
 
 
-def _build_rows_and_cells_from_rows(raw_rows, groups):
+def _build_rows_and_cells_from_rows(
+    raw_rows,
+    groups,
+    *,
+    snapshot_id: str,
+    import_id: str,
+    created_at: str,
+):
     rows: list[SourceMatrixRowSnapshot] = []
     cells: list[SourceMatrixCellSnapshot] = []
+    authorities: list[SourceMatrixDurationAuthority] = []
+    groups_by_key = {group.group_key: group for group in groups}
     for row_order, raw_row in enumerate(raw_rows, start=1):
         if not isinstance(raw_row, dict):
             continue
@@ -229,6 +285,16 @@ def _build_rows_and_cells_from_rows(raw_rows, groups):
                 requirement=_text(raw_row.get("requirement")),
             )
         )
+        authorities.extend(
+            build_source_duration_authorities(
+                raw_row=raw_row,
+                row_snapshot_id=row_snapshot_id,
+                groups_by_key=groups_by_key,
+                snapshot_id=snapshot_id,
+                import_id=import_id,
+                created_at=created_at,
+            )
+        )
         group_tokens = raw_row.get("group_tokens")
         if not isinstance(group_tokens, dict):
             continue
@@ -243,7 +309,7 @@ def _build_rows_and_cells_from_rows(raw_rows, groups):
                         cell_value=text,
                     )
                 )
-    return tuple(rows), tuple(cells)
+    return tuple(rows), tuple(cells), tuple(authorities)
 
 
 def _group_token_text(group_tokens, group) -> str | None:
@@ -270,10 +336,17 @@ def _group_token_text(group_tokens, group) -> str | None:
     return None
 
 
-def _build_rows_and_cells_from_steps(payload, groups):
+def _build_rows_and_cells_from_steps(
+    payload,
+    groups,
+    *,
+    snapshot_id: str,
+    import_id: str,
+    created_at: str,
+):
     group_entries = payload.get("groups")
     if not isinstance(group_entries, list):
-        return (), ()
+        return (), (), ()
     derived_rows: dict[tuple[int, int], _DerivedRow] = {}
     auto_index = 0
     for group_index, raw_group in enumerate(group_entries, start=1):
@@ -303,6 +376,11 @@ def _build_rows_and_cells_from_steps(payload, groups):
             raw_token = _text(raw_step.get("raw_token"))
             if raw_token:
                 derived_rows[row_key].tokens_by_group.setdefault(group_index, []).append(raw_token)
+            raw_authorities = raw_step.get("duration_authorities")
+            if raw_authorities is not None:
+                if not isinstance(raw_authorities, list):
+                    raise ValueError("duration_authorities must be an array or null.")
+                derived_rows[row_key].duration_authorities.extend(raw_authorities)
     ordered = sorted(derived_rows.values(), key=lambda row: row.sort_priority)
     rows: list[SourceMatrixRowSnapshot] = []
     row_ids: dict[int, str] = {}
@@ -322,7 +400,18 @@ def _build_rows_and_cells_from_steps(payload, groups):
             )
         )
     cells: list[SourceMatrixCellSnapshot] = []
+    authorities: list[SourceMatrixDurationAuthority] = []
     for row_order, row in enumerate(ordered, start=1):
+        authorities.extend(
+            build_source_duration_authorities(
+                raw_row={"duration_authorities": row.duration_authorities},
+                row_snapshot_id=row_ids[row_order],
+                groups_by_key={group.group_key: group for group in groups},
+                snapshot_id=snapshot_id,
+                import_id=import_id,
+                created_at=created_at,
+            )
+        )
         for group_index, group in enumerate(groups, start=1):
             value = ", ".join(row.tokens_by_group.get(group_index, [])).strip()
             if value:
@@ -334,7 +423,7 @@ def _build_rows_and_cells_from_steps(payload, groups):
                         cell_value=value,
                     )
                 )
-    return tuple(rows), tuple(cells)
+    return tuple(rows), tuple(cells), tuple(authorities)
 
 
 def _extract_import_metadata(payload, groups, created_at, *, selected_group_keys_override):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from backend.domain.enums import SourceMatrixImportStatus
@@ -47,6 +48,32 @@ class SourceMatrixGroupSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceMatrixDurationAuthority:
+    """Structured duration fact owned by one source Matrix row and group."""
+
+    source_duration_authority_id: str
+    source_snapshot_id: str
+    source_group_snapshot_id: str
+    source_row_snapshot_id: str
+    step_sequence: int
+    step_suffix_note: str
+    duration_value: Decimal
+    duration_unit: str
+    normalized_hours: Decimal
+    source_kind: str
+    source_field: str
+    source_import_id: str | None
+    source_fingerprint: str
+    lineage_fingerprint: str
+    authority_revision: str
+    status: str
+    diagnostic_code: str | None
+    diagnostic_message: str | None
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class SourceMatrixSnapshot:
     """Structured immutable Source Matrix snapshot body."""
 
@@ -57,6 +84,9 @@ class SourceMatrixSnapshot:
     rows: tuple[SourceMatrixRowSnapshot, ...] = field(default_factory=tuple)
     groups: tuple[SourceMatrixGroupSnapshot, ...] = field(default_factory=tuple)
     cells: tuple[SourceMatrixCellSnapshot, ...] = field(default_factory=tuple)
+    duration_authorities: tuple[SourceMatrixDurationAuthority, ...] = field(
+        default_factory=tuple
+    )
     created_at: str = ""
 
 

@@ -403,12 +403,12 @@ def test_fee_draft_defaults_non_rise_temperature_items_to_per_hour(
         assert (line.unit_price, line.units, line.base_fee, line.testing_fee) == (None, None, Decimal("0"), None)
         return
     assert line.matched_rule_id == "fee_rule_high_temperature_life"
-    assert line.status == "calculated"
+    assert (line.status, line.review_reason) == ("review_required", "Missing confirmed duration authority")
     assert line.unit_price == Decimal("15")
     assert line.unit_label == "hour"
-    assert line.units == Decimal("1000")
+    assert line.units is None
     assert line.base_fee == Decimal("0")
-    assert line.testing_fee == Decimal("15000")
+    assert line.testing_fee is None
 
 
 def test_fee_draft_calculates_fixed_per_group_when_rule_is_deterministic() -> None:

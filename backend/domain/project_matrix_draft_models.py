@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 from backend.domain.enums import ProjectMatrixDraftStatus
 from backend.domain.matrix_contact_measurement_models import MatrixStepContactPlan
@@ -94,6 +95,32 @@ class ProjectMatrixDraftStepQuantity:
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectMatrixDraftDurationAuthority:
+    """Editable typed duration authority for one draft row and group."""
+
+    draft_duration_authority_id: str
+    project_matrix_draft_id: str
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int
+    step_suffix_note: str
+    duration_value: Decimal
+    duration_unit: str
+    normalized_hours: Decimal
+    source_kind: str
+    source_field: str
+    source_import_id: str | None
+    source_fingerprint: str
+    lineage_fingerprint: str
+    authority_revision: str
+    status: str
+    diagnostic_code: str | None
+    diagnostic_message: str | None
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectMatrixDraftSnapshot:
     """Aggregate structured Project Matrix draft snapshot."""
 
@@ -102,5 +129,8 @@ class ProjectMatrixDraftSnapshot:
     rows: tuple[ProjectMatrixDraftRow, ...] = field(default_factory=tuple)
     cells: tuple[ProjectMatrixDraftCell, ...] = field(default_factory=tuple)
     step_quantities: tuple[ProjectMatrixDraftStepQuantity, ...] = field(
+        default_factory=tuple
+    )
+    duration_authorities: tuple[ProjectMatrixDraftDurationAuthority, ...] = field(
         default_factory=tuple
     )

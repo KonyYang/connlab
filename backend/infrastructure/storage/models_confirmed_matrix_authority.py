@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.infrastructure.storage.database import Base
@@ -228,3 +239,65 @@ class ConfirmedMatrixStepQuantityModel(Base):
     review_reason: Mapped[str | None] = mapped_column(Text)
     contact_plan_json: Mapped[str | None] = mapped_column(Text)
     confirmed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ConfirmedMatrixDurationAuthorityModel(Base):
+    """Immutable duration authority published with a confirmed Matrix."""
+
+    __tablename__ = "confirmed_matrix_duration_authorities"
+    __table_args__ = (
+        UniqueConstraint(
+            "confirmed_matrix_id",
+            "confirmed_group_id",
+            "confirmed_row_id",
+            "step_sequence",
+            "step_suffix_note",
+            name="uq_confirmed_matrix_duration_authority_identity",
+        ),
+        CheckConstraint(
+            "step_sequence > 0",
+            name="ck_confirmed_duration_step_positive",
+        ),
+        CheckConstraint(
+            "duration_value > 0",
+            name="ck_confirmed_duration_value_positive",
+        ),
+        CheckConstraint(
+            "normalized_hours > 0",
+            name="ck_confirmed_duration_hours_positive",
+        ),
+        CheckConstraint("status = 'usable'", name="ck_confirmed_duration_status"),
+    )
+
+    confirmed_duration_authority_id: Mapped[str] = mapped_column(
+        String(64), primary_key=True
+    )
+    confirmed_matrix_id: Mapped[str] = mapped_column(
+        ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"),
+        nullable=False,
+        index=True,
+    )
+    confirmed_group_id: Mapped[str] = mapped_column(
+        ForeignKey("confirmed_matrix_groups.confirmed_group_id"),
+        nullable=False,
+    )
+    confirmed_row_id: Mapped[str] = mapped_column(
+        ForeignKey("confirmed_matrix_rows.confirmed_row_id"),
+        nullable=False,
+    )
+    step_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_suffix_note: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    duration_value: Mapped[object] = mapped_column(Numeric, nullable=False)
+    duration_unit: Mapped[str] = mapped_column(String(16), nullable=False)
+    normalized_hours: Mapped[object] = mapped_column(Numeric, nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_field: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_import_id: Mapped[str | None] = mapped_column(String(64))
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    lineage_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    authority_revision: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    diagnostic_code: Mapped[str | None] = mapped_column(String(64))
+    diagnostic_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)

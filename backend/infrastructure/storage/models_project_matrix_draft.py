@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.infrastructure.storage.database import Base
@@ -198,4 +207,60 @@ class ProjectMatrixDraftStepQuantityModel(Base):
     review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     review_reason: Mapped[str | None] = mapped_column(Text)
     contact_plan_json: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ProjectMatrixDraftDurationAuthorityModel(Base):
+    """Editable duration authority owned by one Matrix draft row/group."""
+
+    __tablename__ = "project_matrix_draft_duration_authorities"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_matrix_draft_id",
+            "draft_group_id",
+            "draft_row_id",
+            "step_sequence",
+            "step_suffix_note",
+            name="uq_project_matrix_draft_duration_authority_identity",
+        ),
+        CheckConstraint("step_sequence > 0", name="ck_draft_duration_step_positive"),
+        CheckConstraint("duration_value > 0", name="ck_draft_duration_value_positive"),
+        CheckConstraint(
+            "normalized_hours > 0",
+            name="ck_draft_duration_hours_positive",
+        ),
+        CheckConstraint("status = 'usable'", name="ck_draft_duration_status"),
+    )
+
+    draft_duration_authority_id: Mapped[str] = mapped_column(
+        String(64), primary_key=True
+    )
+    project_matrix_draft_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_records.project_matrix_draft_id"),
+        nullable=False,
+        index=True,
+    )
+    draft_group_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_groups.draft_group_id"),
+        nullable=False,
+    )
+    draft_row_id: Mapped[str] = mapped_column(
+        ForeignKey("project_matrix_draft_rows.draft_row_id"),
+        nullable=False,
+    )
+    step_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_suffix_note: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    duration_value: Mapped[object] = mapped_column(Numeric, nullable=False)
+    duration_unit: Mapped[str] = mapped_column(String(16), nullable=False)
+    normalized_hours: Mapped[object] = mapped_column(Numeric, nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_field: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_import_id: Mapped[str | None] = mapped_column(String(64))
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    lineage_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    authority_revision: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    diagnostic_code: Mapped[str | None] = mapped_column(String(64))
+    diagnostic_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)

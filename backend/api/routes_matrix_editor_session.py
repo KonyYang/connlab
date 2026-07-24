@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from pydantic import BaseModel
 
 from backend.api.dependencies import get_matrix_editor_session_service
 from backend.api.lifecycle_errors import (
@@ -36,206 +35,13 @@ from backend.application.matrix_editor_session_service import (
 router = APIRouter(tags=["matrix-editor-session"])
 
 
-class MatrixEditorSessionGroupResponse(BaseModel):
-    """Session editor group response model."""
-
-    draft_group_id: str
-    source_group_snapshot_id: str | None
-    group_order: int
-    group_key: str
-    group_label: str
-    is_selected: bool
-    sample_quantity_expression: str | None
-    sample_note: str | None
-
-
-class MatrixEditorSessionRowResponse(BaseModel):
-    """Session editor row response model."""
-
-    draft_row_id: str
-    source_row_snapshot_id: str | None
-    row_order: int
-    test_item: str
-    source_section: str | None
-    method: str | None
-    condition: str | None
-    requirement: str | None
-    day_expression: str | None
-    is_sample_row: bool
-
-
-class MatrixEditorSessionCellResponse(BaseModel):
-    """Session editor sparse cell response model."""
-
-    draft_row_id: str
-    draft_group_id: str
-    cell_value: str
-
-
-class MatrixEditorSessionDraftResponse(BaseModel):
-    """Session editor snapshot response model."""
-
-    groups: list[MatrixEditorSessionGroupResponse]
-    rows: list[MatrixEditorSessionRowResponse]
-    cells: list[MatrixEditorSessionCellResponse]
-
-
-class MatrixEditorSessionSeedResponse(BaseModel):
-    """Matrix Editor session seed response model."""
-
-    project_id: str
-    active_confirmed_matrix_id: str | None
-    active_confirmed_revision: int | None
-    active_source_import_id: str | None
-    active_source_snapshot_id: str | None
-    editor_draft: MatrixEditorSessionDraftResponse | None
-    source_preview_payload: dict | None
-    source_status: str
-    source_unavailable_message: str | None
-    pre_test_buffer_days: str | None = None
-    post_test_buffer_days: str | None = None
-    sample_received_date: str | None = None
-    planned_test_start_date: str | None = None
-    planned_test_complete_date: str | None = None
-    estimated_completion_date: str | None = None
-    editor_draft_id: str | None = None
-    draft_status: str = "missing"
-    loaded_source: str = "authority"
-    stale_draft_present: bool = False
-    draft_updated_at: str | None = None
-    saved_payload_signature: str | None = None
-
-
-class MatrixEditorSessionGroupRequest(BaseModel):
-    """Session editor group request model."""
-
-    draft_group_id: str
-    source_group_snapshot_id: str | None = None
-    group_order: int
-    group_key: str
-    group_label: str
-    is_selected: bool
-    sample_quantity_expression: str | None = None
-    sample_note: str | None = None
-
-
-class MatrixEditorSessionRowRequest(BaseModel):
-    """Session editor row request model."""
-
-    draft_row_id: str
-    source_row_snapshot_id: str | None = None
-    row_order: int
-    test_item: str
-    source_section: str | None = None
-    method: str | None = None
-    condition: str | None = None
-    requirement: str | None = None
-    day_expression: str | None = None
-    is_sample_row: bool = False
-
-
-class MatrixEditorSessionCellRequest(BaseModel):
-    """Session editor sparse cell request model."""
-
-    draft_row_id: str
-    draft_group_id: str
-    cell_value: str
-
-
-class MatrixEditorSessionConfirmRequest(BaseModel):
-    """Session confirm request model."""
-
-    expected_active_confirmed_matrix_id: str | None = None
-    expected_active_confirmed_revision: int | None = None
-    source_document_path: str | None = None
-    source_document_name: str | None = None
-    source_format: str | None = None
-    source_import_id: str | None = None
-    source_snapshot_id: str | None = None
-    confirmed_by: str
-    groups: list[MatrixEditorSessionGroupRequest]
-    rows: list[MatrixEditorSessionRowRequest]
-    cells: list[MatrixEditorSessionCellRequest]
-    pre_test_buffer_days: str | None = None
-    post_test_buffer_days: str | None = None
-    sample_received_date: str | None = None
-    planned_test_start_date: str | None = None
-    planned_test_complete_date: str | None = None
-    estimated_completion_date: str | None = None
-    expected_editor_draft_id: str | None = None
-    expected_saved_payload_signature: str | None = None
-
-
-class MatrixEditorSessionDraftSaveRequest(BaseModel):
-    """Session draft autosave request model."""
-
-    expected_active_confirmed_matrix_id: str | None = None
-    expected_active_confirmed_revision: int | None = None
-    source_document_path: str | None = None
-    source_document_name: str | None = None
-    source_format: str | None = None
-    source_import_id: str | None = None
-    source_snapshot_id: str | None = None
-    groups: list[MatrixEditorSessionGroupRequest]
-    rows: list[MatrixEditorSessionRowRequest]
-    cells: list[MatrixEditorSessionCellRequest]
-    pre_test_buffer_days: str | None = None
-    post_test_buffer_days: str | None = None
-    sample_received_date: str | None = None
-    planned_test_start_date: str | None = None
-    planned_test_complete_date: str | None = None
-    estimated_completion_date: str | None = None
-
-
-class MatrixEditorSessionDraftSaveResponse(BaseModel):
-    """Session draft autosave response model."""
-
-    editor_draft_id: str
-    draft_status: str
-    draft_updated_at: str
-    saved_payload_signature: str
-    active_confirmed_matrix_id: str
-    active_confirmed_revision: int
-    fee_rebase_status: str = "not_required"
-    fee_rebase_summary: "MatrixFeeRebaseSummaryResponse | None" = None
-    fee_rebase_error: str | None = None
-
-
-class MatrixFeeRebaseSummaryResponse(BaseModel):
-    """Pending Matrix-to-Fee rebase summary returned by autosave."""
-
-    preserved_count: int
-    added_count: int
-    removed_count: int
-    preserved_manual_count: int = 0
-    removed_manual_count: int = 0
-
-
-class MatrixEditorSessionDraftDiscardRequest(BaseModel):
-    """Session draft discard request model."""
-
-    expected_editor_draft_id: str | None = None
-    expected_saved_payload_signature: str | None = None
-
-
-class MatrixEditorSessionDraftDiscardResponse(BaseModel):
-    """Session draft discard response model."""
-
-    discarded: bool
-    active_confirmed_matrix_id: str | None
-    active_confirmed_revision: int | None
-
-
-class MatrixEditorSessionConfirmResponse(BaseModel):
-    """Session confirm response model."""
-
-    publish_status: str
-    message: str
-    confirmed_snapshot: ConfirmedMatrixSnapshotResponse | None
-    fee_rebase_promotion_status: str = "not_required"
-    fee_rebase_promotion_summary: MatrixFeeRebaseSummaryResponse | None = None
-    fee_rebase_promotion_error: str | None = None
-
+from backend.api.matrix_editor_session_dtos import *
+from backend.api.matrix_editor_session_response_mappers import (
+    _to_session_cells,
+    _to_session_groups,
+    _to_session_rows,
+    _to_session_duration_authorities,
+)
 
 @router.get(
     "/api/projects/{project_id}/matrix-editor/session",
@@ -294,6 +100,15 @@ def get_matrix_editor_session_seed(
                     )
                     for cell in seed.editor_draft.cells
                 ],
+                duration_authorities=[
+                    MatrixEditorSessionDurationAuthorityResponse(
+                        **{
+                            field: getattr(item, field)
+                            for field in MatrixEditorSessionDurationAuthorityResponse.model_fields
+                        }
+                    )
+                    for item in seed.editor_draft.duration_authorities
+                ],
             )
             if seed.editor_draft is not None
             else None
@@ -340,6 +155,9 @@ def save_matrix_editor_session_draft(
                 groups=_to_session_groups(request.groups),
                 rows=_to_session_rows(request.rows),
                 cells=_to_session_cells(request.cells),
+                duration_authorities=_to_session_duration_authorities(
+                    request.duration_authorities
+                ),
                 pre_test_buffer_days=request.pre_test_buffer_days,
                 post_test_buffer_days=request.post_test_buffer_days,
                 sample_received_date=request.sample_received_date,
@@ -449,6 +267,9 @@ def confirm_matrix_editor_session(
                 groups=_to_session_groups(request.groups),
                 rows=_to_session_rows(request.rows),
                 cells=_to_session_cells(request.cells),
+                duration_authorities=_to_session_duration_authorities(
+                    request.duration_authorities
+                ),
                 pre_test_buffer_days=request.pre_test_buffer_days,
                 post_test_buffer_days=request.post_test_buffer_days,
                 sample_received_date=request.sample_received_date,
@@ -502,55 +323,4 @@ def confirm_matrix_editor_session(
             else None
         ),
         fee_rebase_promotion_error=result.fee_rebase_promotion_error,
-    )
-
-
-def _to_session_groups(
-    groups: list[MatrixEditorSessionGroupRequest],
-) -> tuple[MatrixEditorSessionGroup, ...]:
-    return tuple(
-        MatrixEditorSessionGroup(
-            draft_group_id=item.draft_group_id,
-            source_group_snapshot_id=item.source_group_snapshot_id,
-            group_order=item.group_order,
-            group_key=item.group_key,
-            group_label=item.group_label,
-            is_selected=item.is_selected,
-            sample_quantity_expression=item.sample_quantity_expression,
-            sample_note=item.sample_note,
-        )
-        for item in groups
-    )
-
-
-def _to_session_rows(
-    rows: list[MatrixEditorSessionRowRequest],
-) -> tuple[MatrixEditorSessionRow, ...]:
-    return tuple(
-        MatrixEditorSessionRow(
-            draft_row_id=item.draft_row_id,
-            source_row_snapshot_id=item.source_row_snapshot_id,
-            row_order=item.row_order,
-            test_item=item.test_item,
-            source_section=item.source_section,
-            method=item.method,
-            condition=item.condition,
-            requirement=item.requirement,
-            day_expression=item.day_expression,
-            is_sample_row=item.is_sample_row,
-        )
-        for item in rows
-    )
-
-
-def _to_session_cells(
-    cells: list[MatrixEditorSessionCellRequest],
-) -> tuple[MatrixEditorSessionCell, ...]:
-    return tuple(
-        MatrixEditorSessionCell(
-            draft_row_id=item.draft_row_id,
-            draft_group_id=item.draft_group_id,
-            cell_value=item.cell_value,
-        )
-        for item in cells
     )
