@@ -34,6 +34,7 @@ import {
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
 import {
   buildFeeEvaluationCostRisk,
+  buildFeeEvaluationEditedExportPayload as buildEditedExportPayload,
   buildFeeEvaluationLabManpowerCost,
   buildFeeEvaluationPreviewGrandCost,
   buildFeeEvaluationPreviewHeader,
@@ -44,8 +45,17 @@ import {
   buildFeeEvaluationUpdateBlockers,
   applyFeeEvaluationPreviewEdits,
   filterFeeEvaluationPreviewRowsForScope,
+  feeEvaluationPricingDraftCas as pricingDraftCasStateFromResponse,
+  feeEvaluationPricingDraftCasEquals as pricingDraftCasEquals,
+  feeEvaluationPricingDraftCasRequest as pricingDraftCasRequest,
+  feeEvaluationPricingDraftContext as contextFromPricingDraftResponse,
+  feeEvaluationPricingDraftContextEquals as pricingContextEquals,
+  feeEvaluationPricingDraftSignature as pricingDraftSignature,
   hydrateFeeEvaluationPreviewEditsFromSavedDraft,
+  hydrateFeeEvaluationPreviewEditsFromServerRebaseCandidate,
   type FeeEvaluationEditableField,
+  type FeeEvaluationPricingDraftCas as PricingDraftCasState,
+  type FeeEvaluationPricingDraftContext as PricingDraftContext,
   type FeeEvaluationPreviewEditState,
   type FeeEvaluationUpdateBlocker,
 } from "./feeEvaluationPreviewModel";
@@ -80,21 +90,13 @@ type FeePricingDraftSaveState =
   | { kind: "stale"; message: string }
   | { kind: "error"; message: string };
 
-type PricingDraftLoadStatus = "loading" | "missing" | "current" | "stale" | "error";
-
-type PricingDraftCasState = {
-  draftEditId: string;
-  generation: number;
-  payloadFingerprint: string;
-  updatedAt: string;
-  validationToken: string;
-};
-
-type PricingDraftContext = {
-  confirmedMatrixId: string;
-  confirmedRevision: number;
-  feeRuleVersionId: string;
-};
+type PricingDraftLoadStatus =
+  | "loading"
+  | "missing"
+  | "current"
+  | "rebase_required"
+  | "stale"
+  | "error";
 
 type ConfirmedFeeLoadState =
   | { kind: "loading" }
@@ -154,13 +156,14 @@ export function FeeEvaluationReviewExportPage({
     string | null
   >(null);
   const [hasUserEditedPricingDraft, setHasUserEditedPricingDraft] = useState(false);
-  const [needsInitialSeedSave, setNeedsInitialSeedSave] = useState(false);
   const [isCancellingPricingSession, setIsCancellingPricingSession] =
     useState(false);
   const baselinePricingPayloadRef =
     useRef<FeeEvaluationEditedFileExportRequest | null>(null);
   const baselinePricingContextRef = useRef<PricingDraftContext | null>(null);
+  const baselinePricingCasRef = useRef<PricingDraftCasState | null>(null);
   const pricingDraftCasRef = useRef<PricingDraftCasState | null>(null);
+  const sessionOwnedPricingCasRef = useRef<PricingDraftCasState | null>(null);
   const hasSessionEditedPricingDraftRef = useRef(false);
   const autosaveTimeoutRef = useRef<number | null>(null);
   const autosaveGenerationRef = useRef(0);
@@ -221,9 +224,11 @@ export function FeeEvaluationReviewExportPage({
     setPricingDraftLoadStatus("loading");
     setSavedLocalPricingSignature(null);
     setHasUserEditedPricingDraft(false);
-    setNeedsInitialSeedSave(false);
     baselinePricingPayloadRef.current = null;
     baselinePricingContextRef.current = null;
+    baselinePricingCasRef.current = null;
+    pricingDraftCasRef.current = null;
+    sessionOwnedPricingCasRef.current = null;
     hasSessionEditedPricingDraftRef.current = false;
     setConfirmFeeActionState({ kind: "idle" });
     void fetchConfirmedMatrixFeeDraft(projectId)
@@ -246,7 +251,6 @@ export function FeeEvaluationReviewExportPage({
           setPricingDraftLoadStatus("missing");
           setSavedLocalPricingSignature(null);
           setHasUserEditedPricingDraft(false);
-          setNeedsInitialSeedSave(false);
           return;
         }
         setDraftState({
@@ -304,12 +308,15 @@ export function FeeEvaluationReviewExportPage({
           return;
         }
         if (isCurrentPricingDraftResponse(result)) {
+          const loadedCas = pricingDraftCasStateFromResponse(result);
+          const currentV2 = isCurrentV2PricingDraftResponse(result);
           baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
+          baselinePricingCasRef.current = loadedCas;
+          sessionOwnedPricingCasRef.current = null;
           setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
-          pricingDraftCasRef.current = pricingDraftCasStateFromResponse(result);
-          setPricingDraftLoadStatus("current");
+          pricingDraftCasRef.current = loadedCas;
+          setPricingDraftLoadStatus(currentV2 ? "current" : "stale");
           setHasUserEditedPricingDraft(false);
-          setNeedsInitialSeedSave(false);
           if (!result.payload) {
             const currentSignature = pricingDraftSignature(
               buildEditedExportPayload(sourcePreviewRows, costPreviewValues)
@@ -322,9 +329,12 @@ export function FeeEvaluationReviewExportPage({
               result.saved_draft_edit_id ? currentSignature : null
             );
             setSaveState(
-              result.saved_draft_edit_id
+              result.saved_draft_edit_id && currentV2
                 ? { kind: "saved", message: "Loaded saved pricing draft." }
-                : { kind: "idle", message: null }
+                : {
+                    kind: "stale",
+                    message: "Save and reload this legacy pricing draft before updating Fee.",
+                  }
             );
             return;
           }
@@ -347,36 +357,54 @@ export function FeeEvaluationReviewExportPage({
               message:
                 "Saved pricing draft had rows that no longer match this Matrix. Unmatched rows were not applied.",
             });
-          } else {
+          } else if (currentV2) {
             setSaveState({
               kind: "saved",
               message: "Loaded saved pricing draft.",
+            });
+          } else {
+            setSaveState({
+              kind: "stale",
+              message: "Save and reload this legacy pricing draft before updating Fee.",
             });
           }
           return;
         }
         if (result.status === "rebase_required" && result.payload) {
+          const hydrated =
+            hydrateFeeEvaluationPreviewEditsFromServerRebaseCandidate(
+              sourcePreviewRows,
+              result.payload
+            );
           const reviewedPayload = buildEditedExportPayload(
-            sourcePreviewRows,
-            costPreviewValues
+            applyFeeEvaluationPreviewEdits(sourcePreviewRows, hydrated.edits),
+            hydrated.costPreviewValues
           );
-          setPreviewEdits({});
+          const loadedCas = pricingDraftCasStateFromResponse(result);
+          setPreviewEdits(hydrated.edits);
+          setCostPreviewValues(hydrated.costPreviewValues);
+          baselinePricingPayloadRef.current = reviewedPayload;
           baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
+          baselinePricingCasRef.current = loadedCas;
+          sessionOwnedPricingCasRef.current = null;
           setLatestSavedPricingDraftId(result.saved_draft_edit_id ?? null);
-          pricingDraftCasRef.current = pricingDraftCasStateFromResponse(result);
-          setPricingDraftLoadStatus("stale");
+          pricingDraftCasRef.current = loadedCas;
+          setPricingDraftLoadStatus("rebase_required");
           setSavedLocalPricingSignature(pricingDraftSignature(reviewedPayload));
           setHasUserEditedPricingDraft(false);
-          setNeedsInitialSeedSave(false);
           setSaveState({
             kind: "stale",
             message:
-              "Automatic Fee defaults changed. Review the refreshed values, then update Fee.",
+              hydrated.unmatchedRowCount > 0
+                ? "Reviewed pricing candidate has unmatched Matrix rows. Reload before updating Fee."
+                : "Automatic Fee defaults changed. Review the refreshed values, then update Fee.",
           });
           return;
         }
         if (!isCurrentPricingDraftResponse(result) && result.status !== "missing") {
           baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
+          baselinePricingCasRef.current = null;
+          sessionOwnedPricingCasRef.current = null;
           setLatestSavedPricingDraftId(null);
           pricingDraftCasRef.current = null;
           setPricingDraftLoadStatus("stale");
@@ -386,7 +414,6 @@ export function FeeEvaluationReviewExportPage({
             costPreviewValues
           );
           setHasUserEditedPricingDraft(false);
-          setNeedsInitialSeedSave(false);
           setSaveState({
             kind: "stale",
             message:
@@ -395,6 +422,8 @@ export function FeeEvaluationReviewExportPage({
           return;
         }
         baselinePricingContextRef.current = contextFromPricingDraftResponse(result);
+        baselinePricingCasRef.current = null;
+        sessionOwnedPricingCasRef.current = null;
         setLatestSavedPricingDraftId(null);
         setPricingDraftLoadStatus("missing");
         setSavedLocalPricingSignature(null);
@@ -403,7 +432,6 @@ export function FeeEvaluationReviewExportPage({
           costPreviewValues
         );
         setHasUserEditedPricingDraft(false);
-        setNeedsInitialSeedSave(true);
         setSaveState({ kind: "idle", message: null });
       })
       .catch((error: unknown) => {
@@ -419,7 +447,6 @@ export function FeeEvaluationReviewExportPage({
         });
         setPricingDraftLoadStatus("error");
         setSavedLocalPricingSignature(null);
-        setNeedsInitialSeedSave(false);
       });
     return () => {
       active = false;
@@ -599,22 +626,24 @@ export function FeeEvaluationReviewExportPage({
       });
   const generateDisabledReason = isLifecycleReadonly
     ? lifecycleReadonlyView.message
-    : feeFileDownloadBlocker(draftState);
+    : feeFileDownloadBlocker(draftState) ??
+      (pricingDraftLoadStatus === "current" && saveState.kind === "saved" ? null : "Save and reload current Fee pricing before generating the Fee form.");
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
     signature: string
   ): void {
-    if (isCurrentPricingDraftResponse(result)) {
+    if (isCurrentV2PricingDraftResponse(result)) {
       const savedDraftId = result.saved_draft_edit_id ?? null;
+      const savedCas = pricingDraftCasStateFromResponse(result);
       setLatestSavedPricingDraftId(savedDraftId);
-      pricingDraftCasRef.current = pricingDraftCasStateFromResponse(result);
-      setPricingDraftLoadStatus("current");
+      pricingDraftCasRef.current = savedCas;
+      sessionOwnedPricingCasRef.current = savedCas;
+      setPricingDraftLoadStatus("stale");
       setSavedLocalPricingSignature(savedDraftId ? signature : null);
       setHasUserEditedPricingDraft(false);
-      setNeedsInitialSeedSave(false);
       setSaveState(
-        savedDraftId
+        savedDraftId && savedCas
           ? { kind: "saved", message: "Saved pricing draft." }
           : {
               kind: "error",
@@ -627,7 +656,6 @@ export function FeeEvaluationReviewExportPage({
     pricingDraftCasRef.current = null;
     setPricingDraftLoadStatus("stale");
     setSavedLocalPricingSignature(null);
-    setNeedsInitialSeedSave(false);
     setSaveState({
       kind: "stale",
       message: "Saved draft is not current for this Matrix or fee rule version.",
@@ -641,7 +669,8 @@ export function FeeEvaluationReviewExportPage({
     }
     if (
       draftState.kind !== "ready" ||
-      (!hasPricingDraftLocalChanges && !needsInitialSeedSave) ||
+      !hasPricingDraftLocalChanges ||
+      pricingDraftLoadStatus === "rebase_required" ||
       isLifecycleReadonly ||
       cancellingRef.current ||
       isCancellingPricingSession
@@ -652,9 +681,7 @@ export function FeeEvaluationReviewExportPage({
     autosaveGenerationRef.current = generation;
     const payload = currentPricingDraftPayload;
     const signature = currentPricingDraftSignature;
-    if (!needsInitialSeedSave) {
-      setSaveState({ kind: "dirty" });
-    }
+    setSaveState({ kind: "dirty" });
     autosaveTimeoutRef.current = window.setTimeout(() => {
       if (cancellingRef.current) {
         return;
@@ -708,7 +735,7 @@ export function FeeEvaluationReviewExportPage({
     hasPricingDraftLocalChanges,
     isLifecycleReadonly,
     isCancellingPricingSession,
-    needsInitialSeedSave,
+    pricingDraftLoadStatus,
     projectId,
   ]);
 
@@ -855,13 +882,42 @@ export function FeeEvaluationReviewExportPage({
       ...currentPricingDraftPayload,
       ...pricingDraftCasRequest(pricingDraftCasRef.current),
     });
-    applySavedPricingDraftResult(result, currentPricingDraftSignature);
-    if (!isCurrentPricingDraftResponse(result) || !result.saved_draft_edit_id) {
+    const savedCas = pricingDraftCasStateFromResponse(result);
+    if (
+      !isCurrentV2PricingDraftResponse(result) ||
+      !result.saved_draft_edit_id ||
+      !savedCas
+    ) {
       throw new Error("Save returned no pricing draft id. Retry before updating.");
     }
+    sessionOwnedPricingCasRef.current = savedCas;
+    const reloaded = await getFeeEvaluationPricingDraft(projectId);
+    if (
+      !isCurrentV2PricingDraftResponse(reloaded) ||
+      !reloaded.saved_draft_edit_id ||
+      !reloaded.payload
+    ) {
+      throw new Error("Reload did not return a current V2 pricing draft.");
+    }
+    const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+      sourcePreviewRows,
+      reloaded.payload
+    );
+    const reloadedPayload = buildEditedExportPayload(
+      applyFeeEvaluationPreviewEdits(sourcePreviewRows, hydrated.edits),
+      hydrated.costPreviewValues
+    );
+    if (
+      hydrated.unmatchedRowCount > 0 ||
+      pricingDraftSignature(reloadedPayload) !== currentPricingDraftSignature
+    ) {
+      throw new Error("Reloaded pricing draft does not match the reviewed values.");
+    }
+    applySavedPricingDraftResult(reloaded, currentPricingDraftSignature);
+    setPricingDraftLoadStatus("current");
     return {
-      savedDraftId: result.saved_draft_edit_id,
-      cas: pricingDraftCasStateFromResponse(result),
+      savedDraftId: reloaded.saved_draft_edit_id,
+      cas: pricingDraftCasStateFromResponse(reloaded),
     };
   }
 
@@ -908,7 +964,6 @@ export function FeeEvaluationReviewExportPage({
     }
     hasSessionEditedPricingDraftRef.current = true;
     setHasUserEditedPricingDraft(true);
-    setNeedsInitialSeedSave(false);
     setConfirmFeeActionState((current) =>
       current.kind === "confirming" ? current : { kind: "idle" }
     );
@@ -926,6 +981,7 @@ export function FeeEvaluationReviewExportPage({
     }
     const baselinePayload = baselinePricingPayloadRef.current;
     const baselineContext = baselinePricingContextRef.current;
+    const baselineCas = baselinePricingCasRef.current;
     const hasSessionChanges =
       hasSessionEditedPricingDraftRef.current ||
       saveState.kind === "dirty" ||
@@ -966,21 +1022,74 @@ export function FeeEvaluationReviewExportPage({
       });
       return;
     }
+    if (
+      inFlightState.result &&
+      isCurrentV2PricingDraftResponse(inFlightState.result)
+    ) {
+      sessionOwnedPricingCasRef.current =
+        pricingDraftCasStateFromResponse(inFlightState.result);
+    }
+    const sessionOwnedCas = sessionOwnedPricingCasRef.current;
+    if (!sessionOwnedCas) {
+      onBackToWorkbench();
+      return;
+    }
     try {
       const currentServerDraft = await getFeeEvaluationPricingDraft(projectId);
       const currentServerContext = contextFromPricingDraftResponse(currentServerDraft);
-      if (!pricingContextEquals(baselineContext, currentServerContext)) {
+      const currentServerCas = pricingDraftCasStateFromResponse(currentServerDraft);
+      if (
+        !isCurrentV2PricingDraftResponse(currentServerDraft) ||
+        !currentServerCas ||
+        !pricingContextEquals(baselineContext, currentServerContext) ||
+        !pricingDraftCasEquals(sessionOwnedCas, currentServerCas) ||
+        (baselineCas && baselineCas.draftEditId !== currentServerCas.draftEditId)
+      ) {
         throw new FeeEvaluationSessionCancelError(
-          "Fee Evaluation context changed. Refresh before leaving."
+          "Fee Evaluation pricing changed. Refresh before leaving."
         );
       }
       const restoreResult = await saveFeeEvaluationPricingDraft(
         projectId,
-        pricingDraftRestorePayload(baselinePayload, baselineContext)
+        pricingDraftRestorePayload(
+          baselinePayload,
+          baselineContext,
+          currentServerCas
+        )
       );
-      if (!pricingContextEquals(baselineContext, contextFromPricingDraftResponse(restoreResult))) {
+      if (!isCurrentV2PricingDraftResponse(restoreResult)) {
         throw new FeeEvaluationSessionCancelError(
-          "Fee Evaluation context changed. Refresh before leaving."
+          "Fee Evaluation baseline restore was not current."
+        );
+      }
+      const restoredServerDraft = await getFeeEvaluationPricingDraft(projectId);
+      if (
+        !isCurrentV2PricingDraftResponse(restoredServerDraft) ||
+        !restoredServerDraft.payload ||
+        !pricingContextEquals(
+          baselineContext,
+          contextFromPricingDraftResponse(restoredServerDraft)
+        )
+      ) {
+        throw new FeeEvaluationSessionCancelError(
+          "Fee Evaluation baseline restore could not be verified."
+        );
+      }
+      const restored = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+        sourcePreviewRows,
+        restoredServerDraft.payload
+      );
+      const restoredPayload = buildEditedExportPayload(
+        applyFeeEvaluationPreviewEdits(sourcePreviewRows, restored.edits),
+        restored.costPreviewValues
+      );
+      if (
+        restored.unmatchedRowCount > 0 ||
+        pricingDraftSignature(restoredPayload) !==
+          pricingDraftSignature(baselinePayload)
+      ) {
+        throw new FeeEvaluationSessionCancelError(
+          "Fee Evaluation baseline restore could not be verified."
         );
       }
       onBackToWorkbench();
@@ -1155,41 +1264,18 @@ function buildFeeEvaluationIdentityLine(contextState: FeePageContextState): stri
   });
 }
 
-function contextFromPricingDraftResponse(
-  response: FeeEvaluationPricingDraftResponse
-): PricingDraftContext {
-  return {
-    confirmedMatrixId: response.current_confirmed_matrix_id,
-    confirmedRevision: response.current_confirmed_revision,
-    feeRuleVersionId: response.current_fee_rule_version_id,
-  };
-}
-
-function pricingContextEquals(
-  left: PricingDraftContext,
-  right: PricingDraftContext
-): boolean {
-  return (
-    left.confirmedMatrixId === right.confirmedMatrixId &&
-    left.confirmedRevision === right.confirmedRevision &&
-    left.feeRuleVersionId === right.feeRuleVersionId
-  );
-}
-
 function pricingDraftRestorePayload(
   payload: FeeEvaluationEditedFileExportRequest,
-  context: PricingDraftContext
+  context: PricingDraftContext,
+  cas: PricingDraftCasState
 ): FeeEvaluationPricingDraftSaveRequest {
   return {
     ...payload,
     expected_confirmed_matrix_id: context.confirmedMatrixId,
     expected_confirmed_revision: context.confirmedRevision,
     expected_fee_rule_version_id: context.feeRuleVersionId,
+    ...pricingDraftCasRequest(cas),
   };
-}
-
-function pricingDraftSignature(payload: FeeEvaluationEditedFileExportRequest): string {
-  return JSON.stringify(payload);
 }
 
 function isAbortError(error: unknown): boolean {
@@ -1202,38 +1288,10 @@ function isCurrentPricingDraftResponse(
   return response.status === "current_v2" || response.status === "current";
 }
 
-function pricingDraftCasStateFromResponse(
+function isCurrentV2PricingDraftResponse(
   response: FeeEvaluationPricingDraftResponse
-): PricingDraftCasState | null {
-  const draftEditId = response.saved_draft_edit_id ?? null;
-  const generation = response.saved_generation ?? null;
-  const payloadFingerprint = response.saved_payload_fingerprint ?? null;
-  const updatedAt = response.saved_updated_at ?? null;
-  const validationToken = response.saved_validation_token ?? null;
-  if (!draftEditId || generation === null || !payloadFingerprint || !updatedAt || !validationToken) {
-    return null;
-  }
-  return { draftEditId, generation, payloadFingerprint, updatedAt, validationToken };
-}
-
-function pricingDraftCasRequest(
-  state: PricingDraftCasState | null
-): Pick<
-  FeeEvaluationPricingDraftSaveRequest,
-  | "expected_pricing_draft_edit_id"
-  | "expected_generation"
-  | "expected_payload_fingerprint"
-  | "expected_updated_at"
-> {
-  if (!state) {
-    return {};
-  }
-  return {
-    expected_pricing_draft_edit_id: state.draftEditId,
-    expected_generation: state.generation,
-    expected_payload_fingerprint: state.payloadFingerprint,
-    expected_updated_at: state.updatedAt,
-  };
+): boolean {
+  return response.status === "current_v2";
 }
 
 function readonlyAwareErrorMessage(error: unknown, fallback: string): string {
@@ -1293,64 +1351,6 @@ function feeFileDownloadBlocker(draftState: DraftLoadState): string | null {
     return draftState.message;
   }
   return null;
-}
-
-function buildEditedExportPayload(
-  rows: ReturnType<typeof buildFeeEvaluationPreviewRows>,
-  costPreviewValues: typeof EMPTY_COST_PREVIEW_VALUES
-): FeeEvaluationEditedFileExportRequest {
-  return {
-    rows: rows
-      .filter((row) => row.rowKind === "matrix_step")
-      .map((row) => ({
-        source_line_id: row.sourceLineId,
-        confirmed_group_id: row.confirmedGroupId,
-        confirmed_row_id: row.confirmedRowId,
-        step_token: row.stepToken === "-" ? "" : row.stepToken,
-        step_index: row.stepIndex,
-        spend_time: row.spendTime,
-        unit_price: row.unitPrice,
-        unit_type: row.unitType,
-        units: row.units,
-        base_fee: row.baseFee,
-        discount: row.discount,
-        testing_fee: row.testingFee,
-        notes: row.notes,
-      })),
-    summary: {
-      condition_confirmation_spend_time:
-        costPreviewValues.conditionConfirmationSpendTime,
-      external_cost: costPreviewValues.externalCost,
-      external_cost_note: costPreviewValues.externalCostNote,
-      lab_manpower_hourly_rate: costPreviewValues.labManpowerHourlyRate,
-    },
-    manual_rows: rows
-      .filter(
-        (row) =>
-          row.rowKind === "sample_preparation" ||
-          (row.rowKind === "manual_trailing" &&
-            row.lineId === "manual-report-preparation")
-      )
-      .map((row) => ({
-        row_kind:
-          row.rowKind === "sample_preparation"
-            ? ("sample_preparation" as const)
-            : ("report_preparation" as const),
-        confirmed_group_id:
-          row.rowKind === "sample_preparation" ? row.confirmedGroupId : undefined,
-        group_key: row.rowKind === "sample_preparation" ? row.groupKey : undefined,
-        group_label:
-          row.rowKind === "sample_preparation" ? row.groupLabel : undefined,
-        spend_time: row.spendTime,
-        unit_price: row.unitPrice,
-        unit_type: row.unitType,
-        units: row.units,
-        base_fee: row.baseFee,
-        discount: row.discount,
-        testing_fee: row.testingFee,
-        notes: row.notes,
-      })),
-  };
 }
 
 function isErrorDetailObject(

@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from backend.api.dependencies import get_fee_evaluation_pricing_draft_service
 from backend.api.main import app
 from backend.application.fee_evaluation_edited_export_values import (
+    FeeEvaluationEditedManualRow,
     FeeEvaluationEditedExportRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
@@ -33,7 +34,7 @@ def test_pricing_draft_get_normalizes_historical_blank_unit_type() -> None:
     assert row["notes"] == "historical note"
 
 
-def test_pricing_draft_get_normalizes_historical_pending_numeric_fields() -> None:
+def test_pricing_draft_get_preserves_pending_dependent_pricing_fields() -> None:
     values = _edited_values()
     bad_values = FeeEvaluationEditedExportValues(
         rows=(
@@ -66,12 +67,12 @@ def test_pricing_draft_get_normalizes_historical_pending_numeric_fields() -> Non
         "step_token": "1",
         "step_index": 0,
         "spend_time": "0",
-        "unit_price": "0",
+        "unit_price": "",
         "unit_type": "per sample",
-        "units": "1",
+        "units": "",
         "base_fee": "0",
         "discount": "0%",
-        "testing_fee": "0",
+        "testing_fee": "",
         "notes": "historical numeric note",
     }
     assert response.json()["payload"]["summary"] == {
@@ -80,6 +81,38 @@ def test_pricing_draft_get_normalizes_historical_pending_numeric_fields() -> Non
         "external_cost_note": "tooling",
         "lab_manpower_hourly_rate": "200",
     }
+
+
+def test_pricing_draft_get_keeps_manual_pending_distinct_from_explicit_zero() -> None:
+    values = _edited_values()
+    pending_manual_row = FeeEvaluationEditedManualRow(
+        row_kind="report_preparation",
+        spend_time="0",
+        unit_price="Pending",
+        unit_type="Pending",
+        units="",
+        base_fee="0",
+        discount="0%",
+        testing_fee="Pending",
+        notes="",
+    )
+    response = _get_payload(
+        FeeEvaluationEditedExportValues(
+            rows=(_row(values, unit_price="0", units="0", testing_fee="0"),),
+            summary=values.summary,
+            manual_rows=(pending_manual_row,),
+        )
+    )
+
+    payload = response.json()["payload"]
+    assert payload["rows"][0]["unit_price"] == "0"
+    assert payload["rows"][0]["units"] == "0"
+    assert payload["rows"][0]["testing_fee"] == "0"
+    assert payload["manual_rows"][0]["unit_price"] == ""
+    assert payload["manual_rows"][0]["unit_type"] == "Pending"
+    assert payload["manual_rows"][0]["units"] == ""
+    assert payload["manual_rows"][0]["base_fee"] == "0"
+    assert payload["manual_rows"][0]["testing_fee"] == ""
 
 
 def _get_payload(values: FeeEvaluationEditedExportValues):

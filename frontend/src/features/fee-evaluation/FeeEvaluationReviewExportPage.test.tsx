@@ -245,7 +245,16 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("sends current edited preview values to the Fee Form download", async () => {
-    arrangeSuccessfulContext();
+    const initial = currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" });
+    let savedPayload: Record<string, unknown> | null = null;
+    arrangeSuccessfulContext({ pricingDraft: initial });
+    apiMocks.getFeeEvaluationPricingDraft.mockResolvedValueOnce(initial).mockImplementation(async () =>
+      currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: savedPayload })
+    );
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(async (_projectId, payload) => {
+      savedPayload = payload;
+      return currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload });
+    });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
       blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
@@ -257,7 +266,9 @@ describe("FeeEvaluationReviewExportPage", () => {
       revokeObjectURL: vi.fn(),
     });
 
-    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    const { unmount } = render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
+    );
 
     fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
       target: { value: "10" },
@@ -296,7 +307,15 @@ describe("FeeEvaluationReviewExportPage", () => {
       screen.getByText("Lab manpower cost exceeds Grand Cost. Review pricing before sending the fee form.")
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fee Form" }));
+    const feeFormButton = screen.getByRole("button", { name: "Fee Form" });
+    fireEvent.click(feeFormButton);
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1), { timeout: 1600 });
+    unmount();
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    const reloadedFeeFormButton = await screen.findByRole("button", { name: "Fee Form" });
+    await waitFor(() => expect((reloadedFeeFormButton as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(reloadedFeeFormButton);
 
     await waitFor(() => {
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled();
@@ -388,53 +407,28 @@ describe("FeeEvaluationReviewExportPage", () => {
   it("seeds a missing pricing draft from defaults and confirms without an extra save", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithTwoCalculatedGroups());
-    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
-      ...currentPricingDraftResponse(),
-      saved_draft_edit_id: "fed-seeded",
-    });
-    apiMocks.confirmFeeVersion.mockResolvedValue(
-      createConfirmedFeeLatest({
-        status: "current",
-        pricingDraftEditId: "fed-seeded",
-        testingFeeTotal: "125.00",
-      })
-    );
-
-    const onBackToWorkbench = vi.fn();
 
     render(
-      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
-    await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-    }, { timeout: 1600 });
+    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty("disabled", true);
     fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
-
-    await waitFor(() => {
-      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
-        confirmed_by: "Lab User",
-        expected_pricing_draft_edit_id: "fed-seeded",
-        summary: {
-          testing_fee_total: "125.00",
-          working_hours: "5.0",
-          lab_manpower_cost: "1000",
-          external_cost: "0",
-          grand_cost: "125.00",
-        },
-      });
-    });
-    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
-    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
   });
 
   it("confirms Fee Evaluation with the latest autosaved draft id without saving again", async () => {
+    let savedPayload: Record<string, unknown> | null = null;
     arrangeSuccessfulContext();
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "missing", saved_draft_edit_id: null, payload: null }))
+      .mockImplementation(async () => currentPricingDraftResponse({ status: "current_v2", saved_draft_edit_id: "fed-current", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: savedPayload }));
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithTwoCalculatedGroups());
-    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
-      ...currentPricingDraftResponse(),
-      saved_draft_edit_id: "fed-current",
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(async (_projectId, payload) => {
+      savedPayload = payload;
+      return currentPricingDraftResponse({ status: "current_v2", saved_draft_edit_id: "fed-current", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload });
     });
     apiMocks.confirmFeeVersion.mockResolvedValue(
       createConfirmedFeeLatest({
@@ -451,6 +445,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitFor(() => expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByLabelText("Preview group"), {
       target: { value: "Group 1" },
     });
@@ -463,14 +458,11 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(
       (screen.getByRole("button", { name: "Update Fee" }) as HTMLButtonElement)
         .disabled
-    ).toBe(true);
-    await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-    }, { timeout: 1600 });
+    ).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
-      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
+      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", expect.objectContaining({
         confirmed_by: "Lab User",
         expected_pricing_draft_edit_id: "fed-current",
         summary: {
@@ -480,7 +472,7 @@ describe("FeeEvaluationReviewExportPage", () => {
           external_cost: "5",
           grand_cost: "150.00",
         },
-      });
+      }));
     });
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
     expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
@@ -489,28 +481,18 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("saves a reviewed rebase candidate before updating Fee", async () => {
+    let savedPayload: Record<string, unknown> | null = null;
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
-      createDraftWithResolvedSingleLine()
+      createDraftWithEditableSingleLine()
     );
-    apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(
-      currentPricingDraftResponse({
-        status: "rebase_required",
-        saved_generation: 4,
-        saved_payload_fingerprint: "payload-4",
-        saved_validation_token: "token-4",
-        payload: promotedPricingDraftPayload({ units: "15", testing_fee: "150" }),
-      })
-    );
-    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(
-      currentPricingDraftResponse({
-        status: "current_v2",
-        saved_draft_edit_id: "fed-rebased",
-        saved_generation: 5,
-        saved_payload_fingerprint: "payload-5",
-        saved_validation_token: "token-5",
-      })
-    );
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "rebase_required", saved_generation: 4, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-4", saved_validation_token: "token-4", payload: promotedPricingDraftPayload({ unit_type: "per photo", units: "15", testing_fee: "150" }) }))
+      .mockImplementation(async () => currentPricingDraftResponse({ status: "current_v2", saved_draft_edit_id: "fed-rebased", saved_generation: 5, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-5", saved_validation_token: "token-5", payload: savedPayload }));
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(async (_projectId, payload) => {
+      savedPayload = payload;
+      return currentPricingDraftResponse({ status: "current_v2", saved_draft_edit_id: "fed-rebased", saved_generation: 5, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-5", saved_validation_token: "token-5", payload });
+    });
     apiMocks.confirmFeeVersion.mockResolvedValue(
       createConfirmedFeeLatest({
         status: "current",
@@ -520,27 +502,15 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
     const onBackToWorkbench = vi.fn();
 
-    render(
-      <FeeEvaluationReviewExportPage
-        projectId="P1"
-        onBackToWorkbench={onBackToWorkbench}
-      />
-    );
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
 
     const updateButton = await screen.findByRole("button", { name: "Update Fee" });
-    expect(screen.getByLabelText("Unit Price for Visual Examination")).toHaveProperty(
-      "value",
-      "10.00"
-    );
-    expect(screen.getByLabelText("Units for Visual Examination")).toHaveProperty(
-      "value",
-      "1"
-    );
-    expect(screen.queryByDisplayValue("15")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Save reviewed defaults" })).toBeNull();
     await waitFor(() => {
-      expect(updateButton).toHaveProperty("disabled", false);
+      expect(screen.getByLabelText("Unit Price for Visual Examination")).toHaveProperty("value", "10");
+      expect(screen.getByLabelText("Units for Visual Examination")).toHaveProperty("value", "15");
     });
+    expect(screen.queryByRole("button", { name: "Save reviewed defaults" })).toBeNull();
+    await waitFor(() => expect(updateButton).toHaveProperty("disabled", false));
     fireEvent.click(updateButton);
 
     await waitFor(() => {
@@ -553,9 +523,9 @@ describe("FeeEvaluationReviewExportPage", () => {
           expected_updated_at: "2026-06-14T09:00:00+00:00",
           rows: expect.arrayContaining([
             expect.objectContaining({
-              unit_price: "10.00",
-              units: "1",
-              testing_fee: "10",
+              unit_price: "10",
+              units: "15",
+              testing_fee: "150",
             }),
           ]),
         }),
@@ -576,31 +546,23 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("blocks Update Fee at the incomplete Report preparation row without duplicate alerts", async () => {
-    arrangeSuccessfulContext();
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }),
+    });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
       createDraftWithIncompleteReportPreparation()
     );
-    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
-      ...currentPricingDraftResponse(),
-      saved_draft_edit_id: "fed-incomplete-report",
-    });
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
-    await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-    }, { timeout: 1600 });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
     const blockerMessage =
       "Complete Fee Evaluation pricing before Update Fee. First blocker: Report preparation has incomplete Unit Type.";
     await screen.findByText(blockerMessage);
     expect(screen.getAllByText(blockerMessage)).toHaveLength(1);
-    expect(
-      screen.getByText(
-        "Review: Complete Unit Type before Update Fee."
-      )
-    ).toBeTruthy();
+    expect(screen.getByText("Review: Complete Unit Type.")).toBeTruthy();
     expect(screen.queryByText("testing_fee_total must be numeric.")).toBeNull();
     expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
       "disabled",
@@ -637,7 +599,12 @@ describe("FeeEvaluationReviewExportPage", () => {
   it("loads a promoted current pricing draft and allows Update Fee when authority is missing", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
+        status: "current_v2",
         saved_draft_edit_id: "fed-promoted",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
         payload: promotedPricingDraftPayload({
           unit_price: "33",
           units: "2",
@@ -722,7 +689,12 @@ describe("FeeEvaluationReviewExportPage", () => {
   it("normalizes pending numeric values from promoted pricing draft before confirming", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
+        status: "current_v2",
         saved_draft_edit_id: "fed-promoted-pending-numeric",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
         payload: promotedPricingDraftPayload({
           spend_time: "Pending",
           unit_price: "Pending",
@@ -752,15 +724,17 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     expect(await screen.findByDisplayValue("promoted numeric note")).toBeTruthy();
     expect(screen.getByLabelText("Selected group fee").textContent).toContain("10.00");
-    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
-      "disabled",
-      false
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+        "disabled",
+        false
+      )
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
 
     await waitFor(() => {
-      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", {
+      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", expect.objectContaining({
         confirmed_by: "Lab User",
         expected_pricing_draft_edit_id: "fed-promoted-pending-numeric",
         summary: {
@@ -770,7 +744,7 @@ describe("FeeEvaluationReviewExportPage", () => {
           external_cost: "0",
           grand_cost: "10.00",
         },
-      });
+      }));
     });
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
@@ -778,7 +752,12 @@ describe("FeeEvaluationReviewExportPage", () => {
   it("allows Update Fee refresh when confirmed fee is stale and promoted draft is current", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
+        status: "current_v2",
         saved_draft_edit_id: "fed-promoted-updated",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
         payload: promotedPricingDraftPayload({
           unit_price: "10",
           testing_fee: "10",
@@ -883,11 +862,16 @@ describe("FeeEvaluationReviewExportPage", () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue({
-      status: "current",
+      status: "current_v2",
       current_confirmed_matrix_id: "cmv-1",
       current_confirmed_revision: 1,
       current_fee_rule_version_id: "fee_rules_v2026_06_03",
       saved_draft_edit_id: null,
+      saved_generation: 1,
+      saved_source_context_fingerprint: "context-1",
+      saved_payload_fingerprint: "payload-1",
+      saved_updated_at: "2026-06-14T09:00:00+00:00",
+      saved_validation_token: "token-1",
       payload: null,
     });
 
@@ -970,17 +954,19 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("restores the entry baseline before leaving when autosave already saved edits", async () => {
+    const baseline = promotedPricingDraftPayload({ notes: "baseline note", unit_price: "10", testing_fee: "10" });
+    const dirty = promotedPricingDraftPayload({ notes: "dirty note", unit_price: "10", testing_fee: "10" });
     arrangeSuccessfulContext({
-      pricingDraft: currentPricingDraftResponse({
-        payload: promotedPricingDraftPayload({
-          notes: "baseline note",
-          unit_price: "10",
-          testing_fee: "10",
-        }),
-      }),
+      pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1", payload: baseline }),
     });
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1", payload: baseline }))
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: dirty }))
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 3, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-3", saved_validation_token: "token-3", payload: baseline }));
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
-    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(currentPricingDraftResponse());
+    apiMocks.saveFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: dirty }))
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 3, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-3", saved_validation_token: "token-3", payload: baseline }));
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const onBackToWorkbench = vi.fn();
 
@@ -995,20 +981,19 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.change(screen.getByLabelText("Notes for Visual Examination"), {
       target: { value: "dirty note" },
     });
-    await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-    }, { timeout: 1600 });
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1), { timeout: 1600 });
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
-    });
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2));
 
     const restorePayload = apiMocks.saveFeeEvaluationPricingDraft.mock.calls[1]?.[1];
     expect(restorePayload).toMatchObject({
       expected_confirmed_matrix_id: "cmv-1",
       expected_confirmed_revision: 1,
       expected_fee_rule_version_id: "fee_rules_v2026_06_03",
+      expected_pricing_draft_edit_id: "fed-1",
+      expected_generation: 2,
+      expected_payload_fingerprint: "payload-2",
     });
     expect(restorePayload.rows[0]).toMatchObject({
       notes: "baseline note",
@@ -1020,15 +1005,18 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("stays on Fee Evaluation when baseline restore fails", async () => {
+    const baseline = promotedPricingDraftPayload();
+    const dirty = promotedPricingDraftPayload({ unit_price: "12", testing_fee: "12" });
     arrangeSuccessfulContext({
-      pricingDraft: currentPricingDraftResponse({
-        payload: promotedPricingDraftPayload(),
-      }),
+      pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1", payload: baseline }),
     });
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1", payload: baseline }))
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: dirty }));
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
-    apiMocks.saveFeeEvaluationPricingDraft.mockRejectedValue(
-      new Error("Unable to restore Fee Evaluation pricing before leaving.")
-    );
+    apiMocks.saveFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: dirty }))
+      .mockRejectedValueOnce(new Error("Unable to restore Fee Evaluation pricing before leaving."));
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const onBackToWorkbench = vi.fn();
 
@@ -1043,10 +1031,11 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1), { timeout: 1600 });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
-      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
     });
     expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
     expect(onBackToWorkbench).not.toHaveBeenCalled();
@@ -1096,60 +1085,49 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("stays on Fee Evaluation when the Matrix or fee context changed before restore", async () => {
-    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse() });
+    const baseline = promotedPricingDraftPayload();
+    const dirty = promotedPricingDraftPayload({ unit_price: "12", testing_fee: "12" });
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1", payload: baseline }) });
     apiMocks.getFeeEvaluationPricingDraft
-      .mockResolvedValueOnce(currentPricingDraftResponse())
-      .mockResolvedValueOnce(
-        currentPricingDraftResponse({
-          current_confirmed_matrix_id: "cmv-2",
-          current_confirmed_revision: 2,
-        })
-      );
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1", payload: baseline }))
+      .mockResolvedValueOnce(currentPricingDraftResponse({ status: "current_v2", current_confirmed_matrix_id: "cmv-2", current_confirmed_revision: 2, saved_generation: 2, saved_source_context_fingerprint: "context-2", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: dirty }));
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(currentPricingDraftResponse({ status: "current_v2", saved_generation: 2, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-2", saved_validation_token: "token-2", payload: dirty }));
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const onBackToWorkbench = vi.fn();
 
-    render(
-      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />
-    );
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
-    await waitFor(() => {
-      expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(() => expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1), { timeout: 1600 });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    await waitFor(() => {
-      expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
-    });
-    expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    await waitFor(() => expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2));
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
     expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
     expect(onBackToWorkbench).not.toHaveBeenCalled();
-    expect(
-      await screen.findAllByText(
-        "Fee Evaluation context changed. Refresh before leaving."
-      )
-    ).toHaveLength(2);
+    expect(await screen.findAllByText("Fee Evaluation pricing changed. Refresh before leaving.")).toHaveLength(2);
   });
 
   it("keeps the Fee file action enabled when the project folder path is missing", async () => {
-    arrangeSuccessfulContext({ folderPath: null });
+    arrangeSuccessfulContext({ folderPath: null, pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }) });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
     const exportButton = await screen.findByRole("button", { name: "Fee Form" });
-    expect((exportButton as HTMLButtonElement).disabled).toBe(false);
+    await waitFor(() => expect((exportButton as HTMLButtonElement).disabled).toBe(false));
     expect(
       screen.queryByText("Create the project folder before generating the workbook.")
     ).toBeNull();
   });
 
   it("downloads the generated Fee file through the direct download endpoint", async () => {
-    arrangeSuccessfulContext({ folderPath: null });
+    arrangeSuccessfulContext({ folderPath: null, pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }) });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
       blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
@@ -1165,7 +1143,9 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    const feeForm = await screen.findByRole("button", { name: "Fee Form" });
+    await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(feeForm);
 
     await waitFor(() => {
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith(
@@ -1182,7 +1162,7 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("shows timeout cleanup guidance from structured API detail", async () => {
-    arrangeSuccessfulContext();
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }) });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockRejectedValue(
       new ApiRequestError("Fee Evaluation export timed out after 90 seconds.", 503, {
@@ -1194,7 +1174,9 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    const feeForm = await screen.findByRole("button", { name: "Fee Form" });
+    await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(feeForm);
 
     expect(
       await screen.findByText("Fee Evaluation export timed out after 90 seconds.")
@@ -1203,7 +1185,7 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("shows the template-missing download error instead of a Matrix blocker", async () => {
-    arrangeSuccessfulContext();
+    arrangeSuccessfulContext({ pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }) });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockRejectedValue(
       new ApiRequestError(
@@ -1215,7 +1197,9 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    const feeForm = await screen.findByRole("button", { name: "Fee Form" });
+    await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(feeForm);
 
     expect(
       await screen.findByText(

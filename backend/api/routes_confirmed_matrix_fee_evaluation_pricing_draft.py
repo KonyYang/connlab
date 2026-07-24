@@ -251,12 +251,12 @@ def _to_payload(
                 step_token=row.step_token,
                 step_index=row.step_index,
                 spend_time=_saveable_numeric_text(row.spend_time, "0"),
-                unit_price=_saveable_numeric_text(row.unit_price, "0"),
+                unit_price=_pending_numeric_text(row.unit_price),
                 unit_type=_saveable_unit_type(row.unit_type),
-                units=_saveable_numeric_text(row.units, "1"),
+                units=_pending_numeric_text(row.units),
                 base_fee=_saveable_numeric_text(row.base_fee, "0"),
                 discount=_saveable_discount(row.discount),
-                testing_fee=_saveable_numeric_text(row.testing_fee, "0"),
+                testing_fee=_pending_numeric_text(row.testing_fee),
                 notes=row.notes,
             )
             for row in values.rows
@@ -280,12 +280,12 @@ def _to_payload(
                 group_key=row.group_key,
                 group_label=row.group_label,
                 spend_time=_saveable_numeric_text(row.spend_time, "0"),
-                unit_price=_saveable_numeric_text(row.unit_price, "0"),
+                unit_price=_pending_numeric_text(row.unit_price),
                 unit_type=_saveable_unit_type(row.unit_type),
-                units=_saveable_numeric_text(row.units, "1"),
+                units=_pending_numeric_text(row.units),
                 base_fee=_saveable_numeric_text(row.base_fee, "0"),
                 discount=_saveable_discount(row.discount),
-                testing_fee=_saveable_numeric_text(row.testing_fee, "0"),
+                testing_fee=_pending_numeric_text(row.testing_fee),
                 notes=row.notes,
             )
             for row in values.manual_rows
@@ -302,6 +302,13 @@ def _saveable_numeric_text(value: str, fallback: str) -> str:
     normalized = value.strip()
     if not normalized or normalized.lower() == "pending":
         return fallback
+    return normalized
+
+
+def _pending_numeric_text(value: str) -> str:
+    normalized = value.strip()
+    if not normalized or normalized.lower() == "pending":
+        return ""
     return normalized
 
 

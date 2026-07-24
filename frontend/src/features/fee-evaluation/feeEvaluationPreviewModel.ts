@@ -3,7 +3,15 @@ import type {
   FeeEvaluationEditedFileExportRequest,
   FeeEvaluationFieldMetadata,
   FeeEvaluationLineItem,
+  FeeEvaluationPricingDraftResponse,
+  FeeEvaluationPricingDraftSaveRequest,
 } from "../../api/client";
+import {
+  editableDefault,
+  fieldIsManualRequired,
+  formatUnitTypeForPreview,
+  hydrateFeeEvaluationPricingDraft,
+} from "./feeEvaluationPricingDraftHydration";
 
 export const FEE_UNIT_TYPE_OPTIONS = [
   "per sample",
@@ -116,6 +124,10 @@ export type FeeEvaluationSavedDraftHydrationResult = {
   appliedRowCount: number;
   unmatchedRowCount: number;
 };
+
+export type FeeEvaluationPricingDraftCas = { draftEditId: string; generation: number; payloadFingerprint: string; updatedAt: string; validationToken: string };
+
+export type FeeEvaluationPricingDraftContext = { confirmedMatrixId: string; confirmedRevision: number; feeRuleVersionId: string };
 
 type ExpandedStepRow = FeeEvaluationPreviewRow & {
   stepSortValue: number | null;
@@ -323,127 +335,130 @@ export function applyFeeEvaluationPreviewEdits(
   });
 }
 
-export function buildFeeEvaluationPreviewStableIdentity(
-  row: FeeEvaluationPreviewRow
-): string {
-  return JSON.stringify([
-    row.sourceLineId,
-    row.confirmedGroupId,
-    row.confirmedRowId,
-    row.stepToken === "-" ? "" : row.stepToken,
-    row.stepIndex,
-  ]);
-}
-
 export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
   previewRows: FeeEvaluationPreviewRow[],
   savedDraft: FeeEvaluationEditedFileExportRequest
 ): FeeEvaluationSavedDraftHydrationResult {
-  const byIdentity = new Map(
-    previewRows
-      .filter((row) => row.rowKind === "matrix_step")
-      .map((row) => [buildFeeEvaluationPreviewStableIdentity(row), row])
+  return hydrateFeeEvaluationPricingDraft(
+    previewRows,
+    savedDraft,
+    "current_v2_compatibility"
   );
-  const samplePreparationRows = previewRows.filter(
-    (row) => row.rowKind === "sample_preparation"
+}
+
+export function hydrateFeeEvaluationPreviewEditsFromServerRebaseCandidate(
+  previewRows: FeeEvaluationPreviewRow[],
+  candidate: FeeEvaluationEditedFileExportRequest
+): FeeEvaluationSavedDraftHydrationResult {
+  return hydrateFeeEvaluationPricingDraft(
+    previewRows,
+    candidate,
+    "server_rebase_candidate"
   );
-  const edits: FeeEvaluationPreviewEditState = {};
-  let appliedRowCount = 0;
-  let unmatchedRowCount = 0;
+}
 
-  for (const row of savedDraft.rows) {
-    const identity = JSON.stringify([
-      row.source_line_id,
-      row.confirmed_group_id,
-      row.confirmed_row_id,
-      row.step_token,
-      row.step_index,
-    ]);
-    const previewRow = byIdentity.get(identity);
-    if (!previewRow) {
-      unmatchedRowCount += 1;
-      continue;
-    }
-    if (savedMatrixRowIsLegacyPlaceholder(row) && previewRowHasDefaultPricing(previewRow)) {
-      continue;
-    }
-    edits[previewRow.lineId] = {
-      spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
-      unitPrice: hydratedEditableNumber(row.unit_price, previewRow.unitPrice, "0"),
-      unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
-      units: hydratedEditableNumber(row.units, previewRow.units, "1"),
-      baseFee: hydratedEditableNumber(row.base_fee, previewRow.baseFee, "0"),
-      discount: hydratedEditableDiscount(row.discount, previewRow.discount),
-      notes: row.notes,
-    };
-    appliedRowCount += 1;
-  }
-
-  for (const row of savedDraft.manual_rows ?? []) {
-    if (row.row_kind === "sample_preparation") {
-      const previewRow = samplePreparationRows.find((candidate) =>
-        samplePreparationRowMatches(candidate, row)
-      );
-      if (!previewRow) {
-        unmatchedRowCount += 1;
-        continue;
-      }
-      edits[previewRow.lineId] = {
-        spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
-        unitPrice: hydratedEditableNumber(row.unit_price, previewRow.unitPrice, "0"),
-        unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
-        units: hydratedEditableNumber(row.units, previewRow.units, "1"),
-        baseFee: hydratedEditableNumber(row.base_fee, previewRow.baseFee, "0"),
-        discount: hydratedEditableDiscount(row.discount, previewRow.discount),
-        notes: row.notes,
-      };
-      appliedRowCount += 1;
-      continue;
-    }
-    if (row.row_kind !== "report_preparation") {
-      unmatchedRowCount += 1;
-      continue;
-    }
-    const previewRow = previewRows.find(
-      (candidate) =>
-        candidate.rowKind === "manual_trailing" &&
-        candidate.lineId === "manual-report-preparation"
-    );
-    if (!previewRow) {
-      unmatchedRowCount += 1;
-      continue;
-    }
-    edits[previewRow.lineId] = {
-      spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
-      unitPrice: hydratedEditableNumber(row.unit_price, previewRow.unitPrice, "0"),
-      unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
-      units: hydratedEditableNumber(row.units, previewRow.units, "1"),
-      baseFee: hydratedEditableNumber(row.base_fee, previewRow.baseFee, "0"),
-      discount: hydratedEditableDiscount(row.discount, previewRow.discount),
-      notes: row.notes,
-    };
-    appliedRowCount += 1;
-  }
-
+export function buildFeeEvaluationEditedExportPayload(
+  rows: FeeEvaluationPreviewRow[],
+  costValues: FeeEvaluationSavedDraftHydrationResult["costPreviewValues"]
+): FeeEvaluationEditedFileExportRequest {
+  const rowValues = (row: FeeEvaluationPreviewRow) => ({
+    spend_time: row.spendTime, unit_price: row.unitPrice,
+    unit_type: row.unitType, units: row.units,
+    base_fee: row.baseFee, discount: row.discount,
+    testing_fee: row.testingFee, notes: row.notes,
+  });
   return {
-    edits,
-    costPreviewValues: {
-      conditionConfirmationSpendTime:
-        hydratedSummaryNumber(
-          savedDraft.summary.condition_confirmation_spend_time,
-          "0"
-        ),
-      externalCost: hydratedSummaryNumber(savedDraft.summary.external_cost, "0"),
-      externalCostNote: savedDraft.summary.external_cost_note,
-      labManpowerHourlyRate: hydratedSummaryNumber(
-        savedDraft.summary.lab_manpower_hourly_rate,
-        "200"
-      ),
+    rows: rows
+      .filter((row) => row.rowKind === "matrix_step")
+      .map((row) => ({
+        source_line_id: row.sourceLineId,
+        confirmed_group_id: row.confirmedGroupId,
+        confirmed_row_id: row.confirmedRowId,
+        step_token: row.stepToken === "-" ? "" : row.stepToken,
+        step_index: row.stepIndex,
+        ...rowValues(row),
+      })),
+    summary: {
+      condition_confirmation_spend_time: costValues.conditionConfirmationSpendTime,
+      external_cost: costValues.externalCost,
+      external_cost_note: costValues.externalCostNote,
+      lab_manpower_hourly_rate: costValues.labManpowerHourlyRate,
     },
-    appliedRowCount,
-    unmatchedRowCount,
+    manual_rows: rows
+      .filter((row) =>
+        row.rowKind === "sample_preparation" ||
+        (row.rowKind === "manual_trailing" &&
+          row.lineId === "manual-report-preparation")
+      )
+      .map((row) => ({
+        row_kind: row.rowKind === "sample_preparation"
+          ? ("sample_preparation" as const)
+          : ("report_preparation" as const),
+        confirmed_group_id: row.rowKind === "sample_preparation"
+          ? row.confirmedGroupId
+          : undefined,
+        group_key: row.rowKind === "sample_preparation" ? row.groupKey : undefined,
+        group_label: row.rowKind === "sample_preparation" ? row.groupLabel : undefined,
+        ...rowValues(row),
+      })),
   };
 }
+
+export function feeEvaluationPricingDraftContext(
+  response: FeeEvaluationPricingDraftResponse
+): FeeEvaluationPricingDraftContext {
+  return { confirmedMatrixId: response.current_confirmed_matrix_id,
+    confirmedRevision: response.current_confirmed_revision,
+    feeRuleVersionId: response.current_fee_rule_version_id };
+}
+
+export function feeEvaluationPricingDraftCas(
+  response: FeeEvaluationPricingDraftResponse
+): FeeEvaluationPricingDraftCas | null {
+  const draftEditId = response.saved_draft_edit_id;
+  const generation = response.saved_generation;
+  const payloadFingerprint = response.saved_payload_fingerprint;
+  const updatedAt = response.saved_updated_at;
+  const validationToken = response.saved_validation_token;
+  if (!draftEditId || generation == null || !payloadFingerprint || !updatedAt || !validationToken) {
+    return null;
+  }
+  return { draftEditId, generation, payloadFingerprint, updatedAt, validationToken };
+}
+
+export function feeEvaluationPricingDraftCasRequest(
+  state: FeeEvaluationPricingDraftCas | null
+): Partial<FeeEvaluationPricingDraftSaveRequest> {
+  if (!state) return {};
+  return {
+    expected_pricing_draft_edit_id: state.draftEditId,
+    expected_generation: state.generation,
+    expected_payload_fingerprint: state.payloadFingerprint,
+    expected_updated_at: state.updatedAt,
+  };
+}
+
+export function feeEvaluationPricingDraftContextEquals(
+  left: FeeEvaluationPricingDraftContext,
+  right: FeeEvaluationPricingDraftContext
+): boolean {
+  return left.confirmedMatrixId === right.confirmedMatrixId &&
+    left.confirmedRevision === right.confirmedRevision &&
+    left.feeRuleVersionId === right.feeRuleVersionId;
+}
+
+export function feeEvaluationPricingDraftCasEquals(
+  left: FeeEvaluationPricingDraftCas,
+  right: FeeEvaluationPricingDraftCas
+): boolean {
+  return left.draftEditId === right.draftEditId &&
+    left.generation === right.generation &&
+    left.payloadFingerprint === right.payloadFingerprint &&
+    left.updatedAt === right.updatedAt &&
+    left.validationToken === right.validationToken;
+}
+
+export const feeEvaluationPricingDraftSignature = (payload: FeeEvaluationEditedFileExportRequest): string => JSON.stringify(payload);
 
 export function calculateFeePreviewTestingFee(input: {
   unitPrice: string;
@@ -507,7 +522,7 @@ export function buildFeeEvaluationUpdateBlockers(input: {
       rowLabel,
       fields,
       message: updateBlockerMessage(rowLabel, fields),
-      rowMessage: `Complete ${formatFieldList(fields)} before Update Fee.`,
+      rowMessage: `Complete ${formatFieldList(fields)}.`,
     });
   }
   if (blockers.length > 0) {
@@ -755,22 +770,6 @@ function reviewMetadata(
   };
 }
 
-function samplePreparationRowMatches(
-  previewRow: FeeEvaluationPreviewRow,
-  savedRow: NonNullable<FeeEvaluationEditedFileExportRequest["manual_rows"]>[number]
-): boolean {
-  const savedGroupId = (savedRow.confirmed_group_id ?? "").trim();
-  if (savedGroupId && previewRow.confirmedGroupId === savedGroupId) {
-    return true;
-  }
-  const savedGroupKey = (savedRow.group_key ?? "").trim();
-  if (savedGroupKey && previewRow.groupKey === savedGroupKey) {
-    return true;
-  }
-  const savedGroupLabel = (savedRow.group_label ?? "").trim();
-  return Boolean(savedGroupLabel && previewRow.groupLabel === savedGroupLabel);
-}
-
 function pendingValue(value: string | null | undefined): string {
   const normalized = value?.trim() ?? "";
   return normalized.length > 0 ? normalized : "Pending";
@@ -790,93 +789,14 @@ function displayOrPending(value: string | null | undefined): string {
   return normalized.length > 0 ? normalized : "Pending";
 }
 
-function formatUnitTypeForPreview(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized || normalized === "pending") {
-    return "Pending";
-  }
-  const map: Record<string, string> = {
-    sample: "per sample",
-    specimen: "per sample",
-    reading: "per reading",
-    contact: "per contact",
-    cycle: "per cycle",
-    time: "per time",
-    hour: "per hour",
-    day: "per day",
-    photo: "per photo",
-    report: "per report",
-    "per sample": "per sample",
-    "per reading": "per reading",
-    "per contact": "per contact",
-    "per cycle": "per cycle",
-    "per time": "per time",
-    "per hour": "per hour",
-    "per day": "per day",
-    "per photo": "per photo",
-    "per report": "per report",
-  };
-  return map[normalized] ?? value.trim();
-}
-
-function hydratedUnitType(value: string, fallback: string): string {
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : formatUnitTypeForPreview(fallback);
-}
-
-function savedMatrixRowIsLegacyPlaceholder(
-  row: FeeEvaluationEditedFileExportRequest["rows"][number]
-): boolean {
-  return (
-    editableDefault(row.spend_time, "0") === "0" &&
-    editableDefault(row.unit_price, "0") === "0" &&
-    formatUnitTypeForPreview(row.unit_type) === "Pending" &&
-    editableDefault(row.units, "1") === "1" &&
-    editableDefault(row.base_fee, "0") === "0" &&
-    hydratedEditableDiscount(row.discount, "0%") === "0%" &&
-    row.notes.trim().length === 0
-  );
-}
-
-function previewRowHasDefaultPricing(row: FeeEvaluationPreviewRow): boolean {
-  return (
-    editableDefault(row.unitPrice, "0") !== "0" ||
-    formatUnitTypeForPreview(row.unitType) !== "Pending" ||
-    editableDefault(row.units, "1") !== "1" ||
-    editableDefault(row.baseFee, "0") !== "0" ||
-    hydratedEditableDiscount(row.discount, "0%") !== "0%"
-  );
-}
-
-function hydratedEditableNumber(
-  value: string,
-  fallback: string,
-  defaultValue: string
-): string {
-  const normalized = editableDefault(value, "");
-  if (normalized.length > 0) {
-    return normalized;
-  }
-  return editableDefault(fallback, defaultValue);
-}
-
-function hydratedEditableDiscount(value: string, fallback: string): string {
-  const normalized = editableDefault(value, "");
-  if (normalized.length > 0) {
-    return normalized;
-  }
-  return editableDefault(fallback, "0%");
-}
-
-function hydratedSummaryNumber(value: string, defaultValue: string): string {
-  return editableDefault(value, defaultValue);
-}
-
 function editableUnitType(value: string | undefined, fallback: string): string {
   if (value === undefined) {
     return formatUnitTypeForPreview(fallback);
   }
-  return hydratedUnitType(value, fallback);
+  const normalized = value.trim();
+  return normalized.length > 0
+    ? formatUnitTypeForPreview(normalized)
+    : formatUnitTypeForPreview(fallback);
 }
 
 function parseRequiredEditableNumber(value: string): number | null {
@@ -912,14 +832,6 @@ function normalizeEditableNumber(value: string): string {
     return "";
   }
   return normalized.replace(/[$,\s]/g, "");
-}
-
-function editableDefault(value: string, fallback: string): string {
-  const normalized = value.trim();
-  if (!normalized || normalized.toLowerCase() === "pending") {
-    return fallback;
-  }
-  return normalized;
 }
 
 function parsePreviewNumber(value: string): number | null {
@@ -961,19 +873,7 @@ function incompleteUpdateFields(row: FeeEvaluationPreviewRow): string[] {
   if (!isCompleteDiscount(row.discount)) {
     fields.push("Discount");
   }
-  if (!baseFeeIncomplete && !isCompleteNumber(row.testingFee)) {
-    fields.push("Testing Fee");
-  }
   return fields;
-}
-
-function fieldIsManualRequired(
-  row: FeeEvaluationPreviewRow,
-  field: FeeEvaluationPreviewFieldMetadata["field"]
-): boolean {
-  return row.fieldMetadata.some(
-    (metadata) => metadata.field === field && metadata.state === "manual_required"
-  );
 }
 
 function updateRowLabel(row: FeeEvaluationPreviewRow): string {
