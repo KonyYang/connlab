@@ -8,7 +8,11 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_matrix_import_commit_service, get_session
+from backend.api.dependencies import (
+    get_matrix_editor_session_service,
+    get_matrix_import_commit_service,
+    get_session,
+)
 from backend.api.main import app
 from backend.application.external_excel_read_service import (
     StandardRecordReadResult,
@@ -38,6 +42,30 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+
+
+def test_matrix_editor_session_composes_import_method_authority(tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            service = get_matrix_editor_session_service(
+                session=session,
+                settings=settings,
+            )
+            assert isinstance(
+                service._matrix_import_commit._method_authority,
+                MatrixImportMethodAuthorityResolver,
+            )
+    finally:
+        engine.dispose()
 
 
 def test_replace_updates_methods_returns_summary_and_strictly_reuses(tmp_path: Path) -> None:

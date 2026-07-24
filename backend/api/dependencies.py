@@ -707,6 +707,7 @@ def get_matrix_editor_session_service(
     """Build Matrix Editor temporary session service."""
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
     matrix_draft_store = ProjectMatrixDraftRepository(session)
+    resources = CachedStandardResourceStore(ExternalResourceRepository(session))
     return MatrixEditorSessionService(
         project_store=ProjectRepository(session),
         confirmed_store=confirmed_store,
@@ -724,6 +725,11 @@ def get_matrix_editor_session_service(
             source_persistence_service=SourceMatrixImportPersistenceService(
                 store=SourceMatrixImportRepository(session)
             ),
+            method_authority=MatrixImportMethodAuthorityResolver(
+                resource_store=resources,
+                catalog_reader=ExternalExcelReadService(resources),
+            ),
+            transaction_scope=session.begin_nested,
         ),
         matrix_revision_flow_service=MatrixRevisionFlowService(
             project_store=ProjectRepository(session),
