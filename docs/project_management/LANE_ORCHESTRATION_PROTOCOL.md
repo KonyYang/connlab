@@ -1,6 +1,6 @@
 # ConnLab Lane Orchestration Protocol
 
-Last Updated: 2026-06-27
+Last Updated: 2026-07-25
 Status: active governance protocol
 Scope: automate role-to-role handoffs for approved ConnLab task lanes
 
@@ -14,6 +14,7 @@ The orchestrator may:
 
 - read `docs/task_board.md`, task files, plans, evidence, and diffs
 - decide the next valid role from board/evidence state
+- create, inspect, and safely retire isolated lane worktrees
 - send a standard prompt to the matching role thread
 - ask the role to update its evidence and stop at its gate
 - report the current handoff chain and blockers
@@ -25,6 +26,7 @@ The orchestrator must not:
 - bypass Reviewer or QA findings
 - merge code unless explicitly acting as Integrator in the Integrator thread
 - treat chat history as more authoritative than board/evidence files
+- force-remove a dirty worktree, discard changes, or push a remote without exact authorization
 
 ## 3. State Machine
 
@@ -32,7 +34,7 @@ The orchestrator must not:
 |---|---|---|
 | `proposed` | Planner draft only | Stop; ask Planner/user for approval |
 | `planned` | task/plan exists, not approved | Stop; ask Planner/user for approval |
-| `approved` | lane has task, branch/worktree, gates | Developer |
+| `approved` | lane has task/gates and a verified clean branch/worktree | Developer |
 | `in_progress` | Developer still working | Stop or ask Developer for status |
 | `in_progress` + `ready_for_review` | Developer evidence and validation result | Reviewer |
 | `review` + blocking findings | Reviewer evidence | Developer fix pass |
@@ -84,9 +86,35 @@ If state is unclear, stop and report the smallest blocking fact. Do not guess. C
 - branch differs from board
 - evidence missing or stale
 - uncommitted changes mix multiple lanes
+- branch/worktree is declared but does not exist
+- primary worktree was used as a lane scratch directory
+- two active lanes claim the same shared file or authority path
 - Reviewer blocking findings are unresolved
 - QA failed but no Developer fix pass exists
 - merge target is not declared
+
+## 7.1 Worktree Lifecycle Automation
+
+The operator is not responsible for Git worktree commands. Before routing an approved implementation lane, the orchestrator must:
+
+1. verify the primary worktree and index are clean
+2. verify no active lane owns the same `Locked Paths`
+3. persist the approved task/plan/board state
+4. run `scripts/connlab_lane_worktree.ps1 -Action Create`
+5. record the concrete branch, path, and base commit
+6. include that path in Developer, Reviewer, and QA prompts
+
+Developer must create a clean local checkpoint commit before `ready_for_review`. Reviewer and QA validate that immutable commit.
+
+After Integrator acceptance, the orchestrator must:
+
+1. confirm integration ancestry
+2. confirm the lane worktree and index are clean
+3. record an exact residual ledger
+4. run `scripts/connlab_lane_worktree.ps1 -Action Retire`
+
+Retire never uses force. A dirty or unintegrated worktree is a blocker, not a cleanup target.
+
 ## 8. Full-Auto Mode
 
 Full-auto mode is implemented by a Codex heartbeat attached to an Orchestrator/Planner conversation. The heartbeat periodically runs the lane orchestrator skill and performs at most one routing action per wake-up.
@@ -102,6 +130,16 @@ Reviewer pass -> QA or Integrator readiness check
 QA pass -> Integrator readiness check
 ```
 
+When the user created a durable Goal for a task series, the same authorization also covers:
+
+- worktree creation, inspection, and clean retirement
+- bounded Developer fix passes
+- exact tests-only fixture/assertion migrations inside the frozen scope
+- evidence and source-of-truth reconciliation
+- local lane checkpoint and Integrator commits
+
+Do not repeatedly ask the user to approve these micro-gates. Stop only when the Goal envelope would be expanded, product behavior is ambiguous, a test failure cannot be attributed safely, destructive discard is required, or merge/push lacks authorization.
+
 Full-auto stops and reports when human judgment is required:
 
 - task/lane is not approved or not found
@@ -113,7 +151,19 @@ Full-auto stops and reports when human judgment is required:
 
 The stop report must include current lane/task, evidence read, blocking reason, recommended next role, and the exact command the user can approve.
 
-## 8.1 Event-Driven Completion Callback
+## 8.1 Residual Ledger
+
+Every Integrator acceptance must classify excluded work immediately:
+
+- `retain`: unique value with a named follow-up lane
+- `duplicate`: already accepted elsewhere
+- `stale`: obsolete task/evidence/fixture state
+- `format-only`: whitespace or line-ending change
+- `conflict`: possible product behavior disagreement
+
+An accepted lane cannot leave an unnamed residual. `duplicate`, `stale`, and `format-only` entries accumulate only in one exact discard list. `retain` entries must have an owner before the next lane starts.
+
+## 8.2 Event-Driven Completion Callback
 
 Full-auto orchestration can run in event-driven mode in addition to the heartbeat. The heartbeat remains a safety net; normal handoff should be triggered by a role thread callback when that role reaches its stop gate.
 

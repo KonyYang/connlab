@@ -17,6 +17,7 @@ Before sending any role prompt, read:
 - `docs/task_board.md`
 - `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` when routing to Planner or creating/activating a future lane
 - `docs/project_management/PARALLEL_EXECUTION_MODEL.md`
+- `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
 - `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
 - `docs/project_management/ROLE_THREAD_REGISTRY.md`
 - the task file declared by the lane
@@ -30,6 +31,10 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 - Never start implementation from `proposed` or `planned`.
 - Never ask Planner to approve a missing or ambiguous future lane without a Discovery Gate and Definition of Ready.
 - Never expand lane scope, `May Touch`, `Must Not Touch`, or `Locked Paths`.
+- Never route Developer implementation until the concrete `lane/*` branch and sibling worktree exist and are clean.
+- Never allow two active lanes to own the same shared file or authority path.
+- Never treat a separate role thread as Git isolation.
+- Never add new coverage to an oversized mixed test when a bounded public-contract test module can carry it.
 - Never merge a lane with unresolved blocking Reviewer/QA findings.
 - Never use chat memory as the source of truth when evidence files or board state disagree.
 - Prefer role threads in `ROLE_THREAD_REGISTRY.md`; create or rename threads only when the user explicitly asks.
@@ -38,17 +43,19 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 ## Orchestration Loop
 
 1. Identify the lane from the user's request or from `docs/task_board.md`.
-2. Verify lane readiness: formal task file, approved status, branch/worktree, evidence path, validation gate, merge gate.
-3. Determine next role:
+2. Verify lane readiness: formal task file, approved status, concrete branch/worktree, evidence path, validation gate, merge gate, and exclusive shared-path ownership.
+3. If implementation is approved but the worktree does not yet exist, verify the primary worktree is clean and create it with `scripts/connlab_lane_worktree.ps1`. Record branch, path, and base commit before routing Developer.
+4. Determine next role:
    - `approved` -> Developer
    - `in_progress` with developer evidence `ready_for_review` -> Reviewer
    - Reviewer evidence has blocking findings -> Developer fix pass
    - Reviewer evidence `pass` and QA required -> QA
    - Reviewer/QA gates passed -> Integrator
    - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
-4. Send one standard prompt to the next role thread.
-5. Ask the target role to update its evidence file and stop at its declared gate.
-6. After the target thread completes, re-read board/evidence before sending the next prompt.
+5. Send one standard prompt to the next role thread, including the exact worktree path and reviewed commit when applicable.
+6. Ask the target role to update its evidence file and stop at its declared gate.
+7. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
+8. After Integrator acceptance, require an exact residual ledger and retire only a clean, integrated worktree.
 
 Run at most one full Developer->Reviewer->Developer-fix cycle without asking the user for confirmation. Continue beyond that only when the user explicitly requests automatic continuation.
 
@@ -67,6 +74,9 @@ Full-auto mode may automatically:
 - send Developer fix-pass prompts for Reviewer/QA blocking findings that are clearly implementation-scoped
 - send QA gate prompts after Reviewer pass when QA is required
 - send Integrator readiness-check prompts after Reviewer/QA gates pass
+- create, inspect, and cleanly retire lane worktrees
+- continue bounded fix passes and exact tests-only migrations inside a user-approved Goal envelope
+- create local lane checkpoint and accepted-package commits when the Goal already authorizes them
 
 Full-auto mode must stop and report to the user before:
 
@@ -76,6 +86,22 @@ Full-auto mode must stop and report to the user before:
 - retrying the same blocking fix cycle more than once
 - merging into `master`/main or pushing remote branches, unless the user explicitly pre-authorized that exact merge action
 - deleting, resetting, or reverting work
+
+Do not stop for repeated human approval at every micro-gate when a durable user Goal already authorizes the lane series. Reconciliation, bounded fix passes, evidence updates, local commits, and clean worktree lifecycle operations remain automatic until the scope or behavior contract changes.
+
+
+## Worktree And Residual Contract
+
+- Branch format: `lane/<lane-id>`.
+- Default worktree location: sibling `<repo-name>-worktrees/<lane-id>`.
+- Primary `master` worktree: planning and integration only.
+- Developer handoff: clean local checkpoint commit and empty index.
+- Reviewer input: recorded base commit to lane HEAD.
+- QA input: reviewed clean commit or exact archive.
+- Integrator closeout: accepted package, board update, residual ledger, clean lane worktree.
+- Residual classes: `retain`, `duplicate`, `stale`, `format-only`, `conflict`.
+- `retain` requires a named owner; `duplicate`/`stale`/`format-only` require one exact discard list; `conflict` returns to Planner/User.
+- Never force-remove a worktree, run `git add -A`, or push remote as part of automatic lane closeout.
 
 Each heartbeat run should do only one routing action, then stop. This prevents duplicate prompts and keeps role evidence as the durable handoff record.
 
@@ -156,9 +182,10 @@ If the user corrects direction, treat the newest user instruction as controlling
 ```text
 你是 ConnLab｜开发执行者 Developer。
 请执行 lane: <LANE_ID> / task: <TASK_ID>。
+工作目录必须是 board 记录的 lane worktree: <WORKTREE_PATH>；分支必须是 <BRANCH>。
 必须先读取 AGENTS.md、docs/task_board.md、任务文件、方案文件、并行模型和 evidence 文件。
 只允许修改该 lane 的 May Touch 范围，禁止触碰 Must Not Touch / Locked Paths。
-完成实现和验证后，更新 developer evidence，状态写为 ready_for_review，并停止等待 Reviewer。
+完成实现和验证后，使用 exact-path staging 创建本地 lane checkpoint commit，确认 worktree/index clean，更新 developer evidence（base commit、lane HEAD、changed paths、validation），状态写为 ready_for_review，并停止等待 Reviewer。
 不要合并，不要替 Reviewer/Integrator 更新全局完成状态。
 ```
 
@@ -167,7 +194,7 @@ If the user corrects direction, treat the newest user instruction as controlling
 ```text
 你是 ConnLab｜质量评审员 Reviewer。
 请评审 lane: <LANE_ID> / task: <TASK_ID>。
-读取 AGENTS.md、docs/task_board.md、任务文件、developer evidence、当前 diff。
+读取 AGENTS.md、docs/task_board.md、任务文件、developer evidence，并只评审 <BASE_COMMIT>..<LANE_HEAD> 的 committed diff。
 按 docs/project_management/TASK_REVIEW_CHECKLIST.md 给出 blocking / non-blocking 结论，写入 reviewer evidence。
 不要直接修代码，不要合并。若有 blocking findings，请给 Developer 可执行修复清单并停止。
 ```
@@ -186,6 +213,7 @@ If the user corrects direction, treat the newest user instruction as controlling
 ```text
 你是 ConnLab｜验证测试员 QA。
 请对 lane: <LANE_ID> / task: <TASK_ID> 执行声明的 smoke / integration 验证。
+必须使用 reviewed lane commit 的 clean worktree、临时 worktree 或 exact archive；不得读取 primary worktree ambient dirty files。
 记录环境、命令、输入、输出、失败或通过结论到 QA evidence。
 不要修改产品代码，不要合并。
 ```
@@ -196,7 +224,8 @@ If the user corrects direction, treat the newest user instruction as controlling
 你是 ConnLab｜集成负责人 Integrator。
 请检查 lane: <LANE_ID> / task: <TASK_ID> 是否满足 merge gate。
 必须确认 Reviewer/QA blocking findings 已关闭、分支/工作区清晰、允许合并范围明确。
-如可合并，执行受控合并和集成验证，并更新 docs/task_board.md 与 integration evidence。
+如可合并，执行受控合并和集成验证，更新 docs/task_board.md 与 integration evidence，并把每个 excluded path 分类为 retain/duplicate/stale/format-only/conflict。
+确认 lane worktree clean 且 lane HEAD 已集成后，使用 worktree script 无 force 退役；否则保留并报告 blocker。
 如不可合并，写明阻塞原因和下一角色。
 ```
 

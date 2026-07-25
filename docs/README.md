@@ -1,6 +1,6 @@
 # ConnLab Documentation Map
 
-Last Updated: 2026-05-24
+Last Updated: 2026-07-25
 
 This directory contains current product/architecture documentation, task plans, validation notes, and historical records. Not every document is current source of truth.
 
@@ -25,6 +25,9 @@ For any new task, use this order:
 - `README.md` - setup and entry point
 - `docs/02_ARCHITECTURE_RULES.md` - architecture constraints
 - `docs/frontend_architecture_rules.md` - frontend architecture constraints
+- `docs/project_management/PARALLEL_EXECUTION_MODEL.md` - controlled parallel lane governance
+- `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md` - worktree automation, ownership, clean validation, and residual closeout
+- `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md` - role handoff state machine and full-auto Goal behavior
 
 ## Current Phase And Runtime Direction
 

@@ -1,6 +1,6 @@
 # ConnLab Planner Discovery Protocol
 
-Last Updated: 2026-06-27
+Last Updated: 2026-07-25
 Status: active governance protocol
 Scope: product/technical planning, task decomposition, and controlled-parallel lane creation
 
@@ -74,6 +74,9 @@ Planner may mark a lane `approved` only when all items below are satisfied:
 - task/lane has a formal task file or the approved Planner action is to create one
 - dependencies and serialization constraints are explicit
 - May Touch, Must Not Touch, Locked Paths, evidence file, validation gate, and merge gate are concrete
+- controlled-parallel implementation has a concrete `lane/*` branch, sibling worktree path, and clean base commit; `TBD` is not approval-ready
+- no active lane owns the same shared file, oversized mixed test, or authority path
+- Developer clean-commit handoff, clean Reviewer/QA input, Integrator residual ledger, and worktree retirement are declared
 - at least one acceptance path is testable or reviewable
 - at least one explicit non-goal prevents scope creep
 - unresolved assumptions are either confirmed by the user or documented as out of scope

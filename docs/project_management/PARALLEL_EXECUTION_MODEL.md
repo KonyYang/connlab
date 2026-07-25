@@ -1,6 +1,6 @@
 # ConnLab Parallel Execution Model
 
-Last Updated: 2026-06-25
+Last Updated: 2026-07-25
 Status: active governance policy after TASK_335
 Scope: controlled project-level parallel execution, role boundaries, lane evidence, and merge gates
 
@@ -18,11 +18,19 @@ ConnLab allows controlled project-level parallel execution when `docs/task_board
 
 This model does not introduce product multi-user collaboration, permissions, LAN/server deployment, or runtime collaboration features.
 
+Operational implementation is defined by:
+
+- `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
+- `scripts/connlab_lane_worktree.ps1`
+- `scripts/task_complete_commit.ps1`
+
 ## 2. Core Rule
 
 ```text
 A single executor/Agent may work on only one task at a time.
 The ConnLab project may have multiple active lanes only when docs/task_board.md marks them as approved and parallel-safe.
+Every implementation lane must use its own lane/* branch and sibling worktree.
+The primary master worktree is reserved for planning and integration.
 ```
 
 Proposed or planned lanes are not executable. Only `approved` lanes may be implemented.
@@ -128,7 +136,7 @@ Every active lane must declare:
 | Task | Formal task id in `tasks/` |
 | Type | backend/frontend/test/docs/review/qa/integration/etc. |
 | Status | proposed/planned/approved/in_progress/review/integration/blocked/complete/cancelled |
-| Branch / Worktree | Required isolation target |
+| Branch / Worktree | Concrete `lane/*` branch and existing sibling worktree; `TBD` is not approval-ready |
 | Owner Role | Planner/Developer/Reviewer/QA/Integrator |
 | Depends On | Required predecessor tasks or lanes |
 | Conflict Scope | Business/architecture boundary that can conflict |
@@ -187,9 +195,10 @@ A task may be approved as a parallel lane only if:
 4. Conflict scope is declared.
 5. `May Touch`, `Must Not Touch`, and `Locked Paths` are declared.
 6. An evidence file is declared.
-7. Branch/worktree isolation is declared.
+7. A concrete branch/worktree has been created from the recorded clean base commit and verified clean.
 8. Validation and merge gates are declared.
 9. Planner marks it approved after explicit user approval.
+10. No active lane owns the same shared file or authority path.
 
 Usually parallel-safe:
 
@@ -251,6 +260,8 @@ Threads do not share chat memory. They coordinate through:
 - code diffs
 - validation output
 
+Creating a new role thread does not create Git isolation. The orchestrator must create the lane worktree before routing implementation and must include the exact branch/path in every role prompt.
+
 ## 10. Stop Rules
 
 Stop immediately when:
@@ -285,3 +296,20 @@ Planner approved lane
 ```
 
 If thread tools are unavailable, the orchestrator must print the exact prompt for the user to paste into the target Chinese role thread.
+
+## 12. Repository Hygiene Gates
+
+Parallel execution is accepted only when all of the following are enforced:
+
+1. New regression coverage uses bounded focused test modules by default.
+2. Developer hands off a clean local commit on the lane branch, not an ambient dirty diff.
+3. Reviewer compares the recorded base commit to lane HEAD.
+4. QA validates the reviewed commit from a clean worktree or exact archive.
+5. Integrator stages only the reviewed package and updates the board from the primary worktree.
+6. Integrator classifies every excluded path as retained, duplicate, stale, format-only, or conflict.
+7. A retained residual receives a named owner immediately; duplicate/stale/format-only residuals enter one exact discard list.
+8. Task, plan, and evidence documents are committed with their owning package.
+9. Lane completion requires clean lane status/index and a clean primary worktree, or an explicit residual ledger with owner and expiry.
+10. Remote push and destructive discard remain separate explicit authorization gates.
+
+For a multi-lane series, one user-approved Goal may authorize normal role handoffs, bounded fix passes, evidence updates, local commits, and worktree lifecycle operations. The orchestrator should not request a fresh human approval for each small hunk unless scope, product behavior, destructive cleanup, or remote state changes.

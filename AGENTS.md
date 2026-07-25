@@ -348,3 +348,36 @@ Planner 不得把简短或模糊的用户请求直接转换成 approved task/lan
 如果缺失信息会影响 `May Touch`、`Must Not Touch`、`Locked Paths`、验证口径、API/data ownership、UX 行为或串并行顺序，Planner 必须先提出最多 3 个阻塞澄清问题，或将 lane 保持为 `proposed/planned`，不得标记为 `approved`。
 
 Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 Definition of Ready 满足后，才能在用户明确批准下创建或激活 approved lane。
+
+## 18. Parallel Lane Worktree And Closeout
+
+受控并行必须使用真实 Git 隔离，不能把不同聊天线程当作隔离。
+
+强制规则：
+
+1. 一个产品 lane 必须对应一个 `lane/*` branch 和一个独立 sibling worktree。
+2. primary `master` worktree 仅用于 Planner/Integrator 的治理与集成，不得作为多个 lane 的共享草稿区。
+3. Developer implementation 开始前，Orchestrator 必须自动创建并记录 worktree path、branch、base commit；用户不负责执行 Git worktree 命令。
+4. 同一个 shared file、oversized mixed test 或 authority path 同时只能有一个 active owner；发生重叠时必须串行化。
+5. 新测试默认写入 bounded 独立模块，不继续堆入超大 mixed test。
+6. Developer 必须以 clean local lane checkpoint commit 交给 Reviewer；Reviewer 只评审 base..lane HEAD。
+7. QA 必须基于 reviewed commit 的 clean worktree、临时 worktree 或 exact archive，不能使用 primary worktree 的 ambient dirty files。
+8. Integrator 每次接受 package 后必须立即记录 residual ledger：`retain`、`duplicate`、`stale`、`format-only` 或 `conflict`。
+9. `retain` 必须立即分配正式 owner/lane；`duplicate`、`stale`、`format-only` 进入一次 exact discard 清单；`conflict` 返回 Planner/User。
+10. task、plan、evidence 必须跟随所属 planning/implementation package 提交，不得长期积压未跟踪治理文件。
+11. lane complete 必须同时满足 worktree/index clean、治理文档已提交、remote 状态已说明，并且 primary worktree clean 或所有 residual 都有 owner 与 expiry。
+12. 多 lane 系列应由一个用户授权 Goal 持续收口；Goal 范围内的普通角色接力、bounded fix、tests-only migration、evidence reconciliation、local commit 和 clean worktree lifecycle 不重复请求人工批准。
+
+自动化入口：
+
+- `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
+- `scripts/connlab_lane_worktree.ps1`
+- `scripts/task_complete_commit.ps1`
+
+绝对禁止：
+
+- `git add -A`
+- force-remove dirty worktree
+- 未授权 discard/reset/restore/delete
+- 未授权 remote push
+- 把 unnamed residual 留给未来人工猜测

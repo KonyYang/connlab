@@ -19,6 +19,7 @@ Before proposing or approving lanes, read:
 - `docs/task_board.md`
 - `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`
 - `docs/project_management/PARALLEL_EXECUTION_MODEL.md` when controlled-parallel mode is involved
+- `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md` when controlled-parallel mode is involved
 - current task files, plans, evidence, architecture docs, and code areas relevant to the request
 
 If the request touches frontend/UI, also follow `$impeccable` project guidance.
@@ -46,6 +47,16 @@ Ask up to 3 blocking clarification questions when the answer materially changes 
 
 Planner may mark a lane `approved` only when the Definition of Ready in `PLANNER_DISCOVERY_PROTOCOL.md` is satisfied.
 
+For a controlled-parallel implementation lane, readiness also requires:
+
+- one concrete `lane/*` branch name and sibling worktree path; `TBD` is not ready
+- a recorded clean base commit
+- no overlap between this lane's `Locked Paths` and any active lane
+- one explicit owner for every shared file or authority path
+- bounded new test modules by default; oversized mixed-test exceptions must be justified
+- a clean-commit Developer handoff, clean-commit Reviewer/QA gate, residual ledger, and worktree retirement plan
+- task/plan/evidence commit ownership so governance files do not remain ambient residuals
+
 If not ready:
 
 - keep it as `proposed` or `planned`
@@ -70,6 +81,8 @@ Planner must not:
 - silently execute Developer, Reviewer, QA, or Integrator work
 - approve a proposed/planned lane without explicit user approval and Definition of Ready
 - rely on chat memory over board/evidence files
+- approve two active lanes that edit the same shared file in different hunks
+- treat separate Codex threads as branch/worktree isolation
 
 ## Stop Conditions
 
