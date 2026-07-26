@@ -2,10 +2,10 @@
 
 Date: 2026-07-26
 Role: Developer
-Status: `developer_planning_first_complete / pending Planner source-of-truth reconciliation`
+Status: `ready_for_review`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
-Implementation authorization: unauthorized
+Implementation authorization: User-authorized product/test implementation completed in lane
 
 ## Current Phase And Allowed Action
 
@@ -146,3 +146,83 @@ No implementation tests or generated-artifact commands are run during planning-f
 
 Next legal role: Planner source-of-truth reconciliation, followed by Reviewer
 implementation-readiness. Product/test implementation remains unauthorized.
+
+## Authorized Implementation Pass
+
+The Orchestrator delegation superseded the historical planning-only stop point after the
+controlled governance checkpoint `405c0c80ed93756080099b378d490ae875f7e8a6`.
+
+- Worktree: `C:\Users\White\.codex\worktrees\705b\connlab`
+- Branch: `lane/task-367a-matrix-editor-live-xlsx-export`
+- Base/HEAD before implementation: `405c0c80ed93756080099b378d490ae875f7e8a6`
+- Isolation at start: clean branch/index; primary worktree not edited
+- Stage/commit/push: intentionally not performed per delegation
+
+### Changed Product Paths
+
+- `backend/api/main.py`, exact router import/include
+- `backend/api/dependencies_matrix_editor_live_xlsx_export.py`
+- `backend/api/routes_matrix_editor_live_xlsx_export.py`
+- `backend/application/matrix_editor_live_xlsx_export_service.py`
+- `backend/infrastructure/office/matrix_editor_live_xlsx_workbook_gateway.py`
+- `frontend/src/api/client.ts`, exact DTO/download wrapper
+- `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`, exact live-state wiring
+- `frontend/src/features/matrix-editor/matrixEditorXlsxExportProjection.ts`
+- `frontend/src/features/matrix-editor/useMatrixEditorXlsxExport.ts`
+- `frontend/src/features/matrix-editor/MatrixEditorXlsxExportButton.tsx`
+
+No CSS change was needed. Existing wrapping action layout passed the controlled 514 px gate.
+`projectIdentity.ts`, `MatrixEditorWorkspace.test.tsx`, persistence, Confirm Matrix, autosave,
+CAS, Test Record product code, Settings, desktop/native paths, schema/database, output
+registration, and external workbook paths remain unchanged.
+
+### Changed Test Paths
+
+- `tests/unit/test_matrix_editor_live_xlsx_export_service.py`
+- `tests/unit/test_matrix_editor_live_xlsx_workbook_gateway.py`
+- `tests/integration/test_matrix_editor_live_xlsx_export_api.py`
+- `frontend/src/features/matrix-editor/matrixEditorXlsxExportProjection.test.ts`
+- `frontend/src/features/matrix-editor/useMatrixEditorXlsxExport.test.tsx`
+- `frontend/src/features/matrix-editor/MatrixEditorXlsxExportButton.test.tsx`
+
+### TDD Evidence
+
+Backend RED failed at collection because the service/gateway modules did not exist. Backend
+GREEN passed `10` focused tests. Frontend RED first failed because Vitest dependencies were not
+available in this isolated worktree; after locked dependency installation, the new modules
+were exercised and GREEN passed `5` focused tests. A read-only workspace regression initially
+exposed an old complete-module mock that lacked the new API export; production hook dependency
+resolution was deferred until click without editing the locked oversized test, then the exact
+workspace/new-feature gate passed `49/49`.
+
+### Fresh Validation
+
+- backend feature plus Matrix session/Test Record regressions: `24 passed`
+- exact new backend modules plus `backend/api/main.py`: `py_compile` passed
+- focused frontend workspace/new feature: `4 files / 49 tests` passed
+- full frontend suite: exit `0`
+- frontend `tsc -b && vite build`: passed; existing >500 kB chunk warning only
+- browser smoke at `1280x720`: actions width `279.109375`, page horizontal overflow `false`
+- browser smoke at `514x760`: actions left/right `181.890625/461`, page horizontal overflow
+  `false`; Import Matrix, 导出 Matrix, and Test record remained adjacent and enabled
+- browser DOM: one uniquely named `导出 Matrix` native button; keyboard focus reached it;
+  console error/warning log remained empty during the controlled layout smoke
+- `git diff --check`: passed; only existing LF/CRLF notices on tracked exact-hunk surfaces
+- new production/test line budgets: all passed (`13..165` production, `15..95` tests)
+- forbidden runtime reference/save/confirm/direct-fetch scan on new bounded modules: no match
+
+### Developer Self-Review
+
+- Frontend calls only the typed API client; openpyxl remains behind the infrastructure gateway.
+- Application validation completes before `gateway.render()`.
+- Empty/oversized/nonqualifying/duplicate/nonrectangular requests return typed `422`; no
+  workbook bytes exist before validation succeeds.
+- The workbook is created in `BytesIO`, uses no external template, and has true blank Fee cells.
+- Time remains the page-generated display string; backend does not parse or recompute it.
+- Availability priority is lifecycle, busy, no Group, existing step error, no qualifying row.
+- No autosave/CAS/save/confirm state participates in export availability.
+- No TODO, hard-coded operator path, direct filesystem write, database access, or hidden
+  exception was introduced.
+
+Next legal role: Reviewer implementation gate. QA and Integrator are not routed from this
+Developer stop point.

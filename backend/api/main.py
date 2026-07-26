@@ -89,6 +89,9 @@ from backend.api.routes_matrix_method_version_sync import (
 from backend.api.routes_matrix_editor_test_record_generation import (
     router as matrix_editor_test_record_generation_router,
 )
+from backend.api.routes_matrix_editor_live_xlsx_export import (
+    router as matrix_editor_live_xlsx_export_router,
+)
 from backend.api.routes_project_output_records import (
     router as project_output_records_router,
 )
@@ -182,6 +185,7 @@ app.include_router(confirmed_matrix_active_snapshot_router)
 app.include_router(matrix_editor_session_router)
 app.include_router(matrix_method_version_sync_router)
 app.include_router(matrix_editor_test_record_generation_router)
+app.include_router(matrix_editor_live_xlsx_export_router)
 app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)

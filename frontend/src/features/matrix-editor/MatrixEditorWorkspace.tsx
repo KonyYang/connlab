@@ -1,6 +1,6 @@
 ﻿import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactElement } from "react";
 import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
-import { buildProjectIdentityLine } from "../projectIdentity";
+import { buildProjectIdentityLine, deriveProjectReference } from "../projectIdentity";
 import {
   deriveProjectLifecycleReadonlyView,
   deriveReadonlyApiErrorMessage,
@@ -35,6 +35,12 @@ import {
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
+import { MatrixEditorXlsxExportButton } from "./MatrixEditorXlsxExportButton";
+import {
+  buildMatrixEditorXlsxExportRequest,
+  getMatrixEditorXlsxExportDisabledReason,
+} from "./matrixEditorXlsxExportProjection";
+import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
@@ -2476,6 +2482,31 @@ export function MatrixEditorWorkspace({
     })),
     schedulePlan
   );
+  const matrixXlsxExport = useMatrixEditorXlsxExport(projectId);
+  const matrixXlsxExportRequest = buildMatrixEditorXlsxExportRequest({
+    projectReference: deriveProjectReference({
+      latestLtr: model.latestLtr,
+      projectNo: model.project?.project_no,
+      projectId: model.project?.project_id ?? projectId,
+    }),
+    groups: groupColumns,
+    rows: editableRows,
+    sampleValues,
+    timeDisplays: Object.fromEntries(
+      groupColumns.map((group) => [
+        group.id,
+        `${formatPlanningDays(scheduleCalculation.groupDays[group.id] ?? 0)} d`,
+      ])
+    ),
+  });
+  const matrixXlsxExportDisabledReason = getMatrixEditorXlsxExportDisabledReason({
+    lifecycleMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : "",
+    busy: matrixXlsxExport.busy,
+    selectedGroupCount: matrixXlsxExportRequest.groups.length,
+    hasStepError: hasStepTokenError,
+    stepErrorMessage: stepTokenErrorMessage,
+    qualifyingRowCount: matrixXlsxExportRequest.rows.length,
+  });
   const hasSchedulePlanningError = !scheduleCalculation.isValid;
   const schedulePlanningErrorMessage =
     Object.values(scheduleCalculation.rowErrors)[0] ??
@@ -3393,6 +3424,15 @@ export function MatrixEditorWorkspace({
           >
             Import Matrix
           </button>
+          <MatrixEditorXlsxExportButton
+            disabledReason={matrixXlsxExportDisabledReason}
+            busy={matrixXlsxExport.busy}
+            onExport={() => {
+              if (!matrixXlsxExportDisabledReason) {
+                void matrixXlsxExport.exportSnapshot(matrixXlsxExportRequest);
+              }
+            }}
+          />
           <button
             type="button"
             disabled={
@@ -3420,6 +3460,16 @@ export function MatrixEditorWorkspace({
           }`}
         >
           {testRecordMessage}
+        </section>
+      ) : null}
+      {matrixXlsxExport.error || matrixXlsxExport.message ? (
+        <section
+          className={`matrix-editor-save-status${
+            matrixXlsxExport.error ? " matrix-editor-save-status-error" : ""
+          }`}
+          role="status"
+        >
+          {matrixXlsxExport.error || matrixXlsxExport.message}
         </section>
       ) : null}
       <input

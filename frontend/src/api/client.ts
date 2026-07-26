@@ -1741,6 +1741,27 @@ export type MatrixEditorTestRecordDraftRequest = {
   rows: MatrixEditorTestRecordDraftRowRequest[];
 };
 
+export type MatrixEditorLiveXlsxExportRequest = {
+  source: "matrix_editor_current_ui_state";
+  project_reference: string;
+  groups: Array<{
+    group_id: string;
+    group_key: string;
+    group_label: string;
+    sample_size: string;
+    time_display: string;
+  }>;
+  rows: Array<{
+    row_id: string;
+    test_item: string;
+    section: string;
+    test_method: string;
+    condition: string;
+    requirement: string;
+    cells: Array<{ group_id: string; step_text: string }>;
+  }>;
+};
+
 export type ConfirmProjectMatrixRevisionDraftInput = {
   confirmed_by: string;
   superseded_reason?: string | null;
@@ -4484,6 +4505,20 @@ export function generateMatrixEditorTestRecordDraftDownload(
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-draft/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function exportMatrixEditorLiveXlsx(
+  projectId: string,
+  input: MatrixEditorLiveXlsxExportRequest
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/live-xlsx-export`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
