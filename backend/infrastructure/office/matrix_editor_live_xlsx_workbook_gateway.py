@@ -25,21 +25,34 @@ class MatrixEditorLiveXlsxWorkbookGateway:
             *(group.group_label for group in projection.groups), "Notes",
         ]
         sheet.append(headers)
+        for column in range(6, 6 + len(projection.groups)):
+            self._literalize(sheet.cell(1, column))
         for row in projection.rows:
             sheet.append([
                 row.test_item, row.section, row.test_method, row.condition,
                 row.requirement, *(cell.step_text for cell in row.cells), None,
             ])
+            for column in range(1, 6 + len(projection.groups)):
+                self._literalize(sheet.cell(sheet.max_row, column))
         for label, values in (
             ("Sample size", [group.sample_size or None for group in projection.groups]),
             ("Time", [group.time_display or None for group in projection.groups]),
             ("Fee", [None for _ in projection.groups]),
         ):
             sheet.append([label, None, None, None, None, *values, None])
+            if label != "Fee":
+                for column in range(6, 6 + len(projection.groups)):
+                    self._literalize(sheet.cell(sheet.max_row, column))
         self._format(sheet)
         stream = BytesIO()
         workbook.save(stream)
         return stream.getvalue()
+
+    @staticmethod
+    def _literalize(cell) -> None:
+        """Keep user-editable text from being interpreted as an Excel formula."""
+        if isinstance(cell.value, str):
+            cell.data_type = "s"
 
     @staticmethod
     def _format(sheet) -> None:

@@ -226,3 +226,26 @@ workspace/new-feature gate passed `49/49`.
 
 Next legal role: Reviewer implementation gate. QA and Integrator are not routed from this
 Developer stop point.
+
+## Reviewer Blocking Fix Pass: Formula Literalization
+
+Reviewer found that openpyxl interpreted user-editable values beginning with `=` as formulas.
+The bounded fix changes only the existing XLSX gateway and its existing unit test:
+
+- dynamic Group headers, row fields, step cells, Sample size, and Time strings are explicitly
+  serialized with Excel string data type;
+- their original visible text is unchanged and no apostrophe is added;
+- `None` values and every non-label Fee cell remain true blanks;
+- fixed workbook labels and all frontend/DTO/projection behavior remain unchanged.
+
+TDD evidence:
+
+- RED: the new formula-shaped input test failed because reloaded cells had `data_type == "f"`;
+- GREEN: gateway test `2 passed`;
+- regression: backend feature plus Matrix session/Test Record gates `25 passed`;
+- frontend exact workspace/new-feature gate `49 passed`;
+- exact backend `py_compile` passed;
+- frontend TypeScript/Vite build passed with only the existing chunk-size warning.
+
+This fix pass is prepared for a second clean local lane checkpoint. No push, primary edit,
+QA routing, or Integrator routing is authorized.

@@ -38,3 +38,32 @@ def test_workbook_gateway_writes_reference_layout_and_true_blank_fee_cells():
     assert all(sheet.cell(5, column).value is None for column in range(2, 8))
     assert sheet["A1"].fill.fgColor.rgb == "00CCCCCC"
     assert workbook.defined_names == {}
+
+
+def test_workbook_gateway_literalizes_formula_shaped_dynamic_text():
+    formula = '=HYPERLINK("https://example.invalid","click")'
+    projection = MatrixEditorLiveXlsxExportProjection(
+        groups=(MatrixEditorLiveXlsxExportGroup("g1", "G1", formula, formula, "=2+2"),),
+        rows=(
+            MatrixEditorLiveXlsxExportRow(
+                "r1", formula, "=1+1", "=SUM(1,2)", "=NOW()", "=A1",
+                (MatrixEditorLiveXlsxExportCell("g1", formula),),
+            ),
+        ),
+    )
+    content = MatrixEditorLiveXlsxWorkbookGateway().render(projection)
+    workbook = load_workbook(BytesIO(content), data_only=False)
+    sheet = workbook["Sheet"]
+    dynamic_cells = [
+        sheet["F1"], sheet["A2"], sheet["B2"], sheet["C2"], sheet["D2"],
+        sheet["E2"], sheet["F2"], sheet["F3"], sheet["F4"],
+    ]
+    assert [cell.value for cell in dynamic_cells] == [
+        formula, formula, "=1+1", "=SUM(1,2)", "=NOW()", "=A1",
+        formula, formula, "=2+2",
+    ]
+    assert all(cell.data_type != "f" for cell in dynamic_cells)
+    assert all(cell.hyperlink is None for row in sheet.iter_rows() for cell in row)
+    assert workbook.defined_names == {}
+    assert workbook._external_links == []
+    assert all(sheet.cell(5, column).value is None for column in range(2, 8))
