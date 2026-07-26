@@ -1,20 +1,21 @@
 # TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT
 
-Status: implementation authorized / pending controlled docs-only governance checkpoint
+Status: complete / accepted
 Lane: `matrix-editor-live-xlsx-export`
-Owner role: Planner / Orchestrator governance checkpoint
-Implementation authorization: authorized; execution blocked pending governance checkpoint and clean-primary gate
+Owner role: Planner / Developer / Reviewer / QA / Integrator
+Implementation authorization: complete; accepted lane HEAD `53840b42ea73358c31fe40c5225646363d485829` integrated into local `master`
 Date: 2026-07-26
 
 ## Current Phase / Why Allowed
 
 - Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
-- Current work: Planner final source-of-truth reconciliation after Reviewer
-  implementation-readiness pass.
-- Why allowed: Reviewer passed implementation-readiness and the User explicitly approved
-  TASK_367A product/test implementation.
-- This Planner pass remains docs-only. Product/test edits and implementation worktree creation
-  must wait for the controlled governance checkpoint and clean-primary verification.
+- Current work: Integrator acceptance and governance closeout complete.
+- Why allowed: Developer delivered a clean lane checkpoint, Reviewer implementation re-gate
+  passed, and QA validated reviewed commit
+  `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
+- The accepted three-commit lane chain was fast-forwarded from base
+  `405c0c80ed93756080099b378d490ae875f7e8a6` to
+  `53840b42ea73358c31fe40c5225646363d485829`.
 
 ## Frozen Implementation-Readiness Contract
 
@@ -215,37 +216,28 @@ The existing 1934-line `MatrixEditorWorkspace.test.tsx` is read-only and only re
    no overlap/overflow, clean console, successful download, and typed error.
 7. Clean worktree/package whitelist, diff/trailing, line budgets, no-real-data, and staging checks.
 
-## Future Worktree / Branch Plan
+## Integrated Worktree / Branch State
 
-Reviewer implementation-readiness and explicit User product/test implementation approval are
-complete. Before implementation:
-
-- first assemble and create a controlled local docs-only governance checkpoint containing the
-  approved task/plan/evidence/board state;
-- verify the primary worktree and index are clean;
-- only then may Orchestrator create or reuse branch
-  `lane/task-367a-matrix-editor-live-xlsx-export` and sibling worktree
-  `D:\PythonProject\connlab-task-367a-matrix-editor-live-xlsx-export`;
-- base is the then-current accepted `master`;
-- primary remains Planner/Integrator only;
-- Reviewer reviews base-to-lane HEAD, QA validates the reviewed clean commit, and Integrator
-  records residual ownership.
-
-No implementation worktree is created before the controlled governance checkpoint and clean
-primary verification.
+- Branch: `lane/task-367a-matrix-editor-live-xlsx-export`.
+- Worktree: `C:\Users\White\.codex\worktrees\705b\connlab`.
+- Base: `405c0c80ed93756080099b378d490ae875f7e8a6`.
+- Reviewed implementation commit: `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
+- Accepted lane HEAD: `53840b42ea73358c31fe40c5225646363d485829`.
+- The lane worktree and index were clean at integration. The worktree and branch remain in
+  place because this gate did not authorize deletion or cleanup.
 
 ## Rollback
 
 Remove the new bounded route/service/gateway/frontend/tests and exact wiring hunks. There is no
 data migration, persistent artifact, or authority rollback.
 
-## Definition Of Ready / Stop Point
+## Completion / Stop Point
 
 The selected-Group/row rules, exact Time display mapping, browser delivery, reference layout,
-live-state ownership, zero-write boundary, candidate architecture, locks, tests, rollback, and
-worktree plan are repository-backed. Definition of Ready is complete for plan review.
+live-state ownership, zero-write boundary, package locks, tests, and rollback are implemented
+and validated. Integrator reran backend `11 + 15`, frontend `4 files / 49 tests`, `py_compile`,
+and the frontend build. QA additionally recorded the full frontend `115 files / 389 tests` and
+controlled desktop/514 px browser smoke.
 
-Stop after this final source-of-truth reconciliation and route the exact docs-only governance
-checkpoint package gate. Product/test implementation is authorized but cannot start, and no
-implementation worktree may be created, until the governance checkpoint exists and the primary
-worktree/index are clean.
+TASK_367A is complete/accepted locally. Remote push was intentionally not performed. No later
+lane is activated automatically.
