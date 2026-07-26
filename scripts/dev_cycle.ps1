@@ -17,41 +17,21 @@ if ($MaxFixAttempts -lt 0) {
 }
 
 Write-Host "===================================="
-Write-Host " ConnLab Dev Cycle"
+Write-Host " ConnLab Orchestrated Task Cycle"
 Write-Host " Task: $task"
-Write-Host " Max Fix Attempts: $MaxFixAttempts"
 Write-Host "===================================="
 
-& ".\scripts\run_task.ps1" $task
+if ($MaxFixAttempts -ne 3) {
+    Write-Host "MaxFixAttempts is retained for CLI compatibility but is no longer used."
+    Write-Host "Developer/Reviewer fix passes now run inside the isolated lane workflow."
+}
+
+& ".\scripts\run_task.ps1" -Task $task
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ run_task failed or was blocked."
     exit $LASTEXITCODE
 }
 
-& ".\scripts\run_tests.ps1"
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Dev cycle completed without auto-fix."
-    exit 0
-}
-
-for ($attempt = 1; $attempt -le $MaxFixAttempts; $attempt++) {
-    Write-Host "------------------------------------"
-    Write-Host " Auto-fix attempt $attempt / $MaxFixAttempts"
-    Write-Host "------------------------------------"
-
-    & ".\scripts\fix_tests.ps1" $task
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ fix_tests failed or was blocked."
-        exit $LASTEXITCODE
-    }
-
-    & ".\scripts\run_tests.ps1"
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Dev cycle completed after auto-fix."
-        exit 0
-    }
-}
-
-Write-Host "❌ Dev cycle stopped after $MaxFixAttempts auto-fix attempts."
-Write-Host "Please review logs/pytest_last.log and the latest code changes before continuing."
-exit 1
+Write-Host "✅ Orchestrated task cycle returned successfully."
+Write-Host "Validation and bounded fix passes are owned by the lane worktree role chain."
+exit 0

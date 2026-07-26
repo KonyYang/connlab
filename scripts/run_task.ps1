@@ -1,73 +1,86 @@
+[CmdletBinding()]
 param(
-    [string]$task
+    [Parameter(Mandatory = $true)]
+    [string]$Task,
+
+    [switch]$Preview
 )
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 . "$PSScriptRoot\_codex_runtime.ps1"
 
-Write-Host "===================================="
-Write-Host " Running Task: $task"
-Write-Host "===================================="
-
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
 $taskBoard = "docs/task_board.md"
-$taskFile = "tasks/$task.md"
+$taskFile = "tasks/$Task.md"
 
-if (!(Test-Path $taskBoard)) {
-    Write-Host "❌ Task board not found: $taskBoard"
-    exit 1
+Push-Location $repoRoot
+try {
+    if (-not (Test-Path -LiteralPath $taskBoard -PathType Leaf)) {
+        throw "Task board not found: $taskBoard"
+    }
+    if (-not (Test-Path -LiteralPath $taskFile -PathType Leaf)) {
+        throw "Task file not found: $taskFile"
+    }
+
+    $head = (& git rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not resolve repository HEAD."
+    }
+    $branch = (& git branch --show-current).Trim()
+    $statusCount = @(git status --porcelain=v1 --untracked-files=all).Count
+    $indexCount = @(git diff --cached --name-only).Count
+    $worktreeSnapshot = (git worktree list --porcelain | Out-String).Trim()
+
+    $prompt = @(
+        "User command: execute $Task."
+        ""
+        "Treat this as the ConnLab default execute-task trigger."
+        "The user does not need to repeat worktree/branch setup or continuation to Integrator."
+        ""
+        "Read and obey, in order:"
+        "1. AGENTS.md"
+        "2. $taskBoard"
+        "3. $taskFile"
+        "4. docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md"
+        "5. docs/project_management/PARALLEL_EXECUTION_MODEL.md"
+        "6. docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md"
+        "7. docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md"
+        "8. .agents/skills/connlab-lane-orchestrator/SKILL.md"
+        ""
+        "Current repository snapshot:"
+        "- invoking branch: $branch"
+        "- HEAD: $head"
+        "- worktree status entries: $statusCount"
+        "- staged entries: $indexCount"
+        "- git worktrees:"
+        $worktreeSnapshot
+        ""
+        "Required orchestration behavior:"
+        "1. Re-read board/task/plan/evidence, role-thread state when available, and git worktree state."
+        "2. If this TASK already has a valid lane worktree, resume it; never create a duplicate."
+        "3. Compare shared files, authority paths, and Locked Paths with every active lane."
+        "4. If ownership overlaps, serialize/queue and report the blocker. Different worktrees do not make shared ownership safe."
+        "5. If planning or implementation approval is missing, route the smallest required Planner/User gate first."
+        "6. For approved product/tests-only implementation, create an isolated lane/* branch and sibling worktree automatically, even when no other task is active."
+        "7. Keep the primary master worktree for planning/integration only."
+        "8. Continue normal Developer/Reviewer/QA/fix/reconciliation gates automatically through local Integrator acceptance."
+        "9. Require clean lane commits, clean Reviewer/QA inputs, an exact residual ledger, and clean non-force worktree retirement."
+        "10. Never run git add -A, force-remove a worktree, discard changes, or push remote."
+        ""
+        "Stop only for missing explicit approval, scope/product-contract change, shared-path conflict, ambiguous test failure, destructive discard, or unauthorized merge/push."
+        "Perform only the next legal routing action per callback, but keep the task-level Goal active until local Integrator acceptance."
+    ) -join "`n"
+
+    if ($Preview) {
+        Write-Output $prompt
+        exit 0
+    }
+
+    $exitCode = Invoke-CodexCli -Prompt $prompt
+    exit $exitCode
 }
-
-if (!(Test-Path $taskFile)) {
-    Write-Host "❌ Task file not found: $taskFile"
-    exit 1
+finally {
+    Pop-Location
 }
-
-$taskBoardContent = Get-Content $taskBoard -Encoding UTF8 -Raw
-$activeTaskMatch = [regex]::Match($taskBoardContent, 'Current Active Task:\s*`([^`]+)`')
-$phaseMatch = [regex]::Match($taskBoardContent, 'Current Phase:\s*`([^`]+)`')
-
-if (!$activeTaskMatch.Success) {
-    Write-Host "❌ Could not determine current active task from $taskBoard"
-    exit 1
-}
-
-$activeTask = $activeTaskMatch.Groups[1].Value
-$currentPhase = if ($phaseMatch.Success) { $phaseMatch.Groups[1].Value } else { "Unknown Phase" }
-
-if ($task -ne $activeTask) {
-    Write-Host "❌ Task mismatch"
-    Write-Host "Requested: $task"
-    Write-Host "Active from board: $activeTask"
-    Write-Host "Read $taskBoard and execute only the current active task."
-    exit 1
-}
-
-$prompt = @(
-    "Read and obey documents in this order before acting:"
-    "1. AGENTS.md"
-    "2. $taskBoard"
-    "3. $taskFile"
-    ""
-    "Must follow:"
-    "- AGENTS.md"
-    "- docs/task_board.md"
-    "- docs/project_management/TASK_EXECUTION_SKILL.md"
-    "- docs/project_management/TASK_REVIEW_CHECKLIST.md"
-    "- docs/project_management/TESTING_SKILL.md"
-    ""
-    "Current phase: $currentPhase"
-    "Current active task: $activeTask"
-    ""
-    "Requirements:"
-    "1. State the current phase, task ID, and why this task is allowed now."
-    "2. Output a design plan first."
-    "3. Then write code."
-    "4. Add or update pytest tests."
-    "5. Run relevant tests."
-    "6. Update docs/task_board.md after completion."
-    "7. Provide run instructions."
-    "8. Do not move to the next task."
-) -join "`n"
-
-$exitCode = Invoke-CodexCli -Prompt $prompt
-exit $exitCode

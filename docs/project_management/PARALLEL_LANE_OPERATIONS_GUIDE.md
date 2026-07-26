@@ -176,26 +176,50 @@ Do not request a new human approval for every small hunk when it remains inside 
 
 The operator should not need to run Git worktree or branch commands.
 
-Expected user command:
+Default user command:
 
 ```text
-启动 TASK_XXX，并按受控并行模式持续推进到本地 Integrator acceptance。
+执行 TASK_XXX
 ```
+
+The operator does not need to append "create a worktree", "check other tasks", or "continue to Integrator". For an explicit execute/start/implement command, those are default orchestration semantics.
 
 Codex must then:
 
-1. run Planner Discovery and freeze file ownership
-2. commit approved planning/governance state in the primary worktree
-3. create the lane branch/worktree with `scripts/connlab_lane_worktree.ps1`
-4. route Developer to the exact worktree
-5. require a clean local lane checkpoint commit
-6. route Reviewer and QA against that commit
-7. integrate only the reviewed commit
-8. record and resolve the residual ledger
-9. retire the clean integrated worktree
-10. report local/remote commit status
+1. re-read the board, task, plan, evidence, registered role threads, and `git worktree list`
+2. resume the existing task worktree when the task is already active; never create a duplicate
+3. inspect every other active lane's shared-file and authority-path locks
+4. serialize the task when locks overlap; do not pretend worktree isolation makes shared ownership safe
+5. run Planner Discovery and required approval gates when the task is not implementation-ready
+6. commit approved planning/governance state in the primary worktree
+7. create the lane branch/worktree with `scripts/connlab_lane_worktree.ps1`
+8. route Developer to the exact worktree
+9. require a clean local lane checkpoint commit
+10. route Reviewer and QA against that commit
+11. integrate only the reviewed commit
+12. record and resolve the residual ledger
+13. retire the clean integrated worktree
+14. report local/remote commit status
 
 The operator may ask for status or change direction, but does not need to remember Git syntax.
+
+The equivalent local CLI entry is:
+
+```powershell
+.\scripts\run_task.ps1 -Task TASK_XXX
+```
+
+`run_task.ps1` starts orchestration. It does not implement directly in the primary worktree. The legacy `dev_cycle.ps1` delegates to the same entry and no longer runs broad auto-fix passes in `master`.
+
+This default applies to product and tests-only implementation lanes even when no other task is currently active. Always isolating implementation avoids relying on potentially stale thread-presence detection. Planner-only discovery may remain in the clean primary worktree until implementation is approved.
+
+Automatic continuation stops only for:
+
+- missing user approval required by the frozen task contract
+- shared-path/authority ownership conflict that requires serialization or re-scope
+- ambiguous product behavior or unexplained test failure
+- destructive discard
+- merge or remote push outside the existing authorization
 
 ## 5. Agent-Only Worktree Commands
 

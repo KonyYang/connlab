@@ -374,6 +374,16 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 - `scripts/connlab_lane_worktree.ps1`
 - `scripts/task_complete_commit.ps1`
 
+默认任务启动语义：
+
+- 当用户明确说“执行 TASK_XXX”“启动 TASK_XXX”或“实施 TASK_XXX”时，默认进入受控全自动编排；用户不需要重复说明 worktree/branch 或“持续到 Integrator”。
+- Orchestrator 必须先重新读取 board/task/plan/evidence、角色线程状态和 `git worktree list`，不得仅凭聊天记忆判断是否已有任务在执行。
+- 若同一 TASK 已有 worktree，必须复用并续跑，禁止创建重复 branch/worktree。
+- 若其他 lane 正在执行，先比较 `Locked Paths`、shared files 和 authority ownership：无重叠才可并行；有重叠则自动排队/串行，不得靠不同 worktree 绕过所有权冲突。
+- product/tests-only implementation 即使当前没有其他任务，也默认使用独立 lane worktree；primary worktree 继续只承担 planning/integration。
+- 在用户已批准的 task/Goal 范围内，自动持续到本地 Integrator acceptance，并自动完成普通 Reviewer/QA/fix/reconciliation/local-commit/worktree-retire 接力。
+- 只有缺少正式批准、范围/行为变化、shared ownership 冲突、无法解释的测试失败、destructive discard 或未授权 merge/push 才暂停找用户。
+
 绝对禁止：
 
 - `git add -A`

@@ -1,6 +1,6 @@
 ---
 name: connlab-lane-orchestrator
-description: Orchestrate ConnLab approved task lanes across role-specific Codex threads. Use when the user asks to 自动推进, 自动接力, 编排, orchestrate, hand off, route Planner/Developer/Reviewer/QA/Integrator work, advance an approved TASK lane, or reduce manual role-to-role prompting in ConnLab.
+description: Orchestrate ConnLab task lanes across role-specific Codex threads. Use when the user asks to 执行/启动/实施 TASK, 自动推进, 自动接力, 编排, orchestrate, hand off, route Planner/Developer/Reviewer/QA/Integrator work, advance a TASK lane, or reduce manual role-to-role prompting in ConnLab.
 ---
 
 # ConnLab Lane Orchestrator
@@ -8,6 +8,18 @@ description: Orchestrate ConnLab approved task lanes across role-specific Codex 
 ## Purpose
 
 Use this skill to turn ConnLab's controlled parallel model into a repeatable handoff workflow. The orchestrator does not replace Planner, Developer, Reviewer, QA, or Integrator authority; it reads the board/evidence, decides the next valid role, and sends that role a standard prompt.
+
+## Default Execute-Task Trigger
+
+Treat an explicit user command such as `执行 TASK_XXX`, `启动 TASK_XXX`, or `实施 TASK_XXX` as a request to:
+
+1. scan authoritative task/lane/worktree/thread state
+2. prepare or resume the isolated lane environment
+3. continue the approved role chain through local Integrator acceptance
+
+The user does not need to repeat "create a worktree/branch" or "continue to Integrator".
+
+This trigger does not invent missing approval. If the task is not planned/approved for the requested implementation, route the smallest required Planner/User gate first and then resume automatically after authorization.
 
 ## Required Context
 
@@ -43,19 +55,23 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 ## Orchestration Loop
 
 1. Identify the lane from the user's request or from `docs/task_board.md`.
-2. Verify lane readiness: formal task file, approved status, concrete branch/worktree, evidence path, validation gate, merge gate, and exclusive shared-path ownership.
-3. If implementation is approved but the worktree does not yet exist, verify the primary worktree is clean and create it with `scripts/connlab_lane_worktree.ps1`. Record branch, path, and base commit before routing Developer.
-4. Determine next role:
+2. Re-read board/task/plan/evidence, registered role thread status, and `git worktree list`; do not infer active execution from chat presence alone.
+3. If the same task already has a worktree, verify its branch/base/owner and resume it. Never create a duplicate lane worktree.
+4. Compare the requested lane's shared files, authority paths, and `Locked Paths` with every active lane. If ownership overlaps, queue/serialize or return to Planner; never claim parallel safety merely because the worktrees differ.
+5. Verify lane readiness: formal task file, approved status, concrete branch/worktree plan, evidence path, validation gate, merge gate, and exclusive shared-path ownership.
+6. If implementation is approved but the worktree does not yet exist, verify the primary worktree is clean and create it with `scripts/connlab_lane_worktree.ps1`. Record branch, path, and base commit before routing Developer.
+7. Determine next role:
    - `approved` -> Developer
    - `in_progress` with developer evidence `ready_for_review` -> Reviewer
    - Reviewer evidence has blocking findings -> Developer fix pass
    - Reviewer evidence `pass` and QA required -> QA
    - Reviewer/QA gates passed -> Integrator
    - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
-5. Send one standard prompt to the next role thread, including the exact worktree path and reviewed commit when applicable.
-6. Ask the target role to update its evidence file and stop at its declared gate.
-7. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
-8. After Integrator acceptance, require an exact residual ledger and retire only a clean, integrated worktree.
+8. Send one standard prompt to the next role thread, including the exact worktree path and reviewed commit when applicable.
+9. Ask the target role to update its evidence file and stop at its declared gate.
+10. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
+11. Continue normal approved gates automatically until local Integrator acceptance.
+12. After Integrator acceptance, require an exact residual ledger and retire only a clean, integrated worktree.
 
 Run at most one full Developer->Reviewer->Developer-fix cycle without asking the user for confirmation. Continue beyond that only when the user explicitly requests automatic continuation.
 

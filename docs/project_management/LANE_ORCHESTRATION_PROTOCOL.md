@@ -46,7 +46,15 @@ The orchestrator must not:
 
 ## 4. Orchestrator Command Examples
 
-Use these commands in the Orchestrator/Planner conversation:
+The normal operator command is:
+
+```text
+执行 TASK_XXX
+```
+
+This automatically means: scan current lanes/worktrees, reuse an existing task worktree or create an isolated one after readiness checks, enforce shared-path ownership, and continue approved gates through local Integrator acceptance. The operator does not need to describe Git mechanics.
+
+Additional controls in the Orchestrator/Planner conversation:
 
 ```text
 自动推进 TASK_337A。只按 board/evidence 判断下一角色，不扩大范围。
@@ -59,6 +67,15 @@ Use these commands in the Orchestrator/Planner conversation:
 ```text
 检查 TASK_337B 的 Reviewer 结论。如果通过，生成 Integrator 合并命令并发送到集成负责人线程。
 ```
+
+Before acting on the default command, the orchestrator must distinguish:
+
+- same task already active: resume its existing worktree
+- another independent lane active: create/resume a separate worktree and run in parallel
+- another lane owns an overlapping shared file/authority path: serialize and report the queue
+- task not implementation-ready: route the required Planner/User gate, then continue after approval
+
+Product and tests-only implementation use isolated worktrees even when no other task is detected. This avoids making safety depend on thread-status freshness.
 
 ## 5. Role Thread Commands
 
