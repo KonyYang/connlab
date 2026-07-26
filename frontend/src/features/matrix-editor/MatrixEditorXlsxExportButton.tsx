@@ -18,7 +18,7 @@ export function MatrixEditorXlsxExportButton({
       title={disabledReason || undefined}
       onClick={onExport}
     >
-      {busy ? "Exporting..." : "导出 Matrix"}
+      {busy ? "Exporting..." : "Export Matrix"}
     </button>
   );
 }
