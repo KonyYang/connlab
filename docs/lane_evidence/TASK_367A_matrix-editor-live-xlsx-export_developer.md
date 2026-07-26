@@ -3,6 +3,7 @@
 Date: 2026-07-26
 Role: Developer
 Status: `ready_for_review`
+Current source-of-truth status: `complete_accepted_with_post_accept_correctives_pending_reviewer_docs_only_source_of_truth_re_gate`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
 Implementation authorization: User-authorized product/test implementation completed in lane
@@ -144,8 +145,9 @@ Recorded checks:
 
 No implementation tests or generated-artifact commands are run during planning-first.
 
-Next legal role: Planner source-of-truth reconciliation, followed by Reviewer
-implementation-readiness. Product/test implementation remains unauthorized.
+Historical planning-first route (completed): Planner source-of-truth reconciliation, followed by
+Reviewer implementation-readiness. Product/test implementation was unauthorized at that
+checkpoint and was authorized later.
 
 ## Authorized Implementation Pass
 
@@ -204,8 +206,10 @@ workspace/new-feature gate passed `49/49`.
 - frontend `tsc -b && vite build`: passed; existing >500 kB chunk warning only
 - browser smoke at `1280x720`: actions width `279.109375`, page horizontal overflow `false`
 - browser smoke at `514x760`: actions left/right `181.890625/461`, page horizontal overflow
-  `false`; Import Matrix, 导出 Matrix, and Test record remained adjacent and enabled
-- browser DOM: one uniquely named `导出 Matrix` native button; keyboard focus reached it;
+  `false`; Import Matrix, historical pre-corrective `导出 Matrix`, and Test record remained
+  adjacent and enabled
+- browser DOM: one uniquely named historical pre-corrective `导出 Matrix` native button;
+  keyboard focus reached it;
   console error/warning log remained empty during the controlled layout smoke
 - `git diff --check`: passed; only existing LF/CRLF notices on tracked exact-hunk surfaces
 - new production/test line budgets: all passed (`13..165` production, `15..95` tests)
@@ -249,3 +253,17 @@ TDD evidence:
 
 This fix pass is prepared for a second clean local lane checkpoint. No push, primary edit,
 QA routing, or Integrator routing is authorized.
+
+## Post-Accept Source Of Truth
+
+The role status and browser wording above record the historical Developer gate. Current accepted
+behavior is:
+
+- accepted lane HEAD `53840b42ea73358c31fe40c5225646363d485829`;
+- post-accept commit `f0880310f786ac98ad0f8437db02fc22cca93f08` changes the idle title to
+  `Export Matrix`, superseding the historical Chinese title;
+- post-accept commit `1c9f8fc58ca72d21e020576d5aa611a307c335c3` removes fixed row height
+  `15`, retains wrapped cells, and leaves row heights unset for automatic fitting;
+- current primary/master HEAD is
+  `1c9f8fc58ca72d21e020576d5aa611a307c335c3`;
+- no further Developer action is routed by this docs-only reconciliation.

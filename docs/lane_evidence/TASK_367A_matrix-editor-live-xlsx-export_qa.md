@@ -3,6 +3,7 @@
 Date: 2026-07-26
 Role: QA / Smoke Owner
 Status: `qa_pass`
+Current source-of-truth status: `complete_accepted_with_post_accept_correctives_pending_reviewer_docs_only_source_of_truth_re_gate`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
 Reviewed base: `405c0c80ed93756080099b378d490ae875f7e8a6`
@@ -77,10 +78,10 @@ A temporary Vite harness imported the committed `MatrixEditorXlsxExportButton` d
 used only synthetic selected-Group/step state. It did not connect to an operator database,
 backend project, or real file.
 
-- Desktop `1280x800`: one enabled native `导出 Matrix` button appeared between Import Matrix and
-  Test record in the Matrix action region; pointer activation incremented the controlled export
-  signal once; `scrollWidth == clientWidth == 1280`; application console error/warning log was
-  empty.
+- Desktop `1280x800`: one enabled native historical pre-corrective `导出 Matrix` button appeared
+  between Import Matrix and Test record in the Matrix action region; pointer activation
+  incremented the controlled export signal once; `scrollWidth == clientWidth == 1280`;
+  application console error/warning log was empty.
 - Narrow `514x831`: the action buttons wrapped to readable full-width rows; no horizontal
   overflow (`scrollWidth == clientWidth == 514`), overlap, or text clipping was observed; the
   export button received visible focus and the application console error/warning log was empty.
@@ -103,5 +104,16 @@ backend project, or real file.
 
 `QA gate: pass`
 
-Recommended next role: `Integrator packaging/readiness`, staging only the reviewed 17-path
-commit package and excluding all external residuals.
+Historical recommended next role (completed): `Integrator packaging/readiness`, staging only the
+reviewed 17-path commit package and excluding all external residuals.
+
+## Post-Accept Source Of Truth
+
+The smoke result above remains valid historical QA evidence for placement, native-button
+semantics, and responsive layout. Its visible title is superseded by post-accept commit
+`f0880310f786ac98ad0f8437db02fc22cca93f08`; the current title is `Export Matrix`.
+Post-accept commit `1c9f8fc58ca72d21e020576d5aa611a307c335c3` also supersedes fixed row
+height `15`: wrapped rows now keep height unset for automatic fitting. TASK_367A remains
+complete/accepted at current primary/master HEAD
+`1c9f8fc58ca72d21e020576d5aa611a307c335c3`; only Reviewer docs-only
+source-of-truth re-gate is pending.

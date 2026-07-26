@@ -2,7 +2,7 @@
 
 Date: 2026-07-26
 Role: Planner
-Status: `implementation_authorized_pending_controlled_docs_only_governance_checkpoint`
+Status: `docs_only_source_of_truth_reconciliation_complete_pending_reviewer_docs_only_source_of_truth_re_gate`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
 
@@ -14,7 +14,8 @@ accepted Test Record, Matrix import, Confirm Matrix, Fee, or project-output work
 The repository supports a narrow zero-write browser-download architecture. The User resolved
 delivery, `Time`, and row-scope decisions; Developer completed planning-first; Reviewer passed
 implementation-readiness; and the User explicitly authorized product/test implementation.
-Implementation cannot start before the controlled governance checkpoint and clean-primary gate.
+At that historical planning checkpoint, implementation could not start before the controlled
+governance checkpoint and clean-primary gate; those gates are now completed.
 
 ## Protocols And Evidence Read
 
@@ -40,7 +41,7 @@ Implementation cannot start before the controlled governance checkpoint and clea
 
 ## User-Confirmed Facts
 
-- Add `导出 Matrix` beside `Import Matrix`.
+- Add `Export Matrix` beside `Import Matrix`.
 - Export current state without Confirm Matrix.
 - Export only checked Groups, matching Test Record selection.
 - Samples Quantity maps to `Sample size`; Test Days maps to `Time`.
@@ -83,7 +84,8 @@ found:
 - fixed rows `Sample size`, `Time`, `Fee`;
 - Fee values blank;
 - gray `#CCCCCC` header/A labels, thin borders, centered wrapped Calibri 11;
-- A/B/D/E widths 20/8/20/20, row height 15;
+- A/B/D/E widths 20/8/20/20. The reference's observed row height 15 is historical only;
+  generated wrapped rows now keep height unset for automatic fitting;
 - no formula, drawing, or merge.
 
 The source was not saved, converted, copied, or modified. File size was 5262 bytes and the
@@ -131,10 +133,10 @@ Future product scope is bounded to:
 All Matrix persistence/Confirm/import/Test Record/Fee/schema/database/Settings/project-output,
 PyWebView/native Save As paths, real files, and residuals are locked.
 
-## Worktree Plan
+## Historical Worktree Plan (Completed)
 
-Developer planning-first remains governance-only in the primary worktree. Future implementation,
-after planning-first, Reviewer readiness, and explicit product/test approval:
+Developer planning-first was governance-only in the primary worktree. The approved later
+implementation sequence was:
 
 - first create a controlled local docs-only governance checkpoint and make the primary
   worktree/index clean;
@@ -152,10 +154,19 @@ after planning-first, Reviewer readiness, and explicit product/test approval:
 - No real DB/project/public-drive data was accessed.
 - No implementation worktree, stage, commit, push, cleanup, restore, or discard occurred.
 
+## Post-Accept Source Of Truth
+
+- Accepted lane HEAD:
+  `53840b42ea73358c31fe40c5225646363d485829`.
+- `f0880310f786ac98ad0f8437db02fc22cca93f08` changes the current button title to
+  `Export Matrix`; the earlier `导出 Matrix` title is a superseded historical checkpoint.
+- `1c9f8fc58ca72d21e020576d5aa611a307c335c3` leaves wrapped row heights unset for automatic
+  fitting; fixed row height `15` is superseded as an output contract.
+- Current primary/master HEAD:
+  `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
+- TASK_367A is complete/accepted; no product lane is active.
+
 ## Next Legal Role
 
-User / Orchestrator exact docs-only governance checkpoint package assembly/validation. Exact DTO/caps
-and zero-row `422`, the `deriveProjectReference()` `TMP-` fallback and filename sanitization,
-lifecycle-readonly disabled/no-request behavior, bounded tests, budgets, and package isolation
-remain frozen. Do not route Developer implementation, QA, or product integration until a local
-governance checkpoint makes the primary worktree/index clean.
+Reviewer docs-only source-of-truth re-gate only. Product/test implementation, QA, integration,
+remote push, worktree retirement, and new-lane activation are not actions in this reconciliation.

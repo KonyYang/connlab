@@ -1,10 +1,10 @@
 # TASK_367A Matrix Editor Live XLSX Export Plan
 
 Date: 2026-07-26
-Status: implementation authorized / pending controlled docs-only governance checkpoint
+Status: complete / accepted; post-accept docs-only source-of-truth reconciliation complete / pending Reviewer docs-only source-of-truth re-gate
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
-Implementation authorization: authorized; execution blocked pending governance checkpoint and clean-primary gate
+Implementation authorization: complete; accepted lane HEAD `53840b42ea73358c31fe40c5225646363d485829` plus post-accept correctives `f0880310f786ac98ad0f8437db02fc22cca93f08` and `1c9f8fc58ca72d21e020576d5aa611a307c335c3`
 
 ## 1. Purpose
 
@@ -16,7 +16,7 @@ mutating Matrix/session/project state or a source workbook.
 
 ### User-confirmed
 
-- Add `导出 Matrix` beside `Import Matrix`.
+- Add `Export Matrix` beside `Import Matrix`.
 - No Confirm Matrix prerequisite.
 - Export only checked Groups, matching `Test record`.
 - Preserve a blank-valued Fee row.
@@ -47,7 +47,9 @@ mutating Matrix/session/project state or a source workbook.
 Artifact-tool read-only inspection found one `Sheet`, range `A1:G5`, no formulas/drawings/merges,
 the seven-column one-Group header, one example test row, and fixed `Sample size`, `Time`, `Fee`
 rows. Header and A labels use gray `#CCCCCC`; cells use Calibri 11, centered/wrapped text, thin
-borders, and row height 15.
+borders, and the reference file was observed with row height 15. That observed fixed height is
+historical reference evidence only; post-accept commit `1c9f8fc5` supersedes it for generated
+output by leaving wrapped row heights unset for automatic fitting.
 
 The file was not saved, converted, copied, or modified. It is a design reference only.
 
@@ -309,7 +311,7 @@ Formatting follows the observed reference:
 - white value cells;
 - Calibri 11, center alignment, wrap text, thin borders;
 - widths A 20, B 8, D/E 20, other columns default;
-- row height 15;
+- wrapped cells with row heights unset (`None`, no custom height), allowing automatic fitting;
 - no formulas, macros, merges, drawings, links, hidden sheets, or defined names.
 
 All non-label Fee cells are `None`, not `0`, `""`, formulas, or cached values.
@@ -484,7 +486,23 @@ explicit User product/test implementation approval are complete:
 7. QA validates the reviewed clean commit in a disposable harness;
 8. Integrator accepts an exact whitelist and records residual ownership.
 
-No implementation worktree is created now.
+This sequence records the historical pre-implementation gate. That pass did not create an
+implementation worktree; the later authorized worktree is recorded below.
+
+## 12A. Post-Accept Corrective Reconciliation
+
+- Accepted lane HEAD:
+  `53840b42ea73358c31fe40c5225646363d485829`.
+- `f0880310f786ac98ad0f8437db02fc22cca93f08` supersedes the historical
+  `导出 Matrix` title with the current `Export Matrix` title.
+- `1c9f8fc58ca72d21e020576d5aa611a307c335c3` supersedes fixed row height
+  `15` with wrapped rows whose heights remain unset for viewer auto-fit.
+- Current primary/master HEAD is
+  `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
+- The implementation worktree
+  `C:\Users\White\.codex\worktrees\705b\connlab` on
+  `lane/task-367a-matrix-editor-live-xlsx-export` is clean at `53840b42`, is three commits
+  behind `master`, and has no unique commit. Worktree/branch retirement is not authorized here.
 
 ## 13. Rollback
 
@@ -493,7 +511,8 @@ There is no data or artifact cleanup.
 
 ## 14. Stop Point
 
-Reviewer implementation-readiness passed and the User authorized product/test implementation.
-Route only the controlled docs-only governance checkpoint package gate. Product/test edits,
-implementation worktree creation, QA, and product integration remain blocked until that local
-checkpoint makes the primary worktree/index clean. Remote push remains unauthorized.
+TASK_367A product/test implementation, review, QA, integration, and both post-accept correctives
+are complete. The current contract is `Export Matrix` plus automatic wrapped-row height.
+Primary and implementation worktrees are clean, the primary index is empty, and no product lane
+is active. Route only Reviewer docs-only source-of-truth re-gate. Remote push and worktree
+retirement remain unauthorized.

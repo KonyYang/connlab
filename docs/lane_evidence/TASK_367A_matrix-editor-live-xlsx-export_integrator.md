@@ -3,6 +3,7 @@
 Date: 2026-07-26
 Role: Integrator
 Status: `integrator_accepted`
+Current source-of-truth status: `complete_accepted_with_post_accept_correctives_pending_reviewer_docs_only_source_of_truth_re_gate`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
 
@@ -100,3 +101,18 @@ this gate did not authorize worktree or branch deletion.
 The local master contains the full accepted lane chain plus this exact
 QA/Integrator/task/board closeout package. Remote push was intentionally not
 performed. No later lane is activated automatically.
+
+## Post-Accept Source Of Truth
+
+The accepted lane HEAD remains
+`53840b42ea73358c31fe40c5225646363d485829`. Local `master` subsequently accepted:
+
+- `f0880310f786ac98ad0f8437db02fc22cca93f08`, which changes the current button title to
+  `Export Matrix` and supersedes historical `导出 Matrix` wording;
+- `1c9f8fc58ca72d21e020576d5aa611a307c335c3`, which removes fixed row height `15`, retains
+  wrapped cells, and leaves row heights unset for automatic fitting.
+
+Current primary/master HEAD is
+`1c9f8fc58ca72d21e020576d5aa611a307c335c3`. The retained implementation worktree is clean at
+`53840b42`, three commits behind `master`, with no unique commit. No cleanup, push, or new product
+lane is authorized; only Reviewer docs-only source-of-truth re-gate is pending.

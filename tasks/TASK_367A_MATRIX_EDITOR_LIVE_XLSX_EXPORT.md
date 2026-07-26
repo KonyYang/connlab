@@ -1,21 +1,38 @@
 # TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT
 
-Status: complete / accepted
+Status: complete / accepted; post-accept docs-only source-of-truth reconciliation complete / pending Reviewer docs-only source-of-truth re-gate
 Lane: `matrix-editor-live-xlsx-export`
 Owner role: Planner / Developer / Reviewer / QA / Integrator
-Implementation authorization: complete; accepted lane HEAD `53840b42ea73358c31fe40c5225646363d485829` integrated into local `master`
+Implementation authorization: complete; accepted lane HEAD `53840b42ea73358c31fe40c5225646363d485829` plus accepted post-accept corrective commits `f0880310f786ac98ad0f8437db02fc22cca93f08` and `1c9f8fc58ca72d21e020576d5aa611a307c335c3` are integrated into local `master`
 Date: 2026-07-26
 
 ## Current Phase / Why Allowed
 
 - Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
-- Current work: Integrator acceptance and governance closeout complete.
+- Current work: product acceptance and both post-accept corrective commits are complete; only
+  the docs-only source-of-truth re-gate remains.
 - Why allowed: Developer delivered a clean lane checkpoint, Reviewer implementation re-gate
   passed, and QA validated reviewed commit
   `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
 - The accepted three-commit lane chain was fast-forwarded from base
   `405c0c80ed93756080099b378d490ae875f7e8a6` to
   `53840b42ea73358c31fe40c5225646363d485829`.
+
+## Post-Accept Corrective Source Of Truth
+
+1. Accepted lane HEAD:
+   `53840b42ea73358c31fe40c5225646363d485829`.
+2. Post-accept corrective commit
+   `f0880310f786ac98ad0f8437db02fc22cca93f08` changes the idle button title to
+   `Export Matrix`. Any earlier `导出 Matrix` wording is a superseded historical checkpoint,
+   not the current UI contract.
+3. Post-accept corrective commit
+   `1c9f8fc58ca72d21e020576d5aa611a307c335c3` removes the fixed row height. Exported wrapped
+   rows keep their height unset (`None`, no custom height), allowing spreadsheet viewers to
+   auto-fit content. The reference workbook's observed height `15` is historical layout
+   evidence only and is superseded as an output requirement.
+4. Local `master` and primary HEAD are
+   `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
 
 ## Frozen Implementation-Readiness Contract
 
@@ -44,7 +61,7 @@ Developer planning-first completed the required refinement without expanding May
 
 ## Goal
 
-Add `导出 Matrix` beside `Import Matrix`. It exports a click-time snapshot of the current
+Add `Export Matrix` beside `Import Matrix`. It exports a click-time snapshot of the current
 unconfirmed Matrix Editor state as `.xlsx`, without requiring Confirm Matrix.
 
 The export must follow the observed reference workbook, include only checked Groups, map
@@ -91,7 +108,9 @@ Read-only artifact-tool inspection found:
 - one example test row, then `Sample size`, `Time`, `Fee`;
 - Fee has only its A-column label and otherwise blank cells;
 - gray `#CCCCCC` header/A labels, Calibri 11, centered/wrapped cells, thin borders;
-- widths A 20, B 8, D/E 20, remaining columns at workbook defaults; row height 15.
+- widths A 20, B 8, D/E 20, remaining columns at workbook defaults;
+- historical reference observation: row height 15. The accepted output contract supersedes
+  that fixed height and leaves wrapped row heights unset for automatic fitting.
 
 The reference is a one-time layout authority. It must not become a runtime dependency,
 configured template, copied source, or writable artifact.
@@ -143,10 +162,13 @@ configured template, copied source, or writable artifact.
 11. Default filename follows the existing Fee/Test Record browser-download vocabulary:
     `<latest LTR or project_no or projectId> Matrix Draft <local YYYYMMDDHHmmss>.xlsx`, with
     Windows-invalid filename characters replaced by `_`.
+12. Cells remain wrapped and row heights remain unset; no fixed `15`-point row-height contract
+    survives the post-accept corrective.
 
-## Proposed Future May Touch
+## Accepted Implementation Scope
 
-This is the exact future scope for Reviewer plan review. Implementation remains unauthorized.
+This was the exact Reviewer-approved implementation scope and is now the accepted package
+boundary. It is retained for rollback and package traceability, not as pending authorization.
 
 ### Frontend
 
@@ -202,7 +224,7 @@ The existing 1934-line `MatrixEditorWorkspace.test.tsx` is read-only and only re
   artifacts, `dist_release/**`, external residuals, cleanup, restore, discard, stage, commit,
   and push.
 
-## Future Validation Gate
+## Accepted Validation Gate
 
 1. Projection tests: checked-Group order, current unsaved values, valid-step row inclusion,
    information/unrelated-row exclusion, fallback labels, exact `0 d`/integer/decimal display
@@ -223,8 +245,13 @@ The existing 1934-line `MatrixEditorWorkspace.test.tsx` is read-only and only re
 - Base: `405c0c80ed93756080099b378d490ae875f7e8a6`.
 - Reviewed implementation commit: `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
 - Accepted lane HEAD: `53840b42ea73358c31fe40c5225646363d485829`.
-- The lane worktree and index were clean at integration. The worktree and branch remain in
-  place because this gate did not authorize deletion or cleanup.
+- Post-accept corrective commits: `f0880310f786ac98ad0f8437db02fc22cca93f08`
+  and `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
+- Current primary/master HEAD:
+  `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
+- The lane worktree and index are clean at `53840b42`; the lane is three commits behind
+  `master` and has no unique commit. The worktree and branch remain in place because this gate
+  does not authorize deletion or cleanup.
 
 ## Rollback
 
@@ -240,4 +267,6 @@ and the frontend build. QA additionally recorded the full frontend `115 files / 
 controlled desktop/514 px browser smoke.
 
 TASK_367A is complete/accepted locally. Remote push was intentionally not performed. No later
-lane is activated automatically.
+lane is activated automatically. The current visible title is `Export Matrix`, exported wrapped
+rows use automatic height, and this docs-only reconciliation now waits only for Reviewer
+source-of-truth re-gate.

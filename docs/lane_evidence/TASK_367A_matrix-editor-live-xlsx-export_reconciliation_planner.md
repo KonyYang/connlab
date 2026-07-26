@@ -2,20 +2,21 @@
 
 Date: 2026-07-26
 Role: Planner
-Status: `implementation_authorized_pending_controlled_docs_only_governance_checkpoint`
+Status: `docs_only_source_of_truth_reconciliation_complete_pending_reviewer_docs_only_source_of_truth_re_gate`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
-Implementation authorization: authorized; execution blocked pending governance checkpoint and clean-primary gate
+Implementation authorization: complete; TASK_367A and both post-accept correctives are integrated locally
 
-## Gate Reconciliation
+## Historical Gate Reconciliation (Completed)
 
 - Reviewer plan gate passed.
 - The User explicitly approved Developer docs-only planning-first.
 - Developer completed docs-only planning-first with no product/test change.
 - Reviewer implementation-readiness passed.
 - The User explicitly approved product/test implementation.
-- Product/test edits, implementation worktree creation, QA, and product integration remain
-  blocked until the controlled docs-only governance checkpoint and clean-primary gate.
+- At this historical checkpoint, product/test edits, implementation worktree creation, QA, and
+  product integration remained blocked until the controlled docs-only governance checkpoint and
+  clean-primary gate. Those gates and the downstream implementation are now complete.
 - Remote push remains unauthorized.
 
 ## Frozen Planning-First Readiness Closure
@@ -60,7 +61,7 @@ unchanged.
 
 No implementation worktree is created by this Planner pass.
 
-## Governance Checkpoint Package Readiness
+## Historical Governance Checkpoint Package Readiness (Completed)
 
 The exact docs-only whitelist is:
 
@@ -72,11 +73,26 @@ The exact docs-only whitelist is:
 - `docs/lane_evidence/TASK_367A_matrix-editor-live-xlsx-export_reviewer.md`;
 - `docs/lane_evidence/TASK_367A_matrix-editor-live-xlsx-export_reconciliation_planner.md`.
 
-Current package numstat is `1330 additions / 4 deletions`. The index is empty, no product/test path is
-present, and the package is ready for exact-path assembly and validation. It is not yet a local
-checkpoint commit, so the implementation worktree remains blocked.
+The historical package numstat was `1330 additions / 4 deletions`. The index was empty, no
+product/test path was present, and the package was ready for exact-path assembly and validation.
+That checkpoint and the later implementation sequence are now complete.
+
+## Post-Accept Source-Of-Truth Reconciliation
+
+- Accepted lane HEAD:
+  `53840b42ea73358c31fe40c5225646363d485829`.
+- `f0880310f786ac98ad0f8437db02fc22cca93f08` establishes `Export Matrix` as the current
+  button title and supersedes historical `导出 Matrix` wording.
+- `1c9f8fc58ca72d21e020576d5aa611a307c335c3` establishes wrapped rows with unset heights for
+  automatic fitting and supersedes fixed row height `15` as an output requirement.
+- Current primary/master HEAD:
+  `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
+- The TASK_367A implementation worktree remains clean at `53840b42`, three commits behind
+  `master`, with no unique commit. No retirement action is authorized.
+- Primary is clean, the index is empty, active lanes are none, and actual Git residual count is
+  zero before this docs-only reconciliation.
 
 ## Next Legal Role
 
-User / Orchestrator exact docs-only governance checkpoint package assembly/validation. Product/test
-implementation is authorized but cannot start before the checkpoint and clean-primary gate.
+Reviewer docs-only source-of-truth re-gate only. Do not route Developer, QA, or Integrator and
+do not stage, commit, push, fetch, or retire the TASK_367A branch/worktree.

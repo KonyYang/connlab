@@ -3,6 +3,7 @@
 Date: 2026-07-26
 Role: Reviewer
 Status: `reviewer_implementation_re_gate_pass`
+Current source-of-truth status: `complete_accepted_with_post_accept_correctives_pending_reviewer_docs_only_source_of_truth_re_gate`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
 Gate: implementation re-gate
@@ -247,7 +248,7 @@ Commit `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42` closes the finding:
 No blocking finding remains for TASK_367A. The reviewed implementation HEAD is
 `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
 
-## Current Route
+## Historical Route (Completed)
 
 Next and only legal role:
 
@@ -255,3 +256,16 @@ Next and only legal role:
 
 Do not repeat QA, modify product/tests, merge, push, or start another lane from
 this Reviewer evidence reconciliation.
+
+## Post-Accept Source Of Truth
+
+- Accepted lane HEAD:
+  `53840b42ea73358c31fe40c5225646363d485829`.
+- `f0880310f786ac98ad0f8437db02fc22cca93f08` establishes `Export Matrix` as the current title;
+  any earlier `导出 Matrix` wording is superseded historical evidence.
+- `1c9f8fc58ca72d21e020576d5aa611a307c335c3` establishes wrapped rows with unset heights for
+  automatic fitting; fixed row height `15` is superseded.
+- Current primary/master HEAD:
+  `1c9f8fc58ca72d21e020576d5aa611a307c335c3`.
+- The only current route is Reviewer docs-only source-of-truth re-gate. This addendum does not
+  authorize product/test changes, QA, integration, push, or worktree retirement.
