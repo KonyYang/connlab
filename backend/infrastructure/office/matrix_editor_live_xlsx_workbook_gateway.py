@@ -65,7 +65,6 @@ class MatrixEditorLiveXlsxWorkbookGateway:
                 cell.font = Font(name="Calibri", size=11)
                 cell.alignment = alignment
                 cell.border = border
-            sheet.row_dimensions[row[0].row].height = 15
         for cell in sheet[1]:
             cell.fill = gray
         for row_number in range(2, sheet.max_row + 1):

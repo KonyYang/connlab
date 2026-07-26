@@ -67,3 +67,34 @@ def test_workbook_gateway_literalizes_formula_shaped_dynamic_text():
     assert workbook.defined_names == {}
     assert workbook._external_links == []
     assert all(sheet.cell(5, column).value is None for column in range(2, 8))
+
+
+def test_workbook_gateway_leaves_wrapped_rows_at_automatic_height():
+    projection = MatrixEditorLiveXlsxExportProjection(
+        groups=(MatrixEditorLiveXlsxExportGroup("g1", "G1", "Group 1", "5", "2.5 d"),),
+        rows=(
+            MatrixEditorLiveXlsxExportRow(
+                "r1",
+                "Cycling Temperature & Humidity",
+                "8.2",
+                "EIA-364-31",
+                "Relative humidity and temperature: 25 ± 3 °C at 80 ± 5% relative humidity",
+                "No damage and no discontinuity longer than one microsecond",
+                (MatrixEditorLiveXlsxExportCell("g1", "7"),),
+            ),
+        ),
+    )
+    content = MatrixEditorLiveXlsxWorkbookGateway().render(projection)
+    workbook = load_workbook(BytesIO(content), data_only=False)
+    sheet = workbook["Sheet"]
+
+    assert all(
+        sheet.row_dimensions[row_number].height is None
+        and not sheet.row_dimensions[row_number].customHeight
+        for row_number in range(1, sheet.max_row + 1)
+    )
+    assert all(
+        cell.alignment.wrap_text
+        for row in sheet.iter_rows()
+        for cell in row
+    )
