@@ -2,22 +2,21 @@
 
 Date: 2026-07-26
 Role: Reviewer
-Status: `reviewer_implementation_readiness_pass`
+Status: `reviewer_implementation_re_gate_pass`
 Task: `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`
 Lane: `matrix-editor-live-xlsx-export`
-Gate: implementation-readiness gate
-Implementation authorization: no
+Gate: implementation re-gate
+Implementation authorization: yes; implementation completed and reviewed
 
 ## Findings
 
-No blocking implementation-readiness finding was found.
+No blocking implementation finding remains.
 
-The task is ready for explicit User product/test implementation approval and
-Planner final source-of-truth reconciliation. Product/test implementation,
-implementation worktree creation, QA, integration, staging, commit, and push
-remain unauthorized at this gate.
+The committed implementation range passed Reviewer re-gate after the bounded
+formula-literalization fix. The reviewed clean commit is ready for downstream
+packaging/readiness reconciliation. Remote push remains unauthorized.
 
-## Board And Git State
+## Historical Readiness Board And Git State
 
 - Current phase is Phase 11.
 - The board names TASK_367A as the current planned-only task and routes only
@@ -165,19 +164,94 @@ The proposed test matrix is adequate:
 - controlled desktop and 514 px browser validation with keyboard, overlap,
   overflow, console, download, and no-save/no-confirm assertions.
 
-## Current Route
+## Historical Readiness Route
 
-Next and only legal role:
+The next legal role at that historical gate was:
 
 `User explicit product/test implementation approval, followed by Planner
 final source-of-truth reconciliation`
 
-Do not route Developer implementation, QA, or Integrator and do not create the
-implementation worktree from this Reviewer gate.
+Developer implementation, QA, Integrator, and worktree creation were not
+authorized by that historical readiness gate.
 
 ## Historical Plan-Gate Note
 
 After the historical Reviewer plan gate, the User explicitly approved
 Developer docs-only planning-first. That approval does not authorize
 product/test implementation. That historical route is superseded by the
-current implementation-readiness pass above.
+implementation re-gate pass recorded below.
+
+## Implementation Gate Evidence Reconciliation
+
+### Reviewed Range
+
+- Base: `405c0c80ed93756080099b378d490ae875f7e8a6`.
+- Initial implementation checkpoint:
+  `cf37816e37ee727083b11f04a22f645015bd0adc`.
+- Reviewed implementation HEAD:
+  `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
+- Exact base-to-reviewed-HEAD package: 17 TASK_367A whitelist paths,
+  1,091 insertions and 3 deletions.
+- The lane worktree and index were clean at the final review checkpoint.
+
+### Implementation Review
+
+- The frontend projects one click-time snapshot from current editable rows,
+  checked Groups, sample expressions, and page-formatted Time strings.
+- Only non-sample rows with at least one nonblank step in a checked Group are
+  exported. Unchecked Groups and view-only filtering do not affect export
+  authority.
+- The ordered rectangular DTO, identity checks, 64-Group, 512-row,
+  16,384-cell, and per-field limits are enforced before gateway invocation.
+  Invalid requests return typed 422 and produce no workbook.
+- The backend renders one in-memory workbook with the frozen Sheet layout,
+  dynamic Group columns, exact Sample size and Time text, and truly blank Fee
+  cells. It does not use a runtime template or write Matrix, project, file,
+  database, output, autosave, Confirm, or CAS state.
+- Project-reference precedence, Windows-safe filename handling, lifecycle and
+  disabled-reason priority, Blob download behavior, retry state, line
+  budgets, exact-hunk ownership, and locked paths match the approved task.
+
+### Blocking Finding And Closure
+
+The initial checkpoint was blocked because openpyxl interpreted editable
+strings beginning with `=` as formulas, including a HYPERLINK-shaped Group
+label. That violated the frozen no-formulas/no-links contract.
+
+Commit `fb2b91c8a49a7b03d1afc07c519f4d156c12ba42` closes the finding:
+
+- all dynamic Group headers, row fields, step text, Sample size, and Time
+  values are stored as literal strings;
+- original visible text remains unchanged;
+- reload confirms dynamic cells are not formula cells;
+- no cell hyperlink, external link, or defined name is introduced;
+- Fee non-label cells remain `None`;
+- DTO, filtering, frontend behavior, and Matrix state are unchanged.
+
+### Independent Reviewer Validation
+
+- Fresh backend feature suite: 11 passed.
+- Fresh frontend projection/hook/button suite at the initial checkpoint:
+  5 passed; the bounded fix did not touch frontend paths.
+- Backend feature modules passed `py_compile`.
+- Base-to-reviewed-HEAD `git diff --check` and final commit check passed.
+- All new Python, TypeScript, TSX, and test modules remain within their
+  frozen blank-inclusive budgets; oversized existing files are exact-hunk
+  surfaces only.
+- Final lane worktree status and staged index were empty.
+
+## Final Gate Result
+
+`reviewer_implementation_re_gate_pass`
+
+No blocking finding remains for TASK_367A. The reviewed implementation HEAD is
+`fb2b91c8a49a7b03d1afc07c519f4d156c12ba42`.
+
+## Current Route
+
+Next and only legal role:
+
+`Integrator packaging/readiness reconciliation`
+
+Do not repeat QA, modify product/tests, merge, push, or start another lane from
+this Reviewer evidence reconciliation.
