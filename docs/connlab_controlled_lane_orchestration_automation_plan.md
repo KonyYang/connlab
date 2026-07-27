@@ -1,10 +1,10 @@
 # ConnLab Controlled Lane Orchestration Automation Plan
 
 Date: 2026-07-27
-Status: qa_pass / pending Integrator packaging-readiness re-audit
+Status: implementation checkpoint accepted at `76a6e736` / pending User bootstrap-and-pilot authorization
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION`
 Lane: `connlab-controlled-lane-orchestration-automation`
-Implementation/tests: frozen 34-path candidate complete, Reviewer accepted, isolated QA passed
+Implementation/tests: accepted locally in exact 35-path checkpoint `76a6e736`
 Bootstrap, real runtime side effects, migration, worktree creation, archival, commit, and push:
 unauthorized
 
@@ -16,7 +16,8 @@ first Developer task and Codex worktree together, then atomically adopts the com
 identity. Reviewer passed the combined Option A plan/readiness re-gate, Developer completed
 B10-B12 and the bounded B17-B20 follow-up, Reviewer accepted the actual 34-path candidate, and
 dedicated isolated QA passed. The QA source is this task's own evidence, not TASK_367A history.
-Bootstrap and real runtime side effects remain separately gated and unauthorized.
+Integrator packaging/readiness accepted the exact local checkpoint. Bootstrap, pilot, and real
+runtime side effects remain separately gated and unauthorized.
 
 Confirmed by user:
 
@@ -997,15 +998,15 @@ During implementation and validation:
 
 ## 21. Stop Point
 
-`qa_pass_source_of_truth_reconciliation_complete /
-ready_for_integrator_packaging_readiness_re_audit`.
+`post_checkpoint_source_of_truth_reconciliation_complete /
+pending_reviewer_docs_only_closeout_gate`.
 
-The future checkpoint inventory is exactly 35 paths: the unchanged 34-path implementation
-candidate plus
-`docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_qa.md`.
-The QA evidence is governance-only and is not implementation May Touch. Any earlier
-packaging/readiness conclusion made without this persisted evidence is superseded and must be
-re-audited. The next legal role is Integrator packaging-readiness re-audit, but this Planner pass
-does not dispatch it. Bootstrap, real runtime operations, automation, heartbeat, native task
-mutation, real branch/worktree mutation, migration, commit, fetch, push, retirement, and archival
-remain unauthorized.
+Checkpoint `76a6e736d66ca0207f262f597513a779a1634571` contains the exact 35-path inventory:
+34 implementation candidate paths plus task-specific QA evidence. It records `8097 additions /
+21 deletions`, parent `6767a3ae4116185d8ed27b53cfdc050975efce2e`, fresh bounded
+`138 passed`, clean `git show --check`, and excluded residual `0`. The next role is Reviewer
+docs-only closeout gate. Bootstrap and pilot require separate User authorization; real runtime
+operations, registry activation, automation, heartbeat, native task mutation, real branch/worktree
+mutation, v1-to-v2 migration, retirement, archival, TASK_367A cleanup, fetch, and push remain
+unauthorized. Local `master` is one commit ahead of the local `origin/master` tracking ref, but no
+fetch occurred and no remote-current SHA is claimed.

@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION
 
-Status: qa_pass / pending Integrator packaging-readiness re-audit
+Status: implementation checkpoint accepted at `76a6e736` / pending User bootstrap-and-pilot authorization
 Lane: `connlab-controlled-lane-orchestration-automation`
 Owner role: Planner
 Implementation authorization: frozen 34-path implementation complete and Reviewer accepted
@@ -32,18 +32,20 @@ Gate checkpoint:
 - Reviewer implementation re-gate: passed against the actual 34-path candidate.
 - Dedicated isolated QA gate: passed; task-specific evidence is
   `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_qa.md`.
+- Integrator packaging/readiness: passed for the exact 35-path checkpoint; evidence is
+  `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_integrator.md`.
 - Bootstrap and real runtime side effects: unauthorized.
 
 ## Current Phase / Why Allowed
 
 - Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
 - Current active product lane: none.
-- This Planner pass is allowed only for docs-only source-of-truth reconciliation after Reviewer
-  accepted the bounded implementation candidate.
-- Current clean baseline:
-  `master == origin/master == 6767a3ae4116185d8ed27b53cfdc050975efce2e`,
-  ahead/behind `0/0`, primary index empty.
-- The retained TASK_367A worktree and every old role/control task remain read-only.
+- This Planner pass is allowed only for minimal docs-only closeout repair after the accepted local
+  checkpoint; product/bootstrap/runtime actions remain unauthorized.
+- Current local `HEAD == master == 76a6e736d66ca0207f262f597513a779a1634571`; local `origin/master`
+  tracking ref is `6767a3ae4116185d8ed27b53cfdc050975efce2e`, with comparison `0/1`;
+  no fetch or remote-freshness claim, index empty, and only the exact seven-path closeout candidate.
+- The retained TASK_367A worktree is clean at `53840b42`, `lane...master=0/5`, with no unique commit; it and every old role/control task remain read-only.
 
 ## Goal
 
@@ -705,14 +707,13 @@ Never delete a registry, worktree, branch, or task as an automatic rollback.
 
 ## Stop Point
 
-`qa_pass_source_of_truth_reconciliation_complete /
-ready_for_integrator_packaging_readiness_re_audit`.
+`post_checkpoint_source_of_truth_reconciliation_complete /
+pending_reviewer_docs_only_closeout_gate`.
 
 The exact 34-path candidate completed B10-B12 plus B17-B20, passed Reviewer implementation
-re-gate, and passed dedicated isolated QA with fresh `138 passed`. The future checkpoint inventory
-is exactly 35 paths: the unchanged 34-path implementation candidate plus the task-specific QA
-evidence path, which is governance evidence and not implementation May Touch. Any earlier
-packaging/readiness conclusion lacking this persisted QA evidence is superseded and requires
-Integrator re-audit. This Planner pass does not dispatch Integrator. Bootstrap, real registry
+re-gate and dedicated isolated QA, and is accepted at checkpoint `76a6e736` with parent
+`6767a3ae`, exact 35 paths, `8097/21`, `138 passed`, clean `git show --check`, and residual `0`.
+Local `master` leads the unfetched local `origin/master` tracking ref by `0/1`; no remote freshness
+is claimed. Bootstrap, pilot, and TASK_367A cleanup remain separate User gates. Real registry
 activation, heartbeat creation, real worktree/branch mutation, role-task creation or archival,
 migration execution, local commit, fetch, and push remain unauthorized.

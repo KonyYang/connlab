@@ -8,7 +8,8 @@
 - Gate: dedicated isolated QA / Smoke Owner gate
 - Outcome: `qa_evidence_persisted`
 - Source-of-truth prerequisites: Reviewer implementation re-gate passed; Planner source-of-truth reconciliation complete.
-- Next role: Planner source-of-truth reconciliation only.
+- Post-checkpoint status: QA evidence included in accepted local checkpoint `76a6e736`.
+- Current next role: Reviewer docs-only closeout after Planner post-checkpoint reconciliation.
 
 This evidence applies only to this task's exact 34-path candidate. It explicitly excludes
 `TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT`: no TASK_367A QA result, test count, or conclusion was
@@ -106,3 +107,10 @@ The isolated tests and static inspection covered:
 
 Dedicated isolated QA passed for the exact current 34-path candidate. This evidence records
 completion only; it does not bootstrap v2, route Integrator, stage, commit, fetch, or push.
+
+## Post-checkpoint Reconciliation
+
+This QA evidence is the thirty-fifth path in accepted local checkpoint
+`76a6e736d66ca0207f262f597513a779a1634571`. Its test results remain the dedicated QA authority for
+this task and do not rely on TASK_367A QA. The checkpoint does not authorize bootstrap, pilot,
+migration, real task/worktree/registry/automation effects, TASK_367A cleanup, fetch, or push.

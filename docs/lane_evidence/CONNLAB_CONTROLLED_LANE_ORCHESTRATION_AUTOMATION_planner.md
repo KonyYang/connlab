@@ -2,7 +2,7 @@
 
 Date: 2026-07-27
 Role: Planner
-Status: `qa_pass_source_of_truth_reconciliation_complete_ready_for_integrator_packaging_readiness_re_audit`
+Status: `planner_docs_only_closeout_fix_complete_pending_reviewer_docs_only_closeout_re_gate`
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION`
 Lane: `connlab-controlled-lane-orchestration-automation`
 Implementation/tests authorization: exact 34-path candidate complete, Reviewer accepted, QA passed
@@ -413,13 +413,32 @@ plus this one governance-only QA evidence path. The QA evidence is owned by the 
 not be counted as implementation May Touch. Any prior Integrator or packaging-readiness conclusion
 that lacked this persisted evidence is superseded and requires re-audit.
 
+## Accepted Local Checkpoint
+Integrator packaging/readiness passed for local checkpoint `76a6e736d66ca0207f262f597513a779a1634571`.
+The dedicated evidence is
+`docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_integrator.md`.
+
+Verified checkpoint facts:
+
+- parent: `6767a3ae4116185d8ed27b53cfdc050975efce2e`;
+- exact inventory: 35 paths;
+- numstat: `8097 additions / 21 deletions`;
+- bounded suite: `138 passed`;
+- `git show --check`: passed;
+- excluded residual: `0`;
+- primary and index: clean after checkpoint creation.
+
+Local `master` is `76a6e736` and the local `origin/master` tracking ref remains `6767a3ae`,
+yielding local comparison `0/1`. No fetch occurred, so this evidence does not claim the current
+remote SHA or freshness. TASK_367A remains retained and clean.
+
 ## Exact Governance Changes In This Pass
 
 - `tasks/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION.md`;
 - `docs/connlab_controlled_lane_orchestration_automation_plan.md`;
-- this Planner evidence;
-- `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_developer.md`;
-- exact planned-only TASK/Active Execution Model/lane hunks in `docs/task_board.md`.
+- `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_planner.md`;
+- `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_developer.md`; exact planned-only TASK/Active Execution Model/lane hunks in `docs/task_board.md`;
+- `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_qa.md`; `docs/lane_evidence/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION_integrator.md`;
 
 ## Validation Contract
 
@@ -428,7 +447,7 @@ Before callback:
 - UTF-8 strict decode;
 - trailing whitespace;
 - tracked and no-index diff-check;
-- exact five-path governance scope;
+- exact seven-path governance scope;
 - no product/test diff;
 - index empty;
 - primary refs unchanged;
@@ -436,9 +455,9 @@ Before callback:
 
 ## Stop Point / Next Role
 
-`qa_pass_source_of_truth_reconciliation_complete /
-ready_for_integrator_packaging_readiness_re_audit`.
+`planner_docs_only_closeout_fix_complete /
+pending_reviewer_docs_only_closeout_re_gate`.
 
-The next legal role is Integrator packaging-readiness re-audit, but this Planner pass does not
+The next legal role is Reviewer docs-only closeout re-gate, but this Planner pass does not
 dispatch it. Do not bootstrap v2, create real controller/heartbeat/task/worktree/branch,
 migrate/archive/rename, stage, commit, fetch, or push.
