@@ -1,10 +1,10 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_AUTOMATION
 
-Status: implementation checkpoint accepted at `76a6e736` / pending User bootstrap-and-pilot authorization
+Status: implementation and governance closeout complete / pending User decision for controlled v2 bootstrap/tests-only pilot
 Lane: `connlab-controlled-lane-orchestration-automation`
 Owner role: Planner
 Implementation authorization: frozen 34-path implementation complete and Reviewer accepted
-Bootstrap authorization: unauthorized
+Bootstrap authorization: pending separate User decision; unauthorized until explicitly approved
 Migration, worktree creation, task archival, and remote actions: unauthorized
 Date: 2026-07-27
 
@@ -40,12 +40,14 @@ Gate checkpoint:
 
 - Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
 - Current active product lane: none.
-- This Planner pass is allowed only for minimal docs-only closeout repair after the accepted local
-  checkpoint; product/bootstrap/runtime actions remain unauthorized.
-- Current local `HEAD == master == 76a6e736d66ca0207f262f597513a779a1634571`; local `origin/master`
-  tracking ref is `6767a3ae4116185d8ed27b53cfdc050975efce2e`, with comparison `0/1`;
-  no fetch or remote-freshness claim, index empty, and only the exact seven-path closeout candidate.
-- The retained TASK_367A worktree is clean at `53840b42`, `lane...master=0/5`, with no unique commit; it and every old role/control task remain read-only.
+- This Planner pass is allowed only for the two-path final-state bridge after implementation and
+  governance closeout; product/bootstrap/runtime actions remain unauthorized.
+- Implementation checkpoint: `76a6e736d66ca0207f262f597513a779a1634571`.
+- Governance closeout commit: `e55ebf5e9760988f7a9d5d27fea5d4f95668fc16`.
+- Current Git refs, cleanliness, tracking comparison, and lane delta must be read at runtime; this
+  task does not persist a current master SHA.
+- The retained TASK_367A worktree remains clean at lane HEAD `53840b42`; it and every old
+  role/control task remain read-only.
 
 ## Goal
 
@@ -507,7 +509,7 @@ Current preservation facts:
   `lane/task-367a-matrix-editor-live-xlsx-export`;
 - retained lane HEAD:
   `53840b42ea73358c31fe40c5225646363d485829`;
-- worktree clean; lane has zero commits not in master and is four commits behind current master.
+- worktree clean; runtime-read comparison confirms the lane has no commits absent from master.
 
 ## Bootstrap Minimum Permission Contract
 
@@ -707,13 +709,13 @@ Never delete a registry, worktree, branch, or task as an automatic rollback.
 
 ## Stop Point
 
-`post_checkpoint_source_of_truth_reconciliation_complete /
-pending_reviewer_docs_only_closeout_gate`.
+`implementation_and_governance_closeout_complete /
+pending_user_decision_for_controlled_v2_bootstrap_tests_only_pilot`.
 
-The exact 34-path candidate completed B10-B12 plus B17-B20, passed Reviewer implementation
-re-gate and dedicated isolated QA, and is accepted at checkpoint `76a6e736` with parent
-`6767a3ae`, exact 35 paths, `8097/21`, `138 passed`, clean `git show --check`, and residual `0`.
-Local `master` leads the unfetched local `origin/master` tracking ref by `0/1`; no remote freshness
-is claimed. Bootstrap, pilot, and TASK_367A cleanup remain separate User gates. Real registry
-activation, heartbeat creation, real worktree/branch mutation, role-task creation or archival,
-migration execution, local commit, fetch, and push remain unauthorized.
+The exact implementation checkpoint is `76a6e736d66ca0207f262f597513a779a1634571`;
+governance closeout is `e55ebf5e9760988f7a9d5d27fea5d4f95668fc16`. Implementation and
+governance closeout are complete. Current Git state is runtime-read and is not represented by a
+persisted current-master SHA. Controlled v2 bootstrap and the tests-only pilot require a separate
+User decision. Real registry activation, heartbeat creation, real worktree/branch mutation,
+role-task creation or archival, migration execution, TASK_367A cleanup, local commit, fetch, and
+push remain unauthorized.
