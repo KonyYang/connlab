@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import hashlib
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from scripts.connlab_controlled_lane.bootstrap import (
-    HEARTBEAT_NAME,
-    HEARTBEAT_RRULE,
-    V2_CONTROLLER_TITLE,
-    select_bootstrap_action,
-)
+    HEARTBEAT_NAME, HEARTBEAT_RRULE, V2_CONTROLLER_TITLE)
 from scripts.connlab_controlled_lane.contracts import ADMIN_COMMANDS, canonical_digest
 from scripts.connlab_controlled_lane.registry import RegistryStore
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
 def _request(
@@ -22,7 +24,7 @@ def _request(
     lane_id: str = "bootstrap-v2",
     payload: dict[str, object],
 ) -> dict[str, object]:
-    return {
+    request = {
         "schema_version": 2,
         "command": command,
         "request_id": f"request-{key}",
@@ -36,31 +38,23 @@ def _request(
         "payload": payload,
         "payload_digest": canonical_digest(payload),
     }
+    if command == "bootstrap-registry":
+        controller = payload["controller"]
+        request.update(repo_root=payload["primary_repo_root"],
+                       repository_fingerprint=controller["repository_fingerprint"])
+    return request
 
 
-def _bootstrap_payload() -> dict[str, object]:
+def _bootstrap_payload(repo: Path, fingerprint: str) -> dict[str, object]:
+    source_digest = hashlib.sha256((repo / "roles.md").read_bytes()).hexdigest()
     legacy_inventory = {
-        "source": "docs/project_management/ROLE_THREAD_REGISTRY.md",
-        "source_digest": "legacy-digest",
-        "roles": {
-            "Planner": "planner-thread",
-            "Developer": "developer-thread",
-            "Reviewer": "reviewer-thread",
-            "QA": "qa-thread",
-            "Integrator": "integrator-thread",
-        },
-        "retained_lanes": {
-            "TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT": {
-                "branch": "lane/task-367a-matrix-editor-live-xlsx-export",
-                "head": "53840b42",
-                "clean": True,
-            }
-        },
+        "source": "roles.md", "source_digest": source_digest,
+        "roles": {"Developer": "developer-thread"},
     }
-    authority = {"AGENTS.md": "agents-digest"}
+    authority = {"task.md": hashlib.sha256((repo / "task.md").read_bytes()).hexdigest()}
     return {
         "state": "bootstrap_controller_pending",
-        "primary_repo_root": "C:/repo",
+        "primary_repo_root": str(repo.resolve()),
         "authority_files": authority,
         "authority_digest": canonical_digest(authority),
         "requested_scope": {"paths": ["tests/integration/pilot.py"]},
@@ -69,15 +63,37 @@ def _bootstrap_payload() -> dict[str, object]:
         "legacy_inventory_digest": canonical_digest(legacy_inventory),
         "migration": {
             "status": "not_required",
-            "source_digest": "legacy-digest",
+            "source_digest": source_digest,
         },
-        "controller": {"title": V2_CONTROLLER_TITLE},
+        "controller": {
+            "title": V2_CONTROLLER_TITLE, "native_mode": "create_thread_local",
+            "saved_project_id": "project", "project_path": str(repo.resolve()),
+            "repository_fingerprint": fingerprint, "prompt_digest": "prompt",
+        },
         "heartbeat": {
             "name": HEARTBEAT_NAME,
             "rrule": HEARTBEAT_RRULE,
             "status": "PAUSED",
         },
     }
+
+
+@pytest.fixture
+def genesis(tmp_path: Path) -> tuple[RegistryStore, dict[str, object]]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-b", "master")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    (repo / "roles.md").write_text("roles\n", encoding="utf-8")
+    (repo / "task.md").write_text("task\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "fixture")
+    fingerprint = canonical_digest({"git_common_dir": str((repo / ".git").resolve())})
+    return (
+        RegistryStore(tmp_path / "registry", repository_fingerprint=fingerprint),
+        _bootstrap_payload(repo, fingerprint),
+    )
 
 
 def _register_payload() -> dict[str, object]:
@@ -108,14 +124,14 @@ def test_admin_command_catalog_is_bounded_and_uses_existing_codes() -> None:
 
 
 def test_bootstrap_registry_creates_generation_one_and_exact_replay(
-    tmp_path: Path,
+    genesis: tuple[RegistryStore, dict[str, object]],
 ) -> None:
-    store = RegistryStore(tmp_path / "registry", repository_fingerprint="repo-v2")
+    store, payload = genesis
     request = _request(
         "bootstrap-registry",
         generation=0,
         key="bootstrap",
-        payload=_bootstrap_payload(),
+        payload=payload,
     )
 
     first = store.execute("bootstrap-registry", request)
@@ -142,17 +158,19 @@ def test_bootstrap_registry_creates_generation_one_and_exact_replay(
     ],
 )
 def test_bootstrap_registry_fails_closed_without_generation_drift(
-    tmp_path: Path, mutation: str, expected: str,
+    genesis: tuple[RegistryStore, dict[str, object]],
+    mutation: str, expected: str,
 ) -> None:
-    store = RegistryStore(tmp_path / "registry", repository_fingerprint="repo-v2")
+    store, payload = genesis
     original = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=_bootstrap_payload()
+        "bootstrap-registry", generation=0, key="bootstrap", payload=payload
     )
     assert store.execute("bootstrap-registry", original)["code"] == "CTL_OK"
     changed = dict(original)
     if mutation == "changed-payload":
-        payload = {**_bootstrap_payload(), "primary_repo_root": "C:/wrong"}
-        changed.update(payload=payload, payload_digest=canonical_digest(payload))
+        changed_payload = {**payload, "requested_scope": {"paths": ["changed"]}}
+        changed.update(payload=changed_payload,
+                       payload_digest=canonical_digest(changed_payload))
     else:
         changed.update(idempotency_key="other", expected_registry_generation=0)
 
@@ -163,13 +181,15 @@ def test_bootstrap_registry_fails_closed_without_generation_drift(
     assert store.load()["generation"] == 1
 
 
-def test_bootstrap_rejects_recovery_marker_before_any_write(tmp_path: Path) -> None:
-    root = tmp_path / "registry"
+def test_bootstrap_rejects_recovery_marker_before_any_write(
+    genesis: tuple[RegistryStore, dict[str, object]],
+) -> None:
+    store, payload = genesis
+    root = store.root
     root.mkdir()
     (root / "registry-v2.recovery.json").write_text("{}\n", encoding="utf-8")
-    store = RegistryStore(root, repository_fingerprint="repo-v2")
     request = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=_bootstrap_payload()
+        "bootstrap-registry", generation=0, key="bootstrap", payload=payload
     )
 
     result = store.execute("bootstrap-registry", request)
@@ -178,10 +198,12 @@ def test_bootstrap_rejects_recovery_marker_before_any_write(tmp_path: Path) -> N
     assert not store.path.exists()
 
 
-def test_register_lane_is_planned_only_and_idempotent(tmp_path: Path) -> None:
-    store = RegistryStore(tmp_path / "registry", repository_fingerprint="repo-v2")
+def test_register_lane_is_planned_only_and_idempotent(
+    genesis: tuple[RegistryStore, dict[str, object]],
+) -> None:
+    store, payload = genesis
     bootstrap = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=_bootstrap_payload()
+        "bootstrap-registry", generation=0, key="bootstrap", payload=payload
     )
     assert store.execute("bootstrap-registry", bootstrap)["code"] == "CTL_OK"
     request = _request(
@@ -204,10 +226,12 @@ def test_register_lane_is_planned_only_and_idempotent(tmp_path: Path) -> None:
     assert lane["base_commit"] == "base-commit"
 
 
-def test_admin_dry_run_validates_without_creating_registry(tmp_path: Path) -> None:
-    store = RegistryStore(tmp_path / "registry", repository_fingerprint="repo-v2")
+def test_admin_dry_run_validates_without_creating_registry(
+    genesis: tuple[RegistryStore, dict[str, object]],
+) -> None:
+    store, payload = genesis
     request = _request(
-        "bootstrap-registry", generation=0, key="dry", payload=_bootstrap_payload()
+        "bootstrap-registry", generation=0, key="dry", payload=payload
     )
     request["dry_run"] = True
 
@@ -218,10 +242,12 @@ def test_admin_dry_run_validates_without_creating_registry(tmp_path: Path) -> No
     assert not store.root.exists()
 
 
-def test_register_lane_rejects_existing_cross_lane_owner(tmp_path: Path) -> None:
-    store = RegistryStore(tmp_path / "registry", repository_fingerprint="repo-v2")
+def test_register_lane_rejects_existing_cross_lane_owner(
+    genesis: tuple[RegistryStore, dict[str, object]],
+) -> None:
+    store, payload = genesis
     bootstrap = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=_bootstrap_payload()
+        "bootstrap-registry", generation=0, key="bootstrap", payload=payload
     )
     assert store.execute("bootstrap-registry", bootstrap)["code"] == "CTL_OK"
     registry = store.load()
@@ -253,11 +279,12 @@ def test_register_lane_rejects_existing_cross_lane_owner(tmp_path: Path) -> None
     ],
 )
 def test_register_lane_rejects_authority_or_scope_changes(
-    tmp_path: Path, field: str, value: str, code: str,
+    genesis: tuple[RegistryStore, dict[str, object]],
+    field: str, value: str, code: str,
 ) -> None:
-    store = RegistryStore(tmp_path / "registry", repository_fingerprint="repo-v2")
+    store, bootstrap_payload = genesis
     bootstrap = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=_bootstrap_payload()
+        "bootstrap-registry", generation=0, key="bootstrap", payload=bootstrap_payload
     )
     assert store.execute("bootstrap-registry", bootstrap)["code"] == "CTL_OK"
     payload = _register_payload()
@@ -271,22 +298,3 @@ def test_register_lane_rejects_authority_or_scope_changes(
 
     assert result["code"] == code
     assert store.load()["generation"] == 1
-
-
-def test_bootstrap_state_machine_selects_exactly_one_external_action() -> None:
-    assert select_bootstrap_action("bootstrap_controller_pending", {}) == {
-        "kind": "create_controller_task",
-        "target_role": "Controller",
-    }
-    assert select_bootstrap_action(
-        "bootstrap_heartbeat_pending", {"controller_acknowledged": True}
-    ) == {
-        "kind": "create_paused_heartbeat",
-        "target_role": "Controller",
-    }
-    assert select_bootstrap_action(
-        "bootstrap_dry_run_pending", {"heartbeat_acknowledged": True}
-    ) == {"kind": "run_zero_write_dry_run", "target_role": "Controller"}
-    assert select_bootstrap_action(
-        "bootstrap_ready", {"dry_run_passed": True}
-    ) == {"kind": "no_action", "target_role": None}

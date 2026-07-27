@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.connlab_controlled_lane.contracts import CtlError
+from scripts.connlab_controlled_lane.contracts import CtlError, canonical_digest
 from scripts.connlab_controlled_lane.state_machine import (
     classify_manual_smoke,
     select_next_action,
@@ -32,6 +32,63 @@ def test_prepare_action_is_recomputed_from_registry_authority() -> None:
     with pytest.raises(CtlError) as stale_error:
         validate_advance_authority(registry, "lane-1", "authorized")
     assert stale_error.value.code == "CTL_CAS_CONFLICT"
+
+
+@pytest.mark.parametrize(
+    ("state", "proof", "action", "field", "changed"),
+    (
+        ("bootstrap_controller_pending", {}, "create_controller_task",
+         "controller_title", "wrong"),
+        ("bootstrap_heartbeat_pending", {"controller_acknowledged": True},
+         "create_paused_heartbeat", "rrule", "FREQ=DAILY"),
+        ("bootstrap_dry_run_pending", {"heartbeat_acknowledged": True},
+         "run_zero_write_dry_run", "expected_external_action_count", 1),
+    ),
+)
+def test_bootstrap_prepare_rejects_targets_changed_from_canonical_registry_state(
+    state: str, proof: dict[str, bool], action: str, field: str, changed: object,
+) -> None:
+    controller = {
+        "title": "ConnLab｜研发任务编排与集成主控 v2",
+        "native_mode": "create_thread_local", "saved_project_id": "project-1",
+        "project_path": "C:/repo", "repository_fingerprint": "scope-1",
+        "prompt_digest": "prompt-1", "thread_id": "controller-1",
+    }
+    heartbeat = {"name": "ConnLab v2 controlled-lane scan",
+                 "rrule": "FREQ=MINUTELY;INTERVAL=5", "status": "PAUSED"}
+    lane = {"state": state, "proof": proof, "scope_fingerprint": "scope-1",
+            "requested_scope": {"paths": ["tests/"]}, "authority_files": {"task": "sha"}}
+    registry = {"generation": 0, "dispatches": {}, "lanes": {"lane-1": lane},
+                "bootstrap": {"controller": controller, "heartbeat": heartbeat}}
+    target = {"task_id": "TASK_1", "lane_id": "lane-1", "route_id": "route-1",
+              "operation_id": "operation-1", "payload_digest": "payload",
+              "action_kind": action, "role": "Controller"}
+    if action == "create_controller_task":
+        target.update(controller_title=controller["title"], **{
+            key: controller[key] for key in (
+                "native_mode", "saved_project_id", "project_path",
+                "repository_fingerprint", "prompt_digest")})
+    elif action == "create_paused_heartbeat":
+        target.update(controller_thread_id="controller-1",
+                      heartbeat_name=heartbeat["name"], rrule=heartbeat["rrule"],
+                      status="PAUSED")
+    else:
+        target.update(validation_scope_digest=canonical_digest({
+            "scope_fingerprint": "scope-1", "requested_scope": lane["requested_scope"],
+            "authority_files": lane["authority_files"]}),
+                      expected_external_action_count=0)
+    target[field] = changed
+    request = {key: target[key] for key in (
+        "task_id", "lane_id", "route_id", "operation_id")}
+    request["scope_fingerprint"] = "scope-1"
+
+    with pytest.raises(CtlError) as exc_info:
+        validate_authoritative_dispatch(
+            registry, request, {"current_state": state, "action_kind": action,
+                                "target_binding": target})
+
+    assert exc_info.value.code == "CTL_DISPATCH_ACK_MISMATCH"
+    assert registry["generation"] == 0
 
 
 @pytest.mark.parametrize(

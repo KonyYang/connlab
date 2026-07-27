@@ -8,7 +8,7 @@ from .bootstrap import (
     validate_bootstrap_transition,
 )
 from .completion_authority import frozen_completion_contract
-from .contracts import CtlError
+from .contracts import CtlError, canonical_digest
 from .ownership import validate_target_binding
 
 _ALLOWED_ACTIONS = {
@@ -101,6 +101,34 @@ def validate_authoritative_dispatch(
     expected.update({"role": action["target_role"]} if action.get("target_role") else {})
     expected.update({key: action[key] for key in ("thread_id", "worktree_path")
                      if action.get(key)})
+    if action.get("kind") in BOOTSTRAP_ACTIONS:
+        bootstrap = registry.get("bootstrap", {})
+        if action["kind"] == "create_controller_task":
+            controller = bootstrap.get("controller", {})
+            expected.update({
+                "controller_title": controller.get("title"),
+                **{field: controller.get(field) for field in (
+                    "native_mode", "saved_project_id", "project_path",
+                    "repository_fingerprint", "prompt_digest",
+                )},
+            })
+        elif action["kind"] == "create_paused_heartbeat":
+            heartbeat = bootstrap.get("heartbeat", {})
+            expected.update({
+                "controller_thread_id": bootstrap.get("controller", {}).get("thread_id"),
+                "heartbeat_name": heartbeat.get("name"),
+                "rrule": heartbeat.get("rrule"),
+                "status": heartbeat.get("status"),
+            })
+        else:
+            expected.update({
+                "validation_scope_digest": canonical_digest({
+                    "scope_fingerprint": lane.get("scope_fingerprint"),
+                    "requested_scope": lane.get("requested_scope"),
+                    "authority_files": lane.get("authority_files"),
+                }),
+                "expected_external_action_count": 0,
+            })
     if action.get("kind") in ("dispatch_role", "create_developer_environment",
                               "send_existing_task", "request_user_approval"):
         authority = lane.get("proof", {}).get("completion_authority")

@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from scripts.connlab_controlled_lane.contracts import canonical_digest
 
 
@@ -23,7 +25,9 @@ def _request(
         "command": command,
         "request_id": f"request-{key}",
         "repo_root": str(repo),
-        "repository_fingerprint": "pilot-repo",
+        "repository_fingerprint": canonical_digest(
+            {"git_common_dir": str((repo / ".git").resolve())}
+        ),
         "task_id": "CONNLAB_CONTROLLED_LANE_AUTOMATION_PILOT_TEST_ONLY",
         "lane_id": lane_id,
         "expected_registry_generation": generation,
@@ -37,7 +41,8 @@ def _request(
 
 
 def _run(
-    tmp_path: Path, request: dict[str, object], *, dry_run: bool = False
+    tmp_path: Path, request: dict[str, object], *, dry_run: bool = False,
+    success: bool = True,
 ) -> dict[str, object]:
     request_path = tmp_path / f"{request['command']}-{request['request_id']}.json"
     request_path.write_text(json.dumps(request), encoding="utf-8")
@@ -59,7 +64,7 @@ def _run(
     )
     output = json.loads(completed.stdout)
     assert completed.stderr == ""
-    assert completed.returncode == 0, output.get("message")
+    assert (completed.returncode == 0) is success, output.get("message")
     return output
 
 
@@ -84,29 +89,35 @@ def _git_repo(tmp_path: Path) -> Path:
     return repo
 
 
+def _bootstrap_payload(repo: Path) -> dict[str, object]:
+    authority = {"task.md": hashlib.sha256((repo / "task.md").read_bytes()).hexdigest()}
+    legacy_digest = hashlib.sha256((repo / "README.md").read_bytes()).hexdigest()
+    legacy = {"source": "README.md", "source_digest": legacy_digest, "roles": {}}
+    fingerprint = canonical_digest({"git_common_dir": str((repo / ".git").resolve())})
+    return {
+        "state": "bootstrap_controller_pending", "primary_repo_root": str(repo.resolve()),
+        "authority_files": authority, "authority_digest": canonical_digest(authority),
+        "requested_scope": {}, "owner_claims": [], "legacy_inventory": legacy,
+        "legacy_inventory_digest": canonical_digest(legacy),
+        "migration": {"status": "not_required", "source_digest": legacy_digest},
+        "controller": {
+            "title": "ConnLab｜研发任务编排与集成主控 v2",
+            "native_mode": "create_thread_local", "saved_project_id": "connlab-project",
+            "project_path": str(repo.resolve()), "repository_fingerprint": fingerprint,
+            "prompt_digest": "controller-prompt",
+        },
+        "heartbeat": {
+            "name": "ConnLab v2 controlled-lane scan",
+            "rrule": "FREQ=MINUTELY;INTERVAL=5", "status": "PAUSED",
+        },
+    }
+
+
 def test_bootstrap_then_register_tests_only_pilot_without_native_side_effects(
     tmp_path: Path,
 ) -> None:
     repo = _git_repo(tmp_path)
-    bootstrap_payload = {
-        "state": "bootstrap_controller_pending",
-        "primary_repo_root": str(repo),
-        "authority_files": {},
-        "authority_digest": canonical_digest({}),
-        "requested_scope": {},
-        "owner_claims": [],
-        "legacy_inventory": {"source_digest": "legacy", "roles": {}},
-        "legacy_inventory_digest": canonical_digest(
-            {"source_digest": "legacy", "roles": {}}
-        ),
-        "migration": {"status": "not_required", "source_digest": "legacy"},
-        "controller": {"title": "ConnLab｜研发任务编排与集成主控 v2"},
-        "heartbeat": {
-            "name": "ConnLab v2 controlled-lane scan",
-            "rrule": "FREQ=MINUTELY;INTERVAL=5",
-            "status": "PAUSED",
-        },
-    }
+    bootstrap_payload = _bootstrap_payload(repo)
     bootstrap = _request(
         "bootstrap-registry",
         generation=0,
@@ -132,9 +143,6 @@ def test_bootstrap_then_register_tests_only_pilot_without_native_side_effects(
         "directories": [],
         "authorities": [],
     }]
-    authority = {
-        "task.md": hashlib.sha256((repo / "task.md").read_bytes()).hexdigest()
-    }
     register_payload = {
         "state": "planned",
         "base_commit": subprocess.run(
@@ -148,8 +156,8 @@ def test_bootstrap_then_register_tests_only_pilot_without_native_side_effects(
         "scope_digest": canonical_digest(scope),
         "owner_claims": owners,
         "owner_claims_digest": canonical_digest(owners),
-        "authority_files": authority,
-        "authority_digest": canonical_digest(authority),
+        "authority_files": bootstrap_payload["authority_files"],
+        "authority_digest": bootstrap_payload["authority_digest"],
         "proof": {
             "reviewer_thread_id": "fake-reviewer",
             "reviewer_worktree_path": str(repo),
@@ -192,3 +200,30 @@ def test_bootstrap_then_register_tests_only_pilot_without_native_side_effects(
     }
     assert not any(path.name.startswith("connlab-controlled-lane")
                    for path in repo.iterdir())
+
+
+@pytest.mark.parametrize(
+    "mutation", ("fingerprint", "wrong-root", "missing-authority", "forged-authority"))
+def test_bootstrap_rejects_unverified_genesis_without_registry_artifacts(
+    tmp_path: Path, mutation: str,
+) -> None:
+    repo = _git_repo(tmp_path)
+    payload = _bootstrap_payload(repo)
+    request = _request("bootstrap-registry", generation=0, key=mutation,
+                       lane_id="bootstrap-v2", payload=payload, repo=repo)
+    if mutation == "fingerprint":
+        request["repository_fingerprint"] = "forged"
+    elif mutation == "wrong-root":
+        payload["primary_repo_root"] = str(tmp_path)
+    elif mutation == "missing-authority":
+        payload["authority_files"] = {"missing.md": "0" * 64}
+        payload["authority_digest"] = canonical_digest(payload["authority_files"])
+    else:
+        payload["authority_files"] = {"task.md": "0" * 64}
+        payload["authority_digest"] = canonical_digest(payload["authority_files"])
+    request["payload_digest"] = canonical_digest(payload)
+
+    result = _run(tmp_path, request, success=False)
+
+    assert result["zero_write"] is True
+    assert not (tmp_path / "registry").exists()

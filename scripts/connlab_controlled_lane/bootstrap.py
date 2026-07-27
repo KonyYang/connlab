@@ -11,16 +11,13 @@ HEARTBEAT_RRULE = "FREQ=MINUTELY;INTERVAL=5"
 
 BOOTSTRAP_STATES = frozenset((
     "bootstrap_controller_pending", "bootstrap_heartbeat_pending",
-    "bootstrap_dry_run_pending", "bootstrap_ready",
-))
+    "bootstrap_dry_run_pending", "bootstrap_ready"))
 BOOTSTRAP_ACTIONS = frozenset((
-    "create_controller_task", "create_paused_heartbeat", "run_zero_write_dry_run",
-))
-BOOTSTRAP_TRANSITIONS = frozenset((
+    "create_controller_task", "create_paused_heartbeat", "run_zero_write_dry_run"))
+BOOTSTRAP_TRANSITIONS = frozenset({
     ("bootstrap_controller_pending", "bootstrap_heartbeat_pending"),
     ("bootstrap_heartbeat_pending", "bootstrap_dry_run_pending"),
-    ("bootstrap_dry_run_pending", "bootstrap_ready"),
-))
+    ("bootstrap_dry_run_pending", "bootstrap_ready")})
 
 
 def _require_mapping(payload: Mapping[str, Any], field: str) -> Mapping[str, Any]:
@@ -70,6 +67,10 @@ def _validate_genesis_payload(payload: Mapping[str, Any]) -> None:
     heartbeat = _require_mapping(payload, "heartbeat")
     if controller.get("title") != V2_CONTROLLER_TITLE:
         raise CtlError("CTL_INVALID_REQUEST", "controller title is not canonical")
+    controller_fields = ("native_mode", "saved_project_id", "project_path",
+        "repository_fingerprint", "prompt_digest")
+    if any(controller.get(field) in (None, "") for field in controller_fields):
+        raise CtlError("CTL_INVALID_REQUEST", "controller target is incomplete")
     if heartbeat != {
         "name": HEARTBEAT_NAME,
         "rrule": HEARTBEAT_RRULE,

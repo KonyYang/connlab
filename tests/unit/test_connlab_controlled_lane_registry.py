@@ -97,6 +97,94 @@ def _seed_lane(
     store._atomic_write(registry)
 
 
+def _bootstrap_sent(
+    tmp_path: Path,
+) -> tuple[RegistryStore, dict[str, object], dict[str, object]]:
+    store = RegistryStore(tmp_path, repository_fingerprint="repo-1")
+    _seed_lane(store, state="bootstrap_controller_pending", proof={})
+    registry = store.load()
+    registry["bootstrap"] = {
+        "controller": {
+            "title": "ConnLab｜研发任务编排与集成主控 v2",
+            "native_mode": "create_thread_local", "saved_project_id": "project",
+            "project_path": "C:/repo", "repository_fingerprint": "repo-1",
+            "prompt_digest": "prompt",
+        },
+        "heartbeat": {
+            "name": "ConnLab v2 controlled-lane scan",
+            "rrule": "FREQ=MINUTELY;INTERVAL=5", "status": "PAUSED",
+        },
+    }
+    store._atomic_write(registry)
+    target = {
+        "task_id": "TASK_1", "lane_id": "lane-1", "route_id": "route-1",
+        "operation_id": "operation-1", "payload_digest": "prompt",
+        "action_kind": "create_controller_task", "role": "Controller",
+        "controller_title": "ConnLab｜研发任务编排与集成主控 v2",
+        "native_mode": "create_thread_local", "saved_project_id": "project",
+        "project_path": "C:/repo", "repository_fingerprint": "repo-1",
+        "prompt_digest": "prompt",
+    }
+    prepare = {"action_kind": "create_controller_task",
+               "current_state": "bootstrap_controller_pending",
+               "target_binding": target}
+    assert store.execute("prepare-dispatch", _request(
+        "prepare-dispatch", generation=0, key="bootstrap-prepare",
+        payload=prepare))["code"] == "CTL_OK"
+    assert _start(store, key="bootstrap-start")["code"] == "CTL_OK"
+    receipt = {"threadId": "controller-v2"}
+    result = {"result_stage": "sent", "receipt": receipt,
+              "receipt_digest": canonical_digest(receipt)}
+    assert store.execute("record-action-result", _request(
+        "record-action-result", generation=2, key="bootstrap-result",
+        payload=result))["code"] == "CTL_OK"
+    return store, target, receipt
+
+
+def test_bootstrap_controller_ack_adopts_exact_readback(tmp_path: Path) -> None:
+    store, target, receipt = _bootstrap_sent(tmp_path)
+    observed = {**target, "thread_id": "controller-v2",
+                "project_binding_verified": True, "title_verified": True}
+    ack = {"receipt_digest": canonical_digest(receipt),
+           "readback_binding": observed, "readback_digest": canonical_digest(observed)}
+    assert store.execute("ack-dispatch", _request(
+        "ack-dispatch", generation=3, key="bootstrap-ack",
+        payload=ack))["code"] == "CTL_OK"
+    assert store.execute("advance-state", _request(
+        "advance-state", generation=4, key="bootstrap-advance",
+        payload={"from_state": "bootstrap_controller_pending",
+                 "to_state": "bootstrap_heartbeat_pending"}))["code"] == "CTL_OK"
+    registry = store.load()
+    assert registry["bootstrap"]["controller"]["thread_id"] == "controller-v2"
+    assert registry["role_bindings"]["lane-1:Controller"]["thread_id"] == "controller-v2"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "code"),
+    (("task_id", "wrong-task", "CTL_DISPATCH_ACK_MISMATCH"),
+     ("lane_id", "wrong-lane", "CTL_DISPATCH_ACK_MISMATCH"),
+     ("route_id", "wrong-route", "CTL_DISPATCH_ACK_MISMATCH"),
+     ("scope_fingerprint", "wrong-scope", "CTL_DISPATCH_ACK_MISMATCH"),
+     ("operation_id", "wrong-operation", "CTL_DISPATCH_STAGE_MISMATCH")),
+)
+def test_bootstrap_ack_rejects_changed_prepared_request_identity(
+    tmp_path: Path, field: str, value: str, code: str,
+) -> None:
+    store, target, receipt = _bootstrap_sent(tmp_path)
+    observed = {**target, "thread_id": "controller-v2",
+                "project_binding_verified": True, "title_verified": True}
+    payload = {"receipt_digest": canonical_digest(receipt),
+               "readback_binding": observed, "readback_digest": canonical_digest(observed)}
+    request = _request("ack-dispatch", generation=3, key=field, payload=payload)
+    request[field] = value
+
+    result = store.execute("ack-dispatch", request)
+
+    assert result["code"] == code
+    assert result["zero_write"] is True
+    assert store.load()["generation"] == 3
+
+
 def _start(
     store: RegistryStore,
     *,

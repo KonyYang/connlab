@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import subprocess
 import tempfile
 import uuid
 from copy import deepcopy
@@ -11,12 +12,13 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .bootstrap import (BOOTSTRAP_ACTIONS, adopt_bootstrap_readback,
-                        apply_admin_mutation, validate_bootstrap_ack,
-                        validate_bootstrap_request)
+                         apply_admin_mutation, validate_bootstrap_ack,
+                         validate_bootstrap_request)
 from .completion_authority import record_completion_callback
 from .contracts import (ADMIN_COMMANDS, CtlError, canonical_digest, canonical_json,
                         convert_v1_to_v2, initial_registry, result,
-                        validate_common_request)
+                         validate_common_request)
+from .git_preflight import inspect_git, verify_authority_files
 from .ownership import (
     adopt_and_materialize_native_owner, apply_advance_effects, reset_gate_proof,
     validate_dispatch_binding, validate_owner_acquisition,
@@ -73,6 +75,8 @@ class RegistryStore:
     def execute(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
         try:
             validate_common_request(request, command)
+            if command == "bootstrap-registry":
+                self._preflight_bootstrap(request)
             if request.get("dry_run"):
                 if command in ADMIN_COMMANDS:
                     validate_bootstrap_request(command, request)
@@ -88,6 +92,39 @@ class RegistryStore:
                 zero_write=exc.code != "CTL_POST_WRITE_VERIFY_FAILED",
                 facts=dict(exc.facts or {}),
             )
+    def _preflight_bootstrap(self, request: Mapping[str, Any]) -> None:
+        validate_bootstrap_request("bootstrap-registry", request)
+        if self.recovery_path.exists():
+            raise CtlError("CTL_RECOVERY_REQUIRED", "registry recovery marker unresolved")
+        if self.lock_path.exists():
+            raise CtlError("CTL_LOCK_BUSY", "registry lock is already held")
+        payload = request["payload"]
+        repo_value = request.get("repo_root")
+        if not repo_value:
+            raise CtlError("CTL_INVALID_REQUEST", "repo_root is required")
+        try:
+            repo = Path(str(repo_value)).resolve(strict=True)
+            facts = inspect_git(repo)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise CtlError("CTL_TOPOLOGY_STALE", "bootstrap repository is unreadable") from exc
+        fingerprint = canonical_digest({"git_common_dir": facts["git_common_dir"]})
+        controller = payload["controller"]
+        if (
+            Path(str(payload["primary_repo_root"])).resolve() != repo
+            or Path(str(controller["project_path"])).resolve() != repo
+            or request.get("repository_fingerprint") != fingerprint
+            or self.repository_fingerprint != fingerprint
+            or controller.get("repository_fingerprint") != fingerprint
+        ):
+            raise CtlError("CTL_TOPOLOGY_STALE", "bootstrap repository identity changed")
+        if facts["status"]:
+            raise CtlError("CTL_PRIMARY_DIRTY", "bootstrap repository is dirty")
+        if facts["index"]:
+            raise CtlError("CTL_INDEX_NOT_EMPTY", "bootstrap index is not empty")
+        verify_authority_files(repo, payload["authority_files"])
+        legacy = payload["legacy_inventory"]
+        verify_authority_files(repo, {str(legacy.get("source")):
+                                      str(legacy.get("source_digest"))})
     def _execute_locked(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
         self.root.mkdir(parents=True, exist_ok=True)
         token = str(uuid.uuid4())
@@ -197,9 +234,11 @@ class RegistryStore:
         dispatch = dispatches.get(operation_id)
         if not dispatch:
             raise CtlError("CTL_DISPATCH_STAGE_MISMATCH", "prepared dispatch is missing")
-        if command == "ack-dispatch" and dispatch.get(
-            "action_kind"
-        ) in BOOTSTRAP_ACTIONS:
+        if command == "ack-dispatch" and dispatch.get("action_kind") in BOOTSTRAP_ACTIONS:
+            if any(dispatch.get(field) != request.get(field) for field in (
+                "task_id", "lane_id", "route_id", "scope_fingerprint")):
+                raise CtlError("CTL_DISPATCH_ACK_MISMATCH",
+                               "ack-dispatch does not match prepared dispatch")
             validate_bootstrap_ack(dispatch, payload)
         else:
             validate_dispatch_binding(dispatch, request, command)
