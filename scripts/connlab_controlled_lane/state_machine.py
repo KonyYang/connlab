@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from .bootstrap import (
+    BOOTSTRAP_ACTIONS, BOOTSTRAP_STATES, select_bootstrap_action,
+    validate_bootstrap_action, validate_bootstrap_target_binding,
+    validate_bootstrap_transition,
+)
 from .completion_authority import frozen_completion_contract
 from .contracts import CtlError
 from .ownership import validate_target_binding
@@ -44,6 +49,9 @@ _ALLOWED_TRANSITIONS = {
 
 
 def validate_action(state: str, action_kind: str) -> None:
+    if state in BOOTSTRAP_STATES:
+        validate_bootstrap_action(state, action_kind)
+        return
     if action_kind not in _ALLOWED_ACTIONS.get(state, set()):
         raise CtlError(
             "CTL_INVALID_TRANSITION",
@@ -52,6 +60,9 @@ def validate_action(state: str, action_kind: str) -> None:
 
 
 def validate_transition(from_state: str, to_state: str) -> None:
+    if from_state in BOOTSTRAP_STATES or to_state in BOOTSTRAP_STATES:
+        validate_bootstrap_transition(from_state, to_state)
+        return
     if (from_state, to_state) not in _ALLOWED_TRANSITIONS:
         raise CtlError(
             "CTL_INVALID_TRANSITION",
@@ -80,7 +91,7 @@ def validate_authoritative_dispatch(
                        "dispatch does not match authoritative lane action")
     if action.get("target_role") and action.get("kind") not in (
         "governance_closeout", "create_developer_environment",
-    ) and not all(
+    ) + tuple(BOOTSTRAP_ACTIONS) and not all(
         action.get(field) for field in ("thread_id", "worktree_path")):
         raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "selected role identity is incomplete")
     expected = {
@@ -97,7 +108,16 @@ def validate_authoritative_dispatch(
             raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "completion authority is missing")
         expected.update(frozen_completion_contract(
             authority, role=str(action.get("target_role"))))
-    validate_target_binding(payload.get("target_binding"), action_kind=str(payload["action_kind"]), expected=expected)
+    validator = (
+        validate_bootstrap_target_binding
+        if action.get("kind") in BOOTSTRAP_ACTIONS
+        else validate_target_binding
+    )
+    validator(
+        payload.get("target_binding"),
+        action_kind=str(payload["action_kind"]),
+        expected=expected,
+    )
     return state, action
 
 
@@ -124,6 +144,8 @@ def _dispatch(role: str, proof: Mapping[str, Any], kind: str = "dispatch_role",
 
 
 def select_next_action(state: str, proof: Mapping[str, Any]) -> dict[str, Any]:
+    if state in BOOTSTRAP_STATES:
+        return select_bootstrap_action(state, proof)
     if state == "planned":
         return _dispatch("Reviewer", proof)
     if state == "plan_review_pending":

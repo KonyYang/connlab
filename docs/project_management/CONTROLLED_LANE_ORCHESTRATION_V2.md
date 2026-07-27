@@ -1,10 +1,10 @@
 # Controlled Lane Orchestration V2
 
-Status: implementation contract only
+Status: bootstrap implementation candidate; production runtime inactive
 
-Bootstrap is not activated. This document does not authorize a controller, heartbeat, registry
-creation, real task call, branch/worktree mutation, migration, retirement, archive, commit, fetch,
-or push.
+Bootstrap is not activated. Bootstrap support is implemented, but this document does not
+authorize a controller, heartbeat, production registry creation, real task call, branch/worktree
+mutation, migration, retirement, archive, fetch, or push.
 
 ## Authority
 
@@ -38,6 +38,17 @@ CAS mutation commands:
 prepare-dispatch, mark-invocation-started, record-action-result,
 record-callback, ack-dispatch, advance-state
 ```
+
+Administrative commands:
+
+```text
+bootstrap-registry, register-lane
+```
+
+`bootstrap-registry` is genesis-only and creates generation `1`; exact replay is idempotent.
+`register-lane` creates only a `planned` lane and cannot grant implementation authority. Both use
+the same token-owned lock, expected-generation CAS, atomic replace, reread, and digest checks.
+They add no error codes; the stable catalog remains 39 `CTL_*` codes.
 
 Every mutation binds task, lane, route, operation, idempotency key, scope fingerprint, canonical
 payload digest, expected stage, and expected registry generation. Identical replay returns
@@ -73,7 +84,30 @@ The future registry path is:
 
 Writes require a token-owned exclusive lock, expected-generation CAS, same-directory temporary
 file, flush/fsync, atomic replace, reread, and digest verification. There is no silent lock TTL.
-Real registry creation and v1-to-v2 migration remain separate User gates.
+Real registry creation remains a separate User gate. Current legacy inventory has no machine v1
+registry, so bootstrap records `migration.status=not_required` and imports only read-only
+`legacy_retained` identities. Any unexpected v1/partial/recovery state stops bootstrap.
+
+## Bootstrap Runtime
+
+The bootstrap lane states are:
+
+```text
+bootstrap_controller_pending
+-> bootstrap_heartbeat_pending
+-> bootstrap_dry_run_pending
+-> bootstrap_ready
+```
+
+Registry genesis is one administrative write. Controller creation, paused-heartbeat creation, and
+zero-write dry-run are separate journaled external actions. A native controller thread ID is never
+preinvented: prepare freezes the request identity, then receipt plus exact read-back supplies the
+thread ID that acknowledgement atomically adopts.
+
+The controller title is `ConnLab｜研发任务编排与集成主控 v2`. The heartbeat is named
+`ConnLab v2 controlled-lane scan`, uses `FREQ=MINUTELY;INTERVAL=5`, and is created `PAUSED`.
+Callbacks are processed before heartbeat scans. Activation and pausing are independent actions;
+idle state never keeps a heartbeat active.
 
 ## One-Action Routing
 
@@ -110,3 +144,8 @@ task. Force, reset, restore, clean, branch `-D`, remote action, and ambient dele
 Dry-run uses fake/in-memory task adapters and disposable Git repositories/registry roots. It
 performs no real task API, automation, registry, branch/worktree, product, or remote action. The
 real tests-only pilot remains separately gated after implementation acceptance.
+
+The pilot task is `CONNLAB_CONTROLLED_LANE_AUTOMATION_PILOT_TEST_ONLY`. Its sole implementation
+candidate is `tests/integration/test_connlab_controlled_lane_bootstrapped_pilot.py`; it uses public
+CLI calls, disposable Git and registry roots, and fake native identities. It cannot change the
+bootstrap helper. A helper defect stops the pilot and requires a corrective task.

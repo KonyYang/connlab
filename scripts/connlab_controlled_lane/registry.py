@@ -10,9 +10,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from .bootstrap import (BOOTSTRAP_ACTIONS, adopt_bootstrap_readback,
+                        apply_admin_mutation, validate_bootstrap_ack,
+                        validate_bootstrap_request)
 from .completion_authority import record_completion_callback
-from .contracts import (CtlError, canonical_digest, canonical_json, convert_v1_to_v2,
-                        initial_registry, result, validate_common_request)
+from .contracts import (ADMIN_COMMANDS, CtlError, canonical_digest, canonical_json,
+                        convert_v1_to_v2, initial_registry, result,
+                        validate_common_request)
 from .ownership import (
     adopt_and_materialize_native_owner, apply_advance_effects, reset_gate_proof,
     validate_dispatch_binding, validate_owner_acquisition,
@@ -29,6 +33,11 @@ _STAGE_REQUIREMENTS = {
 }
 _FINGERPRINT_FIELDS = ("task_id", "lane_id", "operation_id", "route_id",
                        "idempotency_key", "scope_fingerprint", "payload")
+_REGISTRY_FIELDS = (
+    "registry_id", "git_common_dir_fingerprint", "generation", "created_at",
+    "updated_at", "migration", "lanes", "worktrees", "shared_owners",
+    "role_bindings", "dispatches", "callbacks", "recovery_points", "idempotency",
+)
 
 
 def _utc_now() -> str:
@@ -56,11 +65,17 @@ class RegistryStore:
             raise CtlError("CTL_REGISTRY_SCHEMA_MISMATCH", "registry schema must be v2")
         if registry.get("repository_fingerprint") != self.repository_fingerprint:
             raise CtlError("CTL_REGISTRY_SCHEMA_MISMATCH", "repository fingerprint mismatch")
+        if any(field not in registry for field in _REGISTRY_FIELDS):
+            raise CtlError("CTL_REGISTRY_SCHEMA_MISMATCH", "registry is partial")
+        if any(not isinstance(registry[field], dict) for field in _REGISTRY_FIELDS[6:]):
+            raise CtlError("CTL_REGISTRY_SCHEMA_MISMATCH", "registry maps are invalid")
         return registry
     def execute(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
         try:
             validate_common_request(request, command)
             if request.get("dry_run"):
+                if command in ADMIN_COMMANDS:
+                    validate_bootstrap_request(command, request)
                 return result(
                     code="CTL_DRY_RUN", request=request,
                     message="validated without registry write", zero_write=True,
@@ -122,7 +137,13 @@ class RegistryStore:
         if request["expected_registry_generation"] != current_generation:
             raise CtlError("CTL_CAS_CONFLICT", "expected registry generation is stale",
                            {"registry_generation": current_generation})
-        durable_stage = self._apply_mutation(registry, command, request)
+        durable_stage = (
+            apply_admin_mutation(
+                registry, command, request, registry_exists=self.path.exists()
+            )
+            if command in ADMIN_COMMANDS
+            else self._apply_mutation(registry, command, request)
+        )
         next_generation = current_generation + 1
         registry["generation"] = next_generation
         registry["updated_at"] = _utc_now()
@@ -176,7 +197,12 @@ class RegistryStore:
         dispatch = dispatches.get(operation_id)
         if not dispatch:
             raise CtlError("CTL_DISPATCH_STAGE_MISMATCH", "prepared dispatch is missing")
-        validate_dispatch_binding(dispatch, request, command)
+        if command == "ack-dispatch" and dispatch.get(
+            "action_kind"
+        ) in BOOTSTRAP_ACTIONS:
+            validate_bootstrap_ack(dispatch, payload)
+        else:
+            validate_dispatch_binding(dispatch, request, command)
         if command == "ack-dispatch":
             recorded = dispatch.get("action_result_payload", {})
             changed = [field for field in ("receipt_digest", "git_observation_digest")
@@ -186,6 +212,9 @@ class RegistryStore:
                                f"acknowledgement {changed[0]} changed")
             if dispatch.get("action_kind") == "create_developer_environment":
                 adopt_and_materialize_native_owner(
+                    registry, str(request["lane_id"]), dispatch, payload)
+            elif dispatch.get("action_kind") in BOOTSTRAP_ACTIONS:
+                adopt_bootstrap_readback(
                     registry, str(request["lane_id"]), dispatch, payload)
         required_stage = _STAGE_REQUIREMENTS[command]
         allowed = required_stage if isinstance(required_stage, tuple) else (required_stage,)

@@ -9,7 +9,7 @@ from typing import Any
 
 from .callbacks import verified_recovery_decision
 from .contracts import (
-    MUTATION_COMMANDS, READ_ONLY_COMMANDS, CtlError, canonical_json,
+    ADMIN_COMMANDS, MUTATION_COMMANDS, READ_ONLY_COMMANDS, CtlError, canonical_json,
     exit_code_for, result, validate_common_request)
 from .git_preflight import (
     inspect_git, preflight_adopt, preflight_create, preflight_retire,
@@ -22,7 +22,8 @@ from .state_machine import select_next_action
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=sorted(READ_ONLY_COMMANDS | set(MUTATION_COMMANDS)))
+    parser.add_argument(
+        "command", choices=sorted(READ_ONLY_COMMANDS | set(MUTATION_COMMANDS + ADMIN_COMMANDS)))
     parser.add_argument("--request-json", required=True)
     parser.add_argument("--registry-root")
     parser.add_argument("--allow-test-registry-root", action="store_true")
@@ -126,8 +127,9 @@ def _read_only(command: str, request: dict[str, Any], root: Path) -> dict[str, A
             )
         state = lane.get("state")
         action = select_next_action(str(state), lane.get("proof", {}))
+        code = "CTL_NO_ACTION" if action["kind"] == "no_action" else "CTL_OK"
         return result(
-            code="CTL_OK", request=request, message="one legal next action selected",
+            code=code, request=request, message="one legal next action selected",
             zero_write=True, state=state,
             facts={**git_facts, "authority_files": authority}, next_action=action,
         )
@@ -233,7 +235,7 @@ def run(argv: list[str] | None = None) -> int:
             root = Path(args.registry_root)
         else:
             root = production_registry_root(str(request.get("repo_root", ".")))
-        if args.command in MUTATION_COMMANDS:
+        if args.command in MUTATION_COMMANDS + ADMIN_COMMANDS:
             if args.command == "prepare-dispatch" and not request.get("dry_run"):
                 preflight = _read_only("scan", request, root)
                 if preflight["code"] != "CTL_OK":

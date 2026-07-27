@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
 import pytest
 
 from scripts.connlab_controlled_lane.callbacks import callback_event_id
-from scripts.connlab_controlled_lane.contracts import canonical_digest
+from scripts.connlab_controlled_lane.contracts import CtlError, canonical_digest
 from scripts.connlab_controlled_lane.registry import RegistryStore
 
 _AUTHORITY = {
@@ -55,6 +56,25 @@ def _request(command: str, *, generation: int, key: str, operation: str = "opera
         "scope_fingerprint": "scope-1", "payload": body,
         "payload_digest": canonical_digest(body),
     }
+
+
+def test_partial_v2_registry_fails_closed(tmp_path: Path) -> None:
+    root = tmp_path / "registry"
+    root.mkdir()
+    (root / "registry-v2.json").write_text(
+        json.dumps({
+            "schema_version": 2,
+            "repository_fingerprint": "repo-1",
+            "generation": 1,
+        }),
+        encoding="utf-8",
+    )
+    store = RegistryStore(root, repository_fingerprint="repo-1")
+
+    with pytest.raises(CtlError) as exc_info:
+        store.load()
+
+    assert exc_info.value.code == "CTL_REGISTRY_SCHEMA_MISMATCH"
 
 
 def _prepare(store: RegistryStore) -> dict[str, object]:

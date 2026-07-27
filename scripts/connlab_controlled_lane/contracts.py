@@ -10,17 +10,10 @@ from typing import Any, Mapping
 
 SCHEMA_VERSION = 2
 
-READ_ONLY_COMMANDS = frozenset(
-    {
-        "scan",
-        "route-plan",
-        "registry-status",
-        "recover",
-        "worktree-preflight",
-        "integration-preflight",
-        "retire-preflight",
-    }
-)
+READ_ONLY_COMMANDS = frozenset({
+    "scan", "route-plan", "registry-status", "recover", "worktree-preflight",
+    "integration-preflight", "retire-preflight",
+})
 MUTATION_COMMANDS = (
     "prepare-dispatch",
     "mark-invocation-started",
@@ -29,6 +22,7 @@ MUTATION_COMMANDS = (
     "ack-dispatch",
     "advance-state",
 )
+ADMIN_COMMANDS = ("bootstrap-registry", "register-lane")
 
 EXIT_CODES: dict[int, tuple[str, ...]] = {
     0: ("CTL_OK", "CTL_DRY_RUN", "CTL_NO_ACTION", "CTL_ALREADY_APPLIED"),
@@ -171,7 +165,7 @@ def validate_common_request(request: Mapping[str, Any], command: str) -> None:
         )
     if canonical_digest(request["payload"]) != request["payload_digest"]:
         raise CtlError("CTL_PAYLOAD_DIGEST_MISMATCH", "payload_digest does not match payload")
-    if command in MUTATION_COMMANDS:
+    if command in MUTATION_COMMANDS + ADMIN_COMMANDS:
         for field in ("expected_registry_generation", "idempotency_key"):
             if field not in request or request[field] in (None, ""):
                 raise CtlError("CTL_INVALID_REQUEST", f"{field} is required")
@@ -250,6 +244,13 @@ def validate_recovery_binding(
     """Prove one recovery read-back belongs to the prepared operation."""
     action = str(dispatch.get("action_kind"))
     expected = dispatch.get("target_binding", {})
+    from .bootstrap import BOOTSTRAP_ACTIONS, validate_bootstrap_ack
+    if action in BOOTSTRAP_ACTIONS:
+        validate_bootstrap_ack(dispatch, {
+            "readback_binding": observed,
+            "readback_digest": canonical_digest(observed),
+            "receipt_digest": "recovery", "git_observation_digest": "recovery"})
+        return
     if action == "create_developer_environment":
         from .native_environment import adopt_native_environment
 

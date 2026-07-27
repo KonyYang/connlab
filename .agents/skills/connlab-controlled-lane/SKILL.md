@@ -34,6 +34,19 @@ one frozen route/operation match; zero, multiple, wrong, partial, or unreadable 
 manual recovery. Same-ID retry is allowed only while the journal durably proves no invocation
 marker or tool attempt exists.
 
+## Bootstrap Administration
+
+- `bootstrap-registry` is the only registry genesis command. It is legal only when registry-v2,
+  recovery marker, and stale lock are absent.
+- `register-lane` creates a `planned` lane only. It never records User approval or implementation
+  authority.
+- These administrative commands remain outside the ordinary six-command dispatch journal and use
+  the existing 39-code catalog.
+- Runtime bootstrap requires a separate User authorization. Without it, use only `--dry-run`,
+  disposable registry roots, temporary Git repositories, and fake native adapters.
+- Controller creation freezes the canonical title/project/prompt request. The real thread ID is
+  adopted only from one exact native receipt/read-back; it is never preselected.
+
 ## Native Task Adapter
 
 The Codex app tools are the only native adapter:
@@ -69,3 +82,10 @@ callbacks, recovery points, and residual ledger resolved.
 Send a concise `CONNLAB_CALLBACK_V2` JSON object bound to event, task, lane, role, status,
 evidence digest, lane HEAD, route, operation, thread, and worktree. Then stop and let the next
 scan recompute authority.
+
+## Heartbeat
+
+The controller heartbeat is `ConnLab v2 controlled-lane scan`, runs every five minutes, and is
+created paused. Process a durable callback before a heartbeat scan. Activate only while an
+active/pending/recovery lane exists; pause as a separate final action when none exists. Heartbeat
+has no approval, scope-expansion, push, archive, or cleanup authority.

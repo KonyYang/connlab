@@ -394,17 +394,20 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 
 ## 19. Controlled Lane V2 Contract
 
-The implemented but unbootstrapped v2 contract is documented in:
+The controlled v2 helper and bootstrap support are documented in:
 
 - `docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md`
 - `.agents/skills/connlab-controlled-lane/SKILL.md`
 - `scripts/connlab_controlled_lane.ps1`
 
-Until a separate User bootstrap gate activates v2, the current orchestrator and role registry
-remain authoritative. V2 dry-run may use only fake task adapters, disposable Git repositories,
-and disposable registry roots. It must not create real tasks, automations, branches/worktrees,
-registry state, migrations, archives, commits, or remote actions.
+The repository supports the administrative `bootstrap-registry` and `register-lane` commands,
+but production runtime remains inactive until a separate User bootstrap gate. The current
+orchestrator and role registry remain authoritative. Dry-run may use only fake task adapters,
+disposable Git repositories, and disposable registry roots. It must not create real tasks,
+automations, branches/worktrees, registry state, migrations, archives, commits, or remote actions.
 
 After bootstrap, every scan/callback still performs at most one external action. It must use the
 six-command CAS journal, preserve `dispatch_ack` separately from role completion, and fail closed
 on stale authority, ownership conflict, ambiguous read-back, or possible-start uncertainty.
+Heartbeat is callback-first, five-minute active-only, created paused, and changed between active
+and paused only as its own external action. A tests-only pilot requires a separate User gate.

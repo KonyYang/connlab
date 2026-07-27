@@ -128,6 +128,104 @@ def _seed_lane(tmp_path: Path, *, state: str = "authorized",
     return store
 
 
+def test_bootstrap_controller_dispatch_adopts_post_create_thread_id(
+    tmp_path: Path,
+) -> None:
+    store = _seed_lane(
+        tmp_path,
+        state="bootstrap_controller_pending",
+        proof={},
+        authority_files={},
+        primary_repo_root="C:/repo",
+    )
+    target = {
+        "task_id": "TASK_1",
+        "lane_id": "lane-1",
+        "route_id": "route-1",
+        "operation_id": "operation-1",
+        "payload_digest": "controller-prompt",
+        "action_kind": "create_controller_task",
+        "role": "Controller",
+        "controller_title": "ConnLab｜研发任务编排与集成主控 v2",
+        "native_mode": "create_thread_local",
+        "saved_project_id": "connlab-project",
+        "project_path": "C:/repo",
+        "repository_fingerprint": "scope-1",
+        "prompt_digest": "controller-prompt",
+    }
+    prepare_payload = {
+        "action_kind": "create_controller_task",
+        "current_state": "bootstrap_controller_pending",
+        "target_binding": target,
+    }
+    assert store.execute(
+        "prepare-dispatch",
+        _mutation("prepare-dispatch", 0, "bootstrap-prepare", prepare_payload),
+    )["code"] == "CTL_OK"
+    assert store.execute(
+        "mark-invocation-started",
+        _mutation(
+            "mark-invocation-started",
+            1,
+            "bootstrap-start",
+            {"expected_stage": "prepared"},
+        ),
+    )["code"] == "CTL_OK"
+    receipt = {"threadId": "controller-thread-v2"}
+    assert store.execute(
+        "record-action-result",
+        _mutation(
+            "record-action-result",
+            2,
+            "bootstrap-result",
+            {
+                "expected_stage": "invocation_started",
+                "result_stage": "sent",
+                "receipt": receipt,
+                "receipt_digest": canonical_digest(receipt),
+            },
+        ),
+    )["code"] == "CTL_OK"
+    observed = {
+        **target,
+        "thread_id": "controller-thread-v2",
+        "project_binding_verified": True,
+        "title_verified": True,
+    }
+    ack_payload = {
+        "expected_stage": "sent",
+        "receipt_digest": canonical_digest(receipt),
+        "readback_binding": observed,
+        "readback_digest": canonical_digest(observed),
+        "readback_readable": True,
+    }
+    assert store.execute(
+        "ack-dispatch",
+        _mutation("ack-dispatch", 3, "bootstrap-ack", ack_payload),
+    )["code"] == "CTL_OK"
+    advance = store.execute(
+        "advance-state",
+        _mutation(
+            "advance-state",
+            4,
+            "bootstrap-advance",
+            {
+                "from_state": "bootstrap_controller_pending",
+                "to_state": "bootstrap_heartbeat_pending",
+            },
+        ),
+    )
+    registry = store.load()
+
+    assert advance["code"] == "CTL_OK"
+    assert registry["lanes"]["lane-1"]["state"] == "bootstrap_heartbeat_pending"
+    assert registry["lanes"]["lane-1"]["proof"]["controller_acknowledged"] is True
+    assert registry["bootstrap"]["controller"]["thread_id"] == "controller-thread-v2"
+    assert registry["role_bindings"]["lane-1:Controller"]["thread_id"] == (
+        "controller-thread-v2"
+    )
+
+
 @pytest.mark.parametrize("command", MUTATION_COMMANDS)
 def test_each_mutation_dry_run_has_stable_json_and_zero_writes(
     tmp_path: Path, command: str) -> None:

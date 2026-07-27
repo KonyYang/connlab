@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from scripts.connlab_controlled_lane.contracts import (
+    ADMIN_COMMANDS,
     ALL_CODES,
     MUTATION_COMMANDS,
     CtlError,
@@ -45,6 +46,7 @@ def test_canonical_json_and_digest_are_order_independent() -> None:
 def test_stable_code_catalog_has_all_39_codes_and_exit_classes() -> None:
     assert len(ALL_CODES) == 39
     assert len(MUTATION_COMMANDS) == 6
+    assert ADMIN_COMMANDS == ("bootstrap-registry", "register-lane")
     assert exit_code_for("CTL_OK") == 0
     assert exit_code_for("CTL_CAS_CONFLICT") == 3
     assert exit_code_for("CTL_OWNER_CONFLICT") == 4

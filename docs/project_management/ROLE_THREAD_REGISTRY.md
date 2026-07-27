@@ -20,3 +20,13 @@ Scope: role-specific Codex threads used by ConnLab orchestration
 - The orchestrator should prefer these threads when `send_message_to_thread` is available.
 - Role threads should send completion callbacks to `ConnLab｜全自动编排 Orchestrator` when full-auto orchestration is active.
 
+## Controlled V2 Controller
+
+- Canonical title: `ConnLab｜研发任务编排与集成主控 v2`.
+- Runtime status: not created; production bootstrap remains separately gated.
+- Thread ID: unassigned. Do not infer or persist a placeholder ID.
+- On authorized bootstrap, the native receipt and exact read-back must establish the binding before
+  registry acknowledgement.
+- All v1 role rows above and the retained TASK_367A topology remain authoritative and unchanged
+  until a separately reviewed migration/retirement task.
+
