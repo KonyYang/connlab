@@ -268,3 +268,20 @@ Dead-loop detection:
 
 On dead-loop detection, pause routing and report to the user.
 
+## 11. Controlled Lane V2 Compatibility Hook
+
+`docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md` defines the deterministic helper
+contract. It is implemented but remains inactive until a separate User bootstrap gate.
+
+V2 preserves this protocol's approval order. It adds:
+
+- expected-generation registry CAS;
+- `prepare-dispatch -> mark-invocation-started -> one external action -> result -> dispatch_ack ->
+  advance -> stop`;
+- `dispatch_ack` as native/Git delivery proof, independent from later role completion;
+- same Developer/worktree reuse for Reviewer and attributed bounded QA fixes;
+- typed fail-closed owner, scope, topology, stale-evidence, and recovery decisions.
+
+No v2 registry, native task, worktree, migration, automation, or archive action is implied by the
+presence of the helper or skill.
+

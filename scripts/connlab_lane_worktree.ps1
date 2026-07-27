@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("Create", "Inspect", "List", "Retire")]
+    [ValidateSet("Create", "Adopt", "Inspect", "List", "Retire")]
     [string]$Action,
 
     [string]$Lane,
@@ -12,7 +12,11 @@ param(
 
     [string]$Branch,
 
-    [string]$WorktreeRoot
+    [string]$WorktreeRoot,
+
+    [switch]$Json,
+
+    [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -53,6 +57,21 @@ function Get-NormalizedPath {
     return [System.IO.Path]::GetFullPath($Path).TrimEnd("\")
 }
 
+function Write-LaneResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Result
+    )
+
+    if ($Json) {
+        $Result | ConvertTo-Json -Compress -Depth 8
+        return
+    }
+    foreach ($key in $Result.Keys) {
+        Write-Host "${key}: $($Result[$key])"
+    }
+}
+
 $repoRootOutput = & git rev-parse --show-toplevel 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "Run this script from inside the ConnLab Git repository."
@@ -67,7 +86,17 @@ if ([string]::IsNullOrWhiteSpace($WorktreeRoot)) {
 $WorktreeRoot = Get-NormalizedPath -Path $WorktreeRoot
 
 if ($Action -eq "List") {
-    Invoke-Git -Directory $repoRoot -Arguments @("worktree", "list", "--porcelain")
+    $worktrees = @(Invoke-Git -Directory $repoRoot -Arguments @("worktree", "list", "--porcelain"))
+    if ($Json) {
+        Write-LaneResult -Result @{
+            Code = "CTL_OK"
+            ZeroWrite = $true
+            Porcelain = $worktrees
+        }
+    }
+    else {
+        $worktrees
+    }
     exit 0
 }
 
@@ -105,6 +134,20 @@ switch ($Action) {
             throw "Worktree target already exists: $target"
         }
 
+        $baseCommit = (Invoke-Git -Directory $repoRoot -Arguments @("rev-parse", $BaseRef) | Select-Object -First 1).Trim()
+        if ($DryRun) {
+            Write-LaneResult -Result @{
+                Code = "CTL_DRY_RUN"
+                ZeroWrite = $true
+                Action = "Create"
+                Lane = $Lane
+                Branch = $Branch
+                Path = $target
+                BaseCommit = $baseCommit
+            }
+            exit 0
+        }
+
         New-Item -ItemType Directory -Path $WorktreeRoot -Force | Out-Null
         Invoke-Git -Directory $repoRoot -Arguments @(
             "worktree",
@@ -113,15 +156,41 @@ switch ($Action) {
             "-b",
             $Branch,
             $target,
-            $BaseRef
+            $baseCommit
         ) | Out-Host
 
         $head = (Invoke-Git -Directory $target -Arguments @("rev-parse", "HEAD") | Select-Object -First 1).Trim()
-        Write-Host "Lane worktree created."
-        Write-Host "Lane: $Lane"
-        Write-Host "Branch: $Branch"
-        Write-Host "Path: $target"
-        Write-Host "Base commit: $head"
+        Write-LaneResult -Result @{
+            Code = "CTL_OK"
+            ZeroWrite = $false
+            Action = "Create"
+            Lane = $Lane
+            Branch = $Branch
+            Path = $target
+            BaseCommit = $head
+        }
+    }
+
+    "Adopt" {
+        if (-not (Test-Path -LiteralPath $target -PathType Container)) {
+            throw "Lane worktree does not exist: $target"
+        }
+        $actualBranch = (Invoke-Git -Directory $target -Arguments @("branch", "--show-current") | Select-Object -First 1).Trim()
+        $head = (Invoke-Git -Directory $target -Arguments @("rev-parse", "HEAD") | Select-Object -First 1).Trim()
+        $expectedHead = (Invoke-Git -Directory $repoRoot -Arguments @("rev-parse", $BaseRef) | Select-Object -First 1).Trim()
+        $status = @(Invoke-Git -Directory $target -Arguments @("status", "--porcelain=v1"))
+        if ($actualBranch -ne $Branch -or $head -ne $expectedHead -or $status.Count -ne 0) {
+            throw "Existing worktree does not exactly match branch/base/cleanliness for adoption."
+        }
+        Write-LaneResult -Result @{
+            Code = $(if ($DryRun) { "CTL_DRY_RUN" } else { "CTL_OK" })
+            ZeroWrite = $true
+            Action = "Adopt"
+            Lane = $Lane
+            Branch = $Branch
+            Path = $target
+            BaseCommit = $head
+        }
     }
 
     "Inspect" {
@@ -170,12 +239,30 @@ switch ($Action) {
             throw "Could not verify integration ancestry for $head."
         }
 
+        if ($DryRun) {
+            Write-LaneResult -Result @{
+                Code = "CTL_DRY_RUN"
+                ZeroWrite = $true
+                Action = "Retire"
+                Lane = $Lane
+                Branch = $Branch
+                Path = $target
+                IntegratedHead = $head
+                IntegrationRef = $IntegrationRef
+            }
+            exit 0
+        }
+
         Invoke-Git -Directory $repoRoot -Arguments @("worktree", "remove", $target) | Out-Null
         Invoke-Git -Directory $repoRoot -Arguments @("branch", "-d", $Branch) | Out-Host
 
-        Write-Host "Lane worktree retired without force."
-        Write-Host "Lane: $Lane"
-        Write-Host "Integrated HEAD: $head"
-        Write-Host "Integration ref: $IntegrationRef"
+        Write-LaneResult -Result @{
+            Code = "CTL_OK"
+            ZeroWrite = $false
+            Action = "Retire"
+            Lane = $Lane
+            IntegratedHead = $head
+            IntegrationRef = $IntegrationRef
+        }
     }
 }

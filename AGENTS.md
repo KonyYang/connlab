@@ -391,3 +391,20 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 - 未授权 discard/reset/restore/delete
 - 未授权 remote push
 - 把 unnamed residual 留给未来人工猜测
+
+## 19. Controlled Lane V2 Contract
+
+The implemented but unbootstrapped v2 contract is documented in:
+
+- `docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md`
+- `.agents/skills/connlab-controlled-lane/SKILL.md`
+- `scripts/connlab_controlled_lane.ps1`
+
+Until a separate User bootstrap gate activates v2, the current orchestrator and role registry
+remain authoritative. V2 dry-run may use only fake task adapters, disposable Git repositories,
+and disposable registry roots. It must not create real tasks, automations, branches/worktrees,
+registry state, migrations, archives, commits, or remote actions.
+
+After bootstrap, every scan/callback still performs at most one external action. It must use the
+six-command CAS journal, preserve `dispatch_ack` separately from role completion, and fail closed
+on stale authority, ownership conflict, ambiguous read-back, or possible-start uncertainty.

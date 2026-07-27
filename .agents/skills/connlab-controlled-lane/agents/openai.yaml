@@ -1,0 +1,4 @@
+interface:
+  display_name: ConnLab Controlled Lane
+  short_description: Execute one authorized, journaled ConnLab lane routing action.
+  default_prompt: Use the ConnLab controlled-lane helper to perform exactly one legal route action.

@@ -3,17 +3,34 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Task,
 
-    [switch]$Preview
+    [switch]$Preview,
+
+    [switch]$ControlledLaneV2,
+
+    [string]$RequestJson
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-. "$PSScriptRoot\_codex_runtime.ps1"
+if (-not $ControlledLaneV2) {
+    . "$PSScriptRoot\_codex_runtime.ps1"
+}
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
 $taskBoard = "docs/task_board.md"
 $taskFile = "tasks/$Task.md"
+
+if ($ControlledLaneV2) {
+    if ([string]::IsNullOrWhiteSpace($RequestJson)) {
+        throw "-RequestJson is required with -ControlledLaneV2."
+    }
+    & "$PSScriptRoot\connlab_controlled_lane.ps1" `
+        -Command "scan" `
+        -RequestJson $RequestJson `
+        -DryRun:$Preview
+    exit $LASTEXITCODE
+}
 
 Push-Location $repoRoot
 try {

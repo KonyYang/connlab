@@ -295,3 +295,25 @@ RELEASE_006B1/B2/B3 did not add three unrelated features. It recovered three pie
 - real Damp Heat `extract_row_details()` integration coverage
 
 Once those were moved into bounded modules, the remaining stale, duplicate, and formatting residuals could be safely discarded. The lasting lesson is to prevent unique value and disposable residue from sharing a file or worktree in the first place.
+
+## 9. Controlled Lane V2 Operations Hook
+
+The v2 helper is a preflight and journal surface, not bootstrap authorization. Before activation,
+use only disposable roots and `zero-write dry-run`.
+
+The exact mutation order is:
+
+```text
+prepare-dispatch
+mark-invocation-started
+one external action
+record-action-result
+ack-dispatch
+advance-state
+stop
+```
+
+Worktree create/adopt and Developer-task create/adopt remain separate scans. JSON/dry-run/adopt
+support in `connlab_lane_worktree.ps1` does not permit real topology mutation without the task's
+explicit gate. Possible-start ambiguity, dirty state, path/branch/base mismatch, or shared-owner
+conflict always stops without resend, force, cleanup, or fallback.
