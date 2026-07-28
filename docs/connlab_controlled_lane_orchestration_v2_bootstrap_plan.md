@@ -1,6 +1,6 @@
 # ConnLab Controlled Lane V2 Bootstrap Implementation Plan
 
-Status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization
+Status: implementation/governance complete at `62ded429`; runtime bootstrap blocked by planned-only `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_THREAD_TITLE_CORRECTIVE`
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP`
 
@@ -172,3 +172,12 @@ The local `origin/master` tracking ref remains unfetched at
 `3614a6d12e56e02420b47d8dbe0fc6251c52bb37`; local comparison is behind `0`, ahead `5`, and does
 not assert current remote state. Production registry/controller/heartbeat, real bootstrap, pilot,
 native task/worktree/automation effects, fetch, and push remain unexecuted and unauthorized.
+
+## 14. Runtime Title Corrective Dependency
+
+Runtime activation remains blocked by
+`CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_THREAD_TITLE_CORRECTIVE`. The native create operation
+cannot set the canonical controller title, so title mutation/read-back must become its own
+journaled state/action before heartbeat creation. The failed runtime attempt stopped before
+registry genesis; after corrective acceptance and a separate User runtime gate, bootstrap restarts
+from proven registry absence.

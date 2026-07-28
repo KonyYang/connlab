@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP
 
-Status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization
+Status: implementation/governance complete at `62ded429`; runtime bootstrap blocked by planned-only `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_THREAD_TITLE_CORRECTIVE`
 
 Lane: `connlab-controlled-lane-orchestration-v2-bootstrap`
 
@@ -22,6 +22,12 @@ This implementation task does not authorize:
 - migration, archive, cleanup, fetch, or push.
 
 Those effects require separate runtime gates after implementation acceptance.
+
+Runtime bootstrap is additionally blocked by
+`CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_THREAD_TITLE_CORRECTIVE`: native `create_thread` cannot
+set the canonical controller title, and the accepted state machine has no independent journaled
+`set_thread_title` action. The failed runtime attempt stopped before registry genesis and left no
+runtime state to adopt.
 
 ## May Touch
 
