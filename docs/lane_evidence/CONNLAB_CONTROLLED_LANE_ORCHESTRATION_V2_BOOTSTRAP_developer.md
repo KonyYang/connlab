@@ -4,7 +4,50 @@ Status: ready_for_reviewer_implementation_re_gate
 
 Branch: `lane/connlab-controlled-lane-orchestration-v2-bootstrap`
 
-Reviewed checkpoint: `a8962b82a3640ce1b08744b8b50db899ed05237c`
+Bounded-fix base: `738af3e51663f8ab3d63c4a6840810cb5b08f5e0`
+
+## Register-Lane Preflight Fix
+
+- `register-lane` now enters the same fail-closed administrative preflight as registry genesis
+  before lock acquisition or any registry mutation.
+- The preflight resolves the caller's actual repository, derives the Git-common-dir fingerprint,
+  and compares it with the canonical primary root, request fingerprint, and store fingerprint.
+- A clean worktree and index are required. The submitted base commit must equal the observed clean
+  repository HEAD, so both nonexistent and stale bases fail with `CTL_HEAD_MISMATCH`.
+- Authority paths are read from the observed repository and SHA-256 verified before CAS mutation;
+  missing or forged authority fails with `CTL_EVIDENCE_STALE`.
+- Wrong root, missing/forged authority, and nonexistent/stale base all leave generation unchanged
+  and do not create a lane record. Existing 39-code, admin CAS, replay, and planned-only semantics
+  are unchanged.
+
+Direct RED:
+
+```text
+py -m pytest tests/integration/test_connlab_controlled_lane_dry_run.py::
+  test_register_lane_preflight_rejects_unverified_repository_authority -q
+5 failed in 2.37s
+```
+
+Direct GREEN and adjacent bootstrap coverage:
+
+```text
+py -m pytest tests/integration/test_connlab_controlled_lane_dry_run.py::
+  test_register_lane_preflight_rejects_unverified_repository_authority \
+  tests/unit/test_connlab_controlled_lane_bootstrap.py -q
+16 passed in 11.10s
+```
+
+Final bounded command:
+
+```powershell
+$unit = @(Get-ChildItem tests\unit -Filter 'test_connlab_controlled_lane_*.py' |
+  ForEach-Object { $_.FullName })
+py -m pytest @unit `
+  tests\integration\test_connlab_controlled_lane_dry_run.py `
+  tests\integration\test_connlab_controlled_lane_bootstrapped_pilot.py -q
+```
+
+Result: `164 passed in 37.35s`.
 
 ## Bounded Fix
 
@@ -94,12 +137,12 @@ Blank-inclusive UTF-8 physical lines:
 |---|---:|
 | `scripts/connlab_controlled_lane/bootstrap.py` | 300 |
 | `scripts/connlab_controlled_lane/contracts.py` | 300 |
-| `scripts/connlab_controlled_lane/registry.py` | 344 |
+| `scripts/connlab_controlled_lane/registry.py` | 350 |
 | `scripts/connlab_controlled_lane/state_machine.py` | 280 |
 | `tests/unit/test_connlab_controlled_lane_bootstrap.py` | 300 |
-| `tests/unit/test_connlab_controlled_lane_registry.py` | 423 |
+| `tests/unit/test_connlab_controlled_lane_registry.py` | 421 |
 | `tests/unit/test_connlab_controlled_lane_state_machine.py` | 367 |
-| `tests/integration/test_connlab_controlled_lane_dry_run.py` | 450 |
+| `tests/integration/test_connlab_controlled_lane_dry_run.py` | 500 |
 | `tests/integration/test_connlab_controlled_lane_bootstrapped_pilot.py` | 229 |
 
 Reviewer should review this evidence's containing lane checkpoint commit. No fetch, push, runtime

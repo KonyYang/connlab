@@ -88,6 +88,56 @@ def _git_repo(tmp_path: Path) -> Path:
     return repo
 
 
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    (("wrong-root", "CTL_TOPOLOGY_STALE"),
+     ("missing-authority", "CTL_EVIDENCE_STALE"),
+     ("forged-authority", "CTL_EVIDENCE_STALE"),
+     ("nonexistent-base", "CTL_HEAD_MISMATCH"),
+     ("stale-base", "CTL_HEAD_MISMATCH")),
+)
+def test_register_lane_preflight_rejects_unverified_repository_authority(
+    tmp_path: Path, mutation: str, expected: str,
+) -> None:
+    repo = _git_repo(tmp_path)
+    fingerprint = canonical_digest({"git_common_dir": str((repo / ".git").resolve())})
+    store = RegistryStore(tmp_path / "registry", repository_fingerprint=fingerprint)
+    store.root.mkdir()
+    store._atomic_write(store.load())
+    authority = {"README.md": hashlib.sha256((repo / "README.md").read_bytes()).hexdigest()}
+    scope = {"paths": ["tests/unit/test_lane.py"]}
+    payload = {
+        "state": "planned", "base_commit": _git(repo, "rev-parse", "HEAD"),
+        "primary_repo_root": str(repo.resolve()), "requested_scope": scope,
+        "scope_digest": canonical_digest(scope), "owner_claims": [],
+        "owner_claims_digest": canonical_digest([]), "authority_files": authority,
+        "authority_digest": canonical_digest(authority), "proof": {},
+    }
+    request = _request("register-lane")
+    request.update(repo_root=str(repo.resolve()), repository_fingerprint=fingerprint,
+                   payload=payload, payload_digest=canonical_digest(payload))
+    if mutation == "wrong-root":
+        payload["primary_repo_root"] = str(tmp_path / "wrong")
+    elif mutation.endswith("authority"):
+        name = "missing.md" if mutation.startswith("missing") else "README.md"
+        payload["authority_files"] = {name: "0" * 64}
+        payload["authority_digest"] = canonical_digest(payload["authority_files"])
+    elif mutation == "nonexistent-base":
+        payload["base_commit"] = "0" * 40
+    else:
+        (repo / "next.md").write_text("next\n", encoding="utf-8")
+        _git(repo, "add", ".")
+        _git(repo, "commit", "-m", "next")
+    request["payload_digest"] = canonical_digest(payload)
+
+    output = store.execute("register-lane", request)
+
+    assert output["code"] == expected
+    assert output["zero_write"] is True
+    assert store.load()["generation"] == 0
+    assert "lane-1" not in store.load()["lanes"]
+
+
 def _run_cli(tmp_path: Path, request: dict[str, object]) -> subprocess.CompletedProcess[str]:
     request_path = tmp_path / f"{request['command']}.json"
     request_path.write_text(json.dumps(request), encoding="utf-8")

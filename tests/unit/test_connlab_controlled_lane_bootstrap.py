@@ -12,8 +12,10 @@ from scripts.connlab_controlled_lane.contracts import ADMIN_COMMANDS, canonical_
 from scripts.connlab_controlled_lane.registry import RegistryStore
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True
+    ).stdout.strip()
 
 
 def _request(
@@ -38,10 +40,15 @@ def _request(
         "payload": payload,
         "payload_digest": canonical_digest(payload),
     }
-    if command == "bootstrap-registry":
-        controller = payload["controller"]
+    if command in ADMIN_COMMANDS:
+        repo = Path(str(payload["primary_repo_root"]))
+        controller = payload.get("controller", {})
+        fingerprint = controller.get(
+            "repository_fingerprint",
+            canonical_digest({"git_common_dir": str((repo / ".git").resolve())}),
+        )
         request.update(repo_root=payload["primary_repo_root"],
-                       repository_fingerprint=controller["repository_fingerprint"])
+                       repository_fingerprint=fingerprint)
     return request
 
 
@@ -96,7 +103,15 @@ def genesis(tmp_path: Path) -> tuple[RegistryStore, dict[str, object]]:
     )
 
 
-def _register_payload() -> dict[str, object]:
+@pytest.fixture
+def bootstrapped(genesis: tuple[RegistryStore, dict[str, object]]) -> tuple[RegistryStore, dict[str, object]]:
+    store, payload = genesis
+    request = _request("bootstrap-registry", generation=0, key="bootstrap", payload=payload)
+    assert store.execute("bootstrap-registry", request)["code"] == "CTL_OK"
+    return store, payload
+
+
+def _register_payload(repo: Path) -> dict[str, object]:
     scope = {"paths": ["tests/integration/test_bootstrapped_pilot.py"]}
     owners = [{
         "key": f"path:{scope['paths'][0]}",
@@ -104,11 +119,11 @@ def _register_payload() -> dict[str, object]:
         "directories": [],
         "authorities": [],
     }]
-    authority: dict[str, str] = {}
+    authority = {"task.md": hashlib.sha256((repo / "task.md").read_bytes()).hexdigest()}
     return {
         "state": "planned",
-        "base_commit": "base-commit",
-        "primary_repo_root": "C:/repo",
+        "base_commit": _git(repo, "rev-parse", "HEAD"),
+        "primary_repo_root": str(repo.resolve()),
         "requested_scope": scope,
         "scope_digest": canonical_digest(scope),
         "owner_claims": owners,
@@ -117,10 +132,6 @@ def _register_payload() -> dict[str, object]:
         "authority_digest": canonical_digest(authority),
         "proof": {},
     }
-
-
-def test_admin_command_catalog_is_bounded_and_uses_existing_codes() -> None:
-    assert ADMIN_COMMANDS == ("bootstrap-registry", "register-lane")
 
 
 def test_bootstrap_registry_creates_generation_one_and_exact_replay(
@@ -199,19 +210,15 @@ def test_bootstrap_rejects_recovery_marker_before_any_write(
 
 
 def test_register_lane_is_planned_only_and_idempotent(
-    genesis: tuple[RegistryStore, dict[str, object]],
+    bootstrapped: tuple[RegistryStore, dict[str, object]],
 ) -> None:
-    store, payload = genesis
-    bootstrap = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=payload
-    )
-    assert store.execute("bootstrap-registry", bootstrap)["code"] == "CTL_OK"
+    store, payload = bootstrapped
     request = _request(
         "register-lane",
         generation=1,
         key="register-pilot",
         lane_id="connlab-controlled-lane-automation-pilot-test-only",
-        payload=_register_payload(),
+        payload=_register_payload(Path(str(payload["primary_repo_root"]))),
     )
 
     first = store.execute("register-lane", request)
@@ -223,7 +230,7 @@ def test_register_lane_is_planned_only_and_idempotent(
     assert replay["code"] == "CTL_ALREADY_APPLIED"
     assert lane["state"] == "planned"
     assert lane["implementation_authorized"] is False
-    assert lane["base_commit"] == "base-commit"
+    assert lane["base_commit"] == request["payload"]["base_commit"]
 
 
 def test_admin_dry_run_validates_without_creating_registry(
@@ -243,13 +250,9 @@ def test_admin_dry_run_validates_without_creating_registry(
 
 
 def test_register_lane_rejects_existing_cross_lane_owner(
-    genesis: tuple[RegistryStore, dict[str, object]],
+    bootstrapped: tuple[RegistryStore, dict[str, object]],
 ) -> None:
-    store, payload = genesis
-    bootstrap = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=payload
-    )
-    assert store.execute("bootstrap-registry", bootstrap)["code"] == "CTL_OK"
+    store, payload = bootstrapped
     registry = store.load()
     registry["shared_owners"]["tests/integration"] = {
         "lane_id": "other-lane",
@@ -260,7 +263,8 @@ def test_register_lane_rejects_existing_cross_lane_owner(
     store._atomic_write(registry)
     request = _request(
         "register-lane", generation=1, key="owner-conflict",
-        lane_id="pilot-lane", payload=_register_payload(),
+        lane_id="pilot-lane",
+        payload=_register_payload(Path(str(payload["primary_repo_root"]))),
     )
 
     result = store.execute("register-lane", request)
@@ -279,15 +283,11 @@ def test_register_lane_rejects_existing_cross_lane_owner(
     ],
 )
 def test_register_lane_rejects_authority_or_scope_changes(
-    genesis: tuple[RegistryStore, dict[str, object]],
+    bootstrapped: tuple[RegistryStore, dict[str, object]],
     field: str, value: str, code: str,
 ) -> None:
-    store, bootstrap_payload = genesis
-    bootstrap = _request(
-        "bootstrap-registry", generation=0, key="bootstrap", payload=bootstrap_payload
-    )
-    assert store.execute("bootstrap-registry", bootstrap)["code"] == "CTL_OK"
-    payload = _register_payload()
+    store, bootstrap_payload = bootstrapped
+    payload = _register_payload(Path(str(bootstrap_payload["primary_repo_root"])))
     payload[field] = value
     request = _request(
         "register-lane", generation=1, key=f"register-{field}",

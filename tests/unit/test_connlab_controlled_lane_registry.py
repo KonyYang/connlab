@@ -38,8 +38,6 @@ _EXACT = {
     "worktree_clean": True, "index_clean": True,
     "path_unique": True, "branch_unique": True,
 }
-
-
 def _request(command: str, *, generation: int, key: str, operation: str = "operation-1",
              payload: dict[str, object] | None = None) -> dict[str, object]:
     body = payload or {

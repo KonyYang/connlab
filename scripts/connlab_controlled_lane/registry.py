@@ -75,11 +75,9 @@ class RegistryStore:
     def execute(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
         try:
             validate_common_request(request, command)
-            if command == "bootstrap-registry":
-                self._preflight_bootstrap(request)
+            if command in ADMIN_COMMANDS:
+                self._preflight_admin(command, request)
             if request.get("dry_run"):
-                if command in ADMIN_COMMANDS:
-                    validate_bootstrap_request(command, request)
                 return result(
                     code="CTL_DRY_RUN", request=request,
                     message="validated without registry write", zero_write=True,
@@ -92,12 +90,14 @@ class RegistryStore:
                 zero_write=exc.code != "CTL_POST_WRITE_VERIFY_FAILED",
                 facts=dict(exc.facts or {}),
             )
-    def _preflight_bootstrap(self, request: Mapping[str, Any]) -> None:
-        validate_bootstrap_request("bootstrap-registry", request)
+    def _preflight_admin(self, command: str, request: Mapping[str, Any]) -> None:
+        validate_bootstrap_request(command, request)
         if self.recovery_path.exists():
             raise CtlError("CTL_RECOVERY_REQUIRED", "registry recovery marker unresolved")
         if self.lock_path.exists():
             raise CtlError("CTL_LOCK_BUSY", "registry lock is already held")
+        if command == "register-lane" and not self.path.exists():
+            raise CtlError("CTL_LANE_NOT_AUTHORIZED", "registry bootstrap is required")
         payload = request["payload"]
         repo_value = request.get("repo_root")
         if not repo_value:
@@ -106,25 +106,31 @@ class RegistryStore:
             repo = Path(str(repo_value)).resolve(strict=True)
             facts = inspect_git(repo)
         except (OSError, subprocess.SubprocessError) as exc:
-            raise CtlError("CTL_TOPOLOGY_STALE", "bootstrap repository is unreadable") from exc
+            raise CtlError("CTL_TOPOLOGY_STALE", "admin repository is unreadable") from exc
         fingerprint = canonical_digest({"git_common_dir": facts["git_common_dir"]})
-        controller = payload["controller"]
+        controller = payload.get("controller", {})
         if (
             Path(str(payload["primary_repo_root"])).resolve() != repo
-            or Path(str(controller["project_path"])).resolve() != repo
             or request.get("repository_fingerprint") != fingerprint
             or self.repository_fingerprint != fingerprint
+        ):
+            raise CtlError("CTL_TOPOLOGY_STALE", "admin repository identity changed")
+        if command == "bootstrap-registry" and (
+            Path(str(controller["project_path"])).resolve() != repo
             or controller.get("repository_fingerprint") != fingerprint
         ):
-            raise CtlError("CTL_TOPOLOGY_STALE", "bootstrap repository identity changed")
+            raise CtlError("CTL_TOPOLOGY_STALE", "bootstrap controller identity changed")
         if facts["status"]:
-            raise CtlError("CTL_PRIMARY_DIRTY", "bootstrap repository is dirty")
+            raise CtlError("CTL_PRIMARY_DIRTY", "admin repository is dirty")
         if facts["index"]:
-            raise CtlError("CTL_INDEX_NOT_EMPTY", "bootstrap index is not empty")
+            raise CtlError("CTL_INDEX_NOT_EMPTY", "admin index is not empty")
         verify_authority_files(repo, payload["authority_files"])
-        legacy = payload["legacy_inventory"]
-        verify_authority_files(repo, {str(legacy.get("source")):
-                                      str(legacy.get("source_digest"))})
+        if command == "bootstrap-registry":
+            legacy = payload["legacy_inventory"]
+            verify_authority_files(repo, {str(legacy.get("source")):
+                                          str(legacy.get("source_digest"))})
+        elif payload["base_commit"] != facts["head"]:
+            raise CtlError("CTL_HEAD_MISMATCH", "lane base is not current repository HEAD")
     def _execute_locked(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
         self.root.mkdir(parents=True, exist_ok=True)
         token = str(uuid.uuid4())
