@@ -3,21 +3,37 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Mapping
 
+from . import controller_title
+from .controller_title import CONTROLLER_ACTIONS, V2_CONTROLLER_TITLE
 from .contracts import CtlError, canonical_digest
 
-V2_CONTROLLER_TITLE = "ConnLab｜研发任务编排与集成主控 v2"
 HEARTBEAT_NAME = "ConnLab v2 controlled-lane scan"
 HEARTBEAT_RRULE = "FREQ=MINUTELY;INTERVAL=5"
 
 BOOTSTRAP_STATES = frozenset((
-    "bootstrap_controller_pending", "bootstrap_heartbeat_pending",
-    "bootstrap_dry_run_pending", "bootstrap_ready"))
+    "bootstrap_controller_pending", "bootstrap_controller_title_pending",
+    "bootstrap_heartbeat_pending", "bootstrap_dry_run_pending", "bootstrap_ready"))
 BOOTSTRAP_ACTIONS = frozenset((
-    "create_controller_task", "create_paused_heartbeat", "run_zero_write_dry_run"))
+    *CONTROLLER_ACTIONS, "create_paused_heartbeat", "run_zero_write_dry_run"))
 BOOTSTRAP_TRANSITIONS = frozenset({
-    ("bootstrap_controller_pending", "bootstrap_heartbeat_pending"),
+    ("bootstrap_controller_pending", "bootstrap_controller_title_pending"),
+    ("bootstrap_controller_title_pending", "bootstrap_heartbeat_pending"),
     ("bootstrap_heartbeat_pending", "bootstrap_dry_run_pending"),
     ("bootstrap_dry_run_pending", "bootstrap_ready")})
+_TARGET_FIELDS = {
+    "create_paused_heartbeat": ("controller_thread_id", "heartbeat_name", "rrule", "status"),
+    "run_zero_write_dry_run": (
+        "validation_scope_digest", "expected_external_action_count")}
+_COMMON_TARGET_FIELDS = (
+    "task_id", "lane_id", "route_id", "operation_id",
+    "payload_digest", "action_kind", "role")
+_OUTPUT_REQUIREMENTS = {
+    "create_paused_heartbeat": (
+        ("automation_id", None), ("controller_binding_verified", True),
+        ("status_verified", True)),
+    "run_zero_write_dry_run": (("passed", True), ("actual_external_action_count", 0))}
+_ACTION_PROOF = {"controller_thread_adopted": True, "controller_title_exact": False,
+                 "controller_acknowledged": True, "heartbeat_acknowledged": True, "dry_run_passed": True}
 
 
 def _require_mapping(payload: Mapping[str, Any], field: str) -> Mapping[str, Any]:
@@ -31,21 +47,22 @@ def validate_bootstrap_request(
     command: str, request: Mapping[str, Any], *, registry_exists: bool | None = None
 ) -> None:
     payload = _require_mapping(request, "payload")
+    validators = {
+        "bootstrap-registry": _validate_genesis_payload,
+        "register-lane": _validate_lane_payload,
+    }
+    if command not in validators:
+        raise CtlError("CTL_INVALID_REQUEST", "unsupported administrative command")
     if command == "bootstrap-registry":
         if registry_exists is True:
             raise CtlError("CTL_REGISTRY_SCHEMA_MISMATCH",
                            "bootstrap requires an absent registry")
-        _validate_genesis_payload(payload)
-        return
-    if command == "register-lane":
-        if registry_exists is False:
-            raise CtlError(
-                "CTL_LANE_NOT_AUTHORIZED",
-                "registry must be bootstrapped before lane registration",
-            )
-        _validate_lane_payload(payload)
-        return
-    raise CtlError("CTL_INVALID_REQUEST", "unsupported administrative command")
+    elif registry_exists is False:
+        raise CtlError(
+            "CTL_LANE_NOT_AUTHORIZED",
+            "registry must be bootstrapped before lane registration",
+        )
+    validators[command](payload)
 
 
 def _validate_genesis_payload(payload: Mapping[str, Any]) -> None:
@@ -65,12 +82,7 @@ def _validate_genesis_payload(payload: Mapping[str, Any]) -> None:
         raise CtlError("CTL_REGISTRY_SCHEMA_MISMATCH", "migration must be not_required")
     controller = _require_mapping(payload, "controller")
     heartbeat = _require_mapping(payload, "heartbeat")
-    if controller.get("title") != V2_CONTROLLER_TITLE:
-        raise CtlError("CTL_INVALID_REQUEST", "controller title is not canonical")
-    controller_fields = ("native_mode", "saved_project_id", "project_path",
-        "repository_fingerprint", "prompt_digest")
-    if any(controller.get(field) in (None, "") for field in controller_fields):
-        raise CtlError("CTL_INVALID_REQUEST", "controller target is incomplete")
+    controller_title.validate_controller_configuration(controller)
     if heartbeat != {
         "name": HEARTBEAT_NAME,
         "rrule": HEARTBEAT_RRULE,
@@ -153,6 +165,8 @@ def _lane_record(request: Mapping[str, Any], payload: Mapping[str, Any]) -> dict
 def select_bootstrap_action(state: str, proof: Mapping[str, Any]) -> dict[str, Any]:
     if state == "bootstrap_controller_pending":
         return {"kind": "create_controller_task", "target_role": "Controller"}
+    if state == "bootstrap_controller_title_pending":
+        return controller_title.select_controller_title_action(proof)
     if state == "bootstrap_heartbeat_pending" and proof.get("controller_acknowledged"):
         return {"kind": "create_paused_heartbeat", "target_role": "Controller"}
     if state == "bootstrap_dry_run_pending" and proof.get("heartbeat_acknowledged"):
@@ -163,14 +177,10 @@ def select_bootstrap_action(state: str, proof: Mapping[str, Any]) -> dict[str, A
 
 
 def validate_bootstrap_action(state: str, action_kind: str) -> None:
-    selected = select_bootstrap_action(
-        state,
-        {
-            "controller_acknowledged": True,
-            "heartbeat_acknowledged": True,
-            "dry_run_passed": True,
-        },
-    )
+    if (state == "bootstrap_controller_title_pending"
+            and action_kind in controller_title.CONTROLLER_TITLE_ACTIONS):
+        return
+    selected = select_bootstrap_action(state, _ACTION_PROOF)
     if selected["kind"] != action_kind:
         raise CtlError("CTL_INVALID_TRANSITION",
                        f"action {action_kind} is not legal from {state}")
@@ -186,39 +196,15 @@ def validate_bootstrap_target_binding(
     binding: Any, *, action_kind: str,
     expected: Mapping[str, Any] | None = None,
 ) -> None:
+    if action_kind in CONTROLLER_ACTIONS:
+        controller_title.validate_controller_target_binding(
+            binding, action_kind, expected)
+        return
     if not isinstance(binding, dict) or action_kind not in BOOTSTRAP_ACTIONS:
         raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "bootstrap target is invalid")
-    required = {
-        "create_controller_task": (
-            "controller_title",
-            "native_mode",
-            "saved_project_id",
-            "project_path",
-            "repository_fingerprint",
-            "prompt_digest",
-        ),
-        "create_paused_heartbeat": (
-            "controller_thread_id",
-            "heartbeat_name",
-            "rrule",
-            "status",
-        ),
-        "run_zero_write_dry_run": (
-            "validation_scope_digest",
-            "expected_external_action_count",
-        ),
-    }[action_kind]
-    common = (
-        "task_id",
-        "lane_id",
-        "route_id",
-        "operation_id",
-        "payload_digest",
-        "action_kind",
-        "role",
-    )
     if binding.get("action_kind") != action_kind or any(
-        binding.get(field) in (None, "") for field in common + required
+        binding.get(field) in (None, "")
+        for field in _COMMON_TARGET_FIELDS + _TARGET_FIELDS[action_kind]
     ):
         raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "bootstrap target is incomplete")
     if any(binding.get(field, object()) != value
@@ -229,6 +215,8 @@ def validate_bootstrap_target_binding(
 def validate_bootstrap_ack(
     dispatch: Mapping[str, Any], payload: Mapping[str, Any]
 ) -> Mapping[str, Any]:
+    if dispatch.get("action_kind") in CONTROLLER_ACTIONS:
+        return controller_title.validate_controller_ack(dispatch, payload)
     observed = payload.get("readback_binding")
     action = str(dispatch.get("action_kind"))
     authority_field = (
@@ -243,23 +231,7 @@ def validate_bootstrap_ack(
     )
     if payload.get("readback_digest") != canonical_digest(observed):
         raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "bootstrap read-back digest changed")
-    output_requirements = {
-        "create_controller_task": (
-            ("thread_id", None),
-            ("project_binding_verified", True),
-            ("title_verified", True),
-        ),
-        "create_paused_heartbeat": (
-            ("automation_id", None),
-            ("controller_binding_verified", True),
-            ("status_verified", True),
-        ),
-        "run_zero_write_dry_run": (
-            ("passed", True),
-            ("actual_external_action_count", 0),
-        ),
-    }[action]
-    for field, exact in output_requirements:
+    for field, exact in _OUTPUT_REQUIREMENTS[action]:
         value = observed.get(field)
         if value in (None, "") or (exact is not None and value != exact):
             raise CtlError(
@@ -275,18 +247,16 @@ def adopt_bootstrap_readback(
     dispatch: Mapping[str, Any],
     payload: Mapping[str, Any],
 ) -> None:
+    if dispatch.get("action_kind") in CONTROLLER_ACTIONS:
+        controller_title.adopt_controller_readback(
+            registry, lane_id, dispatch, payload)
+        return
     observed = validate_bootstrap_ack(dispatch, payload)
     lane = registry["lanes"][lane_id]
     proof = lane.setdefault("proof", {})
     bootstrap = registry.setdefault("bootstrap", {})
     action = dispatch["action_kind"]
-    if action == "create_controller_task":
-        bootstrap.setdefault("controller", {})["thread_id"] = observed["thread_id"]
-        registry["role_bindings"][f"{lane_id}:Controller"] = {
-            "lane_id": lane_id, "role": "Controller",
-            "thread_id": observed["thread_id"], "status": "active"}
-        proof["controller_acknowledged"] = True
-    elif action == "create_paused_heartbeat":
+    if action == "create_paused_heartbeat":
         heartbeat = bootstrap.setdefault("heartbeat", {})
         heartbeat["automation_id"] = observed["automation_id"]
         heartbeat["status"] = "PAUSED"

@@ -8,6 +8,7 @@ from .bootstrap import (
     validate_bootstrap_transition,
 )
 from .completion_authority import frozen_completion_contract
+from . import controller_title
 from .contracts import CtlError, canonical_digest
 from .ownership import validate_target_binding
 
@@ -104,14 +105,11 @@ def validate_authoritative_dispatch(
     if action.get("kind") in BOOTSTRAP_ACTIONS:
         bootstrap = registry.get("bootstrap", {})
         if action["kind"] == "create_controller_task":
-            controller = bootstrap.get("controller", {})
-            expected.update({
-                "controller_title": controller.get("title"),
-                **{field: controller.get(field) for field in (
-                    "native_mode", "saved_project_id", "project_path",
-                    "repository_fingerprint", "prompt_digest",
-                )},
-            })
+            expected.update(controller_title.build_controller_create_target(
+                bootstrap.get("controller", {})))
+        elif action["kind"] in controller_title.CONTROLLER_TITLE_ACTIONS:
+            expected.update(controller_title.build_controller_title_target(
+                registry, str(request["lane_id"]), str(action["kind"])))
         elif action["kind"] == "create_paused_heartbeat":
             heartbeat = bootstrap.get("heartbeat", {})
             expected.update({

@@ -94,20 +94,28 @@ The bootstrap lane states are:
 
 ```text
 bootstrap_controller_pending
+-> bootstrap_controller_title_pending
 -> bootstrap_heartbeat_pending
 -> bootstrap_dry_run_pending
 -> bootstrap_ready
 ```
 
-Registry genesis is one administrative write. Controller creation, paused-heartbeat creation, and
-zero-write dry-run are separate journaled external actions. A native controller thread ID is never
-preinvented: prepare freezes the request identity, then receipt plus exact read-back supplies the
-thread ID that acknowledgement atomically adopts.
+Registry genesis is one administrative write. Controller creation, controller-title handling,
+paused-heartbeat creation, and zero-write dry-run are separate journaled external actions. A native
+controller thread ID is never preinvented: prepare freezes the request identity, then receipt plus
+exact read-back supplies the thread ID that acknowledgement atomically adopts. This adoption leaves
+the role binding `title_pending`; it does not trust an automatically generated title.
 
 The controller title is `ConnLab｜研发任务编排与集成主控 v2`. The heartbeat is named
 `ConnLab v2 controlled-lane scan`, uses `FREQ=MINUTELY;INTERVAL=5`, and is created `PAUSED`.
 Callbacks are processed before heartbeat scans. Activation and pausing are independent actions;
 idle state never keeps a heartbeat active.
+
+At title pending, exact observed title selects a journaled read-only adoption. Any other title
+selects `set_thread_title` bound to the adopted thread, lane, task, route, operation, and canonical
+title. It follows prepare, invocation-start, one native mutation, result, exact read-back, ack, and
+advance. Zero, multiple, wrong-thread, wrong-title, or unreadable observations fail closed.
+Controller becomes active only after this title action; replay never recreates the thread.
 
 ## One-Action Routing
 
@@ -130,6 +138,8 @@ attribution conflicts fail closed.
 Only the Codex app skill adapter may call native task APIs. Repository Python and PowerShell do not
 copy credentials or call `_codex_runtime.ps1` for v2. Native create/send requires a durable
 invocation marker; acknowledgement requires exact thread/lane/worktree/route/operation read-back.
+`set_thread_title` is independently journaled and accepts only the exact adopted `threadId` and
+canonical `title`; it cannot acknowledge controller creation.
 Archive requires a separate User gate after clean non-force retirement and callback drain.
 
 ## Worktree Boundary

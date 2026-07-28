@@ -45,13 +45,20 @@ marker or tool attempt exists.
 - Runtime bootstrap requires a separate User authorization. Without it, use only `--dry-run`,
   disposable registry roots, temporary Git repositories, and fake native adapters.
 - Controller creation freezes the canonical title/project/prompt request. The real thread ID is
-  adopted only from one exact native receipt/read-back; it is never preselected.
+  adopted only from one exact native receipt/read-back; it is never preselected. Creation does
+  not attest the generated title.
+- After thread adoption, title handling is a separate journaled action. If read-back already shows
+  `ConnLab｜研发任务编排与集成主控 v2`, adopt it without mutation. Otherwise prepare and mark
+  invocation before one `set_thread_title` call, then record, read back, acknowledge, and advance.
+- A controller binding remains `title_pending` until exact-title acknowledgement. Recovery never
+  repeats `create_thread` after the thread identity is durable.
 
 ## Native Task Adapter
 
 The Codex app tools are the only native adapter:
 
 - `create_thread`: only for the prepared lane/worktree-bound create action;
+- `set_thread_title`: only for the prepared exact controller thread and canonical title;
 - `send_message_to_thread`: only for the frozen existing binding;
 - `read_thread` or bounded task listing: exact receipt/read-back and adoption proof;
 - `set_thread_archived`: only after a separate archive authorization and clean retired lane.

@@ -205,8 +205,8 @@ def _bootstrap_sent(
 
 def test_bootstrap_controller_ack_adopts_exact_readback(tmp_path: Path) -> None:
     store, target, receipt = _bootstrap_sent(tmp_path)
-    observed = {**target, "thread_id": "controller-v2",
-                "project_binding_verified": True, "title_verified": True}
+    observed = {**target, "thread_id": "controller-v2", "host_id": "local", "cwd": "C:/repo",
+                "observed_initial_title": "Generated task", "project_binding_verified": True}
     ack = {"receipt_digest": canonical_digest(receipt),
            "readback_binding": observed, "readback_digest": canonical_digest(observed)}
     assert store.execute("ack-dispatch", _request(
@@ -215,10 +215,10 @@ def test_bootstrap_controller_ack_adopts_exact_readback(tmp_path: Path) -> None:
     assert store.execute("advance-state", _request(
         "advance-state", generation=4, key="bootstrap-advance",
         payload={"from_state": "bootstrap_controller_pending",
-                 "to_state": "bootstrap_heartbeat_pending"}))["code"] == "CTL_OK"
+                 "to_state": "bootstrap_controller_title_pending"}))["code"] == "CTL_OK"
     registry = store.load()
-    assert registry["bootstrap"]["controller"]["thread_id"] == "controller-v2"
-    assert registry["role_bindings"]["lane-1:Controller"]["thread_id"] == "controller-v2"
+    assert registry["bootstrap"]["controller"]["observed_initial_title"] == "Generated task"
+    assert registry["role_bindings"]["lane-1:Controller"]["status"] == "title_pending"
 
 
 @pytest.mark.parametrize(
@@ -233,8 +233,8 @@ def test_bootstrap_ack_rejects_changed_prepared_request_identity(
     tmp_path: Path, field: str, value: str, code: str,
 ) -> None:
     store, target, receipt = _bootstrap_sent(tmp_path)
-    observed = {**target, "thread_id": "controller-v2",
-                "project_binding_verified": True, "title_verified": True}
+    observed = {**target, "thread_id": "controller-v2", "host_id": "local", "cwd": "C:/repo",
+                "observed_initial_title": "Generated task", "project_binding_verified": True}
     payload = {"receipt_digest": canonical_digest(receipt),
                "readback_binding": observed, "readback_digest": canonical_digest(observed)}
     request = _request("ack-dispatch", generation=3, key=field, payload=payload)

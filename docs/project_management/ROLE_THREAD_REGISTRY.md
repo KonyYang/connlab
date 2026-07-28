@@ -25,8 +25,10 @@ Scope: role-specific Codex threads used by ConnLab orchestration
 - Canonical title: `ConnLab｜研发任务编排与集成主控 v2`.
 - Runtime status: not created; production bootstrap remains separately gated.
 - Thread ID: unassigned. Do not infer or persist a placeholder ID.
-- On authorized bootstrap, the native receipt and exact read-back must establish the binding before
-  registry acknowledgement.
+- On authorized bootstrap, the create receipt and exact read-back first establish a
+  `title_pending` binding. They do not attest the generated title.
+- Exact-title read-only adoption or a separately journaled `set_thread_title` action must then
+  verify the canonical title before the Controller binding becomes active.
 - All v1 role rows above and the retained TASK_367A topology remain authoritative and unchanged
   until a separately reviewed migration/retirement task.
 
