@@ -1,6 +1,6 @@
 # ConnLab Controlled Lane V2 Bootstrap Implementation Plan
 
-Status: qa_pass / pending Integrator packaging-readiness audit
+Status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP`
 
@@ -152,7 +152,23 @@ py_compile, three PowerShell parsers, 39-code/six-command parity, line caps, UTF
 `git show --check`.
 
 The QA evidence and this reconciliation are docs-only overlays on paths already present in the
-reviewed 32-path set; they do not expand implementation May Touch. Integrator must audit the exact
-32-path base-to-final-tree package at `2136/48`, while retaining `1975/48` as the reviewed
-implementation-only checkpoint fact. Production bootstrap, pilot execution, and every real
-task/worktree/registry/automation side effect remain unauthorized.
+reviewed 32-path set; they do not expand implementation May Touch. At QA handoff, Integrator was
+required to audit the exact 32-path base-to-final-tree package at `2136/48`, while retaining
+`1975/48` as the reviewed implementation-only checkpoint fact. That audit later passed as recorded
+below. Production bootstrap, pilot execution, and every real task/worktree/registry/automation
+side effect remain unauthorized.
+
+## 13. Local Integration Acceptance
+
+Reviewer, QA, and Integrator accepted the lane. Implementation checkpoint
+`08f99cdec1d9f7ca0de802109089b70105a17ad3` and governance commit
+`91c6b42564c1ef030761bd9c757889159e438974` form the final exact 32-path, `2136/48`
+base-to-master package; excluded residual is zero. Local master and lane HEAD both resolve to
+`91c6b42564c1ef030761bd9c757889159e438974`; at Integrator acceptance both worktrees and indexes
+were clean. This reconciliation changes only task-owned governance documents, keeps the index
+empty, and leaves the lane worktree clean.
+
+The local `origin/master` tracking ref remains unfetched at
+`3614a6d12e56e02420b47d8dbe0fc6251c52bb37`; local comparison is behind `0`, ahead `5`, and does
+not assert current remote state. Production registry/controller/heartbeat, real bootstrap, pilot,
+native task/worktree/automation effects, fetch, and push remain unexecuted and unauthorized.

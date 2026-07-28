@@ -6,8 +6,8 @@
 - Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP`
 - Lane: `connlab-controlled-lane-orchestration-v2-bootstrap`
 - QA result: `qa_pass`
-- Current status: `qa_pass / pending Integrator packaging-readiness audit`; source-of-truth reconciliation is complete in the same 32-path package inventory.
-- Recommended next role: Integrator packaging-readiness audit.
+- Current status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization.
+- QA handoff recommendation was Integrator packaging-readiness audit; that gate subsequently passed.
 
 ## Isolated Reviewed Environment
 
@@ -91,3 +91,7 @@ The QA evidence path already belongs to the reviewed 32-path range. Post-QA gove
 limited to paths in that same set, so the future Integrator package inventory remains exactly 32
 paths. Integrator must distinguish the reviewed `1975/48` checkpoint candidate from the docs-only
 overlay: the reconciled base-to-final-tree package is exactly `2136/48`.
+
+Integrator accepted and locally integrated that exact package at
+`91c6b42564c1ef030761bd9c757889159e438974`, with excluded residual zero. Production runtime
+bootstrap and pilot remain unstarted and separately User-gated.

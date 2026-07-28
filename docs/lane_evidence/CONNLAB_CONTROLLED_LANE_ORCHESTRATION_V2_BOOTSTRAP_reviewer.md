@@ -1,7 +1,7 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP Reviewer Evidence
 
 Status: reviewer_implementation_re_gate_pass
-Current lane status: `qa_pass / pending Integrator packaging-readiness audit`
+Current lane status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization
 
 Reviewed range:
 
@@ -41,3 +41,7 @@ Reviewer implementation re-gate passed. At evidence persistence time, the next g
 was Planner source-of-truth reconciliation. That reconciliation preserves this role result and
 advances only the lane status to Integrator packaging-readiness audit; this evidence does not
 authorize runtime bootstrap or pilot execution.
+
+Integrator later accepted and locally integrated the Reviewer/QA-approved exact 32-path,
+`2136/48` package at `91c6b42564c1ef030761bd9c757889159e438974`, with excluded residual zero.
+This post-integration fact does not alter the Reviewer result or authorize runtime activation.

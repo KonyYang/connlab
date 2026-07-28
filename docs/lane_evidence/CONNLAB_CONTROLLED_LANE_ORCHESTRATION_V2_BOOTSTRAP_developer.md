@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP Developer Evidence
 
-Status: qa_pass / pending Integrator packaging-readiness audit
+Status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization
 
 Branch: `lane/connlab-controlled-lane-orchestration-v2-bootstrap`
 
@@ -191,7 +191,16 @@ action, or merge; the subsequent gate status below supersedes that routing check
 Reviewer implementation re-gate passed for checkpoint
 `08f99cdec1d9f7ca0de802109089b70105a17ad3`. Isolated QA subsequently passed the exact reviewed
 32-path `1975/48` candidate with bounded `166 passed` and TOCTOU direct/adjacent `18 passed`.
-This status update is governance-only; Developer implementation remains unchanged. Integrator
-packaging-readiness must audit the exact 32-path, `2136/48` base-to-final-tree package while
-preserving `1975/48` as the reviewed implementation-only fact. Production bootstrap, pilot
-activation, and all real registry/task/worktree/automation side effects remain unauthorized.
+This status update is governance-only; Developer implementation remains unchanged. At that
+handoff, Integrator was required to audit the exact 32-path, `2136/48` base-to-final-tree package
+while preserving `1975/48` as the reviewed implementation-only fact. That audit later passed.
+Production bootstrap, pilot activation, and all real registry/task/worktree/automation side
+effects remain unauthorized.
+
+## Local Integration
+
+Reviewer, QA, and Integrator accepted the unchanged implementation. Checkpoint
+`08f99cdec1d9f7ca0de802109089b70105a17ad3` was governance-completed and locally integrated at
+`91c6b42564c1ef030761bd9c757889159e438974` as the exact 32-path, `2136/48` package with zero
+excluded residual. No real bootstrap, pilot, registry, controller, heartbeat, task, worktree,
+automation, fetch, or push action occurred.

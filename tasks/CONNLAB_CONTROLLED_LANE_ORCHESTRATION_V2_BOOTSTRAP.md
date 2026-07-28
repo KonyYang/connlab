@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP
 
-Status: qa_pass / pending Integrator packaging-readiness audit
+Status: local implementation integrated and accepted at `91c6b425` / exact 9-path docs-only closeout candidate `102/32` / pending Reviewer docs-only closeout re-gate; real bootstrap pending User authorization
 
 Lane: `connlab-controlled-lane-orchestration-v2-bootstrap`
 
@@ -109,10 +109,12 @@ topology stops the operation.
 - whitelist, UTF-8, trailing, and `git diff --check` pass;
 - production registry is absent and no real native/runtime side effect occurred.
 
-## Merge Gate
+## Local Integration Acceptance
 
 Reviewer implementation re-gate and isolated QA passed for reviewed checkpoint
 `08f99cdec1d9f7ca0de802109089b70105a17ad3`. The reviewed implementation candidate is exactly
 32 paths and `1975/48`; the QA reconciled base-to-final-tree package remains those 32 paths and is
-exactly `2136/48`. Integrator packaging-readiness audit is next.
-Production bootstrap and the real pilot remain separate User gates.
+exactly `2136/48`. Integrator accepted and integrated the governance-complete package as
+`91c6b42564c1ef030761bd9c757889159e438974`; excluded residual is zero and local master equals the
+lane HEAD. Production registry/controller/heartbeat, real bootstrap, and the real pilot remain
+unstarted and require separate User authorization.
