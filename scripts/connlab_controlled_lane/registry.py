@@ -11,21 +11,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from .bootstrap import (BOOTSTRAP_ACTIONS, adopt_bootstrap_readback,
-                         apply_admin_mutation, validate_bootstrap_ack,
-                         validate_bootstrap_request)
+from .bootstrap import (BOOTSTRAP_ACTIONS, adopt_bootstrap_readback, apply_admin_mutation,
+                        validate_bootstrap_ack, validate_bootstrap_request)
 from .completion_authority import record_completion_callback
 from .contracts import (ADMIN_COMMANDS, CtlError, canonical_digest, canonical_json,
-                        convert_v1_to_v2, initial_registry, result,
-                         validate_common_request)
+                        convert_v1_to_v2, initial_registry, result, validate_common_request)
 from .git_preflight import inspect_git, verify_authority_files
 from .ownership import (
     adopt_and_materialize_native_owner, apply_advance_effects, reset_gate_proof,
-    validate_dispatch_binding, validate_owner_acquisition,
-)
+    validate_dispatch_binding, validate_owner_acquisition)
 from .native_environment import record_native_environment_receipt
-from .state_machine import (
-    validate_advance_authority, validate_authoritative_dispatch, validate_transition)
+from .state_machine import (validate_advance_authority, validate_authoritative_dispatch,
+                            validate_transition)
 
 _STAGE_REQUIREMENTS = {
     "mark-invocation-started": "prepared",
@@ -33,13 +30,11 @@ _STAGE_REQUIREMENTS = {
     "ack-dispatch": ("sent", "result_recorded"),
     "advance-state": "acknowledged",
 }
-_FINGERPRINT_FIELDS = ("task_id", "lane_id", "operation_id", "route_id",
-                       "idempotency_key", "scope_fingerprint", "payload")
+_FINGERPRINT_FIELDS = ("task_id", "lane_id", "operation_id", "route_id", "idempotency_key", "scope_fingerprint", "payload")
 _REGISTRY_FIELDS = (
     "registry_id", "git_common_dir_fingerprint", "generation", "created_at",
     "updated_at", "migration", "lanes", "worktrees", "shared_owners",
-    "role_bindings", "dispatches", "callbacks", "recovery_points", "idempotency",
-)
+    "role_bindings", "dispatches", "callbacks", "recovery_points", "idempotency")
 
 
 def _utc_now() -> str:
@@ -75,26 +70,26 @@ class RegistryStore:
     def execute(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
         try:
             validate_common_request(request, command)
-            if command in ADMIN_COMMANDS:
-                self._preflight_admin(command, request)
+            observation = self._preflight_admin(command, request) if command in ADMIN_COMMANDS else None
             if request.get("dry_run"):
                 return result(
                     code="CTL_DRY_RUN", request=request,
                     message="validated without registry write", zero_write=True,
                     facts={"external_action_count": 0},
                 )
-            return self._execute_locked(command, request)
+            return self._execute_locked(command, request, observation)
         except CtlError as exc:
             return result(
                 code=exc.code, request=request, message=exc.message,
                 zero_write=exc.code != "CTL_POST_WRITE_VERIFY_FAILED",
                 facts=dict(exc.facts or {}),
             )
-    def _preflight_admin(self, command: str, request: Mapping[str, Any]) -> None:
+    def _preflight_admin(self, command: str, request: Mapping[str, Any],
+                         token_owned: bool = False) -> str:
         validate_bootstrap_request(command, request)
         if self.recovery_path.exists():
             raise CtlError("CTL_RECOVERY_REQUIRED", "registry recovery marker unresolved")
-        if self.lock_path.exists():
+        if self.lock_path.exists() and not token_owned:
             raise CtlError("CTL_LOCK_BUSY", "registry lock is already held")
         if command == "register-lane" and not self.path.exists():
             raise CtlError("CTL_LANE_NOT_AUTHORIZED", "registry bootstrap is required")
@@ -124,14 +119,16 @@ class RegistryStore:
             raise CtlError("CTL_PRIMARY_DIRTY", "admin repository is dirty")
         if facts["index"]:
             raise CtlError("CTL_INDEX_NOT_EMPTY", "admin index is not empty")
-        verify_authority_files(repo, payload["authority_files"])
+        authority = verify_authority_files(repo, payload["authority_files"])
         if command == "bootstrap-registry":
             legacy = payload["legacy_inventory"]
             verify_authority_files(repo, {str(legacy.get("source")):
                                           str(legacy.get("source_digest"))})
         elif payload["base_commit"] != facts["head"]:
             raise CtlError("CTL_HEAD_MISMATCH", "lane base is not current repository HEAD")
-    def _execute_locked(self, command: str, request: Mapping[str, Any]) -> dict[str, Any]:
+        return canonical_digest({"repo": str(repo), "git": facts, "authority": authority})
+    def _execute_locked(self, command: str, request: Mapping[str, Any],
+                        observation: str | None = None) -> dict[str, Any]:
         self.root.mkdir(parents=True, exist_ok=True)
         token = str(uuid.uuid4())
         try:
@@ -139,6 +136,9 @@ class RegistryStore:
         except FileExistsError:
             raise CtlError("CTL_LOCK_BUSY", "registry lock is already held")
         try:
+            if observation and self._preflight_admin(
+                command, request, token_owned=True) != observation:
+                raise CtlError("CTL_TOPOLOGY_STALE", "admin observation changed under lock")
             registry = self.load()
             return self._apply_and_write(registry, command, request)
         finally:

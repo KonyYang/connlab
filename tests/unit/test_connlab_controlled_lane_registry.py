@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -54,6 +55,69 @@ def _request(command: str, *, generation: int, key: str, operation: str = "opera
         "scope_fingerprint": "scope-1", "payload": body,
         "payload_digest": canonical_digest(body),
     }
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    (("authority", "CTL_EVIDENCE_STALE"), ("head", "CTL_HEAD_MISMATCH")),
+)
+def test_register_lane_revalidates_repository_inside_token_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str, expected: str,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for args in (
+        ("init", "-b", "master"),
+        ("config", "user.email", "test@example.com"),
+        ("config", "user.name", "Test"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo), *args], check=True, capture_output=True)
+    authority_path = repo / "task.md"
+    authority_path.write_text("authority-v1\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(repo), "add", "."], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "base"],
+        check=True, capture_output=True)
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True).stdout.strip()
+    fingerprint = canonical_digest({"git_common_dir": str((repo / ".git").resolve())})
+    store = RegistryStore(tmp_path / "registry", repository_fingerprint=fingerprint)
+    store.root.mkdir()
+    store._atomic_write(store.load())
+    authority = {"task.md": hashlib.sha256(authority_path.read_bytes()).hexdigest()}
+    scope = {"paths": ["tests/unit/test_lane.py"]}
+    payload = {
+        "state": "planned", "base_commit": head,
+        "primary_repo_root": str(repo.resolve()), "requested_scope": scope,
+        "scope_digest": canonical_digest(scope), "owner_claims": [],
+        "owner_claims_digest": canonical_digest([]), "authority_files": authority,
+        "authority_digest": canonical_digest(authority), "proof": {},
+    }
+    request = _request("register-lane", generation=0, key=f"race-{mutation}", payload=payload)
+    request.update(repo_root=str(repo.resolve()), repository_fingerprint=fingerprint)
+    acquire = store._acquire_lock
+
+    def acquire_then_mutate(token: str) -> None:
+        acquire(token)
+        path = authority_path if mutation == "authority" else repo / "next.md"
+        path.write_text(f"{mutation}-v2\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "-C", str(repo), "add", "."], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(repo), "commit", "-m", mutation],
+            check=True, capture_output=True)
+
+    monkeypatch.setattr(store, "_acquire_lock", acquire_then_mutate)
+    output = store.execute("register-lane", request)
+
+    assert output["code"] == expected
+    assert output["zero_write"] is True
+    assert store.load()["generation"] == 0
+    assert "lane-1" not in store.load()["lanes"]
+    assert not store.lock_path.exists()
 
 
 def test_partial_v2_registry_fails_closed(tmp_path: Path) -> None:

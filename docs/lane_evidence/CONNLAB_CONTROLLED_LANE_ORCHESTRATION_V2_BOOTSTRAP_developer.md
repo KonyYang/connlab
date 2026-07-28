@@ -4,7 +4,43 @@ Status: ready_for_reviewer_implementation_re_gate
 
 Branch: `lane/connlab-controlled-lane-orchestration-v2-bootstrap`
 
-Bounded-fix base: `738af3e51663f8ab3d63c4a6840810cb5b08f5e0`
+Bounded-fix base: `b92ee61517fd200cd37945095ca932c05d437881`
+
+## Register-Lane Token-Lock Revalidation
+
+- The first administrative preflight now returns a canonical observation digest containing the
+  resolved repository root, actual Git/common-dir/HEAD/clean/index facts, and verified authority
+  file digests.
+- `RegistryStore` carries that frozen observation into `_execute_locked()`. After acquiring the
+  token-owned registry lock and before `load()`, mutation, or write, it repeats the same real
+  repository and authority observation and compares the result with the frozen digest.
+- A changed authority file fails with `CTL_EVIDENCE_STALE`; a clean new commit that leaves
+  authority unchanged fails with `CTL_HEAD_MISMATCH`. Other observation drift fails with the
+  existing `CTL_TOPOLOGY_STALE`.
+- Both deterministic races use disposable Git repositories. The controlled test hook mutates only
+  after the real token lock is acquired. Each failure leaves generation `0`, creates no lane, and
+  releases the token lock.
+
+Direct RED:
+
+```text
+py -m pytest tests/unit/test_connlab_controlled_lane_registry.py::
+  test_register_lane_revalidates_repository_inside_token_lock -q
+2 failed in 1.73s
+```
+
+Direct/adjacent GREEN:
+
+```text
+py -m pytest tests/unit/test_connlab_controlled_lane_registry.py::
+  test_register_lane_revalidates_repository_inside_token_lock \
+  tests/unit/test_connlab_controlled_lane_bootstrap.py \
+  tests/integration/test_connlab_controlled_lane_dry_run.py::
+  test_register_lane_preflight_rejects_unverified_repository_authority -q
+18 passed in 15.20s
+```
+
+Final bounded result: `166 passed in 39.62s`.
 
 ## Register-Lane Preflight Fix
 
@@ -64,7 +100,8 @@ Result: `164 passed in 37.35s`.
   zero-write and leave no registry directory or file.
 - The bootstrap lifecycle tests were mechanically moved from the oversized dry-run integration
   module to the bounded registry unit module. Assertions and disposable `RegistryStore` behavior
-  are unchanged; every touched Python file is now below the project hard limit.
+  are unchanged; every candidate Python file satisfies the `<=500` hard limit. The dry-run
+  integration module is exactly `500` blank-inclusive physical lines, not below `500`.
 
 No production registry, controller, heartbeat, task, worktree, automation, migration, archive,
 network, or product-data side effect was executed.
@@ -140,7 +177,7 @@ Blank-inclusive UTF-8 physical lines:
 | `scripts/connlab_controlled_lane/registry.py` | 350 |
 | `scripts/connlab_controlled_lane/state_machine.py` | 280 |
 | `tests/unit/test_connlab_controlled_lane_bootstrap.py` | 300 |
-| `tests/unit/test_connlab_controlled_lane_registry.py` | 421 |
+| `tests/unit/test_connlab_controlled_lane_registry.py` | 485 |
 | `tests/unit/test_connlab_controlled_lane_state_machine.py` | 367 |
 | `tests/integration/test_connlab_controlled_lane_dry_run.py` | 500 |
 | `tests/integration/test_connlab_controlled_lane_bootstrapped_pilot.py` | 229 |
