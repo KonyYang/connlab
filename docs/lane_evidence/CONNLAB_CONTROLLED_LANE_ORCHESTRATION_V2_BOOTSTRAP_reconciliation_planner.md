@@ -1,12 +1,19 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP Reconciliation
 
-Status: implementation source-of-truth reconciled / pending Reviewer
+Status: qa_pass / pending Integrator packaging-readiness audit
 
-Task, plan, board, rules, skill, and role evidence distinguish implemented bootstrap support from
-inactive production runtime. The tests-only pilot remains planned-only and separately gated.
+Reviewer evidence now persistently records `reviewer_implementation_re_gate_pass` for reviewed
+range
+`3614a6d12e56e02420b47d8dbe0fc6251c52bb37..08f99cdec1d9f7ca0de802109089b70105a17ad3`.
+Isolated QA passed that exact 32-path, `1975/48` implementation candidate with bounded
+`166 passed` and TOCTOU direct/adjacent `18 passed`.
 
-Current source of truth must be updated after Reviewer, QA, Integrator, runtime bootstrap, or pilot
-events; placeholders must never be read as acceptance evidence.
+Reviewer and QA evidence plus this source-of-truth reconciliation are docs-only overlays on paths
+already present in the reviewed 32-path set. Integrator packaging-readiness must audit the same
+32-path base-to-final-tree inventory at `2136/48`, while preserving `1975/48` as the
+implementation-only checkpoint fact.
 
-Developer validation currently records `154 passed`, exact 31-path scope, no product diff, no
-production registry, and preserved primary/TASK_367A topology.
+Task, plan, board, and role evidence continue to distinguish implemented bootstrap support from
+inactive production runtime. Production registry/controller/heartbeat activation, real bootstrap,
+pilot execution, task/worktree/automation actions, migration, cleanup, fetch, and push remain
+unexecuted and unauthorized.

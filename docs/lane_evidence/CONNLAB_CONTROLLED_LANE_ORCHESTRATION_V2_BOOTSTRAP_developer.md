@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP Developer Evidence
 
-Status: ready_for_reviewer_implementation_re_gate
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 Branch: `lane/connlab-controlled-lane-orchestration-v2-bootstrap`
 
@@ -182,5 +182,16 @@ Blank-inclusive UTF-8 physical lines:
 | `tests/integration/test_connlab_controlled_lane_dry_run.py` | 500 |
 | `tests/integration/test_connlab_controlled_lane_bootstrapped_pilot.py` | 229 |
 
-Reviewer should review this evidence's containing lane checkpoint commit. No fetch, push, runtime
-bootstrap, pilot activation, QA, Integrator action, or merge was performed.
+At Developer handoff, Reviewer was asked to review this evidence's containing lane checkpoint
+commit. Developer performed no fetch, push, runtime bootstrap, pilot activation, QA, Integrator
+action, or merge; the subsequent gate status below supersedes that routing checkpoint.
+
+## Post-Implementation Gates
+
+Reviewer implementation re-gate passed for checkpoint
+`08f99cdec1d9f7ca0de802109089b70105a17ad3`. Isolated QA subsequently passed the exact reviewed
+32-path `1975/48` candidate with bounded `166 passed` and TOCTOU direct/adjacent `18 passed`.
+This status update is governance-only; Developer implementation remains unchanged. Integrator
+packaging-readiness must audit the exact 32-path, `2136/48` base-to-final-tree package while
+preserving `1975/48` as the reviewed implementation-only fact. Production bootstrap, pilot
+activation, and all real registry/task/worktree/automation side effects remain unauthorized.

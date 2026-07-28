@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP
 
-Status: implementation candidate complete / pending Reviewer implementation gate
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 Lane: `connlab-controlled-lane-orchestration-v2-bootstrap`
 
@@ -111,5 +111,8 @@ topology stops the operation.
 
 ## Merge Gate
 
-Reviewer implementation gate, isolated QA, and Integrator packaging are required before local
-integration. Production bootstrap and the real pilot remain separate User gates.
+Reviewer implementation re-gate and isolated QA passed for reviewed checkpoint
+`08f99cdec1d9f7ca0de802109089b70105a17ad3`. The reviewed implementation candidate is exactly
+32 paths and `1975/48`; the QA reconciled base-to-final-tree package remains those 32 paths and is
+exactly `2136/48`. Integrator packaging-readiness audit is next.
+Production bootstrap and the real pilot remain separate User gates.

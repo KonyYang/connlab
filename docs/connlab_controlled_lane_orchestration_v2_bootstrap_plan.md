@@ -1,6 +1,6 @@
 # ConnLab Controlled Lane V2 Bootstrap Implementation Plan
 
-Status: implementation candidate complete / pending Reviewer gate
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_BOOTSTRAP`
 
@@ -141,3 +141,18 @@ Also run:
 Stop without runtime action on dirty primary/index, partial registry, recovery marker, stale CAS,
 ambiguous native read-back, owner conflict, scope expansion, product path diff, unexpected test
 failure, or any need for network/migration/destructive cleanup.
+
+## 12. Reviewer And QA Acceptance
+
+Reviewer implementation re-gate passed for clean checkpoint
+`08f99cdec1d9f7ca0de802109089b70105a17ad3`. Isolated QA then passed the exact reviewed
+`3614a6d12e56e02420b47d8dbe0fc6251c52bb37..08f99cdec1d9f7ca0de802109089b70105a17ad3`
+candidate: 32 paths, `1975/48`, bounded `166 passed`, TOCTOU direct/adjacent `18 passed`,
+py_compile, three PowerShell parsers, 39-code/six-command parity, line caps, UTF-8, trailing, and
+`git show --check`.
+
+The QA evidence and this reconciliation are docs-only overlays on paths already present in the
+reviewed 32-path set; they do not expand implementation May Touch. Integrator must audit the exact
+32-path base-to-final-tree package at `2136/48`, while retaining `1975/48` as the reviewed
+implementation-only checkpoint fact. Production bootstrap, pilot execution, and every real
+task/worktree/registry/automation side effect remain unauthorized.
