@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_THREAD_TITLE_CORRECTIVE Planner Evidence
 
-Status: implementation_tests_authorized / pending isolated corrective worktree creation and Developer implementation
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 ## Discovery Gate
 
@@ -72,14 +72,27 @@ User intent, native capability, state flow, errors, recovery, May Touch, locks, 
 budgets, worktree strategy, rollback, and runtime boundary are explicit. Reviewer plan/readiness
 re-gate passed after B1-B3 closure.
 
-The User explicitly authorized implementation and tests within the Reviewer-approved exact
-nine-path scope. A controlled local governance checkpoint and clean primary/index are required
-before the Orchestrator creates the new isolated corrective worktree; the accepted bootstrap
-worktree remains read-only and cannot be reused.
+The User authorized implementation and tests within the Reviewer-approved scope. Reviewer
+implementation re-gate and isolated QA then accepted clean checkpoint
+`2f3ba8c3e14fab6445c12d53dc783274e01fb0aa`.
 
 Runtime bootstrap/pilot, real registry/controller/heartbeat creation, fetch, push, migration,
 archive, and cleanup remain unauthorized. Corrective acceptance must be followed by a separate
 User runtime gate and a restart from verified registry absence.
 
-Recommended next action: Orchestrator creates the isolated corrective worktree, then routes
-Developer implementation.
+## QA Source-Of-Truth Reconciliation
+
+- reviewed implementation candidate: exact 10 paths, `945/106`;
+- fresh bounded suite: `188 passed in 74.59s`;
+- focused recovery integration: `7 passed`;
+- product-code diff: `0`;
+- 39 CTL codes, six mutation commands, CAS/recovery/title adoption, line caps, compile/parser,
+  diff/trailing, and no-real-side-effect checks passed;
+- production registry remains absent;
+- accepted bootstrap and TASK_367A retained worktrees remain clean.
+
+The post-checkpoint governance overlay is exact seven paths listed in the task. Developer evidence
+overlaps the reviewed candidate, so the final union is exact 16 paths. Governance-overlay numstat
+is `208/33`; base-to-final package numstat is `1152/138`.
+
+Recommended next role: Integrator packaging-readiness audit only.

@@ -1,6 +1,6 @@
 # ConnLab Controlled Lane V2 Thread Title Corrective Plan
 
-Status: implementation_tests_authorized / pending isolated corrective worktree creation and Developer implementation
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_THREAD_TITLE_CORRECTIVE`
 
@@ -205,12 +205,16 @@ adapters and bootstrap restarts from registry absence.
 - original bootstrap runtime remains blocked until corrective acceptance plus a separate runtime
   authorization.
 
-Reviewer plan/readiness re-gate passed and the User explicitly authorized implementation and tests
-within the frozen exact nine-path scope. The next controlled action is Orchestrator creation of the
-new isolated corrective worktree after a local governance checkpoint leaves the primary worktree
-and index clean, followed by Developer implementation in that worktree. The accepted bootstrap
-worktree remains read-only.
+Reviewer implementation re-gate passed. Isolated QA accepted clean checkpoint
+`2f3ba8c3e14fab6445c12d53dc783274e01fb0aa` with exact 10 reviewed paths, `945/106`,
+bounded `188 passed`, recovery integration `7 passed`, and product-code diff `0`.
+
+The Integrator package inventory is the reviewed 10-path checkpoint plus the exact seven-path
+governance overlay frozen in the task. Because Developer evidence overlaps the reviewed candidate,
+the final union is exact 16 paths. Governance-overlay numstat is `208/33`; base-to-final package
+numstat is `1152/138`. The accepted bootstrap worktree remains read-only.
 
 Runtime bootstrap/pilot, real registry/controller/heartbeat creation, fetch, push, migration,
 archive, and cleanup remain unauthorized. After corrective acceptance, bootstrap restarts from
-verified registry absence under a separate User gate.
+verified registry absence under a separate User gate. Next role is Integrator packaging-readiness
+audit only.
