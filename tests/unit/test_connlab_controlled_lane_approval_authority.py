@@ -29,6 +29,11 @@ def _registry(state: str = "plan_review_pending") -> dict[str, object]:
             }
         },
         "lanes": {
+            "bootstrap-lane": {
+                "task_id": "BOOTSTRAP",
+                "state": "bootstrap_ready",
+                "scope_fingerprint": "bootstrap-scope",
+            },
             "lane-1": {
                 "task_id": "TASK_1",
                 "state": state,
@@ -90,6 +95,20 @@ def test_controller_only_target_is_canonical_and_has_no_worktree_authority(
         "expected_evidence_path",
         "base_lane_head",
     }.intersection(target)
+
+
+def test_controller_target_rejects_other_lane_binding_with_same_thread() -> None:
+    registry = _registry()
+    binding = registry["role_bindings"].pop("bootstrap-lane:Controller")
+    registry["role_bindings"]["other-lane:Controller"] = {
+        **binding,
+        "lane_id": "other-lane",
+    }
+
+    with pytest.raises(CtlError) as error:
+        build_approval_target(registry, "lane-1", _request())
+
+    assert error.value.code == "CTL_THREAD_BINDING_MISMATCH"
 
 
 @pytest.mark.parametrize(

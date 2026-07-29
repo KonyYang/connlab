@@ -23,6 +23,10 @@ class ApprovalScenario:
             "lane_id": "bootstrap-lane", "role": "Controller",
             "thread_id": "controller-1", "status": "active",
         }
+        registry["lanes"]["bootstrap-lane"] = {
+            "task_id": "BOOTSTRAP", "state": "bootstrap_ready",
+            "scope_fingerprint": "bootstrap-scope",
+        }
         proof = {
             "review_status": "passed", "readiness_status": "passed",
             "developer_thread_id": "developer-1", "developer_worktree_path": "C:/lane",
@@ -161,12 +165,16 @@ def test_full_journal_callback_and_next_scan_are_separate(
 
     first = scenario.callback()
     replay = scenario.callback()
+    changed_key = scenario.callback(key="approval-callback-new-key")
+    generation_after_changed_key = scenario.store.load()["generation"]
     conflict = scenario.callback(status="reviewer_pass")
     stale = scenario.callback(key="stale", expected_generation=5)
     registry = scenario.store.load()
 
     assert first["code"] == "CTL_OK"
     assert replay["code"] == "CTL_ALREADY_APPLIED"
+    assert changed_key["code"] == "CTL_IDEMPOTENCY_CONFLICT"
+    assert generation_after_changed_key == 34
     assert conflict["code"] == "CTL_IDEMPOTENCY_CONFLICT"
     assert stale["code"] == "CTL_CAS_CONFLICT"
     assert registry["generation"] == 34

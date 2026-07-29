@@ -28,15 +28,18 @@ def approval_gate_for_state(state: str) -> tuple[str, str]:
 
 
 def _controller_thread(registry: Mapping[str, Any]) -> str:
-    bootstrap = registry.get("bootstrap", {}).get("controller", {})
-    thread_id = bootstrap.get("thread_id")
-    bindings = [
-        binding for binding in registry.get("role_bindings", {}).values()
-        if binding.get("role") == "Controller"
-        and binding.get("status") == "active"
-        and binding.get("thread_id") == thread_id
+    thread_id = registry.get("bootstrap", {}).get("controller", {}).get("thread_id")
+    lane_ids = [
+        lane_id for lane_id, lane in registry.get("lanes", {}).items()
+        if lane.get("state") == "bootstrap_ready"
     ]
-    if not thread_id or len(bindings) != 1:
+    lane_id = lane_ids[0] if len(lane_ids) == 1 else None
+    binding = registry.get("role_bindings", {}).get(
+        f"{lane_id}:Controller") if lane_id else None
+    if not thread_id or not lane_id or binding != {
+        "lane_id": lane_id, "role": "Controller",
+        "thread_id": thread_id, "status": "active",
+    }:
         raise CtlError(
             "CTL_THREAD_BINDING_MISMATCH",
             "active Controller thread authority is missing or changed")
@@ -153,14 +156,16 @@ def record_approval_callback(
     event_id = str(payload.get("event_id", ""))
     if not event_id or event_id != callback_event_id(payload):
         raise CtlError("CTL_CALLBACK_CONFLICT", "approval callback event is not canonical")
+    if event_id in registry.get("callbacks", {}) or dispatch.get(
+        "approval_callback_event_id"
+    ):
+        raise CtlError("CTL_IDEMPOTENCY_CONFLICT", "approval callback is already recorded")
     advance = dispatch.get("state_advance_payload", {})
     if (
         dispatch.get("stage") != "advanced"
         or lane.get("state") != target.get("expected_pending_state")
         or advance.get("from_state") != target.get("expected_from_state")
         or advance.get("to_state") != target.get("expected_pending_state")
-        or event_id in registry.get("callbacks", {})
-        or dispatch.get("approval_callback_event_id")
     ):
         raise CtlError(
             "CTL_ROLE_CALLBACK_STATE_MISMATCH",
