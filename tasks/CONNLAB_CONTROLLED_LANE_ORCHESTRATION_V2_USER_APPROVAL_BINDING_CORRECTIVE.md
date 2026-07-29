@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE
 
-Status: qa_pass / pending Integrator packaging-readiness audit
+Status: local implementation integrated and accepted at e2240445 / pending Reviewer docs-only closeout gate
 
 Lane: `connlab-controlled-lane-orchestration-v2-user-approval-binding-corrective`
 
@@ -9,13 +9,35 @@ Blocked lane:
 
 ## Current Phase And Why Allowed
 
-Current phase is post-QA source-of-truth reconciliation. The exact seven-path implementation was
-reviewed at clean checkpoint `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`; Reviewer
-implementation re-gate passed and isolated QA passed.
+Current phase is strict post-integration source-of-truth reconciliation. The exact seven-path
+implementation was reviewed at `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`; Reviewer and QA
+passed, and Integrator accepted the local ff-only package at
+`e22404456d0ee99d2d557e78d511c94d2e363002`.
 
 This docs-only reconciliation is allowed because it changes only task-owned governance after QA.
 The reviewed implementation, tests, registry, and runtime topology are locked. Pilot continuation
 remains unauthorized.
+
+## Local Integration Acceptance
+
+- Base: `fb7dc20a9775e49cde5c947346918105d91054b9`.
+- Reviewed implementation checkpoint:
+  `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`.
+- Governance commit:
+  `e22404456d0ee99d2d557e78d511c94d2e363002`.
+- Final local `master` and lane HEAD: `e22404456d0ee99d2d557e78d511c94d2e363002`.
+- Governance commit: exact five paths, `224/27`, parent `1c087a5d`.
+- Base-to-master: exact twelve paths, `900/42`.
+- Integration mode: local fast-forward only; no merge commit.
+- `git show --check`: passed.
+- Reviewer, QA, and Integrator acceptance: passed.
+- Excluded residual: `0`.
+- Primary, lane, and indexes were clean after integration.
+- Local `origin/master` tracking ref is unfetched at `3614a6d1`; local master is ahead `16`,
+  behind `0`. No remote freshness or remote-current SHA is claimed.
+
+Pilot recovery still requires a separate User runtime authorization. The registry, Controller,
+heartbeat, pilot lane, and approval callback remain read-only.
 
 ## Authoritative Entry Facts
 
@@ -284,7 +306,7 @@ must inspect a clean checkpoint/archive. Mixed or whole-repository staging is fo
 
 ## Stop Condition
 
-The corrective implementation and QA gates are complete. The next legal role is Integrator
-packaging-readiness audit of the frozen twelve-path inventory. Integrator execution is not
-performed by this reconciliation. Runtime approval request, registry mutation, and pilot
-continuation remain unauthorized.
+The corrective implementation is locally integrated and accepted. The next legal role is
+Reviewer docs-only closeout gate over the exact closeout candidate. Runtime approval request,
+registry mutation, heartbeat activation, and pilot continuation remain unauthorized pending a
+separate User gate.

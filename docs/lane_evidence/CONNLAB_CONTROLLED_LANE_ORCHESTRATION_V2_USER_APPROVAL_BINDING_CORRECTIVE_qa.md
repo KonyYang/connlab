@@ -6,7 +6,8 @@
 - Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE`
 - Lane: `connlab-controlled-lane-orchestration-v2-user-approval-binding-corrective`
 - QA result: `qa_pass`
-- Next role after Planner reconciliation: Integrator packaging-readiness audit only.
+- Integrator subsequently accepted the local ff-only package; next role after Planner
+  reconciliation is Reviewer docs-only closeout gate only.
 
 ## Isolated Reviewed Environment
 
@@ -90,7 +91,7 @@ continuation remains blocked pending the next authorized Planner/User route.
 
 ## Planner Source-Of-Truth Reconciliation
 
-- Reconciliation status: `qa_pass / pending Integrator packaging-readiness audit`.
+- Reconciliation status: `local implementation integrated and accepted at e2240445 / pending Reviewer docs-only closeout gate`.
 - Reviewer implementation re-gate and the QA facts above are recorded in task/plan/Planner/board.
 - Reviewed implementation remains exact seven paths at `1c087a5d`, `676/15`.
 - QA governance overlay is exact five paths with numstat `224/27`.
@@ -98,3 +99,13 @@ continuation remains blocked pending the next authorized Planner/User route.
   residual `0`.
 - This section records Planner reconciliation only and does not alter the QA result or reviewed
   implementation.
+
+## Post-Integration Reconciliation
+
+- Integrator accepted local ff-only integration at
+  `e22404456d0ee99d2d557e78d511c94d2e363002`.
+- Governance commit is exact five paths `224/27`, parent `1c087a5d`.
+- Base-to-master package is exact twelve paths `900/42`.
+- Excluded residual is `0`; `git show --check` passed.
+- Runtime registry generation/hash, pilot state/authority, and heartbeat remain unchanged.
+- Pilot recovery remains pending a separate User runtime authorization.

@@ -1,6 +1,6 @@
 # Planner Evidence - Controlled Lane V2 User Approval Binding Corrective
 
-Status: qa_pass / pending Integrator packaging-readiness audit
+Status: local implementation integrated and accepted at e2240445 / pending Reviewer docs-only closeout gate
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE`
 
@@ -21,6 +21,12 @@ QA reconciliation route:
 
 QA reconciliation operation:
 `ctl-v2-user-approval-binding-corrective-1c087a5d-planner-qa-reconciliation-v1`
+
+Post-integration reconciliation route:
+`ctl-v2-user-approval-binding-corrective-e2240445-planner-post-integration-reconciliation`
+
+Post-integration reconciliation operation:
+`ctl-v2-user-approval-binding-corrective-e2240445-planner-post-integration-reconciliation-v1`
 
 ## User-Confirmed Authority
 
@@ -112,6 +118,37 @@ in the existing source-of-truth documents.
 - Excluded residual: `0`.
 - QA evidence belongs to governance overlay and is not implementation May Touch.
 
+## Integrator Acceptance
+
+- Integrator result: `integrator_accepted_local_ff_only_integration_complete`.
+- Base: `fb7dc20a9775e49cde5c947346918105d91054b9`.
+- Reviewed implementation checkpoint:
+  `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`.
+- Governance commit and final local master/lane HEAD:
+  `e22404456d0ee99d2d557e78d511c94d2e363002`.
+- Governance commit: exact five paths, `224/27`, parent `1c087a5d`.
+- Final base-to-master package: exact twelve paths, `900/42`.
+- Local fast-forward only; no merge commit.
+- `git show --check`: passed.
+- Excluded residual: `0`.
+- Primary, lane, and indexes: clean after integration.
+- Unfetched local `origin/master` tracking ref: `3614a6d1`; behind `0`, ahead `16`.
+- No claim is made about current remote freshness or SHA.
+
+## Docs-Only Closeout Candidate
+
+The closeout candidate is exact six governance paths:
+
+1. task;
+2. plan;
+3. Planner evidence;
+4. QA evidence;
+5. task board exact hunks;
+6. task-specific Integrator evidence.
+
+Its numstat is `185/27`. It contains no implementation, tests,
+scripts, skill, AGENTS, registry, pilot, or runtime mutation.
+
 ## Exact Governance Paths In This Pass
 
 1. `tasks/CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE.md`
@@ -164,8 +201,9 @@ locked.
 
 ## Planner Result
 
-Reviewer implementation re-gate and QA passed. The exact implementation checkpoint and QA
-governance overlay are frozen pending Integrator packaging-readiness audit. Runtime approval
-dispatch, callback persistence, registry mutation, and pilot continuation remain unauthorized.
+Reviewer, QA, and Integrator accepted the local ff-only package at `e2240445`. The exact
+docs-only closeout candidate is frozen pending Reviewer closeout. Runtime approval dispatch,
+callback persistence, registry mutation, heartbeat activation, and pilot continuation remain
+unauthorized pending a separate User runtime gate.
 
-Next role: Integrator packaging-readiness audit only, routed separately by Orchestrator.
+Next role: Reviewer docs-only closeout gate only, routed separately by Orchestrator.

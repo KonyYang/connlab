@@ -1,6 +1,6 @@
 # ConnLab Controlled Lane V2 User Approval Binding Corrective Plan
 
-Status: qa_pass / pending Integrator packaging-readiness audit
+Status: local implementation integrated and accepted at e2240445 / pending Reviewer docs-only closeout gate
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE`
 
@@ -45,6 +45,22 @@ Reviewer implementation re-gate and isolated QA passed against checkpoint
 No separate Developer or Reviewer evidence file exists in the reviewed checkpoint. Their
 verified completion/re-gate facts are recorded here and in task/Planner governance; no role-owned
 evidence is fabricated.
+
+## 1.2 Local Integration Result
+
+Integrator accepted a local ff-only integration:
+
+- base `fb7dc20a9775e49cde5c947346918105d91054b9`;
+- implementation checkpoint `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`;
+- governance/final commit `e22404456d0ee99d2d557e78d511c94d2e363002`;
+- exact five-path governance commit `224/27`, parent `1c087a5d`;
+- exact twelve-path base-to-master package `900/42`;
+- `git show --check` passed;
+- excluded residual `0`;
+- no merge commit, fetch, push, runtime mutation, or pilot continuation.
+
+Local `origin/master` is an unfetched tracking ref at `3614a6d1`; the local comparison is
+behind `0`, ahead `16`. It is not evidence of the current remote SHA.
 
 ## 2. Authority Separation
 
@@ -256,6 +272,7 @@ again. The earlier pre-dispatch User approval is not reusable.
 
 ## 12. Next Gate
 
-Reviewer implementation re-gate and QA passed. The next gate is Integrator packaging-readiness
-audit of the exact twelve-path package. This Planner pass does not stage, commit, merge, or route
-Integrator directly. Runtime pilot continuation remains unauthorized.
+Reviewer, QA, and Integrator accepted the local package. The next gate is Reviewer docs-only
+closeout over exact six paths and `185/27`. This Planner
+pass does not stage, commit, fetch, or push. Runtime pilot continuation remains unauthorized
+pending a separate User gate.
