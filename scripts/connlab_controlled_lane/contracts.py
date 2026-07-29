@@ -184,7 +184,8 @@ def validate_target_binding(
         return
     required = [
         "task_id", "lane_id", "route_id", "operation_id",
-        "payload_digest", "action_kind", "worktree_path",
+        "payload_digest", "action_kind",
+        *(("worktree_path",) if action_kind != "request_user_approval" else ()),
     ]
     required += (["repo_root", "branch", "base_commit", "head", "git_common_dir",
                   "scope_fingerprint"] if action_kind in GIT_ACTIONS else ["thread_id"])
@@ -195,11 +196,10 @@ def validate_target_binding(
     missing = object()
     if any(binding.get(field, missing) != value
            for field, value in (expected or {}).items()):
-        _binding_error("target binding changed")
-    if "completion_authority_nullable" in (expected or {}):
-        from .completion_authority import validate_completion_contract
-
-        validate_completion_contract(binding)
+        code = ("CTL_THREAD_BINDING_MISMATCH" if action_kind ==
+                "request_user_approval" and binding.get("thread_id") !=
+                (expected or {}).get("thread_id") else "CTL_DISPATCH_ACK_MISMATCH")
+        raise CtlError(code, "target binding changed")
 
 
 def validate_dispatch_binding(

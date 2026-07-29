@@ -13,7 +13,7 @@ from typing import Any, Mapping
 
 from .bootstrap import (BOOTSTRAP_ACTIONS, adopt_bootstrap_readback, apply_admin_mutation,
                         validate_bootstrap_ack, validate_bootstrap_request)
-from .completion_authority import record_completion_callback
+from .approval_authority import record_bound_callback
 from .contracts import (ADMIN_COMMANDS, CtlError, canonical_digest, canonical_json,
                         convert_v1_to_v2, initial_registry, result, validate_common_request)
 from .git_preflight import inspect_git, verify_authority_files
@@ -234,9 +234,8 @@ class RegistryStore:
                 raise CtlError("CTL_ROLE_CALLBACK_STATE_MISMATCH",
                                "completion requires an advanced dispatch")
             validate_dispatch_binding(dispatch, request, command)
-            record_completion_callback(
+            return record_bound_callback(
                 registry, dispatch, payload, str(request["lane_id"]))
-            return "completion_recorded"
         dispatch = dispatches.get(operation_id)
         if not dispatch:
             raise CtlError("CTL_DISPATCH_STAGE_MISMATCH", "prepared dispatch is missing")

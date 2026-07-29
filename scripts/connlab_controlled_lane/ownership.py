@@ -146,7 +146,7 @@ def apply_advance_effects(
         materialize_owner_acquisition(registry, lane_id, target)
     if action in (
         "dispatch_role", "create_developer_environment",
-        "send_existing_task", "request_user_approval",
+        "send_existing_task",
     ):
         role = target.get("role")
         registry.setdefault("role_bindings", {})[f"{lane_id}:{role}"] = {

@@ -7,6 +7,9 @@ from .bootstrap import (
     validate_bootstrap_action, validate_bootstrap_target_binding,
     validate_bootstrap_transition,
 )
+from .approval_authority import (
+    approval_gate_for_state, build_approval_target, validate_approval_target,
+)
 from .completion_authority import frozen_completion_contract
 from . import controller_title
 from .contracts import CtlError, canonical_digest
@@ -92,6 +95,7 @@ def validate_authoritative_dispatch(
                        "dispatch does not match authoritative lane action")
     if action.get("target_role") and action.get("kind") not in (
         "governance_closeout", "create_developer_environment",
+        "request_user_approval",
     ) + tuple(BOOTSTRAP_ACTIONS) and not all(
         action.get(field) for field in ("thread_id", "worktree_path")):
         raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "selected role identity is incomplete")
@@ -127,8 +131,13 @@ def validate_authoritative_dispatch(
                 }),
                 "expected_external_action_count": 0,
             })
+    if action.get("kind") == "request_user_approval":
+        expected = build_approval_target(
+            registry, str(request["lane_id"]), request)
+        validate_approval_target(payload.get("target_binding"), expected=expected)
+        return state, action
     if action.get("kind") in ("dispatch_role", "create_developer_environment",
-                              "send_existing_task", "request_user_approval"):
+                              "send_existing_task"):
         authority = lane.get("proof", {}).get("completion_authority")
         if not isinstance(authority, dict):
             raise CtlError("CTL_DISPATCH_ACK_MISMATCH", "completion authority is missing")
@@ -178,7 +187,9 @@ def select_next_action(state: str, proof: Mapping[str, Any]) -> dict[str, Any]:
         if proof.get("review_status") == "blocked":
             return _dispatch("Planner", proof, "send_existing_task")
         if proof.get("review_status") == "passed":
-            return _dispatch("User", proof, "request_user_approval")
+            gate, pending = approval_gate_for_state(state)
+            return {"kind": "request_user_approval", "target_role": "User",
+                    "approval_gate": gate, "expected_pending_state": pending}
     if state == "planner_fix_pending" and proof.get("planner_status") == "complete":
         return _dispatch("Reviewer", proof)
     if state == "user_planning_approval_pending" and proof.get("user_approved"):
@@ -191,7 +202,9 @@ def select_next_action(state: str, proof: Mapping[str, Any]) -> dict[str, Any]:
         if proof.get("readiness_status") == "blocked":
             return _dispatch("Developer", proof, "send_existing_task")
         if proof.get("readiness_status") == "passed":
-            return _dispatch("User", proof, "request_user_approval")
+            gate, pending = approval_gate_for_state(state)
+            return {"kind": "request_user_approval", "target_role": "User",
+                    "approval_gate": gate, "expected_pending_state": pending}
     if state == "user_implementation_approval_pending" and proof.get("user_approved"):
         return _dispatch("Planner", proof)
     if state == "authorized":
@@ -268,8 +281,6 @@ def apply_callback_proof(
         proof["qa_status"] = outcome
     elif role == "integrator":
         proof["integrator_status"] = outcome
-    elif role == "user":
-        proof["user_approved"] = outcome == "approved"
 
 
 def classify_manual_smoke(*, integrated: bool, scope_changed: bool, attributed: bool) -> str:
