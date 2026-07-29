@@ -1,6 +1,6 @@
 # ConnLab Controlled Lane V2 User Approval Binding Corrective Plan
 
-Status: implementation/tests authorized / pending controlled governance checkpoint and isolated corrective worktree creation
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 Task: `CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE`
 
@@ -26,6 +26,25 @@ Repository evidence shows the defect is structural:
 - dispatch preparation freezes completion authority for User approval;
 - `record-callback` always invokes role completion authority;
 - ordinary role binding materialization treats approval as a worktree role.
+
+## 1.1 Implementation And QA Result
+
+Reviewer implementation re-gate and isolated QA passed against checkpoint
+`1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`.
+
+- Reviewed range:
+  `fb7dc20a9775e49cde5c947346918105d91054b9..1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`.
+- Exact implementation candidate: seven paths, `676/15`.
+- Product diff: `0`.
+- Focused approval/recovery: `35 passed`.
+- Full controlled-lane suite: `223 passed`.
+- CTL codes: `39`; mutation commands: `6`.
+- Registry generation/hash, pilot state, implementation authority, and heartbeat: unchanged.
+- Runtime/bootstrap/pilot side effects: none.
+
+No separate Developer or Reviewer evidence file exists in the reviewed checkpoint. Their
+verified completion/re-gate facts are recorded here and in task/Planner governance; no role-owned
+evidence is fabricated.
 
 ## 2. Authority Separation
 
@@ -215,6 +234,14 @@ The implementation package contains only the seven implementation/test paths and
 governance. Reviewer and QA validate a clean checkpoint or exact archive. Integrator must report
 excluded residuals explicitly.
 
+For Integrator, freeze two non-overlapping layers:
+
+- implementation: exact seven paths at `1c087a5d`, `676/15`;
+- QA governance overlay: task, plan, Planner evidence, QA evidence, and exact board hunks, five
+  paths, `224/27`;
+- aggregate package: exact twelve paths, `900/42`;
+- excluded residual: `0`.
+
 ## 11. Runtime Lock
 
 This task does not authorize:
@@ -229,7 +256,6 @@ again. The earlier pre-dispatch User approval is not reusable.
 
 ## 12. Next Gate
 
-Reviewer combined plan/readiness is passed, and exact implementation/tests are User-authorized.
-Execution remains paused pending separate User / Orchestrator authorization to checkpoint the
-four governance paths, followed by a clean-primary preflight and isolated corrective worktree
-creation. Runtime pilot continuation remains unauthorized.
+Reviewer implementation re-gate and QA passed. The next gate is Integrator packaging-readiness
+audit of the exact twelve-path package. This Planner pass does not stage, commit, merge, or route
+Integrator directly. Runtime pilot continuation remains unauthorized.

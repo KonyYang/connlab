@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_USER_APPROVAL_BINDING_CORRECTIVE
 
-Status: implementation/tests authorized / pending controlled governance checkpoint and isolated corrective worktree creation
+Status: qa_pass / pending Integrator packaging-readiness audit
 
 Lane: `connlab-controlled-lane-orchestration-v2-user-approval-binding-corrective`
 
@@ -9,14 +9,13 @@ Blocked lane:
 
 ## Current Phase And Why Allowed
 
-Current phase is final authorization source-of-truth reconciliation. Reviewer combined
-plan/readiness passed, and the User explicitly authorized the exact seven-path implementation,
-tests, and creation of one isolated corrective worktree.
+Current phase is post-QA source-of-truth reconciliation. The exact seven-path implementation was
+reviewed at clean checkpoint `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`; Reviewer
+implementation re-gate passed and isolated QA passed.
 
-This docs-only reconciliation is allowed now because the accepted runtime correctly failed closed
-before requesting User approval or creating any pilot implementation resource. Implementation may
-not start until the current four-path governance candidate is committed as a controlled local
-checkpoint and primary/index are clean. Pilot continuation remains unauthorized.
+This docs-only reconciliation is allowed because it changes only task-owned governance after QA.
+The reviewed implementation, tests, registry, and runtime topology are locked. Pilot continuation
+remains unauthorized.
 
 ## Authoritative Entry Facts
 
@@ -49,6 +48,44 @@ The required order is:
 
 This pass does not authorize staging or committing the governance checkpoint. A separate exact
 User / Orchestrator checkpoint authorization is required.
+
+## Implementation And QA Acceptance
+
+- Reviewed range:
+  `fb7dc20a9775e49cde5c947346918105d91054b9..1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`.
+- Reviewed implementation candidate: exact `7` paths, `676 additions / 15 deletions`.
+- Product diff: `0`.
+- Reviewer implementation re-gate: passed.
+- Focused approval/recovery tests: `35 passed`.
+- Full controlled-lane suite: `223 passed`.
+- The 39-code catalog, six mutation commands, CAS, Controller-only binding, callback separation,
+  recovery/no-resend, line budgets, compile/parser, UTF-8, trailing, and diff checks passed.
+- Registry generation/hash, pilot state/authority, and heartbeat did not change.
+- Excluded residual: `0`.
+
+Developer and Reviewer role callbacks were not persisted as separate lane evidence files in the
+reviewed checkpoint. This reconciliation records their verified gate facts without inventing
+missing role-owned documents.
+
+## Frozen Integrator Inventory
+
+Implementation layer:
+
+- exact seven paths listed under `Future Exact May Touch`;
+- checkpoint `1c087a5ddc8aa7a00a9cb748c83827c4a480fd77`;
+- numstat `676/15`.
+
+QA governance overlay:
+
+1. this task;
+2. `docs/connlab_controlled_lane_orchestration_v2_user_approval_binding_corrective_plan.md`;
+3. Planner evidence;
+4. task-specific QA evidence;
+5. `docs/task_board.md` exact lane/status hunks.
+
+The overlay is exact five paths with numstat `224/27`. The future
+Integrator inventory is exact twelve non-overlapping paths with aggregate numstat
+`900/42`. Excluded residual remains `0`.
 
 ## Problem Statement
 
@@ -247,7 +284,7 @@ must inspect a clean checkpoint/archive. Mixed or whole-repository staging is fo
 
 ## Stop Condition
 
-The corrective contract is implementation-authorized but not yet executable. The next legal role
-is User / Orchestrator exact governance checkpoint authorization. Developer may be routed only
-after that checkpoint is committed, primary/index are clean, and the isolated corrective worktree
-exists. QA, Integrator, runtime approval request, and pilot continuation remain unauthorized.
+The corrective implementation and QA gates are complete. The next legal role is Integrator
+packaging-readiness audit of the frozen twelve-path inventory. Integrator execution is not
+performed by this reconciliation. Runtime approval request, registry mutation, and pilot
+continuation remain unauthorized.
