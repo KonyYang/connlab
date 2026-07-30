@@ -8,46 +8,11 @@ task/plan/evidence, and Git remain authoritative.
 
 ```yaml
 schema_version: 1
-mode: v1_lite_transition_frozen
-task_id: TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD
-thread_label: 发布实例防串
-lane_id: browser-release-frontend-freshness-instance-guard
-state: developer_checkpoint_pause_requested
-approval_state: user_approved
-closeout_archive_authorized: false
-authority_orchestrator_thread_id: 019eb3b8-8624-74b2-a4a7-a6856399deac
-former_entry_thread_id: 019faaf2-f172-7523-b70f-2c4952acd59f
-controller_thread_id: 019fb32a-ff19-7170-b87f-f77f12bddff6
-role_threads:
-  planner: 019fb330-a311-7af3-8977-ad14fe48260b
-  developer: 019fb397-002a-7f41-8205-a6a553aa0272
-  reviewer: 019fb343-5d7e-77f3-a861-c8e92c94013f
-  qa: null
-  integrator: null
-base_commit: 46081784f9feb6a7dcdf294f819cf8afe8a47a63
-branch: lane/browser-release-frontend-freshness-instance-guard
-worktree: D:\PythonProject\connlab-worktrees\browser-release-frontend-freshness-instance-guard
-reviewed_commit: null
-accepted_commit: null
-task_file: tasks/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD.md
-plan_file: docs/task_browser_release_frontend_freshness_and_instance_guard_plan.md
-evidence_files:
-  - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_planner.md
-  - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_reviewer.md
-  - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_reconciliation_planner.md
-  - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_user_approval.md
-  - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_controller.md
-last_handoff:
-  from_role: controller
-  to_role: developer
-  gate: implementation_authorized
-  evidence_path: docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_controller.md
-residual_status: resolved_by_governance_reconciliation_9a5e94b4
-archive_status: not_started
-transition_note: Preserve the current task/worktree exactly; no new V1-Lite routing. Classic Orchestrator decides migration after Developer pause checkpoint.
+state: empty
+active_task_id: null
 ```
 
-When a product TASK is active, the stable entry records its task-scoped Controller, Planner,
-Developer, Reviewer, QA, and Integrator IDs here. Integrator resets the manifest to the exact empty
-state only after evidence, commits, worktree, residuals, remote state, and recoverable archival are
-all closed.
+The frozen V1-Lite bundle was reset after
+`TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD` was cancelled by the User and closed
+without integration. Its retained branch, clean worktree, unintegrated checkpoint, remote state,
+and `retain` ownership are recorded in the task, board, and cancellation closeout evidence.

@@ -1,19 +1,39 @@
 # TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD
 
-Status: `approved`; Reviewer plan re-gate passed and User explicitly approved implementation
+Status: `cancelled_by_user` / `closed_without_integration`
 Planning base: `02517ba968f1a16d5ddda6ba038411ef4133226d`
 Revision: Reviewer blocking findings 1-6 reconciled on 2026-07-30
-Owner now: Controller -> isolated worktree gate -> Developer
+Owner now: permanent Orchestrator governance / User decision; no implementation owner
 
 ## Current Phase / Why Allowed
 
 - Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
-- Active task: this task is `approved`; the Reviewer plan re-gate passed and the User explicitly
-  approved the corrected implementation plan on 2026-07-30.
-- Controller may persist the planning package and create one isolated lane after primary
-  cleanliness and shared-owner checks pass.
-- Product/release implementation is allowed only in the recorded lane worktree. Remote push,
-  destructive cleanup, scope expansion, and Controlled Lane V2 remain unauthorized.
+- This task is no longer active. The User explicitly cancelled it on 2026-07-31 and authorized a
+  governance-only closeout without integration.
+- The cancelled checkpoint `0bf56ea09ba1a1baedd5ce982d0b47d73d1889df` is retained on
+  `lane/browser-release-frontend-freshness-instance-guard` only as unintegrated preservation.
+- No Developer continuation, Reviewer, QA, merge, cherry-pick, push, replacement task, or automatic
+  recovery is authorized.
+
+## Cancellation Closeout
+
+- Result: `cancelled_by_user` / `closed_without_integration`.
+- Original lane base: `46081784f9feb6a7dcdf294f819cf8afe8a47a63`.
+- Retained checkpoint: `0bf56ea09ba1a1baedd5ce982d0b47d73d1889df`,
+  `wip(cancelled): preserve unintegrated browser release work`.
+- The checkpoint contains exactly 11 task-owned paths. It is not an ancestor of `master`, is not
+  contained by a remote branch, and was not pushed.
+- The lane worktree and index are clean and retained at
+  `D:\PythonProject\connlab-worktrees\browser-release-frontend-freshness-instance-guard`.
+- Historical partial Developer checks were limited to manifest/identity `13 passed` and
+  runtime/static/server `12 passed`. Launcher, occupant classification, build, smoke, and operator
+  documentation were unfinished. No Reviewer, QA, full release, or corporate-image validation
+  occurred.
+- This task is not complete, accepted, reviewed, QA-validated, integrated, or pushed.
+- Residual classification: `retain`. Owner: permanent Orchestrator governance / User decision.
+  There is no implementation owner or follow-up task. Any future merge, discard, retire, delete,
+  push, or recovery requires new explicit User authorization.
+- No launcher/cache simplification or replacement task was implemented or created.
 
 ## Goal
 
@@ -284,6 +304,5 @@ No push is implied.
 
 ## Stop Point
 
-The plan and User approval gates are satisfied. Controller may commit the exact planning package,
-create and record one clean isolated lane, then route the task-specific Developer. Developer must
-stop at a clean local checkpoint for Reviewer; no later role may be skipped.
+Closed without integration at explicit User direction. Preserve the clean lane worktree, branch,
+and cancelled checkpoint. Do not route another role or resume implementation automatically.
