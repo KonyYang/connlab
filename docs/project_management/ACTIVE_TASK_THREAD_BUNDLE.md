@@ -11,7 +11,7 @@ schema_version: 1
 task_id: TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD
 thread_label: 发布实例防串
 lane_id: browser-release-frontend-freshness-instance-guard
-state: developer_registered_activation_pending
+state: developer_in_progress
 approval_state: user_approved
 closeout_archive_authorized: false
 entry_thread_id: 019faaf2-f172-7523-b70f-2c4952acd59f
@@ -38,7 +38,7 @@ evidence_files:
 last_handoff:
   from_role: controller
   to_role: developer
-  gate: developer_id_persisted_activation_pending
+  gate: implementation_authorized
   evidence_path: docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_controller.md
 residual_status: resolved_by_governance_reconciliation_9a5e94b4
 archive_status: not_started

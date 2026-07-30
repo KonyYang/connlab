@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 Role: Controller
-Status: `developer_registered_activation_pending`
+Status: `developer_in_progress`
 Task: `TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD`
 Lane: `browser-release-frontend-freshness-instance-guard`
 Planning commit: `6e0fa345797bab1328c9df5366a2921db3529735`
@@ -105,3 +105,20 @@ implementation handoff.
 The Developer ID and compact title are now authoritative for this task bundle. Activation remains
 pending until this checkpoint is committed; the activation message must prohibit product work in
 the primary checkout and bind every command/edit/test/commit to the isolated worktree.
+
+## Developer Activation Handoff
+
+After the registration checkpoint commit, the Controller sent the exact approved implementation
+package to Developer `019fb397-002a-7f41-8205-a6a553aa0272`. The handoff:
+
+- binds every product read/edit/test/commit to the recorded sibling worktree;
+- forbids fallback implementation in primary or creation of a duplicate worktree;
+- repeats the reviewed May Touch / Must Not Touch / read-only boundaries;
+- requires TDD, `$impeccable` context for operator-facing copy, and verification before completion;
+- requires exact-path staging, a clean local lane checkpoint, bounded Developer evidence, and the
+  compact callback to this Controller;
+- forbids push, stash, destructive cleanup, existing-release mutation, V2 action, and any
+  unproven process termination.
+
+Developer is now the active implementation owner. Reviewer, QA, and Integrator remain uncreated
+or inactive at this gate.
