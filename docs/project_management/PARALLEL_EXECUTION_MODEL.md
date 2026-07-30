@@ -241,7 +241,7 @@ Contract tasks must remain short and implementation-facing.
 
 ## 9. Thread Usage
 
-A Codex thread can act as a role-specific agent when the first prompt declares:
+A Codex thread can act as a task-scoped role-specific agent when the first prompt declares:
 
 - role
 - lane
@@ -261,6 +261,11 @@ Threads do not share chat memory. They coordinate through:
 - validation output
 
 Creating a new role thread does not create Git isolation. The orchestrator must create the lane worktree before routing implementation and must include the exact branch/path in every role prompt.
+
+Normal product TASKs do not reuse permanent role threads. Their temporary role IDs are stored in
+`docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md` and are recoverably archived after
+Integrator closeout. The stable entry is not a role substitute and remains outside the product
+worktree.
 
 ## 10. Stop Rules
 
@@ -311,5 +316,7 @@ Parallel execution is accepted only when all of the following are enforced:
 8. Task, plan, and evidence documents are committed with their owning package.
 9. Lane completion requires clean lane status/index and a clean primary worktree, or an explicit residual ledger with owner and expiry.
 10. Remote push and destructive discard remain separate explicit authorization gates.
+11. When the task manifest authorizes archival, the task-scoped role bundle is archived after all
+    repository hygiene gates pass; the next TASK starts with fresh role threads.
 
 For a multi-lane series, one user-approved Goal may authorize normal role handoffs, bounded fix passes, evidence updates, local commits, and worktree lifecycle operations. The orchestrator should not request a fresh human approval for each small hunk unless scope, product behavior, destructive cleanup, or remote state changes.

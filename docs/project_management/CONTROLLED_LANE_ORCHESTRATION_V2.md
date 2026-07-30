@@ -1,6 +1,10 @@
 # Controlled Lane Orchestration V2
 
-Status: bootstrap implementation candidate; production runtime inactive
+Status: frozen legacy
+
+Controlled Lane V2 is retained for audit and disposable historical tests only. Its production
+registry is read-only, heartbeat remains `PAUSED`, and its pilot/bootstrap/corrective routes are
+not used for normal ConnLab tasks. Reactivation requires a new formal task and explicit User gate.
 
 Bootstrap is not activated. Bootstrap support is implemented, but this document does not
 authorize a controller, heartbeat, production registry creation, real task call, branch/worktree

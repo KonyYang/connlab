@@ -172,6 +172,19 @@ Pause only for:
 
 Do not request a new human approval for every small hunk when it remains inside the approved Goal envelope.
 
+### Rule 10: One product TASK owns one temporary role bundle
+
+The stable ConnLab entry creates a fresh task-specific Controller and role threads. After
+Integrator acceptance/cancellation, clean worktree/residual closeout, and explicit bundle archive
+authorization, archive:
+
+```text
+Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller
+```
+
+Read back every native archived state. Keep the active bundle at `closeout_ready` if any archive
+fails. Never archive the stable entry as part of a normal product TASK.
+
 ## 4. Automated Lifecycle
 
 The operator should not need to run Git worktree or branch commands.
@@ -298,8 +311,9 @@ Once those were moved into bounded modules, the remaining stale, duplicate, and 
 
 ## 9. Controlled Lane V2 Operations Hook
 
-The v2 helper is a preflight and journal surface, not bootstrap authorization. Before activation,
-use only disposable roots and `zero-write dry-run`.
+The v2 helper is frozen legacy. Keep its production registry read-only and heartbeat `PAUSED`.
+Only historical disposable roots and zero-write tests remain allowed without a separately approved
+reactivation task.
 
 The exact mutation order is:
 

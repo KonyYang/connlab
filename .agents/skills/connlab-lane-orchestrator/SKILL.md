@@ -7,7 +7,22 @@ description: Orchestrate ConnLab task lanes across role-specific Codex threads. 
 
 ## Purpose
 
-Use this skill to turn ConnLab's controlled parallel model into a repeatable handoff workflow. The orchestrator does not replace Planner, Developer, Reviewer, QA, or Integrator authority; it reads the board/evidence, decides the next valid role, and sends that role a standard prompt.
+Use this skill to turn ConnLab's controlled parallel model into a repeatable V1-Lite handoff
+workflow. The stable entry creates one temporary Controller and temporary
+Planner/Developer/Reviewer/QA/Integrator bundle per product TASK. The orchestrator does not
+replace role authority; it reads repository evidence, decides the next valid role, and archives
+the task-scoped bundle only after Integrator closeout.
+
+Canonical task-scoped titles:
+
+```text
+TASK_XXX｜Controller
+TASK_XXX｜Planner
+TASK_XXX｜Developer
+TASK_XXX｜Reviewer
+TASK_XXX｜QA
+TASK_XXX｜Integrator
+```
 
 ## Default Execute-Task Trigger
 
@@ -32,6 +47,7 @@ Before sending any role prompt, read:
 - `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
 - `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
 - `docs/project_management/ROLE_THREAD_REGISTRY.md`
+- `docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md`
 - the task file declared by the lane
 - the lane evidence file declared by the board
 
@@ -49,13 +65,15 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 - Never add new coverage to an oversized mixed test when a bounded public-contract test module can carry it.
 - Never merge a lane with unresolved blocking Reviewer/QA findings.
 - Never use chat memory as the source of truth when evidence files or board state disagree.
-- Prefer role threads in `ROLE_THREAD_REGISTRY.md`; create or rename threads only when the user explicitly asks.
+- Use only task-scoped role IDs recorded in `ACTIVE_TASK_THREAD_BUNDLE.md`; never reuse archived or
+  permanent legacy roles for a new product TASK.
+- Create or rename native tasks only inside explicit User task/Goal authority.
 - If the current thread has access to `send_message_to_thread`, use it for handoffs. If not, produce the exact prompt the user should paste into the target role thread.
 
 ## Orchestration Loop
 
 1. Identify the lane from the user's request or from `docs/task_board.md`.
-2. Re-read board/task/plan/evidence, registered role thread status, and `git worktree list`; do not infer active execution from chat presence alone.
+2. Re-read board/task/plan/evidence, active bundle role status, and `git worktree list`; do not infer active execution from chat presence alone.
 3. If the same task already has a worktree, verify its branch/base/owner and resume it. Never create a duplicate lane worktree.
 4. Compare the requested lane's shared files, authority paths, and `Locked Paths` with every active lane. If ownership overlaps, queue/serialize or return to Planner; never claim parallel safety merely because the worktrees differ.
 5. Verify lane readiness: formal task file, approved status, concrete branch/worktree plan, evidence path, validation gate, merge gate, and exclusive shared-path ownership.
@@ -67,43 +85,33 @@ If any file is missing or contradicts the board, stop and report the mismatch.
    - Reviewer evidence `pass` and QA required -> QA
    - Reviewer/QA gates passed -> Integrator
    - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
-8. Send one standard prompt to the next role thread, including the exact worktree path and reviewed commit when applicable.
-9. Ask the target role to update its evidence file and stop at its declared gate.
-10. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
-11. Continue normal approved gates automatically until local Integrator acceptance.
-12. After Integrator acceptance, require an exact residual ledger and retire only a clean, integrated worktree.
+8. If the next task-scoped role ID is null, create that role lazily, set the canonical
+   `TASK_XXX｜<Role>` title, read it back, and persist the exact ID before sending work.
+9. Send one standard prompt to the next task-scoped role, including the exact worktree path and reviewed commit when applicable.
+10. Ask the target role to update its evidence file and stop at its declared gate.
+11. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
+12. Continue normal approved gates automatically until local Integrator acceptance.
+13. After Integrator acceptance, require an exact residual ledger and retire only a clean, integrated worktree.
+14. When `closeout_archive_authorized=true`, archive Planner -> Developer -> Reviewer -> QA ->
+    Integrator -> task-specific Controller, verify native read-back, write the closeout manifest,
+    and reset the active bundle to empty.
 
 Run at most one full Developer->Reviewer->Developer-fix cycle without asking the user for confirmation. Continue beyond that only when the user explicitly requests automatic continuation.
 
 
-## Full-Auto Heartbeat Mode
+## Goal And Callback Mode
 
-Use full-auto mode when the user explicitly asks to `实现全自动编排`, `全自动推进`, `自动轮询`, or `持续自动接力`.
+Use Goal mode when the User explicitly requests persistent execution. Goal mode is callback-driven,
+not heartbeat-driven. Each role writes durable evidence, sends one compact callback, and stops.
+The task-specific Controller rereads board/evidence/Git/native status before routing the next gate.
 
-Full-auto mode means the orchestrator wakes periodically, re-reads board/evidence/thread status, and sends the next legal role prompt without waiting for the user to type `继续自动编排`.
+Goal mode may automatically create task-scoped roles, create/retire clean worktrees, continue
+bounded fixes, create local checkpoints, integrate locally when authorized, and archive the
+completed temporary bundle.
 
-Full-auto mode may automatically:
-
-- wait while a target role thread is still running or has not produced required evidence
-- send Developer start prompts for approved lanes
-- send Reviewer gate prompts after Developer evidence is `ready_for_review`
-- send Developer fix-pass prompts for Reviewer/QA blocking findings that are clearly implementation-scoped
-- send QA gate prompts after Reviewer pass when QA is required
-- send Integrator readiness-check prompts after Reviewer/QA gates pass
-- create, inspect, and cleanly retire lane worktrees
-- continue bounded fix passes and exact tests-only migrations inside a user-approved Goal envelope
-- create local lane checkpoint and accepted-package commits when the Goal already authorizes them
-
-Full-auto mode must stop and report to the user before:
-
-- approving a `planned` or `proposed` lane
-- changing task/lane scope
-- resolving ambiguous or cross-lane conflicts
-- retrying the same blocking fix cycle more than once
-- merging into `master`/main or pushing remote branches, unless the user explicitly pre-authorized that exact merge action
-- deleting, resetting, or reverting work
-
-Do not stop for repeated human approval at every micro-gate when a durable user Goal already authorizes the lane series. Reconciliation, bounded fix passes, evidence updates, local commits, and clean worktree lifecycle operations remain automatic until the scope or behavior contract changes.
+Goal mode stops for missing approval, scope change, cross-lane ownership conflict, unexplained
+test failure, destructive discard, or unapproved remote push. Controlled Lane V2 heartbeat remains
+`PAUSED` and is never used for ordinary V1-Lite tasks.
 
 
 ## Worktree And Residual Contract
@@ -119,33 +127,35 @@ Do not stop for repeated human approval at every micro-gate when a durable user 
 - `retain` requires a named owner; `duplicate`/`stale`/`format-only` require one exact discard list; `conflict` returns to Planner/User.
 - Never force-remove a worktree, run `git add -A`, or push remote as part of automatic lane closeout.
 
-Each heartbeat run should do only one routing action, then stop. This prevents duplicate prompts and keeps role evidence as the durable handoff record.
+Each callback scan performs one legal handoff decision. Role evidence and the active bundle are the
+durable duplicate-suppression record.
 
 
 ## Event-Driven Completion Callback
 
-Use completion callbacks to reduce heartbeat latency. A role thread that reaches its declared stop gate should notify the Orchestrator thread immediately, then stop.
+Use compact completion callbacks. A role thread that reaches its declared stop gate notifies its
+task-specific Controller immediately, then stops.
 
 Callback rules:
 
-- Include the Orchestrator thread ID from `ROLE_THREAD_REGISTRY.md` or the current delegation `source_thread_id`.
+- Include the task-specific Controller ID from `ACTIVE_TASK_THREAD_BUNDLE.md`.
 - Send a callback only after evidence/checkpoint state changed; do not send duplicate callbacks for the same evidence status.
-- The callback never authorizes the next gate by itself. The Orchestrator must still re-read board/evidence/thread status and perform at most one legal routing action.
-- If `send_message_to_thread` is unavailable, print the exact callback message for the user to paste; the heartbeat remains the fallback.
+- The callback never authorizes the next gate by itself. Controller must still re-read
+  board/evidence/Git/native state.
+- If `send_message_to_thread` is unavailable, print the exact callback for the User to paste into
+  the task-specific Controller.
 - Do not callback while still actively editing, testing, reviewing, or integrating.
 
 Callback message shape:
 
 ```text
-立即执行一次全自动编排扫描。
-来源角色：<ROLE>
-完成状态：<ready_for_review | reviewer_pass | reviewer_blocked | qa_pass | qa_fail | integrator_accepted | integrator_blocked | checkpoint>
-任务：<TASK_ID>
-lane：<LANE_ID>
-evidence：<EVIDENCE_PATH>
-建议下一角色：<Planner | Developer | Reviewer | QA | Integrator | User>
-阻塞摘要：<none 或最小阻塞事实>
-按 TASK_339-TASK_342 编排规则只执行一个合法路由动作。
+TASK_ID: <TASK_ID>
+ROLE: <ROLE>
+STATUS: <ready_for_review | reviewer_pass | reviewer_blocked | qa_pass | qa_fail | integrator_accepted | integrator_blocked>
+EVIDENCE: <EVIDENCE_PATH>
+COMMIT: <FULL_SHA_OR_NULL>
+NEXT: <Planner | Developer | Reviewer | QA | Integrator | User | Archive>
+BLOCKER: <none 或最小阻塞事实>
 ```
 ## Lifecycle Series Mode
 
@@ -251,8 +261,10 @@ If the user corrects direction, treat the newest user instruction as controlling
 Append this footer to every role prompt when automatic orchestration is active:
 
 ```text
-完成本角色 gate 后，请先更新对应 evidence/checkpoint，然后如果你可以使用 send_message_to_thread，请向 ConnLab｜全自动编排 Orchestrator 发送 completion callback，内容包含：来源角色、完成状态、TASK_ID、lane、evidence 路径、建议下一角色、阻塞摘要，并要求“立即执行一次全自动编排扫描，只执行一个合法路由动作”。发送 callback 后停止。
-如果当前线程没有 send_message_to_thread，请在最终答复中输出同样的 callback 文本，供用户粘贴；不要继续代替下一角色执行。
+完成本角色 gate 后，先更新 evidence/checkpoint，再向
+`ACTIVE_TASK_THREAD_BUNDLE.md` 记录的 task-specific Controller 发送 compact callback：
+TASK_ID、ROLE、STATUS、EVIDENCE、COMMIT、NEXT、BLOCKER。发送后停止。
+如果不能发送，在最终答复中输出同样的 callback 供用户粘贴；不要代替下一角色执行。
 ```
 ## Output Format
 

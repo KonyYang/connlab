@@ -1,6 +1,6 @@
 # CONNLAB_CONTROLLED_LANE_ORCHESTRATION_V2_DEVELOPER_PLANNING_BINDING_CORRECTIVE
 
-Status: implementation_and_tests_authorized / pending controlled governance checkpoint and isolated corrective worktree creation
+Status: cancelled/frozen; incomplete RED snapshot preserved on retained lane branch, not integrated
 
 Lane:
 `connlab-controlled-lane-orchestration-v2-developer-planning-binding-corrective`
@@ -513,10 +513,19 @@ Stop at Planner/User for:
 
 ## Current Gate
 
-Reviewer B1-B4 are closed and the User authorized the exact ten-path implementation/tests package.
-Execution is still gated on a separately authorized controlled four-path governance checkpoint,
-followed by clean-primary verification and isolated corrective worktree creation. This Planner pass
-does not assemble or commit the checkpoint, create the worktree, modify implementation/tests,
-continue the pilot, mutate runtime state, activate heartbeat, fetch, or push.
+The User selected V1-Lite task-scoped orchestration and froze Controlled Lane V2 on 2026-07-30.
+The incomplete Reviewer-fix RED snapshot is preserved on the retained lane branch at commit
+`5f30db85b675b7f606a7b7474ce475d984988f6c`.
 
-Next role: User / Orchestrator exact governance checkpoint authorization only.
+Preserved scope:
+
+- `tests/integration/test_connlab_controlled_lane_full_pilot_lifecycle.py`
+- `tests/integration/test_connlab_controlled_lane_full_pilot_recovery.py`
+- exact diff `24/0`;
+- focused result `3 failed, 19 passed`, matching the known unresolved P1 fixture/recovery contracts.
+
+The preservation commit is not accepted product/governance behavior and must not be merged into
+`master`. The worktree/index are clean. Production registry generation `34`, heartbeat `PAUSED`,
+pilot state, product code, remote refs, and business data were not changed.
+
+Next role: none. Reactivation requires a new formal task and explicit User approval.

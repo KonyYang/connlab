@@ -8,6 +8,25 @@ Scope: automate role-to-role handoffs for approved ConnLab task lanes
 
 This protocol reduces manual prompting between role threads. It does not loosen ConnLab's gates. The orchestrator may route work, but Planner, Developer, Reviewer, QA, and Integrator responsibilities remain separate.
 
+### 1.1 V1-Lite Task-Scoped Thread Bundle
+
+Normal ConnLab product work uses one temporary Controller/Planner/Developer/Reviewer/QA/Integrator
+bundle per formal TASK. The stable entry in `ROLE_THREAD_REGISTRY.md` receives new work but never
+acts as a product Developer or stores detailed role evidence. Current native IDs live in
+`ACTIVE_TASK_THREAD_BUNDLE.md`.
+
+Roles are created lazily and are never reused by the next product TASK. Completion callbacks contain
+only TASK_ID, ROLE, STATUS, EVIDENCE, COMMIT, NEXT, and BLOCKER. After Integrator closes evidence,
+commits, worktree, residuals, and remote status, an authorized bundle is archived in this order:
+
+```text
+Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller
+```
+
+Archive requires `closeout_archive_authorized: true`. Archive failure stops at `closeout_ready`;
+the active manifest is not reset until exact native read-back proves every task archived.
+Controlled Lane V2 heartbeat is not a fallback.
+
 ## 2. Automation Boundary
 
 The orchestrator may:
@@ -270,18 +289,9 @@ On dead-loop detection, pause routing and report to the user.
 
 ## 11. Controlled Lane V2 Compatibility Hook
 
-`docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md` defines the deterministic helper
-contract. It is implemented but remains inactive until a separate User bootstrap gate.
-
-V2 preserves this protocol's approval order. It adds:
-
-- expected-generation registry CAS;
-- `prepare-dispatch -> mark-invocation-started -> one external action -> result -> dispatch_ack ->
-  advance -> stop`;
-- `dispatch_ack` as native/Git delivery proof, independent from later role completion;
-- same Developer/worktree reuse for Reviewer and attributed bounded QA fixes;
-- typed fail-closed owner, scope, topology, stale-evidence, and recovery decisions.
-
-No v2 registry, native task, worktree, migration, automation, or archive action is implied by the
-presence of the helper or skill.
+`docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md` is frozen legacy. Its production
+registry is read-only, heartbeat remains `PAUSED`, and its bootstrap/pilot/corrective routes are
+not used for normal ConnLab task routing. Historical disposable tests remain valid; reactivation
+requires a new formal task and explicit User approval. Historical V2 evidence retains
+`dispatch_ack` as delivery proof separate from role completion.
 

@@ -59,8 +59,10 @@ def test_v2_governance_hooks_are_present_without_bootstrap_activation() -> None:
     ).read_text(encoding="utf-8")
 
     assert "CONTROLLED_LANE_ORCHESTRATION_V2.md" in agents
+    assert "V1-Lite Task-Scoped Role Lifecycle" in agents
     assert "dispatch_ack" in protocol
     assert "mark-invocation-started" in operations
+    assert "Status: frozen legacy" in v2
     assert "Bootstrap is not activated" in v2
 
 

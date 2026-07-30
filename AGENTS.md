@@ -392,22 +392,45 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 - 未授权 remote push
 - 把 unnamed residual 留给未来人工猜测
 
-## 19. Controlled Lane V2 Contract
+## 19. V1-Lite Task-Scoped Role Lifecycle
 
-The controlled v2 helper and bootstrap support are documented in:
+ConnLab 日常产品任务默认使用 V1-Lite：
+
+```text
+一个产品 TASK
+-> 一个临时 Controller
+-> 临时 Planner / Developer / Reviewer / QA / Integrator
+-> Integrator closeout
+-> 归档该 TASK 的全部临时角色对话
+```
+
+固定入口为 `ConnLab｜研发任务编排与集成主控`，线程 ID 记录在
+`docs/project_management/ROLE_THREAD_REGISTRY.md`。固定入口只接收新任务、读取
+board/task/plan/evidence、创建任务专属角色包并报告 closeout；不得承载完整 diff、测试日志或
+跨 TASK 的角色工作。
+
+强制规则：
+
+1. 每个产品 TASK 使用新的任务专属 Controller 和角色线程，下一 TASK 不复用。
+2. 角色线程按 gate 延迟创建；同一 TASK 的 bounded fix 可复用该 TASK 的 Developer/Reviewer。
+3. `docs/task_board.md`、task、plan、evidence 和 Git 高于 bundle manifest 与聊天记忆。
+4. 当前 bundle 记录在 `docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md`。
+5. callback 只传 TASK、ROLE、STATUS、EVIDENCE、COMMIT、NEXT、BLOCKER。
+6. Integrator 只有在 evidence/commit/worktree/residual/remote 状态全部收口后才能归档。
+7. 归档顺序为 Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller。
+8. 归档是可恢复操作；不得删除对话、丢弃 dirty worktree 或遗漏 retained owner。
+9. 固定入口不得作为 Developer worktree，也不得替代 Planner/Reviewer/QA/Integrator gate。
+
+## 20. Controlled Lane V2 Frozen Legacy
+
+Controlled Lane V2 的 helper、registry、heartbeat、pilot、corrective 和测试保留为历史审计
+材料，但不再是日常产品任务入口。
 
 - `docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md`
 - `.agents/skills/connlab-controlled-lane/SKILL.md`
 - `scripts/connlab_controlled_lane.ps1`
 
-The repository supports the administrative `bootstrap-registry` and `register-lane` commands,
-but production runtime remains inactive until a separate User bootstrap gate. The current
-orchestrator and role registry remain authoritative. Dry-run may use only fake task adapters,
-disposable Git repositories, and disposable registry roots. It must not create real tasks,
-automations, branches/worktrees, registry state, migrations, archives, commits, or remote actions.
-
-After bootstrap, every scan/callback still performs at most one external action. It must use the
-six-command CAS journal, preserve `dispatch_ack` separately from role completion, and fail closed
-on stale authority, ownership conflict, ambiguous read-back, or possible-start uncertainty.
-Heartbeat is callback-first, five-minute active-only, created paused, and changed between active
-and paused only as its own external action. A tests-only pilot requires a separate User gate.
+V2 registry 保持只读，heartbeat 保持 `PAUSED`，pilot/corrective 不继续。不得通过普通
+`执行 TASK_XXX` 命令启动 V2 scan、CAS journal、bootstrap、pilot、migration 或 corrective。
+任何重新启用 V2 的行为都需要新的正式 task、Planner Discovery、User 明确批准以及独立
+Reviewer/QA/Integrator gate。
