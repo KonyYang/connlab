@@ -4,7 +4,7 @@ Date: 2026-07-31
 Task: `TASK_368A_PRODUCT_SPEC_MATRIX_IMPORT_SELECTION_AND_DIAGNOSTICS_QUICK_FIX`
 Lane: `task-368a-product-spec-matrix-import-quick-fix`
 Role: permanent Quick Fixer
-Status: `approved_pending_worktree_dispatch`
+Status: `approved_ready_for_quick_fixer_dispatch`
 
 ## Authorization
 
@@ -38,8 +38,9 @@ Status: `approved_pending_worktree_dispatch`
 - Branch: `lane/task-368a-product-spec-matrix-import-quick-fix`
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-368a-product-spec-matrix-import-quick-fix`
-- Base commit: to be recorded by Orchestrator immediately after the governance checkpoint is
-  committed and the worktree is created.
+- Governance/base commit: `6c16cbcb7d10e6f88829ff823c05dd4ee36f92a7`.
+- Worktree inspection: branch matches, HEAD matches the governance/base commit, and
+  worktree/index are clean.
 - Quick Fixer checkpoint: pending.
 
 ## Required Quick Fixer Record
