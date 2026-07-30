@@ -11,7 +11,7 @@ schema_version: 1
 task_id: TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD
 thread_label: 发布实例防串
 lane_id: browser-release-frontend-freshness-instance-guard
-state: approved
+state: blocked_waiting_primary_clean
 approval_state: user_approved
 closeout_archive_authorized: false
 entry_thread_id: 019faaf2-f172-7523-b70f-2c4952acd59f
@@ -34,12 +34,13 @@ evidence_files:
   - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_reviewer.md
   - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_reconciliation_planner.md
   - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_user_approval.md
+  - docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_controller.md
 last_handoff:
-  from_role: user
-  to_role: controller
-  gate: implementation_approved
-  evidence_path: docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_user_approval.md
-residual_status: none_recorded
+  from_role: controller
+  to_role: user
+  gate: worktree_creation_blocked
+  evidence_path: docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_controller.md
+residual_status: conflict_unowned_primary_paths
 archive_status: not_started
 ```
 
