@@ -8,42 +8,21 @@ Scope: automate role-to-role handoffs for approved ConnLab task lanes
 
 This protocol reduces manual prompting between role threads. It does not loosen ConnLab's gates. The orchestrator may route work, but Planner, Developer, Reviewer, QA, and Integrator responsibilities remain separate.
 
-### 1.1 V1-Lite Task-Scoped Thread Bundle
+### 1.1 Classic Persistent Roles
 
-Normal ConnLab product work uses one temporary Controller/Planner/Developer/Reviewer/QA/Integrator
-bundle per formal TASK. The stable entry in `ROLE_THREAD_REGISTRY.md` receives new work but never
-acts as a product Developer or stores detailed role evidence. Current native IDs live in
-`ACTIVE_TASK_THREAD_BUNDLE.md`.
+Normal ConnLab work uses the permanent Orchestrator, Planner, Developer, Reviewer, QA, Integrator,
+and Quick Fixer recorded in `ROLE_THREAD_REGISTRY.md`. Product tasks reuse those conversations;
+they do not create or archive temporary six-role bundles.
 
-Roles are created lazily and are never reused by the next product TASK. Completion callbacks contain
-only TASK_ID, ROLE, STATUS, EVIDENCE, COMMIT, NEXT, and BLOCKER. After Integrator closes evidence,
-commits, worktree, residuals, and remote status, an authorized bundle is archived in this order:
+The Orchestrator selects between:
 
-Native task titles are compact display labels, not authority identifiers. At intake, the stable
-entry selects a business-readable `thread_label` of 2-12 visible characters, unique within the
-active bundle, and persists it in `ACTIVE_TASK_THREAD_BUNDLE.md`. Every role reuses that label:
+- the full role flow for ambiguous, cross-layer, authority/data/API/schema or high-risk work;
+- the Quick Fixer fast path for small, reproducible, bounded fixes satisfying `AGENTS.md` 19.1.
 
-```text
-<thread_label>｜主控
-<thread_label>｜规划
-<thread_label>｜开发
-<thread_label>｜评审
-<thread_label>｜测试
-<thread_label>｜集成
-```
-
-The complete title should normally remain within 18 visible characters. The formal `TASK_ID`
-remains mandatory in task, plan, evidence, bundle, prompt, and callback data. Do not put the full
-`TASK_ID` in the native sidebar title, and never use title search as identity proof; route and
-read back only by exact native thread ID.
-
-```text
-Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller
-```
-
-Archive requires `closeout_archive_authorized: true`. Archive failure stops at `closeout_ready`;
-the active manifest is not reset until exact native read-back proves every task archived.
-Controlled Lane V2 heartbeat is not a fallback.
+Implementation still uses an isolated branch/worktree. Conversation reuse is not Git isolation.
+Callbacks contain TASK_ID, ROLE, STATUS, EVIDENCE, COMMIT, NEXT, and BLOCKER and return to the
+permanent Orchestrator. Permanent role conversations are not archived at task closeout.
+Controlled Lane V2 and V1-Lite task-bundle automation are frozen legacy, not fallbacks.
 
 ## 2. Automation Boundary
 

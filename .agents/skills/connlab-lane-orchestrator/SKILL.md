@@ -7,29 +7,25 @@ description: Orchestrate ConnLab task lanes across role-specific Codex threads. 
 
 ## Purpose
 
-Use this skill to turn ConnLab's controlled parallel model into a repeatable V1-Lite handoff
-workflow. The stable entry creates one temporary Controller and temporary
-Planner/Developer/Reviewer/QA/Integrator bundle per product TASK. The orchestrator does not
-replace role authority; it reads repository evidence, decides the next valid role, and archives
-the task-scoped bundle only after Integrator closeout.
+Use this skill to route ConnLab work through the permanent classic roles recorded in
+`ROLE_THREAD_REGISTRY.md`. The permanent Orchestrator reads repository evidence, decides the next
+valid role, and routes Planner/Developer/Reviewer/QA/Integrator or the bounded Quick Fixer fast
+path. Do not create a V1-Lite task-scoped role bundle for ordinary work.
 
-Canonical task-scoped display titles:
+Canonical persistent titles:
 
 ```text
-<THREAD_LABEL>｜主控
-<THREAD_LABEL>｜规划
-<THREAD_LABEL>｜开发
-<THREAD_LABEL>｜评审
-<THREAD_LABEL>｜测试
-<THREAD_LABEL>｜集成
+ConnLab｜全自动编排 Orchestrator
+ConnLab｜总计划者 Planner
+ConnLab｜开发执行者 Developer
+ConnLab｜质量评审员 Reviewer
+ConnLab｜验证测试员 QA
+ConnLab｜集成负责人 Integrator
+ConnLab｜快速修补员 Quick Fixer
 ```
 
-`THREAD_LABEL` is display-only: the stable entry chooses a business-readable label of 2-12
-visible characters that is unique within the active bundle, persists it in
-`ACTIVE_TASK_THREAD_BUNDLE.md`, and reuses it for every role in that bundle. Keep the full
-`TASK_ID` in task/plan/evidence/bundle/prompt/callback data. Prefer a complete native title of at
-most 18 visible characters. Never use the full `TASK_ID` as the native sidebar title, and never
-resolve identity by title; exact native thread IDs remain authoritative.
+Exact native thread IDs remain authoritative. Titles are display-only and must not be used to
+discover or infer identity.
 
 ## Default Execute-Task Trigger
 
@@ -72,8 +68,9 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 - Never add new coverage to an oversized mixed test when a bounded public-contract test module can carry it.
 - Never merge a lane with unresolved blocking Reviewer/QA findings.
 - Never use chat memory as the source of truth when evidence files or board state disagree.
-- Use only task-scoped role IDs recorded in `ACTIVE_TASK_THREAD_BUNDLE.md`; never reuse archived or
-  permanent legacy roles for a new product TASK.
+- Use only the permanent role IDs recorded in `ROLE_THREAD_REGISTRY.md`.
+- Never create a task-scoped Controller or role bundle for ordinary work.
+- Use Quick Fixer only when every criterion in `AGENTS.md` section 19.1 is satisfied.
 - Create or rename native tasks only inside explicit User task/Goal authority.
 - If the current thread has access to `send_message_to_thread`, use it for handoffs. If not, produce the exact prompt the user should paste into the target role thread.
 
@@ -92,17 +89,15 @@ If any file is missing or contradicts the board, stop and report the mismatch.
    - Reviewer evidence `pass` and QA required -> QA
    - Reviewer/QA gates passed -> Integrator
    - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
-8. If the next task-scoped role ID is null, create that role lazily, set the canonical compact
-   `<THREAD_LABEL>｜<角色短名>` title from the bundle's persisted `thread_label`, read it back, and
-   persist the exact ID before sending work.
+8. Resolve the next permanent role by exact ID from `ROLE_THREAD_REGISTRY.md`; do not create or
+   rename a replacement role silently.
 9. Send one standard prompt to the next task-scoped role, including the exact worktree path and reviewed commit when applicable.
 10. Ask the target role to update its evidence file and stop at its declared gate.
 11. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
 12. Continue normal approved gates automatically until local Integrator acceptance.
 13. After Integrator acceptance, require an exact residual ledger and retire only a clean, integrated worktree.
-14. When `closeout_archive_authorized=true`, archive Planner -> Developer -> Reviewer -> QA ->
-    Integrator -> task-specific Controller, verify native read-back, write the closeout manifest,
-    and reset the active bundle to empty.
+14. Do not archive permanent roles at task closeout. Close task evidence/worktree/residual state
+    and leave the classic role conversations available for the next task.
 
 Run at most one full Developer->Reviewer->Developer-fix cycle without asking the user for confirmation. Continue beyond that only when the user explicitly requests automatic continuation.
 
@@ -111,11 +106,11 @@ Run at most one full Developer->Reviewer->Developer-fix cycle without asking the
 
 Use Goal mode when the User explicitly requests persistent execution. Goal mode is callback-driven,
 not heartbeat-driven. Each role writes durable evidence, sends one compact callback, and stops.
-The task-specific Controller rereads board/evidence/Git/native status before routing the next gate.
+The permanent Orchestrator rereads board/evidence/Git/native status before routing the next gate.
 
-Goal mode may automatically create task-scoped roles, create/retire clean worktrees, continue
-bounded fixes, create local checkpoints, integrate locally when authorized, and archive the
-completed temporary bundle.
+Goal mode may automatically route permanent roles, create/retire clean worktrees, continue bounded
+fixes, create local checkpoints, and integrate locally when authorized. It does not archive the
+permanent role conversations.
 
 Goal mode stops for missing approval, scope change, cross-lane ownership conflict, unexplained
 test failure, destructive discard, or unapproved remote push. Controlled Lane V2 heartbeat remains
@@ -146,7 +141,7 @@ task-specific Controller immediately, then stops.
 
 Callback rules:
 
-- Include the task-specific Controller ID from `ACTIVE_TASK_THREAD_BUNDLE.md`.
+- Send callbacks to the permanent Orchestrator ID from `ROLE_THREAD_REGISTRY.md`.
 - Send a callback only after evidence/checkpoint state changed; do not send duplicate callbacks for the same evidence status.
 - The callback never authorizes the next gate by itself. Controller must still re-read
   board/evidence/Git/native state.

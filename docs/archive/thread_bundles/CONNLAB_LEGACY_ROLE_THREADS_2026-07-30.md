@@ -1,6 +1,14 @@
 # ConnLab Legacy Role Thread Closeout
 
-Status: native archive complete for legacy inventory; current Goal task scheduled as final archive
+Status: superseded by User-authorized classic-role restoration
+
+## Restoration 2026-07-30
+
+The User explicitly restored the permanent Planner, Developer, Reviewer, QA, Integrator,
+Quick Fixer, and former Orchestrator. `019eb3b8-8624-74b2-a4a7-a6856399deac` is again the sole
+daily routing authority. `019faaf2-f172-7523-b70f-2c4952acd59f` is retained as a disabled
+V1-Lite historical entry. This archive document remains historical evidence; the active identity
+source is `docs/project_management/ROLE_THREAD_REGISTRY.md`.
 
 ## Retained Stable Entry
 

@@ -392,58 +392,65 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 - 未授权 remote push
 - 把 unnamed residual 留给未来人工猜测
 
-## 19. V1-Lite Task-Scoped Role Lifecycle
+## 19. Classic Persistent Roles And Quick Fixer
 
-ConnLab 日常产品任务默认使用 V1-Lite：
-
-```text
-一个产品 TASK
--> 一个临时 Controller
--> 临时 Planner / Developer / Reviewer / QA / Integrator
--> Integrator closeout
--> 归档该 TASK 的全部临时角色对话
-```
-
-固定入口为 `ConnLab｜研发任务编排与集成主控`，线程 ID 记录在
-`docs/project_management/ROLE_THREAD_REGISTRY.md`。固定入口只接收新任务、读取
-board/task/plan/evidence、创建任务专属角色包并报告 closeout；不得承载完整 diff、测试日志或
-跨 TASK 的角色工作。
-
-原生任务标题只用于侧边栏显示，不是任务身份或审批依据。稳定入口在 intake 时为每个产品
-TASK 选择一个业务可读、在当前 bundle 内唯一的 `thread_label`，建议 2-12 个可见字符，并将
-它记录到 `ACTIVE_TASK_THREAD_BUNDLE.md`。完整 `TASK_ID` 必须继续出现在 task、plan、
-evidence、bundle、prompt 和 callback 中，不得为了缩短标题而修改正式任务 ID。
-
-任务专属角色标题固定使用短格式：
+ConnLab 日常工作恢复为长期经典角色模式：
 
 ```text
-<thread_label>｜主控
-<thread_label>｜规划
-<thread_label>｜开发
-<thread_label>｜评审
-<thread_label>｜测试
-<thread_label>｜集成
+用户 -> Orchestrator
+复杂或范围不清 -> Planner -> User approval -> Developer -> Reviewer -> QA -> Integrator
+明确的小修复 -> Quick Fixer -> targeted smoke -> Reviewer/Integrator as risk requires
 ```
 
-标题应尽量控制在 18 个可见字符以内。不得再用完整 `TASK_ID` 生成侧边栏标题；不得按标题
-搜索或猜测线程身份，路由、回读和归档始终使用原生 thread ID。
+唯一主控、永久角色及其原生 thread ID 记录在
+`docs/project_management/ROLE_THREAD_REGISTRY.md`。日常任务复用这些长期角色，不再为每个
+TASK 自动创建和归档一整套临时 Controller/Planner/Developer/Reviewer/QA/Integrator。
 
 强制规则：
 
-1. 每个产品 TASK 使用新的任务专属 Controller 和角色线程，下一 TASK 不复用。
-2. 角色线程按 gate 延迟创建；同一 TASK 的 bounded fix 可复用该 TASK 的 Developer/Reviewer。
-3. `docs/task_board.md`、task、plan、evidence 和 Git 高于 bundle manifest 与聊天记忆。
-4. 当前 bundle 记录在 `docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md`。
-5. callback 只传 TASK、ROLE、STATUS、EVIDENCE、COMMIT、NEXT、BLOCKER。
-6. Integrator 只有在 evidence/commit/worktree/residual/remote 状态全部收口后才能归档。
-7. 归档顺序为 Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller。
-8. 归档是可恢复操作；不得删除对话、丢弃 dirty worktree 或遗漏 retained owner。
-9. 固定入口不得作为 Developer worktree，也不得替代 Planner/Reviewer/QA/Integrator gate。
+1. `ConnLab｜全自动编排 Orchestrator` 是唯一日常路由主控；其他入口不得并行发起角色动作。
+2. `docs/task_board.md`、task、plan、evidence 和 Git 高于聊天记忆与任何路由清单。
+3. 复杂功能、范围不清、跨层、数据/authority/API/schema/迁移或高风险任务继续执行完整
+   Planner、User approval、Developer、Reviewer、QA、Integrator gate。
+4. Reviewer/QA blocking finding 必须回到 Developer；Integrator 只能在 merge gate 满足后集成。
+5. 实现任务仍使用独立 `lane/*` branch 和 sibling worktree；长期角色线程不是 Git 隔离。
+6. 不自动 push，不 destructive cleanup，不丢弃未知修改，不强制删除 dirty worktree。
 
-## 20. Controlled Lane V2 Frozen Legacy
+### 19.1 Quick Fixer Fast Path
 
-Controlled Lane V2 的 helper、registry、heartbeat、pilot、corrective 和测试保留为历史审计
-材料，但不再是日常产品任务入口。
+同时满足以下条件时，Orchestrator 可路由永久 Quick Fixer，而无需创建临时角色包或独立
+Planner 对话：
+
+- 问题可稳定复现，根因和期望行为清楚；
+- 不新增产品需求，不改变业务 authority 或持久化语义；
+- 不涉及数据库/schema/migration、公共盘权威写入、API breaking change 或破坏性操作；
+- 修改范围小且边界明确，通常为 1-3 个实现文件及其 bounded tests；
+- 有可执行的 targeted test 或手工 smoke；
+- 与活动 lane 的 `Locked Paths`、shared files 和 authority ownership 不冲突。
+
+Quick Fixer 流程：
+
+```text
+Orchestrator 只读核验
+-> Quick Fixer 在隔离 worktree 中修复
+-> targeted test / smoke
+-> 根据风险进入 Reviewer 或 Integrator
+-> 记录 task/board/evidence 与 residual
+```
+
+出现需求歧义、范围扩大、共享所有权冲突、无法解释的测试失败、第二次同类修复失败或需要
+destructive action 时，Quick Fixer 必须停止并升级到 Planner/完整任务流程。
+
+冒烟测试后发现的纯文案、样式、明确 wiring、release guard 或单点兼容修复，默认先评估
+Quick Fixer；不得仅因仓库存在完整角色流程就自动创建六个新对话。
+
+## 20. Frozen Legacy Automation Modes
+
+V1-Lite task-scoped bundle 和 Controlled Lane V2 均保留为历史审计材料，但不再是日常产品
+任务入口。已有 V1-Lite 活动 worktree/修改必须以 checkpoint 方式保留，由 Orchestrator 决定
+迁移到经典角色、完成或关闭；不得静默丢弃。
+
+Controlled Lane V2 的 helper、registry、heartbeat、pilot、corrective 和测试继续冻结：
 
 - `docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md`
 - `.agents/skills/connlab-controlled-lane/SKILL.md`
