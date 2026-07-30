@@ -4,7 +4,7 @@ Date: 2026-07-31
 Task: `TASK_368A_PRODUCT_SPEC_MATRIX_IMPORT_SELECTION_AND_DIAGNOSTICS_QUICK_FIX`
 Lane: `task-368a-product-spec-matrix-import-quick-fix`
 Role: permanent Quick Fixer
-Status: `approved_pending_worktree_dispatch`
+Status: `ready_for_review`
 
 ## Authorization
 
@@ -38,25 +38,62 @@ Status: `approved_pending_worktree_dispatch`
 - Branch: `lane/task-368a-product-spec-matrix-import-quick-fix`
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-368a-product-spec-matrix-import-quick-fix`
-- Base commit: to be recorded by Orchestrator immediately after the governance checkpoint is
-  committed and the worktree is created.
-- Quick Fixer checkpoint: pending.
+- Base commit: `6c16cbcb7d10e6f88829ff823c05dd4ee36f92a7`
+- Dispatch verification: branch and HEAD matched the recorded base; worktree and index were clean.
+- Quick Fixer implementation checkpoint:
+  `a3d77c789bfe21c1b90e9e36f7f78913dfea8223`.
 
-## Required Quick Fixer Record
+## TDD Record
 
-Before callback, replace the pending status and record:
+RED:
 
-- RED tests and observed failures;
-- changed paths;
-- GREEN validation commands/results;
-- full checkpoint commit;
-- clean worktree/index proof;
-- residuals or blockers;
-- next role recommendation.
+- `py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py -q`
+  produced `4 failed`: the Revision Record was selected, Page + Keyword searched globally,
+  an explicit locator miss fell back to parser scoring, and an invalid selected table lost its
+  requested page/table metadata.
+- After making the worktree's ignored `frontend\node_modules` junction point to the already
+  installed primary-worktree dependencies,
+  `npm test -- MatrixEditorWorkspace.test.tsx -t "shows a precise preview blocker before locator mismatch fallback"`
+  produced `1 failed, 44 skipped`: the generic locator mismatch hid the backend blocker.
 
-Stop status must be one of:
+GREEN:
 
-- `ready_for_review`;
-- `blocked_scope_expansion`;
-- `blocked_unexplained_test_failure`;
-- `blocked_ownership_conflict`.
+- `py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py -q`
+  produced `4 passed`.
+- The focused frontend RED command produced `1 passed, 44 skipped`.
+
+## Changed Paths
+
+- `backend/modules/test_plan/product_spec_matrix_parser.py`
+- `backend/modules/test_plan/product_spec_matrix_parser_support.py`
+- `backend/application/project_test_plan_matrix_preview_service.py`
+- `frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx`
+- `tests/unit/test_task_368a_product_spec_matrix_import_selection.py`
+- `frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx`
+- This evidence file.
+
+No task-board, API/DTO/client, Office gateway, real document, data, persistence, schema, release,
+layout, style, or label path was changed.
+
+## Validation
+
+- `py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py tests\unit\test_product_spec_matrix_parser.py -q`
+  -> `28 passed`.
+- `py -m py_compile backend\modules\test_plan\product_spec_matrix_parser.py backend\modules\test_plan\product_spec_matrix_parser_support.py backend\application\project_test_plan_matrix_preview_service.py`
+  -> passed with exit code `0`.
+- In `frontend`,
+  `npm test -- MatrixEditorWorkspace.test.tsx`
+  -> `45 passed`.
+- In `frontend`, `npm run build`
+  -> passed. Vite reported its existing non-blocking chunk-size warning.
+- `git diff --check` and `git diff --cached --check`
+  -> passed; only Git's Windows LF-to-CRLF working-copy notices were emitted.
+- Final exact-path commits leave `git status --short` empty, proving worktree and index clean.
+
+## Residuals And Handoff
+
+- Product residuals/blockers: none.
+- Environment note: the ignored worktree-local `frontend\node_modules` junction was used only to
+  reuse already installed dependencies; it is not a tracked product change.
+- Remote state: not pushed, per task boundary.
+- Next role: Reviewer.
