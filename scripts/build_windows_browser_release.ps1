@@ -30,12 +30,18 @@ function Assert-CommandAvailable {
 }
 
 function Assert-BrowserFrontendReleaseGuards {
-    $assetRoot = Join-Path $repoRoot "frontend\dist\assets"
-    if (-not (Test-Path $assetRoot)) {
-        throw "frontend\dist\assets not found. Run frontend build before packaging."
+    param([Parameter(Mandatory = $true)][string]$AssetRoot)
+
+    if (-not (Test-Path $AssetRoot)) {
+        throw "Frontend assets not found: $AssetRoot"
+    }
+    $requiredText = "Export Matrix"
+    $requiredMatches = Select-String -Path (Join-Path $AssetRoot "*.js") -Pattern $requiredText -SimpleMatch -Encoding UTF8 -ErrorAction SilentlyContinue
+    if (-not $requiredMatches) {
+        throw "Required frontend capability is missing: Export Matrix"
     }
     $forbiddenText = "Import Matrix will replace the current source session"
-    $matches = Select-String -Path (Join-Path $assetRoot "*.js") -Pattern $forbiddenText -SimpleMatch -Encoding UTF8 -ErrorAction SilentlyContinue
+    $matches = Select-String -Path (Join-Path $AssetRoot "*.js") -Pattern $forbiddenText -SimpleMatch -Encoding UTF8 -ErrorAction SilentlyContinue
     if ($matches) {
         throw "Frontend build still contains the old native Import Matrix confirm text. Rebuild from the TASK_350C source before packaging."
     }
@@ -87,6 +93,10 @@ Write-Host "URL: http://127.0.0.1:8765/"
 
 Assert-CommandAvailable "npm" "Install Node.js for developer builds."
 
+if ($SkipFrontendBuild) {
+    throw "SkipFrontendBuild is disabled for browser releases. A fresh frontend build is required."
+}
+
 if (-not $SkipTests) {
     Invoke-TimedStep "[1/5] Running focused release tests" {
         Write-Host "[1/5] Running focused release tests"
@@ -108,29 +118,24 @@ else {
     Write-Host "[1/5] Skipping tests"
 }
 
-if (-not $SkipFrontendBuild) {
-    Invoke-TimedStep "[2/5] Building frontend" {
-        Write-Host "[2/5] Building frontend"
-        Push-Location "frontend"
-        try {
-            npm run build
-            if ($LASTEXITCODE -ne 0) {
-                throw "Frontend build failed."
-            }
-        }
-        finally {
-            Pop-Location
+Invoke-TimedStep "[2/5] Building frontend" {
+    Write-Host "[2/5] Building frontend"
+    Push-Location "frontend"
+    try {
+        npm run build
+        if ($LASTEXITCODE -ne 0) {
+            throw "Frontend build failed."
         }
     }
-}
-else {
-    Write-Host "[2/5] Skipping frontend build"
+    finally {
+        Pop-Location
+    }
 }
 
 if (-not (Test-Path "frontend\dist\index.html")) {
     throw "frontend\dist\index.html not found. Run frontend build before packaging."
 }
-Assert-BrowserFrontendReleaseGuards
+Assert-BrowserFrontendReleaseGuards -AssetRoot (Join-Path $repoRoot "frontend\dist\assets")
 
 Invoke-TimedStep "[3/5] Checking PyInstaller" {
     Write-Host "[3/5] Checking PyInstaller"
@@ -174,6 +179,7 @@ Invoke-TimedStep "[5/5] Preparing release folder" {
         New-Item -ItemType Directory -Path $packagedFrontend | Out-Null
     }
     Copy-Item -Path "frontend\dist\*" -Destination $packagedFrontend -Recurse -Force
+    Assert-BrowserFrontendReleaseGuards -AssetRoot (Join-Path $packagedFrontend "assets")
     Copy-Item -LiteralPath "packaging\Start_ConnLab.bat" -Destination (Join-Path $releaseFolder "Start_ConnLab.bat") -Force
     Copy-Item -LiteralPath "packaging\README_FOR_BROWSER_OPERATOR.md" -Destination (Join-Path $releaseFolder "README_FOR_OPERATOR.md") -Force
     Copy-Item -LiteralPath "packaging\RELEASE_NOTES_BROWSER.md" -Destination (Join-Path $releaseFolder "RELEASE_NOTES.md") -Force
