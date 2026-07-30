@@ -6,7 +6,7 @@ Scope: one permanent Orchestrator plus permanent specialist roles and Quick Fixe
 
 | Role | Canonical title | Thread ID | Primary use |
 |---|---|---|---|
-| Orchestrator | ConnLab｜全自动编排 Orchestrator | `019eb3b8-8624-74b2-a4a7-a6856399deac` | 唯一日常主控，接收新目标并路由经典角色 |
+| Orchestrator | ConnLab｜全自动编排 Orchestrator | `019fb3d4-12a5-73b3-be8e-e59686fa39a9` | 唯一日常主控，接收新目标并路由经典角色 |
 | Planner | ConnLab｜总计划者 Planner | `019fb3ce-5133-77e3-b256-faa2111ee265` | Discovery、task/plan、范围与 gate |
 | Developer | ConnLab｜开发执行者 Developer | `019fb3ce-5c37-79e1-8f33-dd3a0deb09de` | 已批准 lane 的实现与 checkpoint |
 | Reviewer | ConnLab｜质量评审员 Reviewer | `019fb3ce-6824-7670-9015-326da4ce178f` | committed diff 与 plan/implementation gate |
