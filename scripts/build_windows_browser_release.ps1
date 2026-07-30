@@ -179,10 +179,11 @@ Invoke-TimedStep "[5/5] Preparing release folder" {
         New-Item -ItemType Directory -Path $packagedFrontend | Out-Null
     }
     Copy-Item -Path "frontend\dist\*" -Destination $packagedFrontend -Recurse -Force
-    # Guard the path the packaged server actually serves at runtime
-    # (PackagedRuntimePaths.default_frontend_dist -> <releaseFolder>\frontend_dist),
-    # not the redundant _internal\frontend_dist copy.
-    Assert-BrowserFrontendReleaseGuards -AssetRoot (Join-Path $releaseFolder "frontend_dist\assets")
+    # Guard the path the packaged server actually serves at runtime.
+    # In one-folder PyInstaller mode datas land under <releaseFolder>\_internal,
+    # and runtime_paths.default_frontend_dist() resolves to
+    # <releaseFolder>\_internal\frontend_dist via sys._MEIPASS.
+    Assert-BrowserFrontendReleaseGuards -AssetRoot (Join-Path $packagedFrontend "assets")
     Copy-Item -LiteralPath "packaging\Start_ConnLab.bat" -Destination (Join-Path $releaseFolder "Start_ConnLab.bat") -Force
     Copy-Item -LiteralPath "packaging\README_FOR_BROWSER_OPERATOR.md" -Destination (Join-Path $releaseFolder "README_FOR_OPERATOR.md") -Force
     Copy-Item -LiteralPath "packaging\RELEASE_NOTES_BROWSER.md" -Destination (Join-Path $releaseFolder "RELEASE_NOTES.md") -Force
