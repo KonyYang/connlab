@@ -1,6 +1,6 @@
 # ConnLab Legacy Role Thread Closeout
 
-Status: archive authorized by User Goal on 2026-07-30
+Status: native archive complete for legacy inventory; current Goal task scheduled as final archive
 
 ## Retained Stable Entry
 
@@ -44,6 +44,32 @@ closeout.
 
 Every archive is recoverable. Exact native read-back after the archive operation is the acceptance
 evidence. No ChatGPT conversation, unrelated project, branch/worktree, or remote ref is included.
+
+## Native Archive Result
+
+The following exact tasks returned `archived: true`:
+
+```text
+019eff12-a71a-7861-b3d2-908b204bdf73
+019eff12-f314-79f3-ae0b-73795dc9b2c1
+019eff13-27d3-75a2-b654-d8ac28937614
+019eff13-7311-7ba1-9594-c0f7dc6a3d75
+019eff13-bcb5-74c3-bb20-3c704038f4b3
+019f0bc9-c88d-7262-a8ed-47e5472a3bdc
+019f9c46-d3be-7c72-bafd-5412a054cfa8
+019fb05b-8425-7443-9e9d-12da88c677db
+019fb166-08cf-7963-ae9e-3d1af76868d6
+019f15aa-8851-78b3-a211-f5bab9312cbe
+019eb3b8-8624-74b2-a4a7-a6856399deac
+```
+
+Stable entry `019faaf2-f172-7523-b70f-2c4952acd59f` was renamed to
+`ConnLab｜研发任务编排与集成主控`, pinned at index 1, initialized against repository commit
+`a2c8c48760deb91dc0f7c97922d759d73d72ea1f`, and returned idle/standby with the active bundle
+empty.
+
+The current Goal task `019fb2d9-f5d9-7772-bed6-6884c56aac6e` remains active only long enough to
+commit this exact closeout, verify Git/native state, mark the Goal complete, and archive itself.
 
 ## Residual Ledger
 
