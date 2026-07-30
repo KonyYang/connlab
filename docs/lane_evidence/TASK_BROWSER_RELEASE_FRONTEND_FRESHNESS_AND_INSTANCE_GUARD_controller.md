@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 Role: Controller
-Status: `worktree_ready_developer_pending`
+Status: `developer_registered_activation_pending`
 Task: `TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD`
 Lane: `browser-release-frontend-freshness-instance-guard`
 Planning commit: `6e0fa345797bab1328c9df5366a2921db3529735`
@@ -92,3 +92,16 @@ The project worktree helper created the only implementation lane after a clean-p
 The concrete Git isolation gate is now satisfied. The next legal action is lazy creation of the
 task-specific Developer, persistence/read-back of its exact native thread ID, then one bounded
 implementation handoff.
+
+## Developer Registration Checkpoint
+
+- Native thread ID: `019fb397-002a-7f41-8205-a6a553aa0272`
+- Host: `local`
+- Exact native title read-back: `发布实例防串｜开发`
+- Initial prompt: HOLD only; no implementation authority was sent before ID/title persistence
+- Thread checkout: primary project checkout for governance routing only
+- Required implementation cwd: the exact project-managed worktree recorded above
+
+The Developer ID and compact title are now authoritative for this task bundle. Activation remains
+pending until this checkpoint is committed; the activation message must prohibit product work in
+the primary checkout and bind every command/edit/test/commit to the isolated worktree.
