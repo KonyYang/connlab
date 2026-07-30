@@ -178,6 +178,10 @@ The stable ConnLab entry creates a fresh task-specific Controller and role threa
 Integrator acceptance/cancellation, clean worktree/residual closeout, and explicit bundle archive
 authorization, archive:
 
+The bundle also owns one compact, business-readable `thread_label`. Native sidebar titles use
+`<thread_label>｜主控/规划/开发/评审/测试/集成`; the full formal `TASK_ID` remains in durable
+governance and callback data. Exact thread IDs, never titles, identify the roles.
+
 ```text
 Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller
 ```

@@ -409,6 +409,25 @@ ConnLab 日常产品任务默认使用 V1-Lite：
 board/task/plan/evidence、创建任务专属角色包并报告 closeout；不得承载完整 diff、测试日志或
 跨 TASK 的角色工作。
 
+原生任务标题只用于侧边栏显示，不是任务身份或审批依据。稳定入口在 intake 时为每个产品
+TASK 选择一个业务可读、在当前 bundle 内唯一的 `thread_label`，建议 2-12 个可见字符，并将
+它记录到 `ACTIVE_TASK_THREAD_BUNDLE.md`。完整 `TASK_ID` 必须继续出现在 task、plan、
+evidence、bundle、prompt 和 callback 中，不得为了缩短标题而修改正式任务 ID。
+
+任务专属角色标题固定使用短格式：
+
+```text
+<thread_label>｜主控
+<thread_label>｜规划
+<thread_label>｜开发
+<thread_label>｜评审
+<thread_label>｜测试
+<thread_label>｜集成
+```
+
+标题应尽量控制在 18 个可见字符以内。不得再用完整 `TASK_ID` 生成侧边栏标题；不得按标题
+搜索或猜测线程身份，路由、回读和归档始终使用原生 thread ID。
+
 强制规则：
 
 1. 每个产品 TASK 使用新的任务专属 Controller 和角色线程，下一 TASK 不复用。

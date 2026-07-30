@@ -13,16 +13,23 @@ Planner/Developer/Reviewer/QA/Integrator bundle per product TASK. The orchestrat
 replace role authority; it reads repository evidence, decides the next valid role, and archives
 the task-scoped bundle only after Integrator closeout.
 
-Canonical task-scoped titles:
+Canonical task-scoped display titles:
 
 ```text
-TASK_XXX｜Controller
-TASK_XXX｜Planner
-TASK_XXX｜Developer
-TASK_XXX｜Reviewer
-TASK_XXX｜QA
-TASK_XXX｜Integrator
+<THREAD_LABEL>｜主控
+<THREAD_LABEL>｜规划
+<THREAD_LABEL>｜开发
+<THREAD_LABEL>｜评审
+<THREAD_LABEL>｜测试
+<THREAD_LABEL>｜集成
 ```
+
+`THREAD_LABEL` is display-only: the stable entry chooses a business-readable label of 2-12
+visible characters that is unique within the active bundle, persists it in
+`ACTIVE_TASK_THREAD_BUNDLE.md`, and reuses it for every role in that bundle. Keep the full
+`TASK_ID` in task/plan/evidence/bundle/prompt/callback data. Prefer a complete native title of at
+most 18 visible characters. Never use the full `TASK_ID` as the native sidebar title, and never
+resolve identity by title; exact native thread IDs remain authoritative.
 
 ## Default Execute-Task Trigger
 
@@ -85,8 +92,9 @@ If any file is missing or contradicts the board, stop and report the mismatch.
    - Reviewer evidence `pass` and QA required -> QA
    - Reviewer/QA gates passed -> Integrator
    - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
-8. If the next task-scoped role ID is null, create that role lazily, set the canonical
-   `TASK_XXX｜<Role>` title, read it back, and persist the exact ID before sending work.
+8. If the next task-scoped role ID is null, create that role lazily, set the canonical compact
+   `<THREAD_LABEL>｜<角色短名>` title from the bundle's persisted `thread_label`, read it back, and
+   persist the exact ID before sending work.
 9. Send one standard prompt to the next task-scoped role, including the exact worktree path and reviewed commit when applicable.
 10. Ask the target role to update its evidence file and stop at its declared gate.
 11. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.

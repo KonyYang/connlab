@@ -19,6 +19,24 @@ Roles are created lazily and are never reused by the next product TASK. Completi
 only TASK_ID, ROLE, STATUS, EVIDENCE, COMMIT, NEXT, and BLOCKER. After Integrator closes evidence,
 commits, worktree, residuals, and remote status, an authorized bundle is archived in this order:
 
+Native task titles are compact display labels, not authority identifiers. At intake, the stable
+entry selects a business-readable `thread_label` of 2-12 visible characters, unique within the
+active bundle, and persists it in `ACTIVE_TASK_THREAD_BUNDLE.md`. Every role reuses that label:
+
+```text
+<thread_label>｜主控
+<thread_label>｜规划
+<thread_label>｜开发
+<thread_label>｜评审
+<thread_label>｜测试
+<thread_label>｜集成
+```
+
+The complete title should normally remain within 18 visible characters. The formal `TASK_ID`
+remains mandatory in task, plan, evidence, bundle, prompt, and callback data. Do not put the full
+`TASK_ID` in the native sidebar title, and never use title search as identity proof; route and
+read back only by exact native thread ID.
+
 ```text
 Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller
 ```
