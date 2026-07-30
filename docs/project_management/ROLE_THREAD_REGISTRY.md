@@ -7,12 +7,12 @@ Scope: one permanent Orchestrator plus permanent specialist roles and Quick Fixe
 | Role | Canonical title | Thread ID | Primary use |
 |---|---|---|---|
 | Orchestrator | ConnLab｜全自动编排 Orchestrator | `019eb3b8-8624-74b2-a4a7-a6856399deac` | 唯一日常主控，接收新目标并路由经典角色 |
-| Planner | ConnLab｜总计划者 Planner | `019eff12-a71a-7861-b3d2-908b204bdf73` | Discovery、task/plan、范围与 gate |
-| Developer | ConnLab｜开发执行者 Developer | `019eff12-f314-79f3-ae0b-73795dc9b2c1` | 已批准 lane 的实现与 checkpoint |
-| Reviewer | ConnLab｜质量评审员 Reviewer | `019eff13-27d3-75a2-b654-d8ac28937614` | committed diff 与 plan/implementation gate |
-| QA | ConnLab｜验证测试员 QA | `019eff13-7311-7ba1-9594-c0f7dc6a3d75` | clean reviewed commit 的验证 |
-| Integrator | ConnLab｜集成负责人 Integrator | `019eff13-bcb5-74c3-bb20-3c704038f4b3` | merge gate、集成、residual 和 closeout |
-| Quick Fixer | ConnLab｜快速修补员 Quick Fixer | `019f0bc9-c88d-7262-a8ed-47e5472a3bdc` | 满足 AGENTS.md 19.1 的小修复快速通道 |
+| Planner | ConnLab｜总计划者 Planner | `019fb3ce-5133-77e3-b256-faa2111ee265` | Discovery、task/plan、范围与 gate |
+| Developer | ConnLab｜开发执行者 Developer | `019fb3ce-5c37-79e1-8f33-dd3a0deb09de` | 已批准 lane 的实现与 checkpoint |
+| Reviewer | ConnLab｜质量评审员 Reviewer | `019fb3ce-6824-7670-9015-326da4ce178f` | committed diff 与 plan/implementation gate |
+| QA | ConnLab｜验证测试员 QA | `019fb3ce-7479-7472-a739-9cad8c11af8a` | clean reviewed commit 的验证 |
+| Integrator | ConnLab｜集成负责人 Integrator | `019fb3ce-8c1b-73a0-a23d-cfd15a8a4b14` | merge gate、集成、residual 和 closeout |
+| Quick Fixer | ConnLab｜快速修补员 Quick Fixer | `019fb3ce-80fa-7cb3-9400-1a4aa61f7a77` | 满足 AGENTS.md 19.1 的小修复快速通道 |
 
 ## Former V1-Lite Entry
 
