@@ -2704,6 +2704,13 @@ export function MatrixEditorWorkspace({
     if (preview.preview_pdf_token) {
       setImportPreviewPdfToken(preview.preview_pdf_token);
     }
+    if (preview.blockers.length > 0 || preview.groups.length === 0) {
+      if (!preservePreviewOnNoMatch) {
+        setImportPreview(null);
+      }
+      applyImportPreviewStatus(preview);
+      return null;
+    }
     const pageMismatch =
       parsedLocator.pageNumber != null && preview.selected_page_number !== parsedLocator.pageNumber;
     const tableMismatch =

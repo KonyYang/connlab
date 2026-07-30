@@ -309,6 +309,12 @@ def looks_like_revision_record_table(table: list[list[str]]) -> bool:
     candidate_rows = table[: min(3, len(table))]
     for row in candidate_rows:
         normalized = {normalize(cell) for cell in row if clean(cell)}
+        if (
+            normalized.intersection({"rev", "revision"})
+            and normalized.intersection({"page", "pages"})
+            and normalized.intersection({"description", "date"})
+        ):
+            return True
         if "rev" in normalized and {"pages", "description"}.issubset(normalized):
             return True
         if "revision" in normalized and ("description" in normalized or "date" in normalized):

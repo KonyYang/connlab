@@ -1131,6 +1131,36 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect((screen.getByRole("button", { name: "Replace" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it("shows a precise preview blocker before locator mismatch fallback", async () => {
+    const firstPreview = buildImportPreview({ preview_pdf_token: "pdf-token-stale" });
+    const blockedPreview = buildImportPreview({
+      selected_table_index: null,
+      selected_page_number: null,
+      selected_page_table_index: null,
+      groups: [],
+      blockers: ["Selected table 6 is not a valid Matrix table."],
+    });
+    apiMocks.previewProjectTestPlanMatrixFromUpload
+      .mockResolvedValueOnce(firstPreview)
+      .mockResolvedValueOnce(blockedPreview);
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [new File(["docx"], "split-header.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })],
+      },
+    });
+    fireEvent.change(await screen.findByLabelText("Page"), { target: { value: "10" } });
+    fireEvent.change(await screen.findByLabelText("Table Title / Content Keyword"), { target: { value: "TEST GROUP" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Replace" }));
+
+    expect(await screen.findByText("Selected table 6 is not a valid Matrix table.")).toBeTruthy();
+    expect(screen.queryByText("Requested page/table did not match a matrix.")).toBeNull();
+    expect(apiMocks.commitMatrixImport).not.toHaveBeenCalled();
+  });
+
   it("does not reparse or commit stale Replace when the locator is invalid", async () => {
     apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce(
       buildImportPreview({ preview_pdf_token: "pdf-token-stale" }),
