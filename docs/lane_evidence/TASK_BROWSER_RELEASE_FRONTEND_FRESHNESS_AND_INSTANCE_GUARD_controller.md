@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 Role: Controller
-Status: `ready_for_worktree_creation`
+Status: `worktree_ready_developer_pending`
 Task: `TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD`
 Lane: `browser-release-frontend-freshness-instance-guard`
 Planning commit: `6e0fa345797bab1328c9df5366a2921db3529735`
@@ -74,3 +74,21 @@ and committed governance package. No active worktree claims the approved browser
 and no worktree or branch for this lane already exists. The next legal action is creation of the
 single isolated implementation worktree; Developer remains `null` until its concrete base,
 branch, and path are persisted.
+
+## Implementation Worktree Checkpoint
+
+The project worktree helper created the only implementation lane after a clean-primary dry-run:
+
+- Base commit: `46081784f9feb6a7dcdf294f819cf8afe8a47a63`
+- Branch: `lane/browser-release-frontend-freshness-instance-guard`
+- Worktree:
+  `D:\PythonProject\connlab-worktrees\browser-release-frontend-freshness-instance-guard`
+- Helper result: `CTL_OK`
+- Lane HEAD equals base commit and lane status is empty.
+- Primary status remains empty after worktree creation.
+- No other worktree claims the approved product paths; the four historical V2 worktrees remain
+  frozen read-only and are not routed.
+
+The concrete Git isolation gate is now satisfied. The next legal action is lazy creation of the
+task-specific Developer, persistence/read-back of its exact native thread ID, then one bounded
+implementation handoff.

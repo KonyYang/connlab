@@ -11,7 +11,7 @@ schema_version: 1
 task_id: TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD
 thread_label: 发布实例防串
 lane_id: browser-release-frontend-freshness-instance-guard
-state: approved_ready_for_worktree
+state: worktree_ready_developer_pending
 approval_state: user_approved
 closeout_archive_authorized: false
 entry_thread_id: 019faaf2-f172-7523-b70f-2c4952acd59f
@@ -22,9 +22,9 @@ role_threads:
   reviewer: 019fb343-5d7e-77f3-a861-c8e92c94013f
   qa: null
   integrator: null
-base_commit: null
-branch: null
-worktree: null
+base_commit: 46081784f9feb6a7dcdf294f819cf8afe8a47a63
+branch: lane/browser-release-frontend-freshness-instance-guard
+worktree: D:\PythonProject\connlab-worktrees\browser-release-frontend-freshness-instance-guard
 reviewed_commit: null
 accepted_commit: null
 task_file: tasks/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD.md
@@ -38,7 +38,7 @@ evidence_files:
 last_handoff:
   from_role: controller
   to_role: controller
-  gate: primary_clean_verified
+  gate: worktree_created
   evidence_path: docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_controller.md
 residual_status: resolved_by_governance_reconciliation_9a5e94b4
 archive_status: not_started
