@@ -207,12 +207,40 @@ def _preview_from_snapshot(
     applicable_specifications: str | None,
 ) -> ProjectTestPlanMatrixPreview:
     """Parse a neutral document snapshot into a Matrix preview."""
+    candidate_tables = tuple(
+        {
+            "table_index": item.table_index,
+            "page_number": item.page_number,
+            "page_table_index": item.page_table_index,
+            "preceding_paragraph": item.preceding_paragraph,
+            "text_preview": item.text_preview,
+            "row_count": item.row_count,
+            "column_count": item.column_count,
+        }
+        for item in table_locations
+    )
     selected_table_index = _select_table_index(
         table_locations=table_locations,
         page_number=page_number,
         page_table_index=page_table_index,
         table_text_query=table_text_query,
     )
+    if selected_table_index is None and _has_explicit_locator(
+        page_number=page_number,
+        page_table_index=page_table_index,
+        table_text_query=table_text_query,
+    ):
+        return ProjectTestPlanMatrixPreview(
+            project_id=project_id,
+            source_document_path=source_path,
+            source_document_name=source_path.name,
+            source_format=source_format,
+            capability_status="unsupported",
+            generated_at=generated_at,
+            blockers=("No table matched the requested Matrix locator.",),
+            candidate_tables=candidate_tables,
+            preview_pdf_token=preview_pdf_token,
+        )
     parsed = parser.parse_tables(
         tables,
         paragraphs=paragraphs,
@@ -224,10 +252,15 @@ def _preview_from_snapshot(
         applicable_specifications=applicable_specifications,
     )
     selected_location = None
-    if parsed.selected_table_index is not None:
+    location_table_index = (
+        parsed.selected_table_index
+        if parsed.selected_table_index is not None
+        else selected_table_index
+    )
+    if location_table_index is not None:
         selected_location = _selected_location_for_preview(
             table_locations=table_locations,
-            selected_table_index=parsed.selected_table_index,
+            selected_table_index=location_table_index,
             page_number=page_number,
             page_table_index=page_table_index,
         )
@@ -244,18 +277,7 @@ def _preview_from_snapshot(
         selected_table_index=parsed.selected_table_index,
         selected_page_number=selected_location.page_number if selected_location else None,
         selected_page_table_index=selected_location.page_table_index if selected_location else None,
-        candidate_tables=tuple(
-            {
-                "table_index": item.table_index,
-                "page_number": item.page_number,
-                "page_table_index": item.page_table_index,
-                "preceding_paragraph": item.preceding_paragraph,
-                "text_preview": item.text_preview,
-                "row_count": item.row_count,
-                "column_count": item.column_count,
-            }
-            for item in table_locations
-        ),
+        candidate_tables=candidate_tables,
         preview_pdf_token=preview_pdf_token,
         rows=parsed.rows,
     )
@@ -269,17 +291,43 @@ def _select_table_index(
     table_text_query: str | None,
 ) -> int | None:
     """Resolve a selected table index from optional locator inputs."""
-    if page_number is not None and page_table_index is not None:
-        for item in table_locations:
-            if item.page_number == page_number and item.page_table_index == page_table_index:
-                return item.table_index
+    if page_table_index is not None and page_number is None:
+        return None
+    candidates = list(table_locations)
+    if page_number is not None:
+        candidates = [item for item in candidates if item.page_number == page_number]
+    if page_table_index is not None:
+        candidates = [
+            item
+            for item in candidates
+            if item.page_table_index == page_table_index
+        ]
     query = (table_text_query or "").strip().lower()
     if query:
-        for item in table_locations:
+        for item in candidates:
             hay = f"{item.preceding_paragraph or ''} {item.text_preview or ''}".lower()
             if query in hay:
                 return item.table_index
+        return None
+    if page_number is not None and len(candidates) == 1:
+        return candidates[0].table_index
+    if page_number is not None and page_table_index is not None and candidates:
+        return candidates[0].table_index
     return None
+
+
+def _has_explicit_locator(
+    *,
+    page_number: int | None,
+    page_table_index: int | None,
+    table_text_query: str | None,
+) -> bool:
+    """Return whether the operator supplied any table locator value."""
+    return (
+        page_number is not None
+        or page_table_index is not None
+        or bool((table_text_query or "").strip())
+    )
 
 
 def _selected_location_for_preview(

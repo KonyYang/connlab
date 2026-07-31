@@ -187,6 +187,7 @@ class ProductSpecMatrixParser:
             )
         for row_index, row in enumerate(table, start=1):
             normalized = [_normalize(cell) for cell in row]
+            canonical_headers = [_canonical_header_label(cell) for cell in row]
             group_columns = tuple(
                 (index, _clean(row[index]))
                 for index, value in enumerate(normalized)
@@ -194,13 +195,19 @@ class ProductSpecMatrixParser:
             )
             if not group_columns:
                 continue
-            item_column = _find_column(normalized, ("test items", "test item", "test description", "test"))
-            section_column = _find_column(normalized, ("section", "para"))
+            item_column = _find_column(
+                canonical_headers,
+                ("testitems", "testitem", "testdescription", "test"),
+            )
+            section_column = _find_column(canonical_headers, ("section", "para"))
             if (item_column is None or section_column is None) and row_index < len(table):
                 next_row = table[row_index]
-                next_normalized = [_normalize(cell) for cell in next_row]
-                next_item = _find_column(next_normalized, ("test items", "test item", "test description", "test"))
-                next_section = _find_column(next_normalized, ("section", "para"))
+                next_headers = [_canonical_header_label(cell) for cell in next_row]
+                next_item = _find_column(
+                    next_headers,
+                    ("testitems", "testitem", "testdescription", "test"),
+                )
+                next_section = _find_column(next_headers, ("section", "para"))
                 if next_item is not None and next_section is not None:
                     return _Header(
                         row_index=row_index + 1,
@@ -210,8 +217,8 @@ class ProductSpecMatrixParser:
                     )
             if item_column is None or section_column is None:
                 previous = table[row_index - 2] if row_index >= 2 else []
-                combined = [_normalize(cell) for cell in [*previous, *row]]
-                if not any(("test item" in cell or cell == "test") for cell in combined):
+                combined = [_canonical_header_label(cell) for cell in [*previous, *row]]
+                if not any(("testitem" in cell or cell == "test") for cell in combined):
                     continue
                 item_column = item_column if item_column is not None else 0
                 section_column = section_column if section_column is not None else 1
@@ -435,6 +442,11 @@ def _clean(value: str) -> str:
 def _normalize(value: str) -> str:
     """Normalize text for header matching."""
     return _clean(value).lower()
+
+
+def _canonical_header_label(value: str) -> str:
+    """Collapse alphabetic whitespace for comparison-only header matching."""
+    return re.sub(r"(?<=[a-z])\s+(?=[a-z])", "", _normalize(value))
 
 
 def _group_key(label: str) -> str:
