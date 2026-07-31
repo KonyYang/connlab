@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `worktree_creation_authorized`
+Status: `developer_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -12,6 +12,24 @@ Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
 
 Worktree creation authority base/initial HEAD:
 `e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## Physical Worktree And Dispatch Audit
+
+- Orchestrator reported that the timed Create command completed despite its caller timing out.
+  Planner did not rerun Create.
+- Git independently proves the registered sibling worktree is exactly
+  `D:\PythonProject\connlab-worktrees\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`
+  on branch `lane/task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`.
+- Lane HEAD/base is `e226bf1e54db4de54eb2366e96895999ce54652d`; worktree and index are clean.
+- Primary is clean on `master@2aee89299136c2399288649c637c46d1ac508eb8` with no `MERGE_HEAD`.
+- Production-root read-only gates returned `ALLOW_INSPECT` and `ALLOW_DISPATCH`; state remains
+  `implementation_running`, TASK_368E remains the sole token owner, role is Developer, and the
+  lane/worktree/HEAD facts match the active record.
+- Exact seventeen locked product/test paths, empty queue, null paused/Quick Fix/parallel records,
+  residual ledger, exclusions, QF-4 classification, and mandatory Reviewer/QA/Integrator gates are
+  unchanged.
+- Decision: `developer_dispatch_ready`; next legal role is permanent Developer through
+  Orchestrator. No product/test or lane write was performed by Planner.
 
 ## Worktree Creation Authority Audit
 
@@ -25,13 +43,13 @@ Worktree creation authority base/initial HEAD:
 - The active record fixes lane, branch, planned sibling worktree, base/head, all seventeen locked
   product/test paths, and this Planner evidence. Queue remains empty; paused task, Quick Fix, and
   parallel exception remain null; residuals are byte-for-byte preserved.
-- `role: Developer` satisfies the state schema for the next CreateWorktree gate only. Developer is
-  not dispatched, because the recorded branch/worktree do not yet exist and have not been verified.
+- At that checkpoint, `role: Developer` satisfied the state schema for the next CreateWorktree gate
+  only; the recorded branch/worktree did not yet exist or have physical verification.
 - After the transition, production-root read-only validation returned `ALLOW_INSPECT`,
   `ALLOW_RESUME` for the same task, and `ALLOW_WORKTREE_CREATE` for the exact lane. These checks
   were zero-write and did not invoke the worktree helper.
-- Next authority is permanent Orchestrator creating only the exact topology, then returning clean
-  branch/HEAD/worktree/index facts for later primary dispatch governance.
+- That checkpoint returned authority to permanent Orchestrator to create only the exact topology
+  and return clean branch/HEAD/worktree/index facts for later primary dispatch governance.
 
 ## User Approval And Activation Audit
 
@@ -162,11 +180,11 @@ No broad exception or string-only matcher may authorize fallback.
   behavior are explicit.
 - Exact May Touch/Must Not Touch/Locked Paths and bounded tests are defined.
 - WIP=1 lane identity and mandatory Reviewer/QA/Integrator gates are defined.
-- No blocking question remains for isolated-worktree preparation.
+- No blocking question remains for Developer implementation in the verified isolated worktree.
 
 Decision: Definition of Ready and explicit User approval are satisfied for isolated-worktree
-preparation. Developer dispatch remains locked until exact worktree creation/verification and a
-later durable primary token/role transition.
+implementation. Exact worktree creation/verification and the durable primary token/role transition
+are complete; read-only dispatch gate is `ALLOW_DISPATCH`.
 
 ## Planned Files
 
@@ -179,13 +197,12 @@ later durable primary token/role transition.
 
 ## Gate And Next Role
 
-- Status is `worktree_creation_authorized`.
-- TASK_368E is the sole token owner; schema state is `implementation_running` with the exact
-  Developer active record. No branch/worktree or Developer dispatch exists yet.
-- Next legal role: permanent Orchestrator, for exact worktree creation only.
+- Status is `developer_dispatch_ready`.
+- TASK_368E is the sole token owner; schema state is `implementation_running`, and the exact
+  Developer active record matches the verified clean physical worktree.
+- Next legal role: permanent Developer, dispatched by Orchestrator to the exact worktree.
 
 ## Prohibited In This Pass
 
-No product/test edit, branch/worktree creation, Developer dispatch, existing worktree change, push,
-release, restart, real DB/Excel/PDF access, protocol/skill/script change, or destructive action
-occurred.
+No product/test edit, Create rerun, lane/worktree write, push, release, restart, real DB/Excel/PDF
+access, protocol/skill/script change, or destructive action occurred.

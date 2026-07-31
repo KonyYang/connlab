@@ -1,12 +1,12 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `worktree_creation_authorized`
+Status: `developer_dispatch_ready`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current active task: TASK_368E, solely for isolated-worktree creation. It owns the durable
-execution token under schema state `implementation_running`; the required active role is
-Developer, but no branch/worktree, product write, or Developer dispatch exists yet.
+Current active task: TASK_368E. It owns the durable execution token under schema state
+`implementation_running`; the exact branch/worktree are registered clean at base/HEAD
+`e226bf1e54db4de54eb2366e96895999ce54652d`, and permanent Developer dispatch is ready.
 
 ## Approval And Activation Record
 
@@ -18,11 +18,11 @@ Developer, but no branch/worktree, product write, or Developer dispatch exists y
 - The approved route remains `Developer -> Reviewer -> QA -> Integrator`; every gate is
   mandatory because this is QF-4.
 - WIP remains `1`; TASK_368E is the sole token owner, while the queue is empty and paused task,
-  Quick Fix, and parallel exception are null. No TASK_368E branch/worktree exists yet.
-- This governance step authorizes permanent Orchestrator to create and verify the exact isolated
-  branch/worktree only. It does not authorize Planner to create it, Orchestrator to dispatch
-  Developer, push, restart, release build, real-data/file mutation, destructive cleanup, or changes
-  to retained/cancelled/frozen lanes.
+  Quick Fix, and parallel exception are null. The exact TASK_368E branch/worktree is registered
+  clean at the recorded base/HEAD.
+- Orchestrator has created and verified the exact isolated branch/worktree. This governance step
+  authorizes permanent Developer dispatch there, but not push, restart, release build, real-data/
+  file mutation, destructive cleanup, or changes to retained/cancelled/frozen lanes.
 
 ## 1. Discovery Gate
 
@@ -84,18 +84,18 @@ rescinded its interim no-window correction, and confirmed choose-or-skip as the 
 
 ### Not Yet Confirmed
 
-- Post-creation worktree verification and exact implementation test totals.
+- Exact implementation test totals.
 - Whether a safe disposable live browser fixture is available to QA.
 - Developer/Reviewer/QA/Integrator evidence, because implementation has not started.
 
 These unknowns do not change scope, behavior, ownership, acceptance, or gate order. Definition of
-Ready was satisfied for User review; approval and the creation-gate token are now recorded, and
-isolated-worktree creation is next, not implementation dispatch.
+Ready was satisfied for User review; approval, sole token, and clean physical worktree facts are
+now recorded, and permanent Developer dispatch is next.
 
 ### Continue Or Stop
 
-Continue with exact worktree creation under the recorded authority. Stop before Developer dispatch
-until Orchestrator returns clean branch/worktree/base/HEAD/index facts for later governance.
+Continue with permanent Developer dispatch to the exact clean worktree. Stop on any lock/scope
+expansion, non-clean Git state, unexpected gate failure, or unclassified authority behavior.
 
 ## 2. User Flow And Exact Copy
 
@@ -424,10 +424,9 @@ context, bounded components/tests, and mandatory gates mitigate them.
 2. Completed: production-root `Inspect` returned `ALLOW_INSPECT`, `StartTask` returned
    `ALLOW_START`, and the first CreateWorktree check correctly returned `BLOCKED_TOKEN_OWNED`
    while token-null; no topology changed.
-3. Current: TASK_368E is the sole token owner with exact locks and a schema-valid Developer active
-   record. Orchestrator creates only the exact lane/worktree from
-   `e226bf1e54db4de54eb2366e96895999ce54652d` and verifies it clean.
-4. After later primary dispatch governance, Developer follows TDD. Any non-allowlisted path,
+3. Completed: Orchestrator's timed Create command produced the exact registered branch/worktree at
+   `e226bf1e54db4de54eb2366e96895999ce54652d`; worktree/index are clean. Do not rerun Create.
+4. Current: permanent Developer follows TDD in the exact worktree. Any non-allowlisted path,
    automatic config, schema/migration, broad
    fallback, or changed Confirm Matrix behavior stops for Planner/User.
 5. Reviewer passes or returns findings to Developer.
@@ -445,20 +444,18 @@ context, bounded components/tests, and mandatory gates mitigate them.
 - Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; parallel exception: none.
 
-No TASK_368E branch/worktree exists in this creation-authority state. The execution token and
-schema-required Developer active record are durable, but Developer is not dispatched. Orchestrator
-must create only the exact topology above from the recorded base and return verified clean facts;
-Developer dispatch remains a later governance transition.
+The exact TASK_368E branch/worktree now exists and is registered at the creation base/initial HEAD;
+worktree/index are clean. TASK_368E remains the sole token owner with role Developer and no parallel
+exception. Production-root `ImplementationDispatch` returned `ALLOW_DISPATCH`.
 
 ## 15. Definition Of Ready
 
-Definition of Ready and explicit User approval are satisfied for isolated-worktree creation.
+Definition of Ready and explicit User approval are satisfied for Developer implementation.
 Goal, copy, choose/skip behavior, availability/integrity boundary, audit/reuse/API/transaction
 design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. This is
-not Developer dispatch authority until Orchestrator creates/verifies the worktree and later primary
-governance confirms dispatch against the real Git record.
+Developer dispatch is authorized only to the verified real Git record and exact path scope.
 
 ## 16. Next Legal Role
 
-Permanent Orchestrator, for exact isolated-worktree creation only. Planner does not create the
-worktree or dispatch Developer from this pass.
+Permanent Developer, dispatched by Orchestrator to the exact verified worktree. Planner does not
+edit the lane or implementation paths from this pass.

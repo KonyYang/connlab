@@ -1,13 +1,13 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `worktree_creation_authorized`
+Status: `developer_dispatch_ready`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for exact isolated worktree creation only. TASK_368E
-now holds the sole execution token with schema state `implementation_running` and a complete
-Developer active record required by the creation gate. The branch/worktree do not yet exist;
-Developer has not been dispatched and no product/test change has started.
+Current gate owner: permanent Orchestrator for exact permanent Developer dispatch. TASK_368E holds
+the sole execution token with schema state `implementation_running` and role `Developer`. The exact
+branch/worktree now exist and are registered clean at base/HEAD
+`e226bf1e54db4de54eb2366e96895999ce54652d`; no product/test change has started.
 
 ## User Approval Record
 
@@ -20,9 +20,9 @@ Developer has not been dispatched and no product/test change has started.
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `worktree_creation_authorized`. The token and required Developer active
-  record are seeded only so Orchestrator can pass the exact CreateWorktree gate. Developer dispatch
-  remains a later primary governance step after the worktree is created and verified clean.
+- Current durable state is `developer_dispatch_ready`. Orchestrator verified the exact physical
+  branch/worktree/base/HEAD and clean worktree/index. Production-root `ImplementationDispatch`
+  returns `ALLOW_DISPATCH`; permanent Developer is the next legal role.
 
 ## Goal
 
@@ -239,13 +239,11 @@ authority ambiguity returns to Planner/User.
 - Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; no parallel exception.
 
-The branch/worktree still do not exist. Permanent Orchestrator must run the read-only creation gate,
-create only the exact branch/path above from the recorded creation base, verify branch/HEAD/
-worktree/index cleanliness, and return those facts for dispatch governance. The schema role is
-Developer solely because `implementation_running` requires it; it is not a Developer dispatch.
+The branch/worktree are registered exactly as planned at the recorded creation base/initial HEAD,
+with worktree and index clean. The timed Create command must not be rerun. The exact locks are now
+owned by TASK_368E through Developer and the mandatory Reviewer/QA/Integrator gates.
 
 ## Stop Point
 
-Return to permanent Orchestrator for exact worktree creation. Planner has seeded the sole token but
-must not create the worktree, dispatch Developer, or edit product/test code in this governance
-pass.
+Return to permanent Orchestrator to dispatch permanent Developer to the exact worktree. Planner
+must not edit the lane or product/test code in this governance pass.
