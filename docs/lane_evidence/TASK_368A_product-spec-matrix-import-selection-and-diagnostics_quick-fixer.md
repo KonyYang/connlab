@@ -97,3 +97,54 @@ layout, style, or label path was changed.
   reuse already installed dependencies; it is not a tracked product change.
 - Remote state: not pushed, per task boundary.
 - Next role: Reviewer.
+
+## Reviewer Blocking Fix Pass
+
+- Reviewer blocker evidence:
+  `docs/lane_evidence/TASK_368A_product-spec-matrix-import-selection-and-diagnostics_reviewer.md`.
+- Fix-pass starting HEAD:
+  `016c2ebc55df577dd1640663a2e2198ae29ce0f3`; branch, worktree, and index matched
+  the Orchestrator dispatch and were clean.
+- Blocking cause: the strict same-row marker predicate was followed by broad legacy branches
+  that did not require `Page`/`Pages`, plus an aggregation of marker words across the first
+  three rows.
+- Bounded repair: Revision Record rejection now requires one inspected row to contain all three
+  marker groups: `Rev`/`Revision`, `Page`/`Pages`, and `Description`/`Date`. The two broad
+  legacy branches and cross-row aggregation were removed without changing other parser,
+  locator, service, or frontend behavior.
+
+Fix-pass RED:
+
+- `py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py -q`
+  -> `2 failed, 5 passed`.
+- The failing negatives proved that `Revision` + `Date` without `Page(s)` was rejected and
+  that revision-like words split across header/body rows were aggregated. Positive complete
+  same-row singular/plural header variants passed.
+
+Fix-pass GREEN and validation:
+
+- `py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py -q`
+  -> `7 passed`.
+- Fresh required combined validation:
+  `py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py tests\unit\test_product_spec_matrix_parser.py -q`
+  -> `31 passed`.
+- `py -m py_compile backend\modules\test_plan\product_spec_matrix_parser_support.py`
+  -> passed with exit code `0`.
+- Fix implementation checkpoint:
+  `903b1d314fe7b3743a270c4d13001e61fbbf1864`.
+- The final lane HEAD is the evidence-only descendant reported in the Orchestrator callback.
+
+Real-attachment smoke explicitly authorized by the user:
+
+- Current localhost upload API reproduced the reported deployed/runtime issue:
+  automatic import selected table `7`, page `11`, table-on-page `1`, with false Group `03`.
+- Current localhost Page `10` + Keyword `TEST GROUP` located table `6` but returned
+  `Selected table 6 is not a valid Matrix table.` This confirms the running primary application
+  has not yet integrated the lane implementation.
+- The same real DOCX parsed by the lane selected table `6` with Groups
+  `1, 2, 3, 4, 5, 6a, 6b, 7, 8, 9, 10` and no blocker.
+- The lane application-service boundary with the real DOCX tables and Office-derived locator
+  data for Page `10` + Keyword `TEST GROUP` returned table `6`, page `10`,
+  table-on-page `1`, the same eleven Groups, and no blocker.
+- No Replace, Confirm Matrix, persistence, user-file write, push, merge, or destructive action
+  was performed.
