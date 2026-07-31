@@ -8,6 +8,9 @@ from backend.application.project_test_plan_matrix_preview_service import (
 )
 from backend.infrastructure.office.models import WordTableLocation
 from backend.modules.test_plan import ProductSpecMatrixParser
+from backend.modules.test_plan.product_spec_matrix_parser_support import (
+    looks_like_revision_record_table,
+)
 
 
 def _qualification_matrix() -> list[list[str]]:
@@ -134,6 +137,37 @@ def test_auto_selects_split_header_matrix_and_rejects_singular_page_revision() -
     ]
     assert selected_revision.groups == ()
     assert selected_revision.blockers == ("Selected table 2 is not a valid Matrix table.",)
+
+
+def test_revision_guard_requires_page_marker_in_the_same_header_row() -> None:
+    """Revision and Date alone must not classify a Matrix-like table as history."""
+    table = [
+        ["Test Description", "Section", "Group 1", "Revision", "Date"],
+        ["Visual Examination", "1.1", "1", "A", "2026"],
+    ]
+
+    assert looks_like_revision_record_table(table) is False
+
+
+def test_revision_guard_does_not_aggregate_markers_from_body_rows() -> None:
+    """Revision-like words in body cells must not combine into a header."""
+    table = [
+        ["Test Item", "Section", "Group 1"],
+        ["Revision durability", "1.1", "1"],
+        ["Pages description date check", "1.2", "2"],
+    ]
+
+    assert looks_like_revision_record_table(table) is False
+
+
+def test_revision_guard_rejects_complete_same_row_header_variants() -> None:
+    """Both singular and plural complete Revision Record headers stay blocked."""
+    assert looks_like_revision_record_table(
+        [["Rev", "Page", "Description"], ["01", "1", "Initial release"]]
+    )
+    assert looks_like_revision_record_table(
+        [["Revision", "Pages", "Date"], ["A", "All", "2026-07-31"]]
+    )
 
 
 def test_page_and_keyword_match_only_within_the_requested_page() -> None:

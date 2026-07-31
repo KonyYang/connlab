@@ -23,7 +23,6 @@ TEXTUAL_ITEM_RE = re.compile(r"[A-Za-z]{2,}")
 PURE_NUMERIC_OR_SYMBOL_RE = re.compile(r"^[\d\W_]+$")
 QUALIFICATION_TITLE_RE = re.compile(r"\bqualification\s+test\b", re.IGNORECASE)
 TEST_TITLE_RE = re.compile(r"\btest\b", re.IGNORECASE)
-REVISION_RECORD_HEADER_TERMS = frozenset({"rev", "revision", "pages", "description", "date"})
 
 
 def collect_marker_notes(paragraphs: list[str]) -> dict[str, str]:
@@ -315,17 +314,7 @@ def looks_like_revision_record_table(table: list[list[str]]) -> bool:
             and normalized.intersection({"description", "date"})
         ):
             return True
-        if "rev" in normalized and {"pages", "description"}.issubset(normalized):
-            return True
-        if "revision" in normalized and ("description" in normalized or "date" in normalized):
-            return True
-    leading_text = " ".join(clean(cell) for row in candidate_rows for cell in row).lower()
-    term_hits = sum(
-        1
-        for term in REVISION_RECORD_HEADER_TERMS
-        if re.search(rf"\b{re.escape(term)}\b", leading_text)
-    )
-    return term_hits >= 4
+    return False
 
 
 def clean(value: str) -> str:
