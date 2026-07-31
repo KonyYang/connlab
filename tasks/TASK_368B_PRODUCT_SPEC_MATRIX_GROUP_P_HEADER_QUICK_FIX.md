@@ -1,9 +1,21 @@
 # TASK_368B_PRODUCT_SPEC_MATRIX_GROUP_P_HEADER_QUICK_FIX
 
-Status: approved for bounded Quick Fixer implementation; worktree preparation pending
+Status: approved and dispatched for bounded Quick Fixer implementation
 Lane: `task-368b-product-spec-matrix-group-p-header-quick-fix`
 Owner role: permanent Quick Fixer
 Date: 2026-07-31
+
+## Dispatch Worktree
+
+- Branch: `lane/task-368b-product-spec-matrix-group-p-header-quick-fix`
+- Worktree:
+  `D:\PythonProject\connlab-worktrees\task-368b-product-spec-matrix-group-p-header-quick-fix`
+- Governance/base commit:
+  `b671bb493a683529cfe64ab320df4f90914406c8`
+- Creation verification: the branch, worktree HEAD, worktree status, and index match the exact
+  recorded base and are clean.
+- Global board dispatch metadata is committed only on primary. The lane Quick Fixer owns its
+  evidence file and must not edit task/board during implementation.
 
 ## Current Phase / Why Allowed
 
