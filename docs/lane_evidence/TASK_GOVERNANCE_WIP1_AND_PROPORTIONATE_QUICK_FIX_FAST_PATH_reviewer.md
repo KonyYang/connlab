@@ -11,19 +11,116 @@ Next: permanent Developer
 - Primary dispatch HEAD: `f465b5f576229544f773095bb1086961152e6be8`.
 - Review base: `a1968c4999a33c6bee18c9185882ea3b927c2004`.
 - Implementation checkpoint: `41a604d15f7472e4d8efc4673dbd8c9272c1e45d`.
-- Required review HEAD: `ee3aca6fc3712a166f7ce30d644a5954ae5d0dde`.
+- First-gate review HEAD: `ee3aca6fc3712a166f7ce30d644a5954ae5d0dde`.
+- Prior Reviewer evidence HEAD: `ee2c179659c9636093cc2c3dc37c38a79f07bb7a`.
+- Developer fix checkpoint: `7cb4d6db7f978875de73c1f6b0fec5e557f4e565`.
+- Full re-gate review HEAD: `56ed70647b0eaa51fabf404c40caaf42acc69337`.
 - Branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`.
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`.
 
-Reviewer read `AGENTS.md`, the current primary board, approved task/plan, Planner and Developer
-evidence, `TASK_REVIEW_CHECKLIST.md`, the new normative policy, changed protocols/skills/scripts,
-and all five approved test modules. Review covered only committed
-`a1968c4999a33c6bee18c9185882ea3b927c2004..ee3aca6fc3712a166f7ce30d644a5954ae5d0dde`.
+Reviewer read `AGENTS.md`, the current primary board, approved task/plan, Planner and updated
+Developer evidence, `TASK_REVIEW_CHECKLIST.md`, the new normative policy, changed
+protocols/skills/scripts, and all five approved test modules. The full re-gate covered only
+committed `a1968c4999a33c6bee18c9185882ea3b927c2004..56ed70647b0eaa51fabf404c40caaf42acc69337`
+and focused separately on
+`ee2c179659c9636093cc2c3dc37c38a79f07bb7a..56ed70647b0eaa51fabf404c40caaf42acc69337`.
 No implementation file, other evidence, primary file, product lane, retained worktree, V2 state,
 remote, runtime, or service was modified.
 
-## Findings
+## Full Re-Gate Findings (Current)
+
+### Blocking 1 — `Inspect` still accepts incomplete queue and parallel authority records
+
+The first Developer fix closes the prior owner/state, dispatch, reconciliation, root-resolution,
+terminal-residual, and basic parallel-proof reproductions. However, the general authority validator
+still does not enforce the complete record shapes frozen by the approved plan:
+
+1. `scripts/connlab_execution_gate.ps1:152-159` treats a queue record containing only `task_id` and
+   `queue_position` as complete. The approved plan requires task/lane, durable enqueue
+   sequence/time, dependencies, locks, requested priority, position, and evidence. An independent
+   disposable repository with only `{"task_id":"TASK_Q","queue_position":1}` returned exit `0`,
+   `ALLOW_INSPECT`, and `allowed: true`.
+2. `scripts/connlab_execution_gate.ps1:190-198` does not require the recorded secondary role,
+   branch, worktree, or HEAD for a parallel exception. Those facts are checked later only for
+   `ImplementationDispatch` at lines 225-233. An independent disposable repository with a valid
+   primary owner and the current `_parallel()` record—but no `secondary_role`,
+   `secondary_branch`, `secondary_worktree`, or `secondary_head_sha`—also returned exit `0`,
+   `ALLOW_INSPECT`, and `allowed: true`.
+
+This violates the approved complete-FIFO schema, the explicit secondary-owner Git-fact gate, and
+restart/cross-conversation fail-closed authority. It also leaves two approved negative scenarios
+outside the executable matrix even though all committed tests pass. Developer must require the
+complete frozen queue fields and complete secondary role/Git fields during general validation, and
+add bounded `Inspect` regressions for both records. No product or unrelated governance change is
+needed.
+
+### Non-Blocking
+
+- None.
+
+## Full Re-Gate Closure And Validation
+
+The following first-gate issues are independently closed:
+
+- `gate_running` under Reviewer, QA, or Integrator blocks `ImplementationDispatch` with
+  `BLOCKED_DISPATCH_STATE`.
+- active/owner mismatch, ownerless parallel exception, duplicate queued task identity,
+  reconciling without accepted Quick Fix proof, empty terminal residual closeout, incomplete
+  residual records, and incomplete base parallel proof all fail `Inspect` with stable
+  `BLOCKED_*` codes.
+- positive reconciliation creates a new clean merge checkpoint after current `master` is merged
+  into the original lane; accepted Quick Fix and master ancestry plus validation evidence are
+  required before `ALLOW_RESUME`. An untouched checkpoint and missing acceptance remain blocked.
+- merge-conflict/failure fixtures preserve both histories/evidence and owner-null
+  `paused_preempted`; no rebase/reset/restore/discard path was introduced.
+- dynamic QF-1 semantically neutral button copy is allowed; QF-4 API/schema/authority scope is
+  rejected.
+- dynamic queue paths start no Codex process and create no branch/worktree.
+- a lane-local production invocation resolves `authority_root` to `D:\PythonProject\connlab` and
+  currently fails closed with `BLOCKED_MARKERS_MISSING` because the primary dispatch board has not
+  yet integrated the candidate schema. `run_task -Preview` fails closed for the same primary fact;
+  neither invocation writes.
+
+Fresh independent validation at review HEAD
+`56ed70647b0eaa51fabf404c40caaf42acc69337`:
+
+```powershell
+py -m pytest tests\unit\test_connlab_execution_gate_script.py tests\integration\test_connlab_execution_gate_recovery.py tests\unit\test_execution_wip_and_quick_fix_governance.py tests\unit\test_connlab_lane_worktree_script.py tests\unit\test_task_scoped_role_thread_lifecycle_governance.py -q
+```
+
+Result: `57 passed in 37.09s`.
+
+Reviewer-owned disposable authority matrix results:
+
+- `active_owner_mismatch` -> `BLOCKED_ACTIVE_OWNER_MISMATCH`
+- `idle_secondary_owner` -> `BLOCKED_PARALLEL_PRIMARY_REQUIRED`
+- `duplicate_queue_identity` -> `BLOCKED_QUEUE_TASK_DUPLICATE`
+- `reconciling_without_acceptance` -> `BLOCKED_QUICK_FIX_NOT_ACCEPTED`
+- `terminal_without_residual` -> `BLOCKED_TERMINAL_RESIDUAL_REQUIRED`
+- `parallel_incomplete_proof` -> `BLOCKED_PARALLEL_EXCEPTION_INCOMPLETE`
+- `residual_incomplete` -> `BLOCKED_RESIDUAL_INCOMPLETE`
+- `gate_running_dispatch` -> `BLOCKED_DISPATCH_STATE`
+- `queue_missing_frozen_fields` -> **unexpected `ALLOW_INSPECT`**
+- `parallel_missing_secondary_git` -> **unexpected `ALLOW_INSPECT`**
+
+Additional validation:
+
+- all three PowerShell scripts parse with zero AST errors;
+- helper/script line counts are `268`, `123`, and `305`; five test modules are at or below the
+  approved 500-line ceiling (`500`, `489`, `340`, `219`, `49`);
+- `git diff --check` for base through re-gate HEAD and `git show --check` for both fix commits pass;
+- full committed range contains the exact 18 implementation/evidence paths plus this Reviewer
+  evidence path; the focused fix range contains only ten approved paths;
+- primary remains clean on `master` at
+  `f465b5f576229544f773095bb1086961152e6be8`; all registered frozen V2,
+  cancelled browser-release, and retained TASK_368B/C worktrees retain their prior HEADs and are
+  clean; protected V2/product diff is empty;
+- read-only `git merge-tree` still identifies only the expected changed-in-both board governance
+  reconciliation. The lane candidate preserves the primary dispatch SHA and can be reconciled by
+  Integrator after this blocker is closed; it must not be treated as live authority now.
+
+## First Gate Findings (Historical)
 
 ### Blocking 1 — Write-capable dispatch and resume are not state-transition safe
 
@@ -203,7 +300,7 @@ Additional results:
 - exact 18-path allowlist and forbidden/protected-path scans: passed.
 - pre-evidence lane worktree/index, including untracked files: clean.
 
-## Conclusion And Handoff
+## First Gate Conclusion And Handoff (Historical)
 
 - Conclusion: `reviewer_blocked`
 - Blocking findings: four, with one shared required fix theme — complete fail-closed transition,
@@ -211,3 +308,12 @@ Additional results:
 - Next role: permanent Developer
 - QA must not start until a clean fix checkpoint closes every reproduced path and Reviewer re-gate
   passes.
+
+## Full Re-Gate Conclusion And Handoff
+
+- Conclusion: `reviewer_blocked`
+- Blocking findings: one — general validation accepts incomplete frozen queue records and
+  incomplete parallel secondary role/Git facts
+- Next role: permanent Developer
+- QA must not start. Developer should make the bounded schema/test correction above and return the
+  same task for another full Reviewer re-gate.
