@@ -1,8 +1,8 @@
 # TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX
 
-Status: approved and dispatched for bounded Quick Fixer implementation
+Status: `complete` / `accepted` / `locally_integrated`
 Lane: `task-368c-frontend-vite-command-health-guard-quick-fix`
-Owner role: permanent Quick Fixer
+Owner role: Integrator closeout complete; no active implementation owner
 Date: 2026-07-31
 
 ## Dispatch Worktree
@@ -35,6 +35,36 @@ Date: 2026-07-31
 - This is one deterministic Windows launcher guard with a bounded test and no product/frontend
   source, dependency-version, authority, API, persistence, or schema change. It satisfies
   `AGENTS.md` section 19.1.
+
+## Local Integration Acceptance
+
+- Quick Fixer ready HEAD:
+  `3fa8bf362ddc2110d18083b8dcd57ab0b2166bdf`.
+- Reviewer/lane HEAD:
+  `e7e5ac635aa06eda0c11e18436ffa60c2d83c062`.
+- Primary pre-merge HEAD:
+  `c776699774ea4eeceb8e8de851ef233b0af4a4e2`.
+- Local non-fast-forward merge commit:
+  `f7923ad9d3ce73cb47f53b39688a98425b6b4c41`.
+- The merge was conflict-free. Its first-parent delta is exactly the four authorized launcher,
+  bounded-test, Quick Fixer evidence, and Reviewer evidence paths; primary dispatch task, plan,
+  and board were preserved.
+- Merged-tree validation passed: bounded TASK_368C `3 passed`, combined packaging regression
+  `8 passed`, Windows PowerShell parse, exact package/forbidden-path checks, `diff --check`,
+  `git show --check`, and ancestry checks.
+- The final launcher checks the exact `node_modules\.bin\vite.cmd` leaf, runs the existing install
+  path when it is absent, checks again and throws before dev when repair leaves it absent, and
+  preserves the healthy startup output plus `npm run dev` path.
+- No real npm, network, repository frontend, Vite server, publication, push, or service restart
+  was run. A final read-only check found that the current checkout's `vite.cmd` shim now exists,
+  although this gate did not create or repair it. Shim health remains an environment condition
+  evaluated on every launcher run: a still-present shim skips install, while a future missing shim
+  invokes the guarded `npm install` path. This integration did not refresh any running process.
+- The clean integrated TASK_368C lane branch/worktree is retained under permanent Orchestrator
+  governance for future separately authorized safe maintenance retirement. No removal was
+  attempted in this gate.
+- TASK_368A, TASK_368B, browser-release, and frozen V2 retained state remain separate and were
+  not touched.
 
 ## Goal
 
