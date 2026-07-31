@@ -21,6 +21,15 @@ def test_worktree_script_exposes_json_dry_run_and_adopt_without_force() -> None:
     assert "reset --hard" not in text
 
 
+def test_worktree_create_requires_task_id_and_execution_gate() -> None:
+    text = (ROOT / "scripts" / "connlab_lane_worktree.ps1").read_text(encoding="utf-8")
+
+    assert "[string]$TaskId" in text
+    assert "connlab_execution_gate.ps1" in text
+    assert '"CreateWorktree"' in text
+    assert "ALLOW_WORKTREE_CREATE" in text
+
+
 def test_v2_run_task_path_does_not_load_codex_runtime() -> None:
     text = (ROOT / "scripts" / "run_task.ps1").read_text(encoding="utf-8")
 
@@ -59,7 +68,7 @@ def test_v2_governance_hooks_are_present_without_bootstrap_activation() -> None:
     ).read_text(encoding="utf-8")
 
     assert "CONTROLLED_LANE_ORCHESTRATION_V2.md" in agents
-    assert "V1-Lite Task-Scoped Role Lifecycle" in agents
+    assert "Frozen Legacy Automation Modes" in agents
     assert "dispatch_ack" in protocol
     assert "mark-invocation-started" in operations
     assert "Status: frozen legacy" in v2

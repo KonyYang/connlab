@@ -18,6 +18,7 @@ Before proposing or approving lanes, read:
 - `AGENTS.md`
 - `docs/task_board.md`
 - `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`
+- `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
 - `docs/project_management/PARALLEL_EXECUTION_MODEL.md` when controlled-parallel mode is involved
 - `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md` when controlled-parallel mode is involved
 - current task files, plans, evidence, architecture docs, and code areas relevant to the request
@@ -56,6 +57,8 @@ For a controlled-parallel implementation lane, readiness also requires:
 - bounded new test modules by default; oversized mixed-test exceptions must be justified
 - a clean-commit Developer handoff, clean-commit Reviewer/QA gate, residual ledger, and worktree retirement plan
 - task/plan/evidence commit ownership so governance files do not remain ambient residuals
+- a board-recorded explicit User-approved parallel exception; disjoint paths alone never override
+  default WIP=1, and maximum implementation concurrency remains two
 
 If not ready:
 

@@ -6,6 +6,8 @@ param(
 
     [string]$Lane,
 
+    [string]$TaskId,
+
     [string]$BaseRef = "HEAD",
 
     [string]$IntegrationRef = "master",
@@ -118,6 +120,26 @@ $target = Get-NormalizedPath -Path (Join-Path $WorktreeRoot $Lane)
 
 switch ($Action) {
     "Create" {
+        if ([string]::IsNullOrWhiteSpace($TaskId)) {
+            throw "-TaskId is required for Action Create."
+        }
+        $gateOutput = @(
+            & "$PSScriptRoot\connlab_execution_gate.ps1" `
+                -Intent "CreateWorktree" `
+                -TaskId $TaskId `
+                -Lane $Lane `
+                -Json
+        )
+        $gateExitCode = $LASTEXITCODE
+        $gateJson = ($gateOutput -join "`n").Trim()
+        if ($gateExitCode -ne 0) {
+            throw "Execution gate blocked Create: $gateJson"
+        }
+        $gateResult = $gateJson | ConvertFrom-Json
+        if ($gateResult.code -ne "ALLOW_WORKTREE_CREATE") {
+            throw "Execution gate did not authorize Create: $gateJson"
+        }
+
         $primaryStatus = @(Invoke-Git -Directory $repoRoot -Arguments @("status", "--porcelain=v1"))
         if ($primaryStatus.Count -ne 0) {
             throw "Primary worktree must be clean before creating a parallel lane."

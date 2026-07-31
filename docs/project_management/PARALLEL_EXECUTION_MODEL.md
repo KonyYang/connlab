@@ -1,12 +1,16 @@
 # ConnLab Parallel Execution Model
 
-Last Updated: 2026-07-25
-Status: active governance policy after TASK_335
-Scope: controlled project-level parallel execution, role boundaries, lane evidence, and merge gates
+Last Updated: 2026-07-31
+Status: active referencing model
+Scope: WIP=1 execution, explicit parallel exceptions, role boundaries, lane evidence, and merge gates
+
+The normative token, queue, Quick Fix, preemption, reconciliation, and exception contract is
+`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`.
 
 ## 1. Purpose
 
-ConnLab allows controlled project-level parallel execution when `docs/task_board.md` defines approved active lanes. This model is intended to improve throughput without weakening existing ConnLab safeguards:
+ConnLab runs one implementation owner by default. A second owner is allowed only through the
+explicit User-approved parallel exception defined by the normative policy. This model preserves:
 
 - formal task files
 - plan-before-implementation
@@ -28,12 +32,14 @@ Operational implementation is defined by:
 
 ```text
 A single executor/Agent may work on only one task at a time.
-The ConnLab project may have multiple active lanes only when docs/task_board.md marks them as approved and parallel-safe.
+The ConnLab project uses WIP=1 and one board execution token by default.
+Multiple implementation owners require a recorded explicit User-approved parallel exception, exact independence proof, and maximum concurrency two.
 Every implementation lane must use its own lane/* branch and sibling worktree.
 The primary master worktree is reserved for planning and integration.
 ```
 
-Proposed or planned lanes are not executable. Only `approved` lanes may be implemented.
+Proposed or planned lanes are not executable. Approval alone does not acquire the execution token:
+the board must record ownership before implementation write, or record a FIFO queue position.
 
 ## 3. Roles
 
@@ -185,9 +191,10 @@ If the user's request does not match the active role:
 
 A role must not silently perform another role's responsibility.
 
-## 7. Parallel-Safe Rules
+## 7. Explicit Parallel Exception Rules
 
-A task may be approved as a parallel lane only if:
+A second implementation owner may be approved only if every condition below and the normative
+policy's exception contract are satisfied:
 
 1. It has a formal task file.
 2. Non-trivial implementation has a plan file.
@@ -199,8 +206,10 @@ A task may be approved as a parallel lane only if:
 8. Validation and merge gates are declared.
 9. Planner marks it approved after explicit user approval.
 10. No active lane owns the same shared file or authority path.
+11. The board records exact scope proof, both owners, end condition, and explicit User approval evidence.
+12. No more than two implementation owners exist.
 
-Usually parallel-safe:
+Potentially exception-eligible after proof and User approval:
 
 - frontend-only UI polish without API changes
 - backend read-only service with stable DTOs
@@ -262,10 +271,8 @@ Threads do not share chat memory. They coordinate through:
 
 Creating a new role thread does not create Git isolation. The orchestrator must create the lane worktree before routing implementation and must include the exact branch/path in every role prompt.
 
-Normal product TASKs do not reuse permanent role threads. Their temporary role IDs are stored in
-`docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md` and are recoverably archived after
-Integrator closeout. The stable entry is not a role substitute and remains outside the product
-worktree.
+Normal product TASKs reuse the permanent roles in `ROLE_THREAD_REGISTRY.md`.
+`ACTIVE_TASK_THREAD_BUNDLE.md` is a frozen V1-Lite snapshot and is not execution authority.
 
 ## 10. Stop Rules
 
@@ -316,7 +323,7 @@ Parallel execution is accepted only when all of the following are enforced:
 8. Task, plan, and evidence documents are committed with their owning package.
 9. Lane completion requires clean lane status/index and a clean primary worktree, or an explicit residual ledger with owner and expiry.
 10. Remote push and destructive discard remain separate explicit authorization gates.
-11. When the task manifest authorizes archival, the task-scoped role bundle is archived after all
-    repository hygiene gates pass; the next TASK starts with fresh role threads.
+11. Permanent role conversations remain available after closeout; task state closes through
+    board/evidence/worktree/residual records, not role-thread archival.
 
 For a multi-lane series, one user-approved Goal may authorize normal role handoffs, bounded fix passes, evidence updates, local commits, and worktree lifecycle operations. The orchestrator should not request a fresh human approval for each small hunk unless scope, product behavior, destructive cleanup, or remote state changes.
