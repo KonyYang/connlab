@@ -1,10 +1,10 @@
 # TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX
 
-Status: `qa_gate` / Reviewer `reviewer_pass`
+Status: `integration_gate` / QA `qa_pass`
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent QA. Reviewer pass / QA input HEAD:
-`47fd755bd8ab362366a3e25e4a192abd959e7a0d`.
+Current gate owner: permanent Integrator. QA pass / integration input HEAD:
+`45f345f49c43eece139245b00048c74e8c83f73b`.
 
 ## Goal
 
