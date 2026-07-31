@@ -4,7 +4,8 @@ Date: 2026-07-31
 Task: `TASK_368A_PRODUCT_SPEC_MATRIX_IMPORT_SELECTION_AND_DIAGNOSTICS_QUICK_FIX`
 Lane: `task-368a-product-spec-matrix-import-quick-fix`
 Role: permanent Reviewer
-Status: `reviewer_blocked`
+Status: `reviewer_pass`
+Latest reviewed HEAD: `78dcce7d50d09dd396a6dc5d15b2c24e743bdd1f`
 
 ## Authorization And Governance
 
@@ -142,12 +143,117 @@ Result: passed; Vite emitted the existing non-blocking chunk-size warning.
 `git diff --check`, `git diff --cached --check`, and post-validation `git status --short` were
 clean before this Reviewer evidence was authored.
 
-## Conclusion And Handoff
+## Initial Gate Conclusion And Handoff
 
 - Conclusion: `reviewer_blocked`
 - Blocking findings: `1`
 - Next role: permanent Quick Fixer
 - Required next action: correct the bounded Revision Record guard and add the missing negative
   regressions, then return a new clean implementation checkpoint for Reviewer re-gate.
+- Reviewer did not modify product code, merge, push, run real attachments, or perform release
+  validation.
+
+## Reviewer Re-Gate
+
+### Re-Gate Authorization And Commits
+
+- Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
+- Primary `docs/task_board.md` records TASK_368A as the sole active task.
+- Previous Reviewer blocked HEAD:
+  `016c2ebc55df577dd1640663a2e2198ae29ce0f3`.
+- Fix implementation checkpoint:
+  `903b1d314fe7b3743a270c4d13001e61fbbf1864`.
+- Quick Fixer evidence-only review HEAD:
+  `78dcce7d50d09dd396a6dc5d15b2c24e743bdd1f`.
+- Original base, previous Reviewer blocked HEAD, fix checkpoint, and review HEAD form the expected
+  ancestor chain. The exact lane branch/worktree/index were clean at re-gate start.
+
+### Re-Gate Scope
+
+The original package
+`6c16cbcb7d10e6f88829ff823c05dd4ee36f92a7..78dcce7d50d09dd396a6dc5d15b2c24e743bdd1f`
+remains within the approved product/test/evidence scope.
+
+The blocker repair range
+`016c2ebc55df577dd1640663a2e2198ae29ce0f3..903b1d314fe7b3743a270c4d13001e61fbbf1864`
+changes only:
+
+- `backend/modules/test_plan/product_spec_matrix_parser_support.py`
+- `tests/unit/test_task_368a_product_spec_matrix_import_selection.py`
+
+The range
+`903b1d314fe7b3743a270c4d13001e61fbbf1864..78dcce7d50d09dd396a6dc5d15b2c24e743bdd1f`
+changes only the Quick Fixer evidence. No frontend, API/DTO/client, Office, persistence/schema/data,
+release, task-board, layout/style/label, or other locked path changed during the fix pass.
+
+### Blocker Closure
+
+The previous blocking finding is closed.
+
+`looks_like_revision_record_table()` now returns true only when one inspected row simultaneously
+contains all three marker groups:
+
+- `Rev` or `Revision`;
+- `Page` or `Pages`;
+- `Description` or `Date`.
+
+The legacy `Revision + Description/Date` branch that omitted `Page(s)` was removed. The
+first-three-row text aggregation was also removed, so words distributed across Matrix body rows
+cannot combine into a false Revision Record classification.
+
+Bounded regressions cover:
+
+- `Revision + Date` without `Page(s)` remains false;
+- marker words split across body rows remain false;
+- `Rev + Page + Description` remains true;
+- `Revision + Pages + Date` remains true.
+
+Reviewer also ran a direct in-memory boundary check. Observed result:
+
+```text
+{'no_page': False, 'cross_row': False, 'singular': True, 'plural': True}
+```
+
+### Re-Gate Findings
+
+- Blocking findings: none.
+- Non-blocking findings: none.
+
+### Re-Gate Validation
+
+Reviewer reran:
+
+```powershell
+py -m pytest tests\unit\test_task_368a_product_spec_matrix_import_selection.py tests\unit\test_product_spec_matrix_parser.py -q
+```
+
+Result: `31 passed`.
+
+```powershell
+py -m py_compile backend\modules\test_plan\product_spec_matrix_parser.py backend\modules\test_plan\product_spec_matrix_parser_support.py backend\application\project_test_plan_matrix_preview_service.py
+```
+
+Result: exit code `0`.
+
+Both original-base-to-review-HEAD and previous-review-to-review-HEAD `git diff --check` checks
+passed. Pre-evidence `git diff --cached --check` and `git status --short` were clean.
+`product_spec_matrix_parser_support.py` is 466 physical lines and remains below the 500-line hard
+limit; the bounded task test is 222 physical lines.
+
+Frontend focused tests/build were not rerun in this re-gate because
+`016c2ebc55df577dd1640663a2e2198ae29ce0f3..78dcce7d50d09dd396a6dc5d15b2c24e743bdd1f`
+contains no frontend change. The previous Reviewer gate independently ran the unchanged frontend
+checkpoint: `45 passed` and build passed with the existing non-blocking Vite chunk-size warning.
+
+The Quick Fixer evidence records an explicitly authorized read-only real-DOCX supplement: the
+current localhost remains on unintegrated old behavior, while the lane returns table 6, page 10,
+table-on-page 1, eleven Groups, and no blocker. Reviewer did not rerun the real attachment and
+does not treat this as deployed, integrated, or current-runtime behavior.
+
+### Re-Gate Conclusion And Handoff
+
+- Conclusion: `reviewer_pass`
+- Previous blocking finding: closed
+- Next role: permanent QA
 - Reviewer did not modify product code, merge, push, run real attachments, or perform release
   validation.
