@@ -1,11 +1,11 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH
 
-Status: `approved`
+Status: `complete` / `accepted` / `locally_integrated`
 Type: governance execution-model change
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-Owner at this gate: permanent Developer — implementation dispatch ready through Orchestrator
-Next gate: Developer implementation in the exact isolated lane, then mandatory Reviewer/QA/Integrator
+Owner at this gate: none; permanent Integrator closeout accepted
+Next gate: none; Archive/Standby
 
 ## Approval And Activation Status
 
@@ -404,10 +404,24 @@ Stop and return to Planner/User if:
 - Reviewer/QA finds an unresolved invariant, bypass, or real-worktree mutation risk;
 - an implementation conflict would require choosing between accepted behavior and this policy.
 
-## Current Stop Point
+## Integrator Acceptance Closeout
 
-Commit the exact four-path primary dispatch governance package, then return to Orchestrator with
-status `developer_dispatch_ready` and next role Developer. The execution token remains held by this
-task through Developer, mandatory Reviewer, mandatory QA, and Integrator acceptance or a separately
-recorded terminal transition. This Planner does not edit the isolated lane, implement the JSON
-schema/helper, dispatch a role directly, modify any retained lane, merge, or push.
+- Primary premerge: `f465b5f576229544f773095bb1086961152e6be8`.
+- Local non-fast-forward merge: `2f0fe6730777221ed48551a1cbdf8802aeed3ea1`, with exact parents
+  `f465b5f576229544f773095bb1086961152e6be8` and
+  `600bbf2d8d6b7884fed6a3af4e46f56cce3fe3a3`.
+- Reviewed package: nineteen paths through Reviewer pass plus the separately committed QA evidence,
+  for twenty authorized base-to-QA paths total. The sole expected `docs/task_board.md` conflict was
+  reconciled without any other conflict or scope expansion.
+- Merged-primary validation: the five frozen governance modules passed `66` tests; all three
+  PowerShell scripts parsed; production-root `Inspect` returned read-only `ALLOW_INSPECT`; exact
+  package, ancestry, protected hash/worktree, forbidden-path, diff, and status checks passed.
+- Terminal authority: WIP limit remains `1`; execution state is `complete`; token owner, active
+  task, queue, paused task, Quick Fix, and parallel exception are empty/null. No next task is
+  activated.
+- Residual: the integrated clean lane branch/worktree is `retain`, owned by permanent Orchestrator
+  governance until separately authorized safe maintenance retirement. No retirement was attempted.
+- No product code or product lane was changed or migrated. No push, publication, service restart,
+  real Create/Retire, reset, restore, clean, force removal, discard, or destructive cleanup ran.
+
+Stop after the Integrator callback with status `integrator_accepted` and next `Archive/Standby`.

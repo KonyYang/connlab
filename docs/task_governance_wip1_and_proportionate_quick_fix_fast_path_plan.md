@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH Plan
 
-Status: `approved`
+Status: `complete` / `accepted` / `locally_integrated`
 Date: 2026-07-31
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
 Task: `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`
@@ -687,8 +687,12 @@ The User approval covers this exact task/plan, especially:
 - automatic execution through local Integrator acceptance without push, product-lane mutation, or
   destructive cleanup.
 
-Status is `approved`. The exact branch/worktree, protected worktrees, and pre-write token ownership
-have been verified and recorded. Activation state is `implementation_running`; callback state is
-`developer_dispatch_ready`. The structured JSON schema/helper remain unimplemented until Developer
-works in the isolated lane, and the token must remain held through mandatory Reviewer, QA, and
-Integrator gates.
+Status is `complete` / `accepted` / `locally_integrated`. The exact branch/worktree and every
+protected worktree were verified clean. The local non-fast-forward merge is
+`2f0fe6730777221ed48551a1cbdf8802aeed3ea1`; merged-tree validation passed all `66` frozen tests,
+three PowerShell parse checks, production-root read-only `Inspect`, package/ancestry/diff checks,
+and protected hash/worktree equality. The terminal board state releases the token with
+`execution_state: complete`, an empty queue, null active/paused/Quick Fix/parallel records, and one
+named `retain` residual for the clean integrated governance lane under permanent Orchestrator
+ownership. No new task is active. No push, publication, restart, product mutation, real
+Create/Retire, or destructive cleanup occurred.
