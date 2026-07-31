@@ -1,7 +1,10 @@
 # TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX
 
-Status: `approved` / `quick_fix_running`
+Status: `reviewer_gate` / Quick Fixer `ready_for_review`
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
+
+Current gate owner: permanent Reviewer. Reviewed candidate HEAD:
+`d2906b3dfdcf66148edc1313d72b80cda5fce6f0`.
 
 ## Goal
 
