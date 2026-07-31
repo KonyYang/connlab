@@ -1,7 +1,7 @@
 # TASK_368C Frontend Vite Command Health Guard Quick Fix Plan
 
 Date: 2026-07-31
-Status: approved; isolated worktree preparation pending
+Status: approved; isolated worktree created and Quick Fixer dispatch ready
 Task: `TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX`
 Lane: `task-368c-frontend-vite-command-health-guard-quick-fix`
 
@@ -13,9 +13,18 @@ Current phase:
 
 Current active task/lane:
 
-- None before TASK_368C activation.
+- TASK_368C is the current active task on its isolated Quick Fixer lane.
 - TASK_368A and TASK_368B are complete/accepted and locally integrated.
 - The cancelled browser-release lane and frozen V2 worktrees are retained but inactive.
+
+Dispatch facts:
+
+- branch: `lane/task-368c-frontend-vite-command-health-guard-quick-fix`;
+- worktree:
+  `D:\PythonProject\connlab-worktrees\task-368c-frontend-vite-command-health-guard-quick-fix`;
+- governance/base:
+  `e098c3c98b3333ada996e60bde1cc1bf494f970d`;
+- worktree and index were verified clean at the exact base before dispatch.
 
 Why planning is allowed:
 

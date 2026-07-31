@@ -1,9 +1,21 @@
 # TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX
 
-Status: approved; isolated Quick Fixer worktree preparation pending
+Status: approved and dispatched for bounded Quick Fixer implementation
 Lane: `task-368c-frontend-vite-command-health-guard-quick-fix`
 Owner role: permanent Quick Fixer
 Date: 2026-07-31
+
+## Dispatch Worktree
+
+- Branch: `lane/task-368c-frontend-vite-command-health-guard-quick-fix`
+- Worktree:
+  `D:\PythonProject\connlab-worktrees\task-368c-frontend-vite-command-health-guard-quick-fix`
+- Governance/base commit:
+  `e098c3c98b3333ada996e60bde1cc1bf494f970d`
+- Creation verification: branch, worktree HEAD, status, and index match the exact recorded base
+  and are clean.
+- Global dispatch metadata is committed only on primary. The lane Quick Fixer owns its evidence
+  file and must not edit task, plan, or board during implementation.
 
 ## Current Phase / Why Allowed
 
