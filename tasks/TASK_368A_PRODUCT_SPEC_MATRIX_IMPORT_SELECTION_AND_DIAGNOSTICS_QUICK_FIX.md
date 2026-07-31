@@ -1,8 +1,8 @@
 # TASK_368A_PRODUCT_SPEC_MATRIX_IMPORT_SELECTION_AND_DIAGNOSTICS_QUICK_FIX
 
-Status: approved for bounded Quick Fixer implementation
+Status: `integration_blocked`
 Lane: `task-368a-product-spec-matrix-import-quick-fix`
-Owner role: permanent Quick Fixer
+Owner role: Planner/User governance reconciliation required; implementation lane retained
 Date: 2026-07-31
 
 ## Current Phase / Why Allowed
@@ -16,6 +16,24 @@ Date: 2026-07-31
   paths. TASK_368A has no product-path overlap with that lane.
 - `docs/task_board.md` remains Orchestrator/Integrator-owned shared governance. Quick Fixer must
   not edit it during implementation.
+
+## Integrator Blocked Checkpoint
+
+- Reviewer status: `reviewer_pass`; blocking and non-blocking findings: none.
+- QA status: `qa_pass`; required clean-commit regressions passed.
+- Integration input: lane HEAD `826e0a232982153eb00b6fc379892c4611a872e1`.
+- Primary pre-merge HEAD: `2e6b1d9bd43ffcfb9e6a15d57a04b543492ff866`.
+- The authorized non-fast-forward merge stopped on a content conflict in
+  `docs/lane_evidence/TASK_368A_product-spec-matrix-import-selection-and-diagnostics_quick-fixer.md`.
+  Primary contains the earlier dispatch checkpoint from `a55e4f22`; the lane contains the later
+  Quick Fixer/fix-pass evidence from `144aeb83` and `78dcce7d`.
+- Integrator did not select, combine, or discard either evidence version. The failed merge was
+  aborted back to the verified clean pre-merge primary state.
+- No TASK_368A product/test commit is integrated. No post-merge tests, worktree retirement, push,
+  publication, or service restart occurred.
+- Residual classification: `conflict` for the shared evidence path, owned by Planner/User
+  governance reconciliation. The full clean lane remains `retain` at the exact lane HEAD until a
+  new authorized merge attempt; no implementation change is requested.
 
 ## Goal
 
