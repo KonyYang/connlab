@@ -65,6 +65,8 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 - Run `scripts/connlab_execution_gate.ps1` immediately before Create, implementation dispatch,
   Quick Fix preemption, reconciliation, and resume. `BLOCKED_*` stops; `QUEUE_REQUIRED` performs
   queue governance only.
+- Accept production gate facts only from the Git-verified main `master` worktree. Never authorize
+  from a lane-local board copy; an unresolved or divergent primary authority fails closed.
 - Never ask Planner to approve a missing or ambiguous future lane without a Discovery Gate and Definition of Ready.
 - Never expand lane scope, `May Touch`, `Must Not Touch`, or `Locked Paths`.
 - Never route Developer implementation until the concrete `lane/*` branch and sibling worktree exist and are clean.
@@ -107,6 +109,11 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 9. Before a write-capable role prompt, require a fresh `ALLOW_DISPATCH`,
    `ALLOW_PREEMPT_CHECKPOINTED`, `ALLOW_RECONCILE`, or `ALLOW_RESUME` result as applicable. Send
    one standard prompt to the permanent role with the exact worktree and reviewed commit.
+   `ALLOW_DISPATCH` for Developer requires durable `implementation_running` plus Developer role;
+   Reviewer/QA/Integrator `gate_running` remains read-only. A blocking callback alone cannot
+   authorize a fix pass: primary governance must first commit the transition back to
+   `implementation_running`/Developer. Quick Fixer dispatch instead requires
+   `quick_fix_running` plus a complete QF-1..QF-3 capsule.
 10. Ask the target role to update its evidence file and stop at its declared gate.
 11. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
 12. Continue normal approved gates automatically until local Integrator acceptance.

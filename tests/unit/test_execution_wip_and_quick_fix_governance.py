@@ -1,15 +1,83 @@
 from __future__ import annotations
 
+import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+GATE = ROOT / "scripts" / "connlab_execution_gate.ps1"
+BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
+END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 
 
 def read(path: str) -> str:
     target = ROOT / path
     assert target.is_file(), f"required governance artifact is missing: {path}"
     return target.read_text(encoding="utf-8")
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _init_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "governance-tests@example.invalid")
+    _git(repo, "config", "user.name", "Governance Tests")
+    (repo / "docs").mkdir()
+    return repo
+
+
+def _write_control(repo: Path, control: dict[str, object]) -> None:
+    payload = json.dumps(control, indent=2)
+    (repo / "docs" / "task_board.md").write_text(
+        f"# Board\n\n{BEGIN}\n```json\n{payload}\n```\n{END}\n",
+        encoding="utf-8",
+    )
+
+
+def _base_control(**overrides: object) -> dict[str, object]:
+    control: dict[str, object] = {
+        "schema": "connlab.execution-control",
+        "version": 1,
+        "wip_limit": 1,
+        "execution_token_owner": None,
+        "execution_state": "idle",
+        "active": None,
+        "queue": [],
+        "paused": None,
+        "quick_fix": None,
+        "residuals": [],
+        "parallel_exception": None,
+        "last_governance_commit": "fixture",
+        "evidence": "fixture.md",
+    }
+    control.update(overrides)
+    return control
+
+
+def _run_gate(repo: Path, intent: str, task_id: str, lane: str) -> tuple[int, dict[str, object]]:
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File", str(GATE),
+            "-Intent", intent, "-TaskId", task_id, "-Lane", lane,
+            "-RepositoryRoot", str(repo), "-AllowTestRepositoryRoot", "-Json",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return completed.returncode, json.loads(completed.stdout)
 
 
 def test_one_normative_policy_owns_wip_token_and_reconciliation_contract() -> None:
@@ -72,6 +140,100 @@ def test_semantic_copy_and_authority_changes_cannot_use_qf1() -> None:
     assert "QF-4" in policy
 
 
+def test_semantically_neutral_button_label_uses_executable_qf1_fast_path(
+    tmp_path: Path,
+) -> None:
+    repo = _init_repo(tmp_path)
+    (repo / "seed.txt").write_text("seed\n", encoding="utf-8")
+    _write_control(repo, _base_control())
+    _git(repo, "add", "docs/task_board.md", "seed.txt")
+    _git(repo, "commit", "-m", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    worktree = tmp_path / "qf-lane"
+    _git(repo, "worktree", "add", "-b", "lane/qf-button-label", str(worktree), base)
+    quick_fix = {
+        "task_id": "TASK_QF_BUTTON_LABEL",
+        "lane": "qf-button-label",
+        "role": "Quick Fixer",
+        "risk_gate": "QF-1",
+        "goal": "Change button label from Close to Dismiss",
+        "why_safe": "The click action, permission, authority, and lifecycle stay unchanged",
+        "may_touch": ["frontend/button.tsx"],
+        "must_not_touch": ["api", "schema", "authority"],
+        "locked_paths": ["frontend/button.tsx"],
+        "targeted_validation": ["button smoke"],
+        "required_gates": ["Integrator"],
+        "planner_required": False,
+        "full_plan_required": False,
+        "qa_required": False,
+        "branch": "lane/qf-button-label",
+        "worktree": str(worktree),
+        "base_sha": base,
+        "head_sha": base,
+        "evidence": "qf-button-label.md",
+        "accepted_head": None,
+        "accepted_on_master": False,
+        "residual_owner": None,
+    }
+    _write_control(
+        repo,
+        _base_control(
+            execution_token_owner="TASK_QF_BUTTON_LABEL",
+            execution_state="quick_fix_running",
+            quick_fix=quick_fix,
+        ),
+    )
+
+    code, output = _run_gate(
+        repo, "ImplementationDispatch", "TASK_QF_BUTTON_LABEL", "qf-button-label"
+    )
+
+    assert code == 0
+    assert output["code"] == "ALLOW_DISPATCH"
+    assert output["execution_state"] == "quick_fix_running"
+
+
+def test_api_schema_authority_qf4_capsule_is_rejected_dynamically(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path)
+    quick_fix = {
+        "task_id": "TASK_QF4",
+        "lane": "qf4",
+        "role": "Quick Fixer",
+        "risk_gate": "QF-4",
+        "goal": "Change API schema authority",
+        "why_safe": "not applicable",
+        "may_touch": ["api", "schema", "authority"],
+        "must_not_touch": ["product/runtime"],
+        "locked_paths": ["api"],
+        "targeted_validation": ["api tests"],
+        "required_gates": ["Planner", "User"],
+        "planner_required": True,
+        "full_plan_required": True,
+        "qa_required": True,
+        "branch": "lane/qf4",
+        "worktree": "planned",
+        "base_sha": "a" * 40,
+        "head_sha": "a" * 40,
+        "evidence": "qf4.md",
+        "accepted_head": None,
+        "accepted_on_master": False,
+        "residual_owner": None,
+    }
+    _write_control(
+        repo,
+        _base_control(
+            execution_token_owner="TASK_QF4",
+            execution_state="quick_fix_running",
+            quick_fix=quick_fix,
+        ),
+    )
+
+    code, output = _run_gate(repo, "Inspect", "TASK_QF4", "qf4")
+
+    assert code != 0
+    assert output["code"] == "BLOCKED_QUICK_FIX_RISK"
+
+
 def test_referencing_protocols_do_not_restore_default_parallel_or_v1_lite_routing() -> None:
     paths = (
         "docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md",
@@ -110,3 +272,69 @@ def test_run_task_gates_before_codex_routing_and_keeps_queue_governance_read_onl
     assert '"StartTask"' in run_task
     assert "QUEUE_REQUIRED routes queue governance only" in run_task
     assert "never dispatches implementation or creates a worktree" in run_task
+
+
+def test_run_task_queue_path_never_invokes_codex(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path)
+    (repo / "scripts").mkdir()
+    (repo / "tasks").mkdir()
+    shutil.copy2(ROOT / "scripts" / "run_task.ps1", repo / "scripts" / "run_task.ps1")
+    shutil.copy2(GATE, repo / "scripts" / GATE.name)
+    sentinel = tmp_path / "codex-invoked.txt"
+    (repo / "scripts" / "_codex_runtime.ps1").write_text(
+        "function Invoke-CodexCli { param([string]$Prompt) "
+        "[System.IO.File]::WriteAllText($env:CONNLAB_TEST_SENTINEL, 'called'); return 0 }\n",
+        encoding="utf-8",
+    )
+    (repo / "tasks" / "TASK_QUEUED.md").write_text("# queued\n", encoding="utf-8")
+    active = {
+        "task_id": "TASK_OWNER",
+        "lane": "task-owner",
+        "role": "Developer",
+        "branch": "lane/task-owner",
+        "worktree": "owner-worktree",
+        "base_sha": "a" * 40,
+        "head_sha": "b" * 40,
+        "locked_paths": ["owner/path"],
+        "evidence": "owner.md",
+    }
+    _write_control(
+        repo,
+        _base_control(
+            execution_token_owner="TASK_OWNER",
+            execution_state="implementation_running",
+            active=active,
+        ),
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "queue fixture")
+    lane = tmp_path / "stale-run-task-lane"
+    _git(repo, "worktree", "add", "-b", "lane/stale-run-task", str(lane), "HEAD")
+    stale_active = dict(active)
+    stale_active.update(task_id="TASK_QUEUED", lane="task-queued")
+    _write_control(
+        lane,
+        _base_control(
+            execution_token_owner="TASK_QUEUED",
+            execution_state="implementation_running",
+            active=stale_active,
+        ),
+    )
+    env = os.environ.copy()
+    env["CONNLAB_TEST_SENTINEL"] = str(sentinel)
+
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File", str(lane / "scripts" / "run_task.ps1"),
+            "-Task", "TASK_QUEUED",
+        ],
+        cwd=lane,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0
+    assert "QUEUE_REQUIRED" in completed.stdout
+    assert not sentinel.exists()

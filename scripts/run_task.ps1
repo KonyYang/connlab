@@ -17,7 +17,6 @@ if (-not $ControlledLaneV2) {
     . "$PSScriptRoot\_codex_runtime.ps1"
 }
 
-$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
 $taskBoard = "docs/task_board.md"
 $taskFile = "tasks/$Task.md"
 
@@ -32,6 +31,25 @@ if ($ControlledLaneV2) {
     exit $LASTEXITCODE
 }
 
+$gateOutput = @(
+    & "$PSScriptRoot\connlab_execution_gate.ps1" `
+        -Intent "StartTask" `
+        -TaskId $Task `
+        -Json
+)
+$gateExitCode = $LASTEXITCODE
+$gateJson = ($gateOutput -join "`n").Trim()
+if ($gateExitCode -ne 0) {
+    Write-Output $gateJson
+    exit $gateExitCode
+}
+$gateResult = $gateJson | ConvertFrom-Json
+if ($gateResult.code -eq "QUEUE_REQUIRED") {
+    Write-Output $gateJson
+    exit 0
+}
+$repoRoot = [System.IO.Path]::GetFullPath([string]$gateResult.authority_root).TrimEnd("\")
+
 Push-Location $repoRoot
 try {
     if (-not (Test-Path -LiteralPath $taskBoard -PathType Leaf)) {
@@ -40,20 +58,6 @@ try {
     if (-not (Test-Path -LiteralPath $taskFile -PathType Leaf)) {
         throw "Task file not found: $taskFile"
     }
-
-    $gateOutput = @(
-        & "$PSScriptRoot\connlab_execution_gate.ps1" `
-            -Intent "StartTask" `
-            -TaskId $Task `
-            -Json
-    )
-    $gateExitCode = $LASTEXITCODE
-    $gateJson = ($gateOutput -join "`n").Trim()
-    if ($gateExitCode -ne 0) {
-        Write-Output $gateJson
-        exit $gateExitCode
-    }
-    $gateResult = $gateJson | ConvertFrom-Json
 
     $head = (& git rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0) {

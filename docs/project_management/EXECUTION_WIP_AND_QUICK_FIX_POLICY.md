@@ -133,6 +133,11 @@ conflict, validation failure, drift, or ownership ambiguity returns to
 `paused_preempted(null)`, preserves both histories/evidence, and routes Planner/User. No reset,
 restore, discard, or automatic conflict choice is permitted.
 
+`Resume` is fail-closed until the accepted Quick Fix HEAD and `pause_master_sha` are ancestors of
+current `master`, current `master` is an ancestor of the new reconciliation checkpoint, the
+preserved branch is clean at that new HEAD (not the pre-merge checkpoint), and the board contains
+passing validation evidence. A callback or owner field alone is never resume authority.
+
 ## 8. Explicit Parallel Exception
 
 Serial execution is the default. One secondary owner is permitted only when a material external
@@ -153,6 +158,18 @@ It never edits the board, routes a role, creates/cleans a worktree, changes a br
 token. `scripts/run_task.ps1`, worktree `Create`, and Orchestrator implementation/preemption/
 reconciliation/resume dispatch all require a fresh gate. `QUEUE_REQUIRED` routes governance only;
 `BLOCKED_*` stops.
+
+Production helper and entry-script calls resolve the main `master` worktree through Git common
+worktree metadata and read only that primary board. A lane-local board copy is never execution
+authority; inability to verify the main primary worktree fails closed. Test-only disposable roots
+remain available only through the explicit test-root switch.
+
+`ImplementationDispatch` is state and role specific: normal implementation requires durable
+`implementation_running` plus `active.role: Developer`; a compact fast path requires
+`quick_fix_running` plus `Quick Fixer`. `gate_running` under Reviewer, QA, or Integrator is
+read-only and cannot authorize implementation writes. A blocking callback permits a bounded fix
+only after primary governance durably transitions the same task back to
+`implementation_running`/Developer.
 
 Controlled Lane V2 remains frozen, its heartbeat remains `PAUSED`, and its helper, registry,
 pilot, corrective packages, and tests are not reactivated or modified by this policy.
