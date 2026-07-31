@@ -45,12 +45,12 @@ Before sending any role prompt, read:
 
 - `AGENTS.md`
 - `docs/task_board.md`
+- `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
 - `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` when routing to Planner or creating/activating a future lane
 - `docs/project_management/PARALLEL_EXECUTION_MODEL.md`
 - `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
 - `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
 - `docs/project_management/ROLE_THREAD_REGISTRY.md`
-- `docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md`
 - the task file declared by the lane
 - the lane evidence file declared by the board
 
@@ -60,6 +60,13 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 
 - Orchestrate only lanes whose board status is `approved`, `in_progress`, `review`, `qa`, `integration`, or `blocked_waiting_fix`.
 - Never start implementation from `proposed` or `planned`.
+- Default implementation WIP is one. A second ordinary task queues even when paths/worktrees are
+  disjoint; only an exact board-recorded, User-approved max-two parallel exception can bypass it.
+- Run `scripts/connlab_execution_gate.ps1` immediately before Create, implementation dispatch,
+  Quick Fix preemption, reconciliation, and resume. `BLOCKED_*` stops; `QUEUE_REQUIRED` performs
+  queue governance only.
+- Accept production gate facts only from the Git-verified main `master` worktree. Never authorize
+  from a lane-local board copy; an unresolved or divergent primary authority fails closed.
 - Never ask Planner to approve a missing or ambiguous future lane without a Discovery Gate and Definition of Ready.
 - Never expand lane scope, `May Touch`, `Must Not Touch`, or `Locked Paths`.
 - Never route Developer implementation until the concrete `lane/*` branch and sibling worktree exist and are clean.
@@ -71,17 +78,25 @@ If any file is missing or contradicts the board, stop and report the mismatch.
 - Use only the permanent role IDs recorded in `ROLE_THREAD_REGISTRY.md`.
 - Never create a task-scoped Controller or role bundle for ordinary work.
 - Use Quick Fixer only when every criterion in `AGENTS.md` section 19.1 is satisfied.
+- When every 19.1 predicate is proven and no escalation trigger exists, must use the compact Quick
+  Fix capsule and must not route an independent Planner, create a full plan, repeat User approval,
+  or add default QA. Use QF-1/QF-2/QF-3 routing exactly; QF-4 returns Planner/User.
+- Orchestrator must use the compact Quick Fix capsule whenever those predicates are proven.
 - Create or rename native tasks only inside explicit User task/Goal authority.
 - If the current thread has access to `send_message_to_thread`, use it for handoffs. If not, produce the exact prompt the user should paste into the target role thread.
 
 ## Orchestration Loop
 
 1. Identify the lane from the user's request or from `docs/task_board.md`.
-2. Re-read board/task/plan/evidence, active bundle role status, and `git worktree list`; do not infer active execution from chat presence alone.
+2. Re-read board JSON/task/capsule/plan/evidence, permanent-role status, and `git worktree list`; do not infer active execution from chat presence alone.
 3. If the same task already has a worktree, verify its branch/base/owner and resume it. Never create a duplicate lane worktree.
-4. Compare the requested lane's shared files, authority paths, and `Locked Paths` with every active lane. If ownership overlaps, queue/serialize or return to Planner; never claim parallel safety merely because the worktrees differ.
+4. Run `StartTask`. If it returns `QUEUE_REQUIRED`, record/report the durable queue and do not
+   create a worktree or dispatch implementation. If a parallel exception exists, independently
+   verify its exact approval/proof/end condition and max-two bound.
 5. Verify lane readiness: formal task file, approved status, concrete branch/worktree plan, evidence path, validation gate, merge gate, and exclusive shared-path ownership.
-6. If implementation is approved but the worktree does not yet exist, verify the primary worktree is clean and create it with `scripts/connlab_lane_worktree.ps1`. Record branch, path, and base commit before routing Developer.
+6. If implementation owns the token but the worktree does not yet exist, require
+   `ALLOW_WORKTREE_CREATE`, verify primary clean, and create it with
+   `scripts/connlab_lane_worktree.ps1 -TaskId <TASK_ID>`. Record branch, path, and base commit.
 7. Determine next role:
    - `approved` -> Developer
    - `in_progress` with developer evidence `ready_for_review` -> Reviewer
@@ -91,7 +106,14 @@ If any file is missing or contradicts the board, stop and report the mismatch.
    - Integrator reports conflicts or failed validation -> Developer or Planner, based on evidence
 8. Resolve the next permanent role by exact ID from `ROLE_THREAD_REGISTRY.md`; do not create or
    rename a replacement role silently.
-9. Send one standard prompt to the next task-scoped role, including the exact worktree path and reviewed commit when applicable.
+9. Before a write-capable role prompt, require a fresh `ALLOW_DISPATCH`,
+   `ALLOW_PREEMPT_CHECKPOINTED`, `ALLOW_RECONCILE`, or `ALLOW_RESUME` result as applicable. Send
+   one standard prompt to the permanent role with the exact worktree and reviewed commit.
+   `ALLOW_DISPATCH` for Developer requires durable `implementation_running` plus Developer role;
+   Reviewer/QA/Integrator `gate_running` remains read-only. A blocking callback alone cannot
+   authorize a fix pass: primary governance must first commit the transition back to
+   `implementation_running`/Developer. Quick Fixer dispatch instead requires
+   `quick_fix_running` plus a complete QF-1..QF-3 capsule.
 10. Ask the target role to update its evidence file and stop at its declared gate.
 11. After the target thread completes, re-read board/evidence and inspect the lane worktree before sending the next prompt.
 12. Continue normal approved gates automatically until local Integrator acceptance.
@@ -114,7 +136,7 @@ permanent role conversations.
 
 Goal mode stops for missing approval, scope change, cross-lane ownership conflict, unexplained
 test failure, destructive discard, or unapproved remote push. Controlled Lane V2 heartbeat remains
-`PAUSED` and is never used for ordinary V1-Lite tasks.
+`PAUSED` and is never used for ordinary tasks.
 
 
 ## Worktree And Residual Contract
@@ -130,23 +152,23 @@ test failure, destructive discard, or unapproved remote push. Controlled Lane V2
 - `retain` requires a named owner; `duplicate`/`stale`/`format-only` require one exact discard list; `conflict` returns to Planner/User.
 - Never force-remove a worktree, run `git add -A`, or push remote as part of automatic lane closeout.
 
-Each callback scan performs one legal handoff decision. Role evidence and the active bundle are the
-durable duplicate-suppression record.
+Each callback scan performs one legal handoff decision. Board execution state and role evidence are
+the durable duplicate-suppression record.
 
 
 ## Event-Driven Completion Callback
 
-Use compact completion callbacks. A role thread that reaches its declared stop gate notifies its
-task-specific Controller immediately, then stops.
+Use compact completion callbacks. A permanent role that reaches its declared stop gate notifies
+the permanent Orchestrator immediately, then stops.
 
 Callback rules:
 
 - Send callbacks to the permanent Orchestrator ID from `ROLE_THREAD_REGISTRY.md`.
 - Send a callback only after evidence/checkpoint state changed; do not send duplicate callbacks for the same evidence status.
-- The callback never authorizes the next gate by itself. Controller must still re-read
+- The callback never authorizes the next gate by itself. Orchestrator must still re-read
   board/evidence/Git/native state.
 - If `send_message_to_thread` is unavailable, print the exact callback for the User to paste into
-  the task-specific Controller.
+  permanent Orchestrator.
 - Do not callback while still actively editing, testing, reviewing, or integrating.
 
 Callback message shape:
@@ -265,7 +287,7 @@ Append this footer to every role prompt when automatic orchestration is active:
 
 ```text
 完成本角色 gate 后，先更新 evidence/checkpoint，再向
-`ACTIVE_TASK_THREAD_BUNDLE.md` 记录的 task-specific Controller 发送 compact callback：
+`ROLE_THREAD_REGISTRY.md` 记录的 permanent Orchestrator 发送 compact callback：
 TASK_ID、ROLE、STATUS、EVIDENCE、COMMIT、NEXT、BLOCKER。发送后停止。
 如果不能发送，在最终答复中输出同样的 callback 供用户粘贴；不要代替下一角色执行。
 ```

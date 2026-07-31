@@ -319,6 +319,7 @@ AI 角色：
 
 - `.agents/skills/connlab-lane-orchestrator/SKILL.md`
 - `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
+- `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
 - `docs/project_management/ROLE_THREAD_REGISTRY.md`
 
 自动编排只能转发和接力已批准 lane，不得绕过以下规则：
@@ -328,6 +329,9 @@ AI 角色：
 - Reviewer/QA blocking finding 必须回到 Developer 修复
 - Integrator 只能在 merge gate 满足后合并
 - evidence 文件和 `docs/task_board.md` 优先于聊天记忆
+- 任何可写 implementation dispatch、Quick Fix preemption、reconciliation 或 resume 前必须
+  重新运行只读 `scripts/connlab_execution_gate.ps1`；`BLOCKED_*` 必须停止，
+  `QUEUE_REQUIRED` 只能进入排队治理
 
 如果当前环境没有线程发送工具，则输出可复制到目标中文角色对话框的完整命令。
 
@@ -351,7 +355,10 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 
 ## 18. Parallel Lane Worktree And Closeout
 
-受控并行必须使用真实 Git 隔离，不能把不同聊天线程当作隔离。
+实现默认 `WIP=1`，并由 `docs/task_board.md` 内唯一 marker-delimited JSON execution block
+记录 execution token。受控并行是显式 User-approved exception，不是路径无重叠时的默认行为。
+所有实现仍必须使用真实 Git 隔离，不能把不同聊天线程当作隔离。完整规范见
+`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`。
 
 强制规则：
 
@@ -367,10 +374,16 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 10. task、plan、evidence 必须跟随所属 planning/implementation package 提交，不得长期积压未跟踪治理文件。
 11. lane complete 必须同时满足 worktree/index clean、治理文档已提交、remote 状态已说明，并且 primary worktree clean 或所有 residual 都有 owner 与 expiry。
 12. 多 lane 系列应由一个用户授权 Goal 持续收口；Goal 范围内的普通角色接力、bounded fix、tests-only migration、evidence reconciliation、local commit 和 clean worktree lifecycle 不重复请求人工批准。
+13. execution token 从首次实现写入前一直保留到 Integrator acceptance/cancelled closeout 或完整
+    `paused_preempted` transition；Reviewer、QA、Integrator 不释放 token。
+14. 普通第二任务进入 durable FIFO queue，不创建 implementation worktree，不 dispatch Developer。
+15. 并行例外必须记录独立范围/锁/authority/test owner 证明、结束条件和 User 明确批准，最多两个 owner。
 
 自动化入口：
 
 - `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
+- `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
+- `scripts/connlab_execution_gate.ps1`
 - `scripts/connlab_lane_worktree.ps1`
 - `scripts/task_complete_commit.ps1`
 
@@ -379,7 +392,7 @@ Planner 只有在 `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md` 的 De
 - 当用户明确说“执行 TASK_XXX”“启动 TASK_XXX”或“实施 TASK_XXX”时，默认进入受控全自动编排；用户不需要重复说明 worktree/branch 或“持续到 Integrator”。
 - Orchestrator 必须先重新读取 board/task/plan/evidence、角色线程状态和 `git worktree list`，不得仅凭聊天记忆判断是否已有任务在执行。
 - 若同一 TASK 已有 worktree，必须复用并续跑，禁止创建重复 branch/worktree。
-- 若其他 lane 正在执行，先比较 `Locked Paths`、shared files 和 authority ownership：无重叠才可并行；有重叠则自动排队/串行，不得靠不同 worktree 绕过所有权冲突。
+- 若其他 task 持有 execution token，普通任务必须排队；仅有 exact proof、board record 和 User 明确批准的 parallel exception 才可启动第二 owner，路径无重叠本身不授权并行。
 - product/tests-only implementation 即使当前没有其他任务，也默认使用独立 lane worktree；primary worktree 继续只承担 planning/integration。
 - 在用户已批准的 task/Goal 范围内，自动持续到本地 Integrator acceptance，并自动完成普通 Reviewer/QA/fix/reconciliation/local-commit/worktree-retire 接力。
 - 只有缺少正式批准、范围/行为变化、shared ownership 冲突、无法解释的测试失败、destructive discard 或未授权 merge/push 才暂停找用户。
@@ -418,8 +431,8 @@ TASK 自动创建和归档一整套临时 Controller/Planner/Developer/Reviewer/
 
 ### 19.1 Quick Fixer Fast Path
 
-同时满足以下条件时，Orchestrator 可路由永久 Quick Fixer，而无需创建临时角色包或独立
-Planner 对话：
+同时满足以下条件时，Orchestrator 必须使用永久 Quick Fixer compact capsule fast path，
+不得创建独立 Planner 对话、full plan、重复 User approval 或默认 QA：
 
 - 问题可稳定复现，根因和期望行为清楚；
 - 不新增产品需求，不改变业务 authority 或持久化语义；
@@ -427,6 +440,11 @@ Planner 对话：
 - 修改范围小且边界明确，通常为 1-3 个实现文件及其 bounded tests；
 - 有可执行的 targeted test 或手工 smoke；
 - 与活动 lane 的 `Locked Paths`、shared files 和 authority ownership 不冲突。
+
+compact capsule 必须包含 Goal、Why Safe、May Touch、Must Not Touch、Locked Paths、Targeted
+Validation、Risk Gate、Branch/worktree/base 和 Evidence path。风险路由固定为：QF-1
+`Quick Fixer -> Integrator`；QF-2 `Quick Fixer -> Reviewer -> Integrator`；QF-3
+`Quick Fixer -> Reviewer -> QA -> Integrator`；QF-4 禁止 fast path，进入完整 Planner/User flow。
 
 Quick Fixer 流程：
 
@@ -439,7 +457,8 @@ Orchestrator 只读核验
 ```
 
 出现需求歧义、范围扩大、共享所有权冲突、无法解释的测试失败、第二次同类修复失败或需要
-destructive action 时，Quick Fixer 必须停止并升级到 Planner/完整任务流程。
+destructive action 时，或触及 API contract/schema/migration/authority/persistence/公共盘业务语义
+时，Quick Fixer 必须停止并升级到 Planner/完整任务流程。
 
 冒烟测试后发现的纯文案、样式、明确 wiring、release guard 或单点兼容修复，默认先评估
 Quick Fixer；不得仅因仓库存在完整角色流程就自动创建六个新对话。

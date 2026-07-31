@@ -1,8 +1,12 @@
 # ConnLab Lane Orchestration Protocol
 
-Last Updated: 2026-07-25
+Last Updated: 2026-07-31
 Status: active governance protocol
 Scope: automate role-to-role handoffs for approved ConnLab task lanes
+
+All routing is subordinate to
+`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md` and a fresh read-only execution
+gate decision.
 
 ## 1. Goal
 
@@ -13,6 +17,7 @@ This protocol reduces manual prompting between role threads. It does not loosen 
 Normal ConnLab work uses the permanent Orchestrator, Planner, Developer, Reviewer, QA, Integrator,
 and Quick Fixer recorded in `ROLE_THREAD_REGISTRY.md`. Product tasks reuse those conversations;
 they do not create or archive temporary six-role bundles.
+Each permanent role remains distinct and retains its declared authority boundary.
 
 The Orchestrator selects between:
 
@@ -43,6 +48,8 @@ The orchestrator must not:
 - merge code unless explicitly acting as Integrator in the Integrator thread
 - treat chat history as more authoritative than board/evidence files
 - force-remove a dirty worktree, discard changes, or push a remote without exact authorization
+- dispatch implementation, preemption, reconciliation, or resume without rerunning
+  `scripts/connlab_execution_gate.ps1`
 
 ## 3. State Machine
 
@@ -84,11 +91,12 @@ Additional controls in the Orchestrator/Planner conversation:
 检查 TASK_337B 的 Reviewer 结论。如果通过，生成 Integrator 合并命令并发送到集成负责人线程。
 ```
 
-Before acting on the default command, the orchestrator must distinguish:
+Before acting on the default command, the orchestrator must run `StartTask` and distinguish:
 
 - same task already active: resume its existing worktree
-- another independent lane active: create/resume a separate worktree and run in parallel
-- another lane owns an overlapping shared file/authority path: serialize and report the queue
+- another owner active: return/record `QUEUE_REQUIRED`; do not create an implementation worktree
+- explicit board-recorded max-two parallel exception: verify its User approval, exact independence
+  proof, and end condition before the secondary lane may proceed
 - task not implementation-ready: route the required Planner/User gate, then continue after approval
 
 Product and tests-only implementation use isolated worktrees even when no other task is detected. This avoids making safety depend on thread-status freshness.
@@ -131,11 +139,12 @@ If state is unclear, stop and report the smallest blocking fact. Do not guess. C
 The operator is not responsible for Git worktree commands. Before routing an approved implementation lane, the orchestrator must:
 
 1. verify the primary worktree and index are clean
-2. verify no active lane owns the same `Locked Paths`
-3. persist the approved task/plan/board state
-4. run `scripts/connlab_lane_worktree.ps1 -Action Create`
-5. record the concrete branch, path, and base commit
-6. include that path in Developer, Reviewer, and QA prompts
+2. require `ALLOW_WORKTREE_CREATE` for the exact TaskId/lane
+3. verify no active lane owns the same `Locked Paths`
+4. persist the approved task/plan/board token state
+5. run `scripts/connlab_lane_worktree.ps1 -Action Create -TaskId <TASK_ID>`
+6. record the concrete branch, path, and base commit
+7. include that path in Developer, Reviewer, and QA prompts
 
 Developer must create a clean local checkpoint commit before `ready_for_review`. Reviewer and QA validate that immutable commit.
 

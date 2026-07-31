@@ -6,6 +6,8 @@ param(
 
     [string]$Lane,
 
+    [string]$TaskId,
+
     [string]$BaseRef = "HEAD",
 
     [string]$IntegrationRef = "master",
@@ -76,7 +78,19 @@ $repoRootOutput = & git rev-parse --show-toplevel 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "Run this script from inside the ConnLab Git repository."
 }
-$repoRoot = Get-NormalizedPath -Path (($repoRootOutput | Select-Object -First 1).Trim())
+$invokingRoot = Get-NormalizedPath -Path (($repoRootOutput | Select-Object -First 1).Trim())
+$common = (Invoke-Git -Directory $invokingRoot -Arguments @("rev-parse", "--git-common-dir") | Select-Object -First 1).Trim()
+if (-not [System.IO.Path]::IsPathRooted($common)) {
+    $common = Join-Path $invokingRoot $common
+}
+$repoRoot = Get-NormalizedPath -Path (Split-Path -Parent (Get-NormalizedPath -Path $common))
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ".git") -PathType Container)) {
+    throw "Could not verify the main primary worktree."
+}
+$primaryBranch = (Invoke-Git -Directory $repoRoot -Arguments @("branch", "--show-current") | Select-Object -First 1).Trim()
+if ($primaryBranch -ne "master") {
+    throw "The primary worktree must remain on master."
+}
 
 if ([string]::IsNullOrWhiteSpace($WorktreeRoot)) {
     $repoParent = Split-Path -Parent $repoRoot
@@ -118,6 +132,29 @@ $target = Get-NormalizedPath -Path (Join-Path $WorktreeRoot $Lane)
 
 switch ($Action) {
     "Create" {
+        if ([string]::IsNullOrWhiteSpace($TaskId)) {
+            throw "-TaskId is required for Action Create."
+        }
+        $gateOutput = @(
+            & "$PSScriptRoot\connlab_execution_gate.ps1" `
+                -Intent "CreateWorktree" `
+                -TaskId $TaskId `
+                -Lane $Lane `
+                -Json
+        )
+        $gateExitCode = $LASTEXITCODE
+        $gateJson = ($gateOutput -join "`n").Trim()
+        if ($gateExitCode -ne 0) {
+            throw "Execution gate blocked Create: $gateJson"
+        }
+        $gateResult = $gateJson | ConvertFrom-Json
+        if ((Get-NormalizedPath -Path ([string]$gateResult.authority_root)) -ne $repoRoot) {
+            throw "Execution gate authority root differs from the verified primary worktree."
+        }
+        if ($gateResult.code -ne "ALLOW_WORKTREE_CREATE") {
+            throw "Execution gate did not authorize Create: $gateJson"
+        }
+
         $primaryStatus = @(Invoke-Git -Directory $repoRoot -Arguments @("status", "--porcelain=v1"))
         if ($primaryStatus.Count -ne 0) {
             throw "Primary worktree must be clean before creating a parallel lane."

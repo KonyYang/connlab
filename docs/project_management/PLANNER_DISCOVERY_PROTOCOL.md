@@ -1,8 +1,11 @@
 # ConnLab Planner Discovery Protocol
 
-Last Updated: 2026-07-25
+Last Updated: 2026-07-31
 Status: active governance protocol
 Scope: product/technical planning, task decomposition, and controlled-parallel lane creation
+
+Execution readiness and any parallel exception are governed by
+`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`. Default implementation WIP is one.
 
 ## 1. Goal
 
@@ -74,7 +77,10 @@ Planner may mark a lane `approved` only when all items below are satisfied:
 - task/lane has a formal task file or the approved Planner action is to create one
 - dependencies and serialization constraints are explicit
 - May Touch, Must Not Touch, Locked Paths, evidence file, validation gate, and merge gate are concrete
-- controlled-parallel implementation has a concrete `lane/*` branch, sibling worktree path, and clean base commit; `TBD` is not approval-ready
+- implementation has a concrete `lane/*` branch, sibling worktree path, and clean base commit; `TBD` is not approval-ready
+- the task is eligible to acquire the board execution token or has a durable FIFO queue record
+- any second implementation owner has exact independence proof, an end condition, and explicit
+  User approval recorded as a max-two parallel exception
 - no active lane owns the same shared file, oversized mixed test, or authority path
 - Developer clean-commit handoff, clean Reviewer/QA input, Integrator residual ledger, and worktree retirement are declared
 - at least one acceptance path is testable or reviewable

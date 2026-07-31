@@ -17,7 +17,6 @@ if (-not $ControlledLaneV2) {
     . "$PSScriptRoot\_codex_runtime.ps1"
 }
 
-$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
 $taskBoard = "docs/task_board.md"
 $taskFile = "tasks/$Task.md"
 
@@ -31,6 +30,25 @@ if ($ControlledLaneV2) {
         -DryRun:$Preview
     exit $LASTEXITCODE
 }
+
+$gateOutput = @(
+    & "$PSScriptRoot\connlab_execution_gate.ps1" `
+        -Intent "StartTask" `
+        -TaskId $Task `
+        -Json
+)
+$gateExitCode = $LASTEXITCODE
+$gateJson = ($gateOutput -join "`n").Trim()
+if ($gateExitCode -ne 0) {
+    Write-Output $gateJson
+    exit $gateExitCode
+}
+$gateResult = $gateJson | ConvertFrom-Json
+if ($gateResult.code -eq "QUEUE_REQUIRED") {
+    Write-Output $gateJson
+    exit 0
+}
+$repoRoot = [System.IO.Path]::GetFullPath([string]$gateResult.authority_root).TrimEnd("\")
 
 Push-Location $repoRoot
 try {
@@ -67,6 +85,7 @@ try {
         "8. .agents/skills/connlab-lane-orchestrator/SKILL.md"
         ""
         "Current repository snapshot:"
+        "- execution gate: $gateJson"
         "- invoking branch: $branch"
         "- HEAD: $head"
         "- worktree status entries: $statusCount"
@@ -78,15 +97,16 @@ try {
         "1. Re-read board/task/plan/evidence, role-thread state when available, and git worktree state."
         "2. If this TASK already has a valid lane worktree, resume it; never create a duplicate."
         "3. Compare shared files, authority paths, and Locked Paths with every active lane."
-        "4. If ownership overlaps, serialize/queue and report the blocker. Different worktrees do not make shared ownership safe."
+        "4. Obey the execution-gate decision. QUEUE_REQUIRED routes queue governance only; it never dispatches implementation or creates a worktree."
         "5. If planning or implementation approval is missing, route the smallest required Planner/User gate first."
         "6. For approved product/tests-only implementation, create an isolated lane/* branch and sibling worktree automatically, even when no other task is active."
         "7. Keep the primary master worktree for planning/integration only."
-        "8. Continue normal Developer/Reviewer/QA/fix/reconciliation gates automatically through local Integrator acceptance."
+        "8. Retain the original task token through Developer/Reviewer/QA/fix/Integrator gates until accepted/cancelled or durably paused."
         "9. Require clean lane commits, clean Reviewer/QA inputs, an exact residual ledger, and clean non-force worktree retirement."
         "10. Never run git add -A, force-remove a worktree, discard changes, or push remote."
         ""
         "Stop only for missing explicit approval, scope/product-contract change, shared-path conflict, ambiguous test failure, destructive discard, or unauthorized merge/push."
+        "Before any write-capable dispatch, rerun -Intent ImplementationDispatch against the board authority."
         "Perform only the next legal routing action per callback, but keep the task-level Goal active until local Integrator acceptance."
     ) -join "`n"
 

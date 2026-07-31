@@ -1,8 +1,12 @@
 # ConnLab Parallel Lane Operations Guide
 
-Last Updated: 2026-07-25
+Last Updated: 2026-07-31
 Status: active operational policy
 Scope: lane isolation, shared-file ownership, clean validation, integration, and residual closeout
+
+Concurrency authority comes only from
+`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`: WIP=1 is the default, and a second
+owner requires an explicit User-approved max-two parallel exception.
 
 ## 1. Why This Guide Exists
 
@@ -172,22 +176,12 @@ Pause only for:
 
 Do not request a new human approval for every small hunk when it remains inside the approved Goal envelope.
 
-### Rule 10: One product TASK owns one temporary role bundle
+### Rule 10: Permanent roles, task-scoped evidence
 
-The stable ConnLab entry creates a fresh task-specific Controller and role threads. After
-Integrator acceptance/cancellation, clean worktree/residual closeout, and explicit bundle archive
-authorization, archive:
-
-The bundle also owns one compact, business-readable `thread_label`. Native sidebar titles use
-`<thread_label>｜主控/规划/开发/评审/测试/集成`; the full formal `TASK_ID` remains in durable
-governance and callback data. Exact thread IDs, never titles, identify the roles.
-
-```text
-Planner -> Developer -> Reviewer -> QA -> Integrator -> task-specific Controller
-```
-
-Read back every native archived state. Keep the active bundle at `closeout_ready` if any archive
-fails. Never archive the stable entry as part of a normal product TASK.
+Normal work reuses permanent Planner, Developer, Reviewer, QA, Integrator, Quick Fixer, and
+Orchestrator conversations by exact ID from `ROLE_THREAD_REGISTRY.md`. A task owns its branch,
+worktree, capsule/plan, and evidence—not a temporary role bundle. Callbacks return to permanent
+Orchestrator. Permanent roles are not archived at task closeout.
 
 ## 4. Automated Lifecycle
 
@@ -205,11 +199,11 @@ Codex must then:
 
 1. re-read the board, task, plan, evidence, registered role threads, and `git worktree list`
 2. resume the existing task worktree when the task is already active; never create a duplicate
-3. inspect every other active lane's shared-file and authority-path locks
-4. serialize the task when locks overlap; do not pretend worktree isolation makes shared ownership safe
+3. run the execution gate and obey the sole token/queue/paused state
+4. queue every ordinary second task; only a recorded explicit exception can permit a secondary owner
 5. run Planner Discovery and required approval gates when the task is not implementation-ready
 6. commit approved planning/governance state in the primary worktree
-7. create the lane branch/worktree with `scripts/connlab_lane_worktree.ps1`
+7. create the lane branch/worktree with `scripts/connlab_lane_worktree.ps1 -TaskId <TASK_ID>`
 8. route Developer to the exact worktree
 9. require a clean local lane checkpoint commit
 10. route Reviewer and QA against that commit
@@ -245,7 +239,7 @@ These commands are implementation details for Codex/Integrator. They are documen
 Create an isolated lane:
 
 ```powershell
-.\scripts\connlab_lane_worktree.ps1 -Action Create -Lane task-xxx-short-name -BaseRef master
+.\scripts\connlab_lane_worktree.ps1 -Action Create -TaskId TASK_XXX -Lane task-xxx-short-name -BaseRef master
 ```
 
 Inspect it:
