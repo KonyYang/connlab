@@ -4,26 +4,18 @@ Date: 2026-07-31
 Task: `TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX`
 Lane: `task-368c-frontend-vite-command-health-guard-quick-fix`
 Role: permanent Quick Fixer
-Status: `approved_pending_worktree`
+Status: `ready_for_review`
 
-## Authorization
+## Authorization And Scope
 
-- The user explicitly requested a direct fix for `scripts/run_frontend.ps1`.
-- The supplied failure, read-only environment evidence, expected boundary, and non-goals are
-  sufficient for the `AGENTS.md` section 19.1 fast path.
-
-## Read-Only Reproduction
-
-- `frontend\node_modules`: present.
-- `frontend\node_modules\.bin\vite.cmd`: absent.
-- `frontend\node_modules\vite\package.json`: present.
-- Node: `v24.14.1`.
-- npm: `11.11.0`.
-- `npm ls vite --prefix frontend --depth=0`: `vite@7.3.2`.
-- Current launcher checks only `node_modules`, so it skips `npm install` and later fails to
-  resolve `vite`.
-
-## Frozen Scope
+- Current phase:
+  `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
+- The user explicitly requested a direct repair after `scripts/run_frontend.ps1` failed with
+  `'vite' is not recognized`.
+- The Orchestrator formally dispatched the bounded Quick Fixer lane after confirming stable
+  reproduction, no path conflict, and `AGENTS.md` section 19.1 eligibility.
+- Primary dispatch HEAD:
+  `c776699774ea4eeceb8e8de851ef233b0af4a4e2`.
 
 May Touch:
 
@@ -31,33 +23,73 @@ May Touch:
 - `tests/unit/test_task_368c_run_frontend_vite_health_guard.py`
 - this evidence file
 
-All frontend files, dependency manifests/versions, other launchers, release packages, retained
-lanes, and unrelated product paths are forbidden.
+No frontend file, dependency manifest, lockfile, `node_modules`, other launcher, product path, or
+retained lane was changed.
 
-## Planned Worktree
+## Worktree
 
 - Branch: `lane/task-368c-frontend-vite-command-health-guard-quick-fix`
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-368c-frontend-vite-command-health-guard-quick-fix`
-- Base commit: pending governance checkpoint and worktree creation.
+- Governance/base:
+  `e098c3c98b3333ada996e60bde1cc1bf494f970d`.
+- Exact branch and HEAD matched the dispatch; worktree and index were clean before implementation.
+- Implementation checkpoint:
+  `a6e9fa193a84745afb742fd419fae9779d48c981`.
 
-## Required Quick Fixer Record
+## Reproduction
 
-Before callback, replace the pending status and record:
+- `frontend\node_modules`: present.
+- `frontend\node_modules\.bin\vite.cmd`: absent.
+- `frontend\node_modules\vite\package.json`: present.
+- Node: `v24.14.1`; npm: `11.11.0`; installed package: `vite@7.3.2`.
+- The original launcher checked only `node_modules`, skipped installation, and later could not
+  resolve the Vite command.
 
-- exact branch/worktree/base verification;
-- RED result from the fake-repository smoke;
-- implementation and exact changed paths;
-- GREEN pytest, packaging-note regression, PowerShell parse, and Git checks;
-- confirmation that no real npm install/server start/frontend file mutation occurred;
-- implementation/evidence commits;
-- clean worktree/index proof;
-- remote state and residuals;
-- next role recommendation.
+## TDD
 
-Stop status must be one of:
+The bounded test copies the real repository launcher into a temporary fake repository and puts a
+recording `npm.cmd` first on `PATH`. It never invokes real npm, the real frontend directory,
+network access, or a Vite server.
 
-- `ready_for_review`;
-- `blocked_scope_expansion`;
-- `blocked_unexplained_test_failure`;
-- `blocked_environment_behavior`.
+RED:
+
+- Missing shim with an existing `node_modules` directory recorded only `run dev`, not
+  `install` then `run dev`.
+- A successful-looking fake install that did not create the shim returned zero and still called
+  `run dev`.
+- Healthy-shim compatibility already passed.
+- Result: `2 failed, 1 passed`, with both failures matching the missing health guard.
+
+Minimal GREEN:
+
+- The launcher now uses the Windows leaf file
+  `node_modules\.bin\vite.cmd` as its dependency-health signal.
+- When absent, it performs the existing `npm install`.
+- It checks the shim again and throws an actionable error when installation leaves it missing,
+  so `npm run dev` is not called.
+- When the shim exists, installation remains skipped and the original startup output and
+  `npm run dev` behavior are preserved.
+- Result: `3 passed`.
+
+## Validation
+
+- `py -m pytest tests\unit\test_task_368c_run_frontend_vite_health_guard.py -q`:
+  `3 passed`.
+- `py -m pytest tests\unit\test_task_368c_run_frontend_vite_health_guard.py tests\unit\test_packaging_notes.py -q`:
+  `8 passed`.
+- Windows PowerShell `ScriptBlock.Create(...)` parse check: passed. The first wrapper invocation
+  expanded `$null` in the caller shell; the protected equivalent was rerun and exited zero.
+- `git diff --check`: passed.
+- Exact changed-path and cached-path checks remained within the three-path allowlist.
+
+## Self-Check And Handoff
+
+- No cross-layer behavior, API, persistence, frontend product code, dependency version, hardcoded
+  absolute repository path, or unrelated feature was added.
+- No TODO, swallowed exception, real dependency install, server start, restart, publication,
+  remote push, destructive cleanup, or unknown residual discard occurred.
+- Remote state: not pushed.
+- Final evidence-only checkpoint and clean worktree/index proof are recorded in the Orchestrator
+  callback.
+- Next role: mandatory Reviewer.
