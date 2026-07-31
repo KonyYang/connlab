@@ -1,8 +1,8 @@
 # TASK_368B_PRODUCT_SPEC_MATRIX_GROUP_P_HEADER_QUICK_FIX
 
-Status: `scope_reconciliation_approved`
+Status: `complete` / `accepted` / `locally_integrated`
 Lane: `task-368b-product-spec-matrix-group-p-header-quick-fix`
-Owner role: permanent Quick Fixer continuation after clean blocked checkpoint
+Owner role: Integrator closeout complete; no active implementation owner
 Date: 2026-07-31
 
 ## Dispatch Worktree
@@ -58,6 +58,37 @@ Date: 2026-07-31
   threshold, bonus value, any other weight, table selection flow, or stored raw labels.
 - Because this support predicate affects Matrix table acceptance globally, QA is mandatory after
   Reviewer pass.
+
+## Local Integration Acceptance
+
+- Quick Fixer ready HEAD:
+  `59ea8455d2283bce3411a1031a3867331783a8d7`.
+- Reviewer evidence HEAD:
+  `1b41bd5f71679e7cd1188d1da5a6502eb2292e8c`.
+- QA/lane HEAD:
+  `5cac86b60c728bcbb6a1b72a9e3d340fc976d21b`.
+- Primary pre-merge HEAD:
+  `d3314a047f69dffd497927dc0e95802e04f17259`.
+- Local non-fast-forward merge commit:
+  `acceeb04241e57d77634f8dbb7f4f9cdef6bba55`.
+- The merge was conflict-free. Its first-parent delta is exactly the six authorized parser,
+  bounded-test, and Quick Fixer/Reviewer/QA evidence paths; the amended primary task, plan, and
+  board were preserved.
+- Merged-tree validation passed: bounded TASK_368B `3 passed`, combined parser regression
+  `27 passed`, exact two-module pycompile, package/forbidden-path checks, `diff --check`,
+  `git show --check`, and ancestry checks.
+- `_MIN_MATRIX_SCORE` remains `45`; the complete-token bonus remains `+12`; every other
+  score weight and scoring/selection branch remains unchanged.
+- Integrator did not access the real PDF. QA's read-only smoke provenance records the same table
+  `16`, page `11`, table-on-page `2`, all twelve groups ending in raw `Group P`, and no warnings
+  or blockers.
+- No push, publication, or localhost restart occurred. An already-running localhost may continue
+  using old process code until a separately authorized future restart; local integration is not
+  runtime refresh.
+- The clean integrated TASK_368B lane branch/worktree is retained under permanent Orchestrator
+  governance for a future safe maintenance retirement. No removal was attempted in this gate.
+- TASK_368A residuals and the cancelled browser-release checkpoint remain separate existing
+  `retain` items and were not touched.
 
 ## Goal
 
