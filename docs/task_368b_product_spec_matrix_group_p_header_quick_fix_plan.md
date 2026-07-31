@@ -1,7 +1,7 @@
 # TASK_368B Product Spec Matrix Group P Header Quick Fix Plan
 
 Date: 2026-07-31
-Status: approved; isolated worktree preparation pending
+Status: `scope_reconciliation_approved`
 Task: `TASK_368B_PRODUCT_SPEC_MATRIX_GROUP_P_HEADER_QUICK_FIX`
 Lane: `task-368b-product-spec-matrix-group-p-header-quick-fix`
 
@@ -127,11 +127,12 @@ The smoke must compare:
 | Path | Planned change |
 |---|---|
 | `backend/modules/test_plan/product_spec_matrix_parser.py` | Narrow prefixed single-letter group header recognition, comparison only |
+| `backend/modules/test_plan/product_spec_matrix_parser_support.py` | Allow an optional explicit `Group` prefix for the existing controlled token score comparison only |
 | `tests/unit/test_task_368b_product_spec_matrix_group_p_header.py` | New bounded synthetic positive/negative regression |
 | `docs/lane_evidence/TASK_368B_product-spec-matrix-group-p-header_quick-fixer.md` | TDD, validation, smoke, checkpoint, and handoff evidence |
 
-No existing frontend, API, DTO, application, support-parser, Office/PDF gateway, persistence,
-schema, config, fixture, or release file is planned.
+No existing frontend, API, DTO, application, Office/PDF gateway, persistence, schema, config,
+fixture, or release file is planned.
 
 ## 4. Risks And Controls
 
@@ -140,7 +141,8 @@ schema, config, fixture, or release file is planned.
 | Descriptive `Group ...` text becomes a column | Require a full prefixed token and a single alphabetic suffix |
 | Raw source label is rewritten | Comparison-only recognition; keep `_clean(row[index])` as stored label |
 | Existing numeric groups regress | Run bounded test plus the complete existing parser unit module |
-| Special sequence Matrix behavior changes | Do not modify parser support helpers |
+| Special sequence Matrix behavior changes | Do not modify sequence helper functions; only the top-level token comparison is in scope |
+| Broad prefixed phrases earn the table-score bonus | Keep the existing controlled token domain and add bounded negative promotion coverage |
 | Real attachment leaks into Git | Read-only external smoke; no repository artifact |
 | Frontend scope expands | Existing display normalization is read-only evidence; frontend remains locked |
 
@@ -155,15 +157,17 @@ GREEN:
 
 - bounded TASK_368B tests;
 - existing product-spec parser tests;
-- exact parser pycompile;
+- exact parser/support pycompile;
+- direct negative scoring proof that `Group Purpose` earns no token bonus and cannot promote an
+  otherwise invalid table;
 - read-only real-PDF lane smoke.
 
 ## 6. Review And Integration
 
 - Quick Fixer creates a clean exact-path checkpoint and updates its evidence.
 - Reviewer inspects the governance base through lane HEAD and reruns targeted parser validation.
-- QA is optional because the change is one parser header-comparison rule with direct real-file
-  smoke and no API/frontend/persistence behavior.
+- QA is mandatory because the amended support predicate participates in global Matrix table
+  scoring, even though API/frontend/persistence behavior remains unchanged.
 - Integrator merges only after Reviewer pass, reruns targeted validation on primary, updates
   task/board/evidence, records residuals, and performs only safe no-force worktree retirement.
 
@@ -173,9 +177,168 @@ No remote push, publication, service restart, or current-localhost refresh is au
 
 Stop if:
 
-- more than one existing production file is needed;
+- a third existing production file is needed;
 - the fix must recognize unprefixed arbitrary alphabetic headers;
+- the score threshold, token bonus value, another weight, or scoring/selection flow must change;
 - PDF extraction or table location changes are required;
 - API/frontend/persistence/schema behavior changes;
 - real attachment mutation or destructive cleanup is required;
 - validation reveals an unrelated Matrix parser defect.
+
+## 8. Scope Reconciliation Amendment
+
+This amendment supersedes any conflicting initial-plan statement about one production file,
+support-parser exclusion, or optional QA.
+
+### 8.1 Discovery Gate
+
+Current phase:
+
+- `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
+
+Current active task/lane:
+
+- `TASK_368B_PRODUCT_SPEC_MATRIX_GROUP_P_HEADER_QUICK_FIX`
+- `task-368b-product-spec-matrix-group-p-header-quick-fix`
+- pre-reconciliation state: `blocked_scope_expansion`
+
+Why Planner is allowed:
+
+- The required real-PDF smoke exposed one additional scoring-comparison boundary after the
+  approved parser-only probe.
+- Quick Fixer stopped at the declared scope boundary, preserved an exact local checkpoint, and
+  returned the conflict to Orchestrator/Planner.
+- Orchestrator authoritatively received the checkpoint callback and independently verified the
+  clean three-path package.
+
+Confirmed by user:
+
+- The user asked to fix the missing final `Group P` from
+  `PRODSPEC GS-12-1941 CoolPowerHD_Rev4.pdf`.
+- The goal is the same selected Matrix and same raw source data with the final Group P included.
+- No new product behavior, authority path, or deployment action was requested.
+
+Confirmed by repository evidence:
+
+- Primary is clean on `master` at
+  `d3ef8745389bf7b7c2774abfc99e691228f1804a`, with no merge in progress.
+- The existing lane/base/worktree are concrete and unchanged:
+  `lane/task-368b-product-spec-matrix-group-p-header-quick-fix`,
+  `D:\PythonProject\connlab-worktrees\task-368b-product-spec-matrix-group-p-header-quick-fix`,
+  base `b671bb493a683529cfe64ab320df4f90914406c8`.
+- WIP checkpoint `b36c95d3aababe5421c09b2e3532d67317331f82` and evidence-only
+  HEAD `fb6d102d54d72d252a1f7415fb8cffd648c1ea42` leave the lane worktree/index clean.
+- `base..HEAD` contains exactly:
+  `backend/modules/test_plan/product_spec_matrix_parser.py`,
+  `tests/unit/test_task_368b_product_spec_matrix_group_p_header.py`, and Quick Fixer evidence.
+- `backend/modules/test_plan/product_spec_matrix_parser_support.py` is unchanged at blob
+  `3fa4423b414dd4844f2bb6e641c0c8fb02f9ec8e`.
+- The parser-only comparison admits raw `Group P` and preserves the label. The bounded synthetic
+  test passes.
+- The real-PDF application-service smoke retains table `16`, page `11`, table-on-page `2`, but
+  returns exact blocker `Selected table 16 is not a valid Matrix table.`.
+- `GROUP_TOKEN_HEADER_RE` accepts only bare controlled tokens. `table_score()` awards `+12` only
+  when all raw `header.group_columns` labels match; raw `Group P` therefore withholds that bonus
+  and the real table falls below `ProductSpecMatrixParser._MIN_MATRIX_SCORE = 45`.
+
+Inferred by Planner:
+
+- This is the same defect crossing two adjacent existing comparison boundaries, not a new
+  capability or scoring policy.
+- A narrow optional explicit `Group` prefix followed by the existing controlled token domain is
+  the smallest consistent comparison. It covers `Group P`, `Group 1`, and `Group 6a` while
+  rejecting `Group Purpose`.
+- The support predicate has broader selection risk than the parser-only comparison, so QA must be
+  mandatory.
+
+Not yet confirmed:
+
+- The final implementation and real-PDF GREEN result are not yet known; they belong to the resumed
+  Quick Fixer and later Reviewer/QA gates.
+- No unknown changes May Touch, Must Not Touch, acceptance, data/API ownership, or role ordering.
+
+Planning risk:
+
+- A broad `Group ...` regex could award `+12` to descriptive phrases and promote an invalid table.
+- Changing the threshold or weights would turn a token-compatibility fix into a scoring-policy
+  change.
+- Skipping QA would leave a global table-acceptance boundary validated only by the implementer.
+
+Decision:
+
+- Continue without new user approval. Existing Goal authorization plus `AGENTS.md` sections
+  18.12 and 19.1 cover this bounded same-defect amendment.
+- Definition of Ready is satisfied after the authoritative clean checkpoint callback.
+- Reuse the existing lane/worktree. Do not create a replacement task or lane.
+
+### 8.2 Revised May Touch
+
+- `backend/modules/test_plan/product_spec_matrix_parser.py`
+- `backend/modules/test_plan/product_spec_matrix_parser_support.py`
+- `tests/unit/test_task_368b_product_spec_matrix_group_p_header.py`
+- `docs/lane_evidence/TASK_368B_product-spec-matrix-group-p-header_quick-fixer.md`
+
+Primary governance only:
+
+- `tasks/TASK_368B_PRODUCT_SPEC_MATRIX_GROUP_P_HEADER_QUICK_FIX.md`
+- this plan
+- `docs/task_board.md`
+- later role-specific Reviewer/QA/Integrator evidence
+
+### 8.3 Revised Must Not Touch
+
+- Any third existing production file.
+- `backend/application/**`, `backend/api/**`, `backend/domain/**`,
+  `backend/infrastructure/**`, and `frontend/src/**`.
+- Existing mixed parser tests other than running them read-only.
+- `_MIN_MATRIX_SCORE`, the `+12` complete-token bonus value, every other score weight,
+  `table_score()` control flow, and parser selection/tie-breaking.
+- Matrix persistence/authority, schema/database, Office/PDF extraction, locator behavior,
+  API/DTO, frontend, release paths, or real attachment contents.
+- Cancelled browser-release retained state, TASK_368A residuals, and frozen V2 state.
+- Push, merge, cherry-pick, restart, destructive cleanup, or worktree retirement.
+
+### 8.4 Exact Implementation Boundary
+
+The support comparison may accept an optional explicit `Group` prefix followed by the same
+controlled token domain already allowed by `GROUP_TOKEN_HEADER_RE`. It must:
+
+- accept at minimum `Group P`, and consistently accept `Group 1` and `Group 6a`;
+- reject `Group Purpose` and other broad phrases;
+- preserve the raw labels supplied by `header.group_columns`;
+- leave `_MIN_MATRIX_SCORE = 45`, the `+12` bonus, every other weight, and scoring flow unchanged.
+
+### 8.5 Acceptance And Validation
+
+Quick Fixer must extend the already-owned bounded test/evidence only. Required proof:
+
+1. Synthetic fourteen-column parsing returns exact groups
+   `1, 2, 3, 4, 5, 6a, 6b, 7, 8, 9, 10, Group P`.
+2. Raw `Group P`, key, steps, sample expression, and sample size remain correct.
+3. Controlled prefixed forms `Group P`, `Group 1`, and `Group 6a` are scoring-compatible.
+4. `Group Purpose` does not earn the complete-token `+12` bonus.
+5. A broad phrase cannot promote an otherwise below-threshold invalid table.
+6. Existing parser regression remains green.
+7. Real-PDF smoke keeps table `16`, page `11`, table-on-page `2`, returns all twelve groups with
+   no repair-attributable blocker/warning, and performs no write or persistence.
+
+Commands:
+
+```powershell
+py -m pytest tests\unit\test_task_368b_product_spec_matrix_group_p_header.py -q
+py -m pytest tests\unit\test_task_368b_product_spec_matrix_group_p_header.py tests\unit\test_product_spec_matrix_parser.py -q
+py -m py_compile backend\modules\test_plan\product_spec_matrix_parser.py backend\modules\test_plan\product_spec_matrix_parser_support.py
+git diff --check
+```
+
+### 8.6 Role Gates
+
+- Quick Fixer: resume only from clean lane HEAD
+  `fb6d102d54d72d252a1f7415fb8cffd648c1ea42`; produce a new exact-path implementation
+  checkpoint and final evidence-only HEAD.
+- Reviewer: mandatory committed-diff gate from base through final lane HEAD; inspect the exact
+  scoring predicate, raw-label preservation, negative promotion regression, and line limits.
+- QA: mandatory clean-reviewed-commit validation, including bounded/existing parser regressions
+  and read-only real-PDF smoke provenance.
+- Integrator: only after Reviewer and QA pass; verify package/ancestry, run merged-tree validation,
+  record residuals, and perform no push/publication/restart.
