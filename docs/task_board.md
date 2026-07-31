@@ -3,9 +3,9 @@
 > Status: classic permanent-role execution active; V1-Lite and Controlled Lane V2 are frozen read-only, V2 heartbeat remains `PAUSED`, and retained snapshots are preserved
 > Last Updated: 2026-08-01
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX`. QA passed at clean lane HEAD `45f345f49c43eece139245b00048c74e8c83f73b`; the same WIP=1 token remains held in `gate_running`, and permanent Integrator owns the final local merge/closeout gate. Existing retained, cancelled, residual, and frozen V2 facts remain unchanged.
+> Current Active Task: None. `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX` is complete/accepted and locally integrated by non-fast-forward merge `8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`. WIP remains `1`; terminal execution state is `complete`, token owner and active task are null, queue is empty, and paused task, Quick Fix, and parallel exception are null. No next task is activated. The clean integrated TASK_368D lane remains retained under permanent Orchestrator governance, and all prior retained/cancelled/residual/frozen facts remain unchanged.
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-> Proposed Next Task: None. Do not create or activate another task while TASK_368D owns the token.
+> Proposed Next Task: None. Next recommendation is Archive/Standby; do not create or activate another task.
 
 <!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
 ```json
@@ -13,87 +13,36 @@
   "schema": "connlab.execution-control",
   "version": 1,
   "wip_limit": 1,
-  "execution_token_owner": "TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX",
-  "execution_state": "gate_running",
-  "active": {
-    "task_id": "TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX",
-    "lane": "task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-    "role": "Integrator",
-    "branch": "lane/task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-    "worktree": "D:\\PythonProject\\connlab-worktrees\\task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-    "base_sha": "c49f437b6e7f109a6c99ce9f622987a11b0a85d7",
-    "head_sha": "45f345f49c43eece139245b00048c74e8c83f73b",
-    "locked_paths": [
-      "backend/infrastructure/files/pdf_matrix_source_gateway.py",
-      "tests/unit/test_task_368d_pdf_qualification_matrix_alignment.py"
-    ],
-    "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_qa.md"
-  },
+  "execution_token_owner": null,
+  "execution_state": "complete",
+  "active": null,
   "queue": [],
   "paused": null,
-  "quick_fix": {
-    "task_id": "TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX",
-    "lane": "task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-    "role": "Quick Fixer",
-    "risk_gate": "QF-3",
-    "goal": "Normalize centered merged-cell PDF qualification Matrix spans so page 9 table 2 yields Groups 1-6.",
-    "why_safe": "Stable real-PDF reproduction; one PDF gateway shape repair plus one bounded test; no parser semantics, API, authority, persistence, frontend, release, or real-data mutation.",
-    "may_touch": [
-      "backend/infrastructure/files/pdf_matrix_source_gateway.py",
-      "tests/unit/test_task_368d_pdf_qualification_matrix_alignment.py",
-      "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_quick-fixer.md"
-    ],
-    "must_not_touch": [
-      "backend/modules/test_plan/product_spec_matrix_parser.py",
-      "backend/modules/test_plan/product_spec_matrix_parser_support.py",
-      "backend/application/project_test_plan_matrix_preview_service.py",
-      "backend/api/**",
-      "backend/infrastructure/storage/**",
-      "frontend/**",
-      "scripts/build_windows_browser_release.ps1",
-      "packaging/**",
-      "data/**",
-      "dist_release/**"
-    ],
-    "locked_paths": [
-      "backend/infrastructure/files/pdf_matrix_source_gateway.py",
-      "tests/unit/test_task_368d_pdf_qualification_matrix_alignment.py"
-    ],
-    "targeted_validation": [
-      "bounded centered-header/left-body span synthetic regression",
-      "existing PDF gateway and ProductSpec parser regressions",
-      "changed gateway py_compile",
-      "read-only GS-12-2299 PDF auto and page-9/table-2 smoke",
-      "exact allowlist, diff, cached, and clean checks"
-    ],
-    "required_gates": ["Reviewer", "QA", "Integrator"],
-    "planner_required": false,
-    "full_plan_required": false,
-    "qa_required": true,
-    "branch": "lane/task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-    "worktree": "D:\\PythonProject\\connlab-worktrees\\task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-    "base_sha": "c49f437b6e7f109a6c99ce9f622987a11b0a85d7",
-    "head_sha": "45f345f49c43eece139245b00048c74e8c83f73b",
-    "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_quick-fixer.md"
-  },
+  "quick_fix": null,
   "residuals": [
     {
       "task_id": "TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH",
       "residual_owner": "permanent Orchestrator governance",
       "disposition": "retain clean integrated lane branch/worktree until separately authorized safe maintenance retirement",
       "evidence": "docs/lane_evidence/TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH_integrator.md"
+    },
+    {
+      "task_id": "TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX",
+      "residual_owner": "permanent Orchestrator governance",
+      "disposition": "retain clean integrated lane branch/worktree until separately authorized safe maintenance retirement",
+      "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md"
     }
   ],
   "parallel_exception": null,
-  "last_governance_commit": "c3fbccc805ea93ded880fd81497fafa6412aa1ab",
-  "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_qa.md"
+  "last_governance_commit": "8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1",
+  "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md"
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
 
 ## Active Execution Model
 
-- `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX`: QA passed at clean lane HEAD `45f345f49c43eece139245b00048c74e8c83f73b`; permanent Integrator owns the final local `gate_running` merge/closeout while the task retains the WIP=1 token. Fresh QA passed bounded `2`, combined PDF/parser `35`, pycompile, seven negative shape probes, exact package/forbidden-path/ancestry/clean checks, and read-only real-PDF auto plus explicit page-9/table-2 smoke. Both modes selected global table 15, returned Groups 1-6 with continuous sorted tokens and sample size 5, and had no blocker/warning; table 1 remained a fail-closed title block. PDF SHA-256/size/mtime were identical before/after. The exact five-path lane package through QA contains one PDF gateway, one bounded test, and Quick Fixer/Reviewer/QA evidence. Parser/application/API/persistence/authority/frontend/release paths and real files remain locked. Required remaining role is Integrator. The packaged Standard record Excel warning and missing-Confirmed-Matrix ASGI trace remain outside this task.
+- `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX`: complete/accepted and locally integrated by conflict-free non-fast-forward merge `8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`. The exact five-path gateway/test/Quick Fixer/Reviewer/QA package is integrated, with Reviewer and QA passing on the merge ancestry. Merged-primary validation passed bounded `2`, combined PDF/parser `35`, pycompile, the 482-line gateway ceiling, exact package/forbidden-path/ancestry/protected-state checks, and read-only GS-12-2299 auto plus explicit page-9/table-2 smoke. Both modes selected global table 15, returned Groups 1-6 with sample size 5 and no blocker/warning; table 1 remained a fail-closed title block. PDF SHA-256/size/mtime were unchanged. Terminal state is `complete`; token owner and active task are null, queue empty, and paused/Quick Fix/parallel exception null. The clean integrated lane branch/worktree remains `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement. No push, publication, release build, restart, real DB/Excel/source mutation, Create/Retire, or destructive cleanup occurred. The packaged Standard record Excel warning and supplemental ConfirmedMatrixFeeDraftNotFoundError remain outside this task.
 - `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`: complete/accepted and locally integrated by non-fast-forward merge `2f0fe6730777221ed48551a1cbdf8802aeed3ea1`. The exact merge parents are primary premerge `f465b5f576229544f773095bb1086961152e6be8` and QA HEAD `600bbf2d8d6b7884fed6a3af4e46f56cce3fe3a3`; Reviewer and mandatory QA passed on that ancestry. The reviewed package is nineteen paths through Reviewer plus one QA evidence path, all authorized and integrated. Merged-primary validation passed `66` tests, three PowerShell parse checks, production-root read-only `Inspect`, and exact package/forbidden-path/ancestry/protected-state checks. WIP remains `1`; terminal state is `complete`, token and active task are null, queue is empty, and paused/Quick Fix/parallel exception are null. The clean integrated lane branch/worktree remains `retain` under permanent Orchestrator governance for separately authorized safe maintenance retirement; no removal was attempted. No product code/lane migration, push, publication, restart, real Create/Retire, or destructive cleanup occurred. TASK_368A/B/C, cancelled browser-release, frozen V2, and all prior residual facts remain unchanged.
 - `TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX`: complete/accepted and locally integrated by conflict-free non-fast-forward merge `f7923ad9d3ce73cb47f53b39688a98425b6b4c41`. The exact four-path launcher/bounded-test/Quick Fixer/Reviewer package is integrated; primary dispatch task/plan/board were preserved. Merged-primary validation passed: bounded fake-npm `3 passed`, combined packaging regression `8 passed`, Windows PowerShell parse, exact package/forbidden-path/diff/show/ancestry checks. The launcher now checks the exact `node_modules\.bin\vite.cmd` leaf, invokes the existing install path when missing, fails closed before dev if the post-install shim is still missing, and preserves the healthy startup plus `npm run dev` path. No real launcher, npm, network, repository frontend, Vite server, push, publication, or restart ran. A final read-only check found that the current shim now exists although this gate did not create or repair it; future runs skip install while it remains healthy and invoke the guarded install path if it becomes absent. The clean integrated TASK_368C lane branch/worktree remains `retain` under permanent Orchestrator governance for future separately authorized safe maintenance retirement; no removal was attempted. TASK_368A, TASK_368B, browser-release, and frozen V2 retained state remain untouched.
 - `TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD`: `cancelled_by_user` / `closed_without_integration` on 2026-07-31. The clean retained lane is `lane/browser-release-frontend-freshness-instance-guard` at `D:\PythonProject\connlab-worktrees\browser-release-frontend-freshness-instance-guard`; original base `46081784f9feb6a7dcdf294f819cf8afe8a47a63`; cancelled unintegrated checkpoint `0bf56ea09ba1a1baedd5ce982d0b47d73d1889df`. The checkpoint contains exactly 11 task-owned paths, is not an ancestor of `master`, is not contained by a remote branch, and was not pushed. Historical Developer checks were partial only (`13` manifest/identity and `12` runtime/static/server tests); launcher/occupant/build/smoke/docs were unfinished, with no Reviewer, QA, full release, or corporate-image validation. This is not complete, accepted, reviewed, QA-validated, integrated, or pushed. Residual class is `retain`, owned by permanent Orchestrator governance / User decision; there is no implementation owner, follow-up task, or automatic recovery. Any future merge, cherry-pick, discard, retire/delete, push, or recovery requires new explicit User authorization. Cancellation evidence: `docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_cancelled_closeout.md`.
@@ -217,6 +166,7 @@
 ## Active Lanes
 
 | Lane | Task | Owner Role | Status | Dependencies | May Touch | Must Not Touch | Locked Paths | Evidence File | Validation Gate | Merge Gate |
+| task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix | `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX` | Integrator closeout complete; permanent Orchestrator owns retained lane lifecycle | `complete` / `accepted` / `locally_integrated`; merge `8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`; lane QA HEAD `45f345f49c43eece139245b00048c74e8c83f73b`; terminal token owner null, active null, queue empty, paused/Quick Fix/parallel exception null | Quick Fixer ready; Reviewer `reviewer_pass`; QA `qa_pass`; Integrator merged-tree validation passed | Exact five-path gateway/bounded-test/Quick Fixer/Reviewer/QA package is integrated; task/board/Integrator evidence form the closeout package | No parser/application/API/persistence/authority/frontend/release or real DB/Excel/source mutation; no Standard Excel configuration repair; no ConfirmedMatrixFeeDraftNotFoundError absorption; no push/publication/restart/destructive cleanup/next task | Clean branch `lane/task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix` and worktree `D:\PythonProject\connlab-worktrees\task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix` are `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement | `docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md` | Merged primary: bounded `2 passed`; combined PDF/parser `35 passed`; gateway pycompile and 482-line ceiling; exact package/forbidden-path/ancestry/protected-state checks; read-only GS-12-2299 auto/explicit/table-1 smoke with unchanged SHA/size/mtime | Complete/accepted locally; no push, release build, publication, or restart. Next: Archive/Standby; no replacement task. |
 | task-governance-wip1-and-proportionate-quick-fix-fast-path | `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH` | Integrator closeout complete; permanent Orchestrator owns retained lane lifecycle | `complete` / `accepted` / `locally_integrated`; merge `2f0fe6730777221ed48551a1cbdf8802aeed3ea1`; lane QA HEAD `600bbf2d8d6b7884fed6a3af4e46f56cce3fe3a3`; terminal token owner null, active null, queue empty, paused/Quick Fix/parallel exception null | User-approved exact plan; Reviewer `reviewer_pass`; QA `qa_pass`; Integrator merged-tree validation passed | Exact nineteen-path reviewed implementation/Developer/Reviewer package plus one QA evidence path is integrated; task/plan/board/Integrator evidence form the closeout package | No product/backend/frontend/API/schema/database/Office/Matrix/Fee/LTR/runtime mutation; no next task; no push/publication/restart; no real Create/Retire; no destructive cleanup; all prior retained/cancelled/frozen facts unchanged | Clean branch `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path` and worktree `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path` are `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement | `docs/lane_evidence/TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH_integrator.md` | Merged primary: five frozen modules `66 passed`; three PowerShell parses; production-root read-only `ALLOW_INSPECT`; exact package/forbidden-path/ancestry/protected hash/worktree/diff/status checks passed | Complete/accepted locally; no push, publication, restart, product migration, or destructive action. Next: Archive/Standby; no replacement task. |
 | task-368c-frontend-vite-command-health-guard-quick-fix | `TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX` | Integrator closeout complete; permanent Orchestrator owns retained lane lifecycle | `complete` / `accepted` / `locally_integrated`; merge `f7923ad9d3ce73cb47f53b39688a98425b6b4c41`; lane HEAD `e7e5ac635aa06eda0c11e18436ffa60c2d83c062`; base/merge-base `e098c3c98b3333ada996e60bde1cc1bf494f970d` | Quick Fixer ready, Reviewer `reviewer_pass`; QA not required by frozen task and Reviewer found no environment-specific gap; Integrator merged-tree validation passed. | Accepted four-path launcher/bounded-test/Quick Fixer/Reviewer package is integrated and read-only. | No reopen, launcher/test/evidence mutation, real npm/frontend/Vite execution, dependency/lockfile/node_modules repair, push, publication, localhost restart, worktree removal, destructive cleanup, or next-task activation. | Clean integrated lane branch/worktree is retained under permanent Orchestrator governance for future separately authorized safe maintenance retirement. All existing retained state remains independent and locked. | `docs/lane_evidence/TASK_368C_frontend-vite-command-health-guard_integrator.md` | Merged primary: bounded `3 passed`; combined packaging `8 passed`; PowerShell parse passed; exact four-path/forbidden-path/diff/show/ancestry and behavior checks passed. | Complete/accepted locally; not pushed, published, runtime-run, or applied to current `node_modules`. Next: Archive/Standby; no replacement task. |
 | browser-release-frontend-freshness-instance-guard | `TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD` | permanent Orchestrator governance / User decision | `cancelled_by_user` / `closed_without_integration`; retained checkpoint `0bf56ea09ba1a1baedd5ce982d0b47d73d1889df`; base `46081784f9feb6a7dcdf294f819cf8afe8a47a63` | User explicitly cancelled the task after the unintegrated preservation checkpoint. | Governance-only cancellation record; clean branch/worktree/checkpoint retained as residual class `retain`. | No product/test edit or integration; no Developer/Reviewer/QA continuation; no merge/cherry-pick/push/reset/restore/clean/stash/discard/worktree retire/delete; no replacement task or automatic recovery. | Retained branch `lane/browser-release-frontend-freshness-instance-guard` and clean worktree `D:\PythonProject\connlab-worktrees\browser-release-frontend-freshness-instance-guard`; ownership is permanent Orchestrator governance / User decision only. | `docs/lane_evidence/TASK_BROWSER_RELEASE_FRONTEND_FRESHNESS_AND_INSTANCE_GUARD_cancelled_closeout.md` | Read-only preservation checks only; historical partial Developer results are not acceptance evidence. | Closed without integration. Any future merge/discard/retire/push/recovery requires new explicit User authorization. |

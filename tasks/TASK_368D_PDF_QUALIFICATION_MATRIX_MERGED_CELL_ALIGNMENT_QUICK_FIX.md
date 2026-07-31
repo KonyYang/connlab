@@ -1,10 +1,11 @@
 # TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX
 
-Status: `integration_gate` / QA `qa_pass`
+Status: `complete` / `accepted` / `locally_integrated`
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Integrator. QA pass / integration input HEAD:
-`45f345f49c43eece139245b00048c74e8c83f73b`.
+Current gate owner: none; permanent Integrator closeout accepted. QA pass / integration input HEAD
+`45f345f49c43eece139245b00048c74e8c83f73b` was locally integrated by merge
+`8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`.
 
 ## Goal
 
@@ -96,3 +97,24 @@ or any scope expansion.
   `docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_qa.md`
 - Integrator:
   `docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md`
+
+## Integrator Acceptance Closeout
+
+- Primary premerge: `42cf99ec7b5a75f3d8685d40caa104108416d992`.
+- Conflict-free local non-fast-forward merge:
+  `8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`, with QA HEAD as the exact second parent.
+- The first-parent merge delta is exactly the authorized five-path gateway/test/Quick Fixer/
+  Reviewer/QA package. No parser, application, API, frontend, persistence, authority, packaging,
+  release, database, or real-source path was added.
+- Merged-primary validation passed bounded `2`, combined PDF/parser `35`, gateway pycompile, the
+  482-line ceiling, exact package/ancestry/diff/protected-state checks, and the read-only real-PDF
+  auto/explicit/table-1 smoke.
+- GS-12-2299 SHA-256 `125D696447B7B58F73A8F5E2AB018DC73EDB1CDEA2DC41F53D5F094DE70290BC`,
+  size `624218`, and UTC mtime `2026-07-31T08:20:39.1445408Z` were unchanged.
+- Terminal authority is `complete` with token owner and active task null, queue empty, paused/
+  Quick Fix/parallel exception null, and no next task.
+- The clean integrated lane branch/worktree is retained under permanent Orchestrator governance
+  until separately authorized safe maintenance retirement; no removal was attempted.
+- No push, publication, release build, service restart, real DB/Excel/source mutation, real
+  Create/Retire, or destructive cleanup occurred. The packaged Standard Excel configuration gap
+  and supplemental ConfirmedMatrixFeeDraftNotFoundError remain explicitly outside this task.
