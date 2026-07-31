@@ -10,6 +10,7 @@ Base: `a1968c4999a33c6bee18c9185882ea3b927c2004`
 Primary dispatch HEAD: `f465b5f576229544f773095bb1086961152e6be8`
 Implementation checkpoint: `41a604d15f7472e4d8efc4673dbd8c9272c1e45d`
 Reviewer fix checkpoint: `7cb4d6db7f978875de73c1f6b0fec5e557f4e565`
+Second Reviewer fix checkpoint: `911713b85b28d172b8919fac1f127a2e3b843246`
 Next: permanent Reviewer
 
 ## Scope And Authority
@@ -214,6 +215,57 @@ py -m pytest tests\unit\test_connlab_execution_gate_script.py tests\integration\
 - `git diff --check`, exact nine-path fix allowlist, forbidden product/V2/bundle/registry scans,
   and protected primary/frozen/cancelled/retained HEAD/status equality passed. The four protected
   primary file SHA-256 values are unchanged.
+- No real Create/Retire, merge, push, restart, cleanup, stash, reset, restore, discard, or remote/
+  runtime/real-data action was performed.
+
+## Second Narrowly Bounded Reviewer Fix Pass
+
+The Reviewer re-gate at lane HEAD `090fdc254edadaeb91a003890d3a920adcd9c739`
+left one blocking schema-validation finding. Fix checkpoint
+`911713b85b28d172b8919fac1f127a2e3b843246` changes exactly two approved paths:
+
+1. `scripts/connlab_execution_gate.ps1`
+2. `tests/unit/test_connlab_execution_gate_script.py`
+
+### Remaining Finding Closure Map
+
+- General `Inspect` now requires every queue record to carry the frozen canonical fields
+  `task_id`, `lane`, `enqueue_sequence`, `enqueued_at`, `dependencies`, `locked_paths`,
+  `requested_priority`, `queue_position`, and `evidence`. It validates non-empty scalar values,
+  positive integer sequence/position values, parseable timestamps, string-array dependency/lock
+  shapes, non-empty locks, unique task IDs/positions/sequences, contiguous stored FIFO order, and
+  chronological/same-priority FIFO consistency.
+- General `Inspect` now requires `secondary_role`, `secondary_branch`, `secondary_worktree`, and
+  `secondary_head_sha` in every non-null `parallel_exception`, in addition to the existing User
+  approval, independence, end-condition, ownership, and proof fields. It validates canonical
+  scalar/array shapes, Developer role, lane-derived branch, absolute worktree, 40-hex Git HEAD,
+  primary/secondary branch-worktree separation, secondary-owner consistency, and locked-path
+  independence.
+- Bounded regressions reproduce both former `ALLOW_INSPECT` gaps. Positive complete-record
+  fixtures prove valid queue and parallel paths remain allowed. Existing duplicate-position,
+  duplicate-task, ordering, dispatch, and Create coverage now uses the complete frozen records.
+- The lane candidate board has an empty queue and null `parallel_exception`; it was inspected and
+  intentionally left unchanged. No policy or skill contract needed modification.
+
+### Second-Pass TDD And Validation
+
+- Exact RED before the helper change: `8 failed, 10 passed, 13 deselected`. The incomplete queue,
+  out-of-order queue, five malformed queue-field cases, and missing four secondary proof fields
+  all incorrectly returned `ALLOW_INSPECT`.
+- Focused GREEN after the helper change: `18 passed, 13 deselected`.
+- Full gate unit module: `31 passed`.
+- Fresh required five-module suite:
+
+```text
+py -m pytest tests\unit\test_connlab_execution_gate_script.py tests\integration\test_connlab_execution_gate_recovery.py tests\unit\test_execution_wip_and_quick_fix_governance.py tests\unit\test_connlab_lane_worktree_script.py tests\unit\test_task_scoped_role_thread_lifecycle_governance.py -q
+66 passed in 41.90s
+```
+
+- Windows PowerShell AST parsing passed for all three entry/helper scripts. The helper is 307
+  physical lines and the expanded gate unit module is 496 lines; all approved size limits hold.
+- `git diff --check`, the exact two-path implementation allowlist, forbidden product/V2/bundle/
+  registry scans, and before/after protected primary/frozen/cancelled/retained HEAD/status equality
+  passed. The four protected primary file SHA-256 values are unchanged.
 - No real Create/Retire, merge, push, restart, cleanup, stash, reset, restore, discard, or remote/
   runtime/real-data action was performed.
 
