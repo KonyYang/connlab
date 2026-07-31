@@ -14,6 +14,13 @@ from backend.infrastructure.files.pdf_section_paragraph_rebuilder import (
 )
 
 
+_GROUP_TOKEN_RE = re.compile(
+    r"^(?:group\s*)?(?:[A-Za-z]\d+|\d+[A-Za-z]?|[A-Za-z])$",
+    re.IGNORECASE,
+)
+_SECTION_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)*(?:/\d+(?:\.\d+)*)?$")
+
+
 class PdfMatrixSourceGatewayError(ValueError):
     """Raised when a PDF cannot produce a text Matrix source snapshot."""
 
@@ -164,7 +171,70 @@ def _normalize_table(raw_table: Any) -> tuple[tuple[str, ...], ...]:
     normalized = tuple(tuple(row[index] for index in keep_columns) for row in padded)
     if _looks_like_revision_record_table(normalized):
         return ()
+    normalized = _repair_centered_merged_matrix_spans(normalized)
     return _repair_split_sample_quantity_tail(_collapse_fragmented_matrix_header(normalized))
+
+
+def _repair_centered_merged_matrix_spans(
+    rows: tuple[tuple[str, ...], ...],
+) -> tuple[tuple[str, ...], ...]:
+    """Align a controlled eight-column Matrix extracted as seven cell pairs plus a tail."""
+    if not rows or any(len(row) != 15 for row in rows):
+        return rows
+
+    paired_columns = tuple((index, index + 1) for index in range(0, 14, 2))
+    if any(
+        row[left].strip() and row[right].strip()
+        for row in rows
+        for left, right in paired_columns
+    ):
+        return rows
+
+    collapsed = tuple(
+        tuple(row[left] or row[right] for left, right in paired_columns) + (row[14],)
+        for row in rows
+    )
+    header = collapsed[0]
+    if _clean_text(header[0]).lower() != "test" or _clean_text(header[1]).lower() != "para":
+        return rows
+    group_labels = tuple(_clean_text(cell) for cell in header[2:])
+    if len(group_labels) != 6 or not all(
+        _GROUP_TOKEN_RE.fullmatch(label) for label in group_labels
+    ):
+        return rows
+
+    body_evidence = sum(
+        1
+        for row in collapsed[1:]
+        if re.search(r"[A-Za-z]{2,}", _clean_text(row[0]))
+        and _SECTION_TOKEN_RE.fullmatch(_clean_text(row[1]))
+    )
+    if body_evidence < 4:
+        return rows
+
+    sample_index = next(
+        (
+            index
+            for index, row in enumerate(collapsed[1:], start=1)
+            if _clean_text(row[0]).lower() == "sample size"
+        ),
+        None,
+    )
+    if sample_index is None or sample_index + 1 >= len(collapsed):
+        return rows
+    sample_header = collapsed[sample_index]
+    sample_record = collapsed[sample_index + 1]
+    if (
+        not _clean_text(sample_header[1])
+        or _clean_text(sample_record[0])
+        or not _clean_text(sample_record[1])
+        or not all(
+            re.fullmatch(r"\d+", _clean_text(value))
+            for value in (*sample_header[2:], *sample_record[2:])
+        )
+    ):
+        return rows
+    return collapsed
 
 
 def _table_text_preview(table: tuple[tuple[str, ...], ...]) -> str:
