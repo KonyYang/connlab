@@ -1,0 +1,187 @@
+# TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH — Planner Evidence
+
+Status: `planned_pending_user_approval`
+Role: permanent Planner
+Date: 2026-07-31
+Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
+Next: User
+
+## Assignment And Stop Boundary
+
+The permanent Orchestrator dispatched a planning-only Discovery for a long-term governance change:
+default implementation WIP=1, durable execution token/queue, proportional Quick Fix capsules,
+serialized Quick Fix preemption, non-destructive original-lane recovery, explicit parallel
+exceptions, and cross-conversation enforcement.
+
+Authorized writes in this gate are exactly:
+
+- `tasks/TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH.md`
+- `docs/task_governance_wip1_and_proportionate_quick_fix_fast_path_plan.md`
+- this Planner evidence file
+
+No board, protocol, skill, helper, test, registry, bundle, product, branch, worktree, remote, or
+runtime mutation is authorized.
+
+## Primary Preflight
+
+- branch: `master`
+- HEAD: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
+- worktree: clean
+- index: clean
+- merge state: no `MERGE_HEAD`
+- matches Orchestrator planning base: yes
+
+## Evidence Read
+
+The Planner completely evaluated the User request and the current governance surfaces named by the
+dispatch:
+
+- request attachment at
+  `C:\Users\White\.codex\attachments\12886837-6afa-4b75-b990-df65485932a5\pasted-text.txt`
+- `AGENTS.md` task, anti-skip, Planner, worktree, permanent-role/Quick-Fixer, and frozen-legacy rules
+- current task board and active/retained/cancelled lane records
+- Planner Discovery, parallel execution, orchestration, operations, execution, and review rules
+- permanent role registry and empty active-bundle snapshot
+- Planner and lane-Orchestrator skills
+- `scripts/run_task.ps1` and `scripts/connlab_lane_worktree.ps1`
+- the two governance/orchestration regression modules that reference those surfaces
+- TASK_368C task/plan as the latest concrete Quick Fix path
+- primary and all registered worktree branch/HEAD/clean facts
+
+## Discovery Gate
+
+### Confirmed by User
+
+- Default implementation WIP limit must be one, including through Reviewer/QA/Integrator gates.
+- Ordinary second tasks queue; worktree/path independence alone never grants concurrency.
+- Proven 19.1 Quick Fixes use a compact capsule, targeted tests, proportional Reviewer/QA, and
+  Integrator closeout without separate Planner/full plan/repeated approval.
+- Preemption is serial, requires a clean immutable checkpoint, preserves the original lane, cannot
+  nest, and must recover by merge-not-rebase reconciliation.
+- Parallel execution is an explicit, proof-backed, user-approved, max-two exception.
+- The task board remains the only execution authority and new conversations must fail closed.
+- This turn is planning-only and must stop for User approval.
+
+### Confirmed by repository evidence
+
+- Board current active task is None; TASK_368A/B/C are accepted/local; browser-release is cancelled
+  without integration; active bundle is empty.
+- Existing parallel/orchestration prose still permits default independent parallel lanes and has
+  stale V1-Lite bundle/Controller references.
+- Neither `run_task.ps1` nor worktree `Create` enforces a board execution token.
+- Current governance tests contain stale V1-Lite assertions and no WIP/preemption/recovery matrix.
+- Permanent role registry already matches the target classic role model and should remain read-only.
+- All registered worktrees inspected were clean and none is a current token owner.
+
+### Planner inference
+
+- Use one marker-delimited JSON block embedded in the board as machine-readable authority.
+- Make `scripts/connlab_execution_gate.ps1` a read-only invariant/decision helper.
+- Keep a compact Quick Fix task file but omit a separate plan.
+- Assign non-destructive reconciliation to permanent Integrator with conflicts returned to
+  Planner/User.
+- Require QA for this governance implementation because Windows entry points and restart recovery
+  change.
+
+### Not yet confirmed
+
+- User approval of the exact task/plan and file allowlist.
+- Approval of the board JSON schema/helper interface/capsule storage/migration strategy.
+- Future implementation base/branch/worktree and then-live execution state.
+
+### Risk
+
+Primary risks are a second drifting authority, documentary-only enforcement, over-broad Quick Fix
+classification, loss/history rewrite during preemption, stale live-state migration, or accidental
+mutation of retained/frozen/cancelled worktrees. The plan addresses each through a single embedded
+authority, read-only fail-closed helper, negative risk tests, checkpointed merge recovery, fresh
+activation audit, and disposable QA repositories.
+
+### Continue or stop
+
+Continue only to create and locally commit the three planning artifacts. Then stop for User
+approval. No implementation Definition of Ready exists yet.
+
+## Definition Of Ready Result
+
+- Planning package ready for User review: yes.
+- Executable lane ready: no.
+- Missing implementation gates: explicit User approval, fresh state reconciliation, board
+  activation/token record, and concrete clean branch/worktree/base.
+- Required status: `planned_pending_user_approval`.
+
+## Planning Decisions Recorded
+
+The formal task and plan contain all requested outputs:
+
+1. Discovery Gate.
+2. Current/target model delta.
+3. Nine-state machine and transition table.
+4. Token acquisition/retention/release.
+5. FIFO queue and recovery priority.
+6. Compact capsule and four risk classes.
+7. Dirty/clean/review/QA/integration preemption rules.
+8. Merge-not-rebase reconciliation algorithm.
+9. Explicit max-two parallel exception gate.
+10. Board-based conversation/restart recovery.
+11. Exact May Touch/Must Not Touch/Locked Paths.
+12. Ordered file-level implementation plan.
+13. Fresh migration of idle/active/paused/retained state.
+14. Compatibility and rollback.
+15. Mandatory Reviewer/QA/Integrator gates.
+16. Twenty-two-row validation matrix including the sixteen required scenarios.
+17. Protected current-lane proof.
+18. Ordered implementation steps with a stop condition at every step.
+
+## Protected Baseline
+
+Planning-start blobs:
+
+- board: `a9b127dd1b0263c422c29bfac66860a34b1cbbde`
+- active bundle: `3635fa070b7e5d1bc3453678c71c98f38ab54e99`
+- role registry: `c5083212ea3c85915057e98de92c18fbcbdc9531`
+- AGENTS: `7ced6d5a2549057cb65fd89b3611793cdbc1566e`
+
+Registered worktree HEADs observed read-only:
+
+- V2 bootstrap: `91c6b42564c1ef030761bd9c757889159e438974`
+- V2 thread-title corrective: `afe8ed173cf1f4f0f2bad4ad6aa7fb4fe10eb9ca`
+- V2 user-approval-binding corrective: `e22404456d0ee99d2d557e78d511c94d2e363002`
+- V2 developer-planning-binding corrective: `5f30db85b675b7f606a7b7474ce475d984988f6c`
+- browser-release cancelled checkpoint: `0bf56ea09ba1a1baedd5ce982d0b47d73d1889df`
+- TASK_368B retained lane: `5cac86b60c728bcbb6a1b72a9e3d340fc976d21b`
+- TASK_368C retained lane: `e7e5ac635aa06eda0c11e18436ffa60c2d83c062`
+
+Every registered worktree had zero status entries. The TASK_368A retained residual directory exists
+outside the worktree registry and was not entered or modified.
+
+## Planned Future Scope Boundary
+
+The exact implementation allowlist is frozen in the task/plan. It covers one new policy, the board
+embedded execution section, four referencing protocols, two permanent-role skills, one new read-only
+gate helper, two existing entry scripts, three new tests, two current governance tests, and this
+task's own governance/evidence.
+
+Registry, active bundle, V2, product code/tests, current lanes/residuals, remote/runtime state, and
+destructive actions remain forbidden. No parallel exception is planned for this global governance
+implementation.
+
+## Validation At This Planning Gate
+
+Required before commit:
+
+- confirm only the three authorized files are new/changed;
+- confirm all three state `planned_pending_user_approval`;
+- inspect `git diff --check` and the staged diff;
+- use exact-path staging only;
+- confirm the planning commit contains exactly the three paths;
+- confirm primary worktree/index clean afterward;
+- confirm board/bundle/registry/AGENTS blobs and worktree inventory/HEADs are unchanged.
+
+## Handoff
+
+Next role: User.
+
+User may approve, reject, or amend the exact plan. Approval must precede board activation,
+implementation worktree creation, any execution token, and Developer/Reviewer/QA/Integrator
+dispatch.
