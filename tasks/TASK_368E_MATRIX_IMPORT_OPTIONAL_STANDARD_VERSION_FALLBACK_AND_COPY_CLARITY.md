@@ -1,12 +1,13 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `approved_worktree_preparation`
+Status: `worktree_creation_authorized`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for isolated worktree preparation only. User approval
-is recorded; no implementation branch/worktree exists yet, no execution token is held, and no
-Developer dispatch or product/test change has started.
+Current gate owner: permanent Orchestrator for exact isolated worktree creation only. TASK_368E
+now holds the sole execution token with schema state `implementation_running` and a complete
+Developer active record required by the creation gate. The branch/worktree do not yet exist;
+Developer has not been dispatched and no product/test change has started.
 
 ## User Approval Record
 
@@ -19,9 +20,9 @@ Developer dispatch or product/test change has started.
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is only `approved_worktree_preparation`; token acquisition and Developer
-  dispatch require later primary governance after Orchestrator has created and verified the exact
-  isolated worktree.
+- Current durable state is `worktree_creation_authorized`. The token and required Developer active
+  record are seeded only so Orchestrator can pass the exact CreateWorktree gate. Developer dispatch
+  remains a later primary governance step after the worktree is created and verified clean.
 
 ## Goal
 
@@ -235,15 +236,16 @@ authority ambiguity returns to Planner/User.
 - Sibling worktree:
   `D:\PythonProject\connlab-worktrees\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`
 - Planning base: `7b2be466b283d53f88b93d365ed21f15269fa5a5`
+- Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; no parallel exception.
 
-User approval is now recorded, but the branch/worktree still do not exist. Permanent Orchestrator
-must run its own fresh worktree-preparation gate, create only the exact branch/path above, verify
-clean base/HEAD/index, and return those facts for dispatch governance. The implementation base is
-recorded from that verified creation, not inferred from planning history.
+The branch/worktree still do not exist. Permanent Orchestrator must run the read-only creation gate,
+create only the exact branch/path above from the recorded creation base, verify branch/HEAD/
+worktree/index cleanliness, and return those facts for dispatch governance. The schema role is
+Developer solely because `implementation_running` requires it; it is not a Developer dispatch.
 
 ## Stop Point
 
-Return to permanent Orchestrator for worktree preparation. Planner must not create the worktree,
-acquire the execution token, dispatch Developer, or edit product/test code in this approval-only
+Return to permanent Orchestrator for exact worktree creation. Planner has seeded the sole token but
+must not create the worktree, dispatch Developer, or edit product/test code in this governance
 pass.

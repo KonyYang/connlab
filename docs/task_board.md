@@ -3,9 +3,9 @@
 > Status: classic permanent-role execution active; V1-Lite and Controlled Lane V2 are frozen read-only, V2 heartbeat remains `PAUSED`, and retained snapshots are preserved
 > Last Updated: 2026-08-01
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: None. `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY` is `approved_worktree_preparation`: the User approved the exact task/plan and automatic execution through local Integrator acceptance, but no branch/worktree, execution token, or Developer dispatch exists yet. WIP remains `1`; terminal execution state is `complete`, token owner and active task are null, queue is empty, and paused task, Quick Fix, and parallel exception are null. The clean integrated TASK_368D lane remains retained under permanent Orchestrator governance, and all prior retained/cancelled/residual/frozen facts remain unchanged.
+> Current Active Task: `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY` is `worktree_creation_authorized`. It is the sole durable execution owner under WIP=`1`; schema state is `implementation_running` with the required Developer active record solely to authorize exact worktree creation. The branch/worktree do not yet exist and Developer has not been dispatched. Queue remains empty; paused task, Quick Fix, and parallel exception remain null. The clean integrated TASK_368D lane remains retained under permanent Orchestrator governance, and all prior retained/cancelled/residual/frozen facts remain unchanged.
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-> Proposed Next Task: `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY`, approved for permanent Orchestrator to prepare the exact isolated branch/worktree after a fresh gate. Do not acquire the execution token or dispatch Developer until worktree/base/HEAD/index cleanliness is verified and later primary dispatch governance records them.
+> Proposed Next Task: None. Permanent Orchestrator must next create only the authorized TASK_368E branch/worktree from exact base `e226bf1e54db4de54eb2366e96895999ce54652d`, verify branch/HEAD/worktree/index cleanliness, then return those facts for later Developer-dispatch governance. Do not dispatch Developer from this creation-authority checkpoint.
 
 <!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
 ```json
@@ -13,9 +13,37 @@
   "schema": "connlab.execution-control",
   "version": 1,
   "wip_limit": 1,
-  "execution_token_owner": null,
-  "execution_state": "complete",
-  "active": null,
+  "execution_token_owner": "TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY",
+  "execution_state": "implementation_running",
+  "active": {
+    "task_id": "TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY",
+    "lane": "task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity",
+    "role": "Developer",
+    "branch": "lane/task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity",
+    "worktree": "D:\\PythonProject\\connlab-worktrees\\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity",
+    "base_sha": "e226bf1e54db4de54eb2366e96895999ce54652d",
+    "head_sha": "e226bf1e54db4de54eb2366e96895999ce54652d",
+    "locked_paths": [
+      "backend/application/matrix_import_method_authority.py",
+      "backend/application/matrix_import_commit_service.py",
+      "backend/api/routes_matrix_import_commit.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "frontend/src/features/matrix-editor/MatrixImportStandardVersionChoiceDialog.tsx",
+      "frontend/src/features/matrix-editor/useMatrixImportStandardVersionChoice.ts",
+      "frontend/src/features/settings/settingsResourceConfig.ts",
+      "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
+      "frontend/src/workbench.css",
+      "tests/unit/test_task_368e_matrix_import_optional_standard_fallback.py",
+      "tests/integration/test_task_368e_matrix_import_optional_standard_fallback_api.py",
+      "frontend/src/features/matrix-editor/MatrixImportStandardVersionChoiceDialog.test.tsx",
+      "frontend/src/features/matrix-editor/useMatrixImportStandardVersionChoice.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixImportOptionalStandardFallback.test.tsx",
+      "frontend/src/features/settings/SettingsStandardRecordSheet.test.tsx",
+      "tests/unit/test_frontend_shell_files.py"
+    ],
+    "evidence": "docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_planner.md"
+  },
   "queue": [],
   "paused": null,
   "quick_fix": null,
@@ -34,15 +62,15 @@
     }
   ],
   "parallel_exception": null,
-  "last_governance_commit": "8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1",
-  "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md"
+  "last_governance_commit": "e226bf1e54db4de54eb2366e96895999ce54652d",
+  "evidence": "docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_planner.md"
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
 
 ## Active Execution Model
 
-- `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY`: `approved_worktree_preparation`. On 2026-08-01 the User explicitly approved the exact task/plan at planning checkpoint `5dff98af9d0f93770962a9a672d7610d0cef4936` and authorized automatic execution through local Integrator acceptance. QF-4, WIP=1, exact locks, choose/skip behavior, integrity fail-closed boundary, and mandatory Developer/Reviewer/QA/Integrator gates remain unchanged. Permanent Orchestrator may next create and verify only the planned isolated branch/worktree; no TASK_368E branch/worktree, token, active record, or Developer dispatch exists yet. The execution-control JSON remains terminal and unchanged. No push, restart, release build, product/test write, real-data/file mutation, destructive action, or retained/cancelled/frozen lane change is authorized.
+- `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY`: `worktree_creation_authorized`. On 2026-08-01 the User explicitly approved the exact task/plan at planning checkpoint `5dff98af9d0f93770962a9a672d7610d0cef4936` and authorized automatic execution through local Integrator acceptance. Fresh production-root gates on clean `master@e226bf1e54db4de54eb2366e96895999ce54652d` returned `ALLOW_INSPECT` and `ALLOW_START`; the first CreateWorktree check correctly failed closed as `BLOCKED_TOKEN_OWNED` while token-null, and no topology changed. This checkpoint now seeds TASK_368E as the sole durable token owner with schema state `implementation_running` and a complete Developer active record for lane `task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`, branch `lane/task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`, planned sibling worktree `D:\PythonProject\connlab-worktrees\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`, and base/initial HEAD `e226bf1e54db4de54eb2366e96895999ce54652d`. This role value satisfies the creation gate schema only: the branch/worktree do not yet exist and Developer is not dispatched. QF-4, WIP=1, exact locks, choose/skip behavior, integrity fail-closed boundary, and mandatory Developer/Reviewer/QA/Integrator gates remain unchanged. Queue is empty; paused/Quick Fix/parallel records are null. No push, restart, release build, product/test write, real-data/file mutation, destructive action, or retained/cancelled/frozen lane change is authorized.
 - `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX`: complete/accepted and locally integrated by conflict-free non-fast-forward merge `8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`. The exact five-path gateway/test/Quick Fixer/Reviewer/QA package is integrated, with Reviewer and QA passing on the merge ancestry. Merged-primary validation passed bounded `2`, combined PDF/parser `35`, pycompile, the 482-line gateway ceiling, exact package/forbidden-path/ancestry/protected-state checks, and read-only GS-12-2299 auto plus explicit page-9/table-2 smoke. Both modes selected global table 15, returned Groups 1-6 with sample size 5 and no blocker/warning; table 1 remained a fail-closed title block. PDF SHA-256/size/mtime were unchanged. Terminal state is `complete`; token owner and active task are null, queue empty, and paused/Quick Fix/parallel exception null. The clean integrated lane branch/worktree remains `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement. No push, publication, release build, restart, real DB/Excel/source mutation, Create/Retire, or destructive cleanup occurred. The packaged Standard record Excel warning and supplemental ConfirmedMatrixFeeDraftNotFoundError remain outside this task.
 - `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`: complete/accepted and locally integrated by non-fast-forward merge `2f0fe6730777221ed48551a1cbdf8802aeed3ea1`. The exact merge parents are primary premerge `f465b5f576229544f773095bb1086961152e6be8` and QA HEAD `600bbf2d8d6b7884fed6a3af4e46f56cce3fe3a3`; Reviewer and mandatory QA passed on that ancestry. The reviewed package is nineteen paths through Reviewer plus one QA evidence path, all authorized and integrated. Merged-primary validation passed `66` tests, three PowerShell parse checks, production-root read-only `Inspect`, and exact package/forbidden-path/ancestry/protected-state checks. WIP remains `1`; terminal state is `complete`, token and active task are null, queue is empty, and paused/Quick Fix/parallel exception are null. The clean integrated lane branch/worktree remains `retain` under permanent Orchestrator governance for separately authorized safe maintenance retirement; no removal was attempted. No product code/lane migration, push, publication, restart, real Create/Retire, or destructive cleanup occurred. TASK_368A/B/C, cancelled browser-release, frozen V2, and all prior residual facts remain unchanged.
 - `TASK_368C_FRONTEND_VITE_COMMAND_HEALTH_GUARD_QUICK_FIX`: complete/accepted and locally integrated by conflict-free non-fast-forward merge `f7923ad9d3ce73cb47f53b39688a98425b6b4c41`. The exact four-path launcher/bounded-test/Quick Fixer/Reviewer package is integrated; primary dispatch task/plan/board were preserved. Merged-primary validation passed: bounded fake-npm `3 passed`, combined packaging regression `8 passed`, Windows PowerShell parse, exact package/forbidden-path/diff/show/ancestry checks. The launcher now checks the exact `node_modules\.bin\vite.cmd` leaf, invokes the existing install path when missing, fails closed before dev if the post-install shim is still missing, and preserves the healthy startup plus `npm run dev` path. No real launcher, npm, network, repository frontend, Vite server, push, publication, or restart ran. A final read-only check found that the current shim now exists although this gate did not create or repair it; future runs skip install while it remains healthy and invoke the guarded install path if it becomes absent. The clean integrated TASK_368C lane branch/worktree remains `retain` under permanent Orchestrator governance for future separately authorized safe maintenance retirement; no removal was attempted. TASK_368A, TASK_368B, browser-release, and frozen V2 retained state remain untouched.

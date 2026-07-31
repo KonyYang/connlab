@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `approved_worktree_preparation`
+Status: `worktree_creation_authorized`
 
 Date: 2026-08-01
 
@@ -9,6 +9,29 @@ Role: permanent Planner
 Planning base: `7b2be466b283d53f88b93d365ed21f15269fa5a5`
 
 Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
+
+Worktree creation authority base/initial HEAD:
+`e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## Worktree Creation Authority Audit
+
+- Primary was reverified clean on `master@e226bf1e54db4de54eb2366e96895999ce54652d`.
+- Production-root read-only `Inspect` returned `ALLOW_INSPECT`; `StartTask` returned
+  `ALLOW_START` with token-null terminal state.
+- The first read-only CreateWorktree gate correctly returned `BLOCKED_TOKEN_OWNED` because
+  TASK_368E was not yet the durable owner. No branch/worktree was created and no topology changed.
+- This governance transition makes TASK_368E the sole execution token owner under WIP=`1`, with
+  state `implementation_running` and the schema-required complete Developer active record.
+- The active record fixes lane, branch, planned sibling worktree, base/head, all seventeen locked
+  product/test paths, and this Planner evidence. Queue remains empty; paused task, Quick Fix, and
+  parallel exception remain null; residuals are byte-for-byte preserved.
+- `role: Developer` satisfies the state schema for the next CreateWorktree gate only. Developer is
+  not dispatched, because the recorded branch/worktree do not yet exist and have not been verified.
+- After the transition, production-root read-only validation returned `ALLOW_INSPECT`,
+  `ALLOW_RESUME` for the same task, and `ALLOW_WORKTREE_CREATE` for the exact lane. These checks
+  were zero-write and did not invoke the worktree helper.
+- Next authority is permanent Orchestrator creating only the exact topology, then returning clean
+  branch/HEAD/worktree/index facts for later primary dispatch governance.
 
 ## User Approval And Activation Audit
 
@@ -156,11 +179,13 @@ later durable primary token/role transition.
 
 ## Gate And Next Role
 
-- Status is `approved_worktree_preparation`.
-- Execution-control JSON remains terminal; no token, branch/worktree, or role dispatch exists.
-- Next legal role: permanent Orchestrator, for exact worktree preparation only.
+- Status is `worktree_creation_authorized`.
+- TASK_368E is the sole token owner; schema state is `implementation_running` with the exact
+  Developer active record. No branch/worktree or Developer dispatch exists yet.
+- Next legal role: permanent Orchestrator, for exact worktree creation only.
 
 ## Prohibited In This Pass
 
-No product/test edit, implementation lane, existing worktree change, push, release, restart,
-real DB/Excel/PDF access, protocol/skill/script change, or destructive action occurred.
+No product/test edit, branch/worktree creation, Developer dispatch, existing worktree change, push,
+release, restart, real DB/Excel/PDF access, protocol/skill/script change, or destructive action
+occurred.

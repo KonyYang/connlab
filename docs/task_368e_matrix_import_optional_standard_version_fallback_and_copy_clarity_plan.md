@@ -1,12 +1,12 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `approved_worktree_preparation`
+Status: `worktree_creation_authorized`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current active task: none. TASK_368E has explicit User approval and is at isolated-worktree
-preparation only. It owns no execution token, branch/worktree, product write, or Developer
-dispatch yet.
+Current active task: TASK_368E, solely for isolated-worktree creation. It owns the durable
+execution token under schema state `implementation_running`; the required active role is
+Developer, but no branch/worktree, product write, or Developer dispatch exists yet.
 
 ## Approval And Activation Record
 
@@ -17,12 +17,12 @@ dispatch yet.
   acceptance after controlled activation.
 - The approved route remains `Developer -> Reviewer -> QA -> Integrator`; every gate is
   mandatory because this is QF-4.
-- WIP remains `1`; there is no parallel exception, queue entry, paused task, Quick Fix, token
-  owner, TASK_368E branch, or TASK_368E worktree.
-- This governance step authorizes permanent Orchestrator to prepare the exact isolated
-  branch/worktree only. It does not authorize Planner to create it or dispatch Developer, and it
-  does not authorize push, restart, release build, real-data/file mutation, destructive cleanup,
-  or changes to retained/cancelled/frozen lanes.
+- WIP remains `1`; TASK_368E is the sole token owner, while the queue is empty and paused task,
+  Quick Fix, and parallel exception are null. No TASK_368E branch/worktree exists yet.
+- This governance step authorizes permanent Orchestrator to create and verify the exact isolated
+  branch/worktree only. It does not authorize Planner to create it, Orchestrator to dispatch
+  Developer, push, restart, release build, real-data/file mutation, destructive cleanup, or changes
+  to retained/cancelled/frozen lanes.
 
 ## 1. Discovery Gate
 
@@ -84,18 +84,18 @@ rescinded its interim no-window correction, and confirmed choose-or-skip as the 
 
 ### Not Yet Confirmed
 
-- Future implementation base/HEAD and exact test totals.
+- Post-creation worktree verification and exact implementation test totals.
 - Whether a safe disposable live browser fixture is available to QA.
 - Developer/Reviewer/QA/Integrator evidence, because implementation has not started.
 
 These unknowns do not change scope, behavior, ownership, acceptance, or gate order. Definition of
-Ready was satisfied for User review; approval is now recorded and isolated-worktree preparation is
-next, not implementation dispatch.
+Ready was satisfied for User review; approval and the creation-gate token are now recorded, and
+isolated-worktree creation is next, not implementation dispatch.
 
 ### Continue Or Stop
 
-Continue with planned governance only. Stop before lane creation/implementation and request
-explicit User approval.
+Continue with exact worktree creation under the recorded authority. Stop before Developer dispatch
+until Orchestrator returns clean branch/worktree/base/HEAD/index facts for later governance.
 
 ## 2. User Flow And Exact Copy
 
@@ -421,10 +421,14 @@ context, bounded components/tests, and mandatory gates mitigate them.
 ## 13. Implementation Order And Stop Conditions
 
 1. Completed: User approved the exact task/plan at the recorded planning checkpoint.
-2. Next: Orchestrator reruns the worktree-preparation gate and verifies WIP=1;
-   blocked/queued means stop/queue per policy.
-3. Create exact isolated lane/worktree at the then-current approved base and record token/locks.
-4. Developer follows TDD. Any non-allowlisted path, automatic config, schema/migration, broad
+2. Completed: production-root `Inspect` returned `ALLOW_INSPECT`, `StartTask` returned
+   `ALLOW_START`, and the first CreateWorktree check correctly returned `BLOCKED_TOKEN_OWNED`
+   while token-null; no topology changed.
+3. Current: TASK_368E is the sole token owner with exact locks and a schema-valid Developer active
+   record. Orchestrator creates only the exact lane/worktree from
+   `e226bf1e54db4de54eb2366e96895999ce54652d` and verifies it clean.
+4. After later primary dispatch governance, Developer follows TDD. Any non-allowlisted path,
+   automatic config, schema/migration, broad
    fallback, or changed Confirm Matrix behavior stops for Planner/User.
 5. Reviewer passes or returns findings to Developer.
 6. QA passes or returns failures to Developer/Planner.
@@ -438,21 +442,23 @@ context, bounded components/tests, and mandatory gates mitigate them.
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity`
 - Planning base: `7b2be466b283d53f88b93d365ed21f15269fa5a5`
+- Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; parallel exception: none.
 
-No TASK_368E branch/worktree exists in this approved-preparation state. Orchestrator records the
-actual clean base/HEAD after exact creation; token/Developer dispatch remains a later governance
-transition.
+No TASK_368E branch/worktree exists in this creation-authority state. The execution token and
+schema-required Developer active record are durable, but Developer is not dispatched. Orchestrator
+must create only the exact topology above from the recorded base and return verified clean facts;
+Developer dispatch remains a later governance transition.
 
 ## 15. Definition Of Ready
 
-Definition of Ready and explicit User approval are satisfied for isolated-worktree preparation.
+Definition of Ready and explicit User approval are satisfied for isolated-worktree creation.
 Goal, copy, choose/skip behavior, availability/integrity boundary, audit/reuse/API/transaction
 design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. This is
-not Developer dispatch authority until Orchestrator creates/verifies the worktree and primary
-governance records the implementation token/role.
+not Developer dispatch authority until Orchestrator creates/verifies the worktree and later primary
+governance confirms dispatch against the real Git record.
 
 ## 16. Next Legal Role
 
-Permanent Orchestrator, for exact isolated-worktree preparation only. Planner does not create the
-worktree, acquire the token, or dispatch Developer from this pass.
+Permanent Orchestrator, for exact isolated-worktree creation only. Planner does not create the
+worktree or dispatch Developer from this pass.
