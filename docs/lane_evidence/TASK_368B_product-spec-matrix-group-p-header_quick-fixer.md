@@ -75,11 +75,17 @@ Required real-PDF smoke then blocked the lane:
 
 ## Residual And Handoff
 
-- Modified but uncommitted allowed paths:
+- Preserved WIP paths:
   `backend/modules/test_plan/product_spec_matrix_parser.py`,
   `tests/unit/test_task_368b_product_spec_matrix_group_p_header.py`, and this evidence file.
-- No implementation checkpoint was created because the required real-PDF smoke failed.
+- Blocked/unintegrated WIP preservation checkpoint:
+  `b36c95d3aababe5421c09b2e3532d67317331f82`.
+- This checkpoint is not review-ready implementation and must not be integrated until Planner
+  formally authorizes the support-parser scoring boundary.
+- The evidence-only follow-up commit leaves `git status --short` empty, proving the worktree and
+  index clean; its full final lane HEAD is reported in the Orchestrator callback.
 - No PDF/PNG/table artifact, project persistence, Replace, Confirm Matrix, push, publication,
   restart, reset, restore, clean, or destructive action was performed.
+- Remote state: not pushed.
 - Next role: Orchestrator / Planner to decide whether to authorize the support-parser scoring
   boundary, then return to Quick Fixer under a revised May Touch list.
