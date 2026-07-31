@@ -1,8 +1,8 @@
 # TASK_368A_PRODUCT_SPEC_MATRIX_IMPORT_SELECTION_AND_DIAGNOSTICS_QUICK_FIX
 
-Status: `integration_reconciliation_approved`
+Status: `complete` / `accepted` / `locally_integrated`
 Lane: `task-368a-product-spec-matrix-import-quick-fix`
-Owner role: Integrator; exact evidence-path reconciliation authorized by Planner
+Owner role: Integrator closeout complete; no active implementation owner
 Date: 2026-07-31
 
 ## Current Phase / Why Allowed
@@ -56,6 +56,31 @@ Date: 2026-07-31
   browser-release checkpoint remains completely independent and locked.
 - Reconciliation evidence:
   `docs/lane_evidence/TASK_368A_product-spec-matrix-import-selection-and-diagnostics_integration-reconciliation_planner.md`.
+
+## Local Integration Acceptance
+
+- Planner-authorized retry pre-merge HEAD:
+  `3c4f43bdc2763c0f394b3a4a7e9977cea9fe2973`.
+- Complete QA/lane HEAD:
+  `826e0a232982153eb00b6fc379892c4611a872e1`.
+- Local non-fast-forward merge commit:
+  `3bf1f56512eb6593db94111ce55b8a4cb9dd44d2`.
+- The sole evidence conflict was closed using the exact authorized lane blob
+  `eff7f9f2c50621ebcc53515b932287225ba8db7a`; no product, test, Reviewer, or QA
+  evidence content was changed during integration.
+- The full nine-path package is integrated. Merged-tree validation passed: backend
+  `31 passed`, pycompile passed, MatrixEditorWorkspace `45 passed`, and frontend build
+  passed with the existing chunk-size warning only.
+- No real DOCX was opened or written. No localhost process was started, stopped, or
+  restarted; an already-running localhost may therefore still serve the old process code.
+  No publication or remote push occurred.
+- The safe retirement script passed dry-run but failed during the real Windows directory
+  removal with `Invalid argument`. Git no longer registers the TASK_368A worktree; the
+  merged local lane branch remains at the exact lane HEAD, and the non-worktree residual
+  directory is retained without force or manual cleanup for permanent Orchestrator/User
+  governance.
+- The cancelled browser-release checkpoint remains an independent existing `retain` item
+  and was not touched.
 
 ## Goal
 
