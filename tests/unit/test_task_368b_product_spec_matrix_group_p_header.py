@@ -1,6 +1,9 @@
 """Bounded regressions for TASK_368B prefixed Group P headers."""
 
+from types import SimpleNamespace
+
 from backend.modules.test_plan import ProductSpecMatrixParser
+from backend.modules.test_plan.product_spec_matrix_parser_support import table_score
 
 
 def _coolpower_matrix(group_p_header: str = "Group P") -> list[list[str]]:
@@ -99,3 +102,38 @@ def test_group_header_comparison_rejects_phrase_and_preserves_existing_forms() -
         "2",
         "6a",
     ]
+
+
+def _score_with_raw_group_labels(labels: tuple[str, ...]) -> int:
+    result = SimpleNamespace(
+        groups=tuple(
+            SimpleNamespace(steps=(SimpleNamespace(), SimpleNamespace()))
+            for _ in labels
+        ),
+        rows=(
+            SimpleNamespace(test_item="Visual Examination", is_sample_row=False),
+            SimpleNamespace(test_item="Current Rating", is_sample_row=False),
+            SimpleNamespace(test_item="Samples Quantity (PCS)", is_sample_row=True),
+        ),
+    )
+    header = SimpleNamespace(
+        row_index=1,
+        group_columns=tuple(enumerate(labels, start=2)),
+    )
+    return table_score(
+        result=result,
+        header=header,
+        table=[["OTHER HEADER"]],
+        table_context=None,
+    )
+
+
+def test_scoring_accepts_complete_prefixed_tokens_without_promoting_phrase() -> None:
+    valid_score = _score_with_raw_group_labels(("Group P", "Group 1", "Group 6a"))
+    broad_phrase_score = _score_with_raw_group_labels(
+        ("Group P", "Group Purpose", "Group 6a")
+    )
+
+    assert valid_score == broad_phrase_score + 12
+    assert valid_score >= ProductSpecMatrixParser._MIN_MATRIX_SCORE
+    assert broad_phrase_score < ProductSpecMatrixParser._MIN_MATRIX_SCORE
