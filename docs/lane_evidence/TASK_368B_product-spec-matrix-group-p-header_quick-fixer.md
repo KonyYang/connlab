@@ -4,7 +4,7 @@ Date: 2026-07-31
 Task: `TASK_368B_PRODUCT_SPEC_MATRIX_GROUP_P_HEADER_QUICK_FIX`
 Lane: `task-368b-product-spec-matrix-group-p-header-quick-fix`
 Role: permanent Quick Fixer
-Status: `approved_pending_worktree`
+Status: `blocked_scope_expansion`
 
 ## Authorization
 
@@ -34,31 +34,52 @@ May Touch:
 
 Everything else is read-only or forbidden by the task.
 
-## Planned Worktree
+## Worktree
 
 - Branch: `lane/task-368b-product-spec-matrix-group-p-header-quick-fix`
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-368b-product-spec-matrix-group-p-header-quick-fix`
-- Base commit: pending governance checkpoint and worktree creation.
+- Base commit: `b671bb493a683529cfe64ab320df4f90914406c8`.
+- Dispatch verification: branch and HEAD matched the exact base; worktree and index were clean.
 
-## Required Quick Fixer Record
+## TDD And Scope Blocker
 
-Before callback, replace the pending status and record:
+RED:
 
-- exact branch/worktree/base verification;
-- RED result from the new bounded regression;
-- implementation and changed paths;
-- GREEN targeted parser results and pycompile;
-- read-only real-PDF lane smoke;
-- exact implementation/evidence commits;
-- clean worktree/index proof;
-- remote state and residuals;
-- next role recommendation.
+- Added bounded synthetic coverage for the fourteen-column Matrix, raw `Group P`, key,
+  independent steps/sample values, `Group Purpose` rejection, and established group forms.
+- After correcting the small compatibility fixture to include its real qualification-table
+  context, `py -m pytest tests\unit\test_task_368b_product_spec_matrix_group_p_header.py -q`
+  produced `1 failed, 1 passed`; the only failure was the missing final `Group P`.
 
-Stop status must be one of:
+Parser-only attempt:
 
-- `ready_for_review`;
-- `blocked_scope_expansion`;
-- `blocked_unexplained_test_failure`;
-- `blocked_ownership_conflict`;
-- `blocked_attachment_smoke`.
+- Added a full-match comparison rule for an explicit `Group` prefix plus one letter while
+  preserving `_clean(row[index])` as the raw stored label.
+- The bounded synthetic module reached `2 passed`.
+
+Required real-PDF smoke then blocked the lane:
+
+- The external attachment remained readable at its original path and was not copied or changed.
+- `ProjectTestPlanMatrixPreviewService.preview_from_path(...)` with page `11`,
+  table-on-page `2` retained that location but returned no groups and blocker
+  `Selected table 16 is not a valid Matrix table.`
+- Root cause: once raw `Group P` enters `header.group_columns`, the existing
+  `GROUP_TOKEN_HEADER_RE` check in
+  `backend/modules/test_plan/product_spec_matrix_parser_support.py` no longer awards the
+  complete-group-token score. The real table falls below `_MIN_MATRIX_SCORE`.
+- Correct repair therefore requires a second existing production file and a bounded scoring
+  token update. Both are explicitly outside this dispatch.
+- A parser-local shadow header or selected-table score bypass would alter scoring semantics
+  indirectly and was not attempted.
+
+## Residual And Handoff
+
+- Modified but uncommitted allowed paths:
+  `backend/modules/test_plan/product_spec_matrix_parser.py`,
+  `tests/unit/test_task_368b_product_spec_matrix_group_p_header.py`, and this evidence file.
+- No implementation checkpoint was created because the required real-PDF smoke failed.
+- No PDF/PNG/table artifact, project persistence, Replace, Confirm Matrix, push, publication,
+  restart, reset, restore, clean, or destructive action was performed.
+- Next role: Orchestrator / Planner to decide whether to authorize the support-parser scoring
+  boundary, then return to Quick Fixer under a revised May Touch list.

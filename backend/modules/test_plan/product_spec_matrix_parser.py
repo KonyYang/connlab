@@ -101,6 +101,7 @@ class ProductSpecMatrixParser:
     """Extract group sequences from Matrix-like product specification tables."""
 
     _GROUP_RE = re.compile(r"\bgroup\s*(\d+)\b", re.IGNORECASE)
+    _GROUP_PREFIXED_LETTER_RE = re.compile(r"group\s*[a-z]", re.IGNORECASE)
     _GROUP_NUMERIC_RE = re.compile(r"^\s*\d+[a-z]?\s*$", re.IGNORECASE)
     _STEP_TOKEN_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
     _SAMPLE_ROW_RE = re.compile(r"\bsamples?\b", re.IGNORECASE)
@@ -191,7 +192,9 @@ class ProductSpecMatrixParser:
             group_columns = tuple(
                 (index, _clean(row[index]))
                 for index, value in enumerate(normalized)
-                if self._GROUP_RE.search(value) or self._GROUP_NUMERIC_RE.match(value)
+                if self._GROUP_RE.search(value)
+                or self._GROUP_PREFIXED_LETTER_RE.fullmatch(value)
+                or self._GROUP_NUMERIC_RE.match(value)
             )
             if not group_columns:
                 continue
