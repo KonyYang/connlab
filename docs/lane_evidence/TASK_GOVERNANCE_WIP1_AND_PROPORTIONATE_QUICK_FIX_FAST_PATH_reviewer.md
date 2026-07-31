@@ -1,9 +1,9 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH — Reviewer Evidence
 
-Status: `reviewer_blocked`
+Status: `reviewer_pass`
 Role: permanent Reviewer
 Date: 2026-07-31
-Next: permanent Developer
+Next: permanent QA
 
 ## Authorization And Review Boundary
 
@@ -15,20 +15,90 @@ Next: permanent Developer
 - Prior Reviewer evidence HEAD: `ee2c179659c9636093cc2c3dc37c38a79f07bb7a`.
 - Developer fix checkpoint: `7cb4d6db7f978875de73c1f6b0fec5e557f4e565`.
 - Full re-gate review HEAD: `56ed70647b0eaa51fabf404c40caaf42acc69337`.
+- Second Reviewer block/evidence HEAD: `090fdc254edadaeb91a003890d3a920adcd9c739`.
+- Second Developer fix checkpoint: `911713b85b28d172b8919fac1f127a2e3b843246`.
+- Final full re-gate review HEAD: `cafdf89144ce3a03403c3d6758f430655533e4b5`.
 - Branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`.
 - Worktree:
   `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`.
 
-Reviewer read `AGENTS.md`, the current primary board, approved task/plan, Planner and updated
-Developer evidence, `TASK_REVIEW_CHECKLIST.md`, the new normative policy, changed
-protocols/skills/scripts, and all five approved test modules. The full re-gate covered only
-committed `a1968c4999a33c6bee18c9185882ea3b927c2004..56ed70647b0eaa51fabf404c40caaf42acc69337`
+Reviewer read `AGENTS.md`, the current primary board, approved task/plan, Planner and twice-updated
+Developer evidence, `TASK_REVIEW_CHECKLIST.md`, the normative policy, changed
+protocols/skills/scripts, and all five approved test modules. The final full re-gate covered only
+committed `a1968c4999a33c6bee18c9185882ea3b927c2004..cafdf89144ce3a03403c3d6758f430655533e4b5`
 and focused separately on
-`ee2c179659c9636093cc2c3dc37c38a79f07bb7a..56ed70647b0eaa51fabf404c40caaf42acc69337`.
+`090fdc254edadaeb91a003890d3a920adcd9c739..cafdf89144ce3a03403c3d6758f430655533e4b5`.
 No implementation file, other evidence, primary file, product lane, retained worktree, V2 state,
 remote, runtime, or service was modified.
 
-## Full Re-Gate Findings (Current)
+## Final Full Re-Gate Findings (Current)
+
+### Blocking
+
+- None.
+
+### Non-Blocking
+
+- None.
+
+The second narrow fix closes both reproduced `ALLOW_INSPECT` gaps. General validation now requires
+the complete canonical queue record, validates field types, task/position/sequence uniqueness,
+stored position order, timestamp/sequence consistency, and equal-priority FIFO order. It also
+requires the complete secondary role/branch/worktree/HEAD record for every parallel exception and
+validates canonical types, lane-derived branch, absolute distinct worktree, 40-hex HEAD, owner
+consistency, and disjoint locks. Actual secondary dispatch still verifies live clean branch/
+worktree/HEAD Git facts before allowing implementation.
+
+## Final Full Re-Gate Validation
+
+Reviewer-owned disposable `Inspect` matrix:
+
+- queue containing only `task_id + queue_position` -> `BLOCKED_QUEUE_INVALID`;
+- complete two-record queue -> `ALLOW_INSPECT`;
+- duplicate task -> `BLOCKED_QUEUE_TASK_DUPLICATE`;
+- duplicate position -> `BLOCKED_QUEUE_POSITION_DUPLICATE`;
+- stored out-of-order queue -> `BLOCKED_QUEUE_FIFO_INVALID`;
+- string rather than integer enqueue sequence -> `BLOCKED_QUEUE_INVALID`;
+- complete parallel record -> `ALLOW_INSPECT`;
+- each independently missing `secondary_role`, `secondary_branch`, `secondary_worktree`, or
+  `secondary_head_sha` -> `BLOCKED_PARALLEL_EXCEPTION_INCOMPLETE`.
+
+Fresh complete required suite:
+
+```powershell
+py -m pytest tests\unit\test_connlab_execution_gate_script.py tests\integration\test_connlab_execution_gate_recovery.py tests\unit\test_execution_wip_and_quick_fix_governance.py tests\unit\test_connlab_lane_worktree_script.py tests\unit\test_task_scoped_role_thread_lifecycle_governance.py -q
+```
+
+Result: `66 passed in 40.93s`.
+
+Fresh representative first-review path rerun covered Reviewer/QA/Integrator `gate_running`
+dispatch rejection, untouched pre-merge Resume rejection, real merge checkpoint Resume success,
+stale-lane authority rejection, live secondary Git-fact dispatch, QF-1/QF-4, run-task queue/no
+Codex, and worktree Create queue/no-write. Result: `11 passed in 11.86s`.
+
+Additional checks:
+
+- all three PowerShell scripts parse with zero AST errors;
+- helper/script line counts are `307`, `123`, and `305`; test module line counts are `496`, `489`,
+  `340`, `219`, and `49`, all within the approved 500-line limit;
+- `git diff --check` for original base through final review HEAD and `git show --check` for the
+  second implementation/evidence commits pass;
+- the full committed range remains the exact 18 implementation/evidence paths plus this Reviewer
+  evidence path; the second focused fix contains only helper, bounded unit test, and Developer
+  evidence;
+- primary is clean on `master` at
+  `f465b5f576229544f773095bb1086961152e6be8`; all frozen V2, cancelled browser-release, and
+  retained TASK_368B/C worktrees retain their prior clean HEADs; protected product/V2 diff is
+  empty;
+- lane-local production helper and `run_task -Preview` both resolve authority to
+  `D:\PythonProject\connlab` and fail closed with `BLOCKED_MARKERS_MISSING` until Integrator
+  reconciles the candidate block; neither writes or routes;
+- the candidate board block preserves WIP `1`, the exact task/branch/worktree/base, empty queue,
+  null pause/Quick Fix/parallel records, and primary dispatch SHA. Read-only `git merge-tree`
+  reports only the expected changed-in-both `docs/task_board.md`, so Integrator can reconcile live
+  primary facts without authority loss.
+
+## Second Gate Findings (Historical)
 
 ### Blocking 1 — `Inspect` still accepts incomplete queue and parallel authority records
 
@@ -309,7 +379,7 @@ Additional results:
 - QA must not start until a clean fix checkpoint closes every reproduced path and Reviewer re-gate
   passes.
 
-## Full Re-Gate Conclusion And Handoff
+## Second Gate Conclusion And Handoff (Historical)
 
 - Conclusion: `reviewer_blocked`
 - Blocking findings: one — general validation accepts incomplete frozen queue records and
@@ -317,3 +387,13 @@ Additional results:
 - Next role: permanent Developer
 - QA must not start. Developer should make the bounded schema/test correction above and return the
   same task for another full Reviewer re-gate.
+
+## Final Full Re-Gate Conclusion And Handoff
+
+- Conclusion: `reviewer_pass`
+- Blocking findings: none
+- Non-blocking findings: none
+- Reviewed implementation HEAD: `cafdf89144ce3a03403c3d6758f430655533e4b5`
+- Next role: permanent QA
+- QA should use the immutable final Reviewer-evidence descendant produced by this gate and the
+  exact clean lane; Integrator remains prohibited until QA passes.
