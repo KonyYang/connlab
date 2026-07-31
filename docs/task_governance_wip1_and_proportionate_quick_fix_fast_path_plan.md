@@ -8,18 +8,21 @@ Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package control
 
 The User approved this exact plan on 2026-07-31 at planning revision
 `75ed37425029393780fad80b1b3745c4652e4f1d` and authorized automatic implementation through local
-Integrator acceptance. The current gate records approval only: it does not seed the new JSON
-execution schema, reserve a token, create a branch/worktree, or dispatch a role. Remote push,
-publication, service restart, product-lane mutation, and destructive cleanup remain excluded.
+Integrator acceptance. Orchestrator then created and verified the exact isolated lane at approval
+governance commit `a1968c4999a33c6bee18c9185882ea3b927c2004`. This gate records the sole
+implementation token and Developer dispatch authority in existing board prose. It does not
+implement or seed the approved structured JSON schema/helper. Remote push, publication, service
+restart, product-lane mutation, and destructive cleanup remain excluded.
 
-Planned lane identity:
+Activated lane identity:
 
 - lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`
 - branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`
 - sibling worktree:
   `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`
-- base: the clean approval-governance HEAD returned by the Planner callback and independently
-  verified by Orchestrator before creation
+- base and initial lane HEAD: `a1968c4999a33c6bee18c9185882ea3b927c2004`
+- dispatch preflight: primary and lane worktree/index clean; no competing owner; no paused task or
+  parallel exception
 
 ## 1. Discovery Gate
 
@@ -121,15 +124,10 @@ creating a second authority beside the task board.
 
 ### Not yet confirmed
 
-- The physical implementation branch/worktree does not yet exist and therefore has no verified
-  created HEAD/clean status.
-- The exact implementation base is the approval-governance commit produced by this gate; its SHA
-  must be taken from the Planner callback and independently verified by Orchestrator.
-- Live board/worktree/token facts must be re-read immediately before worktree creation and again
-  before Developer dispatch.
-
-These facts block Developer dispatch, not task approval. Current activation state is
-`approved_worktree_preparation`.
+- No material Definition-of-Ready fact remains unconfirmed. Developer output, checkpoint HEAD, and
+  validation results are future execution evidence rather than dispatch blockers.
+- The structured JSON execution block and read-only helper intentionally do not exist before
+  implementation; the existing board prose is the sole one-time bootstrap authority.
 
 ### Planning risks
 
@@ -146,18 +144,18 @@ These facts block Developer dispatch, not task approval. Current activation stat
 ### Questions and continue/stop decision
 
 No clarification remains. The User explicitly approved the exact plan and local automatic role
-chain. Continue only through approval governance, then return to Orchestrator for isolated
-worktree preparation.
+chain, and Orchestrator proved the physical lane gate. Continue only through primary dispatch
+governance, then return `developer_dispatch_ready`; Orchestrator performs the actual role routing.
 
 ### Definition of Ready
 
 - User approval: **satisfied** for the exact plan at revision `75ed3742...`.
 - Scope/behavior/authority/validation DoR: **satisfied**.
-- Implementation dispatch DoR: **pending only physical activation** — Orchestrator must create and
-  verify the exact branch/worktree at the approval-governance HEAD, then record concrete base/HEAD
-  and clean status before Developer writes.
-- Required task/plan status: `approved`; current activation state:
-  `approved_worktree_preparation`.
+- Physical activation: **satisfied** — exact branch/worktree/base/HEAD are created and clean.
+- Token/serialization gate: **satisfied** by the one-time existing-board bootstrap with WIP `1`,
+  this task as sole owner, empty queue, no paused task, and no parallel exception.
+- Required task/plan status: `approved`; current activation state: `implementation_running`;
+  handoff status: `developer_dispatch_ready`.
 
 ## 2. Current Model Versus Target Model
 
@@ -500,12 +498,16 @@ Immediately before activation, hash/read the board, active bundle, registry, AGE
 every worktree status, current HEAD/branch/index, and any `MERGE_HEAD`. If facts differ, Planner
 reconciles before implementation; no snapshot is overwritten.
 
-### Intended seed from planning facts
+### Dispatch bootstrap from live facts
 
-- state `idle`, WIP `1`, primary token owner `null`, empty queue;
+- state `implementation_running`, WIP `1`, execution token owner
+  `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`, empty queue;
 - no paused task, Quick Fix, or parallel exception;
-- no implementation token owner until the exact isolated lane is created/verified and the
-  pre-write dispatch gate records ownership;
+- exact clean isolated lane exists at base/initial HEAD
+  `a1968c4999a33c6bee18c9185882ea3b927c2004`;
+- this is a one-time prose bootstrap under the existing board authority; the Developer must create
+  the approved marker-delimited JSON section and read-only helper from these fresh facts, not from
+  the older idle planning snapshot;
 - ACTIVE_TASK_THREAD_BUNDLE remains empty/unmodified;
 - TASK_368A/B/C remain complete/accepted/locally integrated;
 - browser-release remains cancelled/closed_without_integration;
@@ -514,10 +516,11 @@ reconciles before implementation; no snapshot is overwritten.
 
 ### Governance task activation
 
-User approval and primary approval governance are satisfied by this gate. Orchestrator next creates
-the exact clean branch/worktree from the approval-governance HEAD returned in the Planner callback,
-records its concrete base/HEAD/clean facts, and only then performs the pre-write token/Developer
-dispatch gate. The historical planning base remains evidence, not the implementation base.
+User approval, primary approval governance, exact clean branch/worktree creation, and the pre-write
+token gate are satisfied. The task is `implementation_running` with the sole token held continuously
+through Developer, mandatory Reviewer, mandatory QA, and Integrator acceptance or a separately
+recorded terminal transition. The historical planning base remains evidence; the implementation
+base is `a1968c4999a33c6bee18c9185882ea3b927c2004`.
 
 ### Existing active or paused task discovered later
 
@@ -655,7 +658,7 @@ worktree inventory must remain identical.
 |---:|---|---|---|
 | 0 | Fresh Planner/Orchestrator audit | clean primary; live state reconciled; no conflicting owner | any mismatch needing scope/ownership choice |
 | 1 | User-approval evidence and primary activation | satisfied by the approval-governance commit; exact approval, task/plan revision, and board status recorded | approval revoked/contradicted |
-| 2 | If eligible, record sole token and create isolated lane | concrete branch/worktree/base clean and gate-allowed | active owner, dirty primary, path conflict |
+| 2 | Record sole token and create isolated lane | satisfied: exact branch/worktree/base clean; WIP=1 prose bootstrap records this task as sole owner | any later ownership/path contradiction |
 | 3 | RED tests for board parser/token/queue/preemption/recovery | failures demonstrate missing policy behavior only | test needs real worktree mutation |
 | 4 | Create normative policy and align AGENTS/board schema | one authority, schema parses, live migration exact | duplicate authority or live-state overwrite |
 | 5 | Implement read-only helper | unit scenarios and zero-write checks pass | any mutation/cleanup capability needed |
@@ -684,7 +687,8 @@ The User approval covers this exact task/plan, especially:
 - automatic execution through local Integrator acceptance without push, product-lane mutation, or
   destructive cleanup.
 
-Status is `approved`. Before implementation writes, Orchestrator must still create/verify the exact
-planned branch/worktree at the approval-governance HEAD, confirm all other worktrees remain
-retained/frozen/cancelled and untouched, and record the pre-write token owner. Until that physical
-gate passes, activation state remains `approved_worktree_preparation` and Developer is not started.
+Status is `approved`. The exact branch/worktree, protected worktrees, and pre-write token ownership
+have been verified and recorded. Activation state is `implementation_running`; callback state is
+`developer_dispatch_ready`. The structured JSON schema/helper remain unimplemented until Developer
+works in the isolated lane, and the token must remain held through mandatory Reviewer, QA, and
+Integrator gates.

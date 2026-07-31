@@ -4,8 +4,8 @@ Status: `approved`
 Type: governance execution-model change
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-Owner at this gate: permanent Orchestrator — isolated worktree preparation pending
-Next gate: create/verify the exact isolated lane, then dispatch permanent Developer
+Owner at this gate: permanent Developer — implementation dispatch ready through Orchestrator
+Next gate: Developer implementation in the exact isolated lane, then mandatory Reviewer/QA/Integrator
 
 ## Approval And Activation Status
 
@@ -18,15 +18,22 @@ Next gate: create/verify the exact isolated lane, then dispatch permanent Develo
 - The authorization includes only the exact approved plan scope. It excludes remote push,
   publication, service restart, product-lane mutation, retained/frozen/cancelled worktree mutation,
   and destructive cleanup.
-- This approval-governance gate does not create a branch/worktree, seed the new board JSON
-  execution schema, acquire an implementation token, or dispatch Developer.
-- Planned lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`.
-- Planned branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`.
-- Planned sibling worktree:
+- Orchestrator created and independently verified the approved isolated lane without modifying any
+  existing lane or retained/frozen/cancelled worktree.
+- Lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`.
+- Branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`.
+- Sibling worktree:
   `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`.
-- The implementation base is the clean approval-governance HEAD returned by this Planner callback.
-  Orchestrator must create and verify the exact branch/worktree at that base before Developer
-  dispatch.
+- Base and initial lane HEAD: `a1968c4999a33c6bee18c9185882ea3b927c2004`.
+- Primary and lane worktree/index were clean at dispatch preflight; no competing implementation
+  owner exists.
+- One-time pre-schema bootstrap authority is recorded in the existing board prose with
+  `wip_limit: 1`, `execution_state: implementation_running`, execution token owner
+  `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`, empty queue, no paused task, and no
+  parallel exception.
+- The approved structured JSON execution schema and read-only helper do not exist yet. Their
+  implementation remains Developer scope; this dispatch governance does not implement or pretend
+  to validate them.
 
 ## Goal
 
@@ -329,12 +336,13 @@ remain independently locked to their recorded owners and are never absorbed into
 
 ## Migration Baseline
 
-The implementation must seed the board execution section from fresh facts, not from this planning
-snapshot. At planning base, the intended migration is:
+The implementation must seed the structured board execution section from the fresh dispatch facts,
+not from the older idle planning snapshot. At Developer dispatch, the authoritative one-time prose
+bootstrap is:
 
 - `wip_limit: 1`
-- `execution_token_owner: null`
-- `execution_state: idle`
+- `execution_token_owner: TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`
+- `execution_state: implementation_running`
 - queue empty
 - no `paused_preempted` task
 - no parallel exception
@@ -343,11 +351,12 @@ snapshot. At planning base, the intended migration is:
 - browser-release stays cancelled/closed without integration
 - all listed retained/frozen worktrees and TASK_368A residual directory keep their current owner,
   checkpoint, branch/path, and non-destructive restrictions
-- this governance task acquires no token until the approval-governance commit is recorded, the
-  clean isolated worktree is created and verified, and the pre-write dispatch gate passes
+- exact lane branch/worktree/base/initial HEAD are the verified values recorded above
+- the structured JSON block and helper do not yet exist; Developer creates them from this bootstrap
+  without releasing or transferring the token
 
 If any of those facts change before implementation, activation stops for Planner reconciliation;
-the implementation must not overwrite live state with the planning snapshot.
+the implementation must not overwrite live state with the older planning snapshot.
 
 ## Acceptance Gates
 
@@ -397,7 +406,8 @@ Stop and return to Planner/User if:
 
 ## Current Stop Point
 
-Commit approval governance on primary, then return to Orchestrator with status
-`approved_worktree_preparation`. Orchestrator must create and verify the exact isolated lane before
-Developer dispatch. This Planner does not create the branch/worktree, seed the new JSON execution
-schema, acquire an implementation token, modify any retained lane, or dispatch another role.
+Commit the exact four-path primary dispatch governance package, then return to Orchestrator with
+status `developer_dispatch_ready` and next role Developer. The execution token remains held by this
+task through Developer, mandatory Reviewer, mandatory QA, and Integrator acceptance or a separately
+recorded terminal transition. This Planner does not edit the isolated lane, implement the JSON
+schema/helper, dispatch a role directly, modify any retained lane, merge, or push.

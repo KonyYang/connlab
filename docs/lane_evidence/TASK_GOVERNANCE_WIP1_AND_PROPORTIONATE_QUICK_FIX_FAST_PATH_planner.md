@@ -1,10 +1,10 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH — Planner Evidence
 
-Status: `approved_worktree_preparation`
+Status: `developer_dispatch_ready`
 Role: permanent Planner
 Date: 2026-07-31
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
-Next: Orchestrator
+Next: Developer
 
 ## Assignment And Stop Boundary
 
@@ -22,6 +22,10 @@ Initial planning writes were exactly:
 The current approval-record gate additionally authorizes `docs/task_board.md`. No protocol, skill,
 helper, test, registry, bundle, product, branch, worktree, remote, or runtime mutation is
 authorized in this Planner action.
+
+The current dispatch-record gate keeps the same exact four-path write allowlist. It records verified
+lane identity and the one-time existing-board token bootstrap only; it does not edit the lane or
+dispatch Developer directly.
 
 ## Explicit User Approval And Activation Audit
 
@@ -41,8 +45,31 @@ authorized in this Planner action.
   `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`
 - physical identity preflight: planned branch absent and planned worktree path absent; Orchestrator
   must create both from the approval-governance HEAD returned in this callback
-- current state: `approved_worktree_preparation`; Developer has not started; the new JSON execution
-  schema and token have not been created
+- approval-stage state at that commit: `approved_worktree_preparation`; Developer had not started,
+  and the new JSON execution schema and token had not been created
+
+## Exact Isolated Lane And Token Dispatch Audit
+
+- dispatch preflight primary: `master@a1968c4999a33c6bee18c9185882ea3b927c2004`, worktree/index
+  clean, no `MERGE_HEAD`
+- lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- sibling worktree:
+  `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- base, initial lane HEAD, and merge-base:
+  `a1968c4999a33c6bee18c9185882ea3b927c2004`
+- lane worktree/index: clean
+- competing execution owner: none
+- one-time existing-board bootstrap: `wip_limit: 1`,
+  `execution_state: implementation_running`, execution token owner
+  `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`, queue empty, no paused task, no
+  Quick Fix, and no parallel exception
+- structured JSON execution schema/helper: intentionally absent until Developer implements the
+  approved design; no second authority was created
+- gate retention: this task holds the token through Developer, mandatory Reviewer, mandatory QA,
+  and Integrator acceptance or a separately recorded terminal transition
+- protected state: every previously registered frozen/cancelled/retained worktree remains at its
+  recorded HEAD and clean; bundle/registry/product paths remain untouched
 
 ## Primary Preflight
 
@@ -118,9 +145,8 @@ dispatch:
 
 ### Not yet confirmed
 
-- Concrete created branch/worktree/base/clean facts; creation belongs to Orchestrator after this
-  approval commit.
-- Then-live board/worktree/token facts at the immediate pre-write Developer dispatch gate.
+- No material dispatch-readiness fact remains unconfirmed. Developer checkpoint, review findings,
+  QA results, and integration outcome are future gate evidence.
 
 ### Risk
 
@@ -132,15 +158,16 @@ activation audit, and disposable QA repositories.
 
 ### Continue or stop
 
-Continue only to commit the four-path approval governance package. Then stop and return to
-Orchestrator for worktree preparation; do not create the lane or dispatch Developer here.
+Continue only to commit the four-path dispatch governance package. Then stop and return the
+Developer handoff to Orchestrator; do not edit the lane or dispatch Developer directly here.
 
 ## Definition Of Ready Result
 
 - User approval and logical task DoR: satisfied.
-- Physical implementation dispatch DoR: pending exact branch/worktree creation, base/HEAD/clean
-  verification, and the pre-write token gate.
-- Current status: `approved_worktree_preparation`.
+- Physical branch/worktree/base/clean gate: satisfied.
+- Sole-token/WIP=1/no-parallel-exception gate: satisfied through the one-time existing-board prose
+  bootstrap.
+- Current state: `implementation_running`; callback status: `developer_dispatch_ready`.
 
 ## Planning Decisions Recorded
 
@@ -221,23 +248,24 @@ The validation plan now explicitly covers standalone acceptance/cancellation, pr
 transfer, preempting cancellation/failure, reconciliation failure owner-null semantics,
 Reviewer/QA/Integrator token retention, and nested-preemption rejection.
 
-## Validation At This Approval Gate
+## Validation At This Dispatch Gate
 
 Required before commit:
 
-- confirm only the four authorized approval-governance files are changed;
-- confirm task/plan are `approved` and Planner evidence is `approved_worktree_preparation`;
+- confirm only the four authorized dispatch-governance files are changed;
+- confirm task/plan are `approved` and Planner evidence is `developer_dispatch_ready`;
 - inspect `git diff --check` and the staged diff;
 - use exact-path staging only;
-- confirm the approval-only commit contains exactly the four paths;
+- confirm the dispatch-only commit contains exactly the four paths;
 - confirm primary worktree/index clean afterward;
 - confirm the board diff is bounded to activation metadata; bundle/registry/AGENTS blobs and every
   existing worktree path/HEAD/status remain unchanged.
 
 ## Handoff
 
-Next role: Orchestrator.
+Next role: Developer, routed only by permanent Orchestrator.
 
-Orchestrator must independently verify the approval commit, create/verify the exact isolated lane
-from that HEAD, record branch/worktree/base/clean facts, and only then dispatch permanent Developer
-under the approved automatic chain. No implementation role has been dispatched by Planner.
+Orchestrator must independently verify this dispatch governance commit and then route permanent
+Developer to the exact isolated branch/worktree. Developer must implement only the frozen
+allowlist, preserve the token through mandatory Reviewer/QA/Integrator gates, and hand off a clean
+lane checkpoint. No implementation role has been dispatched by Planner.
