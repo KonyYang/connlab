@@ -9,6 +9,7 @@ Worktree: `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportio
 Base: `a1968c4999a33c6bee18c9185882ea3b927c2004`
 Primary dispatch HEAD: `f465b5f576229544f773095bb1086961152e6be8`
 Implementation checkpoint: `41a604d15f7472e4d8efc4673dbd8c9272c1e45d`
+Reviewer fix checkpoint: `7cb4d6db7f978875de73c1f6b0fec5e557f4e565`
 Next: permanent Reviewer
 
 ## Scope And Authority
@@ -70,7 +71,8 @@ This evidence file is committed separately as required by the dispatch.
   literal produced `21 passed` for helper/recovery tests.
 - Secondary parallel dispatch was added through its own RED test (`1 failed`) and minimal GREEN
   change (`1 passed`) with exact secondary branch/worktree/HEAD checks.
-- Final helper is 492 physical lines, below the 500-line hard limit.
+- Original handoff helper was 492 physical lines. The Reviewer fix pass consolidated the final
+  helper to 268 physical lines while adding stricter behavior, below the 500-line hard limit.
 
 ## Validation Matrix
 
@@ -107,15 +109,18 @@ py -m pytest tests\unit\test_connlab_lane_worktree_script.py tests\unit\test_tas
 9 passed in 0.44s
 ```
 
-Total: `39 passed` across the five required modules.
+Original handoff total: `39 passed` across the five required modules. The bounded Reviewer fix
+pass supersedes this with the fresh validation recorded below.
 
 Additional validation:
 
 - PowerShell AST parse passed for `connlab_execution_gate.ps1`, `run_task.ps1`, and
   `connlab_lane_worktree.ps1`.
-- Real lane board `Inspect` returned `ALLOW_INSPECT`, `zero_write: true`.
-- `run_task.ps1 -Preview` returned/passed `ALLOW_RESUME` JSON into the Orchestrator prompt and did
-  not invoke Codex.
+- Original pre-review lane-local previews returned allow decisions; Reviewer correctly identified
+  those as stale-board authority. The fix-pass production previews now resolve
+  `D:\PythonProject\connlab` and fail closed with `BLOCKED_MARKERS_MISSING` until Integrator
+  installs the candidate execution block on primary. Disposable divergent-board tests prove the
+  primary board controls run-task, Create, and dispatch decisions.
 - `git diff --check` and staged `git diff --cached --check` passed.
 - Exact implementation allowlist: `17/17`; forbidden-scope scan passed.
 - Before/after primary and protected retained/frozen/cancelled worktree HEAD/status equality
@@ -134,13 +139,83 @@ Additional validation:
   exact failure codes avoid a second mutable control plane.
 - Errors: missing/malformed/stale/contradictory facts fail closed. No swallowed exception or
   broad silent fallback exists.
-- Paths: production root derives from the script location; alternate roots require explicit
-  test-only opt-in. The exact lane path in board/evidence is approved dispatch metadata.
+- Paths: production root resolves the main `master` worktree through Git common-worktree metadata;
+  a lane-local board copy cannot authorize execution. Alternate roots require explicit test-only
+  opt-in. The exact lane path in board/evidence remains approved dispatch metadata.
 - Quality: no TODO, no unfinished production branch, no unrequested dependency, and all changed
   scripts/tests remain below 500 physical lines.
 - Input/output: input is board JSON plus requested intent/task/lane and read-only Git facts; output
   is stable JSON such as `ALLOW_START`, `QUEUE_REQUIRED`, `ALLOW_DISPATCH`,
   `ALLOW_PREEMPT_CHECKPOINTED`, `ALLOW_RECONCILE`, `ALLOW_RESUME`, or `BLOCKED_*`.
+
+## First Bounded Reviewer Fix Pass
+
+Reviewer evidence at `ee2c179659c9636093cc2c3dc37c38a79f07bb7a` reported four blocking
+findings. The fix checkpoint `7cb4d6db7f978875de73c1f6b0fec5e557f4e565` changes exactly these nine
+approved paths:
+
+1. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+2. `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
+3. `scripts/connlab_execution_gate.ps1`
+4. `scripts/connlab_lane_worktree.ps1`
+5. `scripts/run_task.ps1`
+6. `tests/integration/test_connlab_execution_gate_recovery.py`
+7. `tests/unit/test_connlab_execution_gate_script.py`
+8. `tests/unit/test_connlab_lane_worktree_script.py`
+9. `tests/unit/test_execution_wip_and_quick_fix_governance.py`
+
+### Reviewer Finding Closure Map
+
+- Blocking 1 closed: `ImplementationDispatch` now permits only durable
+  `implementation_running`/Developer or `quick_fix_running`/Quick Fixer states. Reviewer, QA, and
+  Integrator `gate_running` dispatches return `BLOCKED_DISPATCH_STATE`. A positive disposable Git
+  test proves a Developer fix is allowed only after the board records the transition back to
+  `implementation_running` with matching task/lane/role/worktree/branch/HEAD. `Resume` now requires
+  accepted Quick Fix/master ancestry, current master merged into the original lane, a distinct
+  clean reconciliation checkpoint, and passing validation evidence.
+- Blocking 2 closed: general validation rejects active/owner mismatch, duplicate queued task IDs,
+  non-contiguous/duplicate positions, ownerless primary plus secondary exception, incomplete
+  parallel approval/scope/independence/end-condition/owner facts, reconciling without accepted
+  Quick Fix proof, terminal residual omission, and failed-preemption residual omission.
+- Blocking 3 closed: production helper and both entry scripts resolve and verify the main
+  `master` worktree through Git common-worktree metadata. Dynamic two-worktree tests use divergent
+  primary/lane boards and prove the stale lane cannot authorize run-task routing, worktree Create,
+  or implementation dispatch. Unverifiable/missing primary authority fails closed.
+- Blocking 4 closed: the permissive pre-merge Resume test was replaced by an actual disposable
+  master Quick Fix commit, `--no-ff` merge into the preserved original lane, new reconciliation
+  checkpoint, clean-state check, and ancestry proof. Dynamic tests cover merge conflict with both
+  histories preserved and `paused_preempted(null)`, gate-running dispatch negatives, terminal and
+  preempting residual negatives, invalid parallel/duplicate queue facts, executable QF-1 button
+  label dispatch, QF-4 API/schema/authority rejection, run-task queue/no-Codex, and Create
+  queue/no-worktree behavior.
+
+### Fix-Pass TDD And Validation
+
+- Initial Reviewer reproductions: `9 failed, 23 passed`, with failures on duplicate task identity,
+  active/owner mismatch, invalid parallel owner, gate-running dispatch, untouched Resume, and
+  terminal residual omission.
+- Entry/Quick Fix dynamic RED: eight gate failures, three Quick Fix/run-task failures, and one
+  worktree Create queue failure, each with the expected pre-fix decision mismatch.
+- Fresh required five-module suite after all edits:
+
+```text
+py -m pytest tests\unit\test_connlab_execution_gate_script.py tests\integration\test_connlab_execution_gate_recovery.py tests\unit\test_execution_wip_and_quick_fix_governance.py tests\unit\test_connlab_lane_worktree_script.py tests\unit\test_task_scoped_role_thread_lifecycle_governance.py -q
+57 passed in 38.79s
+```
+
+- `--collect-only` reported 57 executable cases, covering the approved 27-scenario matrix plus
+  the Reviewer negatives and positive fix-handoff/terminal-closeout paths.
+- Windows PowerShell AST parsing passed for all three scripts. Helper length is 268 physical lines;
+  both expanded Python test modules are at or below the 500-line hard limit.
+- Read-only production gate/run-task previews resolved the primary root and returned
+  `BLOCKED_MARKERS_MISSING`, `zero_write: true`, because the pre-integration primary board does not
+  yet contain the lane candidate markers. Worktree `List -Json` returned `CTL_OK`,
+  `ZeroWrite: true`.
+- `git diff --check`, exact nine-path fix allowlist, forbidden product/V2/bundle/registry scans,
+  and protected primary/frozen/cancelled/retained HEAD/status equality passed. The four protected
+  primary file SHA-256 values are unchanged.
+- No real Create/Retire, merge, push, restart, cleanup, stash, reset, restore, discard, or remote/
+  runtime/real-data action was performed.
 
 ## Stop Point
 
