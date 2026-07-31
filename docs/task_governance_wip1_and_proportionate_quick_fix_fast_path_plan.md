@@ -1,13 +1,25 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH Plan
 
-Status: `planned_pending_user_approval`
+Status: `approved`
 Date: 2026-07-31
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
 Task: `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-This is a planning-only artifact. It does not approve implementation, activate the task, reserve an
-execution token, create a branch/worktree, or authorize role dispatch.
+The User approved this exact plan on 2026-07-31 at planning revision
+`75ed37425029393780fad80b1b3745c4652e4f1d` and authorized automatic implementation through local
+Integrator acceptance. The current gate records approval only: it does not seed the new JSON
+execution schema, reserve a token, create a branch/worktree, or dispatch a role. Remote push,
+publication, service restart, product-lane mutation, and destructive cleanup remain excluded.
+
+Planned lane identity:
+
+- lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- sibling worktree:
+  `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- base: the clean approval-governance HEAD returned by the Planner callback and independently
+  verified by Orchestrator before creation
 
 ## 1. Discovery Gate
 
@@ -21,8 +33,8 @@ execution token, create a branch/worktree, or authorize role dispatch.
 - `docs/project_management/ACTIVE_TASK_THREAD_BUNDLE.md` is empty with no active task id.
 - Permanent roles exist in `ROLE_THREAD_REGISTRY.md`; the permanent Orchestrator is the only daily
   router and the permanent Planner owns Discovery/task/plan/scope/gates.
-- The User explicitly authorized this isolated governance Discovery and exactly three planning
-  files. Planning does not constitute an implementation lane.
+- The User initially authorized isolated governance Discovery and later explicitly approved the
+  exact formal task/plan plus automatic execution through local Integrator acceptance.
 
 ### User goal restatement
 
@@ -71,7 +83,8 @@ creating a second authority beside the task board.
 - Preemption, recovery, parallel exception, cross-conversation enforcement, the minimum state
   fields, the 18 planning outputs, and 16 validation scenarios are required.
 - `docs/task_board.md` must remain the single execution authority.
-- This turn must remain planning-only and may create only the three named task-owned files.
+- The approval-record turn may update only the task, plan, Planner evidence, and primary task board;
+  it must not create the implementation worktree or dispatch implementation roles.
 
 ### Confirmed by repository evidence
 
@@ -108,14 +121,15 @@ creating a second authority beside the task board.
 
 ### Not yet confirmed
 
-- The User has not approved this exact task/plan, file allowlist, embedded-board JSON schema, helper
-  interface, or migration strategy.
-- No implementation base, branch, or worktree is frozen; those facts must be generated only after
-  approval from the then-current clean `master`.
-- Live board/worktree/token facts at future implementation time are unknown and must be re-read.
+- The physical implementation branch/worktree does not yet exist and therefore has no verified
+  created HEAD/clean status.
+- The exact implementation base is the approval-governance commit produced by this gate; its SHA
+  must be taken from the Planner callback and independently verified by Orchestrator.
+- Live board/worktree/token facts must be re-read immediately before worktree creation and again
+  before Developer dispatch.
 
-These unknowns intentionally block implementation but do not block a
-`planned_pending_user_approval` planning package.
+These facts block Developer dispatch, not task approval. Current activation state is
+`approved_worktree_preparation`.
 
 ### Planning risks
 
@@ -131,18 +145,19 @@ These unknowns intentionally block implementation but do not block a
 
 ### Questions and continue/stop decision
 
-No additional blocking clarification question is needed before presenting the plan: the User
-specified the target behavior, boundaries, and acceptance scenarios. The one required decision is
-approval or rejection of this exact plan. Continue only through the planning commit, then stop for
-User approval.
+No clarification remains. The User explicitly approved the exact plan and local automatic role
+chain. Continue only through approval governance, then return to Orchestrator for isolated
+worktree preparation.
 
 ### Definition of Ready
 
-- Ready for User review: **yes**. Goal, scope, authority, affected files, non-goals, validation,
-  migration, risks, and gates are concrete.
-- Ready for implementation: **no**. Explicit User approval, fresh current-state reconciliation,
-  board activation/token reservation, and a concrete clean `lane/*` branch/worktree/base are absent.
-- Required status: `planned_pending_user_approval`.
+- User approval: **satisfied** for the exact plan at revision `75ed3742...`.
+- Scope/behavior/authority/validation DoR: **satisfied**.
+- Implementation dispatch DoR: **pending only physical activation** — Orchestrator must create and
+  verify the exact branch/worktree at the approval-governance HEAD, then record concrete base/HEAD
+  and clean status before Developer writes.
+- Required task/plan status: `approved`; current activation state:
+  `approved_worktree_preparation`.
 
 ## 2. Current Model Versus Target Model
 
@@ -489,7 +504,8 @@ reconciles before implementation; no snapshot is overwritten.
 
 - state `idle`, WIP `1`, primary token owner `null`, empty queue;
 - no paused task, Quick Fix, or parallel exception;
-- no implementation owner for this governance task until approved dispatch;
+- no implementation token owner until the exact isolated lane is created/verified and the
+  pre-write dispatch gate records ownership;
 - ACTIVE_TASK_THREAD_BUNDLE remains empty/unmodified;
 - TASK_368A/B/C remain complete/accepted/locally integrated;
 - browser-release remains cancelled/closed_without_integration;
@@ -498,9 +514,10 @@ reconciles before implementation; no snapshot is overwritten.
 
 ### Governance task activation
 
-After User approval and fresh reconciliation, primary governance records the approved task and
-token owner, creates a concrete clean branch/worktree from the then-current master, and dispatches
-Developer. The planning base is evidence, not a forced implementation base.
+User approval and primary approval governance are satisfied by this gate. Orchestrator next creates
+the exact clean branch/worktree from the approval-governance HEAD returned in the Planner callback,
+records its concrete base/HEAD/clean facts, and only then performs the pre-write token/Developer
+dispatch gate. The historical planning base remains evidence, not the implementation base.
 
 ### Existing active or paused task discovered later
 
@@ -637,7 +654,7 @@ worktree inventory must remain identical.
 | Step | Action after User approval | Required pass before next step | Stop condition |
 |---:|---|---|---|
 | 0 | Fresh Planner/Orchestrator audit | clean primary; live state reconciled; no conflicting owner | any mismatch needing scope/ownership choice |
-| 1 | User-approval evidence and primary activation | exact approval, task/plan version, board approved/queued state | approval absent/ambiguous |
+| 1 | User-approval evidence and primary activation | satisfied by the approval-governance commit; exact approval, task/plan revision, and board status recorded | approval revoked/contradicted |
 | 2 | If eligible, record sole token and create isolated lane | concrete branch/worktree/base clean and gate-allowed | active owner, dirty primary, path conflict |
 | 3 | RED tests for board parser/token/queue/preemption/recovery | failures demonstrate missing policy behavior only | test needs real worktree mutation |
 | 4 | Create normative policy and align AGENTS/board schema | one authority, schema parses, live migration exact | duplicate authority or live-state overwrite |
@@ -654,15 +671,20 @@ The task stops after local Integrator acceptance. Remote push, publication, serv
 worktree force-removal, and cleanup of any pre-existing retained/frozen/cancelled item require
 separate explicit authority.
 
-## User Approval Gate
+## User Approval Record And Physical Activation Gate
 
-Approval must cover this exact task/plan, especially:
+The User approval covers this exact task/plan, especially:
 
 - the board-embedded JSON authority design;
 - the full May Touch/Must Not Touch/Locked Paths lists;
 - compact task-file Quick Fix capsules without separate plans;
 - mandatory QA for this governance implementation;
 - read-only helper and its three enforcement points;
-- live-state migration and rollback strategy.
+- live-state migration and rollback strategy;
+- automatic execution through local Integrator acceptance without push, product-lane mutation, or
+  destructive cleanup.
 
-Until then, status remains `planned_pending_user_approval` and no implementation action is legal.
+Status is `approved`. Before implementation writes, Orchestrator must still create/verify the exact
+planned branch/worktree at the approval-governance HEAD, confirm all other worktrees remain
+retained/frozen/cancelled and untouched, and record the pre-write token owner. Until that physical
+gate passes, activation state remains `approved_worktree_preparation` and Developer is not started.

@@ -1,23 +1,32 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH
 
-Status: `planned_pending_user_approval`
+Status: `approved`
 Type: governance execution-model change
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-Owner at this gate: permanent Planner
-Next gate: User approval
+Owner at this gate: permanent Orchestrator — isolated worktree preparation pending
+Next gate: create/verify the exact isolated lane, then dispatch permanent Developer
 
-## Why This Planning Task Is Allowed
+## Approval And Activation Status
 
-- `docs/task_board.md` records `Current Active Task: None` and `Proposed Next Task: None`.
-- The User explicitly authorized a planning-only Discovery and exactly three task-owned planning
-  files while forbidding implementation, board activation, worktree creation, role dispatch, push,
-  runtime changes, and destructive cleanup.
-- Planning in the clean primary worktree does not acquire an implementation execution token and is
-  not a second implementation lane.
-- This task is not approved, active, or implementation-ready. It must remain
-  `planned_pending_user_approval` until the User approves the formal task and plan and a fresh
-  activation preflight succeeds.
+- At approval preflight, `docs/task_board.md` recorded `Current Active Task: None` and no competing
+  implementation owner; this approval commit activates only this governance task for worktree
+  preparation.
+- On 2026-07-31 the User explicitly approved the exact task/plan at planning revision
+  `75ed37425029393780fad80b1b3745c4652e4f1d` and authorized automatic implementation through
+  local Integrator acceptance.
+- The authorization includes only the exact approved plan scope. It excludes remote push,
+  publication, service restart, product-lane mutation, retained/frozen/cancelled worktree mutation,
+  and destructive cleanup.
+- This approval-governance gate does not create a branch/worktree, seed the new board JSON
+  execution schema, acquire an implementation token, or dispatch Developer.
+- Planned lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`.
+- Planned branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`.
+- Planned sibling worktree:
+  `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`.
+- The implementation base is the clean approval-governance HEAD returned by this Planner callback.
+  Orchestrator must create and verify the exact branch/worktree at that base before Developer
+  dispatch.
 
 ## Goal
 
@@ -32,7 +41,7 @@ or explicit gates for push, publication, restart, and destructive action.
 
 ## User-Visible Outcome
 
-After a separately approved implementation:
+Under the approved implementation:
 
 1. Starting a normal task while no token exists can activate that one task.
 2. Starting another normal task while the token is held records it as `queued`; a separate
@@ -46,7 +55,7 @@ After a separately approved implementation:
 5. A new conversation or script invocation re-reads the same task-board authority and cannot create
    an unauthorized implementation lane.
 
-## Frozen Policy Decisions For User Approval
+## Approved Policy Decisions
 
 ### Authority
 
@@ -250,7 +259,7 @@ Planned enforcement points:
 - `.agents/skills/connlab-lane-orchestrator/SKILL.md` requires a fresh gate before implementation
   dispatch, Quick Fix preemption, reconciliation, and resume.
 
-## May Touch For A Separately Approved Implementation
+## Approved Implementation May Touch
 
 Core policy and authority:
 
@@ -305,9 +314,11 @@ write only their evidence unless a separately approved package explicitly says o
 - generated/release artifacts, real data/files, localhost processes, remote branches, and published
   state
 
-No implementation worktree creation, merge, cherry-pick, push, publication, service restart,
-stash, reset, restore, clean, forced retirement, or destructive cleanup is authorized by this
-planning task.
+The User approval authorizes Orchestrator to create the one exact isolated governance lane and
+continue its approved role chain through local Integrator acceptance. This Planner gate performs
+none of those actions. Cherry-pick, remote push, publication, service restart, stash, reset,
+restore, clean, forced retirement, destructive cleanup, and any existing product-lane/worktree
+mutation remain unauthorized.
 
 ## Locked Paths For Implementation
 
@@ -332,8 +343,8 @@ snapshot. At planning base, the intended migration is:
 - browser-release stays cancelled/closed without integration
 - all listed retained/frozen worktrees and TASK_368A residual directory keep their current owner,
   checkpoint, branch/path, and non-destructive restrictions
-- this governance task acquires no token until User approval, primary activation, clean isolated
-  worktree creation, and the pre-write dispatch gate
+- this governance task acquires no token until the approval-governance commit is recorded, the
+  clean isolated worktree is created and verified, and the pre-write dispatch gate passes
 
 If any of those facts change before implementation, activation stops for Planner reconciliation;
 the implementation must not overwrite live state with the planning snapshot.
@@ -372,7 +383,7 @@ must prove the real retained worktrees are unchanged.
 
 Stop and return to Planner/User if:
 
-- User approval for this exact task/plan is absent;
+- the exact User approval is revoked, contradicted, or would need scope expansion;
 - the primary state no longer matches the migration assumptions and cannot be reconciled without
   changing scope;
 - a second execution authority/file is required;
@@ -386,5 +397,7 @@ Stop and return to Planner/User if:
 
 ## Current Stop Point
 
-Planning artifacts may be committed locally. Then stop for User review. Do not update the board,
-create an implementation branch/worktree, acquire a token, or dispatch another role.
+Commit approval governance on primary, then return to Orchestrator with status
+`approved_worktree_preparation`. Orchestrator must create and verify the exact isolated lane before
+Developer dispatch. This Planner does not create the branch/worktree, seed the new JSON execution
+schema, acquire an implementation token, modify any retained lane, or dispatch another role.

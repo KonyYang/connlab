@@ -1,10 +1,10 @@
 # TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH — Planner Evidence
 
-Status: `planned_pending_user_approval`
+Status: `approved_worktree_preparation`
 Role: permanent Planner
 Date: 2026-07-31
 Planning base: `ec93a0b686ff7a690e4955bd4238b7b9016de041`
-Next: User
+Next: Orchestrator
 
 ## Assignment And Stop Boundary
 
@@ -13,14 +13,36 @@ default implementation WIP=1, durable execution token/queue, proportional Quick 
 serialized Quick Fix preemption, non-destructive original-lane recovery, explicit parallel
 exceptions, and cross-conversation enforcement.
 
-Authorized writes in this gate are exactly:
+Initial planning writes were exactly:
 
 - `tasks/TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH.md`
 - `docs/task_governance_wip1_and_proportionate_quick_fix_fast_path_plan.md`
 - this Planner evidence file
 
-No board, protocol, skill, helper, test, registry, bundle, product, branch, worktree, remote, or
-runtime mutation is authorized.
+The current approval-record gate additionally authorizes `docs/task_board.md`. No protocol, skill,
+helper, test, registry, bundle, product, branch, worktree, remote, or runtime mutation is
+authorized in this Planner action.
+
+## Explicit User Approval And Activation Audit
+
+- approval date: 2026-07-31
+- approved planning revision: `75ed37425029393780fad80b1b3745c4652e4f1d`
+- approval scope: the exact formal task/plan, including the reviewed token invariants, Quick Fix
+  terminal paths, normative fast path, file allowlist, migration, rollback, and validation matrix
+- continuation authority: automatic permanent-role chain through local Integrator acceptance
+- exclusions preserved: no remote push, publication, restart, product-lane mutation,
+  retained/frozen/cancelled worktree mutation, or destructive cleanup
+- approval preflight: primary `master@75ed37425029393780fad80b1b3745c4652e4f1d`, worktree/index
+  clean, no `MERGE_HEAD`, board current active task None, active bundle empty, no implementation
+  owner
+- planned lane: `task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- planned branch: `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- planned sibling worktree:
+  `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path`
+- physical identity preflight: planned branch absent and planned worktree path absent; Orchestrator
+  must create both from the approval-governance HEAD returned in this callback
+- current state: `approved_worktree_preparation`; Developer has not started; the new JSON execution
+  schema and token have not been created
 
 ## Primary Preflight
 
@@ -38,7 +60,7 @@ runtime mutation is authorized.
 - worktree/index: clean
 - merge state: no `MERGE_HEAD`
 - revision scope: this task, plan, and Planner evidence only
-- status remains: `planned_pending_user_approval`
+- status at that review revision: `planned_pending_user_approval`
 
 ## Evidence Read
 
@@ -69,7 +91,9 @@ dispatch:
   nest, and must recover by merge-not-rebase reconciliation.
 - Parallel execution is an explicit, proof-backed, user-approved, max-two exception.
 - The task board remains the only execution authority and new conversations must fail closed.
-- This turn is planning-only and must stop for User approval.
+- The initial Discovery turn was planning-only and stopped for User approval.
+- The User subsequently approved the exact revised task/plan and authorized automatic
+  implementation through local Integrator acceptance within the frozen scope.
 
 ### Confirmed by repository evidence
 
@@ -94,9 +118,9 @@ dispatch:
 
 ### Not yet confirmed
 
-- User approval of the exact task/plan and file allowlist.
-- Approval of the board JSON schema/helper interface/capsule storage/migration strategy.
-- Future implementation base/branch/worktree and then-live execution state.
+- Concrete created branch/worktree/base/clean facts; creation belongs to Orchestrator after this
+  approval commit.
+- Then-live board/worktree/token facts at the immediate pre-write Developer dispatch gate.
 
 ### Risk
 
@@ -108,16 +132,15 @@ activation audit, and disposable QA repositories.
 
 ### Continue or stop
 
-Continue only to create and locally commit the three planning artifacts. Then stop for User
-approval. No implementation Definition of Ready exists yet.
+Continue only to commit the four-path approval governance package. Then stop and return to
+Orchestrator for worktree preparation; do not create the lane or dispatch Developer here.
 
 ## Definition Of Ready Result
 
-- Planning package ready for User review: yes.
-- Executable lane ready: no.
-- Missing implementation gates: explicit User approval, fresh state reconciliation, board
-  activation/token record, and concrete clean branch/worktree/base.
-- Required status: `planned_pending_user_approval`.
+- User approval and logical task DoR: satisfied.
+- Physical implementation dispatch DoR: pending exact branch/worktree creation, base/HEAD/clean
+  verification, and the pre-write token gate.
+- Current status: `approved_worktree_preparation`.
 
 ## Planning Decisions Recorded
 
@@ -198,22 +221,23 @@ The validation plan now explicitly covers standalone acceptance/cancellation, pr
 transfer, preempting cancellation/failure, reconciliation failure owner-null semantics,
 Reviewer/QA/Integrator token retention, and nested-preemption rejection.
 
-## Validation At This Planning Gate
+## Validation At This Approval Gate
 
 Required before commit:
 
-- confirm only the three authorized files are changed by the revision;
-- confirm all three state `planned_pending_user_approval`;
+- confirm only the four authorized approval-governance files are changed;
+- confirm task/plan are `approved` and Planner evidence is `approved_worktree_preparation`;
 - inspect `git diff --check` and the staged diff;
 - use exact-path staging only;
-- confirm the planning commit contains exactly the three paths;
+- confirm the approval-only commit contains exactly the four paths;
 - confirm primary worktree/index clean afterward;
-- confirm board/bundle/registry/AGENTS blobs and worktree inventory/HEADs are unchanged.
+- confirm the board diff is bounded to activation metadata; bundle/registry/AGENTS blobs and every
+  existing worktree path/HEAD/status remain unchanged.
 
 ## Handoff
 
-Next role: User.
+Next role: Orchestrator.
 
-User may approve, reject, or amend the exact plan. Approval must precede board activation,
-implementation worktree creation, any execution token, and Developer/Reviewer/QA/Integrator
-dispatch.
+Orchestrator must independently verify the approval commit, create/verify the exact isolated lane
+from that HEAD, record branch/worktree/base/clean facts, and only then dispatch permanent Developer
+under the approved automatic chain. No implementation role has been dispatched by Planner.
