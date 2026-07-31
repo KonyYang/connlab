@@ -64,9 +64,10 @@ creating a second authority beside the task board.
   or a formal `paused_preempted` transition.
 - Ordinary second tasks queue FIFO by default; paused-preempted recovery outranks ordinary queued
   work; the User may explicitly reprioritize.
-- Qualifying Quick Fixes need no independent Planner conversation, no separate full plan, and no
-  repeated approval, but still require an isolated worktree, targeted tests, proportionate risk
-  gates, Integrator closeout, and no automatic push/release/restart.
+- When every 19.1 predicate is proven and no escalation trigger exists, the Orchestrator must not
+  route an independent Planner conversation, require a separate full plan, repeat User approval,
+  or add default QA. The Quick Fix still requires an isolated worktree, targeted tests,
+  proportionate risk gates, Integrator closeout, and no automatic push/release/restart.
 - Preemption, recovery, parallel exception, cross-conversation enforcement, the minimum state
   fields, the 18 planning outputs, and 16 validation scenarios are required.
 - `docs/task_board.md` must remain the single execution authority.
@@ -151,7 +152,7 @@ User approval.
 | Token | No authoritative implementation token | Board-embedded token, held through gates |
 | Second ordinary task | May create another worktree/lane | Durable FIFO `queued`, no worktree |
 | Worktree meaning | Isolation plus parallel-readiness input | Isolation only; never concurrency permission |
-| Quick Fix | 19.1 exists, but recent fix still has full task/plan/Planner-style dispatch | Compact task capsule, no separate plan/Planner when all criteria are proven |
+| Quick Fix | 19.1 exists, but recent fix still has full task/plan/Planner-style dispatch | Mandatory compact-capsule fast path, with no separate plan/Planner/reapproval/default QA when all predicates are proven and no escalation trigger exists |
 | Preemption | No complete state/checkpoint/resume algorithm | One paused original + one Quick Fix, serialized and checkpointed |
 | Recovery | Residual/worktree rules exist; preempted-base reconciliation is not normative | Merge current master into preserved lane, validate, checkpoint, resume |
 | Parallel exception | Non-overlap can be enough | Explicit User approval, proof, owner/end condition, max two |
@@ -169,7 +170,7 @@ User approval.
 | `queued` | owned by another task | task has unique queue position, no implementation worktree | Developer/Quick Fixer dispatch |
 | `implementation_running` | current task | clean recorded base/worktree and implementation owner | second normal owner |
 | `gate_running` | original task retained | immutable lane HEAD under Reviewer/QA/Integrator gate | another ordinary implementation |
-| `paused_preempted` | released by original | one preserved clean checkpoint and complete pause record | original-lane writes |
+| `paused_preempted` | none | one preserved clean checkpoint, complete pause record, and explicit residual ownership for any failed/cancelled preempting Quick Fix | original-lane writes or silent resume |
 | `quick_fix_running` | Quick Fix | one capsule, isolated worktree, no nested preemption | second Quick Fix/ordinary start |
 | `reconciling` | original task | accepted Quick Fix ancestor plus preserved original checkpoint | rebase/history rewrite |
 | `complete` | none after closeout | acceptance, residual ledger, clean state | continued implementation |
@@ -185,13 +186,17 @@ User approval.
 | `implementation_running` | Developer handoff | `gate_running` | record clean checkpoint/HEAD and next gate | dirty or missing evidence |
 | `gate_running` | blocking finding | `implementation_running` | same owner returns for bounded fix | scope expansion/unclear failure |
 | `gate_running` | all gates accepted | `complete` | Integrator acceptance, residual ledger, release token | merge/validation failure |
-| owned state | explicit cancellation closeout | `cancelled` | retain/discard ownership, release token | destructive action not authorized |
+| `implementation_running` / `gate_running` | explicit normal-task cancellation closeout | `cancelled` | retain/discard ownership, release token | destructive action not authorized |
 | `implementation_running` | eligible preemption + clean pause | `paused_preempted` | full pause record; release original token | dirty/no checkpoint/overlap |
 | `gate_running` | read-only gate finishes, eligible pause | `paused_preempted` | reuse immutable HEAD and record pause | Integrator merge in progress |
-| `paused_preempted` | Quick Fix capsule activated | `quick_fix_running` | Quick Fix becomes sole owner | existing Quick Fix/paused task |
-| `quick_fix_running` | accepted/closed | `reconciling` | release Quick Fix owner; restore original as reconciliation owner | Quick Fix not ancestor of master |
+| `idle` | standalone Quick Fix capsule activated | `quick_fix_running` | set Quick Fix as sole owner before write | capsule/readiness/risk failure |
+| `quick_fix_running` without paused original | Integrator acceptance | `complete` | record residual closeout, then release Quick Fix token | acceptance/closeout failure |
+| `quick_fix_running` without paused original | cancelled/closed without integration | `cancelled` | record retained/discard ownership, then release token | destructive action not authorized |
+| `paused_preempted` | preempting Quick Fix capsule activated | `quick_fix_running` | acquire Quick Fix as sole owner; preserve paused record | existing Quick Fix or incomplete pause record |
+| `quick_fix_running` with paused original | accepted and proven on `master` | `reconciling` | release Quick Fix ownership and acquire original task as reconciliation owner | Quick Fix not ancestor of master |
+| `quick_fix_running` with paused original | cancelled/closed without integration/irrecoverable failure | `paused_preempted` | release Quick Fix token; preserve original pause/checkpoint and own Quick Fix residual; return Planner/User | no silent original resume |
 | `reconciling` | merge/validation/checkpoint pass | `implementation_running` | reconciliation checkpoint and restored owner | any conflict/validation/ownership drift |
-| `reconciling` | failure | `paused_preempted` | preserve all state and return Planner/User | never auto-resolve/reset |
+| `reconciling` | failure | `paused_preempted` | release original reconciliation token, set owner null, preserve all state, and return Planner/User | never auto-resolve/reset |
 | serial state | approved parallel exception | same state + secondary owner | record exception proof/approval/end condition | max two or any shared ownership |
 | parallel state | end condition | serial state | close secondary lane and clear exception | unresolved residual/conflict |
 
@@ -223,6 +228,13 @@ governance action, not an implicit transition.
 - Formal `paused_preempted` transition containing every mandatory pause field.
 - Release is a board governance commit. A role callback alone is never release authority.
 
+`paused_preempted` is a deliberately inspectable durable gap between owners: its complete pause
+record remains authoritative while `execution_token_owner` is `null`. A preempting Quick Fix
+acquires the token only in a later board commit that enters `quick_fix_running`. After an accepted
+preempting Quick Fix is proven on `master`, a later board commit transfers the token to the
+original task and enters `reconciling`. Reconciliation failure releases that token and restores
+durable `paused_preempted` with owner `null`.
+
 ### Parallel exception representation
 
 `execution_token_owner` remains the primary owner. `parallel_exception` may contain exactly one
@@ -238,8 +250,9 @@ owners and rejects a third.
 4. Queue entries contain task/lane, enqueue sequence/time, `queue_position`, dependencies, locks,
    requested priority, and evidence link.
 5. Default selection is FIFO among eligible tasks.
-6. A `paused_preempted` original, once its Quick Fix closes, reconciles before ordinary queue
-   selection.
+6. A `paused_preempted` original whose Quick Fix was accepted and proven on `master` reconciles
+   before ordinary queue selection. A cancelled/failed preempting Quick Fix leaves the original
+   paused with owner `null` for Planner/User decision; it does not auto-resume.
 7. User reprioritization requires exact evidence and recomputed unique positions.
 8. Cancelled/invalid queue entries are closed explicitly; they are not silently dropped.
 
@@ -252,7 +265,10 @@ entry; never create duplicates.
 
 Use one compact file under `tasks/<TASK_ID>.md`; do not create a separate plan document. The
 Orchestrator creates the capsule from explicit User intent and current evidence only after every
-19.1 predicate is true. The board row and Quick Fixer evidence point to the capsule.
+19.1 predicate is true. When those predicates are proven and no escalation trigger exists, the
+Orchestrator must use the capsule fast path and must not route independent Planner, create a full
+plan, repeat User approval, or add default QA. The board row and Quick Fixer evidence point to the
+capsule. Planner becomes mandatory only for ambiguity, an escalation trigger, or QF-4 scope.
 
 ### Required capsule fields
 
@@ -268,14 +284,30 @@ Orchestrator creates the capsule from explicit User intent and current evidence 
 
 ### Risk decision
 
-- QF-1: Quick Fixer -> Integrator. Reviewer may be added if a static assertion cannot establish
-  semantic neutrality. QA is not default.
+- QF-1: Quick Fixer -> Integrator. If semantic neutrality cannot be established, reclassify to
+  QF-2/QF-4; do not retain QF-1 while adding discretionary ceremony. QA is not part of QF-1.
 - QF-2: Quick Fixer -> Reviewer -> Integrator. QA only on Reviewer-identified environment gap.
 - QF-3: Quick Fixer -> Reviewer -> QA -> Integrator.
 - QF-4: no capsule/dispatch; Planner Discovery and User approval.
 
 Scope changes, semantic button renames, authority/API/schema/persistence work, public-drive writes,
 or a second failed same-class attempt are QF-4 regardless of file count.
+
+### Standalone And Preempting Lifecycle
+
+- Standalone: `idle` with owner `null` -> `quick_fix_running` with Quick Fix sole owner ->
+  Integrator-accepted `complete` with owner `null`. Token release occurs only after acceptance and
+  residual closeout.
+- Standalone cancellation: `quick_fix_running` -> `cancelled` with owner `null` after exact
+  closed-without-integration residual ownership; no destructive cleanup is implied.
+- Preempting: durable `paused_preempted` with owner `null` -> `quick_fix_running` with Quick Fix sole
+  owner and preserved pause record -> accepted-on-master `reconciling` with the original task as
+  sole owner -> `implementation_running` after reconciliation checkpoint/validation.
+- Preempting cancellation or irrecoverable failure: return to `paused_preempted` with owner `null`,
+  preserve the original checkpoint/pause record, retain the Quick Fix branch/worktree/evidence
+  under an exact residual owner, and stop at Planner/User. Do not silently resume the original.
+- Reconciliation failure: release the original reconciliation token, return to
+  `paused_preempted` with owner `null`, preserve both histories/evidence, and stop at Planner/User.
 
 ## 7. Preemption Rules By Starting State
 
@@ -288,10 +320,11 @@ or a second failed same-class attempt are QF-4 regardless of file count.
 | Reviewer/QA running | let current read-only gate finish; block next write/handoff | final gate result plus immutable HEAD recorded | only afterward |
 | Integrator merging | none | only after merge completes or clean safe abort/no merge state | otherwise forbidden |
 
-Every pause records `paused_reason`, `preempted_by`, `checkpoint_sha`, `pause_master_sha`, owner,
-unfinished items, resume condition, locks, branch, worktree, and evidence. At most one paused
-original and one Quick Fix exist. No stash/reset/restore/delete/retire/discard and no nested Quick
-Fix are permitted.
+Every pause records `paused_reason`, `preempted_by`, `checkpoint_sha`, `pause_master_sha`, previous
+owner, unfinished items, resume condition, locks, branch, worktree, and evidence. The durable pause
+commit sets `execution_token_owner` to `null`; Quick Fix activation is a later, inspectable commit.
+At most one paused original and one Quick Fix exist. No stash/reset/restore/delete/retire/discard
+and no nested Quick Fix are permitted.
 
 ## 8. Non-Destructive Reconciliation Algorithm
 
@@ -304,15 +337,17 @@ Inputs: paused record `P`, preserved lane `L`, accepted Quick Fix `Q`, current `
    and evidence.
 4. Compare `git diff --name-only P.pause_master_sha..M` with original and Quick Fix locks; re-run
    shared/authority ownership checks.
-5. Set state `reconciling` and original owner in a primary governance commit.
+5. Only after the accepted Quick Fix is proven on `master`, set state `reconciling` and acquire the
+   original task as sole token owner in a primary governance commit.
 6. Permanent Integrator merges `M` into `L` with no rebase. A conflict stops immediately; do not
    resolve automatically.
 7. Run original affected validations plus targeted tests for every intersecting dependency.
 8. Record the merge/reconciliation checkpoint SHA and prove lane/index clean.
 9. Update pause evidence and board; clear pause/Quick Fix fields; restore the original token and
    `implementation_running` with the recorded continuation point.
-10. If steps 6-9 fail, leave the lane preserved and board at `paused_preempted`, record the exact
-    blocker, and return Planner/User.
+10. If steps 6-9 fail, release the reconciliation token, leave the lane preserved, return the board
+    to `paused_preempted` with `execution_token_owner: null`, record the exact blocker, and return
+    Planner/User.
 
 Reconciliation never rebases because the checkpoint SHA is durable evidence. It never resets,
 restores, stashes, discards, or deletes to obtain cleanliness.
@@ -353,6 +388,13 @@ The schema must retain these exact contract keys (nested where appropriate): `wi
 `execution_token_owner`, `execution_state`, `queue_position`, `paused_reason`, `preempted_by`,
 `checkpoint_sha`, `pause_master_sha`, `resume_condition`, `locked_paths`, `residual_owner`, and
 `parallel_exception`.
+
+Owner invariants are normative: `paused_preempted` requires a complete pause record and
+`execution_token_owner: null`; `quick_fix_running` requires the Quick Fix as sole owner;
+`reconciling` requires a paused-original record, proof that the accepted Quick Fix is on `master`,
+and the original task as sole owner. `complete`/`cancelled` require owner `null` after closeout.
+A preempting Quick Fix cancellation/failure or reconciliation failure must restore
+`paused_preempted` plus owner `null`, never an ownerless `quick_fix_running`/`reconciling` state.
 
 The helper rejects missing markers, duplicate blocks, invalid JSON, unsupported schema, duplicate
 queue positions, owner/state contradictions, too many owners, incomplete pause records, or stale
@@ -522,12 +564,12 @@ part of this task.
 |---:|---|---|---|
 | 1 | idle normal task | `ALLOW_START`; governance can record sole owner | `tests/unit/test_connlab_execution_gate_script.py` |
 | 2 | second normal task | `QUEUE_REQUIRED`; no Create/dispatch | same |
-| 3 | Reviewer/QA gate | existing owner retained; second task queues | same |
+| 3 | Reviewer/QA/Integrator gate | existing task retains its token through every required gate; second task queues | same |
 | 4 | dirty original before Quick Fix | preemption blocked until clean checkpoint | same |
 | 5 | clean checkpoint | original can enter `paused_preempted` with complete record | same |
 | 6 | overlapping Locked Paths | preemption rejected | same |
 | 7 | nested Quick Fix | rejected when paused/Quick Fix already exists | same |
-| 8 | Quick Fix closeout | paused original selected before ordinary queue | `tests/integration/test_connlab_execution_gate_recovery.py` |
+| 8 | accepted preempting Quick Fix closeout | only accepted-on-master proof permits transition from Quick Fix owner to original reconciliation owner; paused original outranks ordinary queue | `tests/integration/test_connlab_execution_gate_recovery.py` |
 | 9 | reconciliation success | accepted Quick Fix ancestor + clean merge facts allow deterministic resume | same |
 | 10 | reconciliation conflict | fail closed; original stays paused; no reset/selection | same |
 | 11 | no exception/approval | second parallel implementation rejected | `tests/unit/test_connlab_execution_gate_script.py` |
@@ -542,6 +584,11 @@ part of this task.
 | 20 | worktree Create wiring | TaskId required and helper allow required; no force/reset/cleanup | `tests/unit/test_connlab_lane_worktree_script.py` |
 | 21 | permanent role model | no task-specific Controller/bundle routing; V1-Lite/V2 remain frozen | `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py` |
 | 22 | explicit V2 compatibility | existing ControlledLaneV2 branch remains frozen/unchanged | lane worktree script test |
+| 23 | standalone Quick Fix lifecycle | `idle(null)` -> `quick_fix_running(QF)` -> Integrator-accepted `complete(null)`; token releases only after acceptance/residual closeout | execution gate unit + integration recovery tests |
+| 24 | standalone Quick Fix cancellation | `quick_fix_running(QF)` -> closed-without-integration `cancelled(null)` with exact residual ownership and no destructive cleanup | integration recovery test |
+| 25 | preempting Quick Fix lifecycle | `paused_preempted(null)` -> `quick_fix_running(QF)` -> accepted-on-master `reconciling(original)` -> `implementation_running(original)` | integration recovery test |
+| 26 | preempting Quick Fix cancellation/failure | returns to `paused_preempted(null)`, preserves original checkpoint and Quick Fix residual, does not silently resume, and routes Planner/User | integration recovery test |
+| 27 | reconciliation failure owner invariant | returns to `paused_preempted(null)` with both histories/evidence preserved and no reset/selection | integration recovery test |
 
 Additional commands planned:
 
@@ -599,7 +646,7 @@ worktree inventory must remain identical.
 | 7 | Align protocols/skills and stale tests | static governance/permanent-role tests pass | registry/bundle/V2 change required |
 | 8 | Full Developer validation and exact checkpoint | exact allowlist, clean lane/index, evidence ready | unexpected path/failure |
 | 9 | Reviewer gate | pass on committed diff | blocking finding returns Developer; scope issue Planner/User |
-| 10 | Mandatory QA disposable recovery gate | all 16 required scenarios plus protected-state equality | any real-state change or unexplained failure |
+| 10 | Mandatory QA disposable recovery gate | all validation-matrix scenarios, including standalone/preempting terminal paths, plus protected-state equality | any real-state change or unexplained failure |
 | 11 | Integrator local merge/merged-tree validation | exact package, ancestry, board/live-state match, residual ledger, clean trees | merge conflict, stale migration, missing gate |
 | 12 | Closeout | accepted locally, token released, queue state correct, no push/restart/destructive action | any residual lacks owner |
 

@@ -64,9 +64,9 @@ After a separately approved implementation:
 ### Default WIP And Token
 
 - Default `wip_limit = 1`.
-- `execution_token_owner` is `null` only in `idle`, `complete`, or `cancelled` closeout state; one
-  task/lane owns it in `implementation_running`, `gate_running`, `quick_fix_running`, or
-  `reconciling`.
+- `execution_token_owner` is `null` in `idle`, in a fully recorded `paused_preempted` state, and
+  after `complete` or `cancelled` closeout. One task/lane owns it in
+  `implementation_running`, `gate_running`, `quick_fix_running`, or `reconciling`.
 - Reviewer, QA, and Integrator do not consume a second token, but the original task retains its
   token while those gates run.
 - The token is recorded in the board before the first Developer/Quick Fixer product or governance
@@ -90,10 +90,12 @@ separate full plan file is required. The capsule must contain:
 - Branch / worktree / base
 - Evidence path
 
-It may bypass an independent Planner conversation and repeated approval only when the User's goal
-is explicit and every `AGENTS.md` 19.1 criterion is proven from current repository facts. Any
-ambiguity, scope expansion, ownership conflict, unexplained failure, second failed same-class fix,
-or destructive need escalates to the full Planner flow.
+When the User's goal is explicit, every `AGENTS.md` 19.1 predicate is proven from current
+repository facts, and no escalation trigger exists, the Orchestrator must use this fast path. It
+must not require or route an independent Planner conversation, a separate full plan, repeated User
+approval, or default QA. Ambiguity, scope expansion, ownership conflict, unexplained failure,
+second failed same-class fix, destructive need, or QF-4 classification makes Planner/User
+escalation mandatory instead of optional.
 
 Risk routing:
 
@@ -107,6 +109,26 @@ Risk routing:
 A button-label change is QF-1 only when action, permission, authority, and lifecycle semantics are
 unchanged. `Submit -> Approve`, `Delete -> Archive`, and `Confirm Matrix -> Save` are not presumed
 copy-only fixes.
+
+### Quick Fix Lifecycle And Terminal States
+
+- Standalone Quick Fix: `idle` -> `quick_fix_running` with the Quick Fix as sole token owner ->
+  `complete` after Integrator acceptance, residual closeout, and token release.
+- Preempting Quick Fix: the original task first reaches durable `paused_preempted` with a complete
+  pause record and `execution_token_owner: null`; only then does Quick Fix activation enter
+  `quick_fix_running` with the Quick Fix as sole owner.
+- After a preempting Quick Fix is accepted and proven on `master`, the board transfers ownership to
+  the original task and enters `reconciling`. Successful reconciliation returns to
+  `implementation_running`.
+- A standalone Quick Fix cancelled/closed without integration enters `cancelled`, releases its
+  token, and records its exact retained/discard residual closeout without destructive action.
+- A preempting Quick Fix cancelled, closed without integration, or irrecoverably failed releases
+  the Quick Fix token and returns the durable global state to `paused_preempted` with owner `null`.
+  The original checkpoint and pause record remain intact; the Quick Fix branch/worktree/evidence
+  receive explicit residual ownership. The original task does not silently resume. Planner/User
+  must decide retry, abandon, or reconciliation scope.
+- Reconciliation failure likewise returns to `paused_preempted` with owner `null`, preserves both
+  checkpoints/evidence, and fails closed to Planner/User.
 
 ## State Model
 
@@ -180,7 +202,9 @@ writing. Quick Fix preemption cannot nest.
 
 ## Non-Destructive Reconciliation Contract
 
-After Quick Fix Integrator acceptance, the permanent Integrator performs the reconciliation gate:
+After a preempting Quick Fix has Integrator acceptance and is proven on `master`, the permanent
+Integrator performs the reconciliation gate. A standalone Quick Fix has no original lane and
+closes directly as `complete` instead:
 
 1. Prove the accepted Quick Fix HEAD is an ancestor of current `master`.
 2. Re-read the pause record and verify the preserved lane remains at the recorded clean checkpoint.
@@ -193,8 +217,9 @@ After Quick Fix Integrator acceptance, the permanent Integrator performs the rec
    `implementation_running` according to the recorded resume condition.
 
 Any merge conflict, validation failure, ownership ambiguity, checkpoint drift, or product-behavior
-disagreement fails closed. The original remains `paused_preempted`; no side is selected and no
-reset/restore/discard is allowed. The next role is Planner/User.
+disagreement fails closed. The original returns to/remains `paused_preempted` with
+`execution_token_owner: null`; no side is selected and no reset/restore/discard is allowed. The
+next role is Planner/User.
 
 ## Parallel Exception Contract
 
@@ -335,10 +360,13 @@ and lane clean. No push, publication, restart, or destructive retirement is incl
 
 ## Minimum Validation
 
-The implementation must satisfy all sixteen User-required scenarios plus compatibility, parser,
-static-governance, no-real-mutation, diff, and clean-status checks. The exact matrix and concrete
-test allocation are in the plan. All dynamic execution-gate tests use disposable repositories or
-fixture board text and must prove the real retained worktrees are unchanged.
+The implementation must satisfy all sixteen original User-required scenarios plus explicit
+standalone-Quick-Fix completion, preempting-Quick-Fix ownership transfer, preempting cancellation
+or failure, reconciliation-failure owner-null semantics, Reviewer/QA/Integrator token retention,
+and nested-preemption rejection. Compatibility, parser, static-governance, no-real-mutation, diff,
+and clean-status checks also remain required. The exact matrix and concrete test allocation are in
+the plan. All dynamic execution-gate tests use disposable repositories or fixture board text and
+must prove the real retained worktrees are unchanged.
 
 ## Stop Conditions
 

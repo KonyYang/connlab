@@ -31,6 +31,15 @@ runtime mutation is authorized.
 - merge state: no `MERGE_HEAD`
 - matches Orchestrator planning base: yes
 
+### Planning review revision preflight
+
+- revision input HEAD: `08c49edfa346d64b8c403b81e9415ec8d0e9c7d4`
+- branch: `master`
+- worktree/index: clean
+- merge state: no `MERGE_HEAD`
+- revision scope: this task, plan, and Planner evidence only
+- status remains: `planned_pending_user_approval`
+
 ## Evidence Read
 
 The Planner completely evaluated the User request and the current governance surfaces named by the
@@ -116,10 +125,10 @@ The formal task and plan contain all requested outputs:
 
 1. Discovery Gate.
 2. Current/target model delta.
-3. Nine-state machine and transition table.
+3. Nine-state machine and transition table, including durable `paused_preempted` with owner null.
 4. Token acquisition/retention/release.
 5. FIFO queue and recovery priority.
-6. Compact capsule and four risk classes.
+6. Mandatory compact-capsule fast path and four risk classes.
 7. Dirty/clean/review/QA/integration preemption rules.
 8. Merge-not-rebase reconciliation algorithm.
 9. Explicit max-two parallel exception gate.
@@ -129,7 +138,8 @@ The formal task and plan contain all requested outputs:
 13. Fresh migration of idle/active/paused/retained state.
 14. Compatibility and rollback.
 15. Mandatory Reviewer/QA/Integrator gates.
-16. Twenty-two-row validation matrix including the sixteen required scenarios.
+16. Twenty-seven-row validation matrix including the sixteen original scenarios plus standalone
+    and preempting Quick Fix terminal/ownership paths.
 17. Protected current-lane proof.
 18. Ordered implementation steps with a stop condition at every step.
 
@@ -166,11 +176,33 @@ Registry, active bundle, V2, product code/tests, current lanes/residuals, remote
 destructive actions remain forbidden. No parallel exception is planned for this global governance
 implementation.
 
+## Planning Review Revision
+
+The Orchestrator audit identified and this revision resolves three blocking planning defects:
+
+1. Token invariant: a fully recorded `paused_preempted` state is durably inspectable with
+   `execution_token_owner: null`. Quick Fix activation later acquires the sole token. A
+   reconciliation failure releases the original reconciliation token and returns to the same
+   owner-null paused state.
+2. Quick Fix terminal paths: a standalone Quick Fix goes from `idle` to `quick_fix_running` to
+   Integrator-accepted `complete`, or to explicit `cancelled` closeout without integration. A
+   preempting Quick Fix enters `reconciling` only after acceptance is proven on `master`; its
+   cancellation/failure preserves the original pause/checkpoint and returns owner-null to
+   Planner/User without silent resume or destructive cleanup.
+3. Normative fast path: when every `AGENTS.md` 19.1 predicate is proven and no escalation trigger
+   exists, Orchestrator must use the compact capsule and must not route independent Planner, create
+   a separate full plan, repeat approval, or add default QA. Planner is required for ambiguity,
+   escalation triggers, or QF-4 scope.
+
+The validation plan now explicitly covers standalone acceptance/cancellation, preempting ownership
+transfer, preempting cancellation/failure, reconciliation failure owner-null semantics,
+Reviewer/QA/Integrator token retention, and nested-preemption rejection.
+
 ## Validation At This Planning Gate
 
 Required before commit:
 
-- confirm only the three authorized files are new/changed;
+- confirm only the three authorized files are changed by the revision;
 - confirm all three state `planned_pending_user_approval`;
 - inspect `git diff --check` and the staged diff;
 - use exact-path staging only;
