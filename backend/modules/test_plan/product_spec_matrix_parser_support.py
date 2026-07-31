@@ -18,7 +18,10 @@ NEGATIVE_RECORD_HEADER_RE = re.compile(
     r"\b(result|judg|record|measured|rev|revision|pages|description|date)\b",
     re.IGNORECASE,
 )
-GROUP_TOKEN_HEADER_RE = re.compile(r"^\s*(?:[A-Za-z]\d+|\d+[A-Za-z]?|[A-Za-z])\s*$")
+GROUP_TOKEN_HEADER_RE = re.compile(
+    r"^\s*(?:group\s*)?(?:[A-Za-z]\d+|\d+[A-Za-z]?|[A-Za-z])\s*$",
+    re.IGNORECASE,
+)
 TEXTUAL_ITEM_RE = re.compile(r"[A-Za-z]{2,}")
 PURE_NUMERIC_OR_SYMBOL_RE = re.compile(r"^[\d\W_]+$")
 QUALIFICATION_TITLE_RE = re.compile(r"\bqualification\s+test\b", re.IGNORECASE)
