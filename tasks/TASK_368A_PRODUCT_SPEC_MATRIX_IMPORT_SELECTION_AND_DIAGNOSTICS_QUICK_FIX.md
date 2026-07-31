@@ -1,8 +1,8 @@
 # TASK_368A_PRODUCT_SPEC_MATRIX_IMPORT_SELECTION_AND_DIAGNOSTICS_QUICK_FIX
 
-Status: `integration_blocked`
+Status: `integration_reconciliation_approved`
 Lane: `task-368a-product-spec-matrix-import-quick-fix`
-Owner role: Planner/User governance reconciliation required; implementation lane retained
+Owner role: Integrator; exact evidence-path reconciliation authorized by Planner
 Date: 2026-07-31
 
 ## Current Phase / Why Allowed
@@ -34,6 +34,28 @@ Date: 2026-07-31
 - Residual classification: `conflict` for the shared evidence path, owned by Planner/User
   governance reconciliation. The full clean lane remains `retain` at the exact lane HEAD until a
   new authorized merge attempt; no implementation change is requested.
+
+## Planner Integration Reconciliation
+
+- Planner Discovery found no missing material dispatch fact, product/test change, acceptance
+  semantic change, destructive action, or remote action requiring a new user decision.
+- Existing Goal authority covers this ordinary evidence reconciliation and local governance
+  checkpoint.
+- At the next authorized merge attempt, the Quick Fixer conflict path must resolve to the exact
+  lane HEAD `826e0a232982153eb00b6fc379892c4611a872e1` blob
+  `eff7f9f2c50621ebcc53515b932287225ba8db7a`.
+- The lane blob is the chronological successor of the primary dispatch placeholder. It preserves
+  the dispatch authorization, diagnosis, ownership, branch/worktree/base, and clean-start facts,
+  and replaces pending fields with the reviewed implementation/fix-pass record.
+- Primary `approved_ready_for_quick_fixer_dispatch`, `Quick Fixer checkpoint: pending`, and the
+  prospective required-record instructions are `stale/superseded`, not unknown discard.
+- Lane product/test paths plus Reviewer and QA evidence must remain unchanged.
+- Integrator must verify the final index blob, complete nine-path package, Reviewer/QA ancestry,
+  and original merged-tree validation before any acceptance claim.
+- TASK_368A remains unintegrated, not accepted, and not pushed. The cancelled retained
+  browser-release checkpoint remains completely independent and locked.
+- Reconciliation evidence:
+  `docs/lane_evidence/TASK_368A_product-spec-matrix-import-selection-and-diagnostics_integration-reconciliation_planner.md`.
 
 ## Goal
 
