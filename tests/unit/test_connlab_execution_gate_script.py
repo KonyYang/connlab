@@ -16,13 +16,9 @@ END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 
 
 def _git(repo: Path, *args: str) -> str:
-    completed = subprocess.run(
-        ["git", "-C", str(repo), *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return completed.stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True
+    ).stdout.strip()
 
 
 def _init_repo(tmp_path: Path) -> Path:
@@ -68,11 +64,24 @@ def _active(
     }
 
 
-def _parallel() -> dict[str, object]:
+def _queue(task: str, position: int, sequence: int | object | None = None) -> dict[str, object]:
+    return {
+        "task_id": task, "lane": task.lower().replace("_", "-"),
+        "enqueue_sequence": position if sequence is None else sequence,
+        "enqueued_at": f"2026-07-31T00:00:0{position}+00:00",
+        "dependencies": [], "locked_paths": [f"queue/{task.lower()}"],
+        "requested_priority": "normal", "queue_position": position,
+        "evidence": f"{task}.md",
+    }
+
+
+def _parallel(*, worktree: str = "D:/disposable/secondary") -> dict[str, object]:
     return {
         "primary_task_id": "TASK_PRIMARY",
         "secondary_execution_token_owner": "TASK_SECONDARY",
         "secondary_task_id": "TASK_SECONDARY", "secondary_lane": "task-secondary",
+        "secondary_role": "Developer", "secondary_branch": "lane/task-secondary",
+        "secondary_worktree": worktree, "secondary_head_sha": "c" * 40,
         "user_approval_evidence": "USER_APPROVAL_1", "scope_proof": "disjoint scope",
         "independence_proof": "independent validation and authority",
         "locked_paths": ["secondary/path"], "end_condition": "Integrator acceptance",
@@ -81,11 +90,8 @@ def _parallel() -> dict[str, object]:
 
 def _write_board(repo: Path, control: dict[str, object], *, duplicate: bool = False) -> None:
     block = f"{BEGIN}\n```json\n{json.dumps(control, indent=2)}\n```\n{END}\n"
-    if duplicate:
-        block = f"{block}\n{block}"
-    (repo / "docs" / "task_board.md").write_text(
-        f"# Fixture Board\n\n{block}", encoding="utf-8"
-    )
+    if duplicate: block = f"{block}\n{block}"
+    (repo / "docs" / "task_board.md").write_text(f"# Fixture Board\n\n{block}", encoding="utf-8")
 
 
 def _run_gate(
@@ -98,24 +104,11 @@ def _run_gate(
     assert GATE.is_file(), "production execution gate is not implemented"
     completed = subprocess.run(
         [
-            "powershell.exe",
-            "-NoProfile",
-            "-File",
-            str(GATE),
-            "-Intent",
-            intent,
-            "-TaskId",
-            task_id,
-            "-Lane",
-            lane,
-            "-RepositoryRoot",
-            str(repo),
-            "-AllowTestRepositoryRoot",
-            "-Json",
+            "powershell.exe", "-NoProfile", "-File", str(GATE), "-Intent", intent,
+            "-TaskId", task_id, "-Lane", lane, "-RepositoryRoot", str(repo),
+            "-AllowTestRepositoryRoot", "-Json",
         ],
-        check=False,
-        capture_output=True,
-        text=True,
+        check=False, capture_output=True, text=True,
     )
     return completed, json.loads(completed.stdout)
 
@@ -140,25 +133,9 @@ def test_second_task_queues_while_owner_retains_token_through_gates(
 ) -> None:
     repo = _init_repo(tmp_path)
     state = "implementation_running" if role == "Developer" else "gate_running"
-    active = {
-        "task_id": "TASK_OWNER",
-        "lane": "task-owner",
-        "role": role,
-        "branch": "lane/task-owner",
-        "worktree": str(tmp_path / "owner"),
-        "base_sha": "a" * 40,
-        "head_sha": "b" * 40,
-        "locked_paths": ["shared/path"],
-        "evidence": "owner.md",
-    }
-    _write_board(
-        repo,
-        _control(
-            execution_token_owner="TASK_OWNER",
-            execution_state=state,
-            active=active,
-        ),
-    )
+    active = _active(task="TASK_OWNER", lane="task-owner", role=role, worktree=str(tmp_path / "owner"))
+    active["locked_paths"] = ["shared/path"]
+    _write_board(repo, _control(execution_token_owner="TASK_OWNER", execution_state=state, active=active))
 
     completed, output = _run_gate(repo, "StartTask")
 
@@ -215,37 +192,29 @@ def test_duplicate_authority_blocks_fail_closed(tmp_path: Path) -> None:
         ),
         (
             lambda state: state.update(
-                queue=[
-                    {"task_id": "TASK_A", "queue_position": 1},
-                    {"task_id": "TASK_B", "queue_position": 1},
-                ]
+                queue=[_queue("TASK_A", 1), _queue("TASK_B", 1, 2)]
             ),
             "BLOCKED_QUEUE_POSITION_DUPLICATE",
         ),
         (
             lambda state: state.update(
-                queue=[
-                    {"task_id": "TASK_A", "queue_position": 1},
-                    {"task_id": "TASK_A", "queue_position": 2},
-                ]
+                queue=[_queue("TASK_A", 1), _queue("TASK_A", 2)]
             ),
             "BLOCKED_QUEUE_TASK_DUPLICATE",
+        ),
+        (
+            lambda state: state.update(queue=[{"task_id": "TASK_Q", "queue_position": 1}]),
+            "BLOCKED_QUEUE_INVALID",
+        ),
+        (
+            lambda state: state.update(queue=[_queue("TASK_B", 2), _queue("TASK_A", 1)]),
+            "BLOCKED_QUEUE_FIFO_INVALID",
         ),
         (
             lambda state: state.update(
                 execution_state="implementation_running",
                 execution_token_owner="TASK_OWNER",
-                active={
-                    "task_id": "TASK_OTHER",
-                    "lane": "task-other",
-                    "role": "Developer",
-                    "branch": "lane/task-other",
-                    "worktree": "unused",
-                    "base_sha": "a" * 40,
-                    "head_sha": "b" * 40,
-                    "locked_paths": ["other/path"],
-                    "evidence": "other.md",
-                },
+                active=_active(task="TASK_OTHER", lane="task-other", worktree="unused"),
             ),
             "BLOCKED_ACTIVE_OWNER_MISMATCH",
         ),
@@ -265,6 +234,33 @@ def test_schema_and_owner_invariants_have_stable_block_codes(
     assert output["code"] == expected_code
 
 
+def test_complete_fifo_queue_record_is_allowed_by_general_inspect(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path)
+    _write_board(repo, _control(queue=[_queue("TASK_A", 1), _queue("TASK_B", 2)]))
+
+    completed, output = _run_gate(repo, "Inspect")
+
+    assert completed.returncode == 0
+    assert output["code"] == "ALLOW_INSPECT"
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    [("enqueue_sequence", "1"), ("enqueued_at", "not-a-time"),
+     ("dependencies", "TASK_DEP"), ("locked_paths", []), ("requested_priority", 1)],
+)
+def test_queue_field_types_fail_closed(tmp_path: Path, field: str, invalid: object) -> None:
+    repo = _init_repo(tmp_path)
+    queue = _queue("TASK_A", 1)
+    queue[field] = invalid
+    _write_board(repo, _control(queue=[queue]))
+
+    completed, output = _run_gate(repo, "Inspect")
+
+    assert completed.returncode != 0
+    assert output["code"] == "BLOCKED_QUEUE_INVALID"
+
+
 def test_parallel_exception_allows_only_recorded_secondary_owner(tmp_path: Path) -> None:
     repo = _init_repo(tmp_path)
     active = _active(worktree=str(tmp_path / "primary"))
@@ -273,17 +269,16 @@ def test_parallel_exception_allows_only_recorded_secondary_owner(tmp_path: Path)
         execution_token_owner="TASK_PRIMARY",
         execution_state="implementation_running",
         active=active,
-        parallel_exception={**_parallel(), "locked_paths": ["path/secondary"]},
+        parallel_exception={**_parallel(worktree=str(tmp_path / "secondary")), "locked_paths": ["path/secondary"]},
     )
     _write_board(repo, control)
 
-    secondary, secondary_output = _run_gate(
-        repo, "CreateWorktree", task_id="TASK_SECONDARY", lane="task-secondary"
-    )
-    third, third_output = _run_gate(
-        repo, "CreateWorktree", task_id="TASK_THIRD", lane="task-third"
-    )
+    inspected, inspect_output = _run_gate(repo, "Inspect")
+    secondary, secondary_output = _run_gate(repo, "CreateWorktree", task_id="TASK_SECONDARY", lane="task-secondary")
+    third, third_output = _run_gate(repo, "CreateWorktree", task_id="TASK_THIRD", lane="task-third")
 
+    assert inspected.returncode == 0
+    assert inspect_output["code"] == "ALLOW_INSPECT"
     assert secondary.returncode == 0
     assert secondary_output["code"] == "ALLOW_WORKTREE_CREATE"
     assert third.returncode == 0
@@ -305,13 +300,19 @@ def test_parallel_exception_without_primary_owner_fails_closed(tmp_path: Path) -
     assert output["code"] == "BLOCKED_PARALLEL_PRIMARY_REQUIRED"
 
 
-def test_parallel_exception_requires_independence_approval_and_owner_proof(
-    tmp_path: Path,
+@pytest.mark.parametrize(
+    "missing",
+    [("independence_proof",),
+     ("secondary_role", "secondary_branch", "secondary_worktree", "secondary_head_sha")],
+)
+def test_parallel_exception_requires_complete_proof(
+    tmp_path: Path, missing: tuple[str, ...],
 ) -> None:
     repo = _init_repo(tmp_path)
     active = _active()
     incomplete = _parallel()
-    incomplete.pop("independence_proof")
+    for field in missing:
+        incomplete.pop(field)
     _write_board(
         repo,
         _control(
@@ -343,12 +344,7 @@ def test_gate_running_never_authorizes_implementation_dispatch(
         ),
     )
 
-    completed, output = _run_gate(
-        repo,
-        "ImplementationDispatch",
-        task_id="TASK_OWNER",
-        lane="task-owner",
-    )
+    completed, output = _run_gate(repo, "ImplementationDispatch", task_id="TASK_OWNER", lane="task-owner")
 
     assert completed.returncode != 0
     assert output["code"] == "BLOCKED_DISPATCH_STATE"

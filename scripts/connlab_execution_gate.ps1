@@ -53,6 +53,18 @@ function Required([AllowNull()][object]$Object, [string[]]$Names) {
     }
     return $true
 }
+function PositiveInteger([AllowNull()][object]$Value) {
+    return ($Value -is [byte] -or $Value -is [int16] -or $Value -is [int32] -or $Value -is [int64]) -and [int64]$Value -gt 0
+}
+function StringArray([object]$Object, [string]$Name, [bool]$AllowEmpty) {
+    if ($Object.PSObject.Properties.Name -notcontains $Name) { return $false }
+    $raw = $Object.$Name
+    if ($raw -is [string]) { return $false }
+    $items = @($raw)
+    if (-not $AllowEmpty -and $items.Count -eq 0) { return $false }
+    foreach ($item in $items) { if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { return $false } }
+    return @($items | Select-Object -Unique).Count -eq $items.Count
+}
 function NormalLocks([AllowNull()][object]$Values) {
     return @(foreach ($value in @($Values)) {
         if ($null -ne $value -and -not [string]::IsNullOrWhiteSpace([string]$value)) {
@@ -149,14 +161,32 @@ try {
     $ownerless = @("idle", "paused_preempted", "complete", "cancelled")
     if (($state -in $owned -and [string]::IsNullOrWhiteSpace([string]$owner)) -or ($state -in $ownerless -and -not [string]::IsNullOrWhiteSpace([string]$owner))) { Deny "BLOCKED_OWNER_STATE_CONTRADICTION" "Token owner contradicts execution state." }
 
-    $positions = @(); $queuedTasks = @()
+    $positions = @(); $sequences = @(); $queuedTasks = @(); $queueRecords = @()
     foreach ($item in @($script:Control.queue)) {
-        if (-not (Required $item @("task_id", "queue_position")) -or [int]$item.queue_position -lt 1) { Deny "BLOCKED_QUEUE_INVALID" "A queue record is incomplete." }
+        $queueFields = @("task_id", "lane", "enqueue_sequence", "enqueued_at", "dependencies", "locked_paths", "requested_priority", "queue_position", "evidence")
+        foreach ($field in $queueFields) { if ($item.PSObject.Properties.Name -notcontains $field) { Deny "BLOCKED_QUEUE_INVALID" "A queue record is incomplete." } }
+        $requiredQueueValues = @("task_id", "lane", "enqueue_sequence", "enqueued_at", "locked_paths", "requested_priority", "queue_position", "evidence")
+        $queuedAt = [datetimeoffset]::MinValue
+        if (-not (Required $item $requiredQueueValues) -or -not (PositiveInteger $item.enqueue_sequence) -or -not (PositiveInteger $item.queue_position) -or
+            $item.task_id -isnot [string] -or $item.lane -isnot [string] -or $item.enqueued_at -isnot [string] -or $item.requested_priority -isnot [string] -or $item.evidence -isnot [string] -or
+            -not [datetimeoffset]::TryParse($item.enqueued_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$queuedAt) -or
+            -not (StringArray $item "dependencies" $true) -or -not (StringArray $item "locked_paths" $false) -or @($item.dependencies) -contains [string]$item.task_id) {
+            Deny "BLOCKED_QUEUE_INVALID" "A queue record has incomplete or invalid frozen FIFO fields."
+        }
         if ($positions -contains [int]$item.queue_position) { Deny "BLOCKED_QUEUE_POSITION_DUPLICATE" "Queue positions must be unique." }
         if ($queuedTasks -contains [string]$item.task_id) { Deny "BLOCKED_QUEUE_TASK_DUPLICATE" "Queued task identities must be unique." }
-        $positions += [int]$item.queue_position; $queuedTasks += [string]$item.task_id
+        if ($sequences -contains [int64]$item.enqueue_sequence) { Deny "BLOCKED_QUEUE_SEQUENCE_DUPLICATE" "Enqueue sequences must be unique." }
+        $positions += [int]$item.queue_position; $sequences += [int64]$item.enqueue_sequence; $queuedTasks += [string]$item.task_id
+        $queueRecords += [pscustomobject]@{ Task=[string]$item.task_id; Position=[int]$item.queue_position; Sequence=[int64]$item.enqueue_sequence; Time=$queuedAt; Priority=[string]$item.requested_priority }
     }
-    if ($positions.Count -gt 0 -and (($positions | Sort-Object) -join ",") -ne (1..$positions.Count -join ",")) { Deny "BLOCKED_QUEUE_FIFO_INVALID" "Queue positions must be contiguous FIFO positions." }
+    if ($positions.Count -gt 0 -and ($positions -join ",") -ne (1..$positions.Count -join ",")) { Deny "BLOCKED_QUEUE_FIFO_INVALID" "Queue records must be stored in contiguous queue-position order." }
+    $bySequence = @($queueRecords | Sort-Object Sequence)
+    for ($index = 1; $index -lt $bySequence.Count; $index++) { if ($bySequence[$index].Time -lt $bySequence[$index - 1].Time) { Deny "BLOCKED_QUEUE_FIFO_INVALID" "Enqueue sequence/time facts contradict FIFO order." } }
+    foreach ($priorityGroup in @($queueRecords | Group-Object Priority)) {
+        $fifo = @($priorityGroup.Group | Sort-Object Sequence, Time, Task)
+        $positioned = @($priorityGroup.Group | Sort-Object Position)
+        if (($fifo.Task -join ",") -ne ($positioned.Task -join ",")) { Deny "BLOCKED_QUEUE_FIFO_INVALID" "Equal-priority records must retain FIFO sequence/time order." }
+    }
 
     $activeFields = @("task_id", "lane", "role", "branch", "worktree", "base_sha", "head_sha", "locked_paths", "evidence")
     if ($state -in @("implementation_running", "gate_running", "reconciling")) {
@@ -189,11 +219,20 @@ try {
 
     $parallel = $script:Control.parallel_exception
     if ($null -ne $parallel) {
-        $parallelFields = @("primary_task_id", "secondary_execution_token_owner", "secondary_task_id", "secondary_lane", "user_approval_evidence", "scope_proof", "independence_proof", "locked_paths", "end_condition")
+        $parallelFields = @("primary_task_id", "secondary_execution_token_owner", "secondary_task_id", "secondary_lane", "secondary_role", "secondary_branch", "secondary_worktree", "secondary_head_sha", "user_approval_evidence", "scope_proof", "independence_proof", "locked_paths", "end_condition")
         if ([string]::IsNullOrWhiteSpace([string]$owner) -or $null -eq $script:Control.active) { Deny "BLOCKED_PARALLEL_PRIMARY_REQUIRED" "Parallel exception requires a valid primary owner." }
         if (-not (Required $parallel $parallelFields)) { Deny "BLOCKED_PARALLEL_EXCEPTION_INCOMPLETE" "Parallel proof is incomplete." }
+        foreach ($field in @("primary_task_id", "secondary_execution_token_owner", "secondary_task_id", "secondary_lane", "secondary_role", "secondary_branch", "secondary_worktree", "secondary_head_sha", "user_approval_evidence", "scope_proof", "independence_proof", "end_condition")) {
+            if ($parallel.$field -isnot [string]) { Deny "BLOCKED_PARALLEL_EXCEPTION_INCOMPLETE" "Parallel proof fields must use canonical string types." }
+        }
+        if (-not (StringArray $parallel "locked_paths" $false)) { Deny "BLOCKED_PARALLEL_EXCEPTION_INCOMPLETE" "Parallel locked_paths must be a non-empty unique string array." }
         if ([string]$parallel.primary_task_id -ne [string]$owner -or [string]$parallel.secondary_task_id -ne [string]$parallel.secondary_execution_token_owner) { Deny "BLOCKED_PARALLEL_OWNER_MISMATCH" "Parallel owner facts are inconsistent." }
         if ([string]$parallel.secondary_execution_token_owner -eq [string]$owner) { Deny "BLOCKED_PARALLEL_OWNER_DUPLICATE" "Primary and secondary owners must differ." }
+        if ($parallel.secondary_role -isnot [string] -or [string]$parallel.secondary_role -ne "Developer" -or $parallel.secondary_branch -isnot [string] -or [string]$parallel.secondary_branch -ne "lane/$($parallel.secondary_lane)" -or
+            $parallel.secondary_worktree -isnot [string] -or -not [IO.Path]::IsPathRooted([string]$parallel.secondary_worktree) -or $parallel.secondary_head_sha -isnot [string] -or [string]$parallel.secondary_head_sha -notmatch '^[0-9a-fA-F]{40}$' -or
+            [string]$parallel.secondary_branch -eq [string]$script:Control.active.branch -or [IO.Path]::GetFullPath([string]$parallel.secondary_worktree).TrimEnd("\") -eq [IO.Path]::GetFullPath([string]$script:Control.active.worktree).TrimEnd("\")) {
+            Deny "BLOCKED_PARALLEL_GIT_FACTS_INVALID" "Parallel secondary role/branch/worktree/HEAD facts are invalid or collide with primary."
+        }
         if (LocksOverlap $script:Control.active.locked_paths $parallel.locked_paths) { Deny "BLOCKED_LOCKED_PATH_OVERLAP" "Parallel locks overlap." }
     }
 
