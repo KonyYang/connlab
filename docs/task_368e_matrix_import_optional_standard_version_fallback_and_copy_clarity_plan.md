@@ -1,11 +1,28 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `planned_pending_user_approval`
+Status: `approved_worktree_preparation`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current active task: none. TASK_368E is planned only and owns no execution token, branch,
-worktree, product path, or role dispatch.
+Current active task: none. TASK_368E has explicit User approval and is at isolated-worktree
+preparation only. It owns no execution token, branch/worktree, product write, or Developer
+dispatch yet.
+
+## Approval And Activation Record
+
+- User approval date: 2026-08-01.
+- Approved planning checkpoint:
+  `5dff98af9d0f93770962a9a672d7610d0cef4936`.
+- Approval covers the exact task/plan and automatic role progression through local Integrator
+  acceptance after controlled activation.
+- The approved route remains `Developer -> Reviewer -> QA -> Integrator`; every gate is
+  mandatory because this is QF-4.
+- WIP remains `1`; there is no parallel exception, queue entry, paused task, Quick Fix, token
+  owner, TASK_368E branch, or TASK_368E worktree.
+- This governance step authorizes permanent Orchestrator to prepare the exact isolated
+  branch/worktree only. It does not authorize Planner to create it or dispatch Developer, and it
+  does not authorize push, restart, release build, real-data/file mutation, destructive cleanup,
+  or changes to retained/cancelled/frozen lanes.
 
 ## 1. Discovery Gate
 
@@ -69,10 +86,11 @@ rescinded its interim no-window correction, and confirmed choose-or-skip as the 
 
 - Future implementation base/HEAD and exact test totals.
 - Whether a safe disposable live browser fixture is available to QA.
-- Developer/Reviewer/QA/Integrator evidence, because implementation is not authorized.
+- Developer/Reviewer/QA/Integrator evidence, because implementation has not started.
 
 These unknowns do not change scope, behavior, ownership, acceptance, or gate order. Definition of
-Ready is satisfied for User review, not implementation.
+Ready was satisfied for User review; approval is now recorded and isolated-worktree preparation is
+next, not implementation dispatch.
 
 ### Continue Or Stop
 
@@ -402,8 +420,9 @@ context, bounded components/tests, and mandatory gates mitigate them.
 
 ## 13. Implementation Order And Stop Conditions
 
-1. User approves exact task/plan; otherwise stop.
-2. Orchestrator reruns gate and verifies WIP=1; blocked/queued means stop/queue per policy.
+1. Completed: User approved the exact task/plan at the recorded planning checkpoint.
+2. Next: Orchestrator reruns the worktree-preparation gate and verifies WIP=1;
+   blocked/queued means stop/queue per policy.
 3. Create exact isolated lane/worktree at the then-current approved base and record token/locks.
 4. Developer follows TDD. Any non-allowlisted path, automatic config, schema/migration, broad
    fallback, or changed Confirm Matrix behavior stops for Planner/User.
@@ -421,15 +440,19 @@ context, bounded components/tests, and mandatory gates mitigate them.
 - Planning base: `7b2be466b283d53f88b93d365ed21f15269fa5a5`
 - WIP: `1`; parallel exception: none.
 
-No branch/worktree exists in this planned state. Activation records the actual base.
+No TASK_368E branch/worktree exists in this approved-preparation state. Orchestrator records the
+actual clean base/HEAD after exact creation; token/Developer dispatch remains a later governance
+transition.
 
 ## 15. Definition Of Ready
 
-Ready for User approval because goal, copy, choose/skip behavior, availability/integrity boundary,
-audit/reuse/API/transaction design, exact paths, tests, rollback, lane identity, and mandatory gates
-are explicit. Not ready for implementation until User approval and fresh gate/activation.
+Definition of Ready and explicit User approval are satisfied for isolated-worktree preparation.
+Goal, copy, choose/skip behavior, availability/integrity boundary, audit/reuse/API/transaction
+design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. This is
+not Developer dispatch authority until Orchestrator creates/verifies the worktree and primary
+governance records the implementation token/role.
 
 ## 16. Next Legal Role
 
-User. On explicit approval, permanent Orchestrator may prepare the lane and dispatch Developer
-under WIP=1. Planner does not activate or dispatch from this pass.
+Permanent Orchestrator, for exact isolated-worktree preparation only. Planner does not create the
+worktree, acquire the token, or dispatch Developer from this pass.

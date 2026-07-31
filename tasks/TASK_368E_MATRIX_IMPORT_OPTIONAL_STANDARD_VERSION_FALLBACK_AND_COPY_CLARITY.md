@@ -1,11 +1,27 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `planned_pending_user_approval`
+Status: `approved_worktree_preparation`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: User. Planner Discovery is complete; no implementation branch,
-worktree, execution token, product change, or role dispatch is authorized yet.
+Current gate owner: permanent Orchestrator for isolated worktree preparation only. User approval
+is recorded; no implementation branch/worktree exists yet, no execution token is held, and no
+Developer dispatch or product/test change has started.
+
+## User Approval Record
+
+- On 2026-08-01 the User explicitly approved the exact task and plan at planning checkpoint
+  `5dff98af9d0f93770962a9a672d7610d0cef4936`.
+- The User authorized automatic execution through local Integrator acceptance within the exact
+  approved scope and mandatory `Developer -> Reviewer -> QA -> Integrator` route.
+- This approval does not authorize push, publication, release build, runtime restart, real
+  DB/Excel/PDF/public-drive mutation, destructive cleanup, or changes to retained/cancelled/frozen
+  lanes.
+- Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
+  availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
+- Current durable state is only `approved_worktree_preparation`; token acquisition and Developer
+  dispatch require later primary governance after Orchestrator has created and verified the exact
+  isolated worktree.
 
 ## Goal
 
@@ -221,11 +237,13 @@ authority ambiguity returns to Planner/User.
 - Planning base: `7b2be466b283d53f88b93d365ed21f15269fa5a5`
 - WIP: `1`; no parallel exception.
 
-The branch/worktree do not exist and must not be created before User approval plus a fresh
-execution-gate check. The implementation base is recorded at activation, not inferred from this
-planning commit.
+User approval is now recorded, but the branch/worktree still do not exist. Permanent Orchestrator
+must run its own fresh worktree-preparation gate, create only the exact branch/path above, verify
+clean base/HEAD/index, and return those facts for dispatch governance. The implementation base is
+recorded from that verified creation, not inferred from planning history.
 
 ## Stop Point
 
-Wait for explicit User approval. Do not activate the lane, acquire the execution token, create
-the worktree, dispatch Developer, or edit product/test code from this planned state.
+Return to permanent Orchestrator for worktree preparation. Planner must not create the worktree,
+acquire the execution token, dispatch Developer, or edit product/test code in this approval-only
+pass.

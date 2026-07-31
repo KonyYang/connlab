@@ -1,12 +1,33 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `planned_pending_user_approval`
+Status: `approved_worktree_preparation`
 
 Date: 2026-08-01
 
 Role: permanent Planner
 
 Planning base: `7b2be466b283d53f88b93d365ed21f15269fa5a5`
+
+Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
+
+## User Approval And Activation Audit
+
+- On 2026-08-01 the User explicitly approved the exact TASK_368E task/plan and requested
+  automatic execution through local Integrator acceptance.
+- Approval preserves the exact choose/skip UX, availability/integrity classification, audit/API/
+  reuse/transaction contract, copy, May Touch/Must Not Touch/Locked Paths, and 28-category
+  validation plan.
+- Required route remains `Developer -> Reviewer -> QA -> Integrator`; QF-4 and mandatory QA are
+  unchanged.
+- Primary was reverified clean on `master` at the approval input HEAD with no `MERGE_HEAD`.
+- Fresh read-only gate returned `ALLOW_INSPECT`, execution state `complete`, token owner `null`,
+  queue empty, and active/paused/Quick Fix/parallel records null.
+- Ten registered worktrees were read-only checked and clean. No TASK_368E branch/worktree exists;
+  every retained/cancelled/frozen lane remains untouched.
+- Resulting authority is only `approved_worktree_preparation`. Planner did not create a branch or
+  worktree, acquire a token, dispatch Developer, or edit product/test code.
+- User approval does not authorize push, publication, release build, restart, real DB/Excel/PDF/
+  public-drive mutation, destructive cleanup, or retained-lane maintenance.
 
 ## Dispatch And Safety Audit
 
@@ -82,7 +103,7 @@ dialog. `Skip for now` is immediate and non-coercive; integrity failures remain 
 
 - Future implementation base and final validation totals.
 - Safe live-browser fixture availability.
-- Downstream role evidence, because implementation is not approved.
+- Downstream role evidence, because implementation has not started.
 
 These do not block planning readiness.
 
@@ -118,9 +139,11 @@ No broad exception or string-only matcher may authorize fallback.
   behavior are explicit.
 - Exact May Touch/Must Not Touch/Locked Paths and bounded tests are defined.
 - WIP=1 lane identity and mandatory Reviewer/QA/Integrator gates are defined.
-- No blocking question remains for User review.
+- No blocking question remains for isolated-worktree preparation.
 
-Decision: ready for explicit User approval, not implementation.
+Decision: Definition of Ready and explicit User approval are satisfied for isolated-worktree
+preparation. Developer dispatch remains locked until exact worktree creation/verification and a
+later durable primary token/role transition.
 
 ## Planned Files
 
@@ -133,9 +156,9 @@ Decision: ready for explicit User approval, not implementation.
 
 ## Gate And Next Role
 
-- Status remains `planned_pending_user_approval`.
+- Status is `approved_worktree_preparation`.
 - Execution-control JSON remains terminal; no token, branch/worktree, or role dispatch exists.
-- Next legal role: User.
+- Next legal role: permanent Orchestrator, for exact worktree preparation only.
 
 ## Prohibited In This Pass
 
