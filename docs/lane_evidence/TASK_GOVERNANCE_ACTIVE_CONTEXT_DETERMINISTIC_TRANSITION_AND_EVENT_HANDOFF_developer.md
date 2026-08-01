@@ -272,3 +272,75 @@ BLOCKER: none
 ```
 
 The external callback below reports the final evidence-checkpoint HEAD.
+
+## Final User-Approved R1-R3 Reconciliation Fix Pass
+
+- Required clean start was exact branch
+  `lane/task-governance-active-context-deterministic-transition-and-event-handoff` at
+  `9a644cc6d4631d1fd0649179db7fab80313f0561`; approved base remained
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
+- Primary governance authority was read-only at
+  `7f34c5a786b179e5da1cdcda8fe5cee3b8a00e9c`. Task, Plan, Planner/Reviewer evidence, board,
+  archive/index, protocols/skills, product code, execution gate, registry, V1/V2, and every
+  protected worktree remained untouched.
+- Focused RED captured all four bounded reproductions as `4 failed`: later-primary duplicate,
+  forged transition tuple/ID, post-QA unreviewed helper drift, and a recomputed canonical
+  generation-2 archive that removed eight authority-bearing lines before generation 3.
+- Implementation checkpoint:
+  `9f939d84db5567826a19be992e6de168c88ea400`.
+
+### R1-R3 Closure Map
+
+1. **R1:** duplicate recovery now revalidates current primary and lane clean state, exact
+   branch/HEAD/base ancestry, scope locks, immutable evidence, helper blob and transition facts.
+   The current primary must be a single-parent commit immediately after the recorded source,
+   must change only `docs/task_board.md`, and its committed board Git blob must equal a fresh
+   deterministic render of that exact source. A later primary commit and dirty lane both block
+   without writing.
+2. **R2:** each maintenance acceptance entry must match the only legal event/state/role/status
+   tuple and a SHA-256 transition ID recomputed from all immutable transition facts. Reviewer and
+   QA entries must attest the helper blob at the maintenance source checkpoint; a helper change
+   after QA blocks with zero writes.
+3. **R3:** incremental generation and index replay now require terminal eligibility plus absence
+   of current/active/queue/paused/Quick Fix/parallel/residual/proposal authority. A recomputed
+   archive/index cannot remove any of those authority lines, even when generation, source,
+   archive, compact, count, rollback, previous-index and plan hashes are internally canonical.
+
+### Final Validation
+
+- Focused Reviewer reproductions: `4 passed`; affected four-module matrix: `46 passed`.
+- Complete approved 12-module Task A matrix with final regressions:
+  `133 passed in 252.12s`.
+- Python compilation passed for all three helpers and six bounded Task A test modules.
+- PowerShell AST parsing passed for `run_task.ps1`, `connlab_execution_gate.ps1`, and
+  `connlab_lane_worktree.ps1`: `AST_PARSE_OK_3`.
+- Helper physical lines: transition `478`, active context `497`; both remain `<500`.
+- Exact start-HEAD allowlist contains only two approved helpers and four bounded tests before this
+  evidence update. `git diff --check` and staged checks passed.
+- Production active-context read-only validation returned `ALLOW_INSPECT` with `2514` lines,
+  `787060` bytes and `153` terminal records, then `MAINTENANCE_REQUIRED` generation 1 with plan
+  digest `426a11e237b4f19e97d7fa699d7b7a4e9f25caea61b087a304f3d6c16fe326e9` and projected compact
+  board `111` lines / `18939` bytes / `0` terminal records. Primary HEAD, clean status, board
+  SHA-256 `b9be3849069b084a8991f4cc5d59e79d1a01851da310cd1a2da5d49d79187120`, and archive listing
+  were byte-for-byte unchanged.
+- Transition inspect of that legacy, pre-integration primary correctly failed closed with
+  `BLOCKED_TRANSITION_METADATA`; the primary has no candidate transition metadata/history because
+  Planner/Orchestrator deliberately did not use the unintegrated helper. This read was also
+  zero-write and does not relax the helper.
+- Ten protected worktrees were clean at exact recorded HEADs before and after; canonical
+  HEAD/status digest was
+  `41186ea2cc2782027dd6078654381815c65d49d33883a40519f76cb4c29f14f0` both times.
+
+## Seven-Field Final Reconciliation Callback
+
+```text
+TASK_ID: TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
+ROLE: Developer
+STATUS: ready_for_review
+EVIDENCE: docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md
+COMMIT: 9f939d84db5567826a19be992e6de168c88ea400
+NEXT: Reviewer
+BLOCKER: none
+```
+
+The external callback reports the final evidence-checkpoint HEAD.
