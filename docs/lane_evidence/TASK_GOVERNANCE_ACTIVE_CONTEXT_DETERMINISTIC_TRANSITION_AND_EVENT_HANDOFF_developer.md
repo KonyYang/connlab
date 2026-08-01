@@ -11,7 +11,8 @@ STATUS: ready_for_review
 - Lane: `lane/task-governance-active-context-deterministic-transition-and-event-handoff`
 - Worktree: `D:\PythonProject\connlab-worktrees\task-governance-active-context-deterministic-transition-and-event-handoff`
 - Approved base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`
-- Implementation checkpoint: `2707c96942a506b683769688f224c08e985a2036`
+- Core implementation checkpoint: `2707c96942a506b683769688f224c08e985a2036`
+- Bounded literal `--input` compatibility checkpoint: `1b0ba8a6bab5943031f786492c95ebfcea961c6b`
 - `git show --check` passed; lane was clean immediately after the implementation checkpoint.
 
 The task, approved plan, Planner evidence, lane board copy, execution gate, registry, bundle, V1-Lite/
@@ -31,7 +32,8 @@ V2 artifacts, product/runtime code, and archive/index production paths were not 
    incremental terminal-only later generations, canonical hash-chained JSONL index, path/link guard,
    Integrator-only apply, board-last replacement, injected-failure rollback, and byte-exact rollback
    proof. No production apply was run.
-4. Added reference-only dispatch/read-set validation, exact seven-field callback validation,
+4. Added reference-only dispatch/read-set validation, exact seven-field callback validation with
+   literal-or-file input,
    `FULL_READ_REQUIRED`, one-transition/one-dispatch turn budget, zero routine Planner launches,
    heartbeat/unchanged-wait enforcement, and <=90-second pilot validation.
 5. Changed `run_task.ps1 -Preview` from a copied prompt/worktree dump to a compact JSON reference
@@ -81,6 +83,7 @@ GREEN progression:
 - active-context unit/integration -> `9 passed`, including first/second/third closeouts and all
   three injected replacement boundaries.
 - focused transition/active-context/handoff helpers -> `28 passed`.
+- literal callback/file-input focused re-gate -> `11 passed`.
 - final new plus existing governance matrix below -> `105 passed`.
 
 ## Final Validation
@@ -99,7 +102,7 @@ py -m pytest \
   tests/unit/test_connlab_lane_worktree_script.py \
   tests/unit/test_markdown_archive_tool.py \
   tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
-=> 105 passed in 84.83s
+=> 105 passed in 84.30s
 
 py -m py_compile <three helpers and six bounded new test modules>
 => passed
@@ -117,7 +120,7 @@ git show --check --format=oneline --stat 2707c96942a506b683769688f224c08e985a203
 The allowlist scan found exactly the 23 implementation paths above, no unexpected/missing path,
 no `backend/` or `frontend/` path, and no board/registry/bundle/V2/execution-gate/task-complete path.
 All new helpers are below the 500 physical-line hard limit: transition `375`, active context `385`,
-handoff `216`. New bounded tests remain below 400 lines.
+handoff `220`. New bounded tests remain below 400 lines.
 
 ## Production Zero-Write Evidence
 
@@ -186,7 +189,7 @@ TASK_ID: TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDO
 ROLE: Developer
 STATUS: ready_for_review
 EVIDENCE: docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md
-COMMIT: 2707c96942a506b683769688f224c08e985a2036
+COMMIT: 1b0ba8a6bab5943031f786492c95ebfcea961c6b
 NEXT: Reviewer
 BLOCKER: none
 ```
