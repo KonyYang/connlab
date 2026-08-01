@@ -196,3 +196,79 @@ BLOCKER: none
 
 The external role callback reports the final evidence-checkpoint HEAD, because a commit cannot
 self-reference its own SHA inside its tracked contents.
+
+## Bounded Reviewer Fix Pass — B1-B5
+
+- Required clean start: branch
+  `lane/task-governance-active-context-deterministic-transition-and-event-handoff` at
+  `1e4d080fb0b17a520aa5afb924fd62ffe4bf2203`; original base remained
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
+- Reviewer authority: primary `b246e194c075f0f6a3038d043fe459a43876a088` and exact Reviewer
+  evidence at the task-owned Reviewer path. No Reviewer evidence or normative contract changed.
+- Focused RED: the seven direct B1-B5 reproductions failed before implementation (`7 failed`),
+  including live/existing rollback output, cross-task capsule, missing transition metadata,
+  historical-status substring, event-name-only maintenance, corrupt idempotent rerun, and a
+  one-second first heartbeat.
+- Fix checkpoint: `de9a4e0f89730a5f408460852ad3b6f53ceb1000`.
+
+### Reviewer Finding Closure Map
+
+1. **B1:** `prove-rollback` now requires `--temp-root`, proves a pre-existing temp root outside the
+   repository, rejects symlink/junction traversal, escape and every existing target, and uses
+   exclusive `xb` creation. Safe first/second/third-generation outputs remain byte-exact.
+2. **B2:** the <=4096-byte capsule now requires typed task/token/state/role/lane/branch/worktree/
+   base/head, gate/scope/lock digests, evidence status, named next action and stop conditions. It
+   parses the pinned primary board and binds task/plan/evidence refs plus clean primary/lane Git
+   facts; cross-task, stale, unrelated, incomplete and drifted inputs return `FULL_READ_REQUIRED`
+   or a stable block.
+3. **B3:** routine transitions require `scope_contract_ref`, `may_touch_digest`,
+   `locked_paths_digest`, and `last_transition_id`, bind the scope ref to the approved lane base,
+   recompute canonical task May Touch/lock digests, and parse exactly one machine evidence record.
+   Exact duplicate transitions remain zero-write; divergent task/lane/primary/status/context
+   duplicates block.
+4. **B4:** maintenance requires complete Developer/Reviewer/QA transition entries, evidence Git
+   refs/commit/blob/SHA/status/ancestry, retained-context binding, and the accepted active-context
+   helper blob. The versioned index recomputes source/archive/compact/count/rollback/plan/hash-chain
+   facts. `ALREADY_APPLIED` additionally requires the exact compact board, index/archive chain,
+   plan digest and expected clean/maintenance-only status. Corrupt, non-contiguous, escaped,
+   junction, conflict, partial-write, and second/third rollback cases are executable negatives.
+5. **B5:** every heartbeat, including the first, is measured from the immediately preceding
+   permitted material event and requires >=60 seconds plus a changed state. Mixed/negative order,
+   duplicate lifecycle events and dispatch-before-transition block; the 45-second
+   callback-to-dispatch positive remains within the <=90-second budget.
+
+### Fix-Pass Validation
+
+- Focused Reviewer reproductions: `7 passed`; focused expanded helper matrix: `41 passed`.
+- Complete approved 12-module matrix with added negatives: `129 passed in 206.49s`.
+- Python compilation: all three helpers and six bounded Task A test modules passed.
+- PowerShell AST: `run_task.ps1`, `connlab_execution_gate.ps1`, and
+  `connlab_lane_worktree.ps1` -> `AST_PARSE_OK_3`.
+- Helper physical lines: active context `494`, transition `452`, handoff `334`; all `<500`.
+- Production zero-write inspect/plan at primary
+  `b246e194c075f0f6a3038d043fe459a43876a088`: `ALLOW_INSPECT` then
+  `MAINTENANCE_REQUIRED`; board `2514` lines / `786622` bytes / `153` terminal records; planned
+  compact board `111` / `18656`; plan digest
+  `261a9d80fe95f9b9b783bd5f13889e948b5978ecc3a51af8282cd244d6ecd24e`. HEAD, board SHA-256
+  `8dba8027cb99fe4c760ccc8f7304ebebc83dff007ccc33e5629756e94ccb2ec1`, and clean status were
+  identical before/after; no production archive/index was created.
+- Exact implementation diff contains only three approved helpers and four bounded tests. No
+  `run_task.ps1`, task/plan/board, normative policy/skill, Reviewer evidence, product, V2,
+  registry/bundle, or protected-lane path changed.
+- Ten protected worktrees remained clean at their exact registered HEADs; canonical digest for
+  this fix pass was `4f350b88c6dc4c026fd9a43d01ef700d6c75e0bd3f29c7f00ed8c2299ca3f130`
+  before and after.
+
+## Seven-Field Bounded-Fix Callback
+
+```text
+TASK_ID: TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
+ROLE: Developer
+STATUS: ready_for_review
+EVIDENCE: docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md
+COMMIT: de9a4e0f89730a5f408460852ad3b6f53ceb1000
+NEXT: Reviewer
+BLOCKER: none
+```
+
+The external callback below reports the final evidence-checkpoint HEAD.
