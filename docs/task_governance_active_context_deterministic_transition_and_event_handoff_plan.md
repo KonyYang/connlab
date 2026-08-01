@@ -1,6 +1,6 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `developer_fix_dispatch_ready`
+Status: `reviewer_regate_ready`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
@@ -13,10 +13,10 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Immutable approval/worktree base:
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; primary execution authority pins it before Create.
-- Reviewer blocked the clean package at final evidence HEAD
-  `1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` with B1-B5. Planner uses legacy governance to retain
-  the sole Task A token and record `implementation_running/Developer` plus
-  `developer_fix_dispatch_ready`; it does not dispatch Developer.
+- Developer completed the bounded B1-B5 fix at clean final evidence HEAD
+  `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`. Planner uses legacy governance to retain the sole
+  Task A token and record `gate_running/Reviewer` plus `reviewer_regate_ready`; it does not dispatch
+  Reviewer.
 - Task B remains planned and cannot be approved or implemented before A local acceptance and a
   separate User approval. The umbrella remains permanently non-executable.
 
@@ -182,7 +182,7 @@ Files: handoff helper/tests, bounded `run_task.ps1`, skills/protocol references,
 Stop if compacting removes task identity, authority, scope/locks, gate, stop conditions, or full-
 read fallback.
 
-### Step A5 — Developer package handoff and bounded fix (current)
+### Step A5 — Developer package handoff and bounded fix (completed)
 
 - Run all new A modules; existing execution gate/recovery, WIP/Quick Fix, worktree, Markdown
   archive, and permanent-role regression suites; Python compilation; PowerShell parse; diff/check,
@@ -196,7 +196,7 @@ read fallback.
   `105`-test baseline and every safety/performance gate, commit cleanly, and return to full Reviewer
   re-gate. Do not weaken the frozen contract or edit primary board/history.
 
-### Step A6 — Reviewer gate (blocked; mandatory re-gate after bounded fix)
+### Step A6 — Reviewer gate (current mandatory B1-B5 re-gate)
 
 - Full independent review; A cannot use its own new compact read or transition path to reduce this
   review.
@@ -281,7 +281,8 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return `developer_fix_dispatch_ready` to Orchestrator. Reviewer evidence at
-`1e4d080fb0b17a520aa5afb924fd62ffe4bf2203`, blob
-`8f8534adc660f71f2fbe435404699e321acc5174`, its B1-B5 scope, and ancestry are verified. Planner
-does not dispatch Developer, edit the lane, run live migration/maintenance, or perform Task B work.
+Return `reviewer_regate_ready` to Orchestrator. Developer fix evidence at
+`6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`, blob
+`75b80e0e131a84bb1e3176225e6173dc95dd7700`, its exact fix paths, Reviewer evidence ancestry, and
+clean state are verified. Planner does not dispatch Reviewer, edit the lane, run live migration/
+maintenance, or perform Task B work.

@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `developer_fix_dispatch_ready`
+Status: `reviewer_regate_ready`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -9,20 +9,19 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
 Owner at this gate: permanent Planner legacy transition governance. Next gate: Orchestrator
-dispatches Developer for the bounded B1-B5 fail-closed fix pass.
+dispatches Reviewer for the full B1-B5 re-gate.
 
 ## Approval Boundary
 
 The User explicitly approved Task A only and authorized automatic execution through local
 Integrator acceptance. This approval does not approve Task B or revive the superseded umbrella.
 Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
-Planner evidence. Reviewer blocked the clean package at lane HEAD
-`1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` with five executable fail-closed findings. This legacy
-governance step retains Task A as the sole WIP=`1` token owner, changes only the durable gate from
-`gate_running/Reviewer` to `implementation_running/Developer`, and records
-`developer_fix_dispatch_ready`. Reviewer re-gate, mandatory QA, and Integrator remain required. No
-live board maintenance, push, publication, restart, destructive cleanup, or parallel exception is
-authorized.
+Planner evidence. Developer completed the bounded B1-B5 fix and evidence package at clean lane
+HEAD `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`. This legacy governance step retains Task A as the
+sole WIP=`1` token owner, changes only the durable gate from `implementation_running/Developer` to
+`gate_running/Reviewer`, and records `reviewer_regate_ready`. Full Reviewer re-gate, mandatory QA,
+and Integrator remain required. No live board maintenance, push, publication, restart, destructive
+cleanup, or parallel exception is authorized.
 
 ## User Approval And Activation Boundary
 
@@ -32,10 +31,11 @@ authorized.
 - Authorized automatic route: isolated Developer -> Reviewer -> mandatory QA -> local Integrator
   acceptance, including bounded fixes inside the frozen scope.
 - Approval/worktree base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Reviewer final/evidence HEAD is `1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` over the exact
-  approved base and Developer package. Lane and primary worktree/index are clean, ancestry is
-  continuous, and Reviewer evidence blob `8f8534adc660f71f2fbe435404699e321acc5174` is
-  `reviewer_blocked`.
+- Developer bounded-fix final/evidence HEAD is
+  `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`. Lane and primary worktree/index are clean; approved
+  base, original Developer package, and Reviewer block are ancestors. Updated Developer evidence
+  blob `75b80e0e131a84bb1e3176225e6173dc95dd7700` is `ready_for_review`; Reviewer evidence remains
+  byte-identical at blob `8f8534adc660f71f2fbe435404699e321acc5174`.
 - Task B remains `planned_pending_user_approval`, serially blocked until A local acceptance and
   separate User approval. The umbrella remains `superseded_by_split_plans` and non-executable.
 
@@ -288,9 +288,10 @@ Missing a safety or quantitative target blocks Integrator acceptance.
   Integrator alone merges and runs the guarded first production migration before token release.
 
 The exact branch/worktree is clean at final Developer/evidence HEAD
-`1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` over the pinned approval base. The Reviewer-only delta
-adds only Reviewer evidence. The permanent Orchestrator may now dispatch Developer for B1-B5;
-Reviewer must re-gate the resulting clean checkpoint before mandatory QA.
+`6d449262473e628cdf239c5d9b54ae3a2ff2c4c8` over the pinned approval base and Reviewer block. The
+fix-pass delta is exactly the three approved helpers, four bounded tests, and Developer evidence.
+The permanent Orchestrator may now dispatch Reviewer for the full B1-B5 re-gate before mandatory
+QA.
 
 ## Reviewer-Blocked Bounded Fix Contract
 
@@ -312,6 +313,17 @@ Reviewer must re-gate the resulting clean checkpoint before mandatory QA.
   Task/Plan/board, archive/index production paths, execution gate, and all other paths are not
   Developer fix paths.
 
+## Bounded Fix Handoff
+
+- Fix checkpoint: `de9a4e0f89730a5f408460852ad3b6f53ceb1000`; clean final evidence HEAD:
+  `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`.
+- Developer claims all seven direct B1-B5 reproductions pass, the expanded helper matrix passes
+  `41`, and the complete approved matrix passes `129`; compilation, PowerShell AST, line ceilings,
+  production zero-write checks, and protected-state equality also pass.
+- Reviewer must independently re-run every B1-B5 adversarial case and the complete safety/
+  performance gate. No claim is accepted or waived by this transition. A pass routes to mandatory
+  QA; any remaining or new in-scope blocker returns to Developer.
+
 ## Compatibility And Rollback
 
 - Before acceptance, existing manual transitions and full reads remain authoritative.
@@ -324,5 +336,5 @@ Reviewer must re-gate the resulting clean checkpoint before mandatory QA.
 
 ## Stop Point
 
-Return `developer_fix_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane,
-run live migration/maintenance, or perform Task B work in this Planner turn.
+Return `reviewer_regate_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
+migration/maintenance, or perform Task B work in this Planner turn.
