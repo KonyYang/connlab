@@ -1,12 +1,13 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `qa_dispatch_ready`
+Status: `integrator_dispatch_ready`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for mandatory QA dispatch. TASK_368E retains the sole
-execution token with schema state `gate_running` and role `QA`. The clean lane HEAD is Reviewer-pass
-evidence commit `77fe429eea59d2908c2f57d9243e8fd893488ad5` over the unchanged base.
+Current gate owner: permanent Orchestrator for local Integrator dispatch. TASK_368E retains the sole
+execution token with schema state `gate_running` and role `Integrator`. The clean lane HEAD is QA-pass
+evidence commit `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
+`77fe429eea59d2908c2f57d9243e8fd893488ad5` and the unchanged base.
 
 ## User Approval Record
 
@@ -19,7 +20,8 @@ evidence commit `77fe429eea59d2908c2f57d9243e8fd893488ad5` over the unchanged ba
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `qa_dispatch_ready`. Reviewer passed the full fixed ancestry at
+- Current durable state is `integrator_dispatch_ready`. QA passed the mandatory full validation at
+  evidence commit `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
   `77fe429eea59d2908c2f57d9243e8fd893488ad5`; worktree/index are clean and token, base,
   branch, worktree, and locks are unchanged.
 
@@ -301,7 +303,24 @@ mandatory Reviewer/QA/Integrator gates.
 - The two independently attributed baseline debts remain historical only; any new or changed
   failure is blocking. QA pass is required before Integrator.
 
+## QA Pass And Integrator Handoff
+
+- QA evidence:
+  `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_qa.md`.
+- Status is `qa_pass`; the immutable QA input is reviewed commit
+  `77fe429eea59d2908c2f57d9243e8fd893488ad5`, and the clean QA evidence HEAD is
+  `c9a61bcb701178c1042d99ca8011d138e0420330`.
+- QA completed the full risk-proportionate backend/API/frontend/accessibility/build/package matrix
+  with disposable resources. B1 remains closed, configured XLSX/fake-COM behavior remains green,
+  choose/skip and warning behavior pass, and no task-caused scope, transaction, reuse, authority,
+  or compatibility blocker remains.
+- The known Matrix-session fake is independently unchanged from base and remains an attributed
+  baseline-only debt; it is not silently waived for any changed or new failure.
+- Integrator must verify exact ancestry/package/cleanliness and rerun merged-tree validation before
+  local acceptance. Integrator must not push, publish, restart, release-build, retire the worktree,
+  or mutate real data/files.
+
 ## Stop Point
 
-Return to permanent Orchestrator to dispatch mandatory QA against exact reviewed ancestry. Planner
-must not edit the lane or product/test code in this governance pass.
+Return to permanent Orchestrator to dispatch Integrator against the exact QA-pass ancestry. Planner
+must not merge or edit the lane or product/test code in this governance pass.

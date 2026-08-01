@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `qa_dispatch_ready`
+Status: `integrator_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -12,6 +12,27 @@ Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
 
 Worktree creation authority base/initial HEAD:
 `e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## QA Pass And Integrator Gate Transition
+
+- Primary was reverified clean on `master@7d670148d63f2dc209084567c6718f644bc24db0`;
+  production `Inspect` was `ALLOW_INSPECT` in `gate_running` / QA state.
+- Lane is exact and clean at QA-pass evidence HEAD
+  `c9a61bcb701178c1042d99ca8011d138e0420330`. Reviewed commit
+  `77fe429eea59d2908c2f57d9243e8fd893488ad5` and base
+  `e226bf1e54db4de54eb2366e96895999ce54652d` are continuous ancestors. The QA commit adds only
+  `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_qa.md`
+  and passes `git show --check`.
+- QA evidence status is `qa_pass`, next role Integrator, with no blocker. QA independently passed
+  the full disposable backend/API/frontend/accessibility/build/package matrix, retained B1's
+  cleanup-integrity boundary and positive availability behavior, and found no scope or real-data
+  mutation.
+- The single deselected Matrix-session fake remains independently proven unchanged from base; it
+  is recorded baseline debt, not authority to ignore a new or changed failure.
+- Decision: retain the sole TASK_368E token, exact lane/worktree/base/locks, queue/residuals, and
+  null paused/Quick Fix/parallel records; keep state `gate_running`, advance active role to
+  `Integrator`, and set active HEAD/evidence to the QA-pass commit/path. Integrator must verify the
+  package and ancestry and run merged-tree validation before acceptance. Planner performs no merge.
 
 ## Reviewer Pass And QA Gate Transition
 
@@ -285,12 +306,12 @@ are complete; read-only dispatch gate is `ALLOW_DISPATCH`.
 
 ## Gate And Next Role
 
-- Status is `qa_dispatch_ready`.
-- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact QA active record
-  points to Reviewer-pass HEAD/evidence.
-- Next legal role: mandatory QA against exact reviewed ancestry.
+- Status is `integrator_dispatch_ready`.
+- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact Integrator active
+  record points to QA-pass HEAD/evidence.
+- Next legal role: local Integrator against exact reviewed/QA ancestry.
 
 ## Prohibited In This Pass
 
-No product/test edit, Create rerun, lane/worktree write, push, release, restart, real DB/Excel/PDF
-access, protocol/skill/script change, or destructive action occurred.
+No product/test edit, Create rerun, lane/worktree write, merge, push, release, restart, real
+DB/Excel/PDF access, protocol/skill/script change, or destructive action occurred.

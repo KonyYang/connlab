@@ -1,12 +1,13 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `qa_dispatch_ready`
+Status: `integrator_dispatch_ready`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 Current active task: TASK_368E. It retains the durable execution token under schema state
-`gate_running`; the exact branch/worktree are clean at Reviewer-pass evidence HEAD
-`77fe429eea59d2908c2f57d9243e8fd893488ad5`, and mandatory QA dispatch is ready.
+`gate_running`; the exact branch/worktree are clean at QA-pass evidence HEAD
+`c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
+`77fe429eea59d2908c2f57d9243e8fd893488ad5`, and local Integrator dispatch is ready.
 
 ## Approval And Activation Record
 
@@ -86,17 +87,17 @@ rescinded its interim no-window correction, and confirmed choose-or-skip as the 
 
 - Exact implementation test totals.
 - Whether a safe disposable live browser fixture is available to QA.
-- Developer/Reviewer/QA/Integrator evidence, because implementation has not started.
+- Integrator evidence and merged-tree validation totals, because local integration has not started.
 
 These unknowns do not change scope, behavior, ownership, acceptance, or gate order. Definition of
-Ready was satisfied for User review; approval and sole token remain recorded, Reviewer re-gate
-passed, and mandatory QA is next.
+Ready was satisfied for User review; approval and sole token remain recorded, Reviewer re-gate and
+mandatory QA passed, and local Integrator is next.
 
 ### Continue Or Stop
 
-Continue with mandatory QA against exact reviewed ancestry. Stop and return to Developer/Planner
-on any B1 recurrence, positive-path regression, scope drift, transaction/reuse/accessibility/build
-failure, real-resource access, or non-baseline unexplained failure.
+Continue with local Integrator against exact reviewed/QA ancestry. Stop and return to
+Developer/Planner on ancestry or scope drift, a merged-tree regression, transaction/reuse/
+authority ambiguity, real-resource access, or any non-baseline unexplained failure.
 
 ## 2. User Flow And Exact Copy
 
@@ -399,6 +400,11 @@ QA uses disposable SQLite/XLSX/fake-COM resources. No deterministic test opens o
   are correct.
 - Prove real DB/Excel/PDF/public-drive files were neither read nor changed.
 
+QA passed the immutable reviewed input at evidence HEAD
+`c9a61bcb701178c1042d99ca8011d138e0420330`. Its full disposable-resource validation retained B1,
+configured-success, availability/integrity, transaction/reuse, frontend/accessibility, build,
+allowlist, and no-real-data guarantees with no blocker.
+
 ### Integrator
 
 - Require clean Developer checkpoint, Reviewer pass, QA pass, exact ancestry/path allowlist.
@@ -439,9 +445,11 @@ context, bounded components/tests, and mandatory gates mitigate them.
 7. Completed: Reviewer independently re-gated B1, positive/integrity behavior, frozen regressions,
    exact scope, and the 499-line authority constraint; Reviewer pass evidence HEAD is
    `77fe429eea59d2908c2f57d9243e8fd893488ad5`.
-8. Current: mandatory QA executes the full 28-category validation matrix and passes or returns
-   failures to Developer/Planner.
-9. Integrator accepts locally only reviewed/QA ancestry and records residuals.
+8. Completed: mandatory QA passed the full 28-category validation matrix at clean evidence HEAD
+   `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
+   `77fe429eea59d2908c2f57d9243e8fd893488ad5`.
+9. Current: Integrator accepts locally only the exact reviewed/QA ancestry, reruns merged-tree
+   validation, and records residuals.
 10. Stop after local acceptance; no push or next-task activation.
 
 ## 14. Planned Lane
@@ -454,18 +462,22 @@ context, bounded components/tests, and mandatory gates mitigate them.
 - Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; parallel exception: none.
 
-The exact TASK_368E branch/worktree is clean at Reviewer-pass evidence HEAD
-`77fe429eea59d2908c2f57d9243e8fd893488ad5`. TASK_368E remains the sole token owner with role QA
-and no parallel exception; base remains `e226bf1e54db4de54eb2366e96895999ce54652d`.
+The exact TASK_368E branch/worktree is clean at QA-pass evidence HEAD
+`c9a61bcb701178c1042d99ca8011d138e0420330`. TASK_368E remains the sole token owner with role
+Integrator and no parallel exception; reviewed commit is
+`77fe429eea59d2908c2f57d9243e8fd893488ad5`, and base remains
+`e226bf1e54db4de54eb2366e96895999ce54652d`.
 
 ## 15. Definition Of Ready
 
-Definition of Ready, existing User approval, and Reviewer pass cover mandatory QA execution.
+Definition of Ready, existing User approval, Reviewer pass, and QA pass cover local Integrator
+execution.
 Goal, copy, choose/skip behavior, availability/integrity boundary, audit/reuse/API/transaction
-design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. QA must
-use disposable resources and verify the full frozen acceptance before Integrator.
+design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged.
+Integrator must verify exact ancestry/package/cleanliness and rerun merged-tree validation before
+acceptance.
 
 ## 16. Next Legal Role
 
-Mandatory QA, dispatched by Orchestrator against exact reviewed ancestry. Planner does not edit the
-lane or implementation paths from this pass.
+Local Integrator, dispatched by Orchestrator against exact reviewed/QA ancestry. Planner does not
+merge or edit the lane or implementation paths from this pass.
