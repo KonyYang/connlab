@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `developer_dispatch_ready`
+Status: `reviewer_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -16,6 +16,25 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - This revision made no execution/lane/worktree/token/queue/role/product/remote/runtime change.
 - The original umbrella is `superseded_by_split_plans`; A is the first approval-eligible package.
 
+## Developer To Reviewer Legacy Transition Audit
+
+- Primary was reverified clean on
+  `master@916f1846dd745d22fc8fb99463442d0691078265`, with no `MERGE_HEAD`.
+- Exact lane branch/worktree are clean at final Developer/evidence HEAD
+  `28d15b71dcd66d2befbb292e049446d11da0ec26` over approved base
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; the base is an ancestor of final HEAD.
+- Developer evidence at final commit has Git blob
+  `12c510f3e4bfed1f48cde3f7952723d6bbb8a02a` and status `ready_for_review`.
+- Exact base..HEAD comparison contains the 23 authorized implementation paths plus Developer
+  evidence only. `git diff --check` and final `git show --check` pass.
+- Developer records `105 passed`, Python compilation, three PowerShell AST parses, exact allowlist
+  and protected-equality checks, production zero-write inspect/maintenance planning, all hard byte
+  budgets, and a simulated 45-second callback-to-dispatch result. Reviewer must verify these
+  independently; this transition does not accept or waive them.
+- Decision: retain Task A as sole token owner, set `gate_running/Reviewer`, update active HEAD and
+  evidence to the immutable Developer package, preserve all locks/gates/queue/residuals, and route
+  to permanent Reviewer. The candidate transition helper is not integrated and was not used.
+
 ## User Approval Record
 
 - On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
@@ -24,11 +43,9 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - Task B was not approved and remains serially blocked. The umbrella remains non-executable.
 - Approval/worktree base is the committed approved package
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Primary authority retains Task A as the sole token owner in
-  `implementation_running/Developer`. Orchestrator created the exact branch/worktree at
-  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; lane and primary worktree/index are clean.
-- Production `Inspect=ALLOW_INSPECT` and `ImplementationDispatch=ALLOW_DISPATCH`; this governance
-  update records `developer_dispatch_ready`, but Planner does not dispatch Developer.
+- Primary authority retains Task A as the sole token owner in `gate_running/Reviewer`; exact
+  branch/worktree/base/HEAD, locks, mandatory Reviewer/QA/Integrator route, and clean state are
+  recorded. Planner does not dispatch Reviewer.
 - No queue, parallel exception, live migration, product, retained-lane, remote, or runtime action
   occurs in this governance transition.
 
@@ -78,8 +95,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- Implementation commits, final archive/index hashes, after-size metrics, and measured pilot
-  duration.
+- Final accepted archive/index hashes, independently verified after-size metrics, and measured QA
+  pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -90,8 +107,8 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- User approval and exact approval base are recorded; Task A is the sole token owner and the
-  production implementation-dispatch gate passes. Implementation is not yet dispatched.
+- User approval and exact approval base are recorded; Task A is the sole token owner, Developer
+  handoff is complete, and the exact package is ready for independent Reviewer assessment.
 
 ## Risk And Mitigation
 
@@ -105,5 +122,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `developer_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane, run
-live maintenance, or perform Task B work in this Planner turn.
+Return `reviewer_dispatch_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
+maintenance/migration, or perform Task B work in this Planner turn.

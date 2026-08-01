@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `approved`
+Status: `reviewer_dispatch_ready`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -8,21 +8,21 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: permanent Planner dispatch governance. Next gate: Orchestrator dispatches
-Developer into the verified isolated worktree.
+Owner at this gate: permanent Planner legacy transition governance. Next gate: Orchestrator
+dispatches Reviewer against the exact clean Developer package.
 
 ## Approval Boundary
 
 The User explicitly approved Task A only and authorized automatic execution through local
 Integrator acceptance. This approval does not approve Task B or revive the superseded umbrella.
 Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
-Planner evidence. Primary execution authority now pins that SHA, acquires the sole WIP=`1` token in
-`implementation_running/Developer`, and authorizes Orchestrator to create the exact worktree.
-Orchestrator created and verified the exact branch/worktree at the pinned base; both primary and
-lane are clean, and the production implementation-dispatch gate is `ALLOW_DISPATCH`. This
-governance step records `developer_dispatch_ready`; it does not dispatch Developer or run live
-board compaction. Independent Reviewer, mandatory QA, and Integrator gates remain required. No
-push, publication, restart, destructive cleanup, or parallel exception is authorized.
+Planner evidence. Developer completed the authorized isolated implementation and evidence package
+at clean lane HEAD `28d15b71dcd66d2befbb292e049446d11da0ec26`. This legacy governance step retains
+Task A as the sole WIP=`1` token owner, changes only the durable gate from
+`implementation_running/Developer` to `gate_running/Reviewer`, and records
+`reviewer_dispatch_ready`. Independent Reviewer, mandatory QA, and Integrator gates remain
+required. No live board maintenance, push, publication, restart, destructive cleanup, or parallel
+exception is authorized.
 
 ## User Approval And Activation Boundary
 
@@ -32,10 +32,10 @@ push, publication, restart, destructive cleanup, or parallel exception is author
 - Authorized automatic route: isolated Developer -> Reviewer -> mandatory QA -> local Integrator
   acceptance, including bounded fixes inside the frozen scope.
 - Approval/worktree base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Orchestrator verified the exact branch/path/base/head and clean worktree/index at
-  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; production `Inspect=ALLOW_INSPECT` and
-  `ImplementationDispatch=ALLOW_DISPATCH`. Developer dispatch is ready but is not performed by
-  Planner.
+- Developer final/evidence HEAD is `28d15b71dcd66d2befbb292e049446d11da0ec26` over the exact
+  approved base. Lane and primary worktree/index are clean, base ancestry is continuous, and
+  Developer evidence blob `12c510f3e4bfed1f48cde3f7952723d6bbb8a02a` is
+  `ready_for_review`.
 - Task B remains `planned_pending_user_approval`, serially blocked until A local acceptance and
   separate User approval. The umbrella remains `superseded_by_split_plans` and non-executable.
 
@@ -287,9 +287,10 @@ Missing a safety or quantitative target blocks Integrator acceptance.
   its own gate); QA validates final reviewed HEAD and disposable migration/recovery cases;
   Integrator alone merges and runs the guarded first production migration before token release.
 
-The exact branch/worktree exists at the pinned approval base and both worktree/index are clean.
-Physical verification and the fresh implementation gate are complete; the permanent Orchestrator
-may now dispatch Developer into that worktree.
+The exact branch/worktree is clean at final Developer/evidence HEAD
+`28d15b71dcd66d2befbb292e049446d11da0ec26` over the pinned approval base. The reviewed range is
+the exact 23 authorized implementation paths plus Developer evidence; the permanent Orchestrator
+may now dispatch Reviewer against that immutable base..HEAD package.
 
 ## Compatibility And Rollback
 
@@ -303,5 +304,5 @@ may now dispatch Developer into that worktree.
 
 ## Stop Point
 
-Return `developer_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane, run
-live migration, or perform Task B work in this Planner turn.
+Return `reviewer_dispatch_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
+migration/maintenance, or perform Task B work in this Planner turn.

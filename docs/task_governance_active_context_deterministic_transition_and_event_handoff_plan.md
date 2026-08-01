@@ -1,6 +1,6 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `approved`
+Status: `reviewer_dispatch_ready`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
@@ -13,10 +13,10 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Immutable approval/worktree base:
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; primary execution authority pins it before Create.
-- Orchestrator created and verified the exact branch/worktree at the immutable base; lane and
-  primary worktree/index are clean, production `Inspect=ALLOW_INSPECT`, and
-  `ImplementationDispatch=ALLOW_DISPATCH`. Planner records `developer_dispatch_ready` but does not
-  dispatch Developer.
+- Developer completed the authorized implementation and evidence package at clean final HEAD
+  `28d15b71dcd66d2befbb292e049446d11da0ec26` over the immutable base. Planner uses legacy
+  governance to retain the sole Task A token and record `gate_running/Reviewer` plus
+  `reviewer_dispatch_ready`; it does not dispatch Reviewer.
 - Task B remains planned and cannot be approved or implemented before A local acceptance and a
   separate User approval. The umbrella remains permanently non-executable.
 
@@ -68,7 +68,8 @@ fail-closed reason codes.
 
 ### Not yet confirmed
 
-- Lane commits, final archive/index hashes, exact after-size metrics, and pilot timings.
+- Final accepted archive/index hashes, independently verified after-size metrics, and QA pilot
+  timing.
 
 These are execution outputs, not scope ambiguities. Definition of Ready is satisfied for User
 review, not implementation.
@@ -181,7 +182,7 @@ Files: handoff helper/tests, bounded `run_task.ps1`, skills/protocol references,
 Stop if compacting removes task identity, authority, scope/locks, gate, stop conditions, or full-
 read fallback.
 
-### Step A5 — Developer package handoff
+### Step A5 — Developer package handoff (completed)
 
 - Run all new A modules; existing execution gate/recovery, WIP/Quick Fix, worktree, Markdown
   archive, and permanent-role regression suites; Python compilation; PowerShell parse; diff/check,
@@ -191,7 +192,7 @@ read fallback.
 - Exact-path stage task-owned lane files only, commit locally, leave lane/index clean, write
   Developer evidence `ready_for_review`, and stop.
 
-### Step A6 — Reviewer gate
+### Step A6 — Reviewer gate (current)
 
 - Full independent review; A cannot use its own new compact read or transition path to reduce this
   review.
@@ -276,6 +277,7 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return `developer_dispatch_ready` to Orchestrator. The clean branch/worktree at approval base
-`15c3120a6d889e97d098c2cb9f8c8ef852d74f69` and fresh implementation gate are verified. Planner
-does not begin Step A1, dispatch Developer, run live migration, or perform Task B work.
+Return `reviewer_dispatch_ready` to Orchestrator. The clean Developer package at
+`28d15b71dcd66d2befbb292e049446d11da0ec26`, its exact evidence blob, and base ancestry are
+verified. Planner does not dispatch Reviewer, edit the lane, run live migration/maintenance, or
+perform Task B work.
