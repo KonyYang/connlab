@@ -1,13 +1,13 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `reviewer_dispatch_ready`
+Status: `developer_fix_dispatch_ready`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for exact permanent Reviewer dispatch. TASK_368E retains
-the sole execution token with schema state `gate_running` and role `Reviewer`. The clean lane final
-HEAD is `bb9734830b41c3a86c1cd5542d34a0832cd990d4` over base
-`e226bf1e54db4de54eb2366e96895999ce54652d`.
+Current gate owner: permanent Orchestrator for exact bounded Developer fix dispatch. TASK_368E
+retains the sole execution token with schema state `implementation_running` and role `Developer`.
+The clean lane HEAD is Reviewer blocker evidence commit
+`68a337678dfaa35fbfac987c36027c605d3e0668` over the unchanged base.
 
 ## User Approval Record
 
@@ -20,9 +20,9 @@ HEAD is `bb9734830b41c3a86c1cd5542d34a0832cd990d4` over base
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `reviewer_dispatch_ready`. Developer implementation checkpoint is
-  `9cd39e2dc5e8b50f23fd3e3202913a96019d4999`; final Developer evidence HEAD is
-  `bb9734830b41c3a86c1cd5542d34a0832cd990d4`, with exact authorized paths and clean worktree/index.
+- Current durable state is `developer_fix_dispatch_ready`. Reviewer blocked at
+  `68a337678dfaa35fbfac987c36027c605d3e0668` on one bounded integrity-classification defect;
+  worktree/index remain clean and the token, base, branch, worktree, and locks are unchanged.
 
 ## Goal
 
@@ -257,7 +257,24 @@ mandatory Reviewer/QA/Integrator gates.
 - Any task-caused failure, scope drift, authority ambiguity, or unproven debt claim is blocking and
   returns to Developer/Planner. A pass routes to mandatory QA.
 
+## Reviewer B1 Fix Authority
+
+- Reviewer evidence:
+  `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_reviewer.md`.
+- Sole blocker: `LegacyExcelCleanupError` is a cleanup-integrity boundary, but current cause-chain
+  descent can classify its nested `PermissionError` or allowlisted-code `OSError` as availability
+  and expose/honor Skip. This must remain `422` zero-write.
+- Developer may change only existing May Touch implementation/test paths and Developer evidence.
+- Required fix: stop classification descent at `LegacyExcelCleanupError`; preserve genuine
+  availability and `LegacyExcelComUnavailableError`; add bounded unit/API default and explicit-
+  preserve regressions proving no action detail and zero source/draft writes.
+- Rerun positive availability, integrity, compatibility, frontend/build, diff, and line gates;
+  `matrix_import_method_authority.py` must remain below 500 physical lines.
+- Reviewer independently confirmed the two prior baseline-only debts. They require no TASK_368E
+  scope expansion, but the full Reviewer re-gate remains mandatory after the fix.
+- QA and Integrator remain locked until Reviewer passes the fixed ancestry.
+
 ## Stop Point
 
-Return to permanent Orchestrator to dispatch permanent Reviewer against the exact base..HEAD.
-Planner must not edit the lane or product/test code in this governance pass.
+Return to permanent Orchestrator to dispatch permanent Developer for the exact B1 fix. Planner must
+not edit the lane or product/test code in this governance pass.

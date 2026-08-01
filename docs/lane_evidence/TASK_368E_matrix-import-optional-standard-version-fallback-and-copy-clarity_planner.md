@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `reviewer_dispatch_ready`
+Status: `developer_fix_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -12,6 +12,32 @@ Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
 
 Worktree creation authority base/initial HEAD:
 `e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## Reviewer Blocker And Developer Fix Transition
+
+- Primary was reverified clean on `master@82fabf965c178843be689429c9f90be97787eabe`;
+  production `Inspect` was `ALLOW_INSPECT` in `gate_running` / Reviewer state.
+- Lane is exact and clean at Reviewer evidence HEAD
+  `68a337678dfaa35fbfac987c36027c605d3e0668`; that commit changes only
+  `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_reviewer.md`
+  over reviewed HEAD `bb9734830b41c3a86c1cd5542d34a0832cd990d4` and passes `git show --check`.
+- Reviewer status is `reviewer_blocked`; next role is Developer. B1 is the sole blocker:
+  cause-chain inspection descends through `LegacyExcelCleanupError`, allowing a nested
+  `PermissionError` or allowlisted-code `OSError` to become availability and expose/honor Skip.
+  Cleanup integrity must instead remain `422`, zero-write, with no action detail.
+- The fix is inside existing scope. Developer may edit only existing May Touch product/test paths
+  plus Developer evidence; Reviewer evidence is immutable. Required behavior is an integrity-
+  wrapper stop for `LegacyExcelCleanupError`, preserving real availability and
+  `LegacyExcelComUnavailableError`, with bounded unit/API default and explicit-preserve regressions.
+- Developer must rerun positive availability, integrity, compatibility, frontend/build, diff, and
+  physical-line gates and keep `matrix_import_method_authority.py` below 500 lines.
+- Reviewer independently verified both recorded baseline debts using disposable base snapshots:
+  all 28 remaining legacy shell-test failures existed at base, and the Matrix session fake omitting
+  `method_authority_sync` fails identically at base and reviewed HEAD. They are non-blocking history,
+  not a license to ignore any new failure.
+- Decision: retain TASK_368E token/lane/worktree/base/locks, set active HEAD to Reviewer evidence,
+  return state to `implementation_running` / role `Developer`, and require a full Reviewer re-gate
+  before mandatory QA.
 
 ## Reviewer Gate Transition Audit
 
@@ -221,10 +247,10 @@ are complete; read-only dispatch gate is `ALLOW_DISPATCH`.
 
 ## Gate And Next Role
 
-- Status is `reviewer_dispatch_ready`.
-- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact Reviewer active
-  record points to final Developer HEAD and Developer evidence.
-- Next legal role: permanent Reviewer, dispatched by Orchestrator against exact base..HEAD.
+- Status is `developer_fix_dispatch_ready`.
+- TASK_368E is the sole token owner; schema state is `implementation_running`, and the exact
+  Developer active record points to Reviewer blocker HEAD/evidence.
+- Next legal role: permanent Developer for the bounded B1 fix.
 
 ## Prohibited In This Pass
 
