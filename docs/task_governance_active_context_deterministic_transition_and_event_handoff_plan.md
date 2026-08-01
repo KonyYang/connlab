@@ -13,7 +13,10 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Immutable approval/worktree base:
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; primary execution authority pins it before Create.
-- No worktree or branch is created and Developer is not dispatched in this approval-base step.
+- Orchestrator created and verified the exact branch/worktree at the immutable base; lane and
+  primary worktree/index are clean, production `Inspect=ALLOW_INSPECT`, and
+  `ImplementationDispatch=ALLOW_DISPATCH`. Planner records `developer_dispatch_ready` but does not
+  dispatch Developer.
 - Task B remains planned and cannot be approved or implemented before A local acceptance and a
   separate User approval. The umbrella remains permanently non-executable.
 
@@ -273,6 +276,6 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return worktree-creation authority to Orchestrator. Do not begin Step A1 or dispatch Developer
-until Orchestrator verifies the created clean branch/worktree at approval base
-`15c3120a6d889e97d098c2cb9f8c8ef852d74f69` and a fresh implementation gate.
+Return `developer_dispatch_ready` to Orchestrator. The clean branch/worktree at approval base
+`15c3120a6d889e97d098c2cb9f8c8ef852d74f69` and fresh implementation gate are verified. Planner
+does not begin Step A1, dispatch Developer, run live migration, or perform Task B work.

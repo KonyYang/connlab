@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `approved_worktree_preparation`
+Status: `developer_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -24,9 +24,11 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - Task B was not approved and remains serially blocked. The umbrella remains non-executable.
 - Approval/worktree base is the committed approved package
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Primary authority acquires Task A as the sole token owner in
-  `implementation_running/Developer` only to authorize exact worktree creation. The worktree and
-  branch do not yet exist and Developer is not dispatched.
+- Primary authority retains Task A as the sole token owner in
+  `implementation_running/Developer`. Orchestrator created the exact branch/worktree at
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; lane and primary worktree/index are clean.
+- Production `Inspect=ALLOW_INSPECT` and `ImplementationDispatch=ALLOW_DISPATCH`; this governance
+  update records `developer_dispatch_ready`, but Planner does not dispatch Developer.
 - No queue, parallel exception, live migration, product, retained-lane, remote, or runtime action
   occurs in this governance transition.
 
@@ -76,8 +78,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- Physical worktree creation/verification, implementation commits, final archive/index hashes,
-  after-size metrics, and measured pilot duration.
+- Implementation commits, final archive/index hashes, after-size metrics, and measured pilot
+  duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -87,10 +89,9 @@ These are future execution outputs and do not alter scope. No blocking planning 
   migration/rollback, recurring thresholds, budgets, file ownership, validation, performance,
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
-- The planned branch/worktree identity is exact; creation base is intentionally the future
-  approval-governance HEAD and must be recorded before Create.
-- User approval and exact approval base are recorded; Task A is the sole token owner for worktree
-  creation. Implementation is not yet dispatched.
+- The branch/worktree identity is exact and physically verified at the recorded approval base.
+- User approval and exact approval base are recorded; Task A is the sole token owner and the
+  production implementation-dispatch gate passes. Implementation is not yet dispatched.
 
 ## Risk And Mitigation
 
@@ -104,5 +105,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `approved_worktree_preparation` to Orchestrator. Do not create the worktree, dispatch
-Developer, or run live maintenance in this Planner turn.
+Return `developer_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane, run
+live maintenance, or perform Task B work in this Planner turn.

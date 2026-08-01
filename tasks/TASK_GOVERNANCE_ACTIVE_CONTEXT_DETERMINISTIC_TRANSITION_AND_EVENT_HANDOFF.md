@@ -8,8 +8,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: permanent Planner approval governance. Next gate: Orchestrator worktree
-creation after the exact approval-base SHA is pinned in primary execution authority.
+Owner at this gate: permanent Planner dispatch governance. Next gate: Orchestrator dispatches
+Developer into the verified isolated worktree.
 
 ## Approval Boundary
 
@@ -18,9 +18,11 @@ Integrator acceptance. This approval does not approve Task B or revive the super
 Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
 Planner evidence. Primary execution authority now pins that SHA, acquires the sole WIP=`1` token in
 `implementation_running/Developer`, and authorizes Orchestrator to create the exact worktree.
-This governance step does not create the branch/worktree, run live board compaction, or dispatch
-Developer. Independent Reviewer, mandatory QA, and Integrator gates remain required. No push,
-publication, restart, destructive cleanup, or parallel exception is authorized.
+Orchestrator created and verified the exact branch/worktree at the pinned base; both primary and
+lane are clean, and the production implementation-dispatch gate is `ALLOW_DISPATCH`. This
+governance step records `developer_dispatch_ready`; it does not dispatch Developer or run live
+board compaction. Independent Reviewer, mandatory QA, and Integrator gates remain required. No
+push, publication, restart, destructive cleanup, or parallel exception is authorized.
 
 ## User Approval And Activation Boundary
 
@@ -30,8 +32,10 @@ publication, restart, destructive cleanup, or parallel exception is authorized.
 - Authorized automatic route: isolated Developer -> Reviewer -> mandatory QA -> local Integrator
   acceptance, including bounded fixes inside the frozen scope.
 - Approval/worktree base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Worktree creation is the next topology action; Developer remains undispatched until Orchestrator
-  verifies the exact created branch/path/base/head and a fresh implementation gate.
+- Orchestrator verified the exact branch/path/base/head and clean worktree/index at
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; production `Inspect=ALLOW_INSPECT` and
+  `ImplementationDispatch=ALLOW_DISPATCH`. Developer dispatch is ready but is not performed by
+  Planner.
 - Task B remains `planned_pending_user_approval`, serially blocked until A local acceptance and
   separate User approval. The umbrella remains `superseded_by_split_plans` and non-executable.
 
@@ -283,9 +287,9 @@ Missing a safety or quantitative target blocks Integrator acceptance.
   its own gate); QA validates final reviewed HEAD and disposable migration/recovery cases;
   Integrator alone merges and runs the guarded first production migration before token release.
 
-No branch/worktree exists at this worktree-preparation gate. Orchestrator is authorized to create
-only the exact planned branch/worktree from the pinned approval base; Developer dispatch remains a
-later gate after physical verification.
+The exact branch/worktree exists at the pinned approval base and both worktree/index are clean.
+Physical verification and the fresh implementation gate are complete; the permanent Orchestrator
+may now dispatch Developer into that worktree.
 
 ## Compatibility And Rollback
 
@@ -299,5 +303,5 @@ later gate after physical verification.
 
 ## Stop Point
 
-Return `approved_worktree_preparation` to Orchestrator. Do not create the worktree, dispatch
-Developer, run live migration, or perform Task B work in this Planner turn.
+Return `developer_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane, run
+live migration, or perform Task B work in this Planner turn.
