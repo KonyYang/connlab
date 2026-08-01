@@ -96,3 +96,8 @@ Stop and ask the user when:
 - dependencies are incomplete
 - requested work would cross role boundaries
 - a lane would be approved based on Planner assumptions
+
+Routine Developer/Reviewer/QA events are excluded from Planner routing by
+`docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`.
+Planner is launched only for Discovery, formal plan/scope/authority change, unclassifiable blocker,
+destructive decision, or merge/evidence conflict; mechanical callbacks use zero Planner launches.

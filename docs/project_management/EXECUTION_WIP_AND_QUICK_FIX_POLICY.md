@@ -173,3 +173,10 @@ only after primary governance durably transitions the same task back to
 
 Controlled Lane V2 remains frozen, its heartbeat remains `PAUSED`, and its helper, registry,
 pilot, corrective packages, and tests are not reactivated or modified by this policy.
+
+## Deterministic Routine Handoff
+
+`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md` owns the four routine
+Developer/Reviewer/QA events, reference-only capsules, board maintenance, cadence, and budgets.
+Callbacks never mutate authority. The Orchestrator may perform one proven transition and one
+dispatch per turn, then stops; scope/authority conflicts still return to Planner/User.

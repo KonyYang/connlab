@@ -156,3 +156,10 @@ Recommendation:
 ```
 
 For very small governance-only tasks, Planner may compress this template, but must still separate confirmed facts from assumptions before creating approved lanes.
+
+## Routine Event Exclusion
+
+The four proven routine role events in
+`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md` launch zero Planner
+conversations. Planner remains required for Discovery, scope/authority/API/schema change,
+unclassifiable blockers, destructive decisions, and merge/evidence conflicts.

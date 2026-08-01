@@ -42,7 +42,7 @@ def test_compact_callback_returns_to_permanent_orchestrator() -> None:
     skill = read(".agents/skills/connlab-lane-orchestrator/SKILL.md")
     protocol = read("docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md")
 
-    for field in ("TASK_ID:", "ROLE:", "STATUS:", "EVIDENCE:", "COMMIT:", "NEXT:"):
+    for field in ("TASK_ID:", "ROLE:", "STATUS:", "EVIDENCE:", "COMMIT:", "NEXT:", "BLOCKER:"):
         assert field in skill
     assert "permanent Orchestrator" in protocol
     assert "Permanent role conversations are not archived" in protocol

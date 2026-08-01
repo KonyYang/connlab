@@ -127,3 +127,8 @@
 
 * 不允许进入下一个 Task
 * 等待用户确认
+
+对于已批准 lane 的永久角色接力，使用
+`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`：callback 先经七字段校验，
+再由 primary board/evidence/Git facts 驱动至多一次 transition 和一次 dispatch。机械接力不重复
+Planner；范围或 authority 变化仍停止并返回 Planner/User。

@@ -55,3 +55,10 @@
 
 → 必须先修复
 → 不允许进入下一个 Task
+
+## Deterministic Handoff Review
+
+按 `ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md` 复核：证据 ref 的
+commit/blob/SHA-256/status、exact lane HEAD/ancestry/clean 状态、May Touch/locks、合法事件、
+一 turn 至多一次 transition/dispatch，以及 callback/capsule/read-set 字节预算。Reviewer/QA
+不得凭 callback 直接授权下一角色。

@@ -1,303 +1,123 @@
 # ConnLab Lane Orchestration Protocol
 
-Last Updated: 2026-07-31
-Status: active governance protocol
-Scope: automate role-to-role handoffs for approved ConnLab task lanes
+Status: active classic permanent-role protocol. Normative WIP/Quick Fix rules are in
+`EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`; deterministic transitions, active context, maintenance,
+handoff, budgets, and cadence are in
+`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`.
 
-All routing is subordinate to
-`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md` and a fresh read-only execution
-gate decision.
+## 1. Roles And Authority
 
-## 1. Goal
+The permanent Orchestrator is the only daily router. It reuses each permanent role: Planner, Developer,
+Reviewer, QA, Integrator, and Quick Fixer in `ROLE_THREAD_REGISTRY.md`. Permanent role
+conversations are not archived as task lifecycle steps. Permanent role conversations are not archived.
+The primary `docs/task_board.md`
+execution-control JSON is sole machine authority. Task, approved plan, role evidence, and Git facts
+outrank callback text and conversation memory.
 
-This protocol reduces manual prompting between role threads. It does not loosen ConnLab's gates. The orchestrator may route work, but Planner, Developer, Reviewer, QA, and Integrator responsibilities remain separate.
+The main `master` worktree is planning/integration authority. Product and tests-only implementation
+uses one `lane/*` branch in one sibling worktree. WIP=1 is serial by default; explicit User-approved
+parallel exception is the only second-owner route and is capped at two owners.
 
-### 1.1 Classic Persistent Roles
+## 2. Start
 
-Normal ConnLab work uses the permanent Orchestrator, Planner, Developer, Reviewer, QA, Integrator,
-and Quick Fixer recorded in `ROLE_THREAD_REGISTRY.md`. Product tasks reuse those conversations;
-they do not create or archive temporary six-role bundles.
-Each permanent role remains distinct and retains its declared authority boundary.
+On an execute-task command, read primary AGENTS, board, task, plan/evidence, registry, and worktree
+list. Run `connlab_execution_gate.ps1 -Intent StartTask`. Queue decisions never create a worktree or
+dispatch implementation. Reuse an exact existing lane. For a newly approved lane, record branch,
+worktree, base, HEAD, locks, gates, and evidence before `CreateWorktree` and
+`ImplementationDispatch` gates.
 
-The Orchestrator selects between:
+Missing approval or Definition of Ready returns to Planner/User. Quick Fix uses the compact capsule
+only when every 19.1 predicate is proven; QF-4 and any authority/API/schema/persistence change use
+the full flow.
 
-- the full role flow for ambiguous, cross-layer, authority/data/API/schema or high-risk work;
-- the Quick Fixer fast path for small, reproducible, bounded fixes satisfying `AGENTS.md` 19.1.
+## 3. Durable State And Routine Events
 
-Implementation still uses an isolated branch/worktree. Conversation reuse is not Git isolation.
-Callbacks contain TASK_ID, ROLE, STATUS, EVIDENCE, COMMIT, NEXT, and BLOCKER and return to the
-permanent Orchestrator. Permanent role conversations are not archived at task closeout.
-Controlled Lane V2 and V1-Lite task-bundle automation are frozen legacy, not fallbacks.
-
-## 2. Automation Boundary
-
-The orchestrator may:
-
-- read `docs/task_board.md`, task files, plans, evidence, and diffs
-- decide the next valid role from board/evidence state
-- create, inspect, and safely retire isolated lane worktrees
-- send a standard prompt to the matching role thread
-- ask the role to update its evidence and stop at its gate
-- report the current handoff chain and blockers
-
-The orchestrator must not:
-
-- implement product code while acting as orchestrator
-- approve a proposed/planned lane by itself
-- bypass Reviewer or QA findings
-- merge code unless explicitly acting as Integrator in the Integrator thread
-- treat chat history as more authoritative than board/evidence files
-- force-remove a dirty worktree, discard changes, or push a remote without exact authorization
-- dispatch implementation, preemption, reconciliation, or resume without rerunning
-  `scripts/connlab_execution_gate.ps1`
-
-## 3. State Machine
-
-| Current state | Required evidence | Next role |
-|---|---|---|
-| `proposed` | Planner draft only | Stop; ask Planner/user for approval |
-| `planned` | task/plan exists, not approved | Stop; ask Planner/user for approval |
-| `approved` | lane has task/gates and a verified clean branch/worktree | Developer |
-| `in_progress` | Developer still working | Stop or ask Developer for status |
-| `in_progress` + `ready_for_review` | Developer evidence and validation result | Reviewer |
-| `review` + blocking findings | Reviewer evidence | Developer fix pass |
-| `review` + pass | Reviewer evidence | QA or Integrator, depending on merge gate |
-| `qa` + fail | QA evidence | Developer fix pass or Planner, based on failure |
-| `qa` + pass | QA evidence | Integrator |
-| `integration` | review/QA gates passed | Integrator |
-| `complete` | board and evidence updated | Stop |
-
-## 4. Orchestrator Command Examples
-
-The normal operator command is:
+The token remains owned through implementation and all gates. Exactly four mechanical events are
+supported:
 
 ```text
-执行 TASK_XXX
+DEVELOPER_READY  implementation_running/Developer + ready_for_review
+                 -> gate_running/Reviewer
+REVIEWER_BLOCKED gate_running/Reviewer + reviewer_blocked
+                 -> implementation_running/Developer
+REVIEWER_PASS    gate_running/Reviewer + reviewer_pass
+                 -> gate_running/QA, or Integrator only when required_gates omits QA
+QA_PASS          gate_running/QA + qa_pass
+                 -> gate_running/Integrator
 ```
 
-This automatically means: scan current lanes/worktrees, reuse an existing task worktree or create an isolated one after readiness checks, enforce shared-path ownership, and continue approved gates through local Integrator acceptance. The operator does not need to describe Git mechanics.
-
-Additional controls in the Orchestrator/Planner conversation:
-
-```text
-自动推进 TASK_337A。只按 board/evidence 判断下一角色，不扩大范围。
-```
-
-```text
-继续编排 lane lifecycle-backend-api。如果 Developer 已 ready_for_review，就发给 Reviewer。
-```
-
-```text
-检查 TASK_337B 的 Reviewer 结论。如果通过，生成 Integrator 合并命令并发送到集成负责人线程。
-```
-
-Before acting on the default command, the orchestrator must run `StartTask` and distinguish:
-
-- same task already active: resume its existing worktree
-- another owner active: return/record `QUEUE_REQUIRED`; do not create an implementation worktree
-- explicit board-recorded max-two parallel exception: verify its User approval, exact independence
-  proof, and end condition before the secondary lane may proceed
-- task not implementation-ready: route the required Planner/User gate, then continue after approval
-
-Product and tests-only implementation use isolated worktrees even when no other task is detected. This avoids making safety depend on thread-status freshness.
-
-## 5. Role Thread Commands
-
-The orchestrator sends role-specific prompts from `.agents/skills/connlab-lane-orchestrator/SKILL.md`. If thread tools are unavailable, it prints the exact prompt for manual paste.
-
-## 6. Evidence Requirements
-
-Every automated handoff must name one evidence file under `docs/lane_evidence/`. A role thread must update evidence before it returns control to the orchestrator.
-
-Minimum evidence fields:
-
-- task/lane/role
-- status
-- allowed scope checked
-- changed files or inspected files
-- commands run and results
-- findings/failures
-- next role recommendation
-- stop point
-
-## 7. Failure Handling
-
-If state is unclear, stop and report the smallest blocking fact. Do not guess. Common blockers:
-
-- branch differs from board
-- evidence missing or stale
-- uncommitted changes mix multiple lanes
-- branch/worktree is declared but does not exist
-- primary worktree was used as a lane scratch directory
-- two active lanes claim the same shared file or authority path
-- Reviewer blocking findings are unresolved
-- QA failed but no Developer fix pass exists
-- merge target is not declared
-
-## 7.1 Worktree Lifecycle Automation
-
-The operator is not responsible for Git worktree commands. Before routing an approved implementation lane, the orchestrator must:
-
-1. verify the primary worktree and index are clean
-2. require `ALLOW_WORKTREE_CREATE` for the exact TaskId/lane
-3. verify no active lane owns the same `Locked Paths`
-4. persist the approved task/plan/board token state
-5. run `scripts/connlab_lane_worktree.ps1 -Action Create -TaskId <TASK_ID>`
-6. record the concrete branch, path, and base commit
-7. include that path in Developer, Reviewer, and QA prompts
-
-Developer must create a clean local checkpoint commit before `ready_for_review`. Reviewer and QA validate that immutable commit.
-
-After Integrator acceptance, the orchestrator must:
-
-1. confirm integration ancestry
-2. confirm the lane worktree and index are clean
-3. record an exact residual ledger
-4. run `scripts/connlab_lane_worktree.ps1 -Action Retire`
-
-Retire never uses force. A dirty or unintegrated worktree is a blocker, not a cleanup target.
-
-## 8. Full-Auto Mode
-
-Full-auto mode is implemented by a Codex heartbeat attached to an Orchestrator/Planner conversation. The heartbeat periodically runs the lane orchestrator skill and performs at most one routing action per wake-up.
-
-Default cadence: every 10 minutes while active.
-
-Full-auto may continue without user input across normal gates:
-
-```text
-Developer ready_for_review -> Reviewer
-Reviewer blocking finding -> Developer fix pass
-Reviewer pass -> QA or Integrator readiness check
-QA pass -> Integrator readiness check
-```
-
-When the user created a durable Goal for a task series, the same authorization also covers:
-
-- worktree creation, inspection, and clean retirement
-- bounded Developer fix passes
-- exact tests-only fixture/assertion migrations inside the frozen scope
-- evidence and source-of-truth reconciliation
-- local lane checkpoint and Integrator commits
-
-Do not repeatedly ask the user to approve these micro-gates. Stop only when the Goal envelope would be expanded, product behavior is ambiguous, a test failure cannot be attributed safely, destructive discard is required, or merge/push lacks authorization.
-
-Full-auto stops and reports when human judgment is required:
-
-- task/lane is not approved or not found
-- board/evidence/thread status conflicts
-- same blocking finding returns after one fix pass
-- QA failure is not clearly an implementation defect
-- merge into `master`/main or remote push would be required and was not explicitly pre-authorized
-- destructive git or filesystem action would be required
-
-The stop report must include current lane/task, evidence read, blocking reason, recommended next role, and the exact command the user can approve.
-
-## 8.1 Residual Ledger
-
-Every Integrator acceptance must classify excluded work immediately:
-
-- `retain`: unique value with a named follow-up lane
-- `duplicate`: already accepted elsewhere
-- `stale`: obsolete task/evidence/fixture state
-- `format-only`: whitespace or line-ending change
-- `conflict`: possible product behavior disagreement
-
-An accepted lane cannot leave an unnamed residual. `duplicate`, `stale`, and `format-only` entries accumulate only in one exact discard list. `retain` entries must have an owner before the next lane starts.
-
-## 8.2 Event-Driven Completion Callback
-
-Full-auto orchestration can run in event-driven mode in addition to the heartbeat. The heartbeat remains a safety net; normal handoff should be triggered by a role thread callback when that role reaches its stop gate.
-
-Role completion contract:
-
-- Developer sends a callback after evidence becomes `ready_for_review` or after a fix-pass checkpoint is written.
-- Reviewer sends a callback after `pass` or blocking findings are written.
-- QA sends a callback after `pass`, `fail`, or an unclear validation blocker is written.
-- Integrator sends a callback after `accepted`, `blocked`, or a packaging checkpoint is written.
-- Planner sends a callback after a formal lane is created/activated, or after Discovery Gate blocks.
-
-Callback target:
-
-- Prefer `ConnLab｜全自动编排 Orchestrator` in `ROLE_THREAD_REGISTRY.md`.
-- If a delegated prompt contains `source_thread_id`, that source thread is also a valid callback target.
-- If thread tools are unavailable, the role prints the callback message for manual paste.
-
-Callback payload must include:
-
-- source role
-- completion status
-- task ID and lane ID
-- evidence/checkpoint path
-- validation or review summary
-- next-role recommendation
-- blocker summary, or `none`
-
-On receiving a callback, the Orchestrator must re-read board/evidence/thread state and perform at most one legal route action. A callback is a wake-up signal, not evidence authority.
-
-Duplicate prevention:
-
-- A role sends only one callback per changed evidence status.
-- The Orchestrator ignores callbacks whose evidence status has already been routed.
-- If callback state conflicts with board/evidence, pause and report the smallest conflict.
-## 9. Lifecycle Series Automation
-
-When the user authorizes full-auto completion of the lifecycle/workbench series, the heartbeat should advance the series defined by TASK_336 instead of watching only one task.
-
-Series order:
-
-| Step | Task | Automation behavior |
-|---|---|---|
-| 1 | `TASK_339A_PROJECT_LIFECYCLE_FRONTEND_READONLY_MODEL` | Continue active Developer lane, then Reviewer/QA/Integrator gates. |
-| 2 | `TASK_339B_PROJECTS_REGISTRY_LIFECYCLE_VIEWS` | If missing after TASK_339A acceptance, ask Planner to create/activate the formal lane before any implementation. |
-| 3 | `TASK_340_UNIFIED_PROJECT_WORKBENCH_SHELL_PLAN` | Treat as planning output only. If already complete, use it as input for TASK_341. |
-| 4 | `TASK_341_UNIFIED_PROJECT_WORKBENCH_SHELL_IMPLEMENTATION` | Create/activate via Planner after TASK_339A and TASK_340 are accepted; then route Developer/Reviewer/QA/Integrator. |
-| 5 | `TASK_342_LIFECYCLE_INTEGRATION_QA_AND_BOARD_CLOSEOUT` | Run final QA/board closeout after prior lanes are accepted. |
-
-The orchestrator may auto-create the next Planner handoff prompt, but it must not invent missing task content silently. Planner owns formal lane creation.
-
-## 10. Human Intervention
-
-Human intervention is expected and safe. The operator can intervene from the Orchestrator conversation or from a role thread.
-
-Preferred controls from the Orchestrator conversation:
-
-```text
-暂停全自动编排。不要再向任何角色线程发送命令，先报告当前 TASK/lane/thread 状态。
-```
-
-```text
-恢复全自动编排。从 docs/task_board.md 和 evidence 重新判断，不使用旧聊天记忆。
-```
-
-```text
-改为人工确认模式。以后每个 gate 只输出下一步命令，不自动发送。
-```
-
-```text
-回退到 Planner。请让 Planner 重新核对 TASK_339-TASK_342 的顺序、范围和 board 状态。
-```
-
-Preferred control from an active role thread:
-
-```text
-停止当前任务，写 checkpoint evidence：已完成内容、未完成内容、当前阻塞、已改文件、已跑验证、下一步建议。不要继续改文件。
-```
-
-Dead-loop detection:
-
-- same target role receives the same prompt twice without evidence change
-- same blocking finding returns after one fix pass
-- board status and evidence status disagree for two heartbeat runs
-- a role thread remains active beyond a reasonable task slice without checkpoint evidence
-
-On dead-loop detection, pause routing and report to the user.
-
-## 11. Controlled Lane V2 Compatibility Hook
-
-`docs/project_management/CONTROLLED_LANE_ORCHESTRATION_V2.md` is frozen legacy. Its production
-registry is read-only, heartbeat remains `PAUSED`, and its bootstrap/pilot/corrective routes are
-not used for normal ConnLab task routing. Historical disposable tests remain valid; reactivation
-requires a new formal task and explicit User approval. Historical V2 evidence retains
-`dispatch_ack` as delivery proof separate from role completion.
-
+The Orchestrator runs transition inspect/plan/apply against primary authority. The helper validates
+state/role/token/task/lane, expected primary and lane HEAD, evidence `path@commit#sha256`, ancestry,
+clean worktrees/index, changed paths, locks, queue/pause/Quick Fix/parallel facts, gate metadata,
+markers, and summary agreement. Apply changes only the board. Same transition is idempotent;
+divergent duplicate blocks.
+
+Each Orchestrator turn performs at most one transition plus one dispatch and then stops. There is
+no same-turn waiting. A callback wakes routing but never authorizes it. Routine events do not launch
+Planner.
+
+## 4. Role Gates
+
+- Developer implements only May Touch, TDD-first, verifies proportionately, creates exact-path
+  implementation/evidence commits, and leaves lane/index clean.
+- Reviewer reads base..HEAD, checks scope and behavior, and records pass or blocking findings. A
+  blocking result durably transitions back to Developer before a fix dispatch.
+- QA validates the reviewed clean commit in an isolated environment, writes only QA evidence, and
+  never fixes product code.
+- Integrator verifies Reviewer/QA ancestry, exact package, tests, board facts, residual ledger, and
+  non-destructive merge. Never rebase an active lane.
+
+Evidence is committed and role-owned. A callback contains exactly seven ordered non-empty fields:
+TASK_ID, ROLE, STATUS, EVIDENCE, COMMIT, NEXT, BLOCKER. `validate-callback` enforces <=1024 bytes.
+
+## 5. Reference-Only Dispatch
+
+`connlab_handoff_contract.py` verifies dispatch capsules and resolves minimal read sets. Required
+refs are board, current task, approved plan, current-role evidence, and declared direct
+dependencies. Invalid refs or unsafe omissions yield `FULL_READ_REQUIRED`; unrelated immutable
+archive changes alone do not. Budgets: template <=2048 bytes, full capsule <=4096, per-role read
+capsule <=4096.
+
+Standard package fields are task/role/status, primary HEAD/snapshot, branch/worktree/base/lane HEAD,
+refs, May Touch/Must Not Touch/Locked Paths, validation, evidence, next gate, and blocker boundary.
+The target role independently revalidates them.
+
+## 6. Board Maintenance
+
+Every Integrator closeout runs `connlab_active_context.py plan-maintenance` before token release.
+Maintenance triggers above 400 lines, 65536 bytes, or 24 terminal details. First generation archives
+exact board bytes; later generations archive the oldest eligible terminal detail needed for all
+budgets. Index and archives are immutable/hash chained and rollback-proven.
+
+Only a clean sole `gate_running/Integrator` owner with all required gates, exact HEAD/hash, accepted
+helper ancestry, empty queue, and null pause/Quick Fix/parallel state may apply. Planner, Developer,
+Reviewer, terminal auditors, and token-null state are inspect/plan/prove-only. Archive conflict,
+corrupt index, partial failure, or path escape blocks and preserves prior bytes.
+
+## 7. Worktrees, Reconciliation, And Residuals
+
+Use `connlab_lane_worktree.ps1` for authorized Create/Inspect/Retire. Never Create/Retire a real
+existing lane during tests. Quick Fix preemption requires a clean preserved checkpoint and disjoint
+locks. Reconciliation merges current master into the preserved original lane without rebase,
+commits a new checkpoint, validates it, then resumes through the gate.
+
+Integrator classifies residuals as retain, duplicate, stale, format-only, or conflict and records
+owner/expiry. No force removal, destructive cleanup, reset/restore/discard, unknown deletion, or
+unauthorized push is allowed.
+
+## 8. Cadence And Failure
+
+Commentary occurs only at role start/end, blocker, material direction change, or heartbeat after at
+least 60 seconds. Suppress unchanged waits. The measured controlled callback-to-dispatch pilot is
+<=90 seconds. `validate-cadence` enforces at most one transition and one dispatch.
+
+Stop and return to Planner/User for scope/product-contract changes, missing approval, shared
+ownership conflict, unexplained failures, destructive decisions, merge/evidence conflict, or any
+fail-closed helper result. Ordinary retryable Reviewer/QA findings return to Developer.
+
+## 9. Frozen Compatibility
+
+V1-Lite bundles and Controlled Lane V2 are historical audit modes. Controlled Lane V2 heartbeat
+heartbeat remains `PAUSED`; no bootstrap, scan, CAS, pilot, migration, or corrective may resume without a new
+approved task. Historical `dispatch_ack` and `mark-invocation-started` vocabulary remains reference
+only and never authorizes classic execution.

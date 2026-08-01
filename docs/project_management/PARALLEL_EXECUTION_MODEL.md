@@ -327,3 +327,7 @@ Parallel execution is accepted only when all of the following are enforced:
     board/evidence/worktree/residual records, not role-thread archival.
 
 For a multi-lane series, one user-approved Goal may authorize normal role handoffs, bounded fix passes, evidence updates, local commits, and worktree lifecycle operations. The orchestrator should not request a fresh human approval for each small hunk unless scope, product behavior, destructive cleanup, or remote state changes.
+
+Routine transitions and reference-only dispatches follow
+`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`. They preserve the complete
+parallel exception and never infer a second owner from disjoint paths alone.

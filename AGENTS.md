@@ -479,3 +479,12 @@ V2 registry 保持只读，heartbeat 保持 `PAUSED`，pilot/corrective 不继�
 `执行 TASK_XXX` 命令启动 V2 scan、CAS journal、bootstrap、pilot、migration 或 corrective。
 任何重新启用 V2 的行为都需要新的正式 task、Planner Discovery、User 明确批准以及独立
 Reviewer/QA/Integrator gate。
+
+## 21. Deterministic Active Context And Handoff
+
+Classic permanent-role execution additionally follows
+`docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`.
+The primary board JSON is the sole machine authority. Routine Developer/Reviewer/QA handoffs use
+the fail-closed transition and handoff helpers, perform at most one transition and one dispatch per
+Orchestrator turn, and do not launch Planner. Every Integrator closeout plans board maintenance;
+only the authorized `gate_running/Integrator` owner may apply it before token release.
