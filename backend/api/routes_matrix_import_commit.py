@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -13,6 +15,7 @@ from backend.application.matrix_import_commit_service import (
     MatrixImportCommitNotFoundError,
     MatrixImportCommitResult,
     MatrixImportCommitService,
+    MatrixImportCommitStandardVersionActionRequiredError,
 )
 from backend.domain import ProjectMatrixDraftSnapshot
 
@@ -28,6 +31,9 @@ class MatrixImportCommitRequest(BaseModel):
     source_format: str = Field(min_length=1)
     preview_payload: dict
     selected_group_keys: list[str]
+    standard_version_unavailable_action: Literal[
+        "prompt_if_unavailable", "preserve_imported_methods"
+    ] = "prompt_if_unavailable"
 
 
 class ProjectMatrixDraftRecordResponse(BaseModel):
@@ -117,11 +123,19 @@ class MatrixImportMethodAuthoritySummaryResponse(BaseModel):
     updated_count: int
     current_count: int
     review_count: int
-    standard_resource_id: str
-    effective_worksheet_name: str
-    catalog_fingerprint: str
+    standard_resource_id: str | None
+    effective_worksheet_name: str | None
+    catalog_fingerprint: str | None
     context_fingerprint: str
     rows: list[MatrixImportMethodAuthorityRowResponse]
+    warning: "MatrixImportMethodAuthorityWarningResponse | None" = None
+
+
+class MatrixImportMethodAuthorityWarningResponse(BaseModel):
+    """Safe user-facing warning returned only for source-preserved fallback."""
+
+    code: str
+    message: str
 
 
 class MatrixImportCommitResponse(BaseModel):
@@ -151,10 +165,22 @@ def commit_matrix_import(
                 source_format=request.source_format,
                 preview_payload=request.preview_payload,
                 selected_group_keys=tuple(request.selected_group_keys),
+                standard_version_unavailable_action=(
+                    request.standard_version_unavailable_action
+                ),
             )
         )
     except MatrixImportCommitNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except MatrixImportCommitStandardVersionActionRequiredError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "matrix_import_standard_version_action_required",
+                "reason_code": exc.reason_code,
+                "message": str(exc),
+            },
+        ) from exc
     except MatrixImportCommitConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except MatrixImportCommitError as exc:
@@ -195,6 +221,14 @@ def _to_response(result: MatrixImportCommitResult) -> MatrixImportCommitResponse
                 )
                 for row in result.method_authority_sync.rows
             ],
+            warning=(
+                MatrixImportMethodAuthorityWarningResponse(
+                    code=result.method_authority_sync.warning.code,
+                    message=result.method_authority_sync.warning.message,
+                )
+                if result.method_authority_sync.warning
+                else None
+            ),
         ),
     )
 

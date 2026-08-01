@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-import json
-from typing import Callable, Protocol
+import stat
+from typing import Callable, Literal, Protocol
 
 from backend.application.external_excel_read_service import StandardRecordReadResult
 from backend.application.external_resource_service import effective_standard_worksheet_name
@@ -14,14 +14,11 @@ from backend.application.source_matrix_import_builder import (
     canonical_json,
     canonical_windows_path,
     fingerprint,
-    fingerprint_source_rows,
-    fingerprint_source_snapshot,
 )
 from backend.domain import (
     ExternalResource,
     ExternalResourceType,
     ProjectMatrixDraftSnapshot,
-    SourceMatrixImportRecord,
     SourceMatrixSnapshot,
 )
 from backend.modules.test_plan.standard_method_version_parser import (
@@ -29,7 +26,19 @@ from backend.modules.test_plan.standard_method_version_parser import (
     parse_catalog_method,
     parse_matrix_method,
 )
+from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
+    LegacyExcelComUnavailableError,
+)
 
+
+StandardVersionUnavailableAction = Literal[
+    "prompt_if_unavailable", "preserve_imported_methods"
+]
+STANDARD_VERSION_WARNING = (
+    "Standard version file unavailable. Original Method values were kept. "
+    "You can update them later in Standard Method versions."
+)
+_WINDOWS_AVAILABILITY_CODES = frozenset({2, 3, 5, 32, 53, 54, 55, 59, 64, 65, 67, 121, 1231})
 
 class MatrixImportMethodAuthorityError(ValueError):
     """Raised when the Standard authority cannot safely resolve import Methods."""
@@ -37,6 +46,13 @@ class MatrixImportMethodAuthorityError(ValueError):
 
 class MatrixImportMethodAuthorityConflictError(MatrixImportMethodAuthorityError):
     """Raised when persisted import authority no longer matches current facts."""
+
+class MatrixImportStandardVersionActionRequiredError(MatrixImportMethodAuthorityError):
+    """Require an explicit operator choice for one proven availability state."""
+
+    def __init__(self, reason_code: str) -> None:
+        super().__init__("Standard version file unavailable.")
+        self.reason_code = reason_code
 
 
 class ResourceStore(Protocol):
@@ -46,7 +62,6 @@ class ResourceStore(Protocol):
 class CatalogReader(Protocol):
     def read_standard_records(self) -> StandardRecordReadResult: ...
 
-
 class CachedStandardResourceStore:
     """Keep one request-scoped Standard resource fact for reader and resolver."""
 
@@ -54,6 +69,11 @@ class CachedStandardResourceStore:
         self._delegate = delegate
         self._loaded = False
         self._resource: ExternalResource | None = None
+
+    @property
+    def requires_file_preflight(self) -> bool:
+        """Tell the resolver that this production-backed store needs a file stat check."""
+        return True
 
     def get_by_type(self, resource_type: ExternalResourceType) -> ExternalResource | None:
         if resource_type is not ExternalResourceType.STANDARD_RECORD_EXCEL:
@@ -79,16 +99,23 @@ class MatrixImportMethodAuthorityRow:
 
 
 @dataclass(frozen=True, slots=True)
+class MatrixImportMethodAuthorityWarning:
+    code: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
 class MatrixImportMethodAuthoritySummary:
     status: str
     updated_count: int
     current_count: int
     review_count: int
-    standard_resource_id: str
-    effective_worksheet_name: str
-    catalog_fingerprint: str
+    standard_resource_id: str | None
+    effective_worksheet_name: str | None
+    catalog_fingerprint: str | None
     context_fingerprint: str
     rows: tuple[MatrixImportMethodAuthorityRow, ...]
+    warning: MatrixImportMethodAuthorityWarning | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,12 +153,37 @@ class MatrixImportMethodAuthorityResolver:
         selected_group_fingerprint: str,
         source_root_fingerprint: str,
         source_row_fingerprint: str,
+        standard_version_unavailable_action: StandardVersionUnavailableAction = (
+            "prompt_if_unavailable"
+        ),
     ) -> MatrixImportMethodAuthorityResult:
-        resource = self._load_resource()
+        resource, unavailable_reason = self._load_resource()
+        if unavailable_reason:
+            return _resolve_unavailable(
+                action=standard_version_unavailable_action,
+                reason_code=unavailable_reason,
+                resource=resource,
+                draft=draft,
+                source_snapshot=source_snapshot,
+                context_facts=locals(),
+                applied_at=self._now(),
+            )
+        assert resource is not None
         worksheet = effective_standard_worksheet_name(resource) or "认可标准"
         try:
             catalog = self._catalog.read_standard_records()
         except Exception as exc:
+            unavailable_reason = _availability_reason(exc)
+            if unavailable_reason:
+                return _resolve_unavailable(
+                    action=standard_version_unavailable_action,
+                    reason_code=unavailable_reason,
+                    resource=resource,
+                    draft=draft,
+                    source_snapshot=source_snapshot,
+                    context_facts=locals(),
+                    applied_at=self._now(),
+                )
             raise MatrixImportMethodAuthorityError(
                 f"Standard record catalog could not be read: {exc}"
             ) from exc
@@ -214,116 +266,149 @@ class MatrixImportMethodAuthorityResolver:
                 catalog_fingerprint=catalog_fingerprint,
                 context_fingerprint=context["context_identity_fingerprint"],
                 rows=decisions,
+                warning=None,
             ),
         )
 
-    def _load_resource(self) -> ExternalResource:
+    def _load_resource(self) -> tuple[ExternalResource | None, str | None]:
         resource = self._resources.get_by_type(ExternalResourceType.STANDARD_RECORD_EXCEL)
-        if resource is None or not resource.active:
-            raise MatrixImportMethodAuthorityError(
-                "Active Standard record Excel resource is not configured."
-            )
-        return resource
+        if resource is None:
+            return None, "standard_version_not_configured"
+        if not resource.active:
+            return resource, "standard_version_inactive"
+        if getattr(self._resources, "requires_file_preflight", False):
+            try:
+                if not stat.S_ISREG(resource.path.stat().st_mode):
+                    return resource, "standard_version_file_missing"
+            except FileNotFoundError:
+                return resource, "standard_version_file_missing"
+            except OSError as exc:
+                reason = _availability_reason(exc)
+                if reason:
+                    return resource, reason
+                raise MatrixImportMethodAuthorityError(
+                    "Standard version file availability could not be verified."
+                ) from exc
+        return resource, None
 
 
-def verify_reusable_method_authority(
+def _resolve_unavailable(
     *,
-    current: MatrixImportMethodAuthorityResult,
-    existing_import: SourceMatrixImportRecord,
-    existing_source: SourceMatrixSnapshot,
-    existing_draft: ProjectMatrixDraftSnapshot,
-) -> MatrixImportMethodAuthoritySummary:
-    """Fail closed unless a persisted TASK_261 import exactly matches current authority."""
-    raw = existing_draft.record.method_sync_context_json
-    try:
-        existing = json.loads(raw or "")
-        current_context = json.loads(current.context_json)
-    except (TypeError, json.JSONDecodeError) as exc:
-        raise MatrixImportMethodAuthorityConflictError(
-            "Existing Matrix import Method authority context is missing or malformed."
-        ) from exc
-    if not isinstance(existing, dict) or not isinstance(current_context, dict):
-        raise MatrixImportMethodAuthorityConflictError(
-            "Existing Matrix import Method authority context is invalid."
-        )
-    if existing.get("context_identity_fingerprint") != _context_identity(existing):
-        raise MatrixImportMethodAuthorityConflictError(
-            "Existing Matrix import Method authority context fingerprint is invalid."
-        )
-    stored_locator = fingerprint(
-        {
-            "path": canonical_windows_path(existing_import.source_document_path),
-            "name": existing_import.source_document_name.strip(),
-            "format": existing_import.source_format.strip().casefold(),
-        }
-    )
-    stored_payload = existing_import.source_preview_payload
-    stored_facts = {
-        "task261_commit_fingerprint": existing_import.task261_commit_fingerprint,
-        "source_locator_fingerprint": stored_locator,
-        "payload_fingerprint": fingerprint(stored_payload) if stored_payload else None,
-        "selected_group_fingerprint": fingerprint(
-            list(existing_import.selected_group_keys_at_import)
-        ),
-    }
-    if any(existing.get(key) != value for key, value in stored_facts.items()):
-        raise MatrixImportMethodAuthorityConflictError(
-            "Existing Source Matrix import facts diverge from Method authority context."
-        )
-    expected_ids = {
-        "project_id": existing_draft.record.project_id,
-        "source_import_id": existing_import.import_id,
-        "source_snapshot_id": existing_source.snapshot_id,
-        "project_matrix_draft_id": existing_draft.record.project_matrix_draft_id,
-    }
-    if any(existing.get(key) != value for key, value in expected_ids.items()):
-        raise MatrixImportMethodAuthorityConflictError(
-            "Existing Matrix import lineage does not match its Method authority context."
-        )
-    if (
-        existing_source.import_id != existing_import.import_id
-        or existing_source.project_id != existing_import.project_id
-        or existing_draft.record.source_import_id != existing_import.import_id
-        or existing_draft.record.source_snapshot_id != existing_source.snapshot_id
-    ):
-        raise MatrixImportMethodAuthorityConflictError(
-            "Existing Source Matrix and editable draft lineage is inconsistent."
-        )
-    ignored = {*expected_ids, "context_identity_fingerprint", "applied_at"}
-    if {
-        key: value for key, value in existing.items() if key not in ignored
-    } != {
-        key: value for key, value in current_context.items() if key not in ignored
-    }:
-        raise MatrixImportMethodAuthorityConflictError(
-            "Matrix import or Standard authority changed. Replace cannot reuse the prior import."
-        )
-    _verify_persisted_fingerprints(existing, existing_source, existing_draft)
-    return replace(
-        current.summary,
-        context_fingerprint=str(existing["context_identity_fingerprint"]),
-    )
-
-
-def verify_new_method_authority(
-    *,
-    expected: MatrixImportMethodAuthorityResult,
-    persisted_source: SourceMatrixSnapshot,
-    persisted_draft: ProjectMatrixDraftSnapshot,
-) -> None:
-    """Read-verify one newly persisted source/draft aggregate before commit."""
-    if persisted_draft.record.method_sync_context_json != expected.context_json:
-        raise MatrixImportMethodAuthorityConflictError(
-            "Persisted Matrix Method authority context could not be verified."
-        )
-    context = json.loads(expected.context_json)
-    _verify_persisted_fingerprints(context, persisted_source, persisted_draft)
-
-
-def fingerprint_draft_methods(
+    action: StandardVersionUnavailableAction,
+    reason_code: str,
+    resource: ExternalResource | None,
     draft: ProjectMatrixDraftSnapshot,
-    source: SourceMatrixSnapshot,
-) -> str:
+    source_snapshot: SourceMatrixSnapshot,
+    context_facts: dict[str, object],
+    applied_at: str,
+) -> MatrixImportMethodAuthorityResult:
+    if action == "prompt_if_unavailable":
+        raise MatrixImportStandardVersionActionRequiredError(reason_code)
+    if action != "preserve_imported_methods":
+        raise MatrixImportMethodAuthorityError(
+            "standard_version_unavailable_action is invalid."
+        )
+    source_by_id = {row.row_snapshot_id: row for row in source_snapshot.rows}
+    decisions = tuple(
+        MatrixImportMethodAuthorityRow(
+            stable_source_row_key=_stable_source_row_key(
+                source_by_id.get(row.source_row_snapshot_id or ""), row.row_order
+            ),
+            row_order=row.row_order,
+            test_item=row.test_item,
+            current_method=row.method,
+            status="source_preserved",
+            resulting_method=row.method,
+            matched_standard_code=None,
+            source_row_number=None,
+            reason="Imported Method preserved because Standard version authority was unavailable.",
+            applied=False,
+        )
+        for row in sorted(draft.rows, key=lambda item: item.row_order)
+    )
+    method_fingerprint = fingerprint_draft_methods(draft, source_snapshot)
+    resource_path = canonical_windows_path(str(resource.path)) if resource else None
+    worksheet = effective_standard_worksheet_name(resource) if resource else None
+    context = {
+        "schema": "matrix-import-method-fallback:v1",
+        "mode": "replace_import",
+        **{
+            key: context_facts[key]
+            for key in (
+                "project_id",
+                "source_import_id",
+                "source_snapshot_id",
+                "task261_commit_fingerprint",
+                "source_locator_fingerprint",
+                "payload_fingerprint",
+                "selected_group_fingerprint",
+                "source_root_fingerprint",
+                "source_row_fingerprint",
+            )
+        },
+        "project_matrix_draft_id": draft.record.project_matrix_draft_id,
+        "authority_status": "source_preserved",
+        "fallback_reason_code": reason_code,
+        "standard_resource_id": resource.resource_id if resource else None,
+        "standard_resource_path": resource_path,
+        "effective_worksheet_name": worksheet,
+        "catalog_fingerprint": None,
+        "pre_method_fingerprint": method_fingerprint,
+        "proposal_fingerprint": fingerprint([_row_identity(row) for row in decisions]),
+        "post_method_fingerprint": method_fingerprint,
+        "result_fingerprint": fingerprint_draft_snapshot(draft, source_snapshot),
+        "applied_at": applied_at,
+        "row_results": [_row_context(row) for row in decisions],
+    }
+    context["context_identity_fingerprint"] = _context_identity(context)
+    context_json = canonical_json(context)
+    preserved = replace(
+        draft,
+        record=replace(draft.record, method_sync_context_json=context_json),
+    )
+    return MatrixImportMethodAuthorityResult(
+        draft=preserved,
+        context_json=context_json,
+        summary=MatrixImportMethodAuthoritySummary(
+            status="source_preserved",
+            updated_count=0,
+            current_count=0,
+            review_count=0,
+            standard_resource_id=resource.resource_id if resource else None,
+            effective_worksheet_name=worksheet,
+            catalog_fingerprint=None,
+            context_fingerprint=str(context["context_identity_fingerprint"]),
+            rows=decisions,
+            warning=MatrixImportMethodAuthorityWarning(
+                code="standard_version_unavailable",
+                message=STANDARD_VERSION_WARNING,
+            ),
+        ),
+    )
+
+
+def _availability_reason(error: BaseException) -> str | None:
+    current: BaseException | None = error
+    visited: set[int] = set()
+    for _ in range(8):
+        if current is None or id(current) in visited:
+            return None
+        visited.add(id(current))
+        if isinstance(current, LegacyExcelComUnavailableError):
+            return "standard_version_runtime_unavailable"
+        if isinstance(current, FileNotFoundError):
+            return "standard_version_file_missing"
+        if isinstance(current, PermissionError):
+            return "standard_version_file_unavailable"
+        if isinstance(current, OSError) and getattr(current, "winerror", None) in (
+            _WINDOWS_AVAILABILITY_CODES
+        ):
+            return "standard_version_file_unavailable"
+        current = current.__cause__ or current.__context__
+    return None
+
+
+def fingerprint_draft_methods(draft: ProjectMatrixDraftSnapshot, source: SourceMatrixSnapshot) -> str:
     keys = _stable_keys_by_source_id(source)
     return fingerprint(
         [
@@ -333,29 +418,14 @@ def fingerprint_draft_methods(
     )
 
 
-def fingerprint_draft_snapshot(
-    draft: ProjectMatrixDraftSnapshot,
-    source: SourceMatrixSnapshot,
-) -> str:
+def fingerprint_draft_snapshot(draft: ProjectMatrixDraftSnapshot, source: SourceMatrixSnapshot) -> str:
     source_rows = _stable_keys_by_source_id(source)
     groups = {group.draft_group_id: [group.group_order, group.group_key] for group in draft.groups}
     rows = {row.draft_row_id: [row.row_order, source_rows.get(row.source_row_snapshot_id)] for row in draft.rows}
-    return fingerprint(
-        {
-            "groups": [
-                [group.group_order, group.group_key, group.group_label, group.sample_quantity_expression, group.sample_note]
-                for group in draft.groups
-            ],
-            "rows": [
-                [row.row_order, source_rows.get(row.source_row_snapshot_id), row.test_item, row.source_section, row.method, row.condition, row.requirement]
-                for row in draft.rows
-            ],
-            "cells": sorted(
-                [rows[cell.draft_row_id], groups[cell.draft_group_id], cell.cell_value]
-                for cell in draft.cells
-            ),
-        }
-    )
+    group_facts = [[g.group_order, g.group_key, g.group_label, g.sample_quantity_expression, g.sample_note] for g in draft.groups]
+    row_facts = [[r.row_order, source_rows.get(r.source_row_snapshot_id), r.test_item, r.source_section, r.method, r.condition, r.requirement] for r in draft.rows]
+    cell_facts = sorted([rows[cell.draft_row_id], groups[cell.draft_group_id], cell.cell_value] for cell in draft.cells)
+    return fingerprint({"groups": group_facts, "rows": row_facts, "cells": cell_facts})
 
 
 def _resolve_rows(draft, source, candidates):
@@ -393,19 +463,6 @@ def _resolve_rows(draft, source, candidates):
     return tuple(decisions), replace(draft, rows=tuple(transformed_rows))
 
 
-def _verify_persisted_fingerprints(context, source, draft) -> None:
-    checks = {
-        "source_root_fingerprint": fingerprint_source_snapshot(source),
-        "source_row_fingerprint": fingerprint_source_rows(source),
-        "post_method_fingerprint": fingerprint_draft_methods(draft, source),
-        "result_fingerprint": fingerprint_draft_snapshot(draft, source),
-    }
-    if any(context.get(key) != value for key, value in checks.items()):
-        raise MatrixImportMethodAuthorityConflictError(
-            "Persisted Matrix import authority could not be read-verified."
-        )
-
-
 def _stable_keys_by_source_id(source: SourceMatrixSnapshot) -> dict[str, str]:
     return {
         row.row_snapshot_id: _stable_source_row_key(row, row.row_order)
@@ -439,10 +496,4 @@ def _row_identity(row: MatrixImportMethodAuthorityRow) -> list[object]:
 
 
 def _context_identity(context: dict[str, object]) -> str:
-    return fingerprint(
-        {
-            key: value
-            for key, value in context.items()
-            if key not in {"context_identity_fingerprint", "applied_at"}
-        }
-    )
+    return fingerprint({key: value for key, value in context.items() if key not in {"context_identity_fingerprint", "applied_at"}})

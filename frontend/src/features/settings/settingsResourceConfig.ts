@@ -22,7 +22,7 @@ export const SHARED_RESOURCE_CONFIGS: SettingsResourceConfig[] = [
   },
   {
     resourceType: "standard_record_excel",
-    label: "Standard record Excel",
+    label: "Standard version file path",
     category: "Public registration and record files",
     expectedKind: "Excel file",
     registryBacked: true

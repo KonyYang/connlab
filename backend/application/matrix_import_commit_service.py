@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from contextlib import AbstractContextManager, nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 import json
 from typing import Any, Callable, Protocol
 
 from backend.application.matrix_import_draft_builder import build_selected_only_draft
 from backend.application.matrix_import_method_authority import (
+    _context_identity,
+    fingerprint_draft_methods,
+    fingerprint_draft_snapshot,
     MatrixImportMethodAuthorityError,
+    MatrixImportMethodAuthorityConflictError,
     MatrixImportMethodAuthorityResolver,
     MatrixImportMethodAuthorityResult,
     MatrixImportMethodAuthoritySummary,
-    verify_new_method_authority,
-    verify_reusable_method_authority,
+    MatrixImportStandardVersionActionRequiredError,
+    StandardVersionUnavailableAction,
 )
 from backend.application.source_matrix_import_builder import (
     canonical_windows_path,
@@ -49,6 +53,14 @@ class MatrixImportCommitConflictError(MatrixImportCommitError):
     """Raised when replay or persistence cannot be safely completed."""
 
 
+class MatrixImportCommitStandardVersionActionRequiredError(MatrixImportCommitConflictError):
+    """Raised when Matrix Replace needs an explicit Standard version choice."""
+
+    def __init__(self, reason_code: str) -> None:
+        super().__init__("Standard version file unavailable.")
+        self.reason_code = reason_code
+
+
 class ProjectStore(Protocol):
     def get(self, project_id: str) -> Project | None: ...
 
@@ -79,6 +91,9 @@ class MatrixImportCommitCommand:
     source_format: str
     preview_payload: dict[str, Any]
     selected_group_keys: tuple[str, ...]
+    standard_version_unavailable_action: StandardVersionUnavailableAction = (
+        "prompt_if_unavailable"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +104,113 @@ class MatrixImportCommitResult:
     commit_status: str
     project_matrix_draft: ProjectMatrixDraftSnapshot
     method_authority_sync: MatrixImportMethodAuthoritySummary
+
+
+def verify_reusable_method_authority(
+    *,
+    current: MatrixImportMethodAuthorityResult,
+    existing_import: SourceMatrixImportRecord,
+    existing_source: SourceMatrixSnapshot,
+    existing_draft: ProjectMatrixDraftSnapshot,
+) -> MatrixImportMethodAuthoritySummary:
+    """Fail closed unless a persisted import exactly matches current authority."""
+    try:
+        existing = json.loads(existing_draft.record.method_sync_context_json or "")
+        current_context = json.loads(current.context_json)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise MatrixImportMethodAuthorityConflictError(
+            "Existing Matrix import Method authority context is missing or malformed."
+        ) from exc
+    if not isinstance(existing, dict) or not isinstance(current_context, dict):
+        raise MatrixImportMethodAuthorityConflictError(
+            "Existing Matrix import Method authority context is invalid."
+        )
+    if existing.get("context_identity_fingerprint") != _context_identity(existing):
+        raise MatrixImportMethodAuthorityConflictError(
+            "Existing Matrix import Method authority context fingerprint is invalid."
+        )
+    stored_facts = {
+        "task261_commit_fingerprint": existing_import.task261_commit_fingerprint,
+        "source_locator_fingerprint": fingerprint(
+            {
+                "path": canonical_windows_path(existing_import.source_document_path),
+                "name": existing_import.source_document_name.strip(),
+                "format": existing_import.source_format.strip().casefold(),
+            }
+        ),
+        "payload_fingerprint": fingerprint(existing_import.source_preview_payload)
+        if existing_import.source_preview_payload
+        else None,
+        "selected_group_fingerprint": fingerprint(
+            list(existing_import.selected_group_keys_at_import)
+        ),
+    }
+    if any(existing.get(key) != value for key, value in stored_facts.items()):
+        raise MatrixImportMethodAuthorityConflictError(
+            "Existing Source Matrix import facts diverge from Method authority context."
+        )
+    expected_ids = {
+        "project_id": existing_draft.record.project_id,
+        "source_import_id": existing_import.import_id,
+        "source_snapshot_id": existing_source.snapshot_id,
+        "project_matrix_draft_id": existing_draft.record.project_matrix_draft_id,
+    }
+    if any(existing.get(key) != value for key, value in expected_ids.items()):
+        raise MatrixImportMethodAuthorityConflictError(
+            "Existing Matrix import lineage does not match its Method authority context."
+        )
+    if (
+        existing_source.import_id != existing_import.import_id
+        or existing_source.project_id != existing_import.project_id
+        or existing_draft.record.source_import_id != existing_import.import_id
+        or existing_draft.record.source_snapshot_id != existing_source.snapshot_id
+    ):
+        raise MatrixImportMethodAuthorityConflictError(
+            "Existing Source Matrix and editable draft lineage is inconsistent."
+        )
+    ignored = {*expected_ids, "context_identity_fingerprint", "applied_at"}
+    existing_comparable = {key: value for key, value in existing.items() if key not in ignored}
+    current_comparable = {
+        key: value for key, value in current_context.items() if key not in ignored
+    }
+    if existing_comparable != current_comparable:
+        raise MatrixImportMethodAuthorityConflictError(
+            "Matrix import or Standard authority changed. Replace cannot reuse the prior import."
+        )
+    _verify_persisted_fingerprints(existing, existing_source, existing_draft)
+    return replace(
+        current.summary,
+        context_fingerprint=str(existing["context_identity_fingerprint"]),
+    )
+
+
+def verify_new_method_authority(
+    *,
+    expected: MatrixImportMethodAuthorityResult,
+    persisted_source: SourceMatrixSnapshot,
+    persisted_draft: ProjectMatrixDraftSnapshot,
+) -> None:
+    """Read-verify one newly persisted source/draft aggregate before commit."""
+    if persisted_draft.record.method_sync_context_json != expected.context_json:
+        raise MatrixImportMethodAuthorityConflictError(
+            "Persisted Matrix Method authority context could not be verified."
+        )
+    _verify_persisted_fingerprints(
+        json.loads(expected.context_json), persisted_source, persisted_draft
+    )
+
+
+def _verify_persisted_fingerprints(context, source, draft) -> None:
+    checks = {
+        "source_root_fingerprint": fingerprint_source_snapshot(source),
+        "source_row_fingerprint": fingerprint_source_rows(source),
+        "post_method_fingerprint": fingerprint_draft_methods(draft, source),
+        "result_fingerprint": fingerprint_draft_snapshot(draft, source),
+    }
+    if any(context.get(key) != value for key, value in checks.items()):
+        raise MatrixImportMethodAuthorityConflictError(
+            "Persisted Matrix import authority could not be read-verified."
+        )
 
 
 class MatrixImportCommitService:
@@ -169,7 +291,14 @@ class MatrixImportCommitService:
                 selected_group_fingerprint=fingerprint(list(selected_keys)),
                 source_root_fingerprint=fingerprint_source_snapshot(prepared.snapshot),
                 source_row_fingerprint=fingerprint_source_rows(prepared.snapshot),
+                standard_version_unavailable_action=(
+                    command.standard_version_unavailable_action
+                ),
             )
+        except MatrixImportStandardVersionActionRequiredError as exc:
+            raise MatrixImportCommitStandardVersionActionRequiredError(
+                exc.reason_code
+            ) from exc
         except MatrixImportMethodAuthorityError as exc:
             raise MatrixImportCommitError(str(exc)) from exc
         existing = self._source_imports.get_import_by_project_and_fingerprint(
