@@ -4,9 +4,9 @@ Date: 2026-08-01
 
 ROLE: Reviewer
 
-STATUS: reviewer_blocked
+STATUS: reviewer_pass
 
-NEXT: Developer
+NEXT: QA
 
 ## Authority And Inspected Package
 
@@ -14,7 +14,8 @@ NEXT: Developer
 - Why allowed: primary `docs/task_board.md` records Task A as the sole WIP=`1` token owner in
   `gate_running/Reviewer`, with queue empty and paused/Quick Fix/parallel records null.
 - Primary authority inspected read-only at
-  `e5de0c4f2ecb0d01a33dabcacdcbd4549f186d8f`.
+  `87cbd2ec729a6a390a96c14ce2b8b434e915b63d`; the production execution gate independently
+  returned `ALLOW_INSPECT` for the sole `gate_running/Reviewer` token owner.
 - Exact lane:
   `D:\PythonProject\connlab-worktrees\task-governance-active-context-deterministic-transition-and-event-handoff`.
 - Branch: `lane/task-governance-active-context-deterministic-transition-and-event-handoff`.
@@ -22,12 +23,17 @@ NEXT: Developer
 - Prior reviewed implementation HEAD:
   `28d15b71dcd66d2befbb292e049446d11da0ec26`; prior Reviewer evidence commit:
   `1e4d080fb0b17a520aa5afb924fd62ffe4bf2203`.
-- Full immutable fix/evidence HEAD independently re-gated:
+- Prior B1-B5 immutable fix/evidence HEAD independently re-gated:
   `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`.
+- Prior R1-R3 Reviewer block/evidence HEAD:
+  `9a644cc6d4631d1fd0649179db7fab80313f0561`.
+- Final User-approved R1-R3 implementation checkpoint:
+  `9f939d84db5567826a19be992e6de168c88ea400`; immutable Developer/evidence candidate fully
+  re-gated: `1fd726b08b7e49a32341d49e4439c889c4c6ab7b`.
 - Exact branch/HEAD, base ancestry, clean lane/index, clean primary, and `git diff --check` passed.
-- Base..HEAD contains the exact 23 approved implementation paths plus Developer and Reviewer
-  evidence (`25` paths total). Focused prior-Reviewer..HEAD contains only the three helpers, four
-  bounded tests, and Developer evidence (`8` paths). It has
+- Base..final-candidate contains the exact 23 approved implementation paths plus Developer and
+  Reviewer evidence (`25` paths total). Focused R1-R3 block..candidate contains only two helpers,
+  four bounded tests, and Developer evidence (`7` paths). It has
   no product path, primary board/history, role registry/bundle, execution gate, worktree helper,
   V1/V2, Task B, package/lock, runtime, release, or real-data path.
 - Read independently: `AGENTS.md`, primary board, approved Task/Plan, Planner and Developer
@@ -35,7 +41,34 @@ NEXT: Developer
   all three helpers, `run_task.ps1`, and all new bounded tests. Candidate compact-read evidence
   was not used to reduce this full review.
 
-## Final Re-gate Findings First
+## User-approved Final R1-R3 Full Re-gate — Findings First
+
+No blocking findings remain in the reviewed package.
+
+- **R1 closed:** exact duplicates now revalidate the actual primary commit topology and changed
+  path, clean primary/lane facts, lane branch/HEAD/base ancestry, scope, immutable evidence/helper
+  blobs, transition tuple/ID, and a byte-exact deterministic re-render of the committed board.
+  Independent later-primary and dirty-lane replays returned `BLOCKED_PRIMARY_HEAD_DRIFT` and
+  `BLOCKED_LANE_DIRTY`, respectively, with board bytes unchanged; the exact committed-transition
+  positive still returned `ALREADY_APPLIED` zero-write in the complete suite.
+- **R2 closed:** maintenance checks each required event's exact legal state/role/status tuple,
+  recomputed transition ID, evidence ref/commit/blob/SHA/machine record, retained context, ancestry,
+  and helper blob. Reviewer/QA entries must attest the helper blob at the maintenance source
+  checkpoint. Independent forged tuple, forged ID, and post-QA helper drift returned
+  `BLOCKED_MAINTENANCE_GATES`, `BLOCKED_MAINTENANCE_GATES`, and `BLOCKED_HELPER_ANCESTRY` with zero
+  writes; an unmodified current-helper positive applied normally in its disposable repository.
+- **R3 closed:** both new incremental generation and historical index replay use the same
+  terminal-and-authority eligibility predicate. An independently recomputed canonical generation-2
+  archive/index that attempted to remove the exact active `gate_running/Integrator` line was
+  rejected before generation 3 with `BLOCKED_ARCHIVE_CORRUPT`; board/index/archive bytes were
+  unchanged by validation.
+
+Non-blocking residual risk: `scripts/connlab_active_context.py` is `497` physical lines and
+`scripts/connlab_execution_transition.py` is `478`, both below the hard `500` limit but with little
+maintenance margin. A future behavior change should extract a reviewed boundary instead of
+compressing additional logic into either file. This does not alter the present gate result.
+
+## Historical Second-gate Findings — Closed By The Final Bounded Fix
 
 The bounded Developer pass closes the exact B1-B5 counterexamples recorded below: rollback output
 is restricted to an existing independently proven temp tree with exclusive creation; dispatch
@@ -44,7 +77,8 @@ machine evidence record are required; complete maintenance records/current compa
 checked; and the first heartbeat is measured from the preceding material event. Independent
 reproductions for all five now fail closed and preserve their source repositories.
 
-Three adjacent safety bypasses remain blocking despite all committed tests passing.
+At that re-gate, three adjacent safety bypasses remained blocking despite all committed tests
+passing. The final bounded fix and independent evidence above close them.
 
 ### Blocking R1 — stale actual primary state can be accepted as an exact duplicate transition
 
@@ -309,7 +343,7 @@ All adversarial reproductions used disposable temporary Git repositories and wer
 production apply/migration, real Create/Retire, product/API/schema/data/file-resource access,
 merge, push, restart, reset, restore, clean, rebase, stash, or destructive repository action ran.
 
-## Final Re-gate Conclusion And Handoff
+## Historical Second-gate Conclusion And Handoff
 
 `reviewer_blocked`.
 
@@ -319,3 +353,48 @@ primary facts are accepted as an exact duplicate, maintenance accepts forged gat
 and a canonical incremental archive can remove active authority detail. Return these exact bounded
 helper/test fixes to Developer. Mandatory QA must not start until a full Reviewer re-gate closes all
 three findings.
+
+## User-approved Final R1-R3 Independent Validation
+
+- Exact focused candidate regressions: `4 passed in 26.79s`.
+- Independent disposable matrix, separate from candidate assertions:
+  - later-primary duplicate -> `BLOCKED_PRIMARY_HEAD_DRIFT`, zero-write;
+  - dirty-lane duplicate -> `BLOCKED_LANE_DIRTY`, zero-write;
+  - forged maintenance tuple/ID -> `BLOCKED_MAINTENANCE_GATES`, zero-write;
+  - post-QA helper drift -> `BLOCKED_HELPER_ANCESTRY`, zero-write;
+  - current-helper positive -> `APPLIED_MAINTENANCE` with the exact three expected paths;
+  - canonical generation-2 active-authority forgery -> `BLOCKED_ARCHIVE_CORRUPT`, zero-write.
+- Complete approved twelve-module Task A matrix: `133 passed in 227.19s`. A separate affected
+  four-module invocation first exceeded the Reviewer's `180s` command timeout and was not treated
+  as evidence; the later complete matrix includes those modules and finished successfully.
+- `py -m py_compile` passed for all three helpers and six bounded Task A test modules.
+- PowerShell AST parsing passed for `run_task.ps1`, `connlab_execution_gate.ps1`, and
+  `connlab_lane_worktree.ps1`: `AST_PARSE_OK_3`.
+- Physical lines/bytes: transition `478/29291`, active context `497/33653`, handoff `334/22884`;
+  bounded changed tests are `394`, `77`, `368`, and `209` lines. Core budgets remain Orchestrator
+  skill `6092` bytes, Planner skill `4341`, orchestration protocol `6881`, and `run_task.ps1` `3980`.
+- Full base..candidate package is the same exact `25` approved implementation/evidence paths.
+  Focused `9a644cc6..1fd726b0` is exactly two helpers, four bounded tests, and Developer evidence
+  (`7` paths). Full/focused `diff --check`, both candidate `show --check`, ancestry, staged-empty,
+  lane/primary clean, protected blob equality, forbidden product/V2/Task B scan, and Task B untouched
+  checks passed. All `12` other registered worktrees were independently read as clean.
+- Candidate-helper production reads at primary `87cbd2ec...` were zero-write: transition inspect
+  correctly returned `BLOCKED_TRANSITION_METADATA` for the legacy pre-integration record;
+  active-context inspect returned `ALLOW_INSPECT` at `2514` lines / `786674` bytes / `153` terminal
+  records; maintenance plan returned generation `1`, digest
+  `77dbab2e042d8d9ed14ae2bcdca510730581f72a94eb173d2d0612e620d1d411`, and projected compact board
+  `111` lines / `18709` bytes / `0` terminal records. Primary HEAD/status, board SHA-256
+  `43f10c681bbf49e1668567213b39c25bf7c62c4d52acbee826650fee99faa9c1`, and archive listing were
+  identical before/after.
+- All adversarial writes occurred only in disposable temporary Git repositories. No production
+  transition/maintenance apply, live archive/index creation, Task B/product/data/protected-lane
+  write, merge, push, migration, restart, cleanup, reset, restore, rebase, stash, or discard ran.
+
+## Final Conclusion And Handoff
+
+`reviewer_pass`.
+
+The final bounded fix closes R1-R3 without changing Task A's approved authority, scope, state
+machine, product boundary, frozen V2, or Task B. The immutable candidate passes the independent
+adversarial, complete regression, parse, size, scope, ancestry, protected-state, and production
+zero-write gates. Handoff is to mandatory QA; Reviewer does not perform integration or migration.
