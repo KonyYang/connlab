@@ -153,6 +153,8 @@ function ResourceRow({
   const inputClassName = validationMessage
     ? "settings-path-input is-invalid-path"
     : "settings-path-input";
+  const pathAccessibleName =
+    row.resourceType === "standard_record_excel" ? row.label : `${row.label} path`;
   const [picking, setPicking] = useState(false);
 
   function autoSaveFromInput(path: string): void {
@@ -206,10 +208,10 @@ function ResourceRow({
           }
         >
           <input
-            aria-label={`${row.label} path`}
+            aria-label={pathAccessibleName}
             className={inputClassName}
             aria-invalid={validationMessage ? "true" : "false"}
-            title={validationMessage ?? `${row.label} path`}
+            title={validationMessage ?? pathAccessibleName}
             value={draft.path}
             onChange={(event) => {
               onDraftChange({ path: event.target.value });

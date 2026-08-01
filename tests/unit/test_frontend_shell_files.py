@@ -765,7 +765,8 @@ def test_task285a_settings_file_locations_simplified_ui_is_wired() -> None:
     assert "project_folder_template" in config_source
     assert "Project default save location" in config_source
     assert "Template folder" in config_source
-    assert "Standard record Excel" in config_source
+    assert "Standard version file path" in config_source
+    assert 'aria-label={`${row.label} path`}' not in panel_source
     assert "Equipment calibration Excel" in config_source
     assert "LTR registration workbook" in config_source
     assert "Public registration and record files" in config_source

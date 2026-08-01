@@ -14,6 +14,7 @@ import {
   fetchMatrixEditorSession,
   fetchMatrixStepQuantities,
   generateMatrixEditorTestRecordDraftDownload,
+  isMatrixImportStandardVersionActionRequiredError,
   isProjectLifecycleReadonlyErrorDetail,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromUpload,
@@ -32,6 +33,7 @@ import {
   type ProjectMatrixDraft,
   type MatrixPreviewResponse,
   type MatrixImportCommitResponse,
+  type MatrixImportStandardVersionUnavailableAction,
   type ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
@@ -44,6 +46,8 @@ import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
+import { MatrixImportStandardVersionChoiceDialog } from "./MatrixImportStandardVersionChoiceDialog";
+import { useMatrixImportStandardVersionChoice } from "./useMatrixImportStandardVersionChoice";
 import {
   applyStepQuantityDefaultsToBlankFields,
   filterStepQuantitiesForGroup,
@@ -1696,6 +1700,8 @@ export function MatrixEditorWorkspace({
   const [importLookupMessage, setImportLookupMessage] = useState<string>("");
   const [importLookupTone, setImportLookupTone] = useState<"success" | "error" | "idle">("idle");
   const [importCommitMessage, setImportCommitMessage] = useState<string>("");
+  const [importCommitWarning, setImportCommitWarning] = useState<string>("");
+  const standardVersionChoice = useMatrixImportStandardVersionChoice();
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [committingImport, setCommittingImport] = useState(false);
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
@@ -2727,15 +2733,32 @@ export function MatrixEditorWorkspace({
     return preview;
   };
 
-  const commitImportedPreview = async (preview: MatrixPreviewResponse): Promise<void> => {
+  const commitImportedPreview = async (
+    preview: MatrixPreviewResponse,
+    unavailableAction: MatrixImportStandardVersionUnavailableAction = "prompt_if_unavailable",
+    allowUnavailableChoice = true
+  ): Promise<void> => {
     const selectedGroupKeys = preview.groups.map((group) => group.group_key);
-    const response: MatrixImportCommitResponse = await commitMatrixImport(projectId, {
-      source_document_path: preview.source_document_path,
-      source_document_name: preview.source_document_name,
-      source_format: preview.source_format,
-      preview_payload: preview,
-      selected_group_keys: selectedGroupKeys,
-    });
+    let response: MatrixImportCommitResponse;
+    try {
+      response = await commitMatrixImport(projectId, {
+        source_document_path: preview.source_document_path,
+        source_document_name: preview.source_document_name,
+        source_format: preview.source_format,
+        preview_payload: preview,
+        selected_group_keys: selectedGroupKeys,
+        standard_version_unavailable_action: unavailableAction,
+      });
+    } catch (error) {
+      if (allowUnavailableChoice && isMatrixImportStandardVersionActionRequiredError(error)) {
+        standardVersionChoice.open(error.detail, (retryAction) =>
+          commitImportedPreview(preview, retryAction, false)
+        );
+        setImportError(null);
+        return;
+      }
+      throw error;
+    }
     applyDraftSnapshotToEditor(
       buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
       preview,
@@ -2752,9 +2775,15 @@ export function MatrixEditorWorkspace({
     const methodSummary = response.method_authority_sync;
     const updatedLabel = `${methodSummary.updated_count} Method${methodSummary.updated_count === 1 ? "" : "s"} updated`;
     const reviewLabel = `${methodSummary.review_count} row${methodSummary.review_count === 1 ? "" : "s"} need review`;
-    setImportCommitMessage(
-      `${response.commit_status === "reused" ? "Matrix import reused" : "Matrix replaced"}. ${updatedLabel}; ${reviewLabel}.`
-    );
+    if (methodSummary.warning) {
+      setImportCommitMessage("");
+      setImportCommitWarning(methodSummary.warning.message);
+    } else {
+      setImportCommitWarning("");
+      setImportCommitMessage(
+        `${response.commit_status === "reused" ? "Matrix import reused" : "Matrix replaced"}. ${updatedLabel}; ${reviewLabel}.`
+      );
+    }
     setImportError(null);
     setShowImportDialog(false);
   };
@@ -2821,6 +2850,7 @@ export function MatrixEditorWorkspace({
     setLocatorTableOnPage("");
     setLocatorKeyword("");
     setImportError(null);
+    setImportCommitWarning("");
     setImportLookupMessage("");
     setImportLookupTone("idle");
     setImportPreview(null);
@@ -3570,9 +3600,22 @@ export function MatrixEditorWorkspace({
           </article>
         </section>
       ) : null}
+      <MatrixImportStandardVersionChoiceDialog
+        busy={standardVersionChoice.busy}
+        error={standardVersionChoice.error}
+        onChooseFile={() => void standardVersionChoice.chooseFile()}
+        onClose={standardVersionChoice.close}
+        onSkip={() => void standardVersionChoice.skip()}
+        open={standardVersionChoice.isOpen}
+      />
       {importCommitMessage ? (
         <p aria-live="polite" className="matrix-editor-import-status-success" role="status">
           {importCommitMessage}
+        </p>
+      ) : null}
+      {importCommitWarning ? (
+        <p aria-live="polite" className="matrix-editor-import-status-warning" role="status">
+          {importCommitWarning}
         </p>
       ) : null}
       <section className="matrix-editor-studio">

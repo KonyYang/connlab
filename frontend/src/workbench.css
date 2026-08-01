@@ -9117,6 +9117,65 @@
   color: var(--color-danger);
 }
 
+.matrix-editor-import-status-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #d8b76a;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #704d08;
+}
+
+.matrix-import-standard-choice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.matrix-import-standard-choice-dialog {
+  width: min(520px, calc(100vw - 48px));
+  padding: 24px;
+  border: 1px solid #cfd8e7;
+  border-radius: 12px;
+  background: #fbfdff;
+  box-shadow: 0 24px 60px rgba(23, 32, 51, 0.2);
+}
+
+.matrix-import-standard-choice-dialog h3,
+.matrix-import-standard-choice-dialog p {
+  margin: 0;
+}
+
+.matrix-import-standard-choice-dialog p {
+  margin-top: 10px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.matrix-import-standard-choice-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.matrix-import-standard-choice-dialog footer button {
+  min-width: 116px;
+  min-height: 42px;
+}
+
+.matrix-import-standard-choice-dialog .matrix-import-standard-choice-error {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #704d08;
+}
+
 @media (max-width: 960px) {
   .matrix-editor-import-controls-row {
     grid-template-columns: 1fr;

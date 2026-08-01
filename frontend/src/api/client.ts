@@ -1922,6 +1922,24 @@ export type MatrixImportCommitRequest = {
   source_format: string;
   preview_payload: MatrixPreviewResponse;
   selected_group_keys: string[];
+  standard_version_unavailable_action?: MatrixImportStandardVersionUnavailableAction;
+};
+
+export type MatrixImportStandardVersionUnavailableAction =
+  | "prompt_if_unavailable"
+  | "preserve_imported_methods";
+
+export type MatrixImportStandardVersionUnavailableReason =
+  | "standard_version_not_configured"
+  | "standard_version_inactive"
+  | "standard_version_file_missing"
+  | "standard_version_file_unavailable"
+  | "standard_version_runtime_unavailable";
+
+export type MatrixImportStandardVersionActionRequiredDetail = {
+  code: "matrix_import_standard_version_action_required";
+  reason_code: MatrixImportStandardVersionUnavailableReason;
+  message: string;
 };
 
 export type MatrixImportCommitResponse = {
@@ -1931,13 +1949,13 @@ export type MatrixImportCommitResponse = {
   commit_status: "created" | "reused";
   project_matrix_draft: ProjectMatrixDraft;
   method_authority_sync: {
-    status: "synchronized" | "review_required";
+    status: "synchronized" | "review_required" | "source_preserved";
     updated_count: number;
     current_count: number;
     review_count: number;
-    standard_resource_id: string;
-    effective_worksheet_name: string;
-    catalog_fingerprint: string;
+    standard_resource_id: string | null;
+    effective_worksheet_name: string | null;
+    catalog_fingerprint: string | null;
     context_fingerprint: string;
     rows: Array<{
       stable_source_row_key: string;
@@ -1951,6 +1969,10 @@ export type MatrixImportCommitResponse = {
       reason: string | null;
       applied: boolean;
     }>;
+    warning?: {
+      code: "standard_version_unavailable";
+      message: string;
+    } | null;
   };
 };
 
@@ -2800,6 +2822,34 @@ export class ApiRequestError extends Error {
     this.status = status;
     this.detail = detail;
   }
+}
+
+const MATRIX_IMPORT_STANDARD_VERSION_UNAVAILABLE_REASONS = new Set<string>([
+  "standard_version_not_configured",
+  "standard_version_inactive",
+  "standard_version_file_missing",
+  "standard_version_file_unavailable",
+  "standard_version_runtime_unavailable",
+]);
+
+export function isMatrixImportStandardVersionActionRequiredError(
+  error: unknown
+): error is ApiRequestError & { detail: MatrixImportStandardVersionActionRequiredDetail } {
+  if (!(error instanceof ApiRequestError) || error.status !== 409) {
+    return false;
+  }
+  const detail = error.detail;
+  if (!detail || typeof detail !== "object") {
+    return false;
+  }
+  const candidate = detail as Record<string, unknown>;
+  return (
+    candidate.code === "matrix_import_standard_version_action_required" &&
+    typeof candidate.reason_code === "string" &&
+    MATRIX_IMPORT_STANDARD_VERSION_UNAVAILABLE_REASONS.has(candidate.reason_code) &&
+    typeof candidate.message === "string" &&
+    candidate.message.length > 0
+  );
 }
 
 export function isProjectLifecycleReadonlyErrorDetail(

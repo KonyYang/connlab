@@ -35,7 +35,10 @@ function renderPanel(onSave = vi.fn().mockResolvedValue(undefined)) {
 describe("Standard record worksheet setting", () => {
   it("omits worksheet_name when the path auto-saves", async () => {
     const onSave = renderPanel();
-    const path = screen.getByLabelText("Standard record Excel path");
+    expect(screen.getByText("Standard version file path")).toBeTruthy();
+    const path = screen.getByLabelText("Standard version file path");
+    expect(screen.queryByLabelText("Standard version file path path")).toBeNull();
+    expect(path.getAttribute("title")).toBe("Standard version file path");
     await userEvent.clear(path);
     await userEvent.type(path, "updated.xlsx");
     await userEvent.tab();
