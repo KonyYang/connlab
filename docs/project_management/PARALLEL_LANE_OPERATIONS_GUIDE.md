@@ -329,3 +329,7 @@ Worktree create/adopt and Developer-task create/adopt remain separate scans. JSO
 support in `connlab_lane_worktree.ps1` does not permit real topology mutation without the task's
 explicit gate. Possible-start ambiguity, dirty state, path/branch/base mismatch, or shared-owner
 conflict always stops without resend, force, cleanup, or fallback.
+
+For classic permanent-role handoff and Integrator closeout maintenance, use
+`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`. Transition apply preserves
+all queue/parallel/lock facts; board maintenance cannot run with a non-null parallel exception.

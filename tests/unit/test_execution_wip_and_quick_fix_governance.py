@@ -272,6 +272,8 @@ def test_run_task_gates_before_codex_routing_and_keeps_queue_governance_read_onl
     assert '"StartTask"' in run_task
     assert "QUEUE_REQUIRED routes queue governance only" in run_task
     assert "never dispatches implementation or creates a worktree" in run_task
+    assert "ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md" in run_task
+    assert "one durable transition and one dispatch" in run_task
 
 
 def test_run_task_queue_path_never_invokes_codex(tmp_path: Path) -> None:
@@ -338,3 +340,32 @@ def test_run_task_queue_path_never_invokes_codex(tmp_path: Path) -> None:
     assert completed.returncode == 0
     assert "QUEUE_REQUIRED" in completed.stdout
     assert not sentinel.exists()
+
+
+def test_run_task_preview_is_reference_only_and_within_dispatch_template_budget(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path)
+    (repo / "scripts").mkdir()
+    (repo / "tasks").mkdir()
+    shutil.copy2(ROOT / "scripts" / "run_task.ps1", repo / "scripts" / "run_task.ps1")
+    shutil.copy2(GATE, repo / "scripts" / GATE.name)
+    (repo / "scripts" / "_codex_runtime.ps1").write_text(
+        "function Invoke-CodexCli { throw 'Preview must not invoke Codex' }\n",
+        encoding="utf-8",
+    )
+    (repo / "tasks" / "TASK_PREVIEW.md").write_text("# Task\n", encoding="utf-8")
+    _write_control(repo, _base_control())
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "preview fixture")
+
+    completed = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-File", str(repo / "scripts" / "run_task.ps1"), "-Task", "TASK_PREVIEW", "-Preview"],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0
+    assert len(completed.stdout.encode("utf-8")) <= 2048
+    assert "ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md" in completed.stdout
+    assert "git worktrees:" not in completed.stdout
