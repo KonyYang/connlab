@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `integrator_dispatch_ready`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Date: 2026-08-01
 
@@ -214,6 +214,85 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - No queue, parallel exception, live migration, product, retained-lane, remote, or runtime action
   occurs in this governance transition.
 
+## Integration Reconciliation Amendment Discovery
+
+### Current authority and why Planner may act
+
+- Primary was reverified clean at
+  `master@75565f7aed80e34844e626519cbc74c4cc49c0a2`, with no `MERGE_HEAD`.
+- Task A remains the sole WIP=`1` token owner in `gate_running/Integrator`; queue is empty and
+  paused/Quick Fix/parallel are null. Legacy production Inspect returned `ALLOW_INSPECT` and
+  execution-control digest `a1f0422506ffb124e14fac69c3cc51a4b2a56087c981c8c657aa06f9ec0755d4`.
+- The first live migration is a fail-closed merge/authority conflict, which is explicitly a
+  Planner/User boundary rather than a routine transition. This planning turn keeps the active
+  token/role unchanged and performs no migration.
+
+### Confirmed by User
+
+- Plan a one-time, auditable, fail-closed Task A legacy bootstrap attestation for User review only.
+- Never fabricate/backfill `DEVELOPER_READY`, `REVIEWER_PASS`, or `QA_PASS` transition history;
+  never weaken routine transition or maintenance gates.
+- Bind only the exact legacy evidence, lane/merge/primary/authority/failed-plan facts and a
+  single-use consumption proof; reject reuse for any other context or later closeout.
+- Require explicit User approval followed by Developer, full Reviewer, mandatory QA, and
+  Integrator retry. Task B stays stopped.
+
+### Confirmed by repository
+
+- Clean lane QA HEAD is `e958ba37df216c1690434ed7f9f40d4a436a88c5`; base -> Developer
+  `1fd726b08b7e49a32341d49e4439c889c4c6ab7b` -> Reviewer
+  `84503d16e2638a827ecd3ef6704d0fe6bfed72ca` -> QA ancestry is intact.
+- Developer evidence: blob `6bd2703d6f280b9eec2fa01e59173149bd894c98`, SHA-256
+  `0fa1abdffe4d93182c090ddbf227628aec039d91d50b76b9f5fe9763ef5d3a0e`,
+  `ready_for_review`. Reviewer: blob `165ebfab7f198953539a371c7c56e114ccba6a91`, SHA-256
+  `de9be8e4c47b04f8538eeb5e2b732932c607486b2b5e2ca9441b6c0803837d70`,
+  `reviewer_pass`. QA: blob `49dc936e67a31fd53d616ee0b9e51bc5702819e8`, SHA-256
+  `49e33a43138dffd9fa7145abac6a2693e9f8f5c589ea22281f30c65b4e199541`,
+  `qa_pass`.
+- Merge `a42ca37e205127afd87d4cdc1d26ede53830522c` has exact parents
+  `fd6036d9fce106ea81991def0ec572dfe20cdcb0` / `e958ba37df216c1690434ed7f9f40d4a436a88c5`,
+  tree `a59c65dc838bfe66e8a839603d263e4e2c467ad1`, and canonical sorted 26-path digest
+  `765445286739a3fb256f47ad36b41dbddde0fa7e2ea8c5f5018b17323da2dd4a`.
+- Integrator evidence at blocked primary has blob
+  `dac23cd0d720583268920ab9112f402d09bf3717`, SHA-256
+  `e2781d373f289f14b9fec2ba57338197958ac21a17e9cd5ac23b9ed0f836f156`.
+  It records failed source-board SHA-256
+  `922532265c3b27363c091ea6eae32420fdcc6c31832d44988bd5296a7cbcf2f6`, plan digest
+  `519ee4f53e1887c524d59971b40a0e1749f4911cd2b032a41237584caaacc497`,
+  `BLOCKED_MAINTENANCE_GATES`, zero writes, and absent archive/index.
+- Current maintenance gate reads only actual `transition_history`; the legacy board has no such
+  field. Active-context is `497` lines, requiring a separate Task-A-specific module to preserve
+  the hard `<500` limit and avoid a generic bypass.
+
+### Planner inference
+
+- The old source hash/plan digest must remain a historical failure anchor. A reviewed retry after
+  governance/code changes needs a fresh current source hash/plan digest bound to a derived
+  one-time consumption identity; reusing `519ee4...` would be stale and unsafe.
+- A canonical source attestation in Task A evidence plus an immutable helper-generated consumption
+  audit referenced by generation-1 index gives lossless use-once proof without making the
+  attestation routine execution authority.
+- Reusing and fast-forwarding the existing lane after approval is non-destructive because the QA
+  HEAD and old merge are already ancestors of current primary. No new task/worktree is needed.
+
+### Unresolved items
+
+- Exact approval/Developer/Reviewer/QA/retry-merge commits, reviewed helper blobs, fresh source
+  hash/plan digest, bootstrap/consumption/audit/archive/index hashes, compacted metrics, and final
+  Integrator acceptance commit.
+
+These are future gated outputs with exact validation rules in the amended Task/Plan. They do not
+change scope and create no blocking question.
+
+### Continue/stop decision and risk
+
+Continue only to formal User review. The amendment has exact scope, interface, failure codes,
+transaction/rollback, use-once audit, lane continuation, and validation gates. Implementation is
+not ready because this amendment has not been approved. The dominant risk is accidentally turning
+historical evidence into generic transition authority; structural schema separation, hard Task A/
+generation-1 anchors, explicit CLI opt-in, consumption identity, and later-generation replay
+rejection address it.
+
 ## Sources Read
 
 - User rejection attachment in full and the original umbrella task/plan/Planner evidence.
@@ -223,6 +302,9 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - `scripts/run_task.ps1`, read-only execution gate, completed-Markdown archive helper, and directly
   affected execution gate/recovery, WIP/Quick Fix, archive, and permanent-role tests.
 - TASK_368E Developer/Reviewer/QA/Integrator evidence and its exact bounded-fix history.
+- Current Task A Task/Plan/Planner/Developer/Reviewer/QA/Integrator evidence, the merged
+  active-context helper and its unit/integration maintenance tests, exact Git evidence/merge/board
+  objects, worktree topology, and the failed migration source/plan record.
 
 ## Discovery Classification
 
@@ -260,8 +342,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- Integrator merge/migration/acceptance outcome; final accepted archive/index hashes,
-  independently verified after-size metrics, and measured pilot duration.
+- User approval of this amendment and its future Developer/Reviewer/QA/Integrator execution
+  outputs, including fresh plan/source/consumption/archive/index hashes and accepted metrics.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -272,9 +354,9 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- User approval and exact approval base are recorded; Task A is the sole token owner, Reviewer and
-  QA passed the final R1-R3 package, helper attestation is immutable, and Integrator dispatch is
-  ready.
+- The amendment is complete enough for User review: exact anchors, one-time schema, May Touch/Must
+  Not Touch/locks, existing-lane continuation, failure and rollback rules, role route, and full
+  validation are explicit. It is deliberately not implementation-ready until User approval.
 
 ## Risk And Mitigation
 
@@ -288,5 +370,6 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `integrator_dispatch_ready` to Orchestrator. Do not dispatch Integrator, edit the lane,
-merge, run live maintenance/migration, or perform Task B work in this Planner turn.
+Return `integration_reconciliation_amendment_pending_user_approval` to Orchestrator. Keep Task A
+as sole `gate_running/Integrator` owner. Do not dispatch any role, edit/advance the lane, merge,
+run live maintenance/migration, create archive/index/audit, or perform Task B work.

@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `integrator_blocked_after_local_merge`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -9,8 +9,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
 Owner at this gate: permanent Integrator retains the sole token in `gate_running/Integrator`.
-Next authority: Planner/User must reconcile the fail-closed first live migration blocker; no new
-role or Task B may start.
+Next authority: User review of the one-time legacy-bootstrap amendment below; no role, migration,
+or Task B may start before explicit approval.
 
 ## Integrator Blocked Checkpoint
 
@@ -29,17 +29,105 @@ role or Task B may start.
   umbrella remain unapproved and non-executable. Evidence:
   `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_integrator.md`.
 
-## Approval Boundary
+## Pending User Review — One-Time Legacy Bootstrap Attestation Amendment
+
+This amendment is planning-only and is not approved or executable. It resolves only the first
+Task A production migration's legacy-input mismatch. It does not create, backfill, synthesize, or
+represent `DEVELOPER_READY`, `REVIEWER_PASS`, or `QA_PASS` `transition_history`; it does not change
+the four routine transition contracts or weaken normal maintenance gates.
+
+### Immutable legacy anchors
+
+The bootstrap attestation schema is Task-A-specific and binds exactly these repository facts:
+
+| Fact | Exact binding |
+| --- | --- |
+| Developer evidence | `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md@1fd726b08b7e49a32341d49e4439c889c4c6ab7b`; Git blob `6bd2703d6f280b9eec2fa01e59173149bd894c98`; SHA-256 `0fa1abdffe4d93182c090ddbf227628aec039d91d50b76b9f5fe9763ef5d3a0e`; `ready_for_review` |
+| Reviewer evidence | `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_reviewer.md@84503d16e2638a827ecd3ef6704d0fe6bfed72ca`; Git blob `165ebfab7f198953539a371c7c56e114ccba6a91`; SHA-256 `de9be8e4c47b04f8538eeb5e2b732932c607486b2b5e2ca9441b6c0803837d70`; `reviewer_pass` |
+| QA evidence | `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_qa.md@e958ba37df216c1690434ed7f9f40d4a436a88c5`; Git blob `49dc936e67a31fd53d616ee0b9e51bc5702819e8`; SHA-256 `49e33a43138dffd9fa7145abac6a2693e9f8f5c589ea22281f30c65b4e199541`; `qa_pass` |
+| Lane ancestry | base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` -> Developer `1fd726b08b7e49a32341d49e4439c889c4c6ab7b` -> Reviewer `84503d16e2638a827ecd3ef6704d0fe6bfed72ca` -> QA `e958ba37df216c1690434ed7f9f40d4a436a88c5` |
+| Local merge | `a42ca37e205127afd87d4cdc1d26ede53830522c`; parents `fd6036d9fce106ea81991def0ec572dfe20cdcb0` and `e958ba37df216c1690434ed7f9f40d4a436a88c5`; tree `a59c65dc838bfe66e8a839603d263e4e2c467ad1`; exact 26-path first-parent package digest `765445286739a3fb256f47ad36b41dbddde0fa7e2ea8c5f5018b17323da2dd4a` |
+| Blocked primary | `75565f7aed80e34844e626519cbc74c4cc49c0a2`; exact Integrator evidence blob `dac23cd0d720583268920ab9112f402d09bf3717`, SHA-256 `e2781d373f289f14b9fec2ba57338197958ac21a17e9cd5ac23b9ed0f836f156` |
+| Execution authority | Task A sole owner, `gate_running/Integrator`, queue empty, paused/Quick Fix/parallel null; execution-control digest `a1f0422506ffb124e14fac69c3cc51a4b2a56087c981c8c657aa06f9ec0755d4` |
+| Failed migration | generation `1`; runtime source-board SHA-256 `922532265c3b27363c091ea6eae32420fdcc6c31832d44988bd5296a7cbcf2f6`; plan digest `519ee4f53e1887c524d59971b40a0e1749f4911cd2b032a41237584caaacc497`; archive/index absent; `BLOCKED_MAINTENANCE_GATES`; zero writes |
+
+The old source-board hash and plan digest are immutable evidence of the failed attempt, not a
+future apply token. Because this planning amendment changes committed governance, an approved
+retry must calculate a new source-board hash and plan digest at its new reviewed merge HEAD and
+bind those new values into the one-time consumption identity.
+
+### Structural separation and single-use rule
+
+- The committed source attestation is
+  `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_legacy-bootstrap-attestation.v1.json`.
+  Its schema contains no `event`, `from_state`, `to_state`, `transition_id`, or
+  `transition_history` field. It is historical bootstrap input, never routine transition
+  authority.
+- `bootstrap_id` is the SHA-256 of canonical JSON containing only schema/version plus the exact
+  anchors above. Any different task, evidence byte, commit, merge parent/tree/package, primary
+  anchor, authority digest, source hash, plan digest, generation, role, or archive state blocks.
+- The approved retry derives `consumption_id` from `bootstrap_id`, the fresh reviewed amendment
+  HEAD/QA evidence, exact retry merge/source HEAD, current source-board hash, execution-control
+  digest, generation `1`, archive path, and zero previous-index hash. The new maintenance plan
+  digest includes that consumption identity.
+- Successful apply writes one immutable helper-generated audit file matching
+  `docs/archive/task_board_history/task-a-legacy-bootstrap-consumption-[0-9a-f]{64}.v1.json` and
+  binds its path/hash/identity in the generation-1 index record. Later generations verify this
+  record through the index hash chain but can never invoke bootstrap again.
+- Exact same-input recovery is `ALREADY_APPLIED` only when compact board, archive, index, audit
+  file, source/plan/consumption identities, and immediate commit topology all match. Partial,
+  divergent, later-generation, later-closeout, other-task, or already-consumed reuse is blocked.
+
+### Amendment implementation scope after separate User approval
+
+May Touch:
+
+1. `scripts/connlab_active_context.py` — minimal explicit Task A bootstrap hook only; normal path
+   stays byte-for-byte equivalent in behavior and the file remains `<500` lines.
+2. `scripts/connlab_task_a_legacy_bootstrap.py` — new Task-A-specific validator/identity module.
+3. `tests/unit/test_connlab_task_a_legacy_bootstrap.py` — new bounded unit matrix.
+4. `tests/integration/test_connlab_task_a_legacy_bootstrap_migration.py` — new bounded disposable-
+   repository plan/apply/recovery/replay matrix.
+5. The exact source-attestation JSON path above.
+6. Task A Developer, Reviewer, QA, Integrator evidence at their existing exact role paths.
+7. This Task, its Plan, Planner evidence, and `docs/task_board.md` for approved governance only.
+8. Integrator-only generation-1 archive, `index.v1.jsonl`, compact board, and exact consumption-
+   audit path generated by the reviewed helper after merge.
+
+Must Not Touch / Locked Paths:
+
+- No `transition_history` insertion, callback synthesis, normal transition event creation, manual
+  archive/index/audit file creation, force/override/ignore flag, or generic legacy bypass.
+- `scripts/connlab_execution_transition.py`, `scripts/connlab_handoff_contract.py`, the normative
+  contract, AGENTS, skills, policies, protocols, execution gate, worktree/commit/archive helpers,
+  registry/bundle, V1/V2, Task B/umbrella, product/data/runtime/release/remote paths, and every
+  retained/frozen/cancelled lane are read-only.
+- New bootstrap code/tests/attestation are exclusively Task A lane-owned. Production board,
+  archive, index, and consumption audit remain Integrator-only. No parallel exception exists.
+
+### Existing-lane continuation and gates
+
+After explicit User approval, Planner records the amendment and returns the same Task A token to
+`implementation_running/Developer`. Orchestrator reuses the existing lane/worktree and
+fast-forwards it non-destructively to the exact approved primary descendant of `75565f7a`; the
+existing QA HEAD and local merge remain ancestors and are never reset, rebased, discarded, or
+recreated. Developer implements only the amendment scope, then full independent Reviewer re-gate,
+mandatory QA, and Integrator retry occur on a new reviewed HEAD. Integrator may retry merge and
+live generation-1 apply only after those gates pass and while Task A remains the sole
+`gate_running/Integrator` owner.
+
+Live apply remains prohibited until the User approves this amendment and the subsequent
+Developer/Reviewer/QA gates pass. Task B remains `planned_pending_user_approval` and cannot start.
+
+## Historical Original Approval Boundary
 
 The User explicitly approved Task A only and authorized automatic execution through local
 Integrator acceptance. This approval does not approve Task B or revive the superseded umbrella.
 Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
-Planner evidence. Developer completed the bounded B1-B5 fix and evidence package at clean lane
-HEAD `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`. This legacy governance step retains Task A as the
-sole WIP=`1` token owner, changes only the durable gate from `implementation_running/Developer` to
-`gate_running/Reviewer`, and records `reviewer_regate_ready`. Full Reviewer re-gate, mandatory QA,
-and Integrator remain required. No live board maintenance, push, publication, restart, destructive
-cleanup, or parallel exception is authorized.
+Planner evidence. The historical B1-B5 and final R1-R3 Developer/Reviewer/QA route completed and
+the exact QA package was merged locally, but first migration failed closed. That original approval
+does not approve this new bootstrap amendment; explicit User review is required. No live board
+maintenance, push, publication, restart, destructive cleanup, or parallel exception is authorized.
 
 ## User Approval And Activation Boundary
 
@@ -305,13 +393,11 @@ Missing a safety or quantitative target blocks Integrator acceptance.
   its own gate); QA validates final reviewed HEAD and disposable migration/recovery cases;
   Integrator alone merges and runs the guarded first production migration before token release.
 
-The exact branch/worktree is clean at final Developer/evidence HEAD
-`6d449262473e628cdf239c5d9b54ae3a2ff2c4c8` over the pinned approval base and Reviewer block. The
-fix-pass delta is exactly the three approved helpers, four bounded tests, and Developer evidence.
-The permanent Orchestrator may now dispatch Reviewer for the full B1-B5 re-gate before mandatory
-QA.
+The exact branch/worktree is clean at QA HEAD
+`e958ba37df216c1690434ed7f9f40d4a436a88c5`; Reviewer and QA passed and local merge `a42ca37e...`
+preserves that ancestry. No role may be dispatched for the new amendment until User approval.
 
-## Reviewer-Blocked Bounded Fix Contract
+## Historical Reviewer-Blocked Bounded Fix Contract
 
 - B1: make rollback proof output new, non-link, exclusive, temp-root-only and block repository,
   existing-target, escape, link/junction, board/index/archive, and unsafe-parent destinations.
@@ -331,7 +417,7 @@ QA.
   Task/Plan/board, archive/index production paths, execution gate, and all other paths are not
   Developer fix paths.
 
-## Bounded Fix Handoff
+## Historical Bounded Fix Handoff
 
 - Fix checkpoint: `de9a4e0f89730a5f408460852ad3b6f53ceb1000`; clean final evidence HEAD:
   `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`.
@@ -354,5 +440,6 @@ QA.
 
 ## Stop Point
 
-Return `reviewer_regate_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
-migration/maintenance, or perform Task B work in this Planner turn.
+Return `integration_reconciliation_amendment_pending_user_approval` to Orchestrator. Retain Task A
+as sole `gate_running/Integrator` owner. Do not dispatch any role, edit/advance the lane, run live
+migration/maintenance, create archive/index/audit, or perform Task B work.

@@ -1,6 +1,6 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `integrator_blocked_after_local_merge`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
@@ -16,17 +16,338 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   acceptance claimed. Planner/User reconciliation is required before retry; Integrator will not
   invent transition history or alter the frozen helper/contract ad hoc.
 
-## Approval And Activation Record
+## Pending Integration Reconciliation Amendment
+
+This section is a formal planning amendment for User review. It is not approved, does not change
+the current `gate_running/Integrator` authority, and authorizes no implementation or live apply.
+It supersedes only the blocked first-migration portion of Step A8; all normal Task A transition,
+maintenance, WIP, gate, budget, and safety contracts remain unchanged.
+
+### Discovery Gate
+
+Confirmed by User:
+
+- Use a one-time auditable legacy bootstrap attestation, structurally separate from
+  `transition_history`, without fabricating or backfilling role events.
+- Bind the exact original Task A Developer/Reviewer/QA evidence, lane ancestry, QA HEAD, local
+  merge/package, blocked primary, sole Integrator authority/digest, failed source-board/plan facts,
+  and a non-replayable consumption identity.
+- Preserve normal gates; prohibit generic bypasses, force flags, manual history/archive/index,
+  synthesized callbacks, Task B activation, push/restart, and destructive actions.
+- Require a new bounded Developer pass, full Reviewer re-gate, mandatory QA, then Integrator retry
+  on a new reviewed HEAD. Live apply is forbidden before User approval and those gates.
+
+Confirmed by repository:
+
+- Primary is clean at `75565f7aed80e34844e626519cbc74c4cc49c0a2`; Task A remains sole
+  `gate_running/Integrator` owner and legacy Inspect returns `ALLOW_INSPECT` with execution-control
+  digest `a1f0422506ffb124e14fac69c3cc51a4b2a56087c981c8c657aa06f9ec0755d4`.
+- Merge `a42ca37e205127afd87d4cdc1d26ede53830522c` is an ancestor of primary, has parents
+  `fd6036d9fce106ea81991def0ec572dfe20cdcb0` and
+  `e958ba37df216c1690434ed7f9f40d4a436a88c5`, tree
+  `a59c65dc838bfe66e8a839603d263e4e2c467ad1`, and exact 26-path first-parent package digest
+  `765445286739a3fb256f47ad36b41dbddde0fa7e2ea8c5f5018b17323da2dd4a`.
+- Exact evidence bindings are:
+  - Developer: path `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md`, commit `1fd726b08b7e49a32341d49e4439c889c4c6ab7b`, blob `6bd2703d6f280b9eec2fa01e59173149bd894c98`, SHA-256 `0fa1abdffe4d93182c090ddbf227628aec039d91d50b76b9f5fe9763ef5d3a0e`, status `ready_for_review`;
+  - Reviewer: same task prefix plus `_reviewer.md`, commit `84503d16e2638a827ecd3ef6704d0fe6bfed72ca`, blob `165ebfab7f198953539a371c7c56e114ccba6a91`, SHA-256 `de9be8e4c47b04f8538eeb5e2b732932c607486b2b5e2ca9441b6c0803837d70`, status `reviewer_pass`;
+  - QA: same task prefix plus `_qa.md`, commit `e958ba37df216c1690434ed7f9f40d4a436a88c5`, blob `49dc936e67a31fd53d616ee0b9e51bc5702819e8`, SHA-256 `49e33a43138dffd9fa7145abac6a2693e9f8f5c589ea22281f30c65b4e199541`, status `qa_pass`.
+- Base -> Developer -> Reviewer -> QA -> merge -> primary ancestry is intact. The lane remains
+  clean at QA HEAD. The Integrator evidence at primary has blob
+  `dac23cd0d720583268920ab9112f402d09bf3717`, SHA-256
+  `e2781d373f289f14b9fec2ba57338197958ac21a17e9cd5ac23b9ed0f836f156`.
+- Failed generation-1 runtime source-board SHA-256 is
+  `922532265c3b27363c091ea6eae32420fdcc6c31832d44988bd5296a7cbcf2f6`; plan digest is
+  `519ee4f53e1887c524d59971b40a0e1749f4911cd2b032a41237584caaacc497`; apply returned
+  `BLOCKED_MAINTENANCE_GATES` with zero writes and history directory absent.
+- Current helper validates routine gate evidence only through actual `transition_history` and its
+  generation-1 index schema has no bootstrap consumption record. `connlab_active_context.py` is
+  already `497` lines, so new logic cannot be added in place without violating the hard limit.
+
+Planner inference:
+
+- The fixed old source-board hash/plan digest are historical failure anchors, not reusable apply
+  inputs. Governance and reviewed code will change before retry, so the retry must derive a new
+  source hash/plan digest and bind both into a distinct consumption identity.
+- A Task-A-specific module plus a minimal active-context hook is safer than growing the 497-line
+  helper or introducing a generic legacy mode. A dedicated immutable consumption file referenced
+  by generation 1 index survives compaction without becoming execution authority.
+- The existing lane can be fast-forwarded to the approved primary descendant because its QA HEAD
+  is already an ancestor through `a42ca37e`; this preserves all history without a new task,
+  worktree, reset, rebase, or cherry-pick.
+
+Unresolved execution outputs:
+
+- User approval commit, new Developer/Reviewer/QA heads and evidence blobs, retry merge/source
+  HEAD, new source-board hash/plan digest, `bootstrap_id`, `consumption_id`, archive/audit hashes,
+  compacted metrics, and final acceptance commit.
+
+These are produced and independently verified by the gated execution sequence. They do not alter
+scope and are not planning blockers. Recommendation: continue to User review; implementation
+remains stopped.
+
+### Exact historical merge package
+
+The canonical sorted 26-path list hashed above is:
+
+```text
+.agents/skills/connlab-lane-orchestrator/SKILL.md
+.agents/skills/connlab-planner/SKILL.md
+AGENTS.md
+docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md
+docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_qa.md
+docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_reviewer.md
+docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md
+docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md
+docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md
+docs/project_management/PARALLEL_EXECUTION_MODEL.md
+docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md
+docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md
+docs/project_management/TASK_EXECUTION_SKILL.md
+docs/project_management/TASK_REVIEW_CHECKLIST.md
+scripts/connlab_active_context.py
+scripts/connlab_execution_transition.py
+scripts/connlab_handoff_contract.py
+scripts/run_task.ps1
+tests/integration/test_connlab_board_closeout_maintenance.py
+tests/integration/test_connlab_execution_transition_recovery.py
+tests/unit/test_connlab_active_context.py
+tests/unit/test_connlab_active_context_governance.py
+tests/unit/test_connlab_execution_transition.py
+tests/unit/test_connlab_handoff_contract.py
+tests/unit/test_execution_wip_and_quick_fix_governance.py
+tests/unit/test_task_scoped_role_thread_lifecycle_governance.py
+```
+
+The package digest is SHA-256 over UTF-8 bytes of the ordinal-sorted paths, each followed by one
+LF, including the final path.
+
+No retry may reintroduce, omit, or reinterpret this already-merged package. The new merge delta is
+limited to the amendment paths below.
+
+### Bootstrap attestation and audit contracts
+
+Source attestation path:
+
+```text
+docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_legacy-bootstrap-attestation.v1.json
+```
+
+Canonical schema `connlab.task-a-legacy-bootstrap-attestation`, version `1`, has exact keys for:
+
+1. `task_id` and `purpose=first_generation_legacy_bootstrap_only`;
+2. the three fixed evidence records: role/path/commit/blob/SHA-256/status;
+3. base, Developer, Reviewer, and QA ancestry heads;
+4. prior merge commit/parents/tree/path count/canonical path-list digest;
+5. blocked primary plus exact Integrator evidence ref/blob/SHA-256;
+6. sole-owner state/role and fixed execution-control digest;
+7. generation `1`, failed runtime source-board hash, failed plan digest, zero-write reason, and
+   archive/index absence;
+8. `bootstrap_id`, computed over all preceding canonical fields.
+
+It has no routine event/state transition fields. Exact JSON key set, types, lowercase hashes,
+canonical serialization, duplicate-key rejection, and `bootstrap_id` recomputation are mandatory.
+
+Successful apply creates exactly one immutable audit record:
+
+```text
+docs/archive/task_board_history/task-a-legacy-bootstrap-consumption-<consumption_id>.v1.json
+```
+
+The audit record includes schema/version, `bootstrap_id`, attestation path/commit/blob/SHA,
+fresh amendment Reviewer/QA evidence refs, current reviewed helper blobs, task/state/role, retry
+merge/source HEAD, source-board hash, execution-control digest, generation, archive path,
+zero previous-index hash, `consumption_id`, and new plan digest. The generation-1 index line gains
+an exact optional pair `bootstrap_consumption_path`/`bootstrap_consumption_sha256`; both must be
+present only for this exact first generation and absent for ordinary records. Index validation for
+all later generations revalidates the audit bytes/hash and chain.
+
+`consumption_id` is canonical SHA-256 over all audit fields except itself and the new plan digest.
+The maintenance plan includes the resulting identity, and the audit stores the final plan digest;
+there is no circular digest dependency.
+
+### Helper interface and validation order
+
+Add only these explicit inputs to `plan-maintenance`/`apply-maintenance`:
+
+```text
+--legacy-bootstrap-ref <attestation-path@commit#sha256>
+--amendment-reviewer-ref <reviewer-path@commit#sha256>
+--amendment-qa-ref <qa-path@commit#sha256>
+```
+
+Omitting them uses the unchanged normal maintenance path. Supplying any subset blocks. The exact
+bootstrap plan order is:
+
+1. run existing primary/master, expected HEAD, board hash, threshold, marker/JSON parsing, index,
+   archive path, and history-chain validation;
+2. require generation `1`, exact Task A sole `gate_running/Integrator`, empty queue and null
+   paused/Quick Fix/parallel state, and current execution-control digest;
+3. require `transition_history` property to be absent exactly; a present empty, partial,
+   malformed, ambiguous, or complete history uses/blocks under the normal path and cannot bootstrap;
+4. require archive/index/consumption audit absent and no link/junction/path conflict;
+5. validate the source attestation ref, Git commit/blob/SHA, canonical schema/key set, fixed values,
+   and recomputed `bootstrap_id`;
+6. independently resolve all three legacy evidence bytes/statuses and prove exact base/lane/gate
+   ancestry;
+7. prove prior merge parents/tree/26-path count/list digest, merge ancestry, blocked primary and
+   Integrator evidence, fixed authority digest, failed source hash/plan digest/reason, and recorded
+   archive/index absence;
+8. prove current source HEAD descends from blocked primary and differs only through approved
+   amendment governance/implementation/gate/merge paths;
+9. validate fresh amendment Reviewer and QA refs/status/ancestry and require the current
+   `connlab_active_context.py` plus Task-A bootstrap-module blobs to equal the reviewed/QA heads;
+10. derive exact current source/board/execution/archive facts, `consumption_id`, audit path/hash,
+    and a new maintenance plan digest containing them; emit zero-write plan output.
+
+Apply repeats steps 1-10 from disk/Git, then:
+
+11. require exact expected plan digest and consumption identity, clean primary/index, and no
+    intervening commit/status/path change;
+12. construct and fsync archive and consumption audit with exclusive creation;
+13. atomically replace the index containing the consumption hash binding;
+14. atomically replace the board last and revalidate compact authority/metrics;
+15. on any failure restore source board and old index bytes, remove only exact helper-created
+    archive/audit files whose bytes match the plan, and return zero net writes.
+
+Stable failures are:
+
+| Code | Condition |
+| --- | --- |
+| `BLOCKED_BOOTSTRAP_INPUTS` | missing/partial bootstrap CLI tuple |
+| `BLOCKED_BOOTSTRAP_NOT_LEGACY` | transition history exists or legacy shape differs |
+| `BLOCKED_BOOTSTRAP_AUTHORITY` | task/state/role/token/context/execution digest differs |
+| `BLOCKED_BOOTSTRAP_REF` | ref/path/commit/blob/SHA or canonical attestation invalid |
+| `BLOCKED_BOOTSTRAP_ANCHOR` | evidence, ancestry, merge/package, primary, failed-plan/source facts differ |
+| `BLOCKED_BOOTSTRAP_REVIEW` | fresh amendment Reviewer/QA status/ancestry/helper attestation differs |
+| `BLOCKED_BOOTSTRAP_CONFLICT` | archive/index/audit path exists unexpectedly or link/path safety fails |
+| `BLOCKED_BOOTSTRAP_REPLAY` | other task/commit/board/plan/generation/role/later closeout or divergent reuse |
+| `BLOCKED_BOOTSTRAP_PARTIAL` | only a subset of board/archive/index/audit completion exists |
+| `BLOCKED_PLAN_STALE` | new plan digest/current facts differ at apply |
+| `BLOCKED_MAINTENANCE_WRITE_FAILED` | transaction write/fault failed and rollback completed |
+
+All pre-transaction failures return `zero_write=true`, `changed_paths=[]`. Exact successful retry
+returns `APPLIED_MAINTENANCE`. Exact same-input recovery may return `ALREADY_APPLIED` only after
+revalidating the whole compact board/archive/index/audit chain and immediate commit topology.
+
+### Single-use survival and future closeouts
+
+- Generation 1 index references the immutable consumption audit hash; its index line is included
+  in every future `previous_index_sha256` chain. Compaction cannot remove the external audit.
+- Generation 2+ rejects all bootstrap arguments and requires the exact consumed generation-1
+  record/audit to remain valid. The historical attestation never authorizes a new apply.
+- A matching audit without matching archive/index/compact board is partial failure, not consumed
+  success. A matching complete generation with different current commit/board/plan is replay, not
+  idempotency.
+- Rollback proof reconstructs board bytes only into a proven safe temp root. It never deletes the
+  immutable audit/index/archive or restores production automatically. A separately approved Git
+  revert/patch is still required for live rollback.
+
+### Exact amendment May Touch
+
+Developer lane:
+
+1. `scripts/connlab_active_context.py`
+2. `scripts/connlab_task_a_legacy_bootstrap.py` (new)
+3. `tests/unit/test_connlab_task_a_legacy_bootstrap.py` (new bounded module)
+4. `tests/integration/test_connlab_task_a_legacy_bootstrap_migration.py` (new bounded module)
+5. exact source-attestation JSON path above
+6. `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md`
+
+Role/primary governance:
+
+7. the existing Task A Reviewer, QA, Integrator, and Planner evidence paths
+8. this Task and Plan
+9. `docs/task_board.md`
+10. Integrator-only existing generation-1 archive pattern and `index.v1.jsonl`
+11. Integrator-only exact consumption-audit pattern above
+
+Must Not Touch / Locked:
+
+- `scripts/connlab_execution_transition.py`, `scripts/connlab_handoff_contract.py`, existing
+  contract/policies/protocols/skills/AGENTS, execution gate, worktree/task-complete/Markdown archive
+  helpers, registry/bundle, V1/V2, Task B/umbrella, package/lock/release/product/data/runtime paths,
+  and all retained/frozen/cancelled lanes.
+- Direct board history insertion, synthesized callbacks/events/history, manual archive/index/audit
+  creation, force/override/ignore/assume switches, generic legacy acceptance, push/restart, reset,
+  restore, clean, rebase, cherry-pick, discard, deletion, or worktree recreation are prohibited.
+- Bootstrap paths are exclusively Task A-owned. Board/archive/index/audit writes are exclusively
+  Integrator-owned after merge. WIP remains `1`; no parallel exception.
+
+### Non-destructive continuation and role route
+
+1. Pending User decision: keep current primary/lane clean, Task A token in
+   `gate_running/Integrator`, and migration blocked/zero-write.
+2. After explicit approval only, Planner commits approval governance and returns the same Task A
+   token to `implementation_running/Developer`.
+3. Orchestrator reuses the exact existing worktree/branch and fast-forwards it to the approved
+   primary descendant of `75565f7a`. Because QA HEAD -> `a42ca37e` -> current primary ancestry is
+   proven, this is non-destructive and preserves the old merge; no new task/worktree is created.
+4. Developer uses TDD, changes only six lane-owned paths above, commits clean, and records
+   `ready_for_review`.
+5. Reviewer performs a full re-gate of the whole Task A package plus bootstrap adversarial matrix.
+6. Mandatory QA reruns the final complete matrix on the immutable reviewed HEAD.
+7. Integrator verifies the new reviewed/QA package, merges only the amendment delta, generates a
+   fresh plan, applies once, proves audit/index/archive/rollback and merged-tree tests, then closes
+   Task A only if every safety/performance gate passes.
+
+Any mismatch returns to Developer for an in-scope fix or Planner/User for scope/authority change.
+The local merge `a42ca37e` and all histories remain retained; no destructive reconciliation occurs.
+
+### Amendment validation matrix
+
+1. exact canonical attestation and recomputed `bootstrap_id` pass;
+2. each legacy evidence path/commit/blob/SHA/status mismatch blocks zero-write;
+3. broken base/Developer/Reviewer/QA ancestry blocks;
+4. wrong merge, parent order, tree, path count, package path, or package digest blocks;
+5. wrong blocked-primary/Integrator-evidence ref or ancestry blocks;
+6. wrong task/token/state/role/execution-control digest/queue/pause/QF/parallel fact blocks;
+7. wrong failed runtime board hash, plan digest, generation, reason, or archive absence blocks;
+8. any present/empty/partial/synthesized `transition_history` cannot use bootstrap;
+9. missing/partial/extra CLI bootstrap refs block;
+10. malformed/duplicate-key/noncanonical/extra-field attestation blocks;
+11. amendment Reviewer/QA evidence or current helper drift blocks;
+12. current source descendant with an unapproved path blocks;
+13. other task, board, commit, plan, generation, role, later closeout, or altered attestation replay blocks;
+14. exact plan is zero-write and includes bootstrap/consumption/audit facts;
+15. stale expected head/board/plan/consumption identity blocks zero-write;
+16. successful generation 1 writes exactly board, archive, index, and consumption audit;
+17. audit/index bind each other and exact new plan/source/helper/review facts;
+18. exact same-input complete retry is zero-write `ALREADY_APPLIED`;
+19. audit-only/archive-only/index-only/board-only and every partial combination block;
+20. injected failures after archive, audit, index, and board restore prior bytes and remove only exact new files;
+21. generation 2/3 validate the consumption chain but reject bootstrap reuse;
+22. consumption/audit/index tampering blocks later planning/apply/rollback;
+23. first/second/third rollback remains byte-exact in safe temp root;
+24. existing normal transition-history positive and complete mismatch matrix remain unchanged;
+25. complete pre-amendment Task A `133` tests plus new focused modules pass (`133+` total);
+26. Python compilation, PowerShell AST, `<500` helper limits, exact diff/allowlist, protected hashes,
+    production zero-write plan, board budgets, and callback/cadence budgets pass;
+27. Reviewer full re-gate and mandatory QA pass on the exact amendment HEAD;
+28. Integrator merged-tree rerun, new plan/apply, compact summary/JSON agreement, archive/index/audit
+    chain, rollback proof, residual ledger, and clean terminal closeout pass;
+29. Task B/umbrella/product/registry/V1/V2/retained lanes/remote/runtime remain unchanged.
+
+### Rollback and stop conditions
+
+Before successful apply, every plan/failure is zero-write. During apply, transaction rollback
+restores the exact source board/index and deletes only newly created matching archive/audit files.
+After successful apply, helper rollback is proof-only into safe temp; live rollback requires a new
+reviewed Git action. Integrator must stop without acceptance on any `BLOCKED_*`, test/metric miss,
+dirty state, unexpected path, audit mismatch, or partial write.
+
+Current stop: wait for explicit User approval. Do not change the token/role, fast-forward the lane,
+dispatch Developer, edit helper/tests/attestation, merge, migrate, create history, or start Task B.
+
+## Historical Approval And Activation Record
 
 - The User explicitly approved Task A only on 2026-08-01 and authorized the exact automatic route
   `Developer -> Reviewer -> mandatory QA -> local Integrator acceptance`.
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Immutable approval/worktree base:
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; primary execution authority pins it before Create.
-- Developer completed the bounded B1-B5 fix at clean final evidence HEAD
-  `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`. Planner uses legacy governance to retain the sole
-  Task A token and record `gate_running/Reviewer` plus `reviewer_regate_ready`; it does not dispatch
-  Reviewer.
+- Developer completed the historical bounded fixes, Reviewer and QA passed the final R1-R3
+  package, and Integrator merged it locally before the first migration failed closed. The original
+  approval does not cover the pending bootstrap amendment.
 - Task B remains planned and cannot be approved or implemented before A local acceptance and a
   separate User approval. The umbrella remains permanently non-executable.
 
@@ -206,7 +527,7 @@ read fallback.
   `105`-test baseline and every safety/performance gate, commit cleanly, and return to full Reviewer
   re-gate. Do not weaken the frozen contract or edit primary board/history.
 
-### Step A6 — Reviewer gate (current mandatory B1-B5 re-gate)
+### Step A6 — Historical Reviewer gate (completed)
 
 - Full independent review; A cannot use its own new compact read or transition path to reduce this
   review.
@@ -216,7 +537,7 @@ read fallback.
   token-null audit exception is absent.
 - Blocking findings return to Developer; Reviewer never fixes or merges.
 
-### Step A7 — Mandatory QA
+### Step A7 — Historical mandatory QA (completed)
 
 - Validate final reviewed HEAD from a clean lane/temp worktree/exact archive.
 - Run the complete A validation matrix on Windows, including fault injection and second/third
@@ -225,7 +546,7 @@ read fallback.
   launches, one transition/dispatch max, and budget reports.
 - QA does not mutate production board/history or product data.
 
-### Step A8 — Integrator merge, first migration, and closeout
+### Step A8 — Historical Integrator merge and blocked first migration
 
 1. Verify exact package, ancestry, Reviewer/QA pass, clean primary/lane, protected paths, and no
    remote/destructive action.
@@ -238,7 +559,9 @@ read fallback.
 5. Record metrics/residuals, then release token in the normal terminal closeout commit. Do not
    retire a dirty/unintegrated worktree or push.
 
-Stop if migration target/hash/role/token/state changed, or any quantitative target fails.
+The merge completed, but the first migration stopped at `BLOCKED_MAINTENANCE_GATES` with zero
+writes. The pending amendment above replaces only the retry portion. Stop if migration target/
+hash/role/token/state changed, or any quantitative target fails.
 
 ## 5. Validation Matrix
 
@@ -291,8 +614,6 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return `reviewer_regate_ready` to Orchestrator. Developer fix evidence at
-`6d449262473e628cdf239c5d9b54ae3a2ff2c4c8`, blob
-`75b80e0e131a84bb1e3176225e6173dc95dd7700`, its exact fix paths, Reviewer evidence ancestry, and
-clean state are verified. Planner does not dispatch Reviewer, edit the lane, run live migration/
-maintenance, or perform Task B work.
+Return `integration_reconciliation_amendment_pending_user_approval` to Orchestrator. Task A keeps
+the sole token in `gate_running/Integrator`. Planner does not dispatch a role, edit/advance the
+lane, merge, run live migration/maintenance, create archive/index/audit, or perform Task B work.
