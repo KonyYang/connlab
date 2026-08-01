@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `reviewer_dispatch_ready`
+Status: `developer_fix_dispatch_ready`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -9,20 +9,20 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
 Owner at this gate: permanent Planner legacy transition governance. Next gate: Orchestrator
-dispatches Reviewer against the exact clean Developer package.
+dispatches Developer for the bounded B1-B5 fail-closed fix pass.
 
 ## Approval Boundary
 
 The User explicitly approved Task A only and authorized automatic execution through local
 Integrator acceptance. This approval does not approve Task B or revive the superseded umbrella.
 Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
-Planner evidence. Developer completed the authorized isolated implementation and evidence package
-at clean lane HEAD `28d15b71dcd66d2befbb292e049446d11da0ec26`. This legacy governance step retains
-Task A as the sole WIP=`1` token owner, changes only the durable gate from
-`implementation_running/Developer` to `gate_running/Reviewer`, and records
-`reviewer_dispatch_ready`. Independent Reviewer, mandatory QA, and Integrator gates remain
-required. No live board maintenance, push, publication, restart, destructive cleanup, or parallel
-exception is authorized.
+Planner evidence. Reviewer blocked the clean package at lane HEAD
+`1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` with five executable fail-closed findings. This legacy
+governance step retains Task A as the sole WIP=`1` token owner, changes only the durable gate from
+`gate_running/Reviewer` to `implementation_running/Developer`, and records
+`developer_fix_dispatch_ready`. Reviewer re-gate, mandatory QA, and Integrator remain required. No
+live board maintenance, push, publication, restart, destructive cleanup, or parallel exception is
+authorized.
 
 ## User Approval And Activation Boundary
 
@@ -32,10 +32,10 @@ exception is authorized.
 - Authorized automatic route: isolated Developer -> Reviewer -> mandatory QA -> local Integrator
   acceptance, including bounded fixes inside the frozen scope.
 - Approval/worktree base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Developer final/evidence HEAD is `28d15b71dcd66d2befbb292e049446d11da0ec26` over the exact
-  approved base. Lane and primary worktree/index are clean, base ancestry is continuous, and
-  Developer evidence blob `12c510f3e4bfed1f48cde3f7952723d6bbb8a02a` is
-  `ready_for_review`.
+- Reviewer final/evidence HEAD is `1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` over the exact
+  approved base and Developer package. Lane and primary worktree/index are clean, ancestry is
+  continuous, and Reviewer evidence blob `8f8534adc660f71f2fbe435404699e321acc5174` is
+  `reviewer_blocked`.
 - Task B remains `planned_pending_user_approval`, serially blocked until A local acceptance and
   separate User approval. The umbrella remains `superseded_by_split_plans` and non-executable.
 
@@ -288,9 +288,29 @@ Missing a safety or quantitative target blocks Integrator acceptance.
   Integrator alone merges and runs the guarded first production migration before token release.
 
 The exact branch/worktree is clean at final Developer/evidence HEAD
-`28d15b71dcd66d2befbb292e049446d11da0ec26` over the pinned approval base. The reviewed range is
-the exact 23 authorized implementation paths plus Developer evidence; the permanent Orchestrator
-may now dispatch Reviewer against that immutable base..HEAD package.
+`1e4d080fb0b17a520aa5afb924fd62ffe4bf2203` over the pinned approval base. The Reviewer-only delta
+adds only Reviewer evidence. The permanent Orchestrator may now dispatch Developer for B1-B5;
+Reviewer must re-gate the resulting clean checkpoint before mandatory QA.
+
+## Reviewer-Blocked Bounded Fix Contract
+
+- B1: make rollback proof output new, non-link, exclusive, temp-root-only and block repository,
+  existing-target, escape, link/junction, board/index/archive, and unsafe-parent destinations.
+- B2: bind the complete compact dispatch capsule to exact board/task/lane/Git/gate/scope/lock/
+  evidence/action/stop-condition authority and fail closed on omissions or contradictions.
+- B3: require and validate frozen transition metadata and parse one unambiguous current evidence
+  machine status; complete the zero-write mismatch and duplicate matrix.
+- B4: validate real Reviewer/QA evidence ancestry and the accepted helper checkpoint; make
+  maintenance idempotency depend on exact board/index/archive/plan/clean-state agreement and
+  validate every frozen index proof field.
+- B5: measure every heartbeat from the previous permitted material event, including the first;
+  reject unchanged, misordered, mixed, or negative timelines while retaining the <=90s pilot.
+- Fix paths are limited to `scripts/connlab_active_context.py`,
+  `scripts/connlab_execution_transition.py`, `scripts/connlab_handoff_contract.py`, and
+  `scripts/run_task.ps1` only if B2 capsule generation requires it; the corresponding already
+  approved Task A bounded tests; and Developer evidence. The frozen contract/policies/skills,
+  Task/Plan/board, archive/index production paths, execution gate, and all other paths are not
+  Developer fix paths.
 
 ## Compatibility And Rollback
 
@@ -304,5 +324,5 @@ may now dispatch Reviewer against that immutable base..HEAD package.
 
 ## Stop Point
 
-Return `reviewer_dispatch_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
-migration/maintenance, or perform Task B work in this Planner turn.
+Return `developer_fix_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane,
+run live migration/maintenance, or perform Task B work in this Planner turn.

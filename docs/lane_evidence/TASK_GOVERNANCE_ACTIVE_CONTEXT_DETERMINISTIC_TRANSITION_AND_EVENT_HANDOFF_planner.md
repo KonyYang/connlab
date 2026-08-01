@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `reviewer_dispatch_ready`
+Status: `developer_fix_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -35,6 +35,30 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   evidence to the immutable Developer package, preserve all locks/gates/queue/residuals, and route
   to permanent Reviewer. The candidate transition helper is not integrated and was not used.
 
+## Reviewer Blocked To Developer Legacy Transition Audit
+
+- Primary was reverified clean on
+  `master@5c596de0e969b458bb72ea9339be4f260a9a4716`, with no `MERGE_HEAD` and valid current
+  `gate_running/Reviewer` authority.
+- Exact lane branch/worktree are clean at Reviewer evidence HEAD
+  `1e4d080fb0b17a520aa5afb924fd62ffe4bf2203`; approved base and Developer HEAD are ancestors.
+- Reviewer evidence at that commit has Git blob
+  `8f8534adc660f71f2fbe435404699e321acc5174` and status `reviewer_blocked`. The delta from the
+  reviewed Developer HEAD adds only that Reviewer evidence path; final `git show --check` and full
+  base..HEAD `git diff --check` pass.
+- B1-B5 require only existing Task A helper/capsule wiring, corresponding bounded tests, and
+  Developer evidence. They do not change the approved contract, product behavior, authority,
+  schema, WIP, gate order, migration boundary, or performance thresholds.
+- Exact bounded implementation subset: the three Task A Python helpers; `scripts/run_task.ps1`
+  only if required for B2 capsule generation; existing Task A bounded helper/integration/static
+  tests needed to prove B1-B5; and Developer evidence. Contract/protocol/skill, primary board/
+  history, Task B/umbrella, execution gate, registry/bundle, V1/V2, product, and protected lanes
+  remain read-only.
+- Decision: retain Task A as sole token owner, return to `implementation_running/Developer`, update
+  active HEAD/evidence to the Reviewer block, preserve locks/gates/queue/residuals, and require a
+  clean bounded-fix checkpoint followed by full Reviewer re-gate and mandatory QA. The candidate
+  transition helper is not integrated and was not used.
+
 ## User Approval Record
 
 - On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
@@ -43,9 +67,9 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - Task B was not approved and remains serially blocked. The umbrella remains non-executable.
 - Approval/worktree base is the committed approved package
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Primary authority retains Task A as the sole token owner in `gate_running/Reviewer`; exact
-  branch/worktree/base/HEAD, locks, mandatory Reviewer/QA/Integrator route, and clean state are
-  recorded. Planner does not dispatch Reviewer.
+- Primary authority retains Task A as the sole token owner in `implementation_running/Developer`;
+  exact branch/worktree/base/Reviewer HEAD, locks, mandatory Reviewer re-gate/QA/Integrator route,
+  and clean state are recorded. Planner does not dispatch Developer.
 - No queue, parallel exception, live migration, product, retained-lane, remote, or runtime action
   occurs in this governance transition.
 
@@ -95,8 +119,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- Final accepted archive/index hashes, independently verified after-size metrics, and measured QA
-  pilot duration.
+- B1-B5 fix checkpoint and re-gate outcome; final accepted archive/index hashes, independently
+  verified after-size metrics, and measured QA pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -107,8 +131,8 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- User approval and exact approval base are recorded; Task A is the sole token owner, Developer
-  handoff is complete, and the exact package is ready for independent Reviewer assessment.
+- User approval and exact approval base are recorded; Task A is the sole token owner, Reviewer
+  blockers are bounded inside approved paths, and Developer fix dispatch is ready.
 
 ## Risk And Mitigation
 
@@ -122,5 +146,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `reviewer_dispatch_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
-maintenance/migration, or perform Task B work in this Planner turn.
+Return `developer_fix_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane,
+run live maintenance/migration, or perform Task B work in this Planner turn.
