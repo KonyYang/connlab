@@ -37,8 +37,12 @@ class FullRead(Exception):
 
 
 def load_text(value: str) -> str:
-    path = Path(value)
-    if path.is_file(): return path.read_text(encoding="utf-8")
+    if "\n" not in value and "\r" not in value:
+        path = Path(value)
+        try:
+            if path.is_file(): return path.read_text(encoding="utf-8")
+        except OSError:
+            pass
     return value
 
 

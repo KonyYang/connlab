@@ -108,6 +108,9 @@ def test_callback_is_exactly_seven_ordered_nonempty_fields_and_bounded(tmp_path:
     assert code == 0 and result["decision"] == "ALLOW_CALLBACK"
     assert result["callback_bytes"] <= 1024
 
+    code, literal = invoke("validate-callback", callback)
+    assert code == 0 and literal["decision"] == "ALLOW_CALLBACK"
+
     source.write_text(callback + "EXTRA: no\n", encoding="utf-8")
     code, result = invoke("validate-callback", str(source))
     assert code != 0 and "BLOCKED_CALLBACK_SHAPE" in result["reason_codes"]
