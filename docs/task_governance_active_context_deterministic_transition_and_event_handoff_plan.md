@@ -11,8 +11,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 - The User explicitly approved Task A only on 2026-08-01 and authorized the exact automatic route
   `Developer -> Reviewer -> mandatory QA -> local Integrator acceptance`.
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
-- This commit is the immutable approval base. Its full SHA is pinned by the immediately following
-  primary token/worktree-preparation governance commit before Create.
+- Immutable approval/worktree base:
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; primary execution authority pins it before Create.
 - No worktree or branch is created and Developer is not dispatched in this approval-base step.
 - Task B remains planned and cannot be approved or implemented before A local acceptance and a
   separate User approval. The umbrella remains permanently non-executable.
@@ -65,8 +65,7 @@ fail-closed reason codes.
 
 ### Not yet confirmed
 
-- Exact approval-base SHA until this commit exists, lane commits, final archive/index hashes,
-  exact after-size metrics, and pilot timings.
+- Lane commits, final archive/index hashes, exact after-size metrics, and pilot timings.
 
 These are execution outputs, not scope ambiguities. Definition of Ready is satisfied for User
 review, not implementation.
@@ -274,6 +273,6 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-After the approval base is committed, pin its SHA in primary authority and authorize worktree
-creation. Do not begin Step A1 or dispatch Developer until Orchestrator verifies the created clean
-worktree and a fresh implementation gate.
+Return worktree-creation authority to Orchestrator. Do not begin Step A1 or dispatch Developer
+until Orchestrator verifies the created clean branch/worktree at approval base
+`15c3120a6d889e97d098c2cb9f8c8ef852d74f69` and a fresh implementation gate.

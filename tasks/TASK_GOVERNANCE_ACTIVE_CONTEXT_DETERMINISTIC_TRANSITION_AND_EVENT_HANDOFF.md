@@ -15,10 +15,11 @@ creation after the exact approval-base SHA is pinned in primary execution author
 
 The User explicitly approved Task A only and authorized automatic execution through local
 Integrator acceptance. This approval does not approve Task B or revive the superseded umbrella.
-The current approval-base commit does not create a branch/worktree, run live board compaction, or
-dispatch Developer. A following primary governance commit must pin this approval-base SHA, acquire
-the sole WIP=`1` token in `implementation_running/Developer`, and authorize Orchestrator worktree
-creation. Independent Reviewer, mandatory QA, and Integrator gates remain required. No push,
+Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
+Planner evidence. Primary execution authority now pins that SHA, acquires the sole WIP=`1` token in
+`implementation_running/Developer`, and authorizes Orchestrator to create the exact worktree.
+This governance step does not create the branch/worktree, run live board compaction, or dispatch
+Developer. Independent Reviewer, mandatory QA, and Integrator gates remain required. No push,
 publication, restart, destructive cleanup, or parallel exception is authorized.
 
 ## User Approval And Activation Boundary
@@ -28,8 +29,9 @@ publication, restart, destructive cleanup, or parallel exception is authorized.
   `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Authorized automatic route: isolated Developer -> Reviewer -> mandatory QA -> local Integrator
   acceptance, including bounded fixes inside the frozen scope.
-- Worktree creation is the next topology action after the exact approval-base commit is pinned.
-- Developer is not dispatched by this approval-base commit.
+- Approval/worktree base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
+- Worktree creation is the next topology action; Developer remains undispatched until Orchestrator
+  verifies the exact created branch/path/base/head and a fresh implementation gate.
 - Task B remains `planned_pending_user_approval`, serially blocked until A local acceptance and
   separate User approval. The umbrella remains `superseded_by_split_plans` and non-executable.
 
@@ -275,15 +277,15 @@ Missing a safety or quantitative target blocks Integrator acceptance.
 - Sibling worktree:
   `D:\PythonProject\connlab-worktrees\task-governance-active-context-deterministic-transition-and-event-handoff`
 - Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
-- Worktree creation base: this approval-base commit; its full SHA is pinned by the immediately
-  following token/worktree-preparation governance commit before Create.
+- Worktree creation base: `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
 - Route: User approval -> isolated Developer -> independent Reviewer -> mandatory QA -> Integrator.
 - Developer hands off a clean exact-path commit; Reviewer performs a full review (A cannot optimize
   its own gate); QA validates final reviewed HEAD and disposable migration/recovery cases;
   Integrator alone merges and runs the guarded first production migration before token release.
 
-No branch/worktree exists at this approval-base gate. Only the following exact primary governance
-transition may authorize its creation; Developer dispatch remains later.
+No branch/worktree exists at this worktree-preparation gate. Orchestrator is authorized to create
+only the exact planned branch/worktree from the pinned approval base; Developer dispatch remains a
+later gate after physical verification.
 
 ## Compatibility And Rollback
 
@@ -297,5 +299,5 @@ transition may authorize its creation; Developer dispatch remains later.
 
 ## Stop Point
 
-Commit the approval base, then pin its exact SHA and acquire the sole token for worktree creation.
-Do not create the worktree, dispatch Developer, run live migration, or perform Task B work here.
+Return `approved_worktree_preparation` to Orchestrator. Do not create the worktree, dispatch
+Developer, run live migration, or perform Task B work in this Planner turn.

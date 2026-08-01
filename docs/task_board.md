@@ -3,9 +3,9 @@
 > Status: classic permanent-role execution active; V1-Lite and Controlled Lane V2 are frozen read-only, V2 heartbeat remains `PAUSED`, and retained snapshots are preserved
 > Last Updated: 2026-08-01
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: None. `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY` is complete/accepted and locally integrated by non-fast-forward merge `634279b7ced1306092e8e2e7f39705eb7f0942d5`. WIP remains `1`; terminal execution state is `complete`, token owner and active task are null, queue is empty, and paused task, Quick Fix, and parallel exception are null. No next task is activated. The clean integrated TASK_368E lane is retained under permanent Orchestrator governance, and all prior retained/cancelled/residual/frozen facts remain unchanged.
+> Current Active Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF` is User-approved for automatic isolated Developer -> Reviewer -> mandatory QA -> local Integrator acceptance. It is the sole WIP=`1` token owner in pre-worktree `implementation_running/Developer` state. Approval/worktree base and planned HEAD are `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; exact branch/worktree are frozen below but do not yet exist, and Developer has not been dispatched. Queue is empty; paused task, Quick Fix, and parallel exception are null. All retained/cancelled/residual/frozen facts remain unchanged.
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-> Proposed Next Tasks: Task A `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF` and serial Task B `TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER` are `planned_pending_user_approval`. A must be separately approved and locally Integrator-accepted before B may be separately approved or implemented. The rejected `TASK_GOVERNANCE_PROPORTIONATE_REGATE_EVIDENCE_REUSE_AND_COMPACT_HANDOFF` is `superseded_by_split_plans` and permanently non-executable. Current Active Task remains None; execution JSON remains terminal with null token/active/queue/paused/Quick Fix/parallel records. No branch/worktree, token, queue, role dispatch, or live compaction is authorized.
+> Next Serial Task: Task B `TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER` remains `planned_pending_user_approval`; it cannot be approved or implemented before Task A local Integrator acceptance and separate User approval. The rejected umbrella remains `superseded_by_split_plans` and permanently non-executable. Task A worktree creation is next; Developer dispatch and live compaction are not yet authorized.
 
 <!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
 ```json
@@ -13,9 +13,54 @@
   "schema": "connlab.execution-control",
   "version": 1,
   "wip_limit": 1,
-  "execution_token_owner": null,
-  "execution_state": "complete",
-  "active": null,
+  "execution_token_owner": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
+  "execution_state": "implementation_running",
+  "active": {
+    "task_id": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
+    "lane": "task-governance-active-context-deterministic-transition-and-event-handoff",
+    "role": "Developer",
+    "branch": "lane/task-governance-active-context-deterministic-transition-and-event-handoff",
+    "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-active-context-deterministic-transition-and-event-handoff",
+    "base_sha": "15c3120a6d889e97d098c2cb9f8c8ef852d74f69",
+    "head_sha": "15c3120a6d889e97d098c2cb9f8c8ef852d74f69",
+    "locked_paths": [
+      "AGENTS.md",
+      ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+      ".agents/skills/connlab-planner/SKILL.md",
+      "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
+      "docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md",
+      "docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md",
+      "docs/project_management/PARALLEL_EXECUTION_MODEL.md",
+      "docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md",
+      "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
+      "docs/project_management/TASK_EXECUTION_SKILL.md",
+      "docs/project_management/TASK_REVIEW_CHECKLIST.md",
+      "scripts/run_task.ps1",
+      "scripts/connlab_execution_transition.py",
+      "scripts/connlab_active_context.py",
+      "scripts/connlab_handoff_contract.py",
+      "tests/unit/test_connlab_execution_transition.py",
+      "tests/integration/test_connlab_execution_transition_recovery.py",
+      "tests/unit/test_connlab_active_context.py",
+      "tests/integration/test_connlab_board_closeout_maintenance.py",
+      "tests/unit/test_connlab_handoff_contract.py",
+      "tests/unit/test_connlab_active_context_governance.py",
+      "tests/unit/test_execution_wip_and_quick_fix_governance.py",
+      "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
+      "tasks/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF.md",
+      "docs/task_governance_active_context_deterministic_transition_and_event_handoff_plan.md",
+      "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_*",
+      "docs/task_board.md",
+      "docs/archive/task_board_history/index.v1.jsonl",
+      "docs/archive/task_board_history/generation-[0-9]{6}-[0-9a-f]{40}.md"
+    ],
+    "required_gates": [
+      "Reviewer",
+      "QA",
+      "Integrator"
+    ],
+    "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_planner.md"
+  },
   "queue": [],
   "paused": null,
   "quick_fix": null,
@@ -40,15 +85,15 @@
     }
   ],
   "parallel_exception": null,
-  "last_governance_commit": "634279b7ced1306092e8e2e7f39705eb7f0942d5",
-  "evidence": "docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_integrator.md"
+  "last_governance_commit": "15c3120a6d889e97d098c2cb9f8c8ef852d74f69",
+  "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_planner.md"
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
 
 ## Active Execution Model
 
-- `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`: `planned_pending_user_approval`. Planning-only Task A defines lossless first and recurring board-history maintenance, sole-token Integrator production writes, a fail-closed helper for four routine gate transitions, Planner removal from mechanical handoffs, one transition/one dispatch per Orchestrator turn, reference-only reads/callbacks, 60-second cadence, and measured context budgets. Planned lane is `lane/task-governance-active-context-deterministic-transition-and-event-handoff` in sibling worktree `D:\PythonProject\connlab-worktrees\task-governance-active-context-deterministic-transition-and-event-handoff`; neither exists nor is authorized. Required future route is separate User approval -> Developer -> Reviewer -> mandatory QA -> Integrator.
+- `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`: `approved_worktree_preparation`. User approved Task A only and authorized automatic isolated Developer -> Reviewer -> mandatory QA -> local Integrator acceptance. Task A is the sole token owner in pre-worktree `implementation_running/Developer`; lane `task-governance-active-context-deterministic-transition-and-event-handoff`, branch `lane/task-governance-active-context-deterministic-transition-and-event-handoff`, sibling worktree `D:\PythonProject\connlab-worktrees\task-governance-active-context-deterministic-transition-and-event-handoff`, and approval base/planned HEAD `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` are frozen. The physical branch/worktree do not yet exist; Orchestrator Create is next and Developer is not dispatched. Exact Task May Touch/Must Not Touch/locks, Reviewer/mandatory-QA/Integrator gates, Integrator-only live migration, board/context budgets, <=90s pilot, no-push/non-destructive/V2 boundaries, and quantitative acceptance blockers remain normative.
 - `TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER`: `planned_pending_user_approval`, strict serial dependency on Task A local Integrator acceptance, and separate User approval required afterward. Planning-only Task B defines per-command evidence reuse, fail-closed full-regate triggers, deterministic Windows validation runner, committed baseline-debt ledger, final-full QA, Integrator differential validation, exact TASK_368E replay, >=40% Reviewer command reduction, and measured medium pilot. Planned lane is `lane/task-governance-regate-evidence-reuse-baseline-ledger-and-validation-runner` in sibling worktree `D:\PythonProject\connlab-worktrees\task-governance-regate-evidence-reuse-baseline-ledger-and-validation-runner`; neither exists nor is authorized.
 - `TASK_GOVERNANCE_PROPORTIONATE_REGATE_EVIDENCE_REUSE_AND_COMPACT_HANDOFF`: `superseded_by_split_plans`. It is retained only as a non-executable umbrella/audit trace and cannot be approved, queued, assigned a token, given a branch/worktree, or dispatched. Its responsibilities are owned by serial Tasks A and B above.
 - `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY`: complete/accepted and locally integrated by conflict-free non-fast-forward merge `634279b7ced1306092e8e2e7f39705eb7f0942d5`. The exact 17 product/test paths plus Developer/Reviewer/QA evidence (`20` total) are integrated, while primary task/plan/Planner/board governance was preserved. Merged-primary validation passed TASK_368E backend/API `31`, expanded authority/reuse/session/Confirm/config compatibility `70 passed, 1` independently attributed baseline-only deselected, disposable XLSX/fake-COM/read `38`, B1 cleanup `8`, Settings shell `1`, frontend `8 files / 61 tests`, pycompile, frontend build with only the existing chunk warning, the 499-line authority limit, and exact package/forbidden-path/ancestry/UI/protected-state checks. No real DB/Excel/PDF/DOCX/public-drive resource or current localhost was accessed. Terminal state is `complete`; token owner and active task are null, queue empty, and paused/Quick Fix/parallel exception null. The clean integrated TASK_368E branch/worktree remains `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement. No push, publication, release build, restart, worktree retirement, destructive cleanup, or next-task activation occurred.
@@ -176,6 +221,7 @@
 ## Active Lanes
 
 | Lane | Task | Owner Role | Status | Dependencies | May Touch | Must Not Touch | Locked Paths | Evidence File | Validation Gate | Merge Gate |
+| task-governance-active-context-deterministic-transition-and-event-handoff | `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF` | Developer role reserved for worktree preparation; not dispatched | `approved_worktree_preparation`; sole token owner; `implementation_running`; base/head `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; exact branch/worktree planned but absent | User approval of Task A only; B remains serially blocked; umbrella non-executable | Exact Task A May Touch contract, normalized into the execution JSON locks; Developer lane owns contracts/helpers/bounded tests and role evidence only | Exact Task A Must Not Touch: all product/data/real resources, execution gate/worktree/commit/archive helpers, role registry/bundle/V2, retained lanes, remote/runtime/destructive actions; Developer cannot edit live board/history | Exact execution JSON `locked_paths`; live board/history remain primary Integrator-only; no parallel exception | `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_planner.md` | Developer clean checkpoint -> independent full Reviewer -> mandatory QA; every safety and byte/time/item budget is blocking | Integrator alone may merge and perform the guarded first live migration while A remains sole `gate_running/Integrator`; local acceptance only, no push; worktree creation is next, not merge |
 | task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity | `TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY` | Integrator closeout complete; permanent Orchestrator owns retained lane lifecycle | `complete` / `accepted` / `locally_integrated`; merge `634279b7ced1306092e8e2e7f39705eb7f0942d5`; lane QA HEAD `c9a61bcb701178c1042d99ca8011d138e0420330`; terminal token owner null, active null, queue empty, paused/Quick Fix/parallel exception null | User-approved QF-4 plan; Reviewer `reviewer_pass`; mandatory QA `qa_pass`; Integrator merged-tree validation passed | Exact 17 product/test paths plus Developer/Reviewer/QA evidence are integrated; task/plan/board/Integrator evidence form the closeout package | No Office gateway, persistence/schema, Confirm Matrix, Standard Method versions product, real DB/Excel/PDF/DOCX/public-drive resource, release/push/restart/destructive cleanup, or next-task activation | Clean branch `lane/task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity` and worktree `D:\PythonProject\connlab-worktrees\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity` are `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement | `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_integrator.md` | Merged primary: backend/API `31`; expanded compatibility `70 passed, 1 deselected`; Excel/COM/read `38`; B1 `8`; Settings `1`; frontend `8 files / 61 tests`; pycompile/build/499-line/package/forbidden-path/ancestry/UI/protected-state checks | Complete/accepted locally; no push, publication, release build, restart, worktree retirement, or real-resource mutation. Next: Archive/Standby. |
 | task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix | `TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX` | Integrator closeout complete; permanent Orchestrator owns retained lane lifecycle | `complete` / `accepted` / `locally_integrated`; merge `8c79ea1c0caa7e688df8b1a346032bc6dd33d5e1`; lane QA HEAD `45f345f49c43eece139245b00048c74e8c83f73b`; terminal token owner null, active null, queue empty, paused/Quick Fix/parallel exception null | Quick Fixer ready; Reviewer `reviewer_pass`; QA `qa_pass`; Integrator merged-tree validation passed | Exact five-path gateway/bounded-test/Quick Fixer/Reviewer/QA package is integrated; task/board/Integrator evidence form the closeout package | No parser/application/API/persistence/authority/frontend/release or real DB/Excel/source mutation; no Standard Excel configuration repair; no ConfirmedMatrixFeeDraftNotFoundError absorption; no push/publication/restart/destructive cleanup/next task | Clean branch `lane/task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix` and worktree `D:\PythonProject\connlab-worktrees\task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix` are `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement | `docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md` | Merged primary: bounded `2 passed`; combined PDF/parser `35 passed`; gateway pycompile and 482-line ceiling; exact package/forbidden-path/ancestry/protected-state checks; read-only GS-12-2299 auto/explicit/table-1 smoke with unchanged SHA/size/mtime | Complete/accepted locally; no push, release build, publication, or restart. Next: Archive/Standby; no replacement task. |
 | task-governance-wip1-and-proportionate-quick-fix-fast-path | `TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH` | Integrator closeout complete; permanent Orchestrator owns retained lane lifecycle | `complete` / `accepted` / `locally_integrated`; merge `2f0fe6730777221ed48551a1cbdf8802aeed3ea1`; lane QA HEAD `600bbf2d8d6b7884fed6a3af4e46f56cce3fe3a3`; terminal token owner null, active null, queue empty, paused/Quick Fix/parallel exception null | User-approved exact plan; Reviewer `reviewer_pass`; QA `qa_pass`; Integrator merged-tree validation passed | Exact nineteen-path reviewed implementation/Developer/Reviewer package plus one QA evidence path is integrated; task/plan/board/Integrator evidence form the closeout package | No product/backend/frontend/API/schema/database/Office/Matrix/Fee/LTR/runtime mutation; no next task; no push/publication/restart; no real Create/Retire; no destructive cleanup; all prior retained/cancelled/frozen facts unchanged | Clean branch `lane/task-governance-wip1-and-proportionate-quick-fix-fast-path` and worktree `D:\PythonProject\connlab-worktrees\task-governance-wip1-and-proportionate-quick-fix-fast-path` are `retain` under permanent Orchestrator governance until separately authorized safe maintenance retirement | `docs/lane_evidence/TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH_integrator.md` | Merged primary: five frozen modules `66 passed`; three PowerShell parses; production-root read-only `ALLOW_INSPECT`; exact package/forbidden-path/ancestry/protected hash/worktree/diff/status checks passed | Complete/accepted locally; no push, publication, restart, product migration, or destructive action. Next: Archive/Standby; no replacement task. |

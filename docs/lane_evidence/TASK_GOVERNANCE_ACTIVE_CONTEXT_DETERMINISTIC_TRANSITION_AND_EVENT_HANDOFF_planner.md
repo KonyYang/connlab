@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `approval_recorded_pending_token`
+Status: `approved_worktree_preparation`
 
 Date: 2026-08-01
 
@@ -22,11 +22,13 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   Developer -> Reviewer -> mandatory QA -> local Integrator acceptance.
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Task B was not approved and remains serially blocked. The umbrella remains non-executable.
-- This approval-base commit intentionally precedes token acquisition so the future worktree base
-  can contain the approved Task/Plan/Evidence. The following primary governance commit must pin
-  this commit's exact SHA before Orchestrator runs Create.
-- No worktree/branch/token/queue/dispatch/live migration/product/remote/runtime action occurs in
-  this approval-base commit.
+- Approval/worktree base is the committed approved package
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
+- Primary authority acquires Task A as the sole token owner in
+  `implementation_running/Developer` only to authorize exact worktree creation. The worktree and
+  branch do not yet exist and Developer is not dispatched.
+- No queue, parallel exception, live migration, product, retained-lane, remote, or runtime action
+  occurs in this governance transition.
 
 ## Sources Read
 
@@ -74,8 +76,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- Exact approval-base SHA until this commit exists, implementation commits, final archive/index
-  hashes, after-size metrics, and measured pilot duration.
+- Physical worktree creation/verification, implementation commits, final archive/index hashes,
+  after-size metrics, and measured pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -87,8 +89,8 @@ These are future execution outputs and do not alter scope. No blocking planning 
 - No active or parallel owner conflicts with the planned paths.
 - The planned branch/worktree identity is exact; creation base is intentionally the future
   approval-governance HEAD and must be recorded before Create.
-- User approval is recorded. The next governance step is exact approval-base pinning and sole-token
-  acquisition for worktree creation; implementation is not yet dispatched.
+- User approval and exact approval base are recorded; Task A is the sole token owner for worktree
+  creation. Implementation is not yet dispatched.
 
 ## Risk And Mitigation
 
@@ -102,5 +104,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Commit this approval base, then record its exact SHA and acquire the sole token in primary
-governance. Do not create the worktree, dispatch Developer, or run live maintenance here.
+Return `approved_worktree_preparation` to Orchestrator. Do not create the worktree, dispatch
+Developer, or run live maintenance in this Planner turn.
