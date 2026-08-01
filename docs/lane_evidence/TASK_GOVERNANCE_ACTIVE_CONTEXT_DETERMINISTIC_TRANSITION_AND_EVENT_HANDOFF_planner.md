@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `developer_fix_dispatch_ready`
+Status: `reviewer_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -120,6 +120,32 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   and require a clean bounded fix followed by full Reviewer re-gate, mandatory QA, and local
   Integrator acceptance. The candidate transition helper is not integrated and was not used.
 
+## Final R1-R3 Developer To Reviewer Legacy Transition Audit
+
+- Primary was reverified clean on
+  `master@7f34c5a786b179e5da1cdcda8fe5cee3b8a00e9c`, with no `MERGE_HEAD` and valid
+  `implementation_running/Developer` authority. Legacy production `Inspect` returned
+  `ALLOW_INSPECT` before the transition.
+- The exact lane branch/worktree are clean at final Developer/evidence HEAD
+  `1fd726b08b7e49a32341d49e4439c889c4c6ab7b`. Approved base
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`, prior Reviewer block HEAD
+  `9a644cc6d4631d1fd0649179db7fab80313f0561`, and implementation checkpoint
+  `9f939d84db5567826a19be992e6de168c88ea400` form continuous ancestry.
+- Developer evidence at final HEAD has Git blob
+  `6bd2703d6f280b9eec2fa01e59173149bd894c98` and status `ready_for_review`. The exact
+  Reviewer-block..final-HEAD delta contains only `scripts/connlab_execution_transition.py`,
+  `scripts/connlab_active_context.py`, four authorized bounded test modules, and Developer
+  evidence. `git diff --check` and final `git show --check` pass.
+- Developer records focused R1-R3 reproductions `4 passed`, affected matrix `46 passed`, full
+  Task A suite `133 passed`, compilation, three PowerShell AST parses, helper line ceilings,
+  production read-only validation, exact allowlist, and protected-worktree equality. Reviewer must
+  independently verify these claims; this transition does not accept or waive any safety,
+  performance, ancestry, or scope gate.
+- Decision: retain Task A as sole WIP=`1` token owner, set `gate_running/Reviewer`, update active
+  HEAD/evidence to the immutable final Developer package, preserve locks/gates/queue/residuals,
+  and require full R1-R3 re-gate before mandatory QA. Task B and the umbrella remain unchanged and
+  unapproved. The candidate transition helper is not integrated and was not used.
+
 ## User Approval Record
 
 - On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
@@ -182,8 +208,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- R1-R3 final fix/re-gate outcome; final accepted archive/index hashes, independently verified
-  after-size metrics, and measured QA pilot duration.
+- R1-R3 final Reviewer re-gate outcome; final accepted archive/index hashes, independently
+  verified after-size metrics, and measured QA pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -195,7 +221,7 @@ These are future execution outputs and do not alter scope. No blocking planning 
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
 - User approval and exact approval base are recorded; Task A is the sole token owner, the final
-  R1-R3 fix boundary is inside approved paths, and bounded Developer dispatch is ready.
+  R1-R3 fix/evidence package is clean and inside approved paths, and Reviewer dispatch is ready.
 
 ## Risk And Mitigation
 
@@ -209,5 +235,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `developer_fix_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane,
-run live maintenance/migration, or perform Task B work in this Planner turn.
+Return `reviewer_dispatch_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
+maintenance/migration, or perform Task B work in this Planner turn.
