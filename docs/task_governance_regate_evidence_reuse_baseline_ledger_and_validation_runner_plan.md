@@ -234,9 +234,10 @@ measured reduction is below 40%.
 3. If differential predicates all pass, run ancestry, package/allowlist, protected paths,
    merge-sensitive smoke, execution gate, board/residual closeout, and necessary merged-tree
    integration checks. Otherwise run full validation.
-4. Run/confirm the controlled medium TASK_368E replay with actual commands. Record five-to-three
-   Reviewer execution count, full QA execution, no archive/install, wall-clock, context, Planner
-   transitions, retries, and result hashes in Integrator evidence.
+4. Run/confirm the controlled medium TASK_368E replay with actual commands. Record Reviewer
+   `4/7` executed and `3/7` reused (`42.9%` execution reduction), QA `7/7` executed, no archive/
+   install, wall-clock, context, Planner transitions, retries, and result hashes in Integrator
+   evidence.
 5. Do not accept if >=40% reduction or any safety/performance target is missed. Close board/token
    through A's accepted helper and recurring maintenance contract; no push/destructive cleanup.
 
@@ -248,9 +249,10 @@ measured reduction is below 40%.
 4. schema/migration/public breaking/owner drift/unproven closure -> full;
 5. missing/malformed/stale/mismatched/unknown/evidence/ancestry/environment facts -> full;
 6. no force/ignore/assume/override CLI or manifest field;
-7. TASK_368E backend three groups rerun; frontend tests/build reuse in Reviewer;
-8. QA executes all five groups and final frontend 61/build;
-9. command reduction is 2/5 = 40% or better;
+7. TASK_368E four affected groups rerun; three unchanged XLSX/catalog/external-read, frontend-test,
+   and frontend-build groups reuse in Reviewer;
+8. QA executes all seven groups (`7/7`), including final frontend 61 tests/build;
+9. Reviewer executes `4/7`, reuses `3/7`, and reduces command execution by `3/7 = 42.9%`;
 10. Windows node paths canonicalize; invalid deselect blocks pre-execution;
 11. argv-only execution resists shell metacharacter injection;
 12. frontend runtime hash match passes read-only; mismatch/missing blocks without install;
