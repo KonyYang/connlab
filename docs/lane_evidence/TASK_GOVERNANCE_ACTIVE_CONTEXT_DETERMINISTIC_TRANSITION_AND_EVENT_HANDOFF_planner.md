@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `reviewer_dispatch_ready`
+Status: `qa_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -146,6 +146,27 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   and require full R1-R3 re-gate before mandatory QA. Task B and the umbrella remain unchanged and
   unapproved. The candidate transition helper is not integrated and was not used.
 
+## Final Reviewer Pass To QA Legacy Transition Audit
+
+- Primary was reverified clean on
+  `master@87cbd2ec729a6a390a96c14ce2b8b434e915b63d`, with no `MERGE_HEAD` and valid
+  `gate_running/Reviewer` authority. Legacy production `Inspect` returned `ALLOW_INSPECT`.
+- The exact lane branch/worktree are clean at Reviewer evidence HEAD
+  `84503d16e2638a827ecd3ef6704d0fe6bfed72ca`. Approved base
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` and final Developer/evidence HEAD
+  `1fd726b08b7e49a32341d49e4439c889c4c6ab7b` are ancestors. The delta from Developer HEAD adds
+  only Reviewer evidence; `git diff --check` and final `git show --check` pass.
+- Reviewer evidence at final HEAD has Git blob
+  `165ebfab7f198953539a371c7c56e114ccba6a91`, status `reviewer_pass`, and `NEXT: QA`.
+  Reviewer independently closed R1-R3, reran the adversarial cases and complete `133`-test Task A
+  matrix, verified the exact package/ancestry/cleanliness and safety/performance contract, and
+  recorded no blocking finding. The narrow `<500` helper-line margin remains non-blocking and does
+  not waive future extraction discipline.
+- Decision: retain Task A as sole WIP=`1` token owner, remain in `gate_running`, change the active
+  role to QA, and update active HEAD/evidence to the immutable Reviewer pass. Mandatory QA must
+  independently validate the final reviewed HEAD before Integrator. Task B and the umbrella remain
+  unchanged and unapproved. The candidate transition helper is not integrated and was not used.
+
 ## User Approval Record
 
 - On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
@@ -208,8 +229,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- R1-R3 final Reviewer re-gate outcome; final accepted archive/index hashes, independently
-  verified after-size metrics, and measured QA pilot duration.
+- Final mandatory QA outcome; final accepted archive/index hashes, independently verified
+  after-size metrics, and measured QA pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -220,8 +241,8 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- User approval and exact approval base are recorded; Task A is the sole token owner, the final
-  R1-R3 fix/evidence package is clean and inside approved paths, and Reviewer dispatch is ready.
+- User approval and exact approval base are recorded; Task A is the sole token owner, Reviewer
+  passed the final R1-R3 package, and mandatory QA dispatch is ready.
 
 ## Risk And Mitigation
 
@@ -235,5 +256,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `reviewer_dispatch_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
+Return `qa_dispatch_ready` to Orchestrator. Do not dispatch QA, edit the lane, run live
 maintenance/migration, or perform Task B work in this Planner turn.
