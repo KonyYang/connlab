@@ -1,13 +1,13 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `developer_fix_dispatch_ready`
+Status: `reviewer_regate_ready`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for exact bounded Developer fix dispatch. TASK_368E
-retains the sole execution token with schema state `implementation_running` and role `Developer`.
-The clean lane HEAD is Reviewer blocker evidence commit
-`68a337678dfaa35fbfac987c36027c605d3e0668` over the unchanged base.
+Current gate owner: permanent Orchestrator for exact permanent Reviewer re-gate dispatch. TASK_368E
+retains the sole execution token with schema state `gate_running` and role `Reviewer`. The clean lane
+HEAD is final bounded-fix evidence commit `f924c33deb92be269150085c9e8982f152d3b809`
+over the unchanged base.
 
 ## User Approval Record
 
@@ -20,9 +20,10 @@ The clean lane HEAD is Reviewer blocker evidence commit
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `developer_fix_dispatch_ready`. Reviewer blocked at
-  `68a337678dfaa35fbfac987c36027c605d3e0668` on one bounded integrity-classification defect;
-  worktree/index remain clean and the token, base, branch, worktree, and locks are unchanged.
+- Current durable state is `reviewer_regate_ready`. Bounded fix checkpoint is
+  `1882c1b04937f0c576ddd2350407edc91b990217`; final Developer evidence HEAD is
+  `f924c33deb92be269150085c9e8982f152d3b809`, with clean worktree/index and unchanged
+  token, base, branch, worktree, and locks.
 
 ## Goal
 
@@ -274,7 +275,21 @@ mandatory Reviewer/QA/Integrator gates.
   scope expansion, but the full Reviewer re-gate remains mandatory after the fix.
 - QA and Integrator remain locked until Reviewer passes the fixed ancestry.
 
+## Reviewer Re-gate Handoff
+
+- Re-gate exact fixed ancestry through final HEAD
+  `f924c33deb92be269150085c9e8982f152d3b809`; do not review ambient primary files.
+- Fix delta from Reviewer blocker HEAD is exactly authority classifier, bounded TASK_368E unit/API
+  tests, and Developer evidence. No new path or scope is authorized.
+- Independently reproduce both cleanup-wrapper nested-cause cases for default and explicit preserve;
+  require `422`, zero source/draft writes, and no action detail.
+- Independently retain positive file/read availability and COM-unavailable behavior, and rerun the
+  frozen authority/API/transaction/frontend/build/diff/line gates. Authority must stay below 500.
+- Developer claims relevant backend `108 passed, 1` baseline-only deselected, frontend `61 passed`,
+  and all build/compile/allowlist/line gates pass. Reviewer must verify rather than inherit them.
+- Reviewer pass routes to mandatory QA. Any remaining or new blocking finding returns to Developer.
+
 ## Stop Point
 
-Return to permanent Orchestrator to dispatch permanent Developer for the exact B1 fix. Planner must
-not edit the lane or product/test code in this governance pass.
+Return to permanent Orchestrator to dispatch permanent Reviewer for the full fixed-ancestry re-gate.
+Planner must not edit the lane or product/test code in this governance pass.

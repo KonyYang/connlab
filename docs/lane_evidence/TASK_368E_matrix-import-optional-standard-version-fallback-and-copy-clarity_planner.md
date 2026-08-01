@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `developer_fix_dispatch_ready`
+Status: `reviewer_regate_ready`
 
 Date: 2026-08-01
 
@@ -12,6 +12,26 @@ Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
 
 Worktree creation authority base/initial HEAD:
 `e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## Bounded Fix Completion And Reviewer Re-gate Transition
+
+- Primary was reverified clean on `master@b2c568557303e680ae6d84bacc1f72b2f6f4fce6`;
+  production `Inspect` was `ALLOW_INSPECT` in `implementation_running` / Developer state.
+- Lane is exact and clean at final Developer evidence HEAD
+  `f924c33deb92be269150085c9e8982f152d3b809`; fix checkpoint is
+  `1882c1b04937f0c576ddd2350407edc91b990217` and Reviewer blocker parent is
+  `68a337678dfaa35fbfac987c36027c605d3e0668`.
+- Continuous ancestry and `git show --check` passed. The entire bounded-fix delta is exactly four
+  paths: authority classifier, bounded TASK_368E unit/API tests, and Developer evidence.
+- Developer evidence remains `ready_for_review` and claims B1 closed: `LegacyExcelCleanupError`
+  terminates availability classification before nested causes; default/preserve cleanup-wrapper
+  requests are `422`, zero-write, and action-free; genuine availability and COM-unavailable paths
+  remain eligible.
+- Claimed fresh validation is relevant backend `108 passed, 1` independently attributed baseline
+  deselection; frontend `61 passed`; build, pycompile, diff, exact allowlist, and authority physical
+  line count `499` passed. Planner records but does not accept these claims for Reviewer.
+- Decision: retain token/lane/worktree/base/locks, set state `gate_running`, role `Reviewer`, active
+  HEAD/evidence to final Developer handoff, and require full Reviewer re-gate before mandatory QA.
 
 ## Reviewer Blocker And Developer Fix Transition
 
@@ -247,10 +267,10 @@ are complete; read-only dispatch gate is `ALLOW_DISPATCH`.
 
 ## Gate And Next Role
 
-- Status is `developer_fix_dispatch_ready`.
-- TASK_368E is the sole token owner; schema state is `implementation_running`, and the exact
-  Developer active record points to Reviewer blocker HEAD/evidence.
-- Next legal role: permanent Developer for the bounded B1 fix.
+- Status is `reviewer_regate_ready`.
+- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact Reviewer active
+  record points to final bounded-fix HEAD and Developer evidence.
+- Next legal role: permanent Reviewer for the fixed-ancestry re-gate.
 
 ## Prohibited In This Pass
 

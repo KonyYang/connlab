@@ -1,12 +1,12 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `developer_fix_dispatch_ready`
+Status: `reviewer_regate_ready`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
 Current active task: TASK_368E. It retains the durable execution token under schema state
-`implementation_running`; the exact branch/worktree are clean at Reviewer blocker evidence HEAD
-`68a337678dfaa35fbfac987c36027c605d3e0668`, and bounded Developer fix dispatch is ready.
+`gate_running`; the exact branch/worktree are clean at final bounded-fix evidence HEAD
+`f924c33deb92be269150085c9e8982f152d3b809`, and permanent Reviewer re-gate is ready.
 
 ## Approval And Activation Record
 
@@ -89,14 +89,14 @@ rescinded its interim no-window correction, and confirmed choose-or-skip as the 
 - Developer/Reviewer/QA/Integrator evidence, because implementation has not started.
 
 These unknowns do not change scope, behavior, ownership, acceptance, or gate order. Definition of
-Ready was satisfied for User review; approval and sole token remain recorded, initial review found
-one bounded blocker, and permanent Developer fix dispatch is next.
+Ready was satisfied for User review; approval and sole token remain recorded, the bounded fix is
+complete, and permanent Reviewer re-gate is next.
 
 ### Continue Or Stop
 
-Continue with only the bounded B1 Developer fix and its required regressions. Stop for Planner/User
-on any new path, broader classifier/authority behavior, failure beyond the recorded blocker, or
-inability to keep the authority module below 500 physical lines.
+Continue with a full Reviewer re-gate of the fixed ancestry. Stop and return to Developer/Planner
+on any remaining B1 reproduction, lost positive availability behavior, scope drift, new failure,
+or line/authority/transaction/accessibility ambiguity. Do not advance directly to QA.
 
 ## 2. User Flow And Exact Copy
 
@@ -433,10 +433,11 @@ context, bounded components/tests, and mandatory gates mitigate them.
 5. Completed with blocker: Reviewer independently confirmed the two baseline debts but found B1 at
    evidence HEAD `68a337678dfaa35fbfac987c36027c605d3e0668`: cleanup integrity can be downgraded
    to availability through a nested allowlisted cause.
-6. Current: Developer implements only the integrity-wrapper stop and bounded default/preserve
-   regressions, reruns all frozen gates, updates Developer evidence, and returns clean ancestry to
-   Reviewer re-gate.
-7. Reviewer re-gate passes or returns findings to Developer; only a pass advances to mandatory QA.
+6. Completed: Developer fix checkpoint `1882c1b04937f0c576ddd2350407edc91b990217`
+   and final evidence HEAD `f924c33deb92be269150085c9e8982f152d3b809` change exactly the
+   authority classifier, bounded unit/API tests, and Developer evidence.
+7. Current: Reviewer independently re-gates B1, positive/integrity behavior, frozen regressions,
+   exact scope, and the 499-line authority constraint; only a pass advances to mandatory QA.
 8. QA passes or returns failures to Developer/Planner.
 9. Integrator accepts locally only reviewed/QA ancestry and records residuals.
 10. Stop after local acceptance; no push or next-task activation.
@@ -451,18 +452,18 @@ context, bounded components/tests, and mandatory gates mitigate them.
 - Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; parallel exception: none.
 
-The exact TASK_368E branch/worktree is clean at Reviewer blocker evidence HEAD
-`68a337678dfaa35fbfac987c36027c605d3e0668`. TASK_368E remains the sole token owner with role
-Developer and no parallel exception; base remains `e226bf1e54db4de54eb2366e96895999ce54652d`.
+The exact TASK_368E branch/worktree is clean at final bounded-fix evidence HEAD
+`f924c33deb92be269150085c9e8982f152d3b809`. TASK_368E remains the sole token owner with role
+Reviewer and no parallel exception; base remains `e226bf1e54db4de54eb2366e96895999ce54652d`.
 
 ## 15. Definition Of Ready
 
-Definition of Ready and existing User approval cover the bounded Reviewer-requested fix.
+Definition of Ready and existing User approval cover the fixed-ancestry Reviewer re-gate.
 Goal, copy, choose/skip behavior, availability/integrity boundary, audit/reuse/API/transaction
-design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. Developer
-must use only existing May Touch paths and return to full Reviewer re-gate.
+design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. Reviewer
+must independently verify the fix and frozen acceptance before mandatory QA.
 
 ## 16. Next Legal Role
 
-Permanent Developer, dispatched by Orchestrator for the exact B1 fix. Planner does not edit the lane
-or implementation paths from this pass.
+Permanent Reviewer, dispatched by Orchestrator for the exact fixed-ancestry re-gate. Planner does
+not edit the lane or implementation paths from this pass.
