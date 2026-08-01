@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "scripts" / "connlab_active_context.py"
 BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
 END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
+FIRST_TASK = "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF"
 
 
 def git(repo: Path, *args: str) -> str:
@@ -40,6 +44,13 @@ def board_text(control: dict[str, object], terminal_count: int, filler_lines: in
     )
 
 
+def context_digest(control: dict[str, object]) -> str:
+    active = control.get("active") or {}; assert isinstance(active, dict)
+    facts = {key: control.get(key) for key in ("execution_token_owner", "queue", "paused", "quick_fix", "residuals", "parallel_exception")}
+    facts["active"] = {key: active.get(key) for key in ("task_id", "lane", "branch", "worktree", "base_sha", "locked_paths", "required_gates", "scope_contract_ref", "may_touch_digest", "locked_paths_digest")}
+    return hashlib.sha256(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def make_repo(tmp_path: Path, *, terminal_count: int = 30, filler_lines: int = 430) -> dict[str, object]:
     repo = tmp_path / "repo"
     repo.mkdir(parents=True)
@@ -49,6 +60,38 @@ def make_repo(tmp_path: Path, *, terminal_count: int = 30, filler_lines: int = 4
     (repo / "docs").mkdir()
     (repo / "scripts").mkdir()
     shutil.copy2(HELPER, repo / "scripts" / HELPER.name)
+    evidence_dir = repo / "docs/lane_evidence"; evidence_dir.mkdir()
+    evidence_specs = {
+        "developer": ("Developer", "ready_for_review", "Reviewer"),
+        "reviewer": ("Reviewer", "reviewer_pass", "QA"),
+        "qa": ("QA", "qa_pass", "Integrator"),
+    }
+    for name, (role, status, next_role) in evidence_specs.items():
+        (evidence_dir / f"TASK_A_{name}.md").write_text(
+            f"TASK_ID: {FIRST_TASK}\nROLE: {role}\nSTATUS: {status}\n"
+            f"EVIDENCE: docs/lane_evidence/TASK_A_{name}.md\nCOMMIT: " + "0" * 40
+            + f"\nNEXT: {next_role}\nBLOCKER: none\n",
+            encoding="utf-8",
+        )
+    git(repo, "add", "scripts/connlab_active_context.py", "docs/lane_evidence")
+    git(repo, "commit", "-m", "accepted helper and gate evidence")
+    gate_head = git(repo, "rev-parse", "HEAD")
+
+    def transition(event: str, name: str, from_role: str, to_role: str, status: str) -> dict[str, object]:
+        path = f"docs/lane_evidence/TASK_A_{name}.md"
+        raw = subprocess.run(["git", "-C", str(repo), "show", f"{gate_head}:{path}"], check=True, capture_output=True).stdout
+        evidence_blob = git(repo, "rev-parse", f"{gate_head}:{path}")
+        helper_blob = git(repo, "rev-parse", f"{gate_head}:scripts/connlab_active_context.py")
+        return {
+            "transition_id": hashlib.sha256(event.encode()).hexdigest(), "event": event,
+            "task_id": FIRST_TASK, "evidence_ref": f"{path}@{gate_head}#{hashlib.sha256(raw).hexdigest()}",
+            "evidence_commit": gate_head, "evidence_blob_sha": evidence_blob,
+            "evidence_sha256": hashlib.sha256(raw).hexdigest(), "evidence_status": status,
+            "lane_head": gate_head, "primary_head": gate_head, "helper_blob_sha": helper_blob,
+            "retained_context_digest": "pending",
+            "from_state": "implementation_running" if from_role == "Developer" else "gate_running",
+            "from_role": from_role, "to_state": "gate_running", "to_role": to_role,
+        }
     control: dict[str, object] = {
         "schema": "connlab.execution-control", "version": 1, "wip_limit": 1,
         "execution_token_owner": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
@@ -57,16 +100,21 @@ def make_repo(tmp_path: Path, *, terminal_count: int = 30, filler_lines: int = 4
             "task_id": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
             "lane": "task-governance-active-context-deterministic-transition-and-event-handoff",
             "role": "Integrator", "branch": "lane/task-a", "worktree": str(tmp_path / "lane"),
-            "base_sha": "a" * 40, "head_sha": "b" * 40, "locked_paths": ["docs/task_board.md"],
-            "required_gates": ["Reviewer", "QA", "Integrator"], "evidence": "qa.md",
+            "base_sha": gate_head, "head_sha": gate_head, "locked_paths": ["docs/task_board.md"],
+            "required_gates": ["Reviewer", "QA", "Integrator"],
+            "evidence": transition("QA_PASS", "qa", "QA", "Integrator", "qa_pass")["evidence_ref"],
         },
         "queue": [], "paused": None, "quick_fix": None,
         "residuals": [{"task_id": "OLD", "residual_owner": "owner", "disposition": "retain", "evidence": "old.md"}],
-        "parallel_exception": None, "last_governance_commit": "fixture", "evidence": "qa.md",
+        "parallel_exception": None, "last_governance_commit": "fixture",
         "transition_history": [
-            {"event": "DEVELOPER_READY"}, {"event": "REVIEWER_PASS"}, {"event": "QA_PASS"}
+            transition("DEVELOPER_READY", "developer", "Developer", "Reviewer", "ready_for_review"),
+            transition("REVIEWER_PASS", "reviewer", "Reviewer", "QA", "reviewer_pass"),
+            transition("QA_PASS", "qa", "QA", "Integrator", "qa_pass"),
         ],
     }
+    for entry in control["transition_history"]: entry["retained_context_digest"] = context_digest(control)  # type: ignore[index]
+    control["evidence"] = control["active"]["evidence"]  # type: ignore[index]
     board = repo / "docs" / "task_board.md"
     board.write_text(board_text(control, terminal_count, filler_lines), encoding="utf-8")
     git(repo, "add", ".")
@@ -149,14 +197,54 @@ def test_first_generation_proves_byte_exact_rollback(tmp_path: Path) -> None:
     fx = make_repo(tmp_path)
     original = Path(fx["board"]).read_bytes()
     invoke(fx, "apply-maintenance")
-    output = tmp_path / "rollback.md"
+    temp_root = tmp_path / "rollback-temp"; temp_root.mkdir()
+    output = temp_root / "rollback.md"
     done = subprocess.run(
-        ["py", str(HELPER), "prove-rollback", "--repo-root", str(fx["repo"]), "--generation", "1", "--output", str(output), "--json"],
+        ["py", str(HELPER), "prove-rollback", "--repo-root", str(fx["repo"]), "--generation", "1", "--temp-root", str(temp_root), "--output", str(output), "--json"],
         check=False, capture_output=True, text=True,
     )
     result = json.loads(done.stdout)
     assert done.returncode == 0 and result["decision"] == "ROLLBACK_PROVEN"
     assert output.read_bytes() == original
+
+
+def test_rollback_rejects_repository_existing_and_escaped_targets_without_mutation(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path)
+    assert invoke(fx, "apply-maintenance")[0] == 0
+    repo = Path(fx["repo"]); board = Path(fx["board"])
+    temp_root = tmp_path / "rollback-temp"; temp_root.mkdir()
+    existing = temp_root / "existing.md"; existing.write_bytes(b"preserve-existing")
+    targets = (board, existing, tmp_path / "escaped.md")
+    before_board = board.read_bytes(); before_existing = existing.read_bytes()
+    before_status = git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+    for target in targets:
+        done = subprocess.run(
+            ["py", str(HELPER), "prove-rollback", "--repo-root", str(repo), "--generation", "1",
+             "--temp-root", str(temp_root), "--output", str(target), "--json"],
+            check=False, capture_output=True, text=True,
+        )
+        result = json.loads(done.stdout)
+        assert done.returncode != 0 and any(code.startswith("BLOCKED_ROLLBACK_OUTPUT") for code in result["reason_codes"])
+        assert board.read_bytes() == before_board and existing.read_bytes() == before_existing
+        assert git(repo, "status", "--porcelain=v1", "--untracked-files=all") == before_status
+
+
+def test_rollback_rejects_linked_temp_root_and_output_target(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path); assert invoke(fx, "apply-maintenance")[0] == 0
+    safe = tmp_path / "safe"; safe.mkdir(); linked = tmp_path / "linked"
+    try: os.symlink(safe, linked, target_is_directory=True)
+    except OSError:
+        junction = subprocess.run(["cmd", "/c", "mklink", "/J", str(linked), str(safe)], check=False, capture_output=True)
+        if junction.returncode: pytest.skip("directory links and junctions are unavailable on this Windows host")
+    output = linked / "rollback.md"; board = Path(fx["board"]); before = board.read_bytes()
+    done = subprocess.run(
+        ["py", str(HELPER), "prove-rollback", "--repo-root", str(fx["repo"]), "--generation", "1",
+         "--temp-root", str(linked), "--output", str(output), "--json"],
+        check=False, capture_output=True, text=True,
+    )
+    result = json.loads(done.stdout)
+    assert done.returncode != 0 and "BLOCKED_ROLLBACK_OUTPUT_ROOT" in result["reason_codes"]
+    assert board.read_bytes() == before and not output.exists()
 
 
 def test_same_generation_apply_is_idempotent(tmp_path: Path) -> None:
@@ -192,3 +280,48 @@ def test_apply_requires_integrator_and_complete_gate_history(tmp_path: Path) -> 
 
     assert code != 0
     assert "BLOCKED_MAINTENANCE_AUTHORITY" in result["reason_codes"]
+
+
+def test_event_name_only_gate_history_is_rejected_without_write(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path)
+    repo = Path(fx["repo"]); board = Path(fx["board"])
+    control = json.loads(board.read_text(encoding="utf-8").split(BEGIN, 1)[1].split(END, 1)[0].split("```json", 1)[1].rsplit("```", 1)[0])
+    control["transition_history"] = [{"event": "DEVELOPER_READY"}, {"event": "REVIEWER_PASS"}, {"event": "QA_PASS"}]
+    board.write_text(board_text(control, 30, 430), encoding="utf-8")
+    git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", "event names only")
+    fx["head"] = git(repo, "rev-parse", "HEAD")
+    before = board.read_bytes()
+    code, result = invoke(fx, "apply-maintenance")
+    assert code != 0 and "BLOCKED_MAINTENANCE_GATES" in result["reason_codes"]
+    assert board.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("task_id", "TASK_OTHER"), ("evidence_status", "reviewer_blocked"),
+     ("evidence_sha256", "0" * 64), ("evidence_blob_sha", "0" * 40),
+     ("helper_blob_sha", "0" * 40), ("primary_head", "0" * 40)],
+)
+def test_gate_evidence_mismatch_matrix_is_zero_write(tmp_path: Path, field: str, value: str) -> None:
+    fx = make_repo(tmp_path); repo = Path(fx["repo"]); board = Path(fx["board"])
+    control = json.loads(board.read_text(encoding="utf-8").split(BEGIN, 1)[1].split(END, 1)[0].split("```json", 1)[1].rsplit("```", 1)[0])
+    control["transition_history"][1][field] = value
+    board.write_text(board_text(control, 30, 430), encoding="utf-8")
+    git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", "gate evidence drift"); fx["head"] = git(repo, "rev-parse", "HEAD")
+    before = board.read_bytes(); code, result = invoke(fx, "apply-maintenance")
+    assert code != 0 and set(result["reason_codes"]) & {"BLOCKED_MAINTENANCE_GATES", "BLOCKED_HELPER_ANCESTRY"}
+    assert board.read_bytes() == before
+
+
+def test_idempotent_apply_revalidates_compact_board_and_index(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path)
+    original_hash = hashlib.sha256(Path(fx["board"]).read_bytes()).hexdigest()
+    plan = invoke(fx, "plan-maintenance")[1]
+    assert invoke(fx, "apply-maintenance")[0] == 0
+    board = Path(fx["board"]); board.write_bytes(board.read_bytes() + b"corrupt\n")
+    tampered = board.read_bytes()
+    code, result = invoke(fx, "apply-maintenance", **{
+        "expected-board-sha256": original_hash, "expected-plan-digest": str(plan["plan_digest"]),
+    })
+    assert code != 0 and "BLOCKED_ALREADY_APPLIED_DRIFT" in result["reason_codes"]
+    assert board.read_bytes() == tampered

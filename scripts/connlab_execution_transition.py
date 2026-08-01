@@ -20,6 +20,7 @@ from typing import Any
 BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
 END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 SUMMARY_PREFIX = "> Current Active Task:"
+SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 EVENTS = {
     "DEVELOPER_READY": ("implementation_running", "Developer", "ready_for_review", "gate_running", "Reviewer"),
     "REVIEWER_BLOCKED": ("gate_running", "Reviewer", "reviewer_blocked", "implementation_running", "Developer"),
@@ -48,6 +49,10 @@ class Board:
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def canonical_digest(value: Any) -> str:
+    return sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode())
 
 
 def git(repo: Path, *args: str, binary: bool = False) -> bytes | str:
@@ -120,6 +125,16 @@ def validate_control(board: Board) -> None:
     active = c.get("active")
     if state in {"implementation_running", "gate_running", "reconciling"}:
         required(active, ("task_id", "lane", "role", "branch", "worktree", "base_sha", "head_sha", "locked_paths", "required_gates", "evidence"), "BLOCKED_ACTIVE_RECORD_INCOMPLETE")
+        metadata = ("scope_contract_ref", "may_touch_digest", "locked_paths_digest", "last_transition_id")
+        if any(field not in active for field in metadata):
+            raise Blocked("BLOCKED_TRANSITION_METADATA", "frozen transition metadata is incomplete")
+        if not SHA256_PATTERN.fullmatch(str(active["may_touch_digest"])) or not SHA256_PATTERN.fullmatch(str(active["locked_paths_digest"])):
+            raise Blocked("BLOCKED_TRANSITION_METADATA", "scope/lock digests are invalid")
+        if active["last_transition_id"] is not None and not SHA256_PATTERN.fullmatch(str(active["last_transition_id"])):
+            raise Blocked("BLOCKED_TRANSITION_METADATA", "last_transition_id is invalid")
+        last = c.get("last_transition")
+        if (active["last_transition_id"] is None) != (last is None) or isinstance(last, dict) and active["last_transition_id"] != last.get("transition_id"):
+            raise Blocked("BLOCKED_TRANSITION_METADATA", "last transition binding differs")
         if c["execution_token_owner"] != active["task_id"]:
             raise Blocked("BLOCKED_ACTIVE_OWNER_MISMATCH", "token owner differs from active task")
         if not isinstance(active["locked_paths"], list) or not active["locked_paths"]:
@@ -197,6 +212,54 @@ def parse_evidence_ref(value: str) -> tuple[str, str, str]:
     return match.group(1), match.group(2), match.group(3)
 
 
+def git_object(repo: Path, commit: str, path: str, missing_code: str) -> tuple[bytes, str]:
+    shown = subprocess.run(["git", "-C", str(repo), "show", f"{commit}:{path}"], check=False, capture_output=True)
+    if shown.returncode:
+        raise Blocked(missing_code, f"Git blob is unavailable: {path}@{commit}")
+    blob = str(git(repo, "rev-parse", f"{commit}:{path}")).strip()
+    return shown.stdout, blob
+
+
+def may_touch_paths(task_text: str) -> list[str]:
+    match = re.search(r"(?ms)^## Exact May Touch\s*$\s*(.*?)(?=^## Must Not Touch\s*$)", task_text)
+    if not match:
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "task May Touch section is unavailable")
+    paths = re.findall(r"(?m)^\s*\d+\.\s+`([^`]+)`", match.group(1))
+    if not paths or len(paths) != len(set(paths)):
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "task May Touch paths are empty or ambiguous")
+    return paths
+
+
+def validate_scope_metadata(repo: Path, active: dict[str, Any]) -> None:
+    path, commit, expected_hash = parse_evidence_ref(str(active["scope_contract_ref"]))
+    if path != f"tasks/{active['task_id']}.md":
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "scope contract does not name the active task")
+    if commit != active["base_sha"]:
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "scope contract commit differs from the approved lane base")
+    task_raw, _ = git_object(repo, commit, path, "BLOCKED_TRANSITION_METADATA")
+    if sha256(task_raw) != expected_hash:
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "scope contract hash differs")
+    plan_path = "docs/" + active["task_id"].lower() + "_plan.md"
+    plan_raw, _ = git_object(repo, commit, plan_path, "BLOCKED_TRANSITION_METADATA")
+    task_text = task_raw.decode("utf-8"); plan_text = plan_raw.decode("utf-8")
+    if "Status: `approved`" not in task_text or "Status: `approved`" not in plan_text or active["task_id"] not in plan_text:
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "approved task/plan binding differs")
+    may_touch = may_touch_paths(task_text)
+    if canonical_digest(may_touch) != active["may_touch_digest"]:
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "May Touch digest differs")
+    if canonical_digest(active["locked_paths"]) != active["locked_paths_digest"] or active["locked_paths"] != may_touch:
+        raise Blocked("BLOCKED_TRANSITION_METADATA", "locked-path digest or scope binding differs")
+
+
+def evidence_machine_record(text: str) -> dict[str, str]:
+    pattern = re.compile(r"(?m)^TASK_ID:\s*([^\r\n]+)\r?\nROLE:\s*([^\r\n]+)\r?\nSTATUS:\s*([^\r\n]+)$")
+    records = pattern.findall(text)
+    if len(records) != 1:
+        raise Blocked("BLOCKED_EVIDENCE_CONTENT", "evidence must contain one unambiguous machine record")
+    task_id, role, status = (value.strip() for value in records[0])
+    return {"task_id": task_id, "role": role, "status": status}
+
+
 def allowed_path(path: str, locks: list[str]) -> bool:
     normalized = path.replace("\\", "/")
     return any(fnmatch.fnmatchcase(normalized, lock.replace("\\", "/")) or normalized.startswith(lock.rstrip("/") + "/") for lock in locks)
@@ -214,11 +277,21 @@ def transition_id(args: argparse.Namespace, before: str, target_role: str) -> st
     return sha256(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode())
 
 
+def retained_context_digest(control: dict[str, Any]) -> str:
+    active = control.get("active") or {}
+    facts = {key: control.get(key) for key in ("execution_token_owner", "queue", "paused", "quick_fix", "residuals", "parallel_exception")}
+    facts["active"] = {key: active.get(key) for key in ("task_id", "lane", "branch", "worktree", "base_sha", "locked_paths", "required_gates", "scope_contract_ref", "may_touch_digest", "locked_paths_digest")}
+    return canonical_digest(facts)
+
+
 def already_applied(board: Board, args: argparse.Namespace) -> dict[str, Any] | None:
     last = board.control.get("last_transition")
     if not isinstance(last, dict) or last.get("event") != args.event:
         return None
-    if last.get("evidence_ref") != args.evidence_ref or last.get("lane_head") != args.expected_lane_head:
+    expected = {"evidence_ref": args.evidence_ref, "lane_head": args.expected_lane_head, "task_id": args.task_id,
+                "evidence_status": args.evidence_status, "primary_head": args.expected_primary_head,
+                "retained_context_digest": retained_context_digest(board.control)}
+    if any(last.get(key) != value for key, value in expected.items()) or board.control["active"].get("lane") != args.lane:
         raise Blocked("BLOCKED_DUPLICATE_CONFLICT", "the same event has divergent durable facts")
     return result("ALREADY_APPLIED", [], board.payload_digest, board.payload_digest, str(last.get("transition_id")), board.control["active"]["role"], [])
 
@@ -231,6 +304,7 @@ def validate_plan(board: Board, repo: Path, args: argparse.Namespace) -> tuple[s
         raise Already(prior)
     current_state, current_role, expected_status, _, _ = EVENTS[args.event]
     active = board.control["active"]
+    validate_scope_metadata(repo, active)
     if args.evidence_status != expected_status:
         raise Blocked("BLOCKED_EVENT_STATUS_MISMATCH", "event and evidence status differ")
     if board.control["execution_state"] != current_state or active["role"] != current_role:
@@ -261,14 +335,13 @@ def validate_plan(board: Board, repo: Path, args: argparse.Namespace) -> tuple[s
     path, commit, expected_hash = parse_evidence_ref(args.evidence_ref)
     if commit != args.expected_lane_head:
         raise Blocked("BLOCKED_EVIDENCE_COMMIT_MISMATCH", "evidence commit must equal lane HEAD")
-    shown = subprocess.run(["git", "-C", str(lane), "show", f"{commit}:{path}"], check=False, capture_output=True)
-    if shown.returncode:
-        raise Blocked("BLOCKED_EVIDENCE_MISSING", "evidence Git blob is unavailable")
-    if sha256(shown.stdout) != expected_hash:
+    evidence_raw, _ = git_object(lane, commit, path, "BLOCKED_EVIDENCE_MISSING")
+    if sha256(evidence_raw) != expected_hash:
         raise Blocked("BLOCKED_EVIDENCE_HASH_MISMATCH", "evidence SHA-256 differs")
-    evidence_text = shown.stdout.decode("utf-8")
+    evidence_text = evidence_raw.decode("utf-8")
     expected_evidence_role = current_role
-    if f"STATUS: {expected_status}" not in evidence_text or f"ROLE: {expected_evidence_role}" not in evidence_text or f"TASK_ID: {args.task_id}" not in evidence_text:
+    machine = evidence_machine_record(evidence_text)
+    if machine != {"task_id": args.task_id, "role": expected_evidence_role, "status": expected_status}:
         raise Blocked("BLOCKED_EVIDENCE_CONTENT", "evidence callback facts differ")
     target = next_role(args.event, active)
     return target, transition_id(args, board.payload_digest, target)
@@ -317,8 +390,12 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
     control["active"]["role"] = target
     control["active"]["head_sha"] = args.expected_lane_head
     control["active"]["evidence"] = args.evidence_ref
+    control["active"]["last_transition_id"] = tid
     control["evidence"] = args.evidence_ref
-    entry = {"transition_id": tid, "event": args.event, "evidence_ref": args.evidence_ref, "evidence_status": args.evidence_status, "lane_head": args.expected_lane_head, "from_state": board.control["execution_state"], "from_role": board.control["active"]["role"], "to_state": target_state, "to_role": target}
+    evidence_path, evidence_commit, evidence_hash = parse_evidence_ref(args.evidence_ref)
+    _, evidence_blob = git_object(Path(control["active"]["worktree"]).resolve(), evidence_commit, evidence_path, "BLOCKED_EVIDENCE_MISSING")
+    _, helper_blob = git_object(Path(control["active"]["worktree"]).resolve(), args.expected_lane_head, "scripts/connlab_active_context.py", "BLOCKED_HELPER_ANCESTRY")
+    entry = {"transition_id": tid, "event": args.event, "task_id": args.task_id, "evidence_ref": args.evidence_ref, "evidence_commit": evidence_commit, "evidence_blob_sha": evidence_blob, "evidence_sha256": evidence_hash, "evidence_status": args.evidence_status, "lane_head": args.expected_lane_head, "primary_head": args.expected_primary_head, "helper_blob_sha": helper_blob, "retained_context_digest": retained_context_digest(control), "from_state": board.control["execution_state"], "from_role": board.control["active"]["role"], "to_state": target_state, "to_role": target}
     control["last_transition"] = entry
     control.setdefault("transition_history", []).append(entry)
     rendered = render(board, control)

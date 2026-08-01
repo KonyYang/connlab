@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "scripts" / "connlab_execution_transition.py"
+ACTIVE_HELPER = ROOT / "scripts" / "connlab_active_context.py"
 BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
 END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 
@@ -46,11 +48,21 @@ def fixture(tmp_path: Path, *, required_gates: list[str] | None = None) -> dict[
     git(repo, "config", "user.name", "Transition Test")
     (repo / "docs").mkdir()
     (repo / "tasks").mkdir()
+    (repo / "scripts").mkdir()
+    shutil.copy2(HELPER, repo / "scripts" / HELPER.name)
+    shutil.copy2(ACTIVE_HELPER, repo / "scripts" / ACTIVE_HELPER.name)
     (repo / "seed.txt").write_text("seed\n", encoding="utf-8")
     gates = required_gates or ["Reviewer", "QA", "Integrator"]
     qa_omission = "\nQA is not required.\n" if "QA" not in gates else ""
+    locks = ["implementation.txt", "docs/lane_evidence/TASK_X_*", "scripts/connlab_execution_transition.py", "scripts/connlab_active_context.py"]
     (repo / "tasks" / "TASK_X.md").write_text(
-        "# TASK_X\n\nStatus: `approved`\n\nRequired gates: " + ", ".join(gates) + ".\n" + qa_omission,
+        "# TASK_X\n\nStatus: `approved`\n\nRequired gates: " + ", ".join(gates) + ".\n" + qa_omission
+        + "\n## Exact May Touch\n\n" + "\n".join(f"{index}. `{path}`" for index, path in enumerate(locks, 1))
+        + "\n\n## Must Not Touch\n\n- every other path\n",
+        encoding="utf-8",
+    )
+    (repo / "docs" / "task_x_plan.md").write_text(
+        "# TASK_X implementation plan\n\nStatus: `approved`\n\nTask: `TASK_X`\n",
         encoding="utf-8",
     )
     placeholder = "0" * 40
@@ -62,9 +74,13 @@ def fixture(tmp_path: Path, *, required_gates: list[str] | None = None) -> dict[
         "worktree": str(tmp_path / "lane"),
         "base_sha": placeholder,
         "head_sha": placeholder,
-        "locked_paths": ["implementation.txt", "docs/lane_evidence/TASK_X_*"],
+        "locked_paths": locks,
         "required_gates": gates,
         "evidence": "docs/lane_evidence/TASK_X_planner.md",
+        "scope_contract_ref": "pending",
+        "may_touch_digest": "0" * 64,
+        "locked_paths_digest": hashlib.sha256(json.dumps(locks, separators=(",", ":")).encode()).hexdigest(),
+        "last_transition_id": None,
     }
     control: dict[str, object] = {
         "schema": "connlab.execution-control",
@@ -85,13 +101,24 @@ def fixture(tmp_path: Path, *, required_gates: list[str] | None = None) -> dict[
     git(repo, "add", ".")
     git(repo, "commit", "-m", "base")
     base = git(repo, "rev-parse", "HEAD")
+    task_blob = subprocess.run(
+        ["git", "-C", str(repo), "show", f"{base}:tasks/TASK_X.md"], check=True, capture_output=True
+    ).stdout
+    task_ref = f"tasks/TASK_X.md@{base}#{hashlib.sha256(task_blob).hexdigest()}"
+    control["active"]["scope_contract_ref"] = task_ref  # type: ignore[index]
+    control["active"]["may_touch_digest"] = hashlib.sha256(json.dumps(locks, separators=(",", ":")).encode()).hexdigest()  # type: ignore[index]
     lane = tmp_path / "lane"
     git(repo, "worktree", "add", "-b", "lane/task-x", str(lane), base)
     (lane / "implementation.txt").write_text("implemented\n", encoding="utf-8")
     evidence_dir = lane / "docs" / "lane_evidence"
     evidence_dir.mkdir(parents=True)
     evidence = evidence_dir / "TASK_X_developer.md"
-    evidence.write_text("TASK_ID: TASK_X\nROLE: Developer\nSTATUS: ready_for_review\n", encoding="utf-8")
+    evidence.write_text(
+        "TASK_ID: TASK_X\nROLE: Developer\nSTATUS: ready_for_review\n"
+        "EVIDENCE: docs/lane_evidence/TASK_X_developer.md\nCOMMIT: " + "0" * 40
+        + "\nNEXT: Reviewer\nBLOCKER: none\n",
+        encoding="utf-8",
+    )
     git(lane, "add", "implementation.txt", "docs/lane_evidence/TASK_X_developer.md")
     git(lane, "commit", "-m", "developer checkpoint")
     lane_head = git(lane, "rev-parse", "HEAD")
@@ -208,7 +235,12 @@ def test_reviewer_pass_routes_by_immutable_required_gates(tmp_path: Path) -> Non
         control["execution_state"] = "gate_running"
         control["active"]["role"] = "Reviewer"
         evidence = Path(fx["lane"]) / "docs" / "lane_evidence" / "TASK_X_reviewer.md"
-        evidence.write_text("TASK_ID: TASK_X\nROLE: Reviewer\nSTATUS: reviewer_pass\n", encoding="utf-8")
+        evidence.write_text(
+            "TASK_ID: TASK_X\nROLE: Reviewer\nSTATUS: reviewer_pass\n"
+            "EVIDENCE: docs/lane_evidence/TASK_X_reviewer.md\nCOMMIT: " + "0" * 40
+            + f"\nNEXT: {expected}\nBLOCKER: none\n",
+            encoding="utf-8",
+        )
         git(Path(fx["lane"]), "add", "docs/lane_evidence/TASK_X_reviewer.md")
         git(Path(fx["lane"]), "commit", "-m", "reviewer evidence")
         fx["lane_head"] = git(Path(fx["lane"]), "rev-parse", "HEAD")
@@ -244,7 +276,12 @@ def test_reviewer_blocked_and_qa_pass_complete_the_four_event_matrix(tmp_path: P
         control["active"]["role"] = role
         evidence_name = f"TASK_X_{role.lower()}.md"
         evidence = Path(fx["lane"]) / "docs" / "lane_evidence" / evidence_name
-        evidence.write_text(f"TASK_ID: TASK_X\nROLE: {role}\nSTATUS: {status}\n", encoding="utf-8")
+        evidence.write_text(
+            f"TASK_ID: TASK_X\nROLE: {role}\nSTATUS: {status}\n"
+            f"EVIDENCE: docs/lane_evidence/{evidence_name}\nCOMMIT: " + "0" * 40
+            + f"\nNEXT: {expected}\nBLOCKER: none\n",
+            encoding="utf-8",
+        )
         git(Path(fx["lane"]), "add", f"docs/lane_evidence/{evidence_name}")
         git(Path(fx["lane"]), "commit", "-m", f"{role} evidence")
         fx["lane_head"] = git(Path(fx["lane"]), "rev-parse", "HEAD")
@@ -284,3 +321,66 @@ def test_lane_scope_drift_is_blocked(tmp_path: Path) -> None:
 
     assert code != 0
     assert "BLOCKED_SCOPE_DRIFT" in result["reason_codes"]
+
+
+def test_missing_or_drifted_scope_metadata_fails_closed(tmp_path: Path) -> None:
+    mutations = (
+        lambda active: active.pop("scope_contract_ref"),
+        lambda active: active.__setitem__("may_touch_digest", "f" * 64),
+        lambda active: active.__setitem__("locked_paths_digest", "e" * 64),
+        lambda active: active.pop("last_transition_id"),
+    )
+    for index, mutate in enumerate(mutations):
+        fx = fixture(tmp_path / str(index))
+        repo = Path(fx["repo"]); board = repo / "docs" / "task_board.md"
+        control = control_from(board); mutate(control["active"])
+        write_board(repo, control); git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", "metadata drift")
+        fx["primary_head"] = git(repo, "rev-parse", "HEAD")
+        before = board.read_bytes()
+        code, result = run(fx, "plan")
+        assert code != 0 and "BLOCKED_TRANSITION_METADATA" in result["reason_codes"]
+        assert board.read_bytes() == before
+
+
+def test_historical_status_substring_cannot_override_blocked_machine_record(tmp_path: Path) -> None:
+    fx = fixture(tmp_path)
+    lane = Path(fx["lane"]); repo = Path(fx["repo"]); board = repo / "docs" / "task_board.md"
+    evidence = lane / "docs/lane_evidence/TASK_X_reviewer.md"
+    evidence.write_text(
+        "TASK_ID: TASK_X\nROLE: Reviewer\nSTATUS: reviewer_blocked\n"
+        "EVIDENCE: docs/lane_evidence/TASK_X_reviewer.md\nCOMMIT: " + "0" * 40
+        + "\nNEXT: Developer\nBLOCKER: B1\n\nHistorical note: STATUS: reviewer_pass\n",
+        encoding="utf-8",
+    )
+    git(lane, "add", "docs/lane_evidence/TASK_X_reviewer.md"); git(lane, "commit", "-m", "blocked review")
+    fx["lane_head"] = git(lane, "rev-parse", "HEAD")
+    control = control_from(board); control["execution_state"] = "gate_running"; control["active"]["role"] = "Reviewer"; control["active"]["head_sha"] = fx["lane_head"]
+    write_board(repo, control); git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", "review authority")
+    fx["primary_head"] = git(repo, "rev-parse", "HEAD")
+    blob = subprocess.run(["git", "-C", str(lane), "show", f"{fx['lane_head']}:docs/lane_evidence/TASK_X_reviewer.md"], check=True, capture_output=True).stdout
+    fx["ref"] = f"docs/lane_evidence/TASK_X_reviewer.md@{fx['lane_head']}#{hashlib.sha256(blob).hexdigest()}"
+    before = board.read_bytes()
+    code, result = run(fx, "plan", event="REVIEWER_PASS", **{"evidence-status": "reviewer_pass"})
+    assert code != 0 and "BLOCKED_EVIDENCE_CONTENT" in result["reason_codes"]
+    assert board.read_bytes() == before
+
+
+def test_exact_duplicate_is_idempotent_but_every_divergent_duplicate_is_blocked(tmp_path: Path) -> None:
+    cases = (
+        {"task-id": "TASK_OTHER"}, {"lane": "other-lane"},
+        {"expected-primary-head": "f" * 40}, {"evidence-status": "reviewer_pass"},
+    )
+    for index, overrides in enumerate(cases):
+        fx = fixture(tmp_path / str(index)); assert run(fx, "apply")[0] == 0
+        board = Path(fx["repo"]) / "docs/task_board.md"; before = board.read_bytes()
+        code, result = run(fx, "apply", **overrides)
+        assert code != 0 and "BLOCKED_DUPLICATE_CONFLICT" in result["reason_codes"]
+        assert board.read_bytes() == before
+
+    fx = fixture(tmp_path / "context"); assert run(fx, "apply")[0] == 0
+    repo = Path(fx["repo"]); board = repo / "docs/task_board.md"; control = control_from(board)
+    control["residuals"].append({"task_id": "NEW", "residual_owner": "owner", "disposition": "retain", "evidence": "new.md"})
+    write_board(repo, control); before = board.read_bytes()
+    code, result = run(fx, "apply")
+    assert code != 0 and "BLOCKED_DUPLICATE_CONFLICT" in result["reason_codes"]
+    assert board.read_bytes() == before

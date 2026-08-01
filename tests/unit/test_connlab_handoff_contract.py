@@ -8,6 +8,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "scripts" / "connlab_handoff_contract.py"
+BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
+END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
+
+
+def canonical_digest(value: object) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def git(repo: Path, *args: str) -> str:
@@ -17,28 +23,75 @@ def git(repo: Path, *args: str) -> str:
 def make_repo(tmp_path: Path) -> tuple[Path, dict[str, object]]:
     repo = tmp_path / "repo"; repo.mkdir(parents=True)
     git(repo, "init", "-b", "master"); git(repo, "config", "user.email", "handoff@example.invalid"); git(repo, "config", "user.name", "Handoff Test")
+    locks = ["implementation.txt", "docs/lane_evidence/TASK_X_*"]
+    gates = ["Reviewer", "QA", "Integrator"]
     files = {
-        "docs/task_board.md": "# Board\nactive authority\n",
-        "tasks/TASK_X.md": "# Task\nMay Touch: implementation.txt\n",
-        "docs/task_x_plan.md": "# Plan\nTDD\n",
-        "docs/lane_evidence/TASK_X_planner.md": "TASK_ID: TASK_X\nROLE: Planner\nSTATUS: developer_dispatch_ready\n",
+        "tasks/TASK_X.md": "# TASK_X\n\nStatus: `approved`\n\n## Exact May Touch\n\n1. `implementation.txt`\n2. `docs/lane_evidence/TASK_X_*`\n\n## Must Not Touch\n\n- every other path\n",
+        "docs/task_x_plan.md": "# Plan\n\nStatus: `approved`\n\nTask: `TASK_X`\n",
+        "docs/lane_evidence/TASK_X_planner.md": (
+            "TASK_ID: TASK_X\nROLE: Planner\nSTATUS: developer_dispatch_ready\n"
+            "EVIDENCE: docs/lane_evidence/TASK_X_planner.md\nCOMMIT: " + "0" * 40
+            + "\nNEXT: Developer\nBLOCKER: none\n"
+        ),
         "docs/direct.md": "# Direct dependency\n",
     }
     for name, content in files.items():
         path = repo / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(content, encoding="utf-8")
-    git(repo, "add", "."); git(repo, "commit", "-m", "authority")
-    head = git(repo, "rev-parse", "HEAD")
+    git(repo, "add", "."); git(repo, "commit", "-m", "approved authority")
+    approved_head = git(repo, "rev-parse", "HEAD")
+    lane = tmp_path / "lane"
+    git(repo, "worktree", "add", "-b", "lane/task-x", str(lane), approved_head)
 
     def ref(path: str) -> str:
-        blob = subprocess.run(["git", "-C", str(repo), "show", f"{head}:{path}"], check=True, capture_output=True).stdout
-        return f"{path}@{head}#{hashlib.sha256(blob).hexdigest()}"
+        blob = subprocess.run(["git", "-C", str(repo), "show", f"{approved_head}:{path}"], check=True, capture_output=True).stdout
+        return f"{path}@{approved_head}#{hashlib.sha256(blob).hexdigest()}"
+
+    task_ref = ref("tasks/TASK_X.md")
+    evidence_ref = ref("docs/lane_evidence/TASK_X_planner.md")
+    control = {
+        "schema": "connlab.execution-control", "version": 1, "wip_limit": 1,
+        "execution_token_owner": "TASK_X", "execution_state": "implementation_running",
+        "active": {
+            "task_id": "TASK_X", "lane": "task-x", "role": "Developer",
+            "branch": "lane/task-x", "worktree": str(lane), "base_sha": approved_head,
+            "head_sha": approved_head, "locked_paths": locks, "required_gates": gates,
+            "evidence": evidence_ref, "scope_contract_ref": task_ref,
+            "may_touch_digest": canonical_digest(locks), "locked_paths_digest": canonical_digest(locks),
+            "last_transition_id": None,
+        },
+        "queue": [], "paused": None, "quick_fix": None, "residuals": [],
+        "parallel_exception": None, "evidence": evidence_ref,
+    }
+    payload = json.dumps(control, indent=2)
+    board = repo / "docs/task_board.md"
+    board.write_text(
+        "# Board\n\n> Current Active Task: `TASK_X` is the sole WIP=`1` token owner in "
+        "`implementation_running/Developer` on lane `task-x`.\n\n"
+        f"{BEGIN}\n```json\n{payload}\n```\n{END}\n",
+        encoding="utf-8",
+    )
+    git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", "dispatch authority")
+    board_head = git(repo, "rev-parse", "HEAD")
+
+    def board_ref() -> str:
+        blob = subprocess.run(["git", "-C", str(repo), "show", f"{board_head}:docs/task_board.md"], check=True, capture_output=True).stdout
+        return f"docs/task_board.md@{board_head}#{hashlib.sha256(blob).hexdigest()}"
 
     capsule: dict[str, object] = {
         "schema": "connlab.handoff.v1", "task_id": "TASK_X", "role": "Orchestrator",
         "status": "developer_dispatch_ready", "next": "Developer", "blocker": "none",
-        "board_ref": ref("docs/task_board.md"), "task_ref": ref("tasks/TASK_X.md"),
-        "plan_ref": ref("docs/task_x_plan.md"), "evidence_ref": ref("docs/lane_evidence/TASK_X_planner.md"),
+        "execution_token_owner": "TASK_X", "execution_state": "implementation_running",
+        "lane": "task-x", "branch": "lane/task-x", "worktree": str(lane),
+        "base_sha": approved_head, "head_sha": approved_head,
+        "board_ref": board_ref(), "task_ref": task_ref,
+        "plan_ref": ref("docs/task_x_plan.md"), "evidence_ref": evidence_ref,
         "direct_dependencies": [ref("docs/direct.md")], "omissions": [],
+        "scope_contract_ref": task_ref, "may_touch_digest": canonical_digest(locks),
+        "locked_paths_digest": canonical_digest(locks), "required_gates": gates,
+        "gate_snapshot_digest": canonical_digest(gates), "evidence_status": "developer_dispatch_ready",
+        "next_action": "implement_approved_scope",
+        "stop_conditions": ["scope_expansion", "authority_drift", "unexplained_test_failure", "destructive_action_required"],
+        "changed_paths": [],
         "transition_count": 1, "dispatch_count": 1,
         "dispatch_template": "Read exact refs, validate authority, perform the named role, callback once.",
     }
@@ -139,19 +192,40 @@ def test_cadence_enforces_one_transition_one_dispatch_and_90_second_pilot(tmp_pa
 
 def test_cadence_requires_60_second_changed_heartbeats_and_suppresses_waits(tmp_path: Path) -> None:
     events = [
-        {"kind": "heartbeat", "timestamp": "2026-08-01T00:00:00Z", "state": "running"},
+        {"kind": "role_start", "timestamp": "2026-08-01T00:00:00Z", "state": "started"},
         {"kind": "heartbeat", "timestamp": "2026-08-01T00:01:00Z", "state": "validated"},
         {"kind": "direction", "timestamp": "2026-08-01T00:01:01Z", "state": "dispatch"},
+        {"kind": "heartbeat", "timestamp": "2026-08-01T00:02:01Z", "state": "dispatched"},
     ]
     source = tmp_path / "heartbeat.jsonl"
     source.write_text("".join(json.dumps(item) + "\n" for item in events), encoding="utf-8")
     code, result = invoke("validate-cadence", str(source))
     assert code == 0 and result["decision"] == "ALLOW_CADENCE"
 
-    events[1]["state"] = "running"
+    events[-1]["state"] = "dispatch"
     source.write_text("".join(json.dumps(item) + "\n" for item in events), encoding="utf-8")
     code, result = invoke("validate-cadence", str(source))
     assert code != 0 and "BLOCKED_UNCHANGED_WAIT" in result["reason_codes"]
+
+
+def test_first_heartbeat_requires_prior_material_event_and_sixty_seconds(tmp_path: Path) -> None:
+    cases = (
+        [{"kind": "heartbeat", "timestamp": "2026-08-01T00:01:00Z", "state": "running"}],
+        [
+            {"kind": "role_start", "timestamp": "2026-08-01T00:00:00Z", "state": "started"},
+            {"kind": "heartbeat", "timestamp": "2026-08-01T00:00:01Z", "state": "running"},
+        ],
+        [
+            {"kind": "role_start", "timestamp": "2026-08-01T00:01:00Z", "state": "started"},
+            {"kind": "heartbeat", "timestamp": "2026-08-01T00:00:00Z", "state": "running"},
+        ],
+    )
+    for index, events in enumerate(cases):
+        source = tmp_path / f"bad-{index}.jsonl"
+        source.write_text("".join(json.dumps(item) + "\n" for item in events), encoding="utf-8")
+        code, result = invoke("validate-cadence", str(source))
+        assert code != 0
+        assert set(result["reason_codes"]) & {"BLOCKED_CADENCE_HEARTBEAT", "BLOCKED_CADENCE_ORDER"}
 
 
 def test_capsule_and_template_budgets_fail_closed(tmp_path: Path) -> None:
@@ -168,3 +242,22 @@ def test_routine_event_cannot_launch_planner(tmp_path: Path) -> None:
     source = tmp_path / "planner.json"; source.write_text(json.dumps(capsule), encoding="utf-8")
     code, result = invoke("validate-dispatch", str(source), repo)
     assert code != 0 and "BLOCKED_ROUTINE_PLANNER" in result["reason_codes"]
+
+
+def test_capsule_cross_task_stale_and_drifted_authority_never_dispatches(tmp_path: Path) -> None:
+    mutations = (
+        lambda capsule: capsule.__setitem__("task_id", "TASK_OTHER"),
+        lambda capsule: capsule.__setitem__("status", "reviewer_pass"),
+        lambda capsule: capsule.__setitem__("next", "QA"),
+        lambda capsule: capsule.__setitem__("head_sha", "f" * 40),
+        lambda capsule: capsule.__setitem__("gate_snapshot_digest", "e" * 64),
+        lambda capsule: capsule.pop("stop_conditions"),
+    )
+    for index, mutate in enumerate(mutations):
+        repo, capsule = make_repo(tmp_path / str(index)); mutate(capsule)
+        source = tmp_path / f"drift-{index}.json"; source.write_text(json.dumps(capsule), encoding="utf-8")
+        before = git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+        code, result = invoke("validate-dispatch", str(source), repo)
+        assert result["decision"] in {"FULL_READ_REQUIRED", "BLOCKED"}
+        assert code in {0, 2}
+        assert git(repo, "status", "--porcelain=v1", "--untracked-files=all") == before

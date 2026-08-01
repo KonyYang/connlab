@@ -48,6 +48,29 @@ def test_second_and_third_closeouts_append_contiguous_incremental_generations(tm
     assert [json.loads(line)["generation"] for line in lines] == [1, 2, 3]
 
 
+def test_second_and_third_generation_rollback_is_byte_exact_in_safe_temp_root(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path)
+    repo = Path(fx["repo"]); sources: dict[int, bytes] = {}
+    for generation in (1, 2, 3):
+        if generation > 1:
+            commit_next_closeout(fx, generation)
+        sources[generation] = Path(fx["board"]).read_bytes()
+        assert invoke(fx, "apply-maintenance")[0] == 0
+        subprocess.run(["git", "-C", str(repo), "add", "docs/task_board.md", "docs/archive/task_board_history"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-m", f"generation {generation}"], check=True, capture_output=True)
+        fx["head"] = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    temp_root = tmp_path / "rollback-temp"; temp_root.mkdir()
+    for generation in (1, 2, 3):
+        output = temp_root / f"generation-{generation}.md"
+        done = subprocess.run(
+            ["py", str(HELPER), "prove-rollback", "--repo-root", str(repo), "--generation", str(generation),
+             "--temp-root", str(temp_root), "--output", str(output), "--json"],
+            check=False, capture_output=True, text=True,
+        )
+        assert done.returncode == 0, done.stdout
+        assert output.read_bytes() == sources[generation]
+
+
 @pytest.mark.parametrize("fault", ["archive", "index", "board"])
 def test_partial_failure_restores_board_index_and_exact_archive_state(tmp_path: Path, fault: str) -> None:
     fx = make_repo(tmp_path)
@@ -87,3 +110,33 @@ def test_conflicting_archive_and_corrupt_index_fail_closed(tmp_path: Path) -> No
     index.write_text("not json\n", encoding="utf-8")
     code, result = invoke(fx, "plan-maintenance")
     assert code != 0 and "BLOCKED_INDEX_CORRUPT" in result["reason_codes"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("schema", "wrong"), ("version", 2), ("source_blob_sha", "0" * 40),
+     ("generation", 2), ("compact_record_count", 999), ("rollback_sha256", "0" * 64),
+     ("archive_path", "docs/archive/task_board_history/../escape.md")],
+)
+def test_index_schema_blob_count_and_rollback_tampering_fail_closed(tmp_path: Path, field: str, value: object) -> None:
+    fx = make_repo(tmp_path)
+    assert invoke(fx, "apply-maintenance")[0] == 0
+    repo = Path(fx["repo"]); board = Path(fx["board"])
+    index = repo / "docs/archive/task_board_history/index.v1.jsonl"
+    record = json.loads(index.read_text(encoding="utf-8")); record[field] = value
+    index.write_text(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    before = {"board": board.read_bytes(), "index": index.read_bytes()}
+    code, result = invoke(fx, "plan-maintenance")
+    assert code != 0 and set(result["reason_codes"]) & {"BLOCKED_INDEX_CORRUPT", "BLOCKED_ARCHIVE_CORRUPT", "BLOCKED_ARCHIVE_PATH"}
+    assert board.read_bytes() == before["board"] and index.read_bytes() == before["index"]
+
+
+def test_history_directory_junction_is_rejected_before_any_write(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path); repo = Path(fx["repo"]); board = Path(fx["board"])
+    history = repo / "docs/archive/task_board_history"; history.parent.mkdir(parents=True)
+    outside = tmp_path / "outside-history"; outside.mkdir()
+    junction = subprocess.run(["cmd", "/c", "mklink", "/J", str(history), str(outside)], check=False, capture_output=True)
+    if junction.returncode: pytest.skip("directory junctions are unavailable on this Windows host")
+    before = board.read_bytes(); code, result = invoke(fx, "plan-maintenance")
+    assert code != 0 and "BLOCKED_ARCHIVE_PATH" in result["reason_codes"]
+    assert board.read_bytes() == before and not any(outside.iterdir())
