@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `reviewer_regate_ready`
+Status: `developer_fix_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -82,17 +82,57 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   evidence to the clean fix package, preserve locks/gates/queue/residuals, and require full B1-B5
   re-gate before mandatory QA. The candidate transition helper is not integrated and was not used.
 
+## User-Approved Final R1-R3 Reconciliation Audit
+
+- On 2026-08-01 the User explicitly approved: “我批准 Task A 的 R1–R3 最终 bounded
+  reconciliation fix pass，并继续自动推进 Reviewer、QA、Integrator。” This approval covers
+  one final bounded fix pass inside the existing Task A contract; it does not amend Task/Plan,
+  product behavior, execution authority, gate order, or live-migration semantics.
+- Primary was reverified clean on
+  `master@e5de0c4f2ecb0d01a33dabcacdcbd4549f186d8f`, with no `MERGE_HEAD` and valid current
+  `gate_running/Reviewer` authority. Legacy production `Inspect` returned `ALLOW_INSPECT`.
+- The exact lane branch/worktree are clean at Reviewer evidence HEAD
+  `9a644cc6d4631d1fd0649179db7fab80313f0561`. Approved base
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` and reviewed fix HEAD
+  `6d449262473e628cdf239c5d9b54ae3a2ff2c4c8` are ancestors.
+- Reviewer evidence at that commit has Git blob
+  `73590abf5bdedf5e7ecb41b9204035343b7da9a8` and status `reviewer_blocked`. Its independent
+  disposable-repository reproductions prove: R1 stale actual primary facts and a dirty lane can
+  reach the duplicate path; R2 forged event/state/role tuples and post-QA helper drift can reach
+  maintenance; and R3 a recomputed canonical generation-2 index/archive can remove a non-terminal
+  active authority line and still plan generation 3.
+- Each repair is within the already approved Task A helper/test semantics. Exact Developer fix
+  allowlist is `scripts/connlab_execution_transition.py`, `scripts/connlab_active_context.py`,
+  `tests/unit/test_connlab_execution_transition.py`,
+  `tests/integration/test_connlab_execution_transition_recovery.py` only if direct R1 coverage
+  requires it, `tests/unit/test_connlab_active_context.py`,
+  `tests/integration/test_connlab_board_closeout_maintenance.py`, and Developer evidence. No other
+  implementation, governance-contract, Task/Plan, board/history/archive/index, product, registry,
+  V1/V2, or protected-lane path may change.
+- Required validation is bounded and fail-closed: R1 later-primary-commit and dirty-lane duplicate
+  negatives; R2 exact legal event/state/role/transition-ID tuple enforcement, Reviewer/QA
+  attestation of the current helper checkpoint, and post-QA drift rejection; R3 generation-2/3
+  recomputed canonical archive/index negatives for active/current/queue/paused/Quick Fix/parallel/
+  residual/proposed authority lines; then the affected Task A helper/recovery/maintenance matrix,
+  compilation, exact allowlist/diff checks, clean lane, and immutable ancestry/evidence checks.
+- Decision: retain Task A as the sole WIP=`1` token owner, return to
+  `implementation_running/Developer`, update active HEAD/evidence to the immutable Reviewer block,
+  and require a clean bounded fix followed by full Reviewer re-gate, mandatory QA, and local
+  Integrator acceptance. The candidate transition helper is not integrated and was not used.
+
 ## User Approval Record
 
 - On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
   Developer -> Reviewer -> mandatory QA -> local Integrator acceptance.
+- On 2026-08-01 the User separately approved the final bounded R1-R3 reconciliation fix pass and
+  continuation through Reviewer, mandatory QA, and local Integrator acceptance.
 - Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
 - Task B was not approved and remains serially blocked. The umbrella remains non-executable.
 - Approval/worktree base is the committed approved package
   `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
-- Primary authority retains Task A as the sole token owner in `gate_running/Reviewer`; exact
-  branch/worktree/base/fix HEAD, locks, mandatory Reviewer/QA/Integrator route, and clean state are
-  recorded. Planner does not dispatch Reviewer.
+- Primary authority retains Task A as the sole token owner in `implementation_running/Developer`;
+  exact branch/worktree/base/Reviewer HEAD, locks, mandatory Reviewer/QA/Integrator route, and
+  clean state are recorded. Planner does not dispatch Developer.
 - No queue, parallel exception, live migration, product, retained-lane, remote, or runtime action
   occurs in this governance transition.
 
@@ -142,8 +182,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- B1-B5 re-gate outcome; final accepted archive/index hashes, independently verified after-size
-  metrics, and measured QA pilot duration.
+- R1-R3 final fix/re-gate outcome; final accepted archive/index hashes, independently verified
+  after-size metrics, and measured QA pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -154,8 +194,8 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- User approval and exact approval base are recorded; Task A is the sole token owner, the clean
-  bounded fix is within approved paths, and full Reviewer re-gate is ready.
+- User approval and exact approval base are recorded; Task A is the sole token owner, the final
+  R1-R3 fix boundary is inside approved paths, and bounded Developer dispatch is ready.
 
 ## Risk And Mitigation
 
@@ -169,5 +209,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `reviewer_regate_ready` to Orchestrator. Do not dispatch Reviewer, edit the lane, run live
-maintenance/migration, or perform Task B work in this Planner turn.
+Return `developer_fix_dispatch_ready` to Orchestrator. Do not dispatch Developer, edit the lane,
+run live maintenance/migration, or perform Task B work in this Planner turn.
