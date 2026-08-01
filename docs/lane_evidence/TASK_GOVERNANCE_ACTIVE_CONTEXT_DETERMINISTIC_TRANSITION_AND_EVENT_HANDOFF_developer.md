@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF — Developer Evidence
 
-ROLE: Developer  
+ROLE: Developer
 STATUS: ready_for_review
 
 ## Authority And Checkpoint
