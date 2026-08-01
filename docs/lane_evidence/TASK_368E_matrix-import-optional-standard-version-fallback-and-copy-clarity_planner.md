@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `reviewer_regate_ready`
+Status: `qa_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -12,6 +12,24 @@ Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
 
 Worktree creation authority base/initial HEAD:
 `e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## Reviewer Pass And QA Gate Transition
+
+- Primary was reverified clean on `master@b87f6e87c829cce86cda3e58181fd0f82c566158`;
+  production `Inspect` was `ALLOW_INSPECT` in `gate_running` / Reviewer state.
+- Lane is exact and clean at Reviewer-pass evidence HEAD
+  `77fe429eea59d2908c2f57d9243e8fd893488ad5`. The preceding reviewed fixed HEAD is
+  `f924c33deb92be269150085c9e8982f152d3b809`; ancestry is intact, and the Reviewer pass commit
+  changes only Reviewer evidence and passes `git show --check`.
+- Reviewer evidence status is `reviewer_pass`, next role QA, with no blocking findings. B1 was
+  independently reproduced as closed for default/preserve cleanup wrappers, while genuine
+  availability and COM-unavailable behavior remains eligible.
+- Reviewer independently revalidated authority/reuse/lineage/transaction/API/frontend/Settings/
+  accessibility/Confirm Matrix/Standard Method versions contracts, exact scope, build/compile,
+  and the 499-line authority limit. The two baseline debts remain independently attributed.
+- Decision: retain token/lane/worktree/base/locks and all queue/residual facts, keep state
+  `gate_running`, advance active role to mandatory `QA`, set active HEAD/evidence to Reviewer pass,
+  and prohibit Integrator until QA passes the full disposable-resource matrix.
 
 ## Bounded Fix Completion And Reviewer Re-gate Transition
 
@@ -267,10 +285,10 @@ are complete; read-only dispatch gate is `ALLOW_DISPATCH`.
 
 ## Gate And Next Role
 
-- Status is `reviewer_regate_ready`.
-- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact Reviewer active
-  record points to final bounded-fix HEAD and Developer evidence.
-- Next legal role: permanent Reviewer for the fixed-ancestry re-gate.
+- Status is `qa_dispatch_ready`.
+- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact QA active record
+  points to Reviewer-pass HEAD/evidence.
+- Next legal role: mandatory QA against exact reviewed ancestry.
 
 ## Prohibited In This Pass
 

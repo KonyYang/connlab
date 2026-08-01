@@ -1,13 +1,12 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `reviewer_regate_ready`
+Status: `qa_dispatch_ready`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for exact permanent Reviewer re-gate dispatch. TASK_368E
-retains the sole execution token with schema state `gate_running` and role `Reviewer`. The clean lane
-HEAD is final bounded-fix evidence commit `f924c33deb92be269150085c9e8982f152d3b809`
-over the unchanged base.
+Current gate owner: permanent Orchestrator for mandatory QA dispatch. TASK_368E retains the sole
+execution token with schema state `gate_running` and role `QA`. The clean lane HEAD is Reviewer-pass
+evidence commit `77fe429eea59d2908c2f57d9243e8fd893488ad5` over the unchanged base.
 
 ## User Approval Record
 
@@ -20,10 +19,9 @@ over the unchanged base.
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `reviewer_regate_ready`. Bounded fix checkpoint is
-  `1882c1b04937f0c576ddd2350407edc91b990217`; final Developer evidence HEAD is
-  `f924c33deb92be269150085c9e8982f152d3b809`, with clean worktree/index and unchanged
-  token, base, branch, worktree, and locks.
+- Current durable state is `qa_dispatch_ready`. Reviewer passed the full fixed ancestry at
+  `77fe429eea59d2908c2f57d9243e8fd893488ad5`; worktree/index are clean and token, base,
+  branch, worktree, and locks are unchanged.
 
 ## Goal
 
@@ -289,7 +287,21 @@ mandatory Reviewer/QA/Integrator gates.
   and all build/compile/allowlist/line gates pass. Reviewer must verify rather than inherit them.
 - Reviewer pass routes to mandatory QA. Any remaining or new blocking finding returns to Developer.
 
+## Reviewer Pass And QA Handoff
+
+- Reviewer evidence:
+  `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_reviewer.md`.
+- Status is `reviewer_pass`; B1 is independently closed without scope drift.
+- QA must validate the full 28-category matrix with disposable SQLite/XLSX/fake-COM resources,
+  including cleanup-wrapper default/preserve `422` zero-write, all positive availability paths,
+  transaction/reuse/lineage/fingerprints, and configured success.
+- QA must cover the accessible choose/skip dialog, picker cancel, warning color/aria-live, Settings
+  copy, Standard Method versions Preview/Apply, Confirm Matrix boundary, frontend build, exact
+  allowlist, 499-line authority limit, and no real DB/workbook/public-drive mutation.
+- The two independently attributed baseline debts remain historical only; any new or changed
+  failure is blocking. QA pass is required before Integrator.
+
 ## Stop Point
 
-Return to permanent Orchestrator to dispatch permanent Reviewer for the full fixed-ancestry re-gate.
-Planner must not edit the lane or product/test code in this governance pass.
+Return to permanent Orchestrator to dispatch mandatory QA against exact reviewed ancestry. Planner
+must not edit the lane or product/test code in this governance pass.
