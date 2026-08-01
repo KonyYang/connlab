@@ -1,13 +1,12 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `integrator_dispatch_ready`
+Status: `complete` / `accepted` / `locally_integrated`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current active task: TASK_368E. It retains the durable execution token under schema state
-`gate_running`; the exact branch/worktree are clean at QA-pass evidence HEAD
-`c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
-`77fe429eea59d2908c2f57d9243e8fd893488ad5`, and local Integrator dispatch is ready.
+Current active task: None. TASK_368E is complete/accepted and locally integrated by
+non-fast-forward merge `634279b7ced1306092e8e2e7f39705eb7f0942d5`; terminal execution authority is
+`complete` with no token owner or active task.
 
 ## Approval And Activation Record
 
@@ -448,9 +447,9 @@ context, bounded components/tests, and mandatory gates mitigate them.
 8. Completed: mandatory QA passed the full 28-category validation matrix at clean evidence HEAD
    `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
    `77fe429eea59d2908c2f57d9243e8fd893488ad5`.
-9. Current: Integrator accepts locally only the exact reviewed/QA ancestry, reruns merged-tree
-   validation, and records residuals.
-10. Stop after local acceptance; no push or next-task activation.
+9. Completed: Integrator accepted the exact reviewed/QA ancestry locally, reran merged-tree
+   validation, and recorded the retained clean lane residual.
+10. Completed stop: no push or next-task activation.
 
 ## 14. Planned Lane
 
@@ -479,5 +478,19 @@ acceptance.
 
 ## 16. Next Legal Role
 
-Local Integrator, dispatched by Orchestrator against exact reviewed/QA ancestry. Planner does not
-merge or edit the lane or implementation paths from this pass.
+Archive/Standby. Local Integrator acceptance is complete; no next task is created or activated.
+
+## 17. Integrator Acceptance Closeout
+
+- Local merge `634279b7ced1306092e8e2e7f39705eb7f0942d5` has parents primary premerge
+  `e4ce934fa72effeb1e373c6cde41f051d4fd81ec` and QA HEAD
+  `c9a61bcb701178c1042d99ca8011d138e0420330`.
+- The exact 20-path implementation/evidence package is integrated with no conflict or scope drift.
+- Merged-tree verification passed backend/API `31`, expanded compatibility `70 passed, 1`
+  baseline-only deselected, disposable Excel/COM/read `38`, B1 `8`, Settings `1`, frontend
+  `8 files / 61 tests`, Python compilation, frontend build, and all package/line/ancestry/UI/
+  protected-state checks.
+- The clean lane branch/worktree is retained under permanent Orchestrator governance for future
+  separately authorized safe maintenance retirement.
+- No push, publish, release build, runtime restart, real-resource mutation, destructive cleanup,
+  or next-task activation occurred. Next routing is Archive/Standby.

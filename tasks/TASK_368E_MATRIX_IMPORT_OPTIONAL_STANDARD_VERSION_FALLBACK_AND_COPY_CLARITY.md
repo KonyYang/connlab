@@ -1,13 +1,12 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `integrator_dispatch_ready`
+Status: `complete` / `accepted` / `locally_integrated`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for local Integrator dispatch. TASK_368E retains the sole
-execution token with schema state `gate_running` and role `Integrator`. The clean lane HEAD is QA-pass
-evidence commit `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
-`77fe429eea59d2908c2f57d9243e8fd893488ad5` and the unchanged base.
+Current gate owner: none; permanent Integrator closeout accepted. QA-pass evidence commit
+`c9a61bcb701178c1042d99ca8011d138e0420330` was locally integrated by conflict-free
+non-fast-forward merge `634279b7ced1306092e8e2e7f39705eb7f0942d5`.
 
 ## User Approval Record
 
@@ -20,10 +19,10 @@ evidence commit `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `integrator_dispatch_ready`. QA passed the mandatory full validation at
-  evidence commit `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed commit
-  `77fe429eea59d2908c2f57d9243e8fd893488ad5`; worktree/index are clean and token, base,
-  branch, worktree, and locks are unchanged.
+- Final durable state is `complete` / `accepted` / `locally_integrated`. QA passed the mandatory
+  full validation at evidence commit `c9a61bcb701178c1042d99ca8011d138e0420330` over reviewed
+  commit `77fe429eea59d2908c2f57d9243e8fd893488ad5`; the clean integrated lane branch/worktree is
+  retained under permanent Orchestrator governance.
 
 ## Goal
 
@@ -322,5 +321,28 @@ mandatory Reviewer/QA/Integrator gates.
 
 ## Stop Point
 
-Return to permanent Orchestrator to dispatch Integrator against the exact QA-pass ancestry. Planner
-must not merge or edit the lane or product/test code in this governance pass.
+Local Integrator acceptance is complete. Return to permanent Orchestrator for Archive/Standby;
+do not create or activate another task.
+
+## Integrator Acceptance Closeout
+
+- Primary premerge HEAD: `e4ce934fa72effeb1e373c6cde41f051d4fd81ec`.
+- Conflict-free local non-fast-forward merge:
+  `634279b7ced1306092e8e2e7f39705eb7f0942d5`, with QA HEAD as the exact second parent.
+- The first-parent merge delta is exactly the authorized 17 product/test paths plus Developer,
+  Reviewer, and QA evidence (`20` paths total). Primary task/plan/Planner/board governance was
+  preserved.
+- Merged-primary validation passed TASK_368E backend/API `31`, expanded authority/reuse/session/
+  Confirm/config compatibility `70` with the one independently attributed baseline node
+  deselected, disposable XLSX/fake-COM/read compatibility `38`, B1 cleanup-integrity `8`, the
+  Settings shell node `1`, frontend `8 files / 61 tests`, Python compilation, and frontend build
+  with only the existing chunk-size advisory.
+- Exact package, forbidden-path, line-count, diff/show/check, ancestry, UI copy/accessibility,
+  protected-state, and clean-worktree checks passed. No real resource or current localhost was
+  accessed.
+- Execution authority is terminal `complete`: token owner and active task are null, queue empty,
+  paused/Quick Fix/parallel exception null, and no next task is active.
+- The clean integrated branch/worktree is retained under permanent Orchestrator governance until
+  separately authorized safe maintenance retirement; no removal was attempted.
+- No push, publication, release build, service restart, real DB/Excel/PDF/DOCX/public-drive
+  mutation, or destructive cleanup occurred.
