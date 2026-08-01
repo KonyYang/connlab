@@ -111,3 +111,45 @@ APIs, and in-memory source payloads only.
 Implementation and bounded tests are complete at the checkpoint above. The next legal
 role is Reviewer. Blocker: none for TASK_368E; the two documented baseline-only test
 debts remain outside this lane.
+
+## Reviewer B1 Bounded Fix Pass
+
+Reviewer returned one blocking classifier defect at reviewed checkpoint
+`bb9734830b41c3a86c1cd5542d34a0832cd990d4`. The authorized fix pass started clean at
+Reviewer evidence checkpoint `68a337678dfaa35fbfac987c36027c605d3e0668` and changed
+only the authority classifier plus the two bounded TASK_368E backend test modules.
+
+Verified defect and fix:
+
+- Before the fix, `_availability_reason()` continued through
+  `LegacyExcelCleanupError` and accepted its nested `PermissionError` or allowlisted
+  Windows `OSError`. Default requests therefore returned action-required `409`, while
+  explicit preserve requests incorrectly returned `201 source_preserved`.
+- Unit and API RED matrices exercised both actions against both nested causes. All four
+  unit and all four API cases failed with those exact incorrect outcomes.
+- The classifier now treats `LegacyExcelCleanupError` as a fail-closed chain terminus
+  before inspecting nested causes. Both request variants return typed `422`; source and
+  draft counts remain zero and no action-required detail is exposed.
+- Positive regressions retain eligible `LegacyExcelReadOnlyOpenError` and
+  `LegacyExcelReadError` wrappers with real availability causes. Existing direct file,
+  allowed Windows-code, and `LegacyExcelComUnavailableError` cases also remain eligible.
+
+Fix checkpoint: `1882c1b04937f0c576ddd2350407edc91b990217`.
+
+Fresh validation after the production fix:
+
+- Cleanup-only RED-to-GREEN nodes: `4 unit passed` and `4 API passed`.
+- Complete TASK_368E unit/API modules: `29 passed` before the additional positive
+  wrapper guards; final relevant backend compatibility set: `108 passed, 1 deselected`.
+- The one deselected Matrix-session fake is the same independently attributed base debt
+  documented above; no new failure was introduced.
+- Focused/compatibility frontend: `8 files / 61 tests passed`.
+- `npm run build`: passed with only the existing Vite chunk-size advisory.
+- Python compile, exact three-path fix allowlist, `git diff --check`, and exact-path
+  staging checks: passed.
+- Final physical lines: authority `499`, bounded unit test `336`, bounded API test `285`.
+- No real database, workbook, PDF/DOCX, public-drive path, server, release, merge, push,
+  or restart action occurred.
+
+Reviewer B1 is closed. Current status remains `ready_for_review`; next role is Reviewer;
+blocker is none.
