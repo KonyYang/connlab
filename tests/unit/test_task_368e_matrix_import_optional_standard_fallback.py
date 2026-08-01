@@ -25,7 +25,10 @@ from backend.domain import (
     SourceMatrixSnapshot,
 )
 from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
+    LegacyExcelCleanupError,
     LegacyExcelComUnavailableError,
+    LegacyExcelReadError,
+    LegacyExcelReadOnlyOpenError,
 )
 
 
@@ -85,6 +88,51 @@ def test_windows_sharing_violation_in_bounded_cause_chain_is_availability() -> N
     assert getattr(caught.value, "reason_code", None) == (
         "standard_version_file_unavailable"
     )
+
+
+@pytest.mark.parametrize(
+    "unavailable_action",
+    [None, "preserve_imported_methods"],
+)
+@pytest.mark.parametrize("nested_failure_kind", ["permission", "windows"])
+def test_cleanup_integrity_wrapper_stops_before_allowlisted_nested_cause(
+    unavailable_action: str | None,
+    nested_failure_kind: str,
+) -> None:
+    if nested_failure_kind == "permission":
+        nested: OSError = PermissionError("cleanup denied")
+    else:
+        nested = OSError("cleanup sharing violation")
+        nested.winerror = 32  # type: ignore[attr-defined]
+    cleanup = LegacyExcelCleanupError("cleanup failed")
+    cleanup.__cause__ = nested
+
+    with pytest.raises(MatrixImportMethodAuthorityError) as caught:
+        _resolve(
+            _resolver(resource=_resource(), failure=cleanup),
+            unavailable_action=unavailable_action,
+        )
+
+    assert type(caught.value) is MatrixImportMethodAuthorityError
+    assert "cleanup failed" in str(caught.value)
+    assert not hasattr(caught.value, "reason_code")
+
+
+@pytest.mark.parametrize(
+    "wrapper_type",
+    [LegacyExcelReadOnlyOpenError, LegacyExcelReadError],
+)
+def test_genuine_legacy_open_or_read_availability_cause_remains_eligible(
+    wrapper_type: type[Exception],
+) -> None:
+    wrapper = wrapper_type("legacy workbook unavailable")
+    wrapper.__cause__ = PermissionError("file unavailable")
+
+    with pytest.raises(MatrixImportMethodAuthorityError) as caught:
+        _resolve(_resolver(resource=_resource(path="C:/legacy.xls"), failure=wrapper))
+
+    assert type(caught.value).__name__ == "MatrixImportStandardVersionActionRequiredError"
+    assert getattr(caught.value, "reason_code", None) == "standard_version_file_unavailable"
 
 
 def test_production_store_preflight_reports_missing_file_without_reader(tmp_path: Path) -> None:

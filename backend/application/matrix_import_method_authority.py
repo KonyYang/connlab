@@ -26,9 +26,7 @@ from backend.modules.test_plan.standard_method_version_parser import (
     parse_catalog_method,
     parse_matrix_method,
 )
-from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
-    LegacyExcelComUnavailableError,
-)
+from backend.infrastructure.office import excel_com_readonly_tabular_gateway as excel_errors
 
 
 StandardVersionUnavailableAction = Literal[
@@ -394,7 +392,9 @@ def _availability_reason(error: BaseException) -> str | None:
         if current is None or id(current) in visited:
             return None
         visited.add(id(current))
-        if isinstance(current, LegacyExcelComUnavailableError):
+        if isinstance(current, excel_errors.LegacyExcelCleanupError):
+            return None
+        if isinstance(current, excel_errors.LegacyExcelComUnavailableError):
             return "standard_version_runtime_unavailable"
         if isinstance(current, FileNotFoundError):
             return "standard_version_file_missing"

@@ -12,6 +12,7 @@ from backend.application.external_excel_read_service import (
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.infrastructure.storage.repositories import ProjectMatrixDraftRepository
 from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
+    LegacyExcelCleanupError,
     LegacyExcelComUnavailableError,
 )
 from tests.integration.test_matrix_import_method_authority_commit_api import (
@@ -153,6 +154,40 @@ def test_skip_cannot_suppress_integrity_failure(tmp_path: Path) -> None:
         )
         assert response.status_code == 422
         assert "corrupt workbook" in response.json()["detail"]
+        assert _counts(session_factory) == (0, 0)
+    finally:
+        _close(engine)
+
+
+@pytest.mark.parametrize(
+    "unavailable_action",
+    [None, "preserve_imported_methods"],
+)
+@pytest.mark.parametrize("nested_failure_kind", ["permission", "windows"])
+def test_cleanup_integrity_wrapper_is_422_zero_write_without_skip_detail(
+    tmp_path: Path,
+    unavailable_action: str | None,
+    nested_failure_kind: str,
+) -> None:
+    nested: OSError
+    if nested_failure_kind == "permission":
+        nested = PermissionError("cleanup denied")
+    else:
+        nested = OSError("cleanup sharing violation")
+        nested.winerror = 32  # type: ignore[attr-defined]
+    cleanup = LegacyExcelCleanupError("cleanup failed")
+    cleanup.__cause__ = nested
+    authority = _Authority(resource=_resource(), failure=cleanup)
+    client, engine, session_factory = _client(tmp_path, authority)
+    request = _request()
+    if unavailable_action is not None:
+        request["standard_version_unavailable_action"] = unavailable_action
+    try:
+        response = client.post("/api/projects/P1/matrix-import/commit", json=request)
+
+        assert response.status_code == 422
+        assert response.json()["detail"].endswith("cleanup failed")
+        assert "matrix_import_standard_version_action_required" not in response.text
         assert _counts(session_factory) == (0, 0)
     finally:
         _close(engine)
