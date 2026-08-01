@@ -272,8 +272,8 @@ def next_role(event: str, active: dict[str, Any]) -> str:
     return "QA" if "QA" in active["required_gates"] else "Integrator"
 
 
-def transition_id(args: argparse.Namespace, before: str, target_role: str) -> str:
-    facts = {"event": args.event, "task": args.task_id, "lane": args.lane, "primary": args.expected_primary_head, "lane_head": args.expected_lane_head, "evidence": args.evidence_ref, "status": args.evidence_status, "before": before, "next": target_role}
+def transition_id(args: argparse.Namespace, from_state: str, from_role: str, to_state: str, to_role: str) -> str:
+    facts = {"event": args.event, "task": args.task_id, "lane": args.lane, "primary": args.expected_primary_head, "lane_head": args.expected_lane_head, "evidence": args.evidence_ref, "status": args.evidence_status, "from_state": from_state, "from_role": from_role, "to_state": to_state, "to_role": to_role}
     return sha256(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode())
 
 
@@ -284,33 +284,9 @@ def retained_context_digest(control: dict[str, Any]) -> str:
     return canonical_digest(facts)
 
 
-def already_applied(board: Board, args: argparse.Namespace) -> dict[str, Any] | None:
-    last = board.control.get("last_transition")
-    if not isinstance(last, dict) or last.get("event") != args.event:
-        return None
-    expected = {"evidence_ref": args.evidence_ref, "lane_head": args.expected_lane_head, "task_id": args.task_id,
-                "evidence_status": args.evidence_status, "primary_head": args.expected_primary_head,
-                "retained_context_digest": retained_context_digest(board.control)}
-    if any(last.get(key) != value for key, value in expected.items()) or board.control["active"].get("lane") != args.lane:
-        raise Blocked("BLOCKED_DUPLICATE_CONFLICT", "the same event has divergent durable facts")
-    return result("ALREADY_APPLIED", [], board.payload_digest, board.payload_digest, str(last.get("transition_id")), board.control["active"]["role"], [])
-
-
-def validate_plan(board: Board, repo: Path, args: argparse.Namespace) -> tuple[str, str]:
-    if args.event not in EVENTS:
-        raise Blocked("BLOCKED_EVENT_UNKNOWN", "unsupported transition event")
-    prior = already_applied(board, args)
-    if prior:
-        raise Already(prior)
-    current_state, current_role, expected_status, _, _ = EVENTS[args.event]
+def validate_lane_package(board: Board, repo: Path, args: argparse.Namespace, evidence_role: str, evidence_status: str) -> tuple[str, str]:
     active = board.control["active"]
     validate_scope_metadata(repo, active)
-    if args.evidence_status != expected_status:
-        raise Blocked("BLOCKED_EVENT_STATUS_MISMATCH", "event and evidence status differ")
-    if board.control["execution_state"] != current_state or active["role"] != current_role:
-        raise Blocked("BLOCKED_ILLEGAL_TRANSITION", "current state/role cannot consume this event")
-    if board.control["execution_token_owner"] != args.task_id or active["task_id"] != args.task_id or active["lane"] != args.lane:
-        raise Blocked("BLOCKED_AUTHORITY_MISMATCH", "task/lane/token facts differ")
     task_path = repo / "tasks" / f"{args.task_id}.md"
     if not task_path.is_file():
         raise Blocked("BLOCKED_TASK_METADATA", "the exact task file is missing")
@@ -319,14 +295,12 @@ def validate_plan(board: Board, repo: Path, args: argparse.Namespace) -> tuple[s
         raise Blocked("BLOCKED_TASK_METADATA", "approved task gate metadata differs")
     if "QA" not in active["required_gates"] and "QA is not required" not in task_text:
         raise Blocked("BLOCKED_TASK_METADATA", "QA omission lacks immutable approved-task proof")
-    if exact_head(repo) != args.expected_primary_head:
-        raise Blocked("BLOCKED_PRIMARY_HEAD_DRIFT", "primary HEAD differs")
     if active["head_sha"] != args.expected_lane_head:
         raise Blocked("BLOCKED_ACTIVE_HEAD_DRIFT", "board lane HEAD differs")
     lane = Path(active["worktree"]).resolve()
     if not lane.is_dir() or exact_head(lane) != args.expected_lane_head or str(git(lane, "branch", "--show-current")).strip() != active["branch"]:
         raise Blocked("BLOCKED_LANE_GIT_FACTS", "lane branch/worktree/HEAD differs")
-    clean(repo, "BLOCKED_PRIMARY_DIRTY"); clean(lane, "BLOCKED_LANE_DIRTY")
+    clean(lane, "BLOCKED_LANE_DIRTY")
     if subprocess.run(["git", "-C", str(lane), "merge-base", "--is-ancestor", active["base_sha"], args.expected_lane_head]).returncode:
         raise Blocked("BLOCKED_ANCESTRY", "lane HEAD does not descend from base")
     changed = str(git(lane, "diff", "--name-only", f"{active['base_sha']}..{args.expected_lane_head}")).splitlines()
@@ -335,16 +309,77 @@ def validate_plan(board: Board, repo: Path, args: argparse.Namespace) -> tuple[s
     path, commit, expected_hash = parse_evidence_ref(args.evidence_ref)
     if commit != args.expected_lane_head:
         raise Blocked("BLOCKED_EVIDENCE_COMMIT_MISMATCH", "evidence commit must equal lane HEAD")
-    evidence_raw, _ = git_object(lane, commit, path, "BLOCKED_EVIDENCE_MISSING")
+    evidence_raw, evidence_blob = git_object(lane, commit, path, "BLOCKED_EVIDENCE_MISSING")
     if sha256(evidence_raw) != expected_hash:
         raise Blocked("BLOCKED_EVIDENCE_HASH_MISMATCH", "evidence SHA-256 differs")
-    evidence_text = evidence_raw.decode("utf-8")
-    expected_evidence_role = current_role
-    machine = evidence_machine_record(evidence_text)
-    if machine != {"task_id": args.task_id, "role": expected_evidence_role, "status": expected_status}:
+    if evidence_machine_record(evidence_raw.decode("utf-8")) != {"task_id": args.task_id, "role": evidence_role, "status": evidence_status}:
         raise Blocked("BLOCKED_EVIDENCE_CONTENT", "evidence callback facts differ")
+    _, helper_blob = git_object(lane, commit, "scripts/connlab_active_context.py", "BLOCKED_HELPER_ANCESTRY")
+    return evidence_blob, helper_blob
+
+
+def transitioned_control(board: Board, args: argparse.Namespace, target: str, tid: str, evidence_blob: str, helper_blob: str) -> dict[str, Any]:
+    control = copy.deepcopy(board.control); target_state = EVENTS[args.event][3]
+    control["execution_state"] = target_state; control["active"]["role"] = target
+    control["active"]["head_sha"] = args.expected_lane_head; control["active"]["evidence"] = args.evidence_ref
+    control["active"]["last_transition_id"] = tid; control["evidence"] = args.evidence_ref
+    _, evidence_commit, evidence_hash = parse_evidence_ref(args.evidence_ref)
+    entry = {"transition_id": tid, "event": args.event, "task_id": args.task_id, "evidence_ref": args.evidence_ref, "evidence_commit": evidence_commit, "evidence_blob_sha": evidence_blob, "evidence_sha256": evidence_hash, "evidence_status": args.evidence_status, "lane_head": args.expected_lane_head, "primary_head": args.expected_primary_head, "helper_blob_sha": helper_blob, "retained_context_digest": retained_context_digest(control), "from_state": board.control["execution_state"], "from_role": board.control["active"]["role"], "to_state": target_state, "to_role": target}
+    control["last_transition"] = entry; control.setdefault("transition_history", []).append(entry)
+    return control
+
+
+def already_applied(board: Board, repo: Path, args: argparse.Namespace) -> dict[str, Any] | None:
+    last = board.control.get("last_transition")
+    if not isinstance(last, dict) or last.get("event") != args.event:
+        return None
+    expected = {"evidence_ref": args.evidence_ref, "lane_head": args.expected_lane_head, "task_id": args.task_id,
+                "evidence_status": args.evidence_status, "primary_head": args.expected_primary_head,
+                "retained_context_digest": retained_context_digest(board.control)}
+    if any(last.get(key) != value for key, value in expected.items()) or board.control["active"].get("lane") != args.lane:
+        raise Blocked("BLOCKED_DUPLICATE_CONFLICT", "the same event has divergent durable facts")
+    from_state, from_role, expected_status, to_state, _ = EVENTS[args.event]
+    active = board.control["active"]; target = next_role(args.event, active)
+    if board.control["execution_state"] != to_state or active.get("role") != target or active.get("task_id") != args.task_id:
+        raise Blocked("BLOCKED_DUPLICATE_CONFLICT", "durable target state/role facts differ")
+    current = exact_head(repo); parents = str(git(repo, "rev-list", "--parents", "-n", "1", current)).split()
+    if len(parents) != 2 or parents[1] != args.expected_primary_head or str(git(repo, "diff", "--name-only", f"{parents[1]}..{current}")).splitlines() != ["docs/task_board.md"]:
+        raise Blocked("BLOCKED_PRIMARY_HEAD_DRIFT", "current primary is not the committed transition result")
+    clean(repo, "BLOCKED_PRIMARY_DIRTY")
+    evidence_blob, helper_blob = validate_lane_package(board, repo, args, from_role, expected_status)
+    tid = transition_id(args, from_state, from_role, to_state, target)
+    exact = {"transition_id": tid, "evidence_blob_sha": evidence_blob, "helper_blob_sha": helper_blob,
+             "from_state": from_state, "from_role": from_role, "to_state": to_state, "to_role": target}
+    if any(last.get(key) != value for key, value in exact.items()):
+        raise Blocked("BLOCKED_DUPLICATE_CONFLICT", "committed transition proof differs")
+    parent_raw, _ = git_object(repo, parents[1], "docs/task_board.md", "BLOCKED_PRIMARY_HEAD_DRIFT")
+    current_raw, _ = git_object(repo, current, "docs/task_board.md", "BLOCKED_PRIMARY_HEAD_DRIFT")
+    parent = load_rendered(parent_raw); validate_control(parent)
+    if parent.control["execution_state"] != from_state or parent.control["active"].get("role") != from_role or parent.control["active"].get("task_id") != args.task_id or render(parent, transitioned_control(parent, args, target, tid, evidence_blob, helper_blob)) != current_raw:
+        raise Blocked("BLOCKED_PRIMARY_HEAD_DRIFT", "committed board is not the exact transition result")
+    return result("ALREADY_APPLIED", [], board.payload_digest, board.payload_digest, str(last.get("transition_id")), board.control["active"]["role"], [])
+
+
+def validate_plan(board: Board, repo: Path, args: argparse.Namespace) -> tuple[str, str]:
+    if args.event not in EVENTS:
+        raise Blocked("BLOCKED_EVENT_UNKNOWN", "unsupported transition event")
+    prior = already_applied(board, repo, args)
+    if prior:
+        raise Already(prior)
+    current_state, current_role, expected_status, _, _ = EVENTS[args.event]
+    active = board.control["active"]
+    if args.evidence_status != expected_status:
+        raise Blocked("BLOCKED_EVENT_STATUS_MISMATCH", "event and evidence status differ")
+    if board.control["execution_state"] != current_state or active["role"] != current_role:
+        raise Blocked("BLOCKED_ILLEGAL_TRANSITION", "current state/role cannot consume this event")
+    if board.control["execution_token_owner"] != args.task_id or active["task_id"] != args.task_id or active["lane"] != args.lane:
+        raise Blocked("BLOCKED_AUTHORITY_MISMATCH", "task/lane/token facts differ")
+    if exact_head(repo) != args.expected_primary_head:
+        raise Blocked("BLOCKED_PRIMARY_HEAD_DRIFT", "primary HEAD differs")
+    clean(repo, "BLOCKED_PRIMARY_DIRTY")
+    validate_lane_package(board, repo, args, current_role, expected_status)
     target = next_role(args.event, active)
-    return target, transition_id(args, board.payload_digest, target)
+    return target, transition_id(args, current_state, current_role, EVENTS[args.event][3], target)
 
 
 class Already(Exception):
@@ -384,20 +419,10 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         return result("ALLOW_TRANSITION", [], board.payload_digest, None, tid, target, [])
     if args.expected_snapshot_digest != board.payload_digest:
         raise Blocked("BLOCKED_SNAPSHOT_STALE", "expected snapshot digest differs")
-    control = copy.deepcopy(board.control)
-    target_state = EVENTS[args.event][3]
-    control["execution_state"] = target_state
-    control["active"]["role"] = target
-    control["active"]["head_sha"] = args.expected_lane_head
-    control["active"]["evidence"] = args.evidence_ref
-    control["active"]["last_transition_id"] = tid
-    control["evidence"] = args.evidence_ref
-    evidence_path, evidence_commit, evidence_hash = parse_evidence_ref(args.evidence_ref)
-    _, evidence_blob = git_object(Path(control["active"]["worktree"]).resolve(), evidence_commit, evidence_path, "BLOCKED_EVIDENCE_MISSING")
-    _, helper_blob = git_object(Path(control["active"]["worktree"]).resolve(), args.expected_lane_head, "scripts/connlab_active_context.py", "BLOCKED_HELPER_ANCESTRY")
-    entry = {"transition_id": tid, "event": args.event, "task_id": args.task_id, "evidence_ref": args.evidence_ref, "evidence_commit": evidence_commit, "evidence_blob_sha": evidence_blob, "evidence_sha256": evidence_hash, "evidence_status": args.evidence_status, "lane_head": args.expected_lane_head, "primary_head": args.expected_primary_head, "helper_blob_sha": helper_blob, "retained_context_digest": retained_context_digest(control), "from_state": board.control["execution_state"], "from_role": board.control["active"]["role"], "to_state": target_state, "to_role": target}
-    control["last_transition"] = entry
-    control.setdefault("transition_history", []).append(entry)
+    path, commit, _ = parse_evidence_ref(args.evidence_ref); lane = Path(board.control["active"]["worktree"]).resolve()
+    _, evidence_blob = git_object(lane, commit, path, "BLOCKED_EVIDENCE_MISSING")
+    _, helper_blob = git_object(lane, args.expected_lane_head, "scripts/connlab_active_context.py", "BLOCKED_HELPER_ANCESTRY")
+    control = transitioned_control(board, args, target, tid, evidence_blob, helper_blob)
     rendered = render(board, control)
     after_board = load_rendered(rendered)
     validate_control(after_board)
@@ -417,11 +442,12 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
 
 def load_rendered(raw: bytes) -> Board:
     text = raw.decode("utf-8")
-    middle = text.split(BEGIN, 1)[1].split(END, 1)[0]
+    middle_start = text.index(BEGIN) + len(BEGIN); middle_end = text.index(END)
+    middle = text[middle_start:middle_end]
     match = re.search(r"```json\s*(.*?)\s*```", middle, re.S)
     assert match
     payload = match.group(1)
-    return Board(Path(), raw, text, json.loads(payload), sha256(payload.encode()), (0, 0), "\r\n" if b"\r\n" in raw else "\n")
+    return Board(Path(), raw, text, json.loads(payload), sha256(payload.encode()), (middle_start + match.start(1), middle_start + match.end(1)), "\r\n" if b"\r\n" in raw else "\n")
 
 
 def parser() -> argparse.ArgumentParser:

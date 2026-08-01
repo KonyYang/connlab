@@ -11,6 +11,58 @@ import pytest
 from tests.unit.test_connlab_active_context import HELPER, invoke, make_repo
 
 
+def forge_generation_two_authority_archive(fx: dict[str, object]) -> None:
+    repo = Path(fx["repo"]); board = Path(fx["board"])
+    index_path = repo / "docs/archive/task_board_history/index.v1.jsonl"
+    records = [json.loads(line) for line in index_path.read_text(encoding="utf-8").splitlines()]
+    record = records[1]; archive = repo / record["archive_path"]
+    payload = json.loads(archive.read_text(encoding="utf-8"))
+    source = subprocess.run(["git", "-C", str(repo), "show", f"{record['source_commit']}:docs/task_board.md"], check=True, capture_output=True).stdout.decode("utf-8")
+    lines = source.splitlines(keepends=True)
+    protected = [
+        "- `TASK_CURRENT_AUTHORITY`: complete/accepted; current authority must remain.\n",
+        "- `TASK_ACTIVE_AUTHORITY`: complete/accepted; active authority must remain.\n",
+        "- `TASK_QUEUE_AUTHORITY`: complete/accepted; FIFO queue authority must remain.\n",
+        "- `TASK_PAUSE_AUTHORITY`: complete/accepted; paused owner authority must remain.\n",
+        "- `TASK_QF_AUTHORITY`: complete/accepted; Quick Fix owner authority must remain.\n",
+        "- `TASK_PARALLEL_AUTHORITY`: complete/accepted; parallel exception authority must remain.\n",
+        "- `TASK_RESIDUAL_AUTHORITY`: complete/accepted; residual owner authority must remain.\n",
+        "- `TASK_PROPOSAL_AUTHORITY`: complete/accepted; proposal authority must remain.\n",
+    ]
+    insert_at = len(lines)
+    lines.extend(protected)
+    forged_source = "".join(lines)
+    board.write_text(forged_source, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "docs/task_board.md"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-m", "authority-bearing generation two source"], check=True, capture_output=True)
+    source_commit = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    source_blob = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD:docs/task_board.md"], check=True, capture_output=True, text=True).stdout.strip()
+    records_to_remove = [{"line": insert_at + index, "text": text} for index, text in enumerate(protected)]
+    compact_lines = forged_source.splitlines(keepends=True)
+    for item in records_to_remove: compact_lines[item["line"]] = ""
+    compact = "".join(compact_lines).encode()
+    payload = {"schema": "connlab.task-board-history-index", "version": 1, "generation": 2, "archive_mode": "terminal_records", "records": records_to_remove}
+    archive_raw = (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    record.update({
+        "source_commit": source_commit, "source_blob_sha": source_blob,
+        "source_board_sha256": hashlib.sha256(forged_source.encode()).hexdigest(), "source_bytes": len(forged_source.encode()),
+        "source_record_count": 38, "archive_sha256": hashlib.sha256(archive_raw).hexdigest(), "archive_record_count": 8,
+        "compact_board_sha256": hashlib.sha256(compact).hexdigest(), "compact_bytes": len(compact), "compact_record_count": 30,
+        "rollback_sha256": hashlib.sha256(forged_source.encode()).hexdigest(),
+        "moved_record_ids": sorted(line.split("`")[1] for line in protected),
+    })
+    record["archive_path"] = f"docs/archive/task_board_history/generation-000002-{source_commit}.md"
+    old_archive = archive; archive = repo / record["archive_path"]
+    old_archive.unlink(); archive.write_bytes(archive_raw)
+    facts = {"generation": 2, "head": source_commit, "source": record["source_board_sha256"], "archive": record["archive_sha256"], "compact": record["compact_board_sha256"], "previous": record["previous_index_sha256"]}
+    record["plan_digest"] = hashlib.sha256(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    index_path.write_bytes("".join(json.dumps(item, sort_keys=True, separators=(",", ":")) + "\n" for item in records).encode())
+    board.write_bytes(compact)
+    subprocess.run(["git", "-C", str(repo), "add", "docs/task_board.md", "docs/archive/task_board_history"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-m", "forged canonical authority archive"], check=True, capture_output=True)
+    fx["head"] = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+
 def commit_next_closeout(fx: dict[str, object], generation: int) -> None:
     repo = Path(fx["repo"])
     board = Path(fx["board"])
@@ -140,3 +192,18 @@ def test_history_directory_junction_is_rejected_before_any_write(tmp_path: Path)
     before = board.read_bytes(); code, result = invoke(fx, "plan-maintenance")
     assert code != 0 and "BLOCKED_ARCHIVE_PATH" in result["reason_codes"]
     assert board.read_bytes() == before and not any(outside.iterdir())
+
+
+def test_recomputed_generation_two_cannot_archive_authority_lines_before_generation_three(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path); repo = Path(fx["repo"])
+    assert invoke(fx, "apply-maintenance")[0] == 0
+    subprocess.run(["git", "-C", str(repo), "add", "docs/task_board.md", "docs/archive/task_board_history"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-m", "generation one"], check=True, capture_output=True)
+    commit_next_closeout(fx, 2); assert invoke(fx, "apply-maintenance")[0] == 0
+    subprocess.run(["git", "-C", str(repo), "add", "docs/task_board.md", "docs/archive/task_board_history"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-m", "generation two"], check=True, capture_output=True)
+    forge_generation_two_authority_archive(fx)
+    before = Path(fx["board"]).read_bytes()
+    code, result = invoke(fx, "plan-maintenance")
+    assert code != 0 and "BLOCKED_ARCHIVE_CORRUPT" in result["reason_codes"], result
+    assert Path(fx["board"]).read_bytes() == before

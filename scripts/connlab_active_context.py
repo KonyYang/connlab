@@ -21,6 +21,7 @@ INDEX_VERSION = 1
 ARCHIVE_PATTERN = re.compile(r"docs/archive/task_board_history/generation-(\d{6})-([0-9a-f]{40})\.md")
 TERMINAL = re.compile(r"^\s*- `(?:TASK_|RELEASE_|CONNLAB_).+?:.*\b(complete|completed|accepted|cancelled|superseded|closed|frozen|historical)\b", re.I)
 ACTIVE_STATUS = re.compile(r"planned|proposed|queued|implementation_running|gate_running|paused_preempted|quick_fix_running|reconciling", re.I)
+AUTHORITY_LINE = re.compile(r"\b(current|active|queue|paused|Quick Fix|parallel exception|residual|proposal)\b", re.I)
 MAX_LINES = 400
 MAX_BYTES = 65_536
 MAX_TERMINAL = 24
@@ -51,11 +52,12 @@ class MaintenancePlan:
     plan_digest: str
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
-
-
 def context_digest(control: dict[str, Any]) -> str:
     active = control.get("active") or {}; facts = {key: control.get(key) for key in ("execution_token_owner", "queue", "paused", "quick_fix", "residuals", "parallel_exception")}
     facts["active"] = {key: active.get(key) for key in ("task_id", "lane", "branch", "worktree", "base_sha", "locked_paths", "required_gates", "scope_contract_ref", "may_touch_digest", "locked_paths_digest")}
+    return digest(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode())
+def transition_digest(entry: dict[str, Any], lane: str) -> str:
+    facts = {"event": entry["event"], "task": entry["task_id"], "lane": lane, "primary": entry["primary_head"], "lane_head": entry["lane_head"], "evidence": entry["evidence_ref"], "status": entry["evidence_status"], "from_state": entry["from_state"], "from_role": entry["from_role"], "to_state": entry["to_state"], "to_role": entry["to_role"]}
     return digest(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode())
 def git(repo: Path, *args: str) -> str:
     done = subprocess.run(["git", "-C", str(repo), *args], check=False, capture_output=True, text=True)
@@ -96,8 +98,6 @@ def parse_snapshot(raw: bytes) -> Snapshot:
     return Snapshot(raw, text, control, len(text.splitlines()), len(raw), terminal)
 def is_terminal_line(line: str) -> bool:
     return bool(TERMINAL.search(line)) and not bool(ACTIVE_STATUS.search(line))
-
-
 def load_snapshot(repo: Path) -> Snapshot:
     board = repo / "docs" / "task_board.md"
     if not board.is_file():
@@ -105,8 +105,6 @@ def load_snapshot(repo: Path) -> Snapshot:
     return parse_snapshot(board.read_bytes())
 def threshold(snapshot: Snapshot) -> bool:
     return snapshot.lines > MAX_LINES or snapshot.bytes > MAX_BYTES or snapshot.terminal_records > MAX_TERMINAL
-
-
 def index_records(repo: Path) -> tuple[list[dict[str, Any]], bytes]:
     path = repo / INDEX_PATH
     ensure_safe_history_path(repo, path)
@@ -146,11 +144,7 @@ def index_records(repo: Path) -> tuple[list[dict[str, Any]], bytes]:
     if prefix != raw:
         raise Blocked("BLOCKED_INDEX_CORRUPT", "index is not canonical JSONL")
     return records, raw
-def record_ids(snapshot: Snapshot) -> tuple[list[str], list[str]]:
-    moved = []
-    for line in snapshot.text.splitlines():
-        match = re.match(r"^\s*- `((?:TASK_|RELEASE_|CONNLAB_)[^`]+)`", line)
-        if match and is_terminal_line(line): moved.append(match.group(1))
+def authority_ids(snapshot: Snapshot) -> list[str]:
     authority: set[str] = set()
     active = snapshot.control.get("active")
     if isinstance(active, dict): authority.add(str(active.get("task_id", "")))
@@ -159,7 +153,15 @@ def record_ids(snapshot: Snapshot) -> tuple[list[str], list[str]]:
         item = snapshot.control.get(name)
         if isinstance(item, dict): authority.update(str(value) for key, value in item.items() if "task_id" in key)
     for item in snapshot.control.get("residuals", []): authority.add(str(item.get("task_id", "")))
-    return sorted(set(moved)), sorted(value for value in authority if value)
+    return sorted(value for value in authority if value)
+def terminal_eligible(snapshot: Snapshot, line: str) -> bool:
+    return is_terminal_line(line) and not AUTHORITY_LINE.search(line) and not any(identifier in line for identifier in authority_ids(snapshot))
+def record_ids(snapshot: Snapshot) -> tuple[list[str], list[str]]:
+    moved = []
+    for line in snapshot.text.splitlines():
+        match = re.match(r"^\s*- `((?:TASK_|RELEASE_|CONNLAB_)[^`]+)`", line)
+        if match and terminal_eligible(snapshot, line): moved.append(match.group(1))
+    return sorted(set(moved)), authority_ids(snapshot)
 def moved_ids(mode: str, archive_raw: bytes, source: Snapshot) -> list[str]:
     if mode == "full_board": return record_ids(source)[0]
     payload = json.loads(archive_raw.decode("utf-8")); moved = []
@@ -189,6 +191,8 @@ def validate_generation_record(repo: Path, record: dict[str, Any], archive_raw: 
         for item in payload["records"]:
             if not isinstance(item, dict) or set(item) != {"line", "text"} or not isinstance(item["line"], int) or item["line"] in seen or item["line"] < 0 or item["line"] >= len(lines) or lines[item["line"]] != item["text"]:
                 raise Blocked("BLOCKED_ARCHIVE_CORRUPT", "incremental archive record differs")
+            if not terminal_eligible(source, item["text"].rstrip("\r\n")):
+                raise Blocked("BLOCKED_ARCHIVE_CORRUPT", "incremental archive record carries non-terminal authority")
             seen.add(item["line"]); lines[item["line"]] = ""
         compact = "".join(lines).encode("utf-8"); archived_count = len(seen)
     else: raise Blocked("BLOCKED_INDEX_CORRUPT", "archive mode is invalid")
@@ -233,7 +237,7 @@ def first_compaction(snapshot: Snapshot, archive_path: str) -> bytes:
 
 def incremental_compaction(snapshot: Snapshot, generation: int) -> tuple[bytes, bytes, int]:
     lines = snapshot.text.splitlines(keepends=True)
-    eligible = [index for index, line in enumerate(lines) if is_terminal_line(line.rstrip("\r\n"))]
+    eligible = [index for index, line in enumerate(lines) if terminal_eligible(snapshot, line.rstrip("\r\n"))]
     if not eligible:
         raise Blocked("BLOCKED_NO_ELIGIBLE_HISTORY", "budgets exceeded without terminal detail")
     removed: list[dict[str, Any]] = []
@@ -249,8 +253,6 @@ def incremental_compaction(snapshot: Snapshot, generation: int) -> tuple[bytes, 
     payload = {"schema": INDEX_SCHEMA, "version": INDEX_VERSION, "generation": generation, "archive_mode": "terminal_records", "records": removed}
     archive = (json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
     return compact, archive, len(removed)
-
-
 def build_plan(repo: Path, expected_head: str, expected_board_hash: str) -> MaintenancePlan | None:
     source = load_snapshot(repo)
     head = git(repo, "rev-parse", "HEAD")
@@ -285,8 +287,6 @@ def plan_result(plan: MaintenancePlan | None, snapshot: Snapshot) -> dict[str, A
     if plan is None:
         return {"decision": "NO_MAINTENANCE_REQUIRED", "reason_codes": [], "zero_write": True, "generation": None, "plan_digest": None, "archive_path": None, "changed_paths": [], "metrics": metrics}
     return {"decision": "MAINTENANCE_REQUIRED", "reason_codes": [], "zero_write": True, "generation": plan.generation, "plan_digest": plan.plan_digest, "archive_path": plan.archive_path, "changed_paths": [], "metrics": metrics, "compact_metrics": {"lines": parse_snapshot(plan.compact).lines, "bytes": len(plan.compact), "terminal_records": parse_snapshot(plan.compact).terminal_records}}
-
-
 def validate_apply_authority(repo: Path, plan: MaintenancePlan) -> None:
     control = plan.source.control
     active = control.get("active")
@@ -304,20 +304,23 @@ def validate_apply_authority(repo: Path, plan: MaintenancePlan) -> None:
         matches = [item for item in history if item.get("event") == event]
         if len(matches) != 1: raise Blocked("BLOCKED_MAINTENANCE_GATES", "required transition evidence is missing or ambiguous")
         selected.append(matches[0])
-    order = {"DEVELOPER_READY": ("Developer", "ready_for_review"), "REVIEWER_PASS": ("Reviewer", "reviewer_pass"), "QA_PASS": ("QA", "qa_pass")}
+    order = {"DEVELOPER_READY": ("implementation_running", "Developer", "gate_running", "Reviewer", "ready_for_review"), "REVIEWER_PASS": ("gate_running", "Reviewer", "gate_running", "QA" if "QA" in active.get("required_gates", []) else "Integrator", "reviewer_pass"), "QA_PASS": ("gate_running", "QA", "gate_running", "Integrator", "qa_pass")}
     heads: dict[str, str] = {}
+    current_helper = git(repo, "rev-parse", f"{plan.source_head}:scripts/connlab_active_context.py")
     required_fields = {"transition_id", "event", "task_id", "evidence_ref", "evidence_commit", "evidence_blob_sha", "evidence_sha256", "evidence_status", "lane_head", "primary_head", "helper_blob_sha", "retained_context_digest", "from_state", "from_role", "to_state", "to_role"}
     for entry in selected:
         if not required_fields.issubset(entry) or entry["task_id"] != active["task_id"]: raise Blocked("BLOCKED_MAINTENANCE_GATES", "transition entry is incomplete")
         path, commit, expected = parse_ref(str(entry["evidence_ref"])); raw = git_bytes(repo, commit, path)
-        role, status = order[entry["event"]]
+        from_state, role, to_state, to_role, status = order[entry["event"]]
         if (commit != entry["evidence_commit"] or expected != entry["evidence_sha256"] or digest(raw) != expected or
                 git(repo, "rev-parse", f"{commit}:{path}") != entry["evidence_blob_sha"] or entry["evidence_status"] != status or
                 parse_machine(raw.decode("utf-8")) != (active["task_id"], role, status) or entry["lane_head"] != commit or
-                entry["retained_context_digest"] != context_digest(control) or subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", entry["primary_head"], plan.source_head]).returncode):
+                (entry["from_state"], entry["from_role"], entry["to_state"], entry["to_role"]) != (from_state, role, to_state, to_role) or
+                entry["transition_id"] != transition_digest(entry, active["lane"]) or entry["retained_context_digest"] != context_digest(control) or
+                subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", entry["primary_head"], plan.source_head]).returncode):
             raise Blocked("BLOCKED_MAINTENANCE_GATES", "transition evidence facts differ")
         helper_blob = git(repo, "rev-parse", f"{entry['lane_head']}:scripts/connlab_active_context.py")
-        if helper_blob != entry["helper_blob_sha"]: raise Blocked("BLOCKED_HELPER_ANCESTRY", "accepted helper checkpoint differs")
+        if helper_blob != entry["helper_blob_sha"] or entry["event"] in {"REVIEWER_PASS", "QA_PASS"} and helper_blob != current_helper: raise Blocked("BLOCKED_HELPER_ANCESTRY", "accepted helper checkpoint differs")
         heads[entry["event"]] = entry["lane_head"]
     chain = [heads["DEVELOPER_READY"], heads["REVIEWER_PASS"]] + ([heads["QA_PASS"]] if "QA_PASS" in heads else [])
     if any(subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", prior, current]).returncode for prior, current in zip(chain, chain[1:])):

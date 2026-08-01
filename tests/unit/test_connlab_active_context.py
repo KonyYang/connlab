@@ -51,6 +51,17 @@ def context_digest(control: dict[str, object]) -> str:
     return hashlib.sha256(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def transition_digest(entry: dict[str, object], lane: str) -> str:
+    facts = {
+        "event": entry["event"], "task": entry["task_id"], "lane": lane,
+        "primary": entry["primary_head"], "lane_head": entry["lane_head"],
+        "evidence": entry["evidence_ref"], "status": entry["evidence_status"],
+        "from_state": entry["from_state"], "from_role": entry["from_role"],
+        "to_state": entry["to_state"], "to_role": entry["to_role"],
+    }
+    return hashlib.sha256(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def make_repo(tmp_path: Path, *, terminal_count: int = 30, filler_lines: int = 430) -> dict[str, object]:
     repo = tmp_path / "repo"
     repo.mkdir(parents=True)
@@ -82,8 +93,8 @@ def make_repo(tmp_path: Path, *, terminal_count: int = 30, filler_lines: int = 4
         raw = subprocess.run(["git", "-C", str(repo), "show", f"{gate_head}:{path}"], check=True, capture_output=True).stdout
         evidence_blob = git(repo, "rev-parse", f"{gate_head}:{path}")
         helper_blob = git(repo, "rev-parse", f"{gate_head}:scripts/connlab_active_context.py")
-        return {
-            "transition_id": hashlib.sha256(event.encode()).hexdigest(), "event": event,
+        entry = {
+            "transition_id": "pending", "event": event,
             "task_id": FIRST_TASK, "evidence_ref": f"{path}@{gate_head}#{hashlib.sha256(raw).hexdigest()}",
             "evidence_commit": gate_head, "evidence_blob_sha": evidence_blob,
             "evidence_sha256": hashlib.sha256(raw).hexdigest(), "evidence_status": status,
@@ -92,6 +103,8 @@ def make_repo(tmp_path: Path, *, terminal_count: int = 30, filler_lines: int = 4
             "from_state": "implementation_running" if from_role == "Developer" else "gate_running",
             "from_role": from_role, "to_state": "gate_running", "to_role": to_role,
         }
+        entry["transition_id"] = transition_digest(entry, "task-governance-active-context-deterministic-transition-and-event-handoff")
+        return entry
     control: dict[str, object] = {
         "schema": "connlab.execution-control", "version": 1, "wip_limit": 1,
         "execution_token_owner": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
@@ -310,6 +323,34 @@ def test_gate_evidence_mismatch_matrix_is_zero_write(tmp_path: Path, field: str,
     git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", "gate evidence drift"); fx["head"] = git(repo, "rev-parse", "HEAD")
     before = board.read_bytes(); code, result = invoke(fx, "apply-maintenance")
     assert code != 0 and set(result["reason_codes"]) & {"BLOCKED_MAINTENANCE_GATES", "BLOCKED_HELPER_ANCESTRY"}
+    assert board.read_bytes() == before
+
+
+def test_gate_tuple_and_transition_id_must_be_exact_and_zero_write(tmp_path: Path) -> None:
+    for name, mutate in (
+        ("tuple", lambda entry: entry.update({"from_role": "Quick Fixer", "to_role": "Developer"})),
+        ("transition-id", lambda entry: entry.update({"transition_id": "f" * 64})),
+    ):
+        fx = make_repo(tmp_path / name); repo = Path(fx["repo"]); board = Path(fx["board"])
+        control = json.loads(board.read_text(encoding="utf-8").split(BEGIN, 1)[1].split(END, 1)[0].split("```json", 1)[1].rsplit("```", 1)[0])
+        entry = control["transition_history"][1]; mutate(entry)
+        if name == "tuple":
+            entry["transition_id"] = transition_digest(entry, control["active"]["lane"])
+        board.write_text(board_text(control, 30, 430), encoding="utf-8")
+        git(repo, "add", "docs/task_board.md"); git(repo, "commit", "-m", f"forged {name}"); fx["head"] = git(repo, "rev-parse", "HEAD")
+        before = board.read_bytes(); code, result = invoke(fx, "apply-maintenance")
+        assert code != 0 and "BLOCKED_MAINTENANCE_GATES" in result["reason_codes"]
+        assert board.read_bytes() == before
+
+
+def test_post_qa_unreviewed_helper_drift_is_zero_write(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path); repo = Path(fx["repo"]); board = Path(fx["board"])
+    helper = repo / "scripts/connlab_active_context.py"
+    helper.write_text(helper.read_text(encoding="utf-8") + "\n# unreviewed helper drift\n", encoding="utf-8")
+    git(repo, "add", "scripts/connlab_active_context.py"); git(repo, "commit", "-m", "post-QA helper drift")
+    fx["head"] = git(repo, "rev-parse", "HEAD")
+    before = board.read_bytes(); code, result = invoke(fx, "apply-maintenance")
+    assert code != 0 and "BLOCKED_HELPER_ANCESTRY" in result["reason_codes"]
     assert board.read_bytes() == before
 
 

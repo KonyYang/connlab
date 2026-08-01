@@ -5,7 +5,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from tests.unit.test_connlab_execution_transition import HELPER, fixture, run
+from tests.unit.test_connlab_execution_transition import HELPER, commit_applied_transition, fixture, run
 
 
 def test_stale_snapshot_and_dirty_primary_are_zero_write(tmp_path: Path) -> None:
@@ -51,3 +51,27 @@ def test_missing_evidence_blob_fails_closed(tmp_path: Path) -> None:
 
     assert code != 0
     assert "BLOCKED_EVIDENCE_MISSING" in result["reason_codes"]
+
+
+def test_duplicate_rejects_later_primary_commit_and_dirty_lane(tmp_path: Path) -> None:
+    later = fixture(tmp_path / "later")
+    assert run(later, "apply")[0] == 0
+    commit_applied_transition(later)
+    repo = Path(later["repo"])
+    (repo / "later.txt").write_text("later primary fact\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "later.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-m", "later primary commit"], check=True, capture_output=True)
+    before = (repo / "docs/task_board.md").read_bytes()
+    code, result = run(later, "apply")
+    assert code != 0 and "BLOCKED_PRIMARY_HEAD_DRIFT" in result["reason_codes"]
+    assert (repo / "docs/task_board.md").read_bytes() == before
+
+    dirty = fixture(tmp_path / "dirty-lane")
+    assert run(dirty, "apply")[0] == 0
+    commit_applied_transition(dirty)
+    lane = Path(dirty["lane"])
+    (lane / "dirty.txt").write_text("dirty lane fact\n", encoding="utf-8")
+    before = (Path(dirty["repo"]) / "docs/task_board.md").read_bytes()
+    code, result = run(dirty, "apply")
+    assert code != 0 and "BLOCKED_LANE_DIRTY" in result["reason_codes"]
+    assert (Path(dirty["repo"]) / "docs/task_board.md").read_bytes() == before

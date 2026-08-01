@@ -165,6 +165,13 @@ def run(fx: dict[str, object], command: str, **overrides: str) -> tuple[int, dic
     return completed.returncode, json.loads(completed.stdout)
 
 
+def commit_applied_transition(fx: dict[str, object]) -> str:
+    repo = Path(fx["repo"])
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "commit deterministic transition")
+    return git(repo, "rev-parse", "HEAD")
+
+
 def test_developer_ready_plan_is_zero_write_and_apply_changes_only_board(tmp_path: Path) -> None:
     fx = fixture(tmp_path)
     board = Path(fx["repo"]) / "docs" / "task_board.md"
@@ -188,8 +195,9 @@ def test_developer_ready_plan_is_zero_write_and_apply_changes_only_board(tmp_pat
     assert after["active"]["locked_paths"] == preserved["active"]["locked_paths"]
     assert applied["before_digest"] != applied["after_digest"]
 
+    commit_applied_transition(fx)
     code, repeated = run(fx, "apply")
-    assert code == 0 and repeated["decision"] == "ALREADY_APPLIED"
+    assert code == 0 and repeated["decision"] == "ALREADY_APPLIED", json.dumps(repeated)
     assert repeated["changed_paths"] == []
 
 
