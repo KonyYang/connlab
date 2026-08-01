@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `planned_pending_user_approval`
+Status: `approval_recorded_pending_token`
 
 Date: 2026-08-01
 
@@ -15,6 +15,18 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   token, active, queue, paused, Quick Fix, and parallel records are empty.
 - This revision made no execution/lane/worktree/token/queue/role/product/remote/runtime change.
 - The original umbrella is `superseded_by_split_plans`; A is the first approval-eligible package.
+
+## User Approval Record
+
+- On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
+  Developer -> Reviewer -> mandatory QA -> local Integrator acceptance.
+- Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
+- Task B was not approved and remains serially blocked. The umbrella remains non-executable.
+- This approval-base commit intentionally precedes token acquisition so the future worktree base
+  can contain the approved Task/Plan/Evidence. The following primary governance commit must pin
+  this commit's exact SHA before Orchestrator runs Create.
+- No worktree/branch/token/queue/dispatch/live migration/product/remote/runtime action occurs in
+  this approval-base commit.
 
 ## Sources Read
 
@@ -62,8 +74,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- User approval, approval/worktree base, implementation commits, final archive/index hashes,
-  after-size metrics, and measured pilot duration.
+- Exact approval-base SHA until this commit exists, implementation commits, final archive/index
+  hashes, after-size metrics, and measured pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -75,7 +87,8 @@ These are future execution outputs and do not alter scope. No blocking planning 
 - No active or parallel owner conflicts with the planned paths.
 - The planned branch/worktree identity is exact; creation base is intentionally the future
   approval-governance HEAD and must be recorded before Create.
-- Status is ready for User review only, not implementation.
+- User approval is recorded. The next governance step is exact approval-base pinning and sole-token
+  acquisition for worktree creation; implementation is not yet dispatched.
 
 ## Risk And Mitigation
 
@@ -89,5 +102,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return Task A to User review. Do not approve, activate, queue, create a worktree, dispatch a role,
-or run live maintenance.
+Commit this approval base, then record its exact SHA and acquire the sole token in primary
+governance. Do not create the worktree, dispatch Developer, or run live maintenance here.

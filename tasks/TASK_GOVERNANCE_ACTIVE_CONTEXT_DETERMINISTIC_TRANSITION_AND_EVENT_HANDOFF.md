@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `planned_pending_user_approval`
+Status: `approved`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -8,15 +8,30 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: permanent Planner. Next gate: explicit User approval.
+Owner at this gate: permanent Planner approval governance. Next gate: Orchestrator worktree
+creation after the exact approval-base SHA is pinned in primary execution authority.
 
 ## Approval Boundary
 
-This is planning-only. It does not activate the task, acquire/queue an execution token, create a
-branch/worktree, run live board compaction, or dispatch Developer. After exact User approval it
-requires one isolated WIP=`1` lane and independent Developer, Reviewer, mandatory QA, and
-Integrator gates. No push, publication, restart, destructive cleanup, or parallel exception is
-authorized.
+The User explicitly approved Task A only and authorized automatic execution through local
+Integrator acceptance. This approval does not approve Task B or revive the superseded umbrella.
+The current approval-base commit does not create a branch/worktree, run live board compaction, or
+dispatch Developer. A following primary governance commit must pin this approval-base SHA, acquire
+the sole WIP=`1` token in `implementation_running/Developer`, and authorize Orchestrator worktree
+creation. Independent Reviewer, mandatory QA, and Integrator gates remain required. No push,
+publication, restart, destructive cleanup, or parallel exception is authorized.
+
+## User Approval And Activation Boundary
+
+- Approval source: direct User approval recorded by permanent Orchestrator on 2026-08-01.
+- Approved scope: this exact Task A and its plan at primary
+  `d791e74a9811033058c38ee329bb3be8ee1f6504`.
+- Authorized automatic route: isolated Developer -> Reviewer -> mandatory QA -> local Integrator
+  acceptance, including bounded fixes inside the frozen scope.
+- Worktree creation is the next topology action after the exact approval-base commit is pinned.
+- Developer is not dispatched by this approval-base commit.
+- Task B remains `planned_pending_user_approval`, serially blocked until A local acceptance and
+  separate User approval. The umbrella remains `superseded_by_split_plans` and non-executable.
 
 ## Goal
 
@@ -260,13 +275,15 @@ Missing a safety or quantitative target blocks Integrator acceptance.
 - Sibling worktree:
   `D:\PythonProject\connlab-worktrees\task-governance-active-context-deterministic-transition-and-event-handoff`
 - Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
-- Worktree creation base: future exact approval-governance HEAD, recorded before Create.
+- Worktree creation base: this approval-base commit; its full SHA is pinned by the immediately
+  following token/worktree-preparation governance commit before Create.
 - Route: User approval -> isolated Developer -> independent Reviewer -> mandatory QA -> Integrator.
 - Developer hands off a clean exact-path commit; Reviewer performs a full review (A cannot optimize
   its own gate); QA validates final reviewed HEAD and disposable migration/recovery cases;
   Integrator alone merges and runs the guarded first production migration before token release.
 
-No branch/worktree exists or is authorized at this planning gate.
+No branch/worktree exists at this approval-base gate. Only the following exact primary governance
+transition may authorize its creation; Developer dispatch remains later.
 
 ## Compatibility And Rollback
 
@@ -280,5 +297,5 @@ No branch/worktree exists or is authorized at this planning gate.
 
 ## Stop Point
 
-Return this exact Task/Plan/Evidence to User. Do not approve, activate, queue, create a worktree, or
-dispatch implementation.
+Commit the approval base, then pin its exact SHA and acquire the sole token for worktree creation.
+Do not create the worktree, dispatch Developer, run live migration, or perform Task B work here.

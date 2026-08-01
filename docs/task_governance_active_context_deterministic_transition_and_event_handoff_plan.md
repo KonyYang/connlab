@@ -1,10 +1,21 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `planned_pending_user_approval`
+Status: `approved`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
 Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
+
+## Approval And Activation Record
+
+- The User explicitly approved Task A only on 2026-08-01 and authorized the exact automatic route
+  `Developer -> Reviewer -> mandatory QA -> local Integrator acceptance`.
+- Approved planning HEAD: `d791e74a9811033058c38ee329bb3be8ee1f6504`.
+- This commit is the immutable approval base. Its full SHA is pinned by the immediately following
+  primary token/worktree-preparation governance commit before Create.
+- No worktree or branch is created and Developer is not dispatched in this approval-base step.
+- Task B remains planned and cannot be approved or implemented before A local acceptance and a
+  separate User approval. The umbrella remains permanently non-executable.
 
 ## 1. Outcome And Architecture
 
@@ -54,8 +65,8 @@ fail-closed reason codes.
 
 ### Not yet confirmed
 
-- User approval, approval/worktree base, lane commits, final archive/index hashes, exact after-size
-  metrics, and pilot timings.
+- Exact approval-base SHA until this commit exists, lane commits, final archive/index hashes,
+  exact after-size metrics, and pilot timings.
 
 These are execution outputs, not scope ambiguities. Definition of Ready is satisfied for User
 review, not implementation.
@@ -263,5 +274,6 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return the planning package for User approval. Do not begin Step A1 before approval and a fresh
-execution/worktree gate.
+After the approval base is committed, pin its SHA in primary authority and authorize worktree
+creation. Do not begin Step A1 or dispatch Developer until Orchestrator verifies the created clean
+worktree and a fresh implementation gate.
