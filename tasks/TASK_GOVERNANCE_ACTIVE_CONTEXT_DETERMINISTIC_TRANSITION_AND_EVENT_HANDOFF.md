@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `reviewer_regate_ready`
+Status: `integrator_blocked_after_local_merge`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -8,8 +8,26 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: permanent Planner legacy transition governance. Next gate: Orchestrator
-dispatches Reviewer for the full B1-B5 re-gate.
+Owner at this gate: permanent Integrator retains the sole token in `gate_running/Integrator`.
+Next authority: Planner/User must reconcile the fail-closed first live migration blocker; no new
+role or Task B may start.
+
+## Integrator Blocked Checkpoint
+
+- The exact QA lane was merged locally without conflict by non-fast-forward merge
+  `a42ca37e205127afd87d4cdc1d26ede53830522c`; its first-parent delta is the frozen 26-path package.
+- Reviewed `plan-maintenance` returned generation 1 and plan digest
+  `519ee4f53e1887c524d59971b40a0e1749f4911cd2b032a41237584caaacc497` for source-board SHA-256
+  `922532265c3b27363c091ea6eae32420fdcc6c31832d44988bd5296a7cbcf2f6`.
+- The exact `apply-maintenance` handshake failed closed with
+  `BLOCKED_MAINTENANCE_GATES: required transition evidence is missing or ambiguous` and zero
+  writes. The live legacy board has no `transition_history`, while the reviewed helper requires
+  exactly one complete `DEVELOPER_READY`, `REVIEWER_PASS`, and `QA_PASS` entry.
+- No archive/index was created and the source board bytes remained unchanged. Integrator did not
+  synthesize history, weaken the helper, or perform manual migration/rollback.
+- Task A is locally merged but not accepted/complete/pushed. The token remains held; Task B and the
+  umbrella remain unapproved and non-executable. Evidence:
+  `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_integrator.md`.
 
 ## Approval Boundary
 

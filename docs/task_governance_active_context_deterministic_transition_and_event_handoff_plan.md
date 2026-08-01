@@ -1,10 +1,20 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `reviewer_regate_ready`
+Status: `integrator_blocked_after_local_merge`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
 Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
+
+## Integrator Blocked Result
+
+- Conflict-free local merge: `a42ca37e205127afd87d4cdc1d26ede53830522c`.
+- Exact production plan succeeded for generation 1, but exact guarded apply failed closed with
+  `BLOCKED_MAINTENANCE_GATES` because the live legacy board has no required Task A
+  `transition_history` entries.
+- The failure was zero-write: source board unchanged, archive/index absent, token retained, and no
+  acceptance claimed. Planner/User reconciliation is required before retry; Integrator will not
+  invent transition history or alter the frozen helper/contract ad hoc.
 
 ## Approval And Activation Record
 
