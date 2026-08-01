@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `qa_dispatch_ready`
+Status: `integrator_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -167,6 +167,37 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   independently validate the final reviewed HEAD before Integrator. Task B and the umbrella remain
   unchanged and unapproved. The candidate transition helper is not integrated and was not used.
 
+## Final QA Pass To Integrator Legacy Transition Audit
+
+- Primary was reverified clean on
+  `master@62874a215f540666564b51fe595580b083bf587d`, with no `MERGE_HEAD` and valid
+  `gate_running/QA` authority. Legacy production `Inspect` returned `ALLOW_INSPECT`.
+- The exact lane branch/worktree are clean at QA evidence HEAD
+  `e958ba37df216c1690434ed7f9f40d4a436a88c5`. Approved base
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`, final Developer HEAD
+  `1fd726b08b7e49a32341d49e4439c889c4c6ab7b`, and Reviewer pass HEAD
+  `84503d16e2638a827ecd3ef6704d0fe6bfed72ca` are ancestors. The Reviewer-to-QA delta adds only QA
+  evidence; `git diff --check` and final `git show --check` pass.
+- QA evidence at final HEAD has Git blob
+  `49dc936e67a31fd53d616ee0b9e51bc5702819e8`, status `qa_pass`, and `NEXT: Integrator`.
+  QA independently ran the complete `133`-test Task A matrix, focused R1-R3 `4`, generation/
+  rollback, handoff budget, compilation, PowerShell parse, quantitative, exact-package, ancestry,
+  protected-state, and production zero-write gates with no blocker.
+- Exact reviewed/QA/current-helper binding for Integrator is immutable: Reviewer pass commit
+  `84503d16e2638a827ecd3ef6704d0fe6bfed72ca` with evidence blob
+  `165ebfab7f198953539a371c7c56e114ccba6a91`; QA pass commit
+  `e958ba37df216c1690434ed7f9f40d4a436a88c5` with evidence blob
+  `49dc936e67a31fd53d616ee0b9e51bc5702819e8`; and identical reviewed/QA helper blobs
+  `e51a6ef7950c60b6e0b4b6122cc705e7b840413d` for `connlab_active_context.py` and
+  `c20d65b764819f075b27c53e1680564ff584e3b4` for `connlab_execution_transition.py`. No helper
+  drift exists after review or QA.
+- Decision: retain Task A as sole WIP=`1` token owner, keep `gate_running`, change active role to
+  Integrator, and update active HEAD/evidence to the immutable QA pass. This is the legal
+  `gate_running/Integrator` tuple. Integrator alone may now verify, merge, and only after the
+  reviewed/QA package is proven on primary run the guarded first live migration while Task A is
+  still the sole token owner. This Planner transition performs neither merge nor migration. Task B
+  and the umbrella remain unchanged and unapproved; the candidate helper was not used here.
+
 ## User Approval Record
 
 - On 2026-08-01 the User explicitly approved Task A only and authorized automatic isolated
@@ -229,8 +260,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Not yet confirmed
 
-- Final mandatory QA outcome; final accepted archive/index hashes, independently verified
-  after-size metrics, and measured QA pilot duration.
+- Integrator merge/migration/acceptance outcome; final accepted archive/index hashes,
+  independently verified after-size metrics, and measured pilot duration.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -241,8 +272,9 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- User approval and exact approval base are recorded; Task A is the sole token owner, Reviewer
-  passed the final R1-R3 package, and mandatory QA dispatch is ready.
+- User approval and exact approval base are recorded; Task A is the sole token owner, Reviewer and
+  QA passed the final R1-R3 package, helper attestation is immutable, and Integrator dispatch is
+  ready.
 
 ## Risk And Mitigation
 
@@ -256,5 +288,5 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `qa_dispatch_ready` to Orchestrator. Do not dispatch QA, edit the lane, run live
-maintenance/migration, or perform Task B work in this Planner turn.
+Return `integrator_dispatch_ready` to Orchestrator. Do not dispatch Integrator, edit the lane,
+merge, run live maintenance/migration, or perform Task B work in this Planner turn.
