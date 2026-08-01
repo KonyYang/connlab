@@ -1,6 +1,6 @@
 # TASK_368E Planner Discovery Evidence
 
-Status: `developer_dispatch_ready`
+Status: `reviewer_dispatch_ready`
 
 Date: 2026-08-01
 
@@ -12,6 +12,30 @@ Approval input HEAD: `5dff98af9d0f93770962a9a672d7610d0cef4936`
 
 Worktree creation authority base/initial HEAD:
 `e226bf1e54db4de54eb2366e96895999ce54652d`
+
+## Reviewer Gate Transition Audit
+
+- Primary was reverified clean on `master@5432cf3d52078d6e9075fa05cb784c67a44457d8`
+  with no `MERGE_HEAD`.
+- Lane branch/worktree are exact and clean at final Developer/evidence HEAD
+  `bb9734830b41c3a86c1cd5542d34a0832cd990d4`; base is
+  `e226bf1e54db4de54eb2366e96895999ce54652d` and implementation checkpoint is
+  `9cd39e2dc5e8b50f23fd3e3202913a96019d4999`.
+- Ancestry is continuous `base -> implementation -> evidence`; both lane commits pass
+  `git show --check`.
+- Programmatic allowlist comparison returned expected `18`, actual `18`, missing `0`, unexpected
+  `0`: the 17 exact locked product/test paths plus Developer evidence only.
+- Developer evidence status is `ready_for_review` and records passing bounded/compatibility/build/
+  compile checks. Planner does not substitute those claims for Reviewer assessment.
+- Developer claims two baseline-only debts that Reviewer must independently reproduce and classify:
+  1. full legacy `tests/unit/test_frontend_shell_files.py` reports `134 passed, 28 failed`, claimed
+     stale and outside TASK_368E changed hunks, while the exact TASK_368E Settings node passes;
+  2. `test_confirm_first_authority_initializes_default_fee_authority` is claimed broken at the lane
+     base because its fake omits already-required `method_authority_sync`.
+- Neither debt is waived or accepted by this transition. Any task-caused failure, non-baseline
+  behavior, or insufficient proof is blocking and returns to Developer/Planner.
+- Decision: retain TASK_368E as sole token owner, set state `gate_running`, role `Reviewer`, final
+  HEAD and Developer evidence in the active record, and route to permanent Reviewer.
 
 ## Physical Worktree And Dispatch Audit
 
@@ -197,10 +221,10 @@ are complete; read-only dispatch gate is `ALLOW_DISPATCH`.
 
 ## Gate And Next Role
 
-- Status is `developer_dispatch_ready`.
-- TASK_368E is the sole token owner; schema state is `implementation_running`, and the exact
-  Developer active record matches the verified clean physical worktree.
-- Next legal role: permanent Developer, dispatched by Orchestrator to the exact worktree.
+- Status is `reviewer_dispatch_ready`.
+- TASK_368E is the sole token owner; schema state is `gate_running`, and the exact Reviewer active
+  record points to final Developer HEAD and Developer evidence.
+- Next legal role: permanent Reviewer, dispatched by Orchestrator against exact base..HEAD.
 
 ## Prohibited In This Pass
 

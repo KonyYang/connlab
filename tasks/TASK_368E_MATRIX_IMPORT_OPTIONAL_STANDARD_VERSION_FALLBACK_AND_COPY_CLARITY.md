@@ -1,13 +1,13 @@
 # TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY
 
-Status: `developer_dispatch_ready`
+Status: `reviewer_dispatch_ready`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Current gate owner: permanent Orchestrator for exact permanent Developer dispatch. TASK_368E holds
-the sole execution token with schema state `implementation_running` and role `Developer`. The exact
-branch/worktree now exist and are registered clean at base/HEAD
-`e226bf1e54db4de54eb2366e96895999ce54652d`; no product/test change has started.
+Current gate owner: permanent Orchestrator for exact permanent Reviewer dispatch. TASK_368E retains
+the sole execution token with schema state `gate_running` and role `Reviewer`. The clean lane final
+HEAD is `bb9734830b41c3a86c1cd5542d34a0832cd990d4` over base
+`e226bf1e54db4de54eb2366e96895999ce54652d`.
 
 ## User Approval Record
 
@@ -20,9 +20,9 @@ branch/worktree now exist and are registered clean at base/HEAD
   lanes.
 - Approval preserves WIP=`1`, the exact May Touch/Must Not Touch/Locked Paths, positive
   availability allowlist, integrity fail-closed boundary, UX copy, and all acceptance tests.
-- Current durable state is `developer_dispatch_ready`. Orchestrator verified the exact physical
-  branch/worktree/base/HEAD and clean worktree/index. Production-root `ImplementationDispatch`
-  returns `ALLOW_DISPATCH`; permanent Developer is the next legal role.
+- Current durable state is `reviewer_dispatch_ready`. Developer implementation checkpoint is
+  `9cd39e2dc5e8b50f23fd3e3202913a96019d4999`; final Developer evidence HEAD is
+  `bb9734830b41c3a86c1cd5542d34a0832cd990d4`, with exact authorized paths and clean worktree/index.
 
 ## Goal
 
@@ -240,10 +240,24 @@ authority ambiguity returns to Planner/User.
 - WIP: `1`; no parallel exception.
 
 The branch/worktree are registered exactly as planned at the recorded creation base/initial HEAD,
-with worktree and index clean. The timed Create command must not be rerun. The exact locks are now
-owned by TASK_368E through Developer and the mandatory Reviewer/QA/Integrator gates.
+and are now clean at final Developer/evidence HEAD `bb9734830b41c3a86c1cd5542d34a0832cd990d4`.
+The timed Create command must not be rerun. The exact locks remain owned by TASK_368E through the
+mandatory Reviewer/QA/Integrator gates.
+
+## Reviewer Handoff
+
+- Review exact `e226bf1e54db4de54eb2366e96895999ce54652d..bb9734830b41c3a86c1cd5542d34a0832cd990d4` only.
+- Developer evidence:
+  `docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_developer.md`.
+- Package is exactly the 17 locked product/test paths plus Developer evidence.
+- Independently verify, do not assume or waive, Developer's two baseline-only debt claims:
+  legacy `test_frontend_shell_files.py` `134 passed, 28 failed` outside TASK_368E hunks, and
+  base-broken `test_confirm_first_authority_initializes_default_fee_authority` due to the fake
+  omitting required `method_authority_sync`.
+- Any task-caused failure, scope drift, authority ambiguity, or unproven debt claim is blocking and
+  returns to Developer/Planner. A pass routes to mandatory QA.
 
 ## Stop Point
 
-Return to permanent Orchestrator to dispatch permanent Developer to the exact worktree. Planner
-must not edit the lane or product/test code in this governance pass.
+Return to permanent Orchestrator to dispatch permanent Reviewer against the exact base..HEAD.
+Planner must not edit the lane or product/test code in this governance pass.

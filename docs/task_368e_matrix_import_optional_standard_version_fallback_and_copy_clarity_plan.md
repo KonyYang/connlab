@@ -1,12 +1,12 @@
 # TASK_368E Matrix Import Optional Standard Version Fallback And Copy Clarity Plan
 
-Status: `developer_dispatch_ready`
+Status: `reviewer_dispatch_ready`
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 
-Current active task: TASK_368E. It owns the durable execution token under schema state
-`implementation_running`; the exact branch/worktree are registered clean at base/HEAD
-`e226bf1e54db4de54eb2366e96895999ce54652d`, and permanent Developer dispatch is ready.
+Current active task: TASK_368E. It retains the durable execution token under schema state
+`gate_running`; the exact branch/worktree are clean at final Developer/evidence HEAD
+`bb9734830b41c3a86c1cd5542d34a0832cd990d4`, and permanent Reviewer dispatch is ready.
 
 ## Approval And Activation Record
 
@@ -20,9 +20,9 @@ Current active task: TASK_368E. It owns the durable execution token under schema
 - WIP remains `1`; TASK_368E is the sole token owner, while the queue is empty and paused task,
   Quick Fix, and parallel exception are null. The exact TASK_368E branch/worktree is registered
   clean at the recorded base/HEAD.
-- Orchestrator has created and verified the exact isolated branch/worktree. This governance step
-  authorizes permanent Developer dispatch there, but not push, restart, release build, real-data/
-  file mutation, destructive cleanup, or changes to retained/cancelled/frozen lanes.
+- Orchestrator created and verified the exact isolated branch/worktree, and the authorized Developer
+  implementation handoff is complete. No push, restart, release build, real-data/file mutation,
+  destructive cleanup, or changes to retained/cancelled/frozen lanes are authorized.
 
 ## 1. Discovery Gate
 
@@ -89,13 +89,13 @@ rescinded its interim no-window correction, and confirmed choose-or-skip as the 
 - Developer/Reviewer/QA/Integrator evidence, because implementation has not started.
 
 These unknowns do not change scope, behavior, ownership, acceptance, or gate order. Definition of
-Ready was satisfied for User review; approval, sole token, and clean physical worktree facts are
-now recorded, and permanent Developer dispatch is next.
+Ready was satisfied for User review; approval and sole token remain recorded, Developer handoff is
+complete, and permanent Reviewer dispatch is next.
 
 ### Continue Or Stop
 
-Continue with permanent Developer dispatch to the exact clean worktree. Stop on any lock/scope
-expansion, non-clean Git state, unexpected gate failure, or unclassified authority behavior.
+Continue with permanent Reviewer on exact base..HEAD. Stop and return to Developer/Planner on any
+scope drift, task-caused failure, unproven baseline-debt claim, or authority/acceptance ambiguity.
 
 ## 2. User Flow And Exact Copy
 
@@ -426,10 +426,11 @@ context, bounded components/tests, and mandatory gates mitigate them.
    while token-null; no topology changed.
 3. Completed: Orchestrator's timed Create command produced the exact registered branch/worktree at
    `e226bf1e54db4de54eb2366e96895999ce54652d`; worktree/index are clean. Do not rerun Create.
-4. Current: permanent Developer follows TDD in the exact worktree. Any non-allowlisted path,
-   automatic config, schema/migration, broad
-   fallback, or changed Confirm Matrix behavior stops for Planner/User.
-5. Reviewer passes or returns findings to Developer.
+4. Completed: Developer implementation checkpoint is `9cd39e2dc5e8b50f23fd3e3202913a96019d4999`;
+   clean final evidence HEAD is `bb9734830b41c3a86c1cd5542d34a0832cd990d4`, with the exact
+   17 locked product/test paths plus Developer evidence.
+5. Current: Reviewer assesses exact base..HEAD, independently verifies the two claimed baseline-only
+   debts, and passes or returns findings to Developer.
 6. QA passes or returns failures to Developer/Planner.
 7. Integrator accepts locally only reviewed/QA ancestry and records residuals.
 8. Stop after local acceptance; no push or next-task activation.
@@ -444,18 +445,18 @@ context, bounded components/tests, and mandatory gates mitigate them.
 - Worktree creation base/initial HEAD: `e226bf1e54db4de54eb2366e96895999ce54652d`
 - WIP: `1`; parallel exception: none.
 
-The exact TASK_368E branch/worktree now exists and is registered at the creation base/initial HEAD;
-worktree/index are clean. TASK_368E remains the sole token owner with role Developer and no parallel
-exception. Production-root `ImplementationDispatch` returned `ALLOW_DISPATCH`.
+The exact TASK_368E branch/worktree is clean at final Developer/evidence HEAD
+`bb9734830b41c3a86c1cd5542d34a0832cd990d4`. TASK_368E remains the sole token owner with role
+Reviewer and no parallel exception; base remains `e226bf1e54db4de54eb2366e96895999ce54652d`.
 
 ## 15. Definition Of Ready
 
-Definition of Ready and explicit User approval are satisfied for Developer implementation.
+Definition of Ready and explicit User approval are satisfied for Reviewer gate execution.
 Goal, copy, choose/skip behavior, availability/integrity boundary, audit/reuse/API/transaction
 design, exact paths, tests, rollback, lane identity, and mandatory gates remain unchanged. This is
-Developer dispatch is authorized only to the verified real Git record and exact path scope.
+Reviewer must use only the verified real Git record and exact base..HEAD scope.
 
 ## 16. Next Legal Role
 
-Permanent Developer, dispatched by Orchestrator to the exact verified worktree. Planner does not
-edit the lane or implementation paths from this pass.
+Permanent Reviewer, dispatched by Orchestrator against exact base..HEAD. Planner does not edit the
+lane or implementation paths from this pass.
