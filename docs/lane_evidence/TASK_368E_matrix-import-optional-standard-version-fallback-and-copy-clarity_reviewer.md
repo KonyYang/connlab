@@ -4,9 +4,9 @@ Date: 2026-08-01
 
 Role: Reviewer
 
-Status: `reviewer_blocked`
+Status: `reviewer_pass`
 
-Next role: Developer
+Next role: QA
 
 ## Gate Authority And Inspected Package
 
@@ -28,9 +28,9 @@ Next role: Developer
   There was no unexpected path, staged change, `data/**`, package/lockfile, Office gateway,
   persistence/schema, Confirm Matrix, or Standard Method versions change.
 
-## Findings First
+## Initial Gate Findings (Historical)
 
-### Blocking B1 - cleanup integrity failures can be downgraded to Skip fallback
+### Blocking B1 - cleanup integrity failures could be downgraded to Skip fallback (closed)
 
 `backend/application/matrix_import_method_authority.py:390` walks through every exception's
 `__cause__` / `__context__` and accepts `PermissionError` or an allowed Windows code without
@@ -122,7 +122,7 @@ All baseline comparisons used temporary `git archive` snapshots and disposable r
 temporary artifacts were removed. No real database, Excel/PDF/DOCX, public-drive path, workbook,
 server, or operator resource was read or written.
 
-## Conclusion And Handoff
+## Initial Conclusion And Handoff (Superseded)
 
 `reviewer_blocked`.
 
@@ -130,3 +130,78 @@ The frontend, source-preservation, transaction, strict reuse, nullability, and c
 contracts otherwise passed the reviewed checks, but B1 leaves an explicitly forbidden integrity
 bypass. Return only the bounded classifier/test fix to Developer, then perform a full Reviewer
 re-gate. Do not advance to QA until this blocker is closed.
+
+## Full Re-gate After B1 Fix
+
+### Re-gate authority and scope
+
+- Full package re-reviewed: `e226bf1e54db4de54eb2366e96895999ce54652d..f924c33deb92be269150085c9e8982f152d3b809`.
+- Prior Reviewer blocker evidence: `68a337678dfaa35fbfac987c36027c605d3e0668`.
+- Bounded fix checkpoint: `1882c1b04937f0c576ddd2350407edc91b990217`.
+- Focused fix/evidence range re-reviewed: `68a337678dfaa35fbfac987c36027c605d3e0668..f924c33deb92be269150085c9e8982f152d3b809`.
+- Primary governance re-read at `b87f6e87c829cce86cda3e58181fd0f82c566158`; it retained the sole TASK_368E token at
+  `gate_running` / `Reviewer` and recorded the lane ready for the bounded re-gate.
+- Exact branch, current HEAD, clean lane/index, ancestry, `git diff --check`, both fix/evidence
+  `git show --check` checks, and scope were independently verified. The full package remains the
+  approved 18 paths plus this Reviewer evidence. The focused delta contains only the authority
+  classifier, two bounded backend test modules, and Developer evidence.
+
+### Findings first
+
+No blocking findings remain.
+
+B1 is closed. `_availability_reason` now treats `LegacyExcelCleanupError` as a terminal integrity
+wrapper before evaluating nested causes. Independent direct classification produced:
+
+```text
+cleanup -> PermissionError                 None
+cleanup -> Windows OSError(winerror=32)    None
+outer RuntimeError -> cleanup -> cause     None
+open wrapper -> PermissionError            standard_version_file_unavailable
+read wrapper -> Windows OSError            standard_version_file_unavailable
+LegacyExcelComUnavailableError             standard_version_runtime_unavailable
+```
+
+Both default and explicit `preserve_imported_methods` requests for cleanup-wrapper failures remain
+typed `422`, create neither action-required detail nor Skip eligibility, and retain zero source and
+draft writes. Genuine open/read availability wrappers and COM-unavailable failures remain eligible.
+The fix is ordered narrowly and does not broaden the approved allowlist.
+
+Full-package inspection reconfirmed the previously passing authority, strict reuse, source lineage,
+dual audit context, fingerprint, transaction rollback, configured XLSX/XLS, v1 compatibility,
+typed 409 mapping, frontend accessibility/dialog behavior, worksheet preservation, Settings copy,
+Confirm Matrix, and Standard Method versions contracts. No API/schema/persistence/Office/real-data
+scope was added by the fix.
+
+### Independent re-gate validation
+
+- Current TASK_368E backend unit/API modules: `31 passed`.
+- Explicit cleanup-wrapper PermissionError/Windows-code matrix: `8 passed, 23 deselected`.
+- Proportionate authority/reuse/API/parser/session compatibility set:
+  `100 passed, 1 deselected`. The one deselected legacy Matrix-session fake is the same
+  independently base-attributed constructor debt documented above; the bounded fix did not touch
+  its files or contract.
+- Disposable XLSX, fake-COM XLS, Standard catalog, and external-read compatibility: `8 passed`.
+- Focused frontend compatibility in a disposable HEAD archive using the existing dependency tree:
+  `8 files / 61 tests passed`.
+- Disposable frontend `tsc -b` and Vite production build: passed; only the existing chunk-size
+  advisory was emitted.
+- `py -m py_compile` for the changed authority/commit/route and both TASK_368E backend test modules:
+  passed.
+- `matrix_import_method_authority.py` remains exactly `499` physical UTF-8 lines; commit service
+  `449`, route `291`, updated unit test `336`, and updated API test `285`.
+- Full/focused allowlists, no hidden path, clean status, staged-empty, `git diff --check`, and
+  fix/evidence `show --check`: passed.
+
+The two baseline-only debts were not silently waived. Their base/head attribution from the initial
+independent gate remains valid because the bounded fix changed only the backend classifier, its two
+tests, and Developer evidence: the 28 shell static-contract failures all existed at base, and the
+Matrix-session fake omits an already-required result field identically at base and reviewed code.
+
+## Final Conclusion And Handoff
+
+`reviewer_pass`.
+
+The sole blocking finding is closed without scope drift, and all proportionate re-gate evidence is
+green. Advance the exact committed package to mandatory QA. Reviewer did not modify product/test
+code, merge, push, start a server, install dependencies, or access real operator files/data.
