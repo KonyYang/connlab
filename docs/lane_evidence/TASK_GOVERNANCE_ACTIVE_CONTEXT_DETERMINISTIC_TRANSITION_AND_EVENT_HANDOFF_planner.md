@@ -468,8 +468,10 @@ now complete at `aeb77091...`; the current stop is the routine-transition amendm
 
 ### Planner inference
 
-- The safe repair is one state machine: extend `connlab_execution_transition.py` with explicit
-  durable and candidate HEAD inputs and one Task-A-only metadata-bootstrap branch.
+- The safe repair remains one state machine, but the 478-line coordinator cannot absorb the full
+  amendment safely. `connlab_execution_transition.py` must keep sole CLI/read/state-machine/write/
+  recovery authority while a new side-effect-free `connlab_execution_transition_proof.py` owns
+  only proof, digest, bootstrap, delta, identity, and pure-rendering functions.
 - Metadata initialization and first candidate adoption must share one atomic board replacement.
   Any preliminary board HEAD or metadata write would reproduce the authority gap.
 - The bootstrap record should live separately in board control and be consumed once; the first
@@ -494,8 +496,12 @@ Current approved maintenance-bootstrap scope is insufficient because it locks th
 tests, and normative contract. Recommend reopening exactly:
 
 - `scripts/connlab_execution_transition.py`;
-- `tests/unit/test_connlab_execution_transition.py`;
-- `tests/integration/test_connlab_execution_transition_recovery.py`;
+- `scripts/connlab_execution_transition_proof.py` (new pure support module);
+- `tests/unit/test_connlab_execution_transition.py` (compatibility assertions only);
+- `tests/unit/test_connlab_execution_transition_proof.py` (new bounded proof matrix);
+- `tests/integration/test_connlab_execution_transition_recovery.py` (compatibility assertions only);
+- `tests/integration/test_connlab_execution_transition_candidate_adoption.py` (new bounded
+  disposable-Git real-shape matrix);
 - `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`;
 - Task A Developer evidence, followed by normal Reviewer/QA/Integrator evidence.
 
@@ -516,6 +522,67 @@ committed-topology idempotency, and complete recovery/replay tests.
 Goal, anchors, exact expansion, interfaces, delta policies, one-use route, rollback behavior,
 validation, role gates, lane identity, non-goals, and stop conditions are concrete. Definition of
 Ready is satisfied for User review only. It is not implementation-ready until the User approves.
+
+## P1 Executable-Scope Reconciliation — 2026-08-02
+
+### Repository finding and selected strategy
+
+- `scripts/connlab_execution_transition.py` is `478` physical lines and
+  `tests/unit/test_connlab_execution_transition.py` is `394`; placing the amendment's substantive
+  logic and real-shape matrix there would violate the executable scope and bounded-test policy.
+- The amendment now chooses one strategy only: exact pure-support extraction. No unresolved
+  extraction alternative or post-approval scope decision remains.
+- The coordinator remains the sole CLI, repository/Git/evidence/cleanliness reader, legal state
+  machine, board writer/recovery coordinator, and result-code emitter. The new
+  `scripts/connlab_execution_transition_proof.py` is side-effect-free and cannot parse a CLI, run
+  Git/subprocesses, inspect the filesystem/worktree, write/replace files, route roles, or mutate
+  authority. It is not a second state machine.
+
+### Exact revised implementation and test boundary
+
+- Developer implementation/contract paths are exactly the coordinator, new proof support,
+  existing transition unit compatibility module, new proof unit module, existing recovery
+  compatibility module, new candidate-adoption integration module, and normative contract. The
+  Developer evidence path is the eighth lane-owned path.
+- Ceilings are coordinator `<=460`, support `<=360`, existing unit `<=399`, new proof unit `<=360`,
+  existing recovery `<=120`, new candidate-adoption integration `<=380`, and contract `<=160`.
+- The new proof unit module owns the pure bootstrap/scope/lock/delta/digest/spoof/replay matrix.
+  The new disposable-Git integration module owns Developer-to-Reviewer, Reviewer-blocked-to-
+  Developer, Reviewer-pass-to-QA, QA-pass-to-Integrator, duplicate, interruption, reconnect,
+  rollback, and exact commit-topology cases without fixture pre-overwrite. Existing mixed modules
+  receive compatibility assertions only.
+- From durable board HEAD `3e737616...` to the final Developer candidate, the effective allowlist
+  is the existing six-path bootstrap package plus seven implementation/contract paths, with the
+  Developer evidence updated in place: exactly `13` distinct paths.
+
+### Lock reconciliation and atomicity
+
+- The present board remains byte-unchanged with the existing 29-path lock digest
+  `df114c309a21657d155401a591bb4a05b960ea9ef3854125713fe149509e2907`.
+- After User approval, the first atomic transition validates that exact source list/digest and an
+  exact 32-path expanded list/digest
+  `93bbeff0bc0a085c4e4321f5ceb1bea94e1977383cce2521f05e8ed46734c16c`. The only insertions are
+  the proof support after the coordinator, proof unit after the existing transition unit, and
+  candidate-adoption integration test after the existing recovery test.
+- The same single board replacement adopts candidate HEAD/evidence, changes state/role, appends
+  the real `DEVELOPER_READY`, initializes metadata/bootstrap, and installs the approved lock list.
+  No preliminary board-HEAD, metadata, or lock write is authorized. Any different list/order/
+  digest or delta blocks zero-write.
+
+### Checkpoints, review, and Definition of Ready
+
+- C0 is clean `aeb77091...`; C1 is extraction-preservation with current compatibility and full
+  `133` baseline green; C2 is RED in the two new bounded modules; C3 is the seven-path behavior/
+  contract implementation; C4 adds only updated Developer evidence and ends clean
+  `ready_for_review`.
+- Reviewer must independently prove the coordinator is the sole state machine/writer, the support
+  import/static boundary is pure, every line ceiling and the exact 13-path package passes, no test
+  pre-overwrites board HEAD, role-proportionate deltas and duplicate/recovery rules are complete,
+  and the bootstrap `50`, Task A `133`, new focused suites, protected-state and production zero-
+  write gates all pass. Mandatory QA and Integrator remain unchanged.
+- User-confirmed behavior and frozen anchors are unchanged. Repository-confirmed P1 is fully
+  resolved at planning level. Future candidate/digests and User approval remain gated outputs, not
+  unresolved scope decisions. Definition of Ready is satisfied for User review only.
 
 ## Updated Stop Point
 

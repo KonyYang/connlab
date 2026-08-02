@@ -59,7 +59,9 @@ The canonical `transition_metadata_bootstrap` attestation is structurally separa
 `transition_history` and binds:
 
 - exact Task A identity, immutable base, original approved Task blob, latest User-approved Task/
-  Plan amendment refs, effective May Touch digest, and the existing board Locked Paths digest;
+  Plan amendment refs, effective May Touch digest, source 29-path board Locked Paths digest
+  `df114c309a21657d155401a591bb4a05b960ea9ef3854125713fe149509e2907`, and approved expanded
+  32-path Locked Paths digest `93bbeff0bc0a085c4e4321f5ceb1bea94e1977383cce2521f05e8ed46734c16c`;
 - the exact primary anchor, source board hash/payload digest, durable board HEAD, blocked candidate
   `aeb77091...`, Developer evidence path/commit/blob/SHA/status, exact six-path delta, clean branch/
   worktree/index, and base/durable/candidate ancestry;
@@ -68,10 +70,13 @@ The canonical `transition_metadata_bootstrap` attestation is structurally separa
 - a canonical `bootstrap_id`, single-use marker, and exact transition plan/ID.
 
 The active `scope_contract_ref`, `may_touch_digest`, `locked_paths_digest`, and
-`last_transition_id` are initialized from these proven facts. The May Touch contract and board
-Locked Paths are hashed independently: they are not required to be textually identical because
-the approved Task contains role-owned prose paths while the board contains operational wildcard
-locks. Every actual delta must satisfy both the effective approved scope and locked-path policy.
+`last_transition_id` are initialized from these proven facts. The first atomic transition must
+also replace the source 29-path lock list with the approved 32-path list by inserting only the
+three new support/test paths named below. The May Touch contract and board Locked Paths are hashed
+independently: they are not required to be textually identical because the approved Task contains
+role-owned prose paths while the board contains operational wildcard locks. Every actual delta
+must satisfy both the effective approved scope and the expanded locked-path policy. No preliminary
+lock, metadata, or board-HEAD write is permitted.
 
 Any different task, primary/source board, durable/candidate HEAD, evidence byte/status, branch,
 worktree, base, ancestry, scope, lock, role/state/token, queue/paused/Quick Fix/parallel/residual
@@ -93,8 +98,8 @@ The evidence ref must resolve at the candidate commit and bind its Git blob, SHA
 status envelope, task identity, and ancestry. A single atomic board replacement then updates
 `active.head_sha`, `execution_state`, `active.role`, `active.evidence`, `last_transition_id`,
 `last_transition`, and `transition_history`; on the one legacy transition it also writes the
-separate metadata-bootstrap attestation and frozen active metadata. No preliminary unbound board
-HEAD update is permitted.
+separate metadata-bootstrap attestation, frozen active metadata, and exact expanded 32-path lock
+list. No preliminary unbound board HEAD, metadata, or lock update is permitted.
 
 Event delta rules are normative:
 
@@ -118,17 +123,35 @@ distinct recovery-required result, never `ALREADY_APPLIED`.
 Developer May Touch:
 
 1. `scripts/connlab_execution_transition.py`
-2. `tests/unit/test_connlab_execution_transition.py`
-3. `tests/integration/test_connlab_execution_transition_recovery.py`
-4. `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
-5. `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md`
+2. `scripts/connlab_execution_transition_proof.py` (new pure proof/render support module)
+3. `tests/unit/test_connlab_execution_transition.py` (compatibility assertions only)
+4. `tests/unit/test_connlab_execution_transition_proof.py` (new bounded pure-proof matrix)
+5. `tests/integration/test_connlab_execution_transition_recovery.py` (compatibility assertions only)
+6. `tests/integration/test_connlab_execution_transition_candidate_adoption.py` (new bounded
+   disposable-Git real-shape matrix)
+7. `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
+8. `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md`
 
 Role/primary governance May Touch:
 
-6. Task A Reviewer, QA, Integrator, and Planner evidence at their existing exact role paths
-7. this Task and Plan
-8. `docs/task_board.md` only through the reviewed helper's atomic routine transition; never as an
+9. Task A Reviewer, QA, Integrator, and Planner evidence at their existing exact role paths
+10. this Task and Plan
+11. `docs/task_board.md` only through the reviewed helper's atomic routine transition; never as an
    ambient Planner/manual candidate-HEAD or metadata-only update
+
+The decomposition is fixed. `scripts/connlab_execution_transition.py` remains the only CLI,
+Git/board/evidence reader, legal state-machine coordinator, atomic writer/recovery coordinator, and
+stable result-code emitter. `scripts/connlab_execution_transition_proof.py` is side-effect-free and
+owns only immutable proof values, canonical hashes/serialization, durable-to-candidate delta and
+event validation, Task-A bootstrap validation, transition/plan identity construction, and pure
+rendering from already verified inputs. It must not parse a CLI, run Git/subprocesses, inspect a
+worktree/filesystem, write/replace files, route roles, or mutate authority; it is not a second state
+machine.
+
+Physical-line ceilings are acceptance gates: coordinator `<=460`, proof support `<=360`, existing
+unit compatibility module `<=399`, new proof unit module `<=360`, existing recovery compatibility
+module `<=120`, new candidate-adoption integration module `<=380`, and normative contract `<=160`.
+No other helper or mixed test module may absorb the new matrix.
 
 Must Not Touch / Locked:
 
@@ -137,8 +160,23 @@ Must Not Touch / Locked:
   execution gate, worktree/maintenance helpers, all other Task A policies/skills/protocols/tests,
   archive/index/audit, registry/bundle, V1/V2, Task B/umbrella, product/data/runtime/release/remote
   paths, and retained/frozen/cancelled lanes are read-only.
-- The existing board Locked Paths remain unchanged and exclusive to Task A. No parallel exception,
+- The current board stays byte-unchanged while this amendment awaits approval. On the first
+  approved atomic transition only, its ordered lock list expands from 29 to 32 entries by inserting
+  `scripts/connlab_execution_transition_proof.py` after the coordinator,
+  `tests/unit/test_connlab_execution_transition_proof.py` after the existing transition unit test,
+  and `tests/integration/test_connlab_execution_transition_candidate_adoption.py` after the
+  existing recovery test. Any other ordering/path/digest blocks zero-write. No parallel exception,
   new task, branch, or worktree is allowed.
+
+Implementation checkpoints are exact: C0 clean `aeb77091...`; C1 pure extraction with current
+transition/recovery compatibility plus the full `133` baseline green and no behavior change; C2
+RED in the two new bounded test modules without fixture board-HEAD pre-overwrite; C3 the seven-path
+implementation/contract checkpoint; C4 Developer evidence-only final checkpoint, clean and
+`ready_for_review`. Reviewer must independently prove the coordinator is the sole state machine/
+writer, the support module is statically side-effect-free, all ceilings and the exact 13-path
+package hold, real-shape fixtures preserve the prior durable board HEAD, bootstrap `50` and Task A
+`133` plus new focused/full protected-state suites pass, and duplicate/recovery/role-delta rules
+fail closed. QA remains mandatory and Integrator must retry only on the final reviewed/QA ancestry.
 
 ### Approval route and stop condition
 
@@ -149,7 +187,10 @@ the legacy gate cannot authorize the helper repair that makes candidate adoption
 approval governance must bind the exact anchors and allowlist above, and any drift returns to
 Planner/User.
 
-Developer produces a clean fix/evidence candidate. The repaired helper then performs one atomic
+Developer produces a clean fix/evidence candidate. From durable board HEAD `3e737616...` to that
+candidate, the allowlist is exactly the prior six-path package plus the seven implementation/
+contract paths above, with the Developer evidence path updated in place: `13` distinct paths and
+no other byte. The repaired helper then performs one atomic
 metadata-bootstrap plus `DEVELOPER_READY` adoption, after which a full independent Reviewer
 re-gate, mandatory QA, and Integrator retry are required. No live migration occurs until the new
 Reviewer/QA passes. Task B and the umbrella remain unapproved/non-executable.

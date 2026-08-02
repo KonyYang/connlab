@@ -86,13 +86,16 @@ corrected:
 
 `base_sha` remains `15c3120...`; it is not required to equal the later scope-contract commit.
 May Touch and Locked Paths are independently validated. The effective first-transition scope is
-the existing approved six-path package plus exactly the four newly reopened implementation paths
-and Developer evidence; the candidate must contain no other delta from durable HEAD `3e737616...`.
+the existing approved six-path package plus exactly seven implementation/contract paths reopened
+by this amendment, with the Developer evidence path updated in place: `13` distinct paths total.
+The candidate must contain no other delta from durable HEAD `3e737616...`.
 
 The separate canonical `transition_metadata_bootstrap` board record contains schema/version,
 purpose, Task/base/original approval/latest amendment refs, primary/source-board/payload anchors,
 durable HEAD, blocked candidate/evidence/blob/SHA/status, exact six-path digest, future fix
-candidate/delta digest, branch/worktree/clean/ancestry facts, effective scope/lock digests,
+candidate/delta digest, branch/worktree/clean/ancestry facts, effective scope, source 29-path lock
+digest `df114c309a21657d155401a591bb4a05b960ea9ef3854125713fe149509e2907`, approved expanded
+32-path lock digest `93bbeff0bc0a085c4e4321f5ceb1bea94e1977383cce2521f05e8ed46734c16c`,
 retained-context digest, and `bootstrap_id`. It has no `event`, `from_state`, `to_state`, or
 historical gate-result fields and is not part of `transition_history`.
 
@@ -101,9 +104,22 @@ range paths/digest, evidence path/commit/blob/SHA/current-status record, primary
 digest, task/token/state/role/lane/branch/worktree/base, scope/locks/gates/context, from/to tuple,
 optional one-time bootstrap ID, transition ID, and plan digest.
 
-### Existing helper interface
+### Exact implementation decomposition and helper interface
 
-Repair `scripts/connlab_execution_transition.py` in place. The normative plan/apply shape becomes:
+Repair the existing state machine through one exact extraction:
+
+- `scripts/connlab_execution_transition.py` remains the sole CLI/parser, primary/board/Git/
+  evidence/cleanliness reader, legal state-machine coordinator, atomic board writer/recovery
+  coordinator, and stable result-code emitter. It must finish at `<=460` physical lines.
+- `scripts/connlab_execution_transition_proof.py` is a new side-effect-free support module. It owns
+  immutable proof values, canonical hashing/serialization, effective scope/lock validation,
+  durable-to-candidate path classification, event-specific delta validation, Task-A-only metadata-
+  bootstrap attestation construction/validation, transition/plan identity construction, and pure
+  rendering from already verified facts. It must stay `<=360` physical lines and must not parse a
+  CLI, invoke Git/subprocesses, inspect filesystem/worktree state, write/replace files, route roles,
+  or mutate authority. It is not a second state machine.
+
+The normative coordinator plan/apply shape becomes:
 
 ```text
 py scripts/connlab_execution_transition.py plan \
@@ -136,8 +152,9 @@ Plan is always zero-write and validates in this order:
 5. resolve evidence at candidate commit, verify path/blob/SHA/status/task/role/current-record and
    candidate ancestry; historical callback blocks below the current envelope cannot impersonate
    current status;
-6. validate latest approved scope ref, original base scope, independently hashed May Touch and
-   Locked Paths, required gates, retained context, legal from/to tuple;
+6. validate latest approved scope ref, original base scope, independently hashed May Touch,
+   current 29-path and approved 32-path Locked Paths, required gates, retained context, legal
+   from/to tuple;
 7. on the one legacy path, validate every frozen `49911ae6`/`3e737616`/`aeb77091`/evidence/six-
    path/bootstrap fact and derive `bootstrap_id`;
 8. derive exact rendered board, transition ID and plan digest; emit `ALLOW_TRANSITION` zero-write.
@@ -145,8 +162,9 @@ Plan is always zero-write and validates in this order:
 Apply rereads steps 1-8, requires exact snapshot and plan digests, then writes one temporary board,
 fsyncs, atomically replaces only `docs/task_board.md`, reloads and revalidates the complete result.
 The one replacement simultaneously adopts candidate HEAD/evidence, changes state/role, appends
-the real current event, sets last-transition fields, and initializes metadata/bootstrap when
-needed. No other path is written.
+the real current event, sets last-transition fields, initializes metadata/bootstrap, and replaces
+the source 29-path lock list with the exact approved 32-path list when needed. No other path is
+written. A metadata-only, lock-only, or candidate-HEAD-only write is prohibited.
 
 Injected/pre-replace failure removes the temporary file and preserves source bytes. If replacement
 succeeds but process/commit is interrupted, exact reconnect returns
@@ -178,23 +196,43 @@ helper after review returns stable `BLOCKED_*` with `changed_paths=[]`.
 Developer lane May Touch only:
 
 1. `scripts/connlab_execution_transition.py`
-2. `tests/unit/test_connlab_execution_transition.py`
-3. `tests/integration/test_connlab_execution_transition_recovery.py`
-4. `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
-5. Task A Developer evidence
+2. `scripts/connlab_execution_transition_proof.py` (new pure support module)
+3. `tests/unit/test_connlab_execution_transition.py` (compatibility assertions only)
+4. `tests/unit/test_connlab_execution_transition_proof.py` (new bounded pure-proof matrix)
+5. `tests/integration/test_connlab_execution_transition_recovery.py` (compatibility assertions only)
+6. `tests/integration/test_connlab_execution_transition_candidate_adoption.py` (new bounded
+   disposable-Git real-shape matrix)
+7. `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
+8. Task A Developer evidence
 
 Role/primary-only paths after the relevant gate:
 
-6. Task A Reviewer/QA/Integrator/Planner evidence
-7. current Task and Plan
-8. `docs/task_board.md`, only by the helper's one atomic transition replacement and its exact
+9. Task A Reviewer/QA/Integrator/Planner evidence
+10. current Task and Plan
+11. `docs/task_board.md`, only by the helper's one atomic transition replacement and its exact
    one-path commit
+
+Exact physical-line ceilings and ownership:
+
+| Path | Ceiling | Sole responsibility |
+|---|---:|---|
+| `scripts/connlab_execution_transition.py` | `460` | CLI/read/state-machine/write/recovery/result coordination |
+| `scripts/connlab_execution_transition_proof.py` | `360` | pure proof, digest, bootstrap, delta, identity, and rendering functions |
+| `tests/unit/test_connlab_execution_transition.py` | `399` | existing coordinator compatibility assertions only |
+| `tests/unit/test_connlab_execution_transition_proof.py` | `360` | new pure proof/bootstrap/delta/spoof/replay matrix |
+| `tests/integration/test_connlab_execution_transition_recovery.py` | `120` | existing recovery compatibility assertions only |
+| `tests/integration/test_connlab_execution_transition_candidate_adoption.py` | `380` | new disposable-Git four-event/atomic/reconnect matrix |
+| `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md` | `160` | normative contract only |
 
 Must Not Touch: active-context/bootstrap/handoff helpers and tests, legacy source attestation,
 `run_task.ps1`, execution/worktree/maintenance gates, every other contract/policy/skill/test,
 archive/index/audit, registry/bundle, V1/V2, Task B/umbrella, product/data/runtime/release/remote,
-and retained/frozen/cancelled lanes. Existing board Locked Paths and WIP=`1` remain unchanged; no
-parallel exception, new task, branch, or worktree.
+and retained/frozen/cancelled lanes. The current board stays byte-unchanged before approval and
+implementation. On the first atomic transition only, the ordered operational lock list expands
+from 29 to 32 by inserting the proof support after the coordinator, the proof unit test after the
+existing transition unit test, and the candidate-adoption integration test after the existing
+recovery test; exact compact-JSON SHA-256 becomes `93bbeff0...34c16c`. Any other path/order/digest
+blocks zero-write. WIP=`1` remains unchanged; no parallel exception, new task, branch, or worktree.
 
 ### Implementation and role sequence after User approval
 
@@ -204,8 +242,13 @@ parallel exception, new task, branch, or worktree.
    bounded Developer continuation from clean `aeb77091...` despite the known legacy
    `BLOCKED_ACTIVE_HEAD_DRIFT`; any different blocker or drift stops. This exception cannot route
    another task/role or survive the first atomic transition.
-3. Developer uses TDD on the four reopened implementation paths, updates Developer evidence, and
-   commits a clean candidate descendant of `aeb77091...`.
+3. Developer uses exact checkpoints: C0 clean `aeb77091...`; C1 extraction-preservation creates
+   the pure support module and moves only pure responsibilities while existing transition/recovery
+   compatibility tests and the full `133` baseline remain green; C2 records RED in the two new
+   bounded test modules without pre-overwriting board HEAD; C3 implements candidate/bootstrap/
+   atomic-recovery behavior in exactly the seven implementation/contract paths; C4 adds only the
+   updated Developer evidence and finishes clean `ready_for_review`. Each checkpoint uses exact-
+   path staging and must pass its applicable line/allowlist/diff gates.
 4. From that candidate, the repaired existing helper plans/applies the one atomic metadata-
    bootstrap plus `DEVELOPER_READY` adoption and the Orchestrator exact-commits board only.
 5. Reviewer performs a full re-gate of the complete Task A package and the new transition matrix.
@@ -215,6 +258,15 @@ parallel exception, new task, branch, or worktree.
 7. Integrator verifies ancestry/package/attestations, merges the newly reviewed delta, retries the
    previously approved generation-1 maintenance bootstrap, reruns merged validation, and accepts
    only on complete success. Task B remains stopped.
+
+Reviewer focus is mandatory and exact: verify the coordinator remains the sole CLI/state machine/
+writer; statically reject CLI, Git/subprocess, filesystem/worktree read/write, role-routing, or
+authority mutation in the proof support; enforce every line ceiling and exact 13-path package;
+prove the new real-shape fixtures do not pre-overwrite durable board HEAD; independently exercise
+scope/lock/evidence spoof, post-review drift, exact duplicate, interruption/reconnect, and rollback;
+and rerun bootstrap `50`, prior Task A `133`, new focused modules, protected-state hashes, and
+production zero-write checks. Reviewer failure returns only to the existing Developer lane within
+this exact scope; any new path or responsibility returns to Planner/User.
 
 ### Validation matrix
 
@@ -242,14 +294,18 @@ parallel exception, new task, branch, or worktree.
 14. Reviewer/QA candidate with any implementation/helper/test/contract drift blocks;
 15. board write is exactly one atomic `docs/task_board.md` replacement; all failure paths are
     zero-write and preserve queue/paused/QF/parallel/residual/token/branch/worktree/base/locks;
-16. helper unit and disposable recovery suites cover all four events, duplicate/reconnect/
-    rollback, canonical Windows paths and exact commit topology;
+16. `test_connlab_execution_transition_proof.py` covers pure scope/lock/bootstrap/delta/digest/
+    spoof/replay behavior; `test_connlab_execution_transition_candidate_adoption.py` covers all
+    four real-shape events, duplicate/reconnect/rollback, canonical Windows paths, and exact commit
+    topology; existing transition/recovery modules receive compatibility assertions only;
 17. unchanged active-context, maintenance, handoff, execution gate/recovery, WIP/Quick Fix,
     worktree/archive/role suites pass, including the approved bootstrap `50` and prior Task A
     `133` baseline;
-18. complete Task A regression plus new cases pass; Python compilation, PowerShell AST, helper
-    `<500` line ceiling or approved extraction, exact allowlist/diff/show, protected hashes,
-    production zero-write checks, callback/cadence/budgets all pass;
+18. complete Task A regression plus new cases pass; Python compilation, PowerShell AST, all seven
+    exact physical-line ceilings, import/static checks proving the support module has no CLI/Git/
+    subprocess/filesystem-write/authority-mutation responsibility, exact `13`-path durable-to-final
+    candidate allowlist/diff/show, protected hashes, production zero-write checks, callback/cadence/
+    budgets all pass;
 19. full independent Reviewer re-gate, mandatory QA on final reviewed HEAD, and Integrator merged-
     tree/migration/rollback/clean-closeout gates pass;
 20. Task B/umbrella/product/registry/V1/V2/retained lanes/remote/runtime remain unchanged.
