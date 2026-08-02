@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `developer_dispatch_ready`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Date: 2026-08-02
 
@@ -585,7 +585,7 @@ Ready is satisfied for User review only. It is not implementation-ready until th
   resolved at planning level. Future candidate/digests and User approval remain gated outputs, not
   unresolved scope decisions. Definition of Ready is satisfied for User review only.
 
-## Updated Stop Point
+## Prior Dispatch-Preparation Stop Point (superseded)
 
 ### User approval and dispatch-preparation audit — 2026-08-02
 
@@ -610,7 +610,107 @@ Ready is satisfied for User review only. It is not implementation-ready until th
   lane, helper/test/contract, role evidence, archive/index/audit, Task B, product/runtime/remote, or
   dispatch any role.
 
-Return `developer_dispatch_ready` to Orchestrator. Preserve primary board and the clean
-`aeb77091...` lane until fresh exact-anchor validation and the one bounded Developer dispatch.
-Planner does not initialize metadata, alter board HEAD/state/role, edit the lane, dispatch a role,
-merge, migrate, create archive/index/audit, push, restart, or perform destructive cleanup.
+The earlier `developer_dispatch_ready` stop was consumed by the atomic transition committed at
+`5cd7f02a...`. It is retained only as audit history and grants no current dispatch authority. The
+current stop is the pending post-transition amendment below; board remains
+`gate_running/Reviewer`, lane remains clean at `70e5c6a...`, and no role is dispatched.
+
+## Post-Transition Dispatch/Idempotency Reconciliation Discovery — 2026-08-02
+
+### Current phase, authority, and why Planner may act
+
+- Phase remains Phase 11. Task A is the sole WIP=`1` token owner in
+  `gate_running/Reviewer`; Task B is unapproved/unstarted.
+- This is one bounded reconciliation amendment inside current Task A, not a new task, Discovery
+  restart, lane, worktree, branch, or role thread. Planner is allowed because exact post-transition
+  `BLOCKED_*` results expose scope/authority design issues; no routine event is being routed.
+- Primary and lane were read-only verified clean. Planner changed no board/lane/helper/test/
+  contract/skill/protocol and dispatched no role during Discovery.
+
+### Confirmed by User
+
+- Solve only committed exact duplicate/idempotency and Reviewer/QA/Integrator GateDispatch. The
+  one-time current Reviewer attestation is the bounded bootstrap for GateDispatch, not a reusable
+  third feature.
+- Preserve atomic transition commit `5cd7f02a...`, board `gate_running/Reviewer`, clean lane
+  `70e5c6a...`, one real history event, and separate consumed bootstrap.
+- Keep existing Task A/permanent roles; no new task/branch/worktree/thread. Do not redesign state
+  machine, maintenance, handoff, compression, Task B, product or release behavior.
+- Use focused Developer RED/GREEN plus final Task A governance regression, complete Reviewer diff/
+  adversarial review, one final-head full QA regression, and no unrelated/product/frontend/release
+  matrix. One normal bounded fix is the maximum; repeated design/scope/authority growth stops.
+- Required route remains one-time Reviewer dispatch -> genuine Reviewer result -> if blocked,
+  atomic `REVIEWER_BLOCKED` -> Developer fix -> Reviewer re-gate -> mandatory QA -> Integrator.
+
+### Confirmed by repository evidence
+
+- Primary `5cd7f02acd02c03008f29de900e841a185a9d138` has sole parent
+  `329c0343ea0e7f4d24d6fb7e2e986a094c304fd8`; its sole path is `docs/task_board.md`. Current board
+  blob is `972b1c2386145114cb3daa35037913d709bb5180`, SHA-256
+  `3e57b913098e565de3fee8f4a0ffdff597e3d7fdfec5232fe63027298f1a2507`, payload
+  `f2ddca5a8f84f4f8a966410852983571006f2810028ea0a82e33df8ed7ef0a03`.
+- Board/lane HEAD is `70e5c6a7606284e1fc55ac6b0497c6d9756b665f`; branch/worktree/index are
+  exact and clean. Authority is Task A/gate_running/Reviewer with 32 locks, empty queue, null pause/
+  Quick Fix/parallel, transition ID `367e000d...`, plan `5ac92b50...`, bootstrap `b1605205...`, and
+  exactly one real `DEVELOPER_READY` entry.
+- Current Developer evidence is blob `e9d528a9c2b63b4a87dfcc6eaac74232942eeb54`, SHA-256
+  `1bee1cfea13e128d92311457ff3d6c3ca02d57167e588f2d90290782a05e6e56`, status
+  `ready_for_review`. Reviewer has not been dispatched.
+- Exact identical plan probe returned zero-write `BLOCKED_TRANSITION_METADATA_BOOTSTRAP`; exact
+  production ImplementationDispatch returned zero-write `BLOCKED_DISPATCH_STATE` and payload
+  `f2ddca5a...`.
+- Lane sizes are transition `460`, proof `300`, transition unit `390`, proof unit `153`, recovery
+  `78`, candidate integration `165`, contract `123`. Primary gate is `307`; existing gate unit and
+  recovery are `496/489`, so they cannot own the new matrix.
+- Static coordinator evidence proves normal `validate_scope_metadata` requires scope-ref commit
+  equal `base_sha` and May Touch equal locks. Live scope ref commit `d7994d26...` differs from base
+  `15c3120a...`; the ordinary Reviewer-block/pass path therefore cannot currently plan.
+
+### Planner inference and exact design
+
+- Both transition `plan` and `apply` need one shared committed-duplicate classifier before
+  consumed-bootstrap rejection. It must reconstruct the source-parent board and full candidate/
+  evidence/transition/plan/bootstrap/render/board-only-commit proof. Plan and exact apply replay
+  return the same `ALREADY_APPLIED`; uncommitted render remains recovery-required; all differing
+  shapes fail closed.
+- GateDispatch must be a new read-only execution-gate intent with `GateRole`, exact target evidence
+  path and optional attestation ref. It validates primary/lane cleanliness, token/task/lane/role/
+  required gate, board/physical HEAD, branch/worktree/index, locks/scope/evidence/transition/context
+  and role write boundary. ImplementationDispatch stays Developer/Quick Fixer only.
+- The current Reviewer attestation binds exact primary/board/lane/locks/Developer evidence/
+  transition/context, permanent Reviewer thread and Reviewer evidence path. Same-input retry is one
+  dispatch identity; any drift expires it. It cannot authorize code or board changes.
+- Minimal implementation paths are transition coordinator/proof, proof unit, transition recovery,
+  candidate adoption integration, execution gate, two new bounded GateDispatch tests, active-
+  context contract, Orchestrator skill, orchestration protocol, and current role evidence. All
+  other paths return User.
+- The future legal scope transition adds exactly execution gate plus two new tests to current 32
+  locks, producing 35-lock digest
+  `a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347`.
+
+### Not yet confirmed / true blocker
+
+- A genuine current Reviewer evidence commit can be produced under the one-time attestation, but
+  current code cannot then apply `REVIEWER_BLOCKED` because its scope metadata rule rejects the
+  live approved scope ref before event-delta validation.
+- Repairing that rule first requires Developer writes while board remains Reviewer; changing board
+  first without the helper is the forbidden manual state reversal. The User's supplemental scope
+  correctly forbids silently adding another authority path. Therefore no implementation-ready
+  ordering exists under all current constraints.
+- Exact blocking decision: User must explicitly authorize one bounded authority bridge (or revise
+  one of the no-manual/no-pre-transition-Developer constraints). Planner will not choose either
+  deviation. All future implementation/evidence/digest/QA/Integrator commits are gated outputs.
+
+### Scope, efficiency, risk, and stop decision
+
+- Task/Plan contain the exact 12-path future Developer scope, 32-to-35 lock order/digest, line/
+  byte ceilings, GateDispatch interface, duplicate proof order, TDD checkpoints, role boundaries,
+  one-fix maximum and 19-case validation matrix. No post-approval scope choice remains except the
+  explicit authority blocker above.
+- Risks are duplicate proof that reopens bootstrap, GateDispatch that becomes implementation
+  authority, repeated full-suite churn, or an implicit manual state reversal. Fail-closed proof,
+  separate intents, bounded tests, risk-proportionate role budgets and the User stop boundary
+  contain them.
+- Definition of Ready is satisfied for User review only, not implementation. Preserve primary
+  board and clean lane, do not dispatch Reviewer, and return
+  `integration_reconciliation_amendment_pending_user_approval` with the authority-ordering blocker.

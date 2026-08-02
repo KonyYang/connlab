@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `developer_dispatch_ready`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -8,13 +8,192 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: Task A remains the sole token owner in the unchanged durable board authority
-`implementation_running/Developer`; the clean existing lane is authorized for one bounded
-same-token/same-lane Developer continuation, but Planner has not dispatched or edited it.
-Next authority: Orchestrator must revalidate the exact frozen anchors, lane cleanliness, and this
-approval record, then may dispatch only the bounded Developer capsule below. No board HEAD update,
-metadata initialization, role transition, helper edit, or role dispatch occurred in this primary
-governance checkpoint.
+Owner at this gate: Task A remains the sole token owner in `gate_running/Reviewer`; the exact lane
+and primary are clean at the committed atomic transition result, but Reviewer has not been
+dispatched.
+Next authority: User review of the post-transition dispatch/idempotency reconciliation amendment
+below. No board/lane/helper/test/contract/skill/protocol or role-dispatch write is authorized by
+this planning checkpoint.
+
+## Pending Post-Transition Dispatch And Idempotency Reconciliation Amendment
+
+### Discovery Gate
+
+Confirmed by User:
+
+- Preserve the successful atomic transition and its one real `DEVELOPER_READY` history entry;
+  never reopen the one-use bootstrap or fabricate/backfill role history.
+- Exact duplicate recognition must prove the complete committed transition before consumed-
+  bootstrap rejection. Gate roles require a new explicit `GateDispatch`; implementation roles
+  remain on `ImplementationDispatch`.
+- The current Reviewer may be dispatched only through a one-use attestation bound to the exact
+  post-transition facts and may write only genuine Reviewer evidence.
+- Reviewer, bounded Developer fix, full Reviewer, mandatory QA, and Integrator remain serial;
+  Task B stays unapproved/unstarted.
+
+Confirmed by repository:
+
+| Fact | Exact binding |
+|---|---|
+| Primary | clean `master@5cd7f02acd02c03008f29de900e841a185a9d138`; sole parent `329c0343ea0e7f4d24d6fb7e2e986a094c304fd8`; commit changes only `docs/task_board.md`; board blob `972b1c2386145114cb3daa35037913d709bb5180`; SHA-256 `3e57b913098e565de3fee8f4a0ffdff597e3d7fdfec5232fe63027298f1a2507` |
+| Authority | Task A sole token, `gate_running/Reviewer`, active/lane HEAD `70e5c6a7606284e1fc55ac6b0497c6d9756b665f`, payload digest `f2ddca5a8f84f4f8a966410852983571006f2810028ea0a82e33df8ed7ef0a03`, queue empty, paused/Quick Fix/parallel null |
+| Transition | ID `367e000d5a4c93e060039b5a3cfd4f1ad88ac096500a994c62d8bdea94399968`; plan digest `5ac92b5060cbde4d647c0d173f9773119bc18ed360de5dd7650f180b8edf2f96`; bootstrap ID `b1605205d969bd5a0110383ede944018786fb7a2c94e708076b72fc33ed4cfb3`; exactly one real history event |
+| Evidence | Developer ref at `70e5c6a...`; blob `e9d528a9c2b63b4a87dfcc6eaac74232942eeb54`; SHA-256 `1bee1cfea13e128d92311457ff3d6c3ca02d57167e588f2d90290782a05e6e56`; status `ready_for_review` |
+| Read-only probes | identical bootstrap plan returns `BLOCKED_TRANSITION_METADATA_BOOTSTRAP`; production `ImplementationDispatch` returns `BLOCKED_DISPATCH_STATE`; both zero-write |
+| Implemented sizes | lane coordinator `460`, proof `300`, existing transition unit `390`, proof unit `153`, recovery `78`, candidate integration `165`, contract `123`; gate `307`; existing gate unit/integration `496/489` |
+
+Planner inference:
+
+- Exact committed duplicate recognition belongs to both `plan` and `apply`, through one shared
+  proof classifier that runs before consumed-bootstrap rejection. `plan` reports the durable
+  result; identical `apply` replay reports the same result only when its original snapshot/plan
+  bindings also match.
+- `GateDispatch` is a read-only gate intent, not a transition or second state machine. It needs
+  two new bounded test modules because the existing gate unit/integration modules are already
+  `496/489` lines.
+- The current Reviewer attestation can make the first dispatch reference-exact and drift-expiring,
+  but cannot itself change state or repair code.
+
+Not yet confirmed / true authority blocker:
+
+- The current non-bootstrap transition path requires the scope-contract commit to equal
+  `base_sha` and the parsed task scope to equal locks. The live scope ref is the approved amendment
+  at `d7994d26...`, not base `15c3120a...`; therefore a genuine future `REVIEWER_BLOCKED` event
+  cannot atomically return authority to Developer with the currently installed helper.
+- Fixing that helper before the transition would require Developer implementation while durable
+  authority is still `gate_running/Reviewer`; manually reversing the board is expressly forbidden.
+  No compliant ordering satisfies both rules. User must explicitly authorize one narrowly defined
+  authority bridge or change one of those constraints before implementation can be Definition of
+  Ready. Planner does not infer that authority.
+
+### Amendment A — committed duplicate/idempotency
+
+Both `plan` and `apply` must first classify an apparent exact duplicate without invoking the
+ordinary consumed-bootstrap path. The classifier must prove all of:
+
+1. input event/task/lane/source primary/source board/candidate/evidence/status exactly match the
+   committed `last_transition` and sole matching history entry;
+2. current primary is a clean one-parent commit whose parent is the original source primary and
+   whose only changed path is `docs/task_board.md`;
+3. source-parent board blob, rendered current board blob, candidate/evidence commit/blob/SHA,
+   transition ID, original source snapshot, plan digest, bootstrap ID and complete bootstrap bytes
+   recompute exactly;
+4. current active state/role/HEAD/evidence/locks/context equal the proven target and the one-use
+   bootstrap remains consumed, separate, and unchanged.
+
+Exact `plan` and exact `apply` replay return zero-write `ALREADY_APPLIED` with the original IDs;
+apply additionally requires the original expected snapshot and plan digests. An identical
+uncommitted replacement remains `RECOVERY_TRANSITION_COMMIT_REQUIRED`. Any stale, divergent,
+tampered, partial, rewritten, dirty, different-input, extra-path, extra-history, or later-commit
+shape fails closed; no bootstrap is reopened and no event is appended.
+
+### Amendment B — explicit role-specific GateDispatch
+
+Add only `GateDispatch` to `scripts/connlab_execution_gate.ps1`; do not broaden or alias
+`ImplementationDispatch`. Normative interface:
+
+```text
+powershell -File scripts/connlab_execution_gate.ps1 -Intent GateDispatch \
+  -TaskId <task> -Lane <lane> -GateRole <Reviewer|QA|Integrator> \
+  -EvidencePath <exact target role evidence path> \
+  [-DispatchAttestationRef <path@commit#sha256>] -RepositoryRoot <primary> -Json
+```
+
+It validates exact task/token/lane/active role/required gate, clean primary, exact branch/worktree/
+index and board-versus-physical HEAD, base ancestry, 35-path lock digest after the approved scope
+update, active evidence/context/last-transition binding, exact target role evidence path, and the
+role write boundary. Reviewer and QA may initially write only their exact lane evidence path;
+Integrator may initially write only Integrator evidence and perform read-only premerge checks—
+merge/board/maintenance authority remains separately gated. Developer/Quick Fixer continue to use
+only `ImplementationDispatch`. Missing/wrong role/gate/evidence/context/attestation or dirty/drifted
+Git facts return stable `BLOCKED_GATE_DISPATCH_*`, zero-write.
+
+### Amendment C — one-time current Reviewer dispatch attestation
+
+The approval record must derive one canonical `dispatch_id` from exact primary `5cd7f02a...`,
+board blob/SHA/payload, Task A token/state/role, lane/branch/worktree/base/HEAD `70e5c6a...`, ordered
+32 locks/digest, current Developer evidence ref/blob/SHA/status, permanent Reviewer thread identity,
+exact Reviewer evidence path, current Task/Plan/Planner approval refs, clean statuses, and null
+queue/pause/Quick Fix/parallel facts. It authorizes only the permanent Reviewer full review and
+Reviewer-evidence write. Same-input delivery retry is the same dispatch identity, never a second
+authorization; any Git/board/evidence/thread-target/input drift expires it. A genuine block must
+produce `reviewer_blocked`; no Developer byte, board prewrite, synthesized evidence/history,
+manual reversal, generic bypass, QA/Integrator dispatch, or Task B action is permitted.
+
+### Exact proposed scope, locks, and ceilings
+
+Future Developer May Touch only after the authority blocker is explicitly resolved:
+
+1. `scripts/connlab_execution_transition.py`
+2. `scripts/connlab_execution_transition_proof.py`
+3. `tests/unit/test_connlab_execution_transition_proof.py`
+4. `tests/integration/test_connlab_execution_transition_recovery.py`
+5. `tests/integration/test_connlab_execution_transition_candidate_adoption.py`
+6. `scripts/connlab_execution_gate.ps1`
+7. `tests/unit/test_connlab_gate_dispatch.py` (new)
+8. `tests/integration/test_connlab_gate_dispatch_recovery.py` (new)
+9. `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
+10. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+11. `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
+12. Task A Developer evidence
+
+Later role/primary governance May Touch: exact Task A Reviewer/QA/Integrator/Planner evidence, this
+Task/Plan, and `docs/task_board.md` only through a reviewed atomic transition. Existing mixed
+transition unit, gate unit/integration, active-context/maintenance/handoff helpers/tests, execution
+policy, Planner/other skills/protocols, registry/bundle, archive/index/audit, Task B/umbrella,
+product/data/runtime/release/remote and protected lanes are Must Not Touch.
+
+The next legal atomic scope transition must validate source 32-lock digest
+`93bbeff0bc0a085c4e4321f5ceb1bea94e1977383cce2521f05e8ed46734c16c` and install exactly three
+ordered additions—execution gate after `run_task.ps1`, gate-dispatch unit after proof unit, and
+gate-dispatch recovery after candidate-adoption integration—yielding 35-lock digest
+`a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347`. No ambient lock edit.
+
+Ceilings: transition coordinator `<=460`, proof `<=360`, proof unit `<=300`, transition recovery
+`<=120`, candidate-adoption integration `<=380`, execution gate `<=360`, new gate unit `<=320`,
+new gate integration `<=300`, contract `<=160`, Orchestrator skill `<=16384` bytes, and orchestration
+protocol `<=12288` bytes. Existing 390/496/489-line mixed tests receive no new matrix.
+
+### TDD checkpoints, gates, and stop
+
+After a legal Developer authority transition: D0 exact clean Reviewer-blocked head; D1 bounded RED
+for duplicate/GateDispatch/current-shape cases; D2 pure duplicate proof plus coordinator ordering;
+D3 GateDispatch plus new bounded tests; D4 contract/skill/protocol alignment; D5 clean Developer
+evidence. Then route is genuine `REVIEWER_BLOCKED` atomic transition -> Developer bounded fix ->
+`DEVELOPER_READY` atomic transition -> full Reviewer -> `REVIEWER_PASS` -> GateDispatch QA ->
+`QA_PASS` -> GateDispatch Integrator. Reviewer/QA evidence deltas remain evidence-only.
+
+Validation must cover plan/apply/reconnect/replay current real shape, every duplicate/tamper/drift,
+all three GateDispatch roles and write boundaries, current one-time Reviewer attestation, role/state/
+gate/evidence/cleanliness/lock/context negatives, full Task A regression, Python compile,
+PowerShell AST, static purity/state-machine checks, ceilings, exact allowlist, protected hashes,
+production zero-write probes, independent Reviewer, mandatory QA, and Integrator. No maintenance
+migration/compression, merge, push, cleanup, restart, or Task B work belongs to this amendment.
+
+Execution-efficiency boundaries are normative:
+
+- This is one bounded Task A reconciliation amendment, not a new task/Discovery/lane. It solves
+  only committed exact duplicate/idempotency and Reviewer/QA/Integrator GateDispatch; the one-time
+  current Reviewer attestation is the exact bootstrap for GateDispatch, not a third general feature.
+- Do not redesign transition states, maintenance, handoff, board compression, Task B, or any
+  product/frontend/release behavior. No new task, branch, worktree, role thread, dependency, or
+  authority path is allowed.
+- Developer runs focused RED/GREEN plus one final Task A governance regression. Reviewer reviews
+  the complete committed diff and concentrates on duplicate/replay/GateDispatch/wrong role/state/
+  head/dirty/divergent negatives. QA runs the complete Task A regression exactly once on the final
+  reviewed HEAD. Product tests, frontend build, release and unrelated historical matrices are
+  forbidden; evidence-only checkpoints do not repeat a full suite without a new risk reason.
+- Reviewer may return at most one normal bounded fix pass. A repeated same-class design failure,
+  third scope round, new authority path, or out-of-allowlist need stops to User; automation must not
+  expand Task A again.
+- Atomic commit `5cd7f02a...` remains immutable. Until an approved legal transition, board remains
+  `gate_running/Reviewer` and the existing lane remains clean `70e5c6a...`. Every `BLOCKED_*`
+  outside the one exact current Reviewer attestation remains blocking; no ignore/force/general
+  bypass is introduced.
+
+Definition of Ready is satisfied for User review but blocked for implementation by the authority
+ordering above. Stop for User direction; do not dispatch Reviewer or Developer and do not mutate
+board/lane.
 
 ## Approved Routine Transition Metadata And Candidate-HEAD Reconciliation
 
@@ -655,10 +834,9 @@ application of the routine-transition amendment above.
 - Existing execution gate stays read-only and schema-compatible. Existing tasks without new
   transition metadata cannot use the helper and fail closed to manual governance.
 
-## Stop Point
+## Historical Stop Point (superseded)
 
-Return `developer_dispatch_ready` to Orchestrator. Retain Task A as sole
-`implementation_running/Developer` token owner and preserve durable board HEAD `3e737616...` plus
-clean lane HEAD `aeb77091...` until Orchestrator revalidates and issues the exact bounded capsule.
-Planner does not initialize metadata, pre-adopt candidate HEAD, dispatch a role, edit the lane,
-run live migration/maintenance, create archive/index/audit, or perform Task B work.
+The earlier `developer_dispatch_ready` stop was consumed by the atomic transition committed at
+`5cd7f02a...`. It is retained only as audit history and grants no current dispatch authority. The
+current stop is the pending post-transition amendment and authority decision above; board remains
+`gate_running/Reviewer` and the clean lane remains `70e5c6a...`.
