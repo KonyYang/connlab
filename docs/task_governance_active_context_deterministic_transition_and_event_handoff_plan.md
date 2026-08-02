@@ -1,6 +1,6 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `approved_reconciliation_preparation`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
@@ -16,12 +16,15 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
   acceptance claimed. Planner/User reconciliation is required before retry; Integrator will not
   invent transition history or alter the frozen helper/contract ad hoc.
 
-## Pending Integration Reconciliation Amendment
+## Approved Integration Reconciliation Amendment
 
-This section is a formal planning amendment for User review. It is not approved, does not change
-the current `gate_running/Integrator` authority, and authorizes no implementation or live apply.
-It supersedes only the blocked first-migration portion of Step A8; all normal Task A transition,
-maintenance, WIP, gate, budget, and safety contracts remain unchanged.
+The User explicitly approved this formal amendment at primary anchor
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a` and authorized automatic bounded
+Developer -> independent Reviewer -> mandatory QA -> local Integrator continuation. This approval
+returns the same Task A token to `implementation_running/Developer` only to prepare the existing
+lane for reconciliation; Developer is not dispatched yet and live apply remains prohibited. The
+amendment supersedes only the blocked first-migration portion of Step A8; all normal Task A
+transition, maintenance, WIP, gate, budget, and safety contracts remain unchanged.
 
 ### Discovery Gate
 
@@ -82,8 +85,9 @@ Unresolved execution outputs:
   compacted metrics, and final acceptance commit.
 
 These are produced and independently verified by the gated execution sequence. They do not alter
-scope and are not planning blockers. Recommendation: continue to User review; implementation
-remains stopped.
+scope and were not planning blockers. The User has now approved the exact amendment; continuation
+remains stopped at reconciliation preparation until the lane fast-forward and fresh dispatch gate
+are proven.
 
 ### Exact historical merge package
 
@@ -275,13 +279,17 @@ Must Not Touch / Locked:
 
 ### Non-destructive continuation and role route
 
-1. Pending User decision: keep current primary/lane clean, Task A token in
-   `gate_running/Integrator`, and migration blocked/zero-write.
-2. After explicit approval only, Planner commits approval governance and returns the same Task A
-   token to `implementation_running/Developer`.
-3. Orchestrator reuses the exact existing worktree/branch and fast-forwards it to the approved
-   primary descendant of `75565f7a`. Because QA HEAD -> `a42ca37e` -> current primary ancestry is
+1. User approval is recorded at exact primary amendment anchor
+   `3e73761673fd75de4e79028b0b8d0b89979bbd1a`; the same Task A token is placed in
+   `implementation_running/Developer` as preparation authority, not as a dispatch claim.
+2. The current physical lane remains clean at
+   `e958ba37df216c1690434ed7f9f40d4a436a88c5`; the execution record's expected target/head is
+   `3e73761673fd75de4e79028b0b8d0b89979bbd1a`.
+3. Orchestrator reuses the exact existing worktree/branch and fast-forwards it from the physical
+   HEAD to that exact approved target. Because QA HEAD -> `a42ca37e` -> approval anchor ancestry is
    proven, this is non-destructive and preserves the old merge; no new task/worktree is created.
+   Orchestrator then proves lane/worktree/index clean, exact HEAD equality, and a fresh
+   `ImplementationDispatch=ALLOW_DISPATCH`. Any mismatch stops before dispatch.
 4. Developer uses TDD, changes only six lane-owned paths above, commits clean, and records
    `ready_for_review`.
 5. Reviewer performs a full re-gate of the whole Task A package plus bootstrap adversarial matrix.
@@ -335,8 +343,10 @@ After successful apply, helper rollback is proof-only into safe temp; live rollb
 reviewed Git action. Integrator must stop without acceptance on any `BLOCKED_*`, test/metric miss,
 dirty state, unexpected path, audit mismatch, or partial write.
 
-Current stop: wait for explicit User approval. Do not change the token/role, fast-forward the lane,
-dispatch Developer, edit helper/tests/attestation, merge, migrate, create history, or start Task B.
+Current stop: approval governance is recorded, but Developer is not dispatched. Orchestrator must
+perform and prove only the exact existing-lane fast-forward to `3e737616...`, clean HEAD equality,
+and fresh `ALLOW_DISPATCH`. Do not edit helper/tests/attestation, merge a new package, migrate,
+create history/archive/index/audit, or start Task B in this preparation step.
 
 ## Historical Approval And Activation Record
 
@@ -614,6 +624,7 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return `integration_reconciliation_amendment_pending_user_approval` to Orchestrator. Task A keeps
-the sole token in `gate_running/Integrator`. Planner does not dispatch a role, edit/advance the
+Return `approved_reconciliation_preparation` to Orchestrator. Task A keeps the sole token in
+`implementation_running/Developer`, with expected target/head
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. Planner does not dispatch a role, edit/advance the
 lane, merge, run live migration/maintenance, create archive/index/audit, or perform Task B work.

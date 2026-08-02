@@ -1,8 +1,8 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `approved_reconciliation_preparation`
 
-Date: 2026-08-01
+Date: 2026-08-02
 
 Role: permanent Planner
 
@@ -216,6 +216,36 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ## Integration Reconciliation Amendment Discovery
 
+### User approval and reconciliation preparation audit
+
+- The User explicitly approved the exact Task A integration-reconciliation amendment at primary
+  anchor `3e73761673fd75de4e79028b0b8d0b89979bbd1a` and authorized automatic bounded
+  Developer -> independent Reviewer -> mandatory QA -> local Integrator continuation.
+- Primary was reverified clean at that exact anchor with no `MERGE_HEAD`. Preserved local merge
+  `a42ca37e205127afd87d4cdc1d26ede53830522c` is its ancestor. The existing lane/worktree/index is
+  clean at `e958ba37df216c1690434ed7f9f40d4a436a88c5` on the exact approved branch; its base remains
+  `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`.
+- Pre-transition production Inspect returned `ALLOW_INSPECT` with Task A as sole WIP=`1` owner in
+  `gate_running/Integrator` and snapshot digest
+  `a1f0422506ffb124e14fac69c3cc51a4b2a56087c981c8c657aa06f9ec0755d4`.
+- This formal scope/authority action retains the same token and changes authority to
+  `implementation_running/Developer`, with expected reconciliation target/head
+  `3e73761673fd75de4e79028b0b8d0b89979bbd1a`. The physical lane is intentionally still at its
+  prior clean QA HEAD until Orchestrator performs the approved non-destructive fast-forward.
+- Developer dispatch is not authorized by this commit. Orchestrator must prove the exact
+  fast-forward, lane/worktree/index clean at the target HEAD, and a fresh
+  `ImplementationDispatch=ALLOW_DISPATCH`; otherwise it stops fail-closed.
+- All amendment May Touch/Must Not Touch/Locked Paths and bootstrap prohibitions remain exact.
+  Queue stays empty; paused/Quick Fix/parallel remain null; residuals and retained/frozen facts
+  remain unchanged. Task B and the umbrella remain unapproved/non-executable. No lane, helper,
+  tests, attestation, migration, archive/index/audit, remote, runtime, or destructive action was
+  performed by Planner.
+- Post-transition production Inspect returned `ALLOW_INSPECT`, zero-write, with
+  `implementation_running/Developer`, the same Task A token, and execution-control digest
+  `124cbc003ab8322cf2208d742e9a59d971875ab44773400d3607833cab283be8`. The bounded legacy
+  governance regression passed `47`; Developer dispatch was not attempted and still requires the
+  later physical-lane proof plus fresh `ALLOW_DISPATCH`.
+
 ### Current authority and why Planner may act
 
 - Primary was reverified clean at
@@ -229,7 +259,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 ### Confirmed by User
 
-- Plan a one-time, auditable, fail-closed Task A legacy bootstrap attestation for User review only.
+- Plan a one-time, auditable, fail-closed Task A legacy bootstrap attestation; this was the
+  planning-stage instruction and the exact resulting amendment is now User-approved.
 - Never fabricate/backfill `DEVELOPER_READY`, `REVIEWER_PASS`, or `QA_PASS` transition history;
   never weaken routine transition or maintenance gates.
 - Bind only the exact legacy evidence, lane/merge/primary/authority/failed-plan facts and a
@@ -286,12 +317,12 @@ change scope and create no blocking question.
 
 ### Continue/stop decision and risk
 
-Continue only to formal User review. The amendment has exact scope, interface, failure codes,
-transaction/rollback, use-once audit, lane continuation, and validation gates. Implementation is
-not ready because this amendment has not been approved. The dominant risk is accidentally turning
-historical evidence into generic transition authority; structural schema separation, hard Task A/
-generation-1 anchors, explicit CLI opt-in, consumption identity, and later-generation replay
-rejection address it.
+The planning-stage decision was to continue only to formal User review. That review is now complete
+and the exact amendment is approved. Implementation dispatch is still not ready until the existing
+lane is fast-forwarded to the approved anchor and fresh `ALLOW_DISPATCH` is proven. The dominant
+risk is accidentally turning historical evidence into generic transition authority; structural
+schema separation, hard Task A/generation-1 anchors, explicit CLI opt-in, consumption identity,
+and later-generation replay rejection address it.
 
 ## Sources Read
 
@@ -342,8 +373,8 @@ rejection address it.
 
 ### Not yet confirmed
 
-- User approval of this amendment and its future Developer/Reviewer/QA/Integrator execution
-  outputs, including fresh plan/source/consumption/archive/index hashes and accepted metrics.
+- The future Developer/Reviewer/QA/Integrator execution outputs, including fresh plan/source/
+  consumption/archive/index hashes and accepted metrics.
 
 These are future execution outputs and do not alter scope. No blocking planning question remains.
 
@@ -354,9 +385,11 @@ These are future execution outputs and do not alter scope. No blocking planning 
   lane identity, and role gates are explicit.
 - No active or parallel owner conflicts with the planned paths.
 - The branch/worktree identity is exact and physically verified at the recorded approval base.
-- The amendment is complete enough for User review: exact anchors, one-time schema, May Touch/Must
-  Not Touch/locks, existing-lane continuation, failure and rollback rules, role route, and full
-  validation are explicit. It is deliberately not implementation-ready until User approval.
+- The amendment passed User review with exact anchors, one-time schema, May Touch/Must Not Touch/
+  locks, existing-lane continuation, failure and rollback rules, role route, and full
+  validation are explicit. User approval is now recorded; implementation dispatch remains
+  fail-closed until the existing lane is fast-forwarded to the exact approved anchor, is clean,
+  and fresh `ALLOW_DISPATCH` is proven.
 
 ## Risk And Mitigation
 
@@ -370,6 +403,9 @@ These are future execution outputs and do not alter scope. No blocking planning 
 
 ## Stop Point
 
-Return `integration_reconciliation_amendment_pending_user_approval` to Orchestrator. Keep Task A
-as sole `gate_running/Integrator` owner. Do not dispatch any role, edit/advance the lane, merge,
-run live maintenance/migration, create archive/index/audit, or perform Task B work.
+Return `approved_reconciliation_preparation` to Orchestrator. Keep Task A as sole
+`implementation_running/Developer` token owner with expected target/head
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. Planner does not dispatch Developer; Orchestrator
+must first fast-forward the existing lane, prove exact clean HEAD equality, and obtain fresh
+`ALLOW_DISPATCH`. Do not edit helper/tests/attestation, run live maintenance/migration, create
+archive/index/audit, or perform Task B work.

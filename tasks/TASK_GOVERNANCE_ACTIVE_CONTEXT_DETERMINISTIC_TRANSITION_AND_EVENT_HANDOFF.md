@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `approved_reconciliation_preparation`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -8,9 +8,12 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: permanent Integrator retains the sole token in `gate_running/Integrator`.
-Next authority: User review of the one-time legacy-bootstrap amendment below; no role, migration,
-or Task B may start before explicit approval.
+Owner at this gate: Task A retains the sole token in `implementation_running/Developer` as a
+reconciliation-preparation authority; Developer is not yet dispatched.
+Next authority: Orchestrator must non-destructively fast-forward the existing clean lane from
+`e958ba37df216c1690434ed7f9f40d4a436a88c5` to the approved amendment anchor
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`, prove the exact clean HEAD, and obtain a fresh
+`ALLOW_DISPATCH` before Developer may receive implementation authority.
 
 ## Integrator Blocked Checkpoint
 
@@ -29,12 +32,15 @@ or Task B may start before explicit approval.
   umbrella remain unapproved and non-executable. Evidence:
   `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_integrator.md`.
 
-## Pending User Review — One-Time Legacy Bootstrap Attestation Amendment
+## User-Approved — One-Time Legacy Bootstrap Attestation Amendment
 
-This amendment is planning-only and is not approved or executable. It resolves only the first
-Task A production migration's legacy-input mismatch. It does not create, backfill, synthesize, or
-represent `DEVELOPER_READY`, `REVIEWER_PASS`, or `QA_PASS` `transition_history`; it does not change
-the four routine transition contracts or weaken normal maintenance gates.
+The User explicitly approved this exact amendment at primary anchor
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a` and authorized automatic bounded
+Developer -> independent Reviewer -> mandatory QA -> local Integrator continuation. The approval
+resolves only the first Task A production migration's legacy-input mismatch. It does not create,
+backfill, synthesize, or represent `DEVELOPER_READY`, `REVIEWER_PASS`, or `QA_PASS`
+`transition_history`; it does not change the four routine transition contracts or weaken normal
+maintenance gates. Task B and the umbrella remain unapproved and non-executable.
 
 ### Immutable legacy anchors
 
@@ -107,17 +113,22 @@ Must Not Touch / Locked Paths:
 
 ### Existing-lane continuation and gates
 
-After explicit User approval, Planner records the amendment and returns the same Task A token to
-`implementation_running/Developer`. Orchestrator reuses the existing lane/worktree and
-fast-forwards it non-destructively to the exact approved primary descendant of `75565f7a`; the
+Planner has recorded the explicit User approval and returned the same Task A token to
+`implementation_running/Developer` for reconciliation preparation only. The existing physical
+lane remains clean at `e958ba37df216c1690434ed7f9f40d4a436a88c5`; its required reconciliation
+target is the approved primary descendant
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. Orchestrator must reuse the existing
+lane/worktree and fast-forward it non-destructively to that exact target; the
 existing QA HEAD and local merge remain ancestors and are never reset, rebased, discarded, or
 recreated. Developer implements only the amendment scope, then full independent Reviewer re-gate,
 mandatory QA, and Integrator retry occur on a new reviewed HEAD. Integrator may retry merge and
 live generation-1 apply only after those gates pass and while Task A remains the sole
 `gate_running/Integrator` owner.
 
-Live apply remains prohibited until the User approves this amendment and the subsequent
-Developer/Reviewer/QA gates pass. Task B remains `planned_pending_user_approval` and cannot start.
+Developer dispatch remains prohibited until Orchestrator proves the exact fast-forward, clean
+lane/index at the target HEAD, and a fresh `ImplementationDispatch=ALLOW_DISPATCH`. Live apply
+remains prohibited until the subsequent Developer/Reviewer/QA gates pass. Task B remains
+`planned_pending_user_approval` and cannot start.
 
 ## Historical Original Approval Boundary
 
@@ -126,8 +137,9 @@ Integrator acceptance. This approval does not approve Task B or revive the super
 Approval base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69` contains the approved Task/Plan/
 Planner evidence. The historical B1-B5 and final R1-R3 Developer/Reviewer/QA route completed and
 the exact QA package was merged locally, but first migration failed closed. That original approval
-does not approve this new bootstrap amendment; explicit User review is required. No live board
-maintenance, push, publication, restart, destructive cleanup, or parallel exception is authorized.
+did not approve the bootstrap amendment; the User subsequently approved it at exact anchor
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. No live board maintenance, push, publication,
+restart, destructive cleanup, or parallel exception is authorized by that approval.
 
 ## User Approval And Activation Boundary
 
@@ -395,7 +407,9 @@ Missing a safety or quantitative target blocks Integrator acceptance.
 
 The exact branch/worktree is clean at QA HEAD
 `e958ba37df216c1690434ed7f9f40d4a436a88c5`; Reviewer and QA passed and local merge `a42ca37e...`
-preserves that ancestry. No role may be dispatched for the new amendment until User approval.
+preserves that ancestry. The approved reconciliation target is
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. No role may be dispatched until the exact
+fast-forward, clean target HEAD, and fresh `ALLOW_DISPATCH` are proven.
 
 ## Historical Reviewer-Blocked Bounded Fix Contract
 
@@ -440,6 +454,9 @@ preserves that ancestry. No role may be dispatched for the new amendment until U
 
 ## Stop Point
 
-Return `integration_reconciliation_amendment_pending_user_approval` to Orchestrator. Retain Task A
-as sole `gate_running/Integrator` owner. Do not dispatch any role, edit/advance the lane, run live
-migration/maintenance, create archive/index/audit, or perform Task B work.
+Return `approved_reconciliation_preparation` to Orchestrator. Retain Task A as sole
+`implementation_running/Developer` token owner, with the active HEAD expressing the approved
+target `3e73761673fd75de4e79028b0b8d0b89979bbd1a`. Do not dispatch Developer until Orchestrator
+fast-forwards the existing lane, proves it clean at that exact HEAD, and obtains fresh
+`ALLOW_DISPATCH`. Do not edit helper/tests/attestation, run live migration/maintenance, create
+archive/index/audit, or perform Task B work in this governance step.
