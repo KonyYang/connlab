@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `approved_reconciliation_preparation`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -8,12 +8,151 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
-Owner at this gate: Task A retains the sole token in `implementation_running/Developer` as a
-reconciliation-preparation authority; Developer is not yet dispatched.
-Next authority: Orchestrator must non-destructively fast-forward the existing clean lane from
-`e958ba37df216c1690434ed7f9f40d4a436a88c5` to the approved amendment anchor
-`3e73761673fd75de4e79028b0b8d0b89979bbd1a`, prove the exact clean HEAD, and obtain a fresh
-`ALLOW_DISPATCH` before Developer may receive implementation authority.
+Owner at this gate: Task A remains the sole token owner in the unchanged durable board authority
+`implementation_running/Developer`; the clean Developer candidate remains `ready_for_review` but
+Reviewer is not dispatched.
+Next authority: User review of the routine-transition authority reconciliation amendment below.
+No board HEAD update, metadata initialization, role transition, helper edit, or role dispatch is
+authorized by this planning checkpoint.
+
+## Pending User Review — Routine Transition Metadata And Candidate-HEAD Reconciliation
+
+### Discovery decision
+
+The approved legacy-maintenance bootstrap package is complete and clean, but the first routine
+`DEVELOPER_READY` handoff now exposes two independent fail-closed gaps:
+
+1. the durable Task A active record predates the new frozen transition metadata and therefore the
+   helper stops at `BLOCKED_TRANSITION_METADATA`;
+2. the helper and production dispatch gate currently treat the durable board lane HEAD and the
+   callback candidate lane HEAD as the same value, so a legitimate new candidate stops at
+   `BLOCKED_ACTIVE_HEAD_DRIFT` before it can be adopted.
+
+The original Task A scope includes the transition helper, its unit/recovery tests, and the
+normative contract. However, the later approved legacy-bootstrap amendment explicitly locked
+those paths read-only. Repairing this behavior therefore requires a new explicit User-approved
+scope/authority amendment. It is not a routine callback and cannot reuse the prior approval.
+
+### Immutable reconciliation anchors
+
+| Fact | Exact binding |
+| --- | --- |
+| Primary planning anchor | clean `master@49911ae626daf646836471246a223496dc7ea771`; no `MERGE_HEAD` |
+| Durable authority | Task A sole token, `implementation_running/Developer`, active `head_sha=3e73761673fd75de4e79028b0b8d0b89979bbd1a`, payload digest `124cbc003ab8322cf2208d742e9a59d971875ab44773400d3607833cab283be8` |
+| Candidate lane | clean exact branch/worktree at `aeb7709128361782800d2da5a473d730d48df652`; base `15c3120a6d889e97d098c2cb9f8c8ef852d74f69`; implementation checkpoint `dc8f1fef42c874523b5706da3c8d92fa8391c475` |
+| Candidate evidence | `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md@aeb7709128361782800d2da5a473d730d48df652`; blob `104387574e995f2b6caf4bf1ceacfab76a748c64`; SHA-256 `3d53242ba53f899bd9656e37e33508f6b74d57b711fd5926f39e1a4d67d2157c`; `Developer/ready_for_review` |
+| Candidate delta | exactly six paths: Developer evidence, legacy-bootstrap source attestation, bounded active-context hook, Task-A bootstrap module, and its two bounded tests |
+| Validation | external seven-field callback `ALLOW_CALLBACK`; bootstrap `50 passed`; existing Task A `133 passed`; gate `BLOCKED_ACTIVE_HEAD_DRIFT`; transition plan `BLOCKED_TRANSITION_METADATA`; all zero-write |
+
+The primary anchor and candidate are parallel descendants of the durable board anchor: primary
+adds only the approved four governance paths, while the candidate adds only the approved six-path
+Developer package. The reconciliation must preserve both histories without reset, rebase,
+cherry-pick, or preliminary board mutation.
+
+### A. One-time legacy active-record metadata initialization
+
+The first successful `DEVELOPER_READY` transition may initialize missing transition metadata only
+as part of the same atomic board replacement that adopts the reviewed callback candidate and
+moves to `gate_running/Reviewer`. It must never perform a metadata-only or board-HEAD-only write.
+
+The canonical `transition_metadata_bootstrap` attestation is structurally separate from
+`transition_history` and binds:
+
+- exact Task A identity, immutable base, original approved Task blob, latest User-approved Task/
+  Plan amendment refs, effective May Touch digest, and the existing board Locked Paths digest;
+- the exact primary anchor, source board hash/payload digest, durable board HEAD, blocked candidate
+  `aeb77091...`, Developer evidence path/commit/blob/SHA/status, exact six-path delta, clean branch/
+  worktree/index, and base/durable/candidate ancestry;
+- the future bounded-fix implementation/evidence candidate as a descendant of `aeb77091...`, with
+  no path outside the newly approved amendment delta;
+- a canonical `bootstrap_id`, single-use marker, and exact transition plan/ID.
+
+The active `scope_contract_ref`, `may_touch_digest`, `locked_paths_digest`, and
+`last_transition_id` are initialized from these proven facts. The May Touch contract and board
+Locked Paths are hashed independently: they are not required to be textually identical because
+the approved Task contains role-owned prose paths while the board contains operational wildcard
+locks. Every actual delta must satisfy both the effective approved scope and locked-path policy.
+
+Any different task, primary/source board, durable/candidate HEAD, evidence byte/status, branch,
+worktree, base, ancestry, scope, lock, role/state/token, queue/paused/Quick Fix/parallel/residual
+context, dirty state, or prior bootstrap/history blocks with zero writes. The bootstrap cannot be
+used by another task, another candidate, a later transition, or maintenance generation. It never
+creates or represents historical `DEVELOPER_READY`, `REVIEWER_PASS`, or `QA_PASS` events.
+
+### B. General atomic callback candidate-HEAD adoption
+
+Routine transition inputs distinguish:
+
+- `expected_board_head`: the currently durable lane checkpoint recorded in board authority;
+- `candidate_lane_head`: the new callback/evidence commit physically checked out in the exact
+  lane worktree.
+
+The helper must prove `expected_board_head` is an ancestor of `candidate_lane_head`, the candidate
+branch/worktree/index is clean, and the exact range conforms to the event-specific delta contract.
+The evidence ref must resolve at the candidate commit and bind its Git blob, SHA-256, current role/
+status envelope, task identity, and ancestry. A single atomic board replacement then updates
+`active.head_sha`, `execution_state`, `active.role`, `active.evidence`, `last_transition_id`,
+`last_transition`, and `transition_history`; on the one legacy transition it also writes the
+separate metadata-bootstrap attestation and frozen active metadata. No preliminary unbound board
+HEAD update is permitted.
+
+Event delta rules are normative:
+
+- `DEVELOPER_READY`: implementation/test/contract changes must be inside the effective approved
+  scope and locks, followed by the exact Developer evidence candidate; an implementation
+  checkpoint followed by a later evidence commit is valid.
+- `REVIEWER_BLOCKED` and `REVIEWER_PASS`: the durable-to-candidate delta is evidence-only at the
+  exact Task A Reviewer evidence path. No implementation/helper/test/contract drift is allowed.
+- `QA_PASS`: the delta is evidence-only at the exact Task A QA evidence path; any post-review
+  implementation/helper/test/contract drift blocks.
+
+Stale, rewritten, divergent, dirty, scope/lock drifted, evidence-spoofed, evidence-only
+impersonation, post-review implementation drift, or duplicate-conflicting candidates fail closed.
+`ALREADY_APPLIED` is valid only after the identical complete board-only transition commit is
+proven: exact source parent, exact rendered board blob, exact candidate/evidence/bootstrap/plan/
+transition proof, and no other changed path. An identical uncommitted post-replace board returns a
+distinct recovery-required result, never `ALREADY_APPLIED`.
+
+### Exact future scope expansion after separate User approval
+
+Developer May Touch:
+
+1. `scripts/connlab_execution_transition.py`
+2. `tests/unit/test_connlab_execution_transition.py`
+3. `tests/integration/test_connlab_execution_transition_recovery.py`
+4. `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
+5. `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md`
+
+Role/primary governance May Touch:
+
+6. Task A Reviewer, QA, Integrator, and Planner evidence at their existing exact role paths
+7. this Task and Plan
+8. `docs/task_board.md` only through the reviewed helper's atomic routine transition; never as an
+   ambient Planner/manual candidate-HEAD or metadata-only update
+
+Must Not Touch / Locked:
+
+- `scripts/connlab_active_context.py`, `scripts/connlab_task_a_legacy_bootstrap.py`, their source
+  attestation and bootstrap tests, `scripts/connlab_handoff_contract.py`, `scripts/run_task.ps1`,
+  execution gate, worktree/maintenance helpers, all other Task A policies/skills/protocols/tests,
+  archive/index/audit, registry/bundle, V1/V2, Task B/umbrella, product/data/runtime/release/remote
+  paths, and retained/frozen/cancelled lanes are read-only.
+- The existing board Locked Paths remain unchanged and exclusive to Task A. No parallel exception,
+  new task, branch, or worktree is allowed.
+
+### Approval route and stop condition
+
+If the User approves, the same permanent Developer may perform one bounded continuation in the
+existing lane from `aeb77091...`. This is a one-time bootstrap continuation under the unchanged
+sole `implementation_running/Developer` token, not a generic gate bypass; it exists only because
+the legacy gate cannot authorize the helper repair that makes candidate adoption possible. The
+approval governance must bind the exact anchors and allowlist above, and any drift returns to
+Planner/User.
+
+Developer produces a clean fix/evidence candidate. The repaired helper then performs one atomic
+metadata-bootstrap plus `DEVELOPER_READY` adoption, after which a full independent Reviewer
+re-gate, mandatory QA, and Integrator retry are required. No live migration occurs until the new
+Reviewer/QA passes. Task B and the umbrella remain unapproved/non-executable.
 
 ## Integrator Blocked Checkpoint
 
@@ -33,6 +172,11 @@ Next authority: Orchestrator must non-destructively fast-forward the existing cl
   `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_integrator.md`.
 
 ## User-Approved — One-Time Legacy Bootstrap Attestation Amendment
+
+Historical note: this approved maintenance-bootstrap scope was implemented at clean candidate
+`aeb7709128361782800d2da5a473d730d48df652`. Its earlier fast-forward/dispatch preparation text
+below is retained as audit history and is superseded for current routing by the pending routine-
+transition amendment above.
 
 The User explicitly approved this exact amendment at primary anchor
 `3e73761673fd75de4e79028b0b8d0b89979bbd1a` and authorized automatic bounded
@@ -408,8 +552,9 @@ Missing a safety or quantitative target blocks Integrator acceptance.
 The exact branch/worktree is clean at QA HEAD
 `e958ba37df216c1690434ed7f9f40d4a436a88c5`; Reviewer and QA passed and local merge `a42ca37e...`
 preserves that ancestry. The approved reconciliation target is
-`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. No role may be dispatched until the exact
-fast-forward, clean target HEAD, and fresh `ALLOW_DISPATCH` are proven.
+`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. That historical fast-forward and bounded Developer
+package are now complete at `aeb77091...`; Reviewer remains blocked pending approval and atomic
+application of the routine-transition amendment above.
 
 ## Historical Reviewer-Blocked Bounded Fix Contract
 
@@ -454,9 +599,8 @@ fast-forward, clean target HEAD, and fresh `ALLOW_DISPATCH` are proven.
 
 ## Stop Point
 
-Return `approved_reconciliation_preparation` to Orchestrator. Retain Task A as sole
-`implementation_running/Developer` token owner, with the active HEAD expressing the approved
-target `3e73761673fd75de4e79028b0b8d0b89979bbd1a`. Do not dispatch Developer until Orchestrator
-fast-forwards the existing lane, proves it clean at that exact HEAD, and obtains fresh
-`ALLOW_DISPATCH`. Do not edit helper/tests/attestation, run live migration/maintenance, create
-archive/index/audit, or perform Task B work in this governance step.
+Return `integration_reconciliation_amendment_pending_user_approval`. Retain Task A as sole
+`implementation_running/Developer` token owner and preserve durable board HEAD `3e737616...` plus
+clean candidate `aeb77091...` exactly. Do not initialize metadata, pre-adopt candidate HEAD,
+dispatch any role, edit helper/tests/contract, run live migration/maintenance, create archive/
+index/audit, or perform Task B work before User approval.

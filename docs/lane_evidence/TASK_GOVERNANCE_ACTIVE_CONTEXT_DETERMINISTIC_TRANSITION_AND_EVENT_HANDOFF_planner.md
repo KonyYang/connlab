@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `approved_reconciliation_preparation`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Date: 2026-08-02
 
@@ -401,11 +401,125 @@ These are future execution outputs and do not alter scope. No blocking planning 
 - Context omission: verified refs and `FULL_READ_REQUIRED` on any unsafe omission.
 - Hidden long turn: one transition/dispatch maximum, no same-turn wait, callback-driven next turn.
 
-## Stop Point
+## Prior Reconciliation Stop Point (superseded)
 
-Return `approved_reconciliation_preparation` to Orchestrator. Keep Task A as sole
-`implementation_running/Developer` token owner with expected target/head
-`3e73761673fd75de4e79028b0b8d0b89979bbd1a`. Planner does not dispatch Developer; Orchestrator
-must first fast-forward the existing lane, prove exact clean HEAD equality, and obtain fresh
-`ALLOW_DISPATCH`. Do not edit helper/tests/attestation, run live maintenance/migration, create
-archive/index/audit, or perform Task B work.
+This was the prior approved preparation stop. The fast-forward and bounded Developer package are
+now complete at `aeb77091...`; the current stop is the routine-transition amendment below.
+
+## Routine Transition Authority Reconciliation Discovery — 2026-08-02
+
+### Current phase, authority, and why Planner may act
+
+- Phase remains `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`.
+- Primary was reverified clean at
+  `master@49911ae626daf646836471246a223496dc7ea771`, with no `MERGE_HEAD`.
+- Board remains unchanged: Task A is the sole WIP=`1` token owner in
+  `implementation_running/Developer`, durable active HEAD
+  `3e73761673fd75de4e79028b0b8d0b89979bbd1a`, queue empty, paused/Quick Fix/parallel null, and
+  payload digest `124cbc003ab8322cf2208d742e9a59d971875ab44773400d3607833cab283be8`.
+- The exact existing lane branch/worktree/index is clean at
+  `aeb7709128361782800d2da5a473d730d48df652`. This is a formal scope/authority conflict, not a
+  routine event, so Planner is allowed. No authority or lane write occurred in Discovery.
+
+### Confirmed by User
+
+- Run one read-only Discovery and prepare a formal amendment for User review only.
+- Keep the Developer candidate `ready_for_review`; do not dispatch Reviewer or modify board/lane.
+- Initialize missing legacy active metadata through an auditable, single-use, fail-closed proof,
+  structurally separate from transition history and incapable of fabricating old role events.
+- Generalize the existing helper so durable board HEAD and callback candidate HEAD are distinct,
+  proven facts and one atomic transition adopts the candidate plus state/role/evidence/history.
+- Reject stale/divergent/dirty/rewritten/scope/evidence/post-review drift and allow
+  `ALREADY_APPLIED` only for identical complete committed proof.
+- Require real-shape four-event tests, complete Task A regression, independent Reviewer,
+  mandatory QA, and Integrator. Task B stays stopped.
+
+### Confirmed by repository evidence
+
+- Candidate implementation checkpoint is
+  `dc8f1fef42c874523b5706da3c8d92fa8391c475`; final evidence checkpoint is
+  `aeb7709128361782800d2da5a473d730d48df652`. Base `15c3120...` and durable HEAD `3e737616...`
+  are ancestors.
+- Exact `3e737616...aeb77091` delta contains six approved paths only: Developer evidence,
+  maintenance-bootstrap source attestation, active-context hook, Task-A bootstrap module, and two
+  bounded bootstrap tests. `git diff --check` and final `git show --check` pass.
+- Developer evidence at candidate has Git blob
+  `104387574e995f2b6caf4bf1ceacfab76a748c64`, SHA-256
+  `3d53242ba53f899bd9656e37e33508f6b74d57b711fd5926f39e1a4d67d2157c`, top-level role
+  `Developer`, status `ready_for_review`, bootstrap `50 passed`, and prior Task A `133 passed`.
+- Exact seven-field callback at candidate is `ALLOW_CALLBACK` and `318` bytes.
+- Read-only production `ImplementationDispatch` returns `BLOCKED_ACTIVE_HEAD_DRIFT` because the
+  board records the durable pre-callback HEAD while the physical lane correctly contains a later
+  candidate. Read-only transition `plan` returns `BLOCKED_TRANSITION_METADATA` before it can
+  reason about the candidate. Both returned `zero_write=true`.
+- Current helper `validate_control` requires metadata on every active legacy record; its package
+  validator requires board HEAD equal expected lane HEAD and compares base-to-candidate rather
+  than durable-to-candidate. Its scope validator requires scope commit equal Git base and May
+  Touch list equal board Locked Paths. These assumptions conflict with real approved amendments.
+- Original Task A authorizes the helper/tests/contract, but the later maintenance-bootstrap
+  amendment expressly locked them. The new behavior is therefore a material scope amendment.
+- Approved base Task blob is `67156a9a2bb492b7a5a84ae960300255921e51e8`, SHA-256
+  `9a1b13f0dbc129608293198548f22b114fb40cb590362496c1478e720effc349`.
+  Its current parser yields a 28-entry May Touch digest
+  `1ea93b7c92fd451cfb0ba51edba61fa55ed13f10c1b5f5933d03ab1b6f3e1fd3`; the board carries 29
+  ordered operational locks with canonical digest
+  `df114c309a21657d155401a591bb4a05b960ea9ef3854125713fe149509e2907`. Equality is neither true
+  nor required by the approved prose contract.
+
+### Planner inference
+
+- The safe repair is one state machine: extend `connlab_execution_transition.py` with explicit
+  durable and candidate HEAD inputs and one Task-A-only metadata-bootstrap branch.
+- Metadata initialization and first candidate adoption must share one atomic board replacement.
+  Any preliminary board HEAD or metadata write would reproduce the authority gap.
+- The bootstrap record should live separately in board control and be consumed once; the first
+  real history entry remains only the current `DEVELOPER_READY` transition.
+- Scope contract commit and lane Git base must be independent. Latest User-approved Task/Plan plus
+  original base and board locks jointly define the effective frozen scope.
+- Since the legacy gate/helper cannot authorize their own bounded repair, User approval must
+  explicitly authorize one exact same-owner Developer continuation from `aeb77091...`. It is
+  single-use, Task-A-specific, non-parallel, and ends at the first atomic transition.
+
+### Unresolved items
+
+- User approval of this amendment; the future Developer fix/evidence candidate; bootstrap,
+  transition, plan and rendered-board digests; Reviewer/QA evidence; retry merge/migration/audit/
+  archive/index hashes; and final acceptance commit.
+
+These are gated outputs, not scope ambiguities. No blocking question remains for User review.
+
+### Exact scope reconciliation decision
+
+Current approved maintenance-bootstrap scope is insufficient because it locks the needed helper,
+tests, and normative contract. Recommend reopening exactly:
+
+- `scripts/connlab_execution_transition.py`;
+- `tests/unit/test_connlab_execution_transition.py`;
+- `tests/integration/test_connlab_execution_transition_recovery.py`;
+- `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`;
+- Task A Developer evidence, followed by normal Reviewer/QA/Integrator evidence.
+
+Current Task/Plan/Planner evidence are planning-owned. `docs/task_board.md` is future helper-owned
+only for the one atomic transition and its exact commit; Planner must never pre-adopt candidate
+HEAD or seed metadata manually. Active-context/bootstrap/handoff helpers/tests, execution gate,
+all other governance/product/protected paths, Task B, archive/index/audit, and remote/runtime state
+remain read-only.
+
+### Risk, Definition of Ready, and continue/stop
+
+Primary risks are using an unbound preliminary board update, treating evidence history as current
+status, allowing Reviewer/QA implementation drift, or making the bootstrap reusable. The amended
+Task/Plan counter these with exact anchors, separate bootstrap schema, durable-to-candidate range
+proof, role-proportionate deltas, current-status/evidence blob binding, single replacement,
+committed-topology idempotency, and complete recovery/replay tests.
+
+Goal, anchors, exact expansion, interfaces, delta policies, one-use route, rollback behavior,
+validation, role gates, lane identity, non-goals, and stop conditions are concrete. Definition of
+Ready is satisfied for User review only. It is not implementation-ready until the User approves.
+
+## Updated Stop Point
+
+Return `integration_reconciliation_amendment_pending_user_approval`. Preserve primary board and
+the clean `aeb77091...` lane. Do not initialize metadata, alter board HEAD/state/role, edit the
+helper/tests/contract, dispatch any role, merge, migrate, create archive/index/audit, push,
+restart, or perform destructive cleanup.
