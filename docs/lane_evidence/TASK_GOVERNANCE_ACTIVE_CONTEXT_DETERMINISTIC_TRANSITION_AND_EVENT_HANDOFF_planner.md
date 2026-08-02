@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF Planner Evidence
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `developer_dispatch_ready`
 
 Date: 2026-08-02
 
@@ -482,18 +482,19 @@ now complete at `aeb77091...`; the current stop is the routine-transition amendm
   explicitly authorize one exact same-owner Developer continuation from `aeb77091...`. It is
   single-use, Task-A-specific, non-parallel, and ends at the first atomic transition.
 
-### Unresolved items
+### Unresolved items at Discovery time
 
-- User approval of this amendment; the future Developer fix/evidence candidate; bootstrap,
-  transition, plan and rendered-board digests; Reviewer/QA evidence; retry merge/migration/audit/
-  archive/index hashes; and final acceptance commit.
+- User approval was unresolved during Discovery and is now satisfied at `d7994d26...`. The future
+  Developer fix/evidence candidate; bootstrap, transition, plan and rendered-board digests;
+  Reviewer/QA evidence; retry merge/migration/audit/archive/index hashes; and final acceptance
+  commit remain gated outputs.
 
-These are gated outputs, not scope ambiguities. No blocking question remains for User review.
+These are gated outputs, not scope ambiguities. No blocking question remained at Discovery.
 
 ### Exact scope reconciliation decision
 
-Current approved maintenance-bootstrap scope is insufficient because it locks the needed helper,
-tests, and normative contract. Recommend reopening exactly:
+The maintenance-bootstrap scope was insufficient because it locked the needed helper, tests, and
+normative contract. The User has now approved reopening exactly:
 
 - `scripts/connlab_execution_transition.py`;
 - `scripts/connlab_execution_transition_proof.py` (new pure support module);
@@ -586,7 +587,30 @@ Ready is satisfied for User review only. It is not implementation-ready until th
 
 ## Updated Stop Point
 
-Return `integration_reconciliation_amendment_pending_user_approval`. Preserve primary board and
-the clean `aeb77091...` lane. Do not initialize metadata, alter board HEAD/state/role, edit the
-helper/tests/contract, dispatch any role, merge, migrate, create archive/index/audit, push,
-restart, or perform destructive cleanup.
+### User approval and dispatch-preparation audit — 2026-08-02
+
+- The User explicitly approved the exact routine-transition amendment at
+  `d7994d264db1d7314d916a9773c95722e9201958` and authorized one bounded continuation in the
+  existing Developer lane, followed by automatic atomic Developer-to-Reviewer, full Reviewer,
+  mandatory QA, and Integrator. Task B remains unapproved and unstarted.
+- Primary was clean at that exact approval anchor. Production `Inspect` returned `ALLOW_INSPECT`
+  with payload digest `124cbc003ab8322cf2208d742e9a59d971875ab44773400d3607833cab283be8`;
+  board bytes/hash remained unchanged. Task A remains the sole `implementation_running/Developer`
+  token owner with durable HEAD `3e737616...`, queue empty, and paused/Quick Fix/parallel null.
+- The existing exact lane/branch/worktree/index was clean at `aeb77091...`. The known
+  `BLOCKED_ACTIVE_HEAD_DRIFT` and `BLOCKED_TRANSITION_METADATA` results remain expected zero-write
+  facts. Approval authorizes only the same-token/same-lane bounded repair that closes them; it is
+  not a reusable or general gate bypass.
+- Approved scope is the chosen pure-support extraction: seven implementation/contract paths plus
+  updated Developer evidence, producing the exact 13-path durable-to-final candidate allowlist.
+  The first future atomic transition alone validates and installs the exact 29-to-32 ordered lock
+  change/digests. All seven line ceilings, C0-C4 TDD checkpoints, full Reviewer, mandatory QA,
+  Integrator, no-prewrite, no-fabricated-history, and Task B prohibitions remain binding.
+- This primary checkpoint modifies only Task, Plan, and Planner evidence. It does not modify board,
+  lane, helper/test/contract, role evidence, archive/index/audit, Task B, product/runtime/remote, or
+  dispatch any role.
+
+Return `developer_dispatch_ready` to Orchestrator. Preserve primary board and the clean
+`aeb77091...` lane until fresh exact-anchor validation and the one bounded Developer dispatch.
+Planner does not initialize metadata, alter board HEAD/state/role, edit the lane, dispatch a role,
+merge, migrate, create archive/index/audit, push, restart, or perform destructive cleanup.

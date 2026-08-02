@@ -1,17 +1,26 @@
 # Active Context Deterministic Transition And Event Handoff Implementation Plan
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `developer_dispatch_ready`
 
 Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`
 
 Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 
-## Pending Routine-Transition Authority Reconciliation Amendment
+## Approved Routine-Transition Authority Reconciliation Amendment
 
-This amendment is planning-only and requires separate User approval. It changes neither the
-current board nor the clean candidate lane. It repairs the existing transition state machine; it
-does not create a second state machine, synthesize historical gate events, or weaken the approved
-maintenance bootstrap.
+The User explicitly approved this exact amendment at
+`d7994d264db1d7314d916a9773c95722e9201958`:
+
+> I approve Task A's routine-transition authority reconciliation amendment at
+> d7994d264db1d7314d916a9773c95722e9201958 and authorize one bounded continuation in the existing
+> Developer lane, followed by automatic atomic Developer→Reviewer transition, full Reviewer,
+> mandatory QA, and Integrator. Task B remains unapproved and unstarted.
+
+This governance record changes neither the current board nor the clean lane. It authorizes only
+the exact pure-support extraction, 13-path candidate allowlist, future atomic 29-to-32 lock
+transition, line ceilings, C0-C4 checkpoints, and serial gates below. It does not create a second
+state machine, synthesize historical gate events, weaken the approved maintenance bootstrap, or
+create a reusable/general gate bypass.
 
 ### Discovery Gate
 
@@ -47,7 +56,8 @@ Confirmed by repository:
   scope-contract commit to equal `base_sha`, and requires parsed May Touch paths to equal board
   Locked Paths. The approved Task and later amendments prove these are distinct concepts.
 - The original Task A May Touch includes the transition helper/tests/contract, but the approved
-  maintenance-bootstrap amendment explicitly locks them read-only. New User approval is required.
+  maintenance-bootstrap amendment explicitly locked them read-only. The required new User
+  approval is now bound to `d7994d26...` and only the exact scope below.
 
 Planner inference:
 
@@ -64,11 +74,12 @@ Planner inference:
 
 Not yet confirmed:
 
-- The User's approval of this new amendment; the future fix/evidence candidate, transition plan/
-  bootstrap/transition IDs, Reviewer/QA evidence commits, retry merge, and final migration hashes.
+- The future fix/evidence candidate, transition plan/bootstrap/transition IDs, Reviewer/QA
+  evidence commits, retry merge, and final migration hashes.
 
-These are gated future outputs. No additional product or UX question exists. Recommendation: stop
-for User approval; after approval continue only through the exact serial route below.
+These are gated future outputs, not approval or scope gaps. No additional product or UX question
+exists. Orchestrator may continue only through the exact serial route below after revalidating the
+frozen anchors and clean lane.
 
 ### Frozen metadata and transition plan schemas
 
@@ -191,7 +202,7 @@ rewrite, non-ancestor candidate, dirty lane/index, path outside scope/locks, wro
 multiple current-status envelopes, evidence-only path pretending to be another role, or changed
 helper after review returns stable `BLOCKED_*` with `changed_paths=[]`.
 
-### Exact future May Touch / Must Not Touch / locks
+### Exact approved May Touch / Must Not Touch / locks
 
 Developer lane May Touch only:
 
@@ -227,8 +238,8 @@ Exact physical-line ceilings and ownership:
 Must Not Touch: active-context/bootstrap/handoff helpers and tests, legacy source attestation,
 `run_task.ps1`, execution/worktree/maintenance gates, every other contract/policy/skill/test,
 archive/index/audit, registry/bundle, V1/V2, Task B/umbrella, product/data/runtime/release/remote,
-and retained/frozen/cancelled lanes. The current board stays byte-unchanged before approval and
-implementation. On the first atomic transition only, the ordered operational lock list expands
+and retained/frozen/cancelled lanes. The current board stays byte-unchanged before implementation.
+On the first atomic transition only, the ordered operational lock list expands
 from 29 to 32 by inserting the proof support after the coordinator, the proof unit test after the
 existing transition unit test, and the candidate-adoption integration test after the existing
 recovery test; exact compact-JSON SHA-256 becomes `93bbeff0...34c16c`. Any other path/order/digest
@@ -312,10 +323,11 @@ this exact scope; any new path or responsibility returns to Planner/User.
 
 ### Stop point
 
-Return `integration_reconciliation_amendment_pending_user_approval`. Keep the board and lane
-unchanged. Do not initialize metadata, alter board HEAD/state/role, edit helper/tests/contract,
-dispatch Developer/Reviewer/QA/Integrator, migrate, create archive/index/audit, merge, push,
-restart, or clean until the User approves this exact amendment.
+Return `developer_dispatch_ready` to Orchestrator. This Planner checkpoint keeps board and lane
+unchanged and performs no role dispatch. Orchestrator must revalidate the exact anchors and may
+then issue one bounded Developer capsule. No metadata/board pre-write, migration, archive/index/
+audit creation, merge, push, restart, destructive action, Task B work, or other-role dispatch is
+authorized here.
 
 ## Integrator Blocked Result
 
@@ -331,7 +343,7 @@ restart, or clean until the User approves this exact amendment.
 
 Historical note: this maintenance-bootstrap amendment was implemented and evidenced at candidate
 `aeb7709128361782800d2da5a473d730d48df652`. Its preparation/fast-forward stop text below is
-retained for audit and superseded by the pending routine-transition amendment above.
+retained for audit and superseded by the now-approved routine-transition amendment above.
 
 The User explicitly approved this formal amendment at primary anchor
 `3e73761673fd75de4e79028b0b8d0b89979bbd1a` and authorized automatic bounded
@@ -353,7 +365,8 @@ Confirmed by User:
 - Preserve normal gates; prohibit generic bypasses, force flags, manual history/archive/index,
   synthesized callbacks, Task B activation, push/restart, and destructive actions.
 - Require a new bounded Developer pass, full Reviewer re-gate, mandatory QA, then Integrator retry
-  on a new reviewed HEAD. Live apply is forbidden before User approval and those gates.
+  on a new reviewed HEAD. Live apply is forbidden until the recorded approval and those gates are
+  all satisfied.
 
 Confirmed by repository:
 
@@ -938,8 +951,9 @@ a Planner/User blocker.
 
 ## 9. Stop Point
 
-Return `integration_reconciliation_amendment_pending_user_approval`. Task A keeps the sole token
-in `implementation_running/Developer`; durable board HEAD remains `3e737616...` and clean callback
-candidate remains `aeb77091...`. Planner does not initialize metadata, pre-adopt the candidate,
-dispatch a role, edit/advance the lane, merge, run live migration/maintenance, create archive/
-index/audit, or perform Task B work.
+Return `developer_dispatch_ready` to Orchestrator. Task A keeps the sole token in
+`implementation_running/Developer`; durable board HEAD remains `3e737616...` and clean lane HEAD
+remains `aeb77091...`. Planner does not initialize metadata, pre-adopt the candidate, dispatch a
+role, edit/advance the lane, merge, run live migration/maintenance, create archive/index/audit, or
+perform Task B work. Orchestrator may issue only the approved bounded Developer continuation after
+fresh exact-anchor and clean-lane validation.

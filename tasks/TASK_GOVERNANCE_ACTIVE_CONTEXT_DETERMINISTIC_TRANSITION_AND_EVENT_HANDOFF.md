@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `developer_dispatch_ready`
 
 Type: governance / execution-authority / orchestration-efficiency
 
@@ -9,13 +9,29 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
 Owner at this gate: Task A remains the sole token owner in the unchanged durable board authority
-`implementation_running/Developer`; the clean Developer candidate remains `ready_for_review` but
-Reviewer is not dispatched.
-Next authority: User review of the routine-transition authority reconciliation amendment below.
-No board HEAD update, metadata initialization, role transition, helper edit, or role dispatch is
-authorized by this planning checkpoint.
+`implementation_running/Developer`; the clean existing lane is authorized for one bounded
+same-token/same-lane Developer continuation, but Planner has not dispatched or edited it.
+Next authority: Orchestrator must revalidate the exact frozen anchors, lane cleanliness, and this
+approval record, then may dispatch only the bounded Developer capsule below. No board HEAD update,
+metadata initialization, role transition, helper edit, or role dispatch occurred in this primary
+governance checkpoint.
 
-## Pending User Review — Routine Transition Metadata And Candidate-HEAD Reconciliation
+## Approved Routine Transition Metadata And Candidate-HEAD Reconciliation
+
+### Exact User approval record
+
+The User explicitly approved the amendment at
+`d7994d264db1d7314d916a9773c95722e9201958` and stated:
+
+> I approve Task A's routine-transition authority reconciliation amendment at
+> d7994d264db1d7314d916a9773c95722e9201958 and authorize one bounded continuation in the existing
+> Developer lane, followed by automatic atomic Developer→Reviewer transition, full Reviewer,
+> mandatory QA, and Integrator. Task B remains unapproved and unstarted.
+
+This approval activates only the exact pure-support extraction, 13-path durable-to-final candidate
+allowlist, first-transition 29-to-32 lock reconciliation, physical-line ceilings, C0-C4 TDD
+checkpoints, and serial Reviewer/QA/Integrator route recorded below. It does not authorize a
+general gate bypass or any preliminary board write.
 
 ### Discovery decision
 
@@ -30,8 +46,9 @@ The approved legacy-maintenance bootstrap package is complete and clean, but the
 
 The original Task A scope includes the transition helper, its unit/recovery tests, and the
 normative contract. However, the later approved legacy-bootstrap amendment explicitly locked
-those paths read-only. Repairing this behavior therefore requires a new explicit User-approved
-scope/authority amendment. It is not a routine callback and cannot reuse the prior approval.
+those paths read-only. Repairing this behavior therefore required the explicit User-approved
+scope/authority amendment now recorded at `d7994d26...`. It is not a routine callback and does not
+reuse or generalize any prior approval.
 
 ### Immutable reconciliation anchors
 
@@ -118,7 +135,7 @@ proven: exact source parent, exact rendered board blob, exact candidate/evidence
 transition proof, and no other changed path. An identical uncommitted post-replace board returns a
 distinct recovery-required result, never `ALREADY_APPLIED`.
 
-### Exact future scope expansion after separate User approval
+### Exact approved bounded scope
 
 Developer May Touch:
 
@@ -160,8 +177,8 @@ Must Not Touch / Locked:
   execution gate, worktree/maintenance helpers, all other Task A policies/skills/protocols/tests,
   archive/index/audit, registry/bundle, V1/V2, Task B/umbrella, product/data/runtime/release/remote
   paths, and retained/frozen/cancelled lanes are read-only.
-- The current board stays byte-unchanged while this amendment awaits approval. On the first
-  approved atomic transition only, its ordered lock list expands from 29 to 32 entries by inserting
+- The current board stays byte-unchanged until the future first atomic transition. On that
+  transition only, its ordered lock list expands from 29 to 32 entries by inserting
   `scripts/connlab_execution_transition_proof.py` after the coordinator,
   `tests/unit/test_connlab_execution_transition_proof.py` after the existing transition unit test,
   and `tests/integration/test_connlab_execution_transition_candidate_adoption.py` after the
@@ -178,10 +195,10 @@ package hold, real-shape fixtures preserve the prior durable board HEAD, bootstr
 `133` plus new focused/full protected-state suites pass, and duplicate/recovery/role-delta rules
 fail closed. QA remains mandatory and Integrator must retry only on the final reviewed/QA ancestry.
 
-### Approval route and stop condition
+### Approved route and stop condition
 
-If the User approves, the same permanent Developer may perform one bounded continuation in the
-existing lane from `aeb77091...`. This is a one-time bootstrap continuation under the unchanged
+Under the exact approval above, the same permanent Developer may perform one bounded continuation
+in the existing lane from `aeb77091...`. This is a one-time bootstrap continuation under the unchanged
 sole `implementation_running/Developer` token, not a generic gate bypass; it exists only because
 the legacy gate cannot authorize the helper repair that makes candidate adoption possible. The
 approval governance must bind the exact anchors and allowlist above, and any drift returns to
@@ -269,7 +286,7 @@ bind those new values into the one-time consumption identity.
   file, source/plan/consumption identities, and immediate commit topology all match. Partial,
   divergent, later-generation, later-closeout, other-task, or already-consumed reuse is blocked.
 
-### Amendment implementation scope after separate User approval
+### Amendment implementation scope under its recorded separate User approval
 
 May Touch:
 
@@ -640,8 +657,8 @@ application of the routine-transition amendment above.
 
 ## Stop Point
 
-Return `integration_reconciliation_amendment_pending_user_approval`. Retain Task A as sole
+Return `developer_dispatch_ready` to Orchestrator. Retain Task A as sole
 `implementation_running/Developer` token owner and preserve durable board HEAD `3e737616...` plus
-clean candidate `aeb77091...` exactly. Do not initialize metadata, pre-adopt candidate HEAD,
-dispatch any role, edit helper/tests/contract, run live migration/maintenance, create archive/
-index/audit, or perform Task B work before User approval.
+clean lane HEAD `aeb77091...` until Orchestrator revalidates and issues the exact bounded capsule.
+Planner does not initialize metadata, pre-adopt candidate HEAD, dispatch a role, edit the lane,
+run live migration/maintenance, create archive/index/audit, or perform Task B work.
