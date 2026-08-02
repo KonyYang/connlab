@@ -644,8 +644,10 @@ current stop is the pending post-transition amendment below; board remains
 
 ### Confirmed by repository evidence
 
-- Primary `5cd7f02acd02c03008f29de900e841a185a9d138` has sole parent
-  `329c0343ea0e7f4d24d6fb7e2e986a094c304fd8`; its sole path is `docs/task_board.md`. Current board
+- Primary was reverified clean at `1e60af997e5ce042d9e2f9ae8cc7c4b4469a3570`; its delta after
+  board-only atomic commit `5cd7f02acd02c03008f29de900e841a185a9d138` is exactly the current
+  Task/Plan/Planner evidence. The `5cd7f02a...` sole parent is `329c0343...` and its sole path is
+  `docs/task_board.md`. Current board
   blob is `972b1c2386145114cb3daa35037913d709bb5180`, SHA-256
   `3e57b913098e565de3fee8f4a0ffdff597e3d7fdfec5232fe63027298f1a2507`, payload
   `f2ddca5a8f84f4f8a966410852983571006f2810028ea0a82e33df8ed7ef0a03`.
@@ -688,29 +690,36 @@ current stop is the pending post-transition amendment below; board remains
   locks, producing 35-lock digest
   `a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347`.
 
-### Not yet confirmed / true blocker
+### User-authorized bridge resolution
 
-- A genuine current Reviewer evidence commit can be produced under the one-time attestation, but
-  current code cannot then apply `REVIEWER_BLOCKED` because its scope metadata rule rejects the
-  live approved scope ref before event-delta validation.
-- Repairing that rule first requires Developer writes while board remains Reviewer; changing board
-  first without the helper is the forbidden manual state reversal. The User's supplemental scope
-  correctly forbids silently adding another authority path. Therefore no implementation-ready
-  ordering exists under all current constraints.
-- Exact blocking decision: User must explicitly authorize one bounded authority bridge (or revise
-  one of the no-manual/no-pre-transition-Developer constraints). Planner will not choose either
-  deviation. All future implementation/evidence/digest/QA/Integrator commits are gated outputs.
+- The User authorized planning one Task-A-only Reviewer-blocked atomic bridge. This removes the
+  previously reported ordering question but does not approve implementation or Reviewer dispatch.
+- `R` is genuine Reviewer-blocked evidence-only; `F` is the exact eleven-path fix descendant; `E`
+  is the direct Developer-evidence child created only after bridge apply. The same Developer may
+  form `F` while board stays Reviewer, but may not write board or `E` early.
+- The final planning commit plus the later exact User approval message/digest is the immutable
+  approval contract; `R` records both. Post-bridge `scope_contract_ref` points to that Task blob and
+  frozen `scope_approval_ref` points to `R`, so no second amendment or ambient board write is needed.
+- The repaired existing helper validates approval/source board/clean Git/`R`/`F`/scope/locks/
+  evidence/helper/context and atomically adopts `F` into `implementation_running/Developer`. The
+  unique history entry consumes the bridge. Normal `F -> E -> DEVELOPER_READY` is legal only by
+  revalidating the immediate bridge-carried fix; it cannot replay after `last_transition` changes.
+- Exact fix digest is `74a731dd33e912fe3fb55f18ace9cbc0c7e5f7f0ff1b917c74934968de6793d0`;
+  route-wide 16-path May Touch digest is
+  `b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37`; 35-lock digest remains
+  `a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347`.
 
 ### Scope, efficiency, risk, and stop decision
 
-- Task/Plan contain the exact 12-path future Developer scope, 32-to-35 lock order/digest, line/
-  byte ceilings, GateDispatch interface, duplicate proof order, TDD checkpoints, role boundaries,
-  one-fix maximum and 19-case validation matrix. No post-approval scope choice remains except the
-  explicit authority blocker above.
+- Task/Plan contain exact R/F/E checkpoints, eleven-path fix and 16-path route manifests/digests,
+  32-to-35 lock order/digest, post-bridge field values, GateDispatch/duplicate/bridge validation
+  order, TDD checkpoints, ceilings, role boundaries, one-fix maximum and bounded matrix. No
+  post-approval scope or authority choice remains.
 - Risks are duplicate proof that reopens bootstrap, GateDispatch that becomes implementation
   authority, repeated full-suite churn, or an implicit manual state reversal. Fail-closed proof,
   separate intents, bounded tests, risk-proportionate role budgets and the User stop boundary
   contain them.
-- Definition of Ready is satisfied for User review only, not implementation. Preserve primary
-  board and clean lane, do not dispatch Reviewer, and return
-  `integration_reconciliation_amendment_pending_user_approval` with the authority-ordering blocker.
+- Definition of Ready is satisfied for User review only, not implementation. No further known
+  bootstrap deadlock remains. Preserve primary board and clean lane, do not dispatch Reviewer, and
+  return `integration_reconciliation_amendment_pending_user_approval`; any new deadlock must stop
+  to User instead of broadening this bridge.

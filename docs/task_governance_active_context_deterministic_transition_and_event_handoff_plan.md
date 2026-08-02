@@ -11,7 +11,8 @@ Planning base: `cdb96b4ed80143ba40d571615282f0ee95708a0f`
 ### 1. Discovery result and authority
 
 Current phase remains Phase 11. Task A is the sole WIP=`1` token owner in
-`gate_running/Reviewer`; primary is clean `5cd7f02a...` and the exact lane is clean at the same
+`gate_running/Reviewer`; primary is clean `1e60af99...` with the board bytes still from
+`5cd7f02a...`, and the exact lane is clean at the same
 recorded candidate `70e5c6a...`. Planner is allowed because two fail-closed post-transition results
 require scope/authority design; this is not a routine callback.
 
@@ -33,12 +34,10 @@ Planner inference: duplicate classification must be shared by plan/apply and pre
 bootstrap rejection; GateDispatch is a read-only policy gate, not a transition; existing 496/489-
 line gate tests require new bounded modules.
 
-Unresolved authority: ordinary non-bootstrap transition validation still requires scope commit
-equal Git base and textual scope equal locks. The current approved scope ref is `d7994d26...`, not
-base `15c3120a...`; therefore current code cannot apply a genuine `REVIEWER_BLOCKED` transition.
-Changing code first would place Developer writes under `gate_running/Reviewer`; changing the board
-manually is prohibited. No compliant ordering exists without explicit User-authorized authority
-bridge. This is the only blocking question and no implementation may start before it is resolved.
+Repository-confirmed authority gap: ordinary validation still equates scope commit with Git base
+and textual May Touch with locks, so current code cannot apply a genuine `REVIEWER_BLOCKED`.
+The User has authorized this planning continuation to define one exact Task-A Reviewer-blocked
+atomic bridge. It remains pending approval and is not a generic permission to write under Reviewer.
 
 ### 2. Amendment A — duplicate classifier and idempotency order
 
@@ -93,22 +92,101 @@ blocks. Developer and Quick Fixer still use only `ImplementationDispatch`.
 
 ### 4. Amendment C — frozen current Reviewer dispatch attestation
 
-After User approval, Planner evidence at the approval commit is the immutable attestation ref. Its
-canonical facts are primary `5cd7f02a...`; board blob/hash/payload; Task A token;
+After User approval, the final planning Task/Plan/Planner commit plus exact User approval message/
+source-thread digest is the immutable attestation contract; no second amendment or board prewrite
+is required. Its canonical facts are primary/board rooted at `5cd7f02a...`; Task A token;
 `gate_running/Reviewer`; lane/branch/worktree/base/HEAD `70e5c6a...`; ordered 32 locks/digest;
 Developer evidence ref/blob/SHA/status; transition/plan/bootstrap IDs; permanent Reviewer thread
 ID `019fb3ce-6824-7670-9015-326da4ce178f`; exact Reviewer evidence path; clean Git facts; null
-queue/pause/QF/parallel; Task/Plan/Planner refs; and a derived `dispatch_id`.
+queue/pause/QF/parallel; final Task/Plan/Planner ref; User approval digest; and a derived
+`dispatch_id`.
 
 Only that Reviewer, full review, and exact Reviewer-evidence write are authorized. Same exact
 delivery retry reuses the same identity and is not a second authorization; any board/Git/evidence/
 thread target/input drift expires it. A block must be genuine `reviewer_blocked`; pass must be
-genuine `reviewer_pass`. No Developer byte, board prewrite, manual state reversal, generated
+genuine `reviewer_pass`. `R` must durably record the exact planning ref and User approval digest.
+No Developer byte, board prewrite, manual state reversal, generated
 evidence/history, generic bypass, other gate, or Task B action is permitted.
 
-### 5. Exact implementation scope and locks
+### 5. Amendment D — Reviewer-blocked atomic authority bridge
 
-Developer May Touch after a legal transition to Developer:
+The three and only three lane checkpoints are:
+
+- `R`: direct clean evidence-only child of `70e5c6a...`; exact Reviewer evidence; final machine
+  record `Reviewer/reviewer_blocked`; binds the approved amendment and Reviewer dispatch identity.
+- `F`: clean no-merge descendant of `R`; `R..F` contains exactly all eleven sorted implementation/
+  contract/orchestration paths, canonical digest
+  `74a731dd33e912fe3fb55f18ace9cbc0c7e5f7f0ff1b917c74934968de6793d0`, and no evidence/board/
+  product/migration/other path.
+- `E`: direct clean evidence-only child of `F`, created after bridge completion; exact Developer
+  evidence with final `Developer/ready_for_review` record.
+
+After `R`, the User-approved bridge attestation authorizes only the same permanent Developer to
+form `F` while board remains `gate_running/Reviewer`. Developer cannot write board or `E` yet. The
+existing coordinator at `F` consumes the existing `REVIEWER_BLOCKED` event in narrowly selected
+`task_a_reviewer_blocked_atomic_bridge_v1` mode. No second event/state machine or second writer is
+introduced.
+
+Plan/apply order is fixed:
+
+1. validate the final planning Task/Plan/Planner ref, exact User approval digest recorded in `R`,
+   Task A identity and single-use bridge derivation contract;
+2. validate clean primary at that approval anchor, unchanged source board blob/payload, exact sole
+   token/state/Reviewer/HEAD `70e5c6a...`, 32 locks, evidence/context and null queue/pause/QF/parallel;
+3. validate exact branch/worktree/index clean at `F`, base-to-source-to-`R`-to-`F` linear ancestry;
+4. prove `70e5c6a..R` is exactly Reviewer evidence-only and verify path/commit/blob/SHA/status plus
+   one-time dispatch/approval binding;
+5. prove sorted `R..F` is exactly the eleven-path fix set/digest, all file ceilings and helper/
+   proof/gate blob identities, with no merge or post-Reviewer unbound path;
+6. parse the amendment-specific 16-path effective scope manifest at the approval ref, verify digest
+   `b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37`, prove it is covered by
+   the exact 35 locks/digest `a45c3bcd...16d51347`, and never require equality between scope and locks;
+7. bind retained context, approval/source-board/`R`/`F`/evidence/scope/locks/helper facts into one
+   `bridge_id`, then bind the real REVIEWER_BLOCKED identity, transition ID and plan digest;
+8. classify exact committed duplicate/recovery before consumption failure, render one board-only
+   replacement, then on apply use existing temp/fsync/replace/reload checks and require a local
+   board-only commit.
+
+All pre-render failures are zero-write stable `BLOCKED_TASK_A_REVIEWER_BRIDGE_*`. Interrupted exact
+render uses the existing recovery-required boundary. An identical committed replay returns
+`ALREADY_APPLIED` only after full source-parent/board/blob/bridge/transition/plan proof. The unique
+history entry is the consumption proof; any different or second bridge is rejected.
+
+Post-bridge control is exact:
+
+| Field | Value after atomic apply |
+|---|---|
+| token/task/lane/branch/worktree/base/gates | unchanged |
+| `execution_state` / `active.role` | `implementation_running` / `Developer` |
+| `active.head_sha` | `F` |
+| `active.evidence` and top-level `evidence` | exact Reviewer evidence ref at `R` |
+| `active.scope_contract_ref` | final planning Task blob approved by the User |
+| `active.scope_approval_ref` | exact Reviewer evidence ref at `R`, binding planning ref and User approval digest |
+| `active.may_touch_digest` | `b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37` |
+| locks | exact 35 paths / `a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347` |
+| `active.last_transition_id` | new canonical bridge transition ID |
+| `last_transition` | one genuine REVIEWER_BLOCKED bridge entry binding source board, `R`, `F`, evidence, separate deltas, scope/locks/context/helper and IDs |
+| `transition_history` | prior real entry plus exactly that one entry |
+| bootstrap/queue/paused/QF/parallel/residuals | byte-identical |
+
+The bridge entry records `event=REVIEWER_BLOCKED`,
+`transition_mode=task_a_reviewer_blocked_atomic_bridge_v1`, source primary/board and expected board
+HEAD `70e5c6a...`, `reviewer_blocker_head=R`, `evidence_commit=R`,
+`candidate_lane_head=lane_head=fix_checkpoint=F`, separate Reviewer/fix paths and digests, approval/
+scope/lock/retained-context/helper proofs, `bridge_id`, `transition_id` and `plan_digest`. It is real
+history for the genuine Reviewer result, not fabricated Developer readiness.
+
+After the primary bridge commit, Developer creates `E`. The normal `DEVELOPER_READY` path accepts
+the otherwise evidence-only `F..E` only when the immediate `last_transition` is the exact bridge,
+revalidates `R..F`, requires only Developer evidence in `F..E`, and proves transition/proof/gate
+blobs are unchanged from `F`. It carries the bridge fix digest into the normal entry, atomically
+adopts `E`, and returns to `gate_running/Reviewer`. Because the bridge is no longer the immediate
+predecessor, this narrow carried-fix rule cannot replay. No manual HEAD update or further exception
+is required.
+
+### 6. Exact implementation scope and locks
+
+Developer May Touch after User approval and authentic `R`:
 
 1. `scripts/connlab_execution_transition.py` — sole CLI/Git/state/write/recovery coordinator;
 2. `scripts/connlab_execution_transition_proof.py` — pure duplicate/transition proof;
@@ -125,8 +203,15 @@ Developer May Touch after a legal transition to Developer:
 11. `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`;
 12. Task A Developer evidence.
 
-Role/primary May Touch later: exact Reviewer/QA/Integrator/Planner evidence, this Task/Plan, and
-board only via reviewed atomic transition. Existing transition mixed unit (`390`), gate mixed unit
+The route-wide sorted effective May Touch manifest contains the eleven implementation paths plus
+exact Developer/Reviewer/QA/Integrator evidence and `docs/task_board.md`; canonical digest is
+`b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37`. `R..F` is exactly the
+eleven implementation paths; `F..E` is Developer evidence only; later gates are their evidence-only
+paths; board is helper-only. The manifest is a strict subset of locks and is validated as such.
+
+Role/primary May Touch later: exact Reviewer/QA/Integrator evidence and board only via the reviewed
+atomic helper. The final Task/Plan/Planner commit is frozen after User approval; no second amendment
+or ambient approval edit is part of the route. Existing transition mixed unit (`390`), gate mixed unit
 (`496`) and gate recovery (`489`) are read-only regression suites. Active-context/bootstrap/
 maintenance/handoff helpers/tests, WIP policy, Planner and other skills/protocols, execution worktree
 helpers, registry/bundle, archives/index/audit, Task B/umbrella, V1/V2, product/data/runtime/remote,
@@ -139,7 +224,7 @@ after proof unit, and gate-dispatch recovery after candidate-adoption integratio
 `a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347`. Scope contract ref,
 May Touch digest and locks change in that same atomic transition; never ambient planning.
 
-### 6. Responsibilities and ceilings
+### 7. Responsibilities and ceilings
 
 | Path | Hard ceiling | Responsibility |
 |---|---:|---|
@@ -157,16 +242,19 @@ May Touch digest and locks change in that same atomic transition; never ambient 
 
 No second state machine, shell-eval, new dependency, broad glob authority, or mixed-test growth.
 
-### 7. TDD checkpoints and implementation stop conditions
+### 8. TDD checkpoints and implementation stop conditions
 
-- G0: exact clean post-Reviewer-blocked Developer authority and 35-lock scope; stop if unavailable.
-- G1 RED: new proof/candidate/gate modules reproduce current duplicate and dispatch blockers plus
-  normal Reviewer-blocked scope-ref failure; commit only bounded tests.
+- G0: exact clean genuine Reviewer-blocked checkpoint `R` and one-time same-Developer bridge
+  authority; stop if unavailable.
+- G1 RED: new proof/candidate/gate modules reproduce current duplicate/dispatch/scope blockers plus
+  R/F/E bridge failures; commit only bounded tests inside `R..F`.
 - G2: pure duplicate classifier/coordinator ordering; existing transition compatibility stays green.
 - G3: GateDispatch implementation and new unit/integration GREEN; ImplementationDispatch suites
   remain byte-compatible in meaning.
 - G4: contract/skill/protocol compact alignment; budgets/static checks pass.
-- G5: complete Task A suite and exact Developer evidence; clean checkpoint only.
+- G5: complete Task A suite and clean exact eleven-path fix checkpoint `F`.
+- G6: zero-write bridge plan, exact atomic bridge apply and clean primary board-only commit.
+- G7: direct evidence-only `E`, normal carried-fix `DEVELOPER_READY`, then Reviewer GateDispatch.
 
 Any unexpected path, line/budget excess, nonzero production write, dirty state, unclassified
 failure, weakened fail-closed code, or authority mismatch stops and returns Planner/User.
@@ -180,7 +268,7 @@ hash/ancestry/cleanliness checks unless they introduce a new risk. Product/busin
 build, release, unrelated historical matrices, repeated full-suite evidence churn, migration and
 board compression are excluded.
 
-### 8. Validation matrix and serial route
+### 9. Validation matrix and serial route
 
 1. current exact plan duplicate and apply replay -> `ALREADY_APPLIED` with original IDs;
 2. consumed bootstrap never blocks a fully proven duplicate and never reopens;
@@ -194,14 +282,21 @@ board compression are excluded.
 10. ImplementationDispatch still allows only Developer/Quick Fixer and rejects all gate roles;
 11. current Reviewer attestation accepts exact facts/same dispatch identity and expires on drift;
 12. current Reviewer may write only Reviewer evidence; genuine block/pass status is mandatory;
-13. genuine `REVIEWER_BLOCKED` atomically returns to Developer and installs approved scope/locks;
-14. bounded fix then `DEVELOPER_READY`; full Reviewer then `REVIEWER_PASS` and GateDispatch QA;
-15. QA evidence-only `QA_PASS`; GateDispatch Integrator; no post-QA implementation drift;
-16. existing transition/gate/recovery/WIP/active-context/handoff/maintenance suites pass unchanged;
-17. full Task A regression, compile, PowerShell AST, static purity/single-state-machine, ceilings,
+13. only genuine exact `R` activates same-Developer bridge authority; pass/wrong status/path/head,
+    dirty/divergent/rewritten/merge/spoof or missing approval blocks;
+14. `R..F` exact eleven-path proof succeeds; missing/extra/reordered/out-of-scope path, wrong scope/
+    locks/helper, Developer board/evidence write or source-primary drift blocks zero-write;
+15. atomic bridge adopts `F`, records exact post-bridge values and one real REVIEWER_BLOCKED entry;
+    exact duplicate/reconnect/rollback pass and any second/different replay blocks;
+16. direct `F..E` Developer evidence carries only the immediate bridge fix proof into normal
+    `DEVELOPER_READY`; non-direct, helper drift, wrong evidence or reused bridge blocks;
+17. full Reviewer then `REVIEWER_PASS` and GateDispatch QA; QA evidence-only `QA_PASS`, GateDispatch
+    Integrator, and no post-QA implementation drift;
+18. existing transition/gate/recovery/WIP/active-context/handoff/maintenance suites pass unchanged;
+19. full Task A regression, compile, PowerShell AST, static purity/single-state-machine, ceilings,
     exact allowlist, protected hashes, production zero-write and clean-state checks pass;
-18. independent full Reviewer, mandatory QA and Integrator merged-tree/ancestry/residual gates pass;
-19. no maintenance migration/compression, merge, push, restart, cleanup, Task B or protected-state
+20. independent full Reviewer, mandatory QA and Integrator merged-tree/ancestry/residual gates pass;
+21. no maintenance migration/compression, merge, push, restart, cleanup, Task B or protected-state
     change occurs before the authorized Integrator stage.
 
 This remains the existing Task A lane and permanent role set. No new Task/branch/worktree/thread is
@@ -211,14 +306,14 @@ Reviewer attestation resolves only the current dispatch bootstrap and never conv
 `BLOCKED_*` into a generally ignorable result. A second same-class design blocker, more than one
 normal bounded fix, third scope expansion or new authority path stops to User immediately.
 
-Required route is current Reviewer dispatch -> genuine `REVIEWER_BLOCKED` -> atomic transition ->
-Developer bounded fix -> atomic `DEVELOPER_READY` -> full Reviewer -> atomic `REVIEWER_PASS` ->
-GateDispatch QA -> atomic `QA_PASS` -> GateDispatch Integrator. Because item 13 is not executable
-with current code and code cannot legally change before item 13, the plan is not implementation-
-ready. User must authorize a precise one-time authority bridge or revise the no-manual/no-pre-
-transition-Developer constraint. Planner recommends neither without explicit direction.
+Required route is one-time Reviewer dispatch -> genuine `R` -> same-Developer exact `F` while board
+remains Reviewer -> atomic bridge to Developer/`F` -> evidence-only `E` -> normal
+`DEVELOPER_READY` -> full Reviewer -> atomic `REVIEWER_PASS` -> GateDispatch QA -> atomic `QA_PASS`
+-> GateDispatch Integrator. The authorized bridge and immediate carried-fix rule close the known
+ordering without a manual board edit or reusable bypass. If any new authority/bootstrap deadlock
+appears, stop to User; do not add another mode, path or exception.
 
-### 9. Planning stop
+### 10. Planning stop
 
 Return `integration_reconciliation_amendment_pending_user_approval`. Keep primary board and lane
 byte-unchanged, Reviewer undispatched, and Task B unstarted. Do not implement, transition, migrate,

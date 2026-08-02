@@ -35,7 +35,7 @@ Confirmed by repository:
 
 | Fact | Exact binding |
 |---|---|
-| Primary | clean `master@5cd7f02acd02c03008f29de900e841a185a9d138`; sole parent `329c0343ea0e7f4d24d6fb7e2e986a094c304fd8`; commit changes only `docs/task_board.md`; board blob `972b1c2386145114cb3daa35037913d709bb5180`; SHA-256 `3e57b913098e565de3fee8f4a0ffdff597e3d7fdfec5232fe63027298f1a2507` |
+| Primary | clean `master@1e60af997e5ce042d9e2f9ae8cc7c4b4469a3570`; its planning delta after atomic board-only commit `5cd7f02acd02c03008f29de900e841a185a9d138` is only Task/Plan/Planner evidence; board blob remains `972b1c2386145114cb3daa35037913d709bb5180`, SHA-256 `3e57b913098e565de3fee8f4a0ffdff597e3d7fdfec5232fe63027298f1a2507` |
 | Authority | Task A sole token, `gate_running/Reviewer`, active/lane HEAD `70e5c6a7606284e1fc55ac6b0497c6d9756b665f`, payload digest `f2ddca5a8f84f4f8a966410852983571006f2810028ea0a82e33df8ed7ef0a03`, queue empty, paused/Quick Fix/parallel null |
 | Transition | ID `367e000d5a4c93e060039b5a3cfd4f1ad88ac096500a994c62d8bdea94399968`; plan digest `5ac92b5060cbde4d647c0d173f9773119bc18ed360de5dd7650f180b8edf2f96`; bootstrap ID `b1605205d969bd5a0110383ede944018786fb7a2c94e708076b72fc33ed4cfb3`; exactly one real history event |
 | Evidence | Developer ref at `70e5c6a...`; blob `e9d528a9c2b63b4a87dfcc6eaac74232942eeb54`; SHA-256 `1bee1cfea13e128d92311457ff3d6c3ca02d57167e588f2d90290782a05e6e56`; status `ready_for_review` |
@@ -54,17 +54,17 @@ Planner inference:
 - The current Reviewer attestation can make the first dispatch reference-exact and drift-expiring,
   but cannot itself change state or repair code.
 
-Not yet confirmed / true authority blocker:
+User-authorized planning resolution:
 
-- The current non-bootstrap transition path requires the scope-contract commit to equal
-  `base_sha` and the parsed task scope to equal locks. The live scope ref is the approved amendment
-  at `d7994d26...`, not base `15c3120a...`; therefore a genuine future `REVIEWER_BLOCKED` event
-  cannot atomically return authority to Developer with the currently installed helper.
-- Fixing that helper before the transition would require Developer implementation while durable
-  authority is still `gate_running/Reviewer`; manually reversing the board is expressly forbidden.
-  No compliant ordering satisfies both rules. User must explicitly authorize one narrowly defined
-  authority bridge or change one of those constraints before implementation can be Definition of
-  Ready. Planner does not infer that authority.
+- The current non-bootstrap transition path still cannot consume a genuine `REVIEWER_BLOCKED`
+  because it incorrectly equates the approved scope-contract commit with immutable Git base and
+  textual May Touch with the broader lock set. The User has now authorized planning of one exact
+  Task-A-only bridge; this is not implementation approval.
+- The bridge is unavailable until the permanent Reviewer creates genuine evidence-only checkpoint
+  `R`. It then authorizes only the same Developer, while durable authority remains
+  `gate_running/Reviewer`, to produce exact fix checkpoint `F`. The repaired existing helper—not a
+  manual board edit or second state machine—must atomically validate and adopt `F` before any
+  Developer evidence checkpoint `E` is created.
 
 ### Amendment A — committed duplicate/idempotency
 
@@ -110,19 +110,82 @@ Git facts return stable `BLOCKED_GATE_DISPATCH_*`, zero-write.
 
 ### Amendment C — one-time current Reviewer dispatch attestation
 
-The approval record must derive one canonical `dispatch_id` from exact primary `5cd7f02a...`,
+After the User approves the final planning commit, that immutable Task/Plan/Planner commit plus the
+exact User approval message/source-thread digest form the approval contract; no second planning
+amendment or board prewrite is required. The one-time dispatch capsule derives one canonical
+`dispatch_id` from exact primary/board facts rooted at `5cd7f02a...`,
 board blob/SHA/payload, Task A token/state/role, lane/branch/worktree/base/HEAD `70e5c6a...`, ordered
 32 locks/digest, current Developer evidence ref/blob/SHA/status, permanent Reviewer thread identity,
-exact Reviewer evidence path, current Task/Plan/Planner approval refs, clean statuses, and null
+exact Reviewer evidence path, final planning ref, User approval digest, clean statuses, and null
 queue/pause/Quick Fix/parallel facts. It authorizes only the permanent Reviewer full review and
 Reviewer-evidence write. Same-input delivery retry is the same dispatch identity, never a second
 authorization; any Git/board/evidence/thread-target/input drift expires it. A genuine block must
-produce `reviewer_blocked`; no Developer byte, board prewrite, synthesized evidence/history,
+produce `reviewer_blocked`; `R` records the exact planning ref and User approval digest so later
+validation is durable. No Developer byte, board prewrite, synthesized evidence/history,
 manual reversal, generic bypass, QA/Integrator dispatch, or Task B action is permitted.
+
+### Amendment D — one-time Reviewer-blocked atomic authority bridge
+
+This amendment defines exactly three immutable lane checkpoints, resolved only after User approval:
+
+1. `R`: the direct clean descendant of `70e5c6a...` that changes only the exact Task A Reviewer
+   evidence path, whose final machine record is `Reviewer/reviewer_blocked` and which binds the
+   approved amendment and one-time Reviewer dispatch identity;
+2. `F`: a clean linear descendant of `R` whose `R..F` delta is exactly the eleven sorted fix paths
+   below, with no merge, role evidence, board, product, migration, archive, or unrelated path;
+3. `E`: the direct clean child of `F`, created only after the bridge board commit, changing only the
+   exact Task A Developer evidence path to final `Developer/ready_for_review`.
+
+The same permanent Developer receives a single-use bridge dispatch bound to the approval contract,
+source primary/board, `70e5c6a...`, `R`, exact lane identity, scope/locks and Reviewer evidence. The
+Developer may create `F` but may not write `docs/task_board.md`, role evidence at `E`, or any path
+outside `R..F`. The existing transition helper at `F` consumes event `REVIEWER_BLOCKED` in special
+mode `task_a_reviewer_blocked_atomic_bridge_v1`; it does not add an event, state, CLI writer, or
+general bypass.
+
+Bridge plan/apply validates in order: exact User-approval contract and unconsumed bridge identity;
+clean primary with the unchanged board blob/payload; sole Task A token and exact source state/role/
+HEAD/context; clean exact branch/worktree/index at `F`; linear ancestry
+`15c3120a... -> 70e5c6a... -> R -> F`; exact evidence-only `70e5c6a..R`; exact sorted `R..F` paths and
+digest `74a731dd33e912fe3fb55f18ace9cbc0c7e5f7f0ff1b917c74934968de6793d0`;
+Reviewer evidence path/commit/blob/SHA/status; approval scope manifest and its subset-of-lock proof;
+32-to-35 lock update; helper/proof/gate blobs at `F`; retained context; transition/plan/bridge IDs;
+and byte-exact render. Every mismatch returns stable `BLOCKED_TASK_A_REVIEWER_BRIDGE_*` with zero
+writes. Apply uses the existing temp/fsync/replace/reload recovery boundary and creates one primary
+board-only commit; an exact committed replay may return `ALREADY_APPLIED` only through the complete
+duplicate proof. The single-use bridge is consumed by its unique history entry and cannot bind
+another task, Reviewer result, `R`, `F`, board, primary, scope, lock set, generation, or later event.
+
+Post-bridge machine authority is exact:
+
+- token owner and Task/lane/branch/worktree/base/required gates stay unchanged;
+- `execution_state=implementation_running`, `active.role=Developer`, `active.head_sha=F`;
+- `active.evidence` and top-level `evidence` are the exact Reviewer evidence ref at `R`;
+- `active.scope_contract_ref` is the final planning Task blob approved by the User, and new frozen
+  `active.scope_approval_ref` is the exact Reviewer evidence ref at `R` carrying that approval
+  digest; subsequent normal transitions require both and retain them;
+  `active.may_touch_digest=b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37`;
+  `active.locked_paths` is the exact 35-path list and `locked_paths_digest=a45c3bcd...16d51347`;
+- `active.last_transition_id` points to one new canonical bridge transition; `last_transition`
+  equals that entry and `transition_history` appends exactly one genuine `REVIEWER_BLOCKED` entry
+  with `transition_mode`, source primary/board, expected board HEAD `70e5c6a...`, Reviewer checkpoint
+  and evidence commit `R`, adopted fix/lane checkpoint `F`, separate evidence/fix path digests,
+  approval/scope/lock/retained-context/helper proofs and the derived bridge/transition/plan IDs;
+- the consumed `transition_metadata_bootstrap`, queue, paused, Quick Fix, parallel and residual
+  values remain byte-identical. No Reviewer or Developer history is fabricated or backfilled.
+
+After the bridge commit, the authorized Developer creates `E`. Normal `DEVELOPER_READY` is legal
+without a preliminary board HEAD write because the helper requires the immediate prior history entry
+to be this exact bridge, revalidates `R..F` and the helper blob at `F`, requires `F..E` to be exactly
+Developer evidence and the helper/proof/gate blobs to remain unchanged, then carries the already-
+adopted fix digest into the new normal event. The atomic transition adopts `E`, writes Developer
+evidence, moves to `gate_running/Reviewer`, and replaces `last_transition`; the bridge remains only
+as immutable history and is no longer eligible as the immediate predecessor, so the evidence-only
+Developer route cannot replay or generalize.
 
 ### Exact proposed scope, locks, and ceilings
 
-Future Developer May Touch only after the authority blocker is explicitly resolved:
+Future Developer May Touch only after User approves this amendment and exact `R` is proven:
 
 1. `scripts/connlab_execution_transition.py`
 2. `scripts/connlab_execution_transition_proof.py`
@@ -137,8 +200,69 @@ Future Developer May Touch only after the authority blocker is explicitly resolv
 11. `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
 12. Task A Developer evidence
 
-Later role/primary governance May Touch: exact Task A Reviewer/QA/Integrator/Planner evidence, this
-Task/Plan, and `docs/task_board.md` only through a reviewed atomic transition. Existing mixed
+The route-wide effective May Touch manifest is the sorted eleven implementation paths above plus
+the exact Task A Developer/Reviewer/QA/Integrator evidence paths and `docs/task_board.md`; its
+canonical digest is `b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37`.
+`R..F` must contain all and only the first eleven sorted paths; `F..E` must contain only Developer
+evidence. Reviewer/QA/Integrator commits remain their exact evidence-only paths and the primary
+board remains helper-only. This 16-path manifest is deliberately a strict subset of the 35 locks;
+the repaired proof validates both digests and subset coverage and must never require May Touch to
+equal Locked Paths.
+
+The unique machine-readable scope authority is:
+
+<!-- CONNLAB_TASK_A_POST_TRANSITION_SCOPE_V1_BEGIN -->
+```json
+{
+  "schema": "connlab.task-a-post-transition-scope",
+  "version": 1,
+  "bridge_fix_paths": [
+    ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+    "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
+    "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
+    "scripts/connlab_execution_gate.ps1",
+    "scripts/connlab_execution_transition.py",
+    "scripts/connlab_execution_transition_proof.py",
+    "tests/integration/test_connlab_execution_transition_candidate_adoption.py",
+    "tests/integration/test_connlab_execution_transition_recovery.py",
+    "tests/integration/test_connlab_gate_dispatch_recovery.py",
+    "tests/unit/test_connlab_execution_transition_proof.py",
+    "tests/unit/test_connlab_gate_dispatch.py"
+  ],
+  "bridge_fix_digest": "74a731dd33e912fe3fb55f18ace9cbc0c7e5f7f0ff1b917c74934968de6793d0",
+  "may_touch": [
+    ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+    "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md",
+    "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_integrator.md",
+    "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_qa.md",
+    "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_reviewer.md",
+    "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
+    "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
+    "docs/task_board.md",
+    "scripts/connlab_execution_gate.ps1",
+    "scripts/connlab_execution_transition.py",
+    "scripts/connlab_execution_transition_proof.py",
+    "tests/integration/test_connlab_execution_transition_candidate_adoption.py",
+    "tests/integration/test_connlab_execution_transition_recovery.py",
+    "tests/integration/test_connlab_gate_dispatch_recovery.py",
+    "tests/unit/test_connlab_execution_transition_proof.py",
+    "tests/unit/test_connlab_gate_dispatch.py"
+  ],
+  "may_touch_digest": "b79e6f4b51d447efa3fe451af6155982d8a23d934c895a15cc1bf067a9b74c37",
+  "locked_paths_count": 35,
+  "locked_paths_digest": "a45c3bcd9051af6570bc386c0384aa11865d346e027f4d9f10afadaa16d51347"
+}
+```
+<!-- CONNLAB_TASK_A_POST_TRANSITION_SCOPE_V1_END -->
+
+The helper must require exactly one marker pair and canonical JSON/digests from the approved Task
+blob. The historical broad `## Exact May Touch` section remains original-task audit context and is
+not the authority for this bounded reconciliation.
+
+Later role/primary May Touch: exact Task A Reviewer/QA/Integrator evidence and
+`docs/task_board.md` only through the reviewed atomic helper. The final Task/Plan/Planner planning
+commit is frozen after User approval; no second amendment or ambient approval edit is part of this
+route. Existing mixed
 transition unit, gate unit/integration, active-context/maintenance/handoff helpers/tests, execution
 policy, Planner/other skills/protocols, registry/bundle, archive/index/audit, Task B/umbrella,
 product/data/runtime/release/remote and protected lanes are Must Not Touch.
@@ -156,11 +280,11 @@ protocol `<=12288` bytes. Existing 390/496/489-line mixed tests receive no new m
 
 ### TDD checkpoints, gates, and stop
 
-After a legal Developer authority transition: D0 exact clean Reviewer-blocked head; D1 bounded RED
-for duplicate/GateDispatch/current-shape cases; D2 pure duplicate proof plus coordinator ordering;
-D3 GateDispatch plus new bounded tests; D4 contract/skill/protocol alignment; D5 clean Developer
-evidence. Then route is genuine `REVIEWER_BLOCKED` atomic transition -> Developer bounded fix ->
-`DEVELOPER_READY` atomic transition -> full Reviewer -> `REVIEWER_PASS` -> GateDispatch QA ->
+After one-time Reviewer dispatch: D0 authentic clean evidence-only `R`; D1 same-Developer bounded
+RED while board remains Reviewer; D2 duplicate/bridge proof and coordinator ordering; D3
+GateDispatch plus new bounded tests; D4 contract/skill/protocol alignment; D5 clean exact fix
+checkpoint `F`; D6 zero-write bridge plan then atomic bridge apply; D7 evidence-only `E` and normal
+`DEVELOPER_READY`. The remaining route is full Reviewer -> `REVIEWER_PASS` -> GateDispatch QA ->
 `QA_PASS` -> GateDispatch Integrator. Reviewer/QA evidence deltas remain evidence-only.
 
 Validation must cover plan/apply/reconnect/replay current real shape, every duplicate/tamper/drift,
@@ -191,9 +315,11 @@ Execution-efficiency boundaries are normative:
   outside the one exact current Reviewer attestation remains blocking; no ignore/force/general
   bypass is introduced.
 
-Definition of Ready is satisfied for User review but blocked for implementation by the authority
-ordering above. Stop for User direction; do not dispatch Reviewer or Developer and do not mutate
-board/lane.
+Definition of Ready is satisfied for User review. The bridge closes the known authority ordering
+without another state machine or manual board mutation; no further bootstrap deadlock is known.
+Implementation remains prohibited until the User approves this exact amendment. If `R`, `F`, `E`,
+scope, locks, approval facts or immediate-predecessor proof cannot meet this contract, stop to User
+without another exception or scope expansion.
 
 ## Approved Routine Transition Metadata And Candidate-HEAD Reconciliation
 
