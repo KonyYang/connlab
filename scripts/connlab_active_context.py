@@ -206,7 +206,12 @@ def validate_generation_record(repo: Path, record: dict[str, Any], archive_raw: 
         raise Blocked("BLOCKED_INDEX_CORRUPT", "archive/compact/count/authority facts differ")
 def indexed_source_bytes(repo: Path, record: dict[str, Any]) -> bytes:
     blob_raw = subprocess.run(["git", "-C", str(repo), "show", f"{record['source_commit']}:docs/task_board.md"], check=True, capture_output=True).stdout
-    candidates = (blob_raw, blob_raw.replace(b"\n", b"\r\n"))
+    candidates = [blob_raw, blob_raw.replace(b"\n", b"\r\n")]
+    if record["archive_mode"] == "full_board":
+        archive = repo / str(record["archive_path"])
+        archive_raw = archive.read_bytes()
+        if archive_raw.replace(b"\r\n", b"\n") == blob_raw:
+            candidates.append(archive_raw)
     source = next((item for item in candidates if digest(item) == record["source_board_sha256"] and len(item) == record["source_bytes"]), b"")
     if not source: raise Blocked("BLOCKED_INDEX_CORRUPT", "source bytes cannot be reconstructed from the Git blob")
     return source

@@ -221,6 +221,34 @@ def test_first_generation_proves_byte_exact_rollback(tmp_path: Path) -> None:
     assert output.read_bytes() == original
 
 
+def test_first_generation_proves_mixed_newline_source_rollback(tmp_path: Path) -> None:
+    fx = make_repo(tmp_path)
+    repo = Path(fx["repo"])
+    board = Path(fx["board"])
+    lines = board.read_text(encoding="utf-8").splitlines()
+    mixed_board = "\r\n".join(lines[:5]) + "\n" + "\r\n".join(lines[5:])
+    board.write_bytes((mixed_board + "\r\nMixed newline regression anchor\n").encode())
+    original = board.read_bytes()
+    assert original.count(b"\n") > original.count(b"\r\n")
+    git(repo, "config", "core.autocrlf", "true")
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "mixed newline source board")
+    fx["head"] = git(repo, "rev-parse", "HEAD")
+
+    assert invoke(fx, "apply-maintenance")[0] == 0
+    temp_root = tmp_path / "rollback-temp"; temp_root.mkdir()
+    output = temp_root / "rollback.md"
+    done = subprocess.run(
+        ["py", str(HELPER), "prove-rollback", "--repo-root", str(repo), "--generation", "1",
+         "--temp-root", str(temp_root), "--output", str(output), "--json"],
+        check=False, capture_output=True, text=True,
+    )
+    result = json.loads(done.stdout)
+
+    assert done.returncode == 0 and result["decision"] == "ROLLBACK_PROVEN"
+    assert output.read_bytes() == original
+
+
 def test_rollback_rejects_repository_existing_and_escaped_targets_without_mutation(tmp_path: Path) -> None:
     fx = make_repo(tmp_path)
     assert invoke(fx, "apply-maintenance")[0] == 0
