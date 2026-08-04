@@ -1,11 +1,11 @@
 # ConnLab Task Board
 
-> Status: classic permanent-role execution active; V1-Lite and Controlled Lane V2 are frozen read-only, V2 heartbeat remains `PAUSED`, and retained snapshots are preserved
-> Last Updated: 2026-08-02
+> Status: Task-A automation cancelled by explicit User decision; manual governance only. V1-Lite and Controlled Lane V2 remain frozen read-only, V2 heartbeat remains `PAUSED`, and retained snapshots are preserved.
+> Last Updated: 2026-08-04
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF` is the sole WIP=`1` token owner in `gate_running/Reviewer` on lane `task-governance-active-context-deterministic-transition-and-event-handoff`.
+> Current Active Task: none. `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF` is cancelled as an automation experiment; its clean lane and evidence remain retained for manual review only.
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-> Next Serial Task: none. Orchestrator must reuse the exact existing lane and non-destructively fast-forward it from `e958ba37...` to `3e737616...`, then prove exact clean HEAD equality and obtain a fresh `ImplementationDispatch=ALLOW_DISPATCH`. Until those proofs pass, Developer is not authorized. Task B remains `planned_pending_user_approval` and cannot start without Task A acceptance plus separate User approval. The rejected umbrella remains permanently non-executable.
+> Next Serial Task: none. No automatic role dispatch, transition, merge, or lane adoption is authorized. Any future use of the retained Task-A candidate requires a new formal task, Planner review, and explicit User approval. Task B remains `planned_pending_user_approval`; the rejected umbrella remains permanently non-executable.
 
 <!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
 ```json
@@ -13,65 +13,19 @@
   "schema": "connlab.execution-control",
   "version": 1,
   "wip_limit": 1,
-  "execution_token_owner": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
-  "execution_state": "gate_running",
-  "active": {
-    "task_id": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
-    "lane": "task-governance-active-context-deterministic-transition-and-event-handoff",
-    "role": "Reviewer",
-    "branch": "lane/task-governance-active-context-deterministic-transition-and-event-handoff",
-    "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-active-context-deterministic-transition-and-event-handoff",
-    "base_sha": "15c3120a6d889e97d098c2cb9f8c8ef852d74f69",
-    "head_sha": "70e5c6a7606284e1fc55ac6b0497c6d9756b665f",
-    "locked_paths": [
-      "AGENTS.md",
-      ".agents/skills/connlab-lane-orchestrator/SKILL.md",
-      ".agents/skills/connlab-planner/SKILL.md",
-      "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
-      "docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md",
-      "docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md",
-      "docs/project_management/PARALLEL_EXECUTION_MODEL.md",
-      "docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md",
-      "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
-      "docs/project_management/TASK_EXECUTION_SKILL.md",
-      "docs/project_management/TASK_REVIEW_CHECKLIST.md",
-      "scripts/run_task.ps1",
-      "scripts/connlab_execution_transition.py",
-      "scripts/connlab_execution_transition_proof.py",
-      "scripts/connlab_active_context.py",
-      "scripts/connlab_handoff_contract.py",
-      "tests/unit/test_connlab_execution_transition.py",
-      "tests/unit/test_connlab_execution_transition_proof.py",
-      "tests/integration/test_connlab_execution_transition_recovery.py",
-      "tests/integration/test_connlab_execution_transition_candidate_adoption.py",
-      "tests/unit/test_connlab_active_context.py",
-      "tests/integration/test_connlab_board_closeout_maintenance.py",
-      "tests/unit/test_connlab_handoff_contract.py",
-      "tests/unit/test_connlab_active_context_governance.py",
-      "tests/unit/test_execution_wip_and_quick_fix_governance.py",
-      "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
-      "tasks/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF.md",
-      "docs/task_governance_active_context_deterministic_transition_and_event_handoff_plan.md",
-      "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_*",
-      "docs/task_board.md",
-      "docs/archive/task_board_history/index.v1.jsonl",
-      "docs/archive/task_board_history/generation-[0-9]{6}-[0-9a-f]{40}.md"
-    ],
-    "required_gates": [
-      "Reviewer",
-      "QA",
-      "Integrator"
-    ],
-    "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md@70e5c6a7606284e1fc55ac6b0497c6d9756b665f#1bee1cfea13e128d92311457ff3d6c3ca02d57167e588f2d90290782a05e6e56",
-    "last_transition_id": "367e000d5a4c93e060039b5a3cfd4f1ad88ac096500a994c62d8bdea94399968",
-    "scope_contract_ref": "tasks/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF.md@d7994d264db1d7314d916a9773c95722e9201958#828cb6152b0f1a30213bb54207533c5a12eca7c4ef20baa785399b936e50b29a",
-    "may_touch_digest": "758076d1217b9d15d547c3bdcf1f66262611203a34c804252e96fbbc073215af",
-    "locked_paths_digest": "93bbeff0bc0a085c4e4321f5ceb1bea94e1977383cce2521f05e8ed46734c16c"
-  },
+  "execution_token_owner": null,
+  "execution_state": "cancelled",
+  "active": null,
   "queue": [],
   "paused": null,
   "quick_fix": null,
   "residuals": [
+    {
+      "task_id": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
+      "residual_owner": "User / manual governance",
+      "disposition": "retain clean Task-A lane and all evidence; no automatic adoption, merge, rewrite, deletion, or role dispatch",
+      "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_reviewer.md@85e71dfa212c57c26527fad42eaf00a83b19c935#f1ca9341149d567958d837c18932e25ddee1ad47189266d0de73a03540e6de3a"
+    },
     {
       "task_id": "TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH",
       "residual_owner": "permanent Orchestrator governance",
@@ -92,8 +46,8 @@
     }
   ],
   "parallel_exception": null,
-  "last_governance_commit": "3e73761673fd75de4e79028b0b8d0b89979bbd1a",
-  "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_developer.md@70e5c6a7606284e1fc55ac6b0497c6d9756b665f#1bee1cfea13e128d92311457ff3d6c3ca02d57167e588f2d90290782a05e6e56",
+  "last_governance_commit": "5a07b22bc819175ac066ff9df824746d59ac5729",
+  "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_reviewer.md@85e71dfa212c57c26527fad42eaf00a83b19c935#f1ca9341149d567958d837c18932e25ddee1ad47189266d0de73a03540e6de3a",
   "transition_metadata_bootstrap": {
     "schema": "connlab.transition-metadata-bootstrap",
     "version": 1,
@@ -253,7 +207,7 @@
 
 ## Active Execution Model
 
-- `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`: `approved_reconciliation_preparation`. The User approved the exact amendment at `3e73761673fd75de4e79028b0b8d0b89979bbd1a`; the conflict-free local merge `a42ca37e205127afd87d4cdc1d26ede53830522c`, exact frozen 26-path package, zero-write blocked migration, and absent archive/index/audit remain preserved. Task A retains the sole token in `implementation_running/Developer` with expected target/head `3e737616...`; the physical lane is still clean at `e958ba37...`. Orchestrator must fast-forward that existing lane non-destructively, prove exact clean target HEAD, and obtain fresh `ALLOW_DISPATCH` before Developer receives a capsule. No helper/test/attestation edit, merge, migration, Task B work, push, runtime, or cleanup is authorized by this preparation commit. Planner evidence is `docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_planner.md`; blocked Integrator evidence remains immutable.
+- `TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF`: `cancelled_by_user_manual_governance`. Automation is terminated by explicit User decision after the primary helper could not legally adopt the retained, Reviewer-passed candidate. The clean lane at `85e71dfa212c57c26527fad42eaf00a83b19c935`, Developer candidate `502956fb0f7dae1af2037c663a637202ed68090b`, Reviewer evidence, prior transition history, and immutable board archive are retained. No automatic role dispatch, transition, merge, deletion, rewrite, or adoption is authorized. Any reuse requires a new formal task, Planner review, and explicit User approval.
 - `TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER`: `planned_pending_user_approval`, strict serial dependency on Task A local Integrator acceptance, and separate User approval required afterward. Planning-only Task B defines per-command evidence reuse, fail-closed full-regate triggers, deterministic Windows validation runner, committed baseline-debt ledger, final-full QA, Integrator differential validation, exact TASK_368E replay, >=40% Reviewer command reduction, and measured medium pilot. Planned lane is `lane/task-governance-regate-evidence-reuse-baseline-ledger-and-validation-runner` in sibling worktree `D:\PythonProject\connlab-worktrees\task-governance-regate-evidence-reuse-baseline-ledger-and-validation-runner`; neither exists nor is authorized.
 - `TASK_GOVERNANCE_PROPORTIONATE_REGATE_EVIDENCE_REUSE_AND_COMPACT_HANDOFF`: `superseded_by_split_plans`. It is retained only as a non-executable umbrella/audit trace and cannot be approved, queued, assigned a token, given a branch/worktree, or dispatched. Its responsibilities are owned by serial Tasks A and B above.
 - `TASK_316_LOCAL_PROJECT_WORKSPACE_CREATION_FROM_TEMPLATE` is complete. Added the official workspace service settings DTO, backend naming planner, preview/create application service, UTF-8 `.connlab/manifest.json` gateway, SQLite workspace index, FastAPI routes `GET/POST /api/projects/{project_id}/official-workspace/...`, frontend API client wiring, and a minimal Workbench single-primary-action state for `Create local project workspace`. Review follow-up fixed TASK_316 closure issues: preview now returns `completed` when ConnLab workspace record, manifest, and real file-system paths match; backend DL resolution prefers latest registered LTR over legacy `project.project_no`; Workbench identity and official folder naming now use the same project identity resolver, with the current Project sample/product description first and LTR setup `Test Item` for the test description; application-form requested testing remains a folder-name fallback before `Qualification test`; completed existing workspace records now remain `completed` when current naming rules change, with naming drift reported as a warning for later repair instead of blocking the user back into create mode; Workbench now reads only ordinary Settings registry locations for TASK_316 (`Project default save location` as local workspace root, `Template folder` as template parent/root, and `Public Project locations` for future public-drive upload readiness), with no hidden `settings.official_workspace` fallback; the real template layout `Template/DL-XXXX-YY-ZZZ project/DL-XXXX-YY-ZZZ Title` is supported; Settings path saves always reactivate visible path rows so stale inactive resources cannot silently block Workbench; Package preview now treats a completed TASK_316 official workspace record as a ready project folder target when no legacy `ProjectFolderRecord` exists; missing workspace/template setup shows a Workbench blocker reminder without a shortcut button, raw backend path, or `workspace paths` operator prompt; sidebar Projects restores the current Workbench context after navigating to Settings or another top-level page, while the Workbench back button still returns to the project list. Existing safe `{DL_NUMBER}/` folders are adoptable/continuable; existing planned official folders without a matching ConnLab record still block create; manifest/file-system/index mismatch returns repairable inconsistency; `Public Project locations` is warning-only; template copy stages into ConnLab-owned temp and writes manifest/index last. Scope boundary held: no public drive upload, no request material collection, no Test Record/Fee/Customer Feedback generation changes, no Section 2 write-back, no execution evidence/StepInstance/report/AI/permissions/multi-user work. Validation: `py -m pytest tests/unit/test_config.py tests/unit/test_external_resource_service.py tests/integration/test_external_resource_api.py -q` (`23 passed`); `py -m pytest tests/unit/test_official_project_workspace_service.py tests/unit/test_official_project_workspace_naming.py tests/integration/test_official_project_workspace_api.py tests/integration/test_api_default_dependencies.py -q` (`20 passed`); `py -m pytest tests/unit/test_frontend_shell_files.py -q -k "project_workbench or official_workspace or task316"` (`4 passed, 133 deselected`); `cd frontend; npm test -- --run ProjectWorkbench officialWorkspace --watch=false` (`25 passed`, existing mocked-error stderr only); `cd frontend; npm run build` passed; browser smoke verified Settings only exposes `Public Project locations` and sidebar Projects restores to current Workbench; follow-up browser smoke verified project `2cd4b0e7ff6f4df99448c9ffdd78629f` no longer exposes raw template paths, `Configure workspace paths`, task IDs, or `Test description unavailable`, now shows the official workspace as completed, and Package preview no longer reports the stale project-folder blocker. Additional identity smoke verified `DL-2026-05-011 Coolpower HDF 3.40mm pin Qualification Testing` in Workbench and planned official folder path; workspace status smoke verified existing `D:\Test Project\DL-2026-05-011` no longer re-enters create-blocked mode after the naming rule correction. Next recommended step is TASK_317 task file and executable plan review before implementation.
