@@ -239,7 +239,6 @@ def first_compaction(snapshot: Snapshot, archive_path: str) -> bytes:
         raise Blocked("BLOCKED_COMPACTION_BUDGET", "protected active context cannot fit budgets")
     return compact
 
-
 def incremental_compaction(snapshot: Snapshot, generation: int) -> tuple[bytes, bytes, int]:
     lines = snapshot.text.splitlines(keepends=True)
     eligible = [index for index, line in enumerate(lines) if terminal_eligible(snapshot, line.rstrip("\r\n"))]
@@ -286,7 +285,6 @@ def build_plan(repo: Path, expected_head: str, expected_board_hash: str) -> Main
     plan_digest = digest(json.dumps(facts, sort_keys=True, separators=(",", ":")).encode())
     return MaintenancePlan(generation, head, source_blob, source, archive_path, archive_bytes, archive_mode, archived_count, compact, facts["previous"], plan_digest)
 
-
 def plan_result(plan: MaintenancePlan | None, snapshot: Snapshot) -> dict[str, Any]:
     metrics = {"lines": snapshot.lines, "bytes": snapshot.bytes, "terminal_records": snapshot.terminal_records}
     if plan is None:
@@ -330,7 +328,6 @@ def validate_apply_authority(repo: Path, plan: MaintenancePlan) -> None:
     chain = [heads["DEVELOPER_READY"], heads["REVIEWER_PASS"]] + ([heads["QA_PASS"]] if "QA_PASS" in heads else [])
     if any(subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", prior, current]).returncode for prior, current in zip(chain, chain[1:])):
         raise Blocked("BLOCKED_MAINTENANCE_GATES", "gate evidence ancestry is invalid")
-
 
 def parse_ref(value: str) -> tuple[str, str, str]:
     match = re.fullmatch(r"([^@#]+)@([0-9a-f]{40})#([0-9a-f]{64})", value)
