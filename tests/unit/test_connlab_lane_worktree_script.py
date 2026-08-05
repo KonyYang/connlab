@@ -119,7 +119,8 @@ def test_worktree_create_queue_result_never_creates_branch_or_worktree(
     )
 
     assert completed.returncode != 0
-    assert "QUEUE_REQUIRED" in completed.stdout + completed.stderr
+    # The legacy worktree entry is no longer compatible with the personal gate contract.
+    # Its only supported behavior is to fail before creating another branch/worktree.
     assert _git(repo, "branch", "--list", "lane/task-queued") == ""
     assert not (worktree_root / "task-queued").exists()
 
@@ -128,10 +129,9 @@ def test_v2_run_task_path_does_not_load_codex_runtime() -> None:
     text = (ROOT / "scripts" / "run_task.ps1").read_text(encoding="utf-8")
 
     assert "[switch]$ControlledLaneV2" in text
-    assert "if (-not $ControlledLaneV2)" in text
-    assert "connlab_controlled_lane.ps1" in text
-    assert '-Command "scan"' in text
-    assert '-Command "route-plan"' not in text
+    assert "_codex_runtime.ps1" not in text
+    assert "connlab_controlled_lane.ps1" not in text
+    assert "BLOCKED_LEGACY_MODE_FROZEN" in text
 
 
 def test_controlled_lane_skill_forbids_credentials_and_real_dry_run_actions() -> None:

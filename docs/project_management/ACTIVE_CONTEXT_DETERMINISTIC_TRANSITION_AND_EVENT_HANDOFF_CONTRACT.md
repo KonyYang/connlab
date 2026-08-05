@@ -1,4 +1,6 @@
-# Active Context, Deterministic Transition, And Event Handoff Contract
+# Active Context, Deterministic Transition, And Event Handoff Contract — Frozen Legacy
+
+> Status: frozen legacy audit reference since 2026-08-06. Its role-transition/handoff model is non-executable. Daily authority is the `connlab.personal-serial-control` block written by `scripts/connlab_personal_task.py`.
 
 Status: normative for classic permanent-role execution. `docs/task_board.md` execution-control JSON
 remains the sole machine authority; the human Current Active Task line is its deterministic

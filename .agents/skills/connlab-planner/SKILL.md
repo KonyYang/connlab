@@ -3,6 +3,13 @@ name: connlab-planner
 description: Plan ConnLab product/technical tasks and controlled-parallel lanes using Discovery Gate before proposing, creating, or approving lanes. Use when the user asks to plan, split, scope, activate, sequence, or prepare ConnLab tasks/lanes.
 ---
 
+## Frozen Legacy Override
+
+Status: frozen legacy since 2026-08-06. Do not dispatch a Planner conversation or create a
+lane/worktree. Planned work is prepared in the current conversation under
+`docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`; board transitions use
+`scripts/connlab_personal_task.py`. Everything below is retained historical reference only.
+
 # ConnLab Planner
 
 ## Purpose

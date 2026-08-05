@@ -1,165 +1,29 @@
-# ConnLab Planner Discovery Protocol
+# ConnLab Personal Planning Protocol
 
-Last Updated: 2026-07-31
-Status: active governance protocol
-Scope: product/technical planning, task decomposition, and controlled-parallel lane creation
+Last Updated: 2026-08-06
+Status: normative for planned tasks
 
-Execution readiness and any parallel exception are governed by
-`docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`. Default implementation WIP is one.
+Planning is performed in the current conversation. No Planner role conversation, lane, worktree,
+or dispatch is created.
 
-## 1. Goal
+Use a planned task whenever the request is not eligible for the strict simple-task boundary in
+`EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`. A queued planned intake stores only task ID, summary, and
+kind. When activated it enters `running/planning` and continues to hold the sole active slot.
 
-This protocol prevents ConnLab Planner from turning a short or ambiguous user request directly into an executable task or lane.
+The short plan must state:
 
-Planner must first understand the user goal, current project state, existing evidence, constraints, and unknowns. A plan that looks complete but is based on weak assumptions is not ready.
+- confirmed goal and repository facts;
+- exact `may_touch` paths and file count;
+- explicit non-goals and forbidden-category results;
+- file-level implementation approach;
+- targeted validation;
+- risks and rollback;
+- the requirement for explicit User approval.
 
-## 2. When To Use
+Unknown information that materially changes scope, behavior, data/API authority, or validation is
+asked in at most three concise questions. Otherwise the current conversation makes bounded,
+stated assumptions.
 
-Use this protocol whenever the user asks Planner to:
-
-- plan the next task, phase, or lane
-- split work into controlled-parallel lanes
-- create or activate a task after a completed lane
-- interpret a broad product direction
-- convert a short request into implementation work
-- reconcile board/evidence/scope before Developer starts
-
-Do not use this protocol for pure orchestration handoffs where the board/evidence already identify the next role and no new scope is being planned.
-
-## 3. Discovery Gate
-
-Before proposing tasks or lanes, Planner must produce a Discovery Gate.
-
-The Discovery Gate must include:
-
-1. Current phase, current active task/lane, current role, and why Planner is allowed to act.
-2. User goal restatement in 3-5 sentences.
-3. Evidence read: board, task files, plans, evidence, architecture docs, skill docs, or code areas that shape the request.
-4. Confirmed facts: facts directly supported by user instruction or repository evidence.
-5. Planner assumptions: inferences that are useful but not yet confirmed.
-6. Missing information: unknowns that can change scope, UX, API, data ownership, validation, or task ordering.
-7. Planning risk: what is likely to go wrong if Planner creates lanes immediately.
-8. Clarifying questions, maximum 3, only when answers materially affect the plan.
-9. Recommended stop/continue decision:
-   - stop and wait for answers
-   - continue with explicitly named assumptions
-   - continue because evidence is already sufficient
-
-## 4. Assumption Labeling
-
-Planner must not present inferred scope as user-approved scope.
-
-Use this structure when scope is not fully explicit:
-
-```text
-Confirmed by user:
-- ...
-
-Confirmed by repository evidence:
-- ...
-
-Inferred by Planner:
-- ...
-
-Not yet confirmed:
-- ...
-```
-
-If any "Not yet confirmed" item affects May Touch, Must Not Touch, validation gates, data model, API shape, UX behavior, or serial/parallel ordering, Planner must either ask a question or keep the lane `proposed`/`planned`.
-
-## 5. Definition Of Ready For Lane Approval
-
-Planner may mark a lane `approved` only when all items below are satisfied:
-
-- user goal and operator/user scenario are clear
-- current board state and dependencies are verified from files
-- existing behavior or authority path has been checked from relevant docs or code, not only chat memory
-- task/lane has a formal task file or the approved Planner action is to create one
-- dependencies and serialization constraints are explicit
-- May Touch, Must Not Touch, Locked Paths, evidence file, validation gate, and merge gate are concrete
-- implementation has a concrete `lane/*` branch, sibling worktree path, and clean base commit; `TBD` is not approval-ready
-- the task is eligible to acquire the board execution token or has a durable FIFO queue record
-- any second implementation owner has exact independence proof, an end condition, and explicit
-  User approval recorded as a max-two parallel exception
-- no active lane owns the same shared file, oversized mixed test, or authority path
-- Developer clean-commit handoff, clean Reviewer/QA input, Integrator residual ledger, and worktree retirement are declared
-- at least one acceptance path is testable or reviewable
-- at least one explicit non-goal prevents scope creep
-- unresolved assumptions are either confirmed by the user or documented as out of scope
-
-If this Definition of Ready is not met, the lane may be `proposed` or `planned`, but must not be `approved`.
-
-## 6. Clarification Rules
-
-Ask questions when:
-
-- the user describes a product outcome but not the user workflow
-- two or more plausible scopes would produce different tasks
-- frontend and backend boundaries are unclear
-- a request could touch authority data, Office files, public-drive workflows, lifecycle state, Matrix/Fee authority, or global board state
-- the right validation gate cannot be named
-
-Do not ask questions when:
-
-- the answer is already in current board/task/evidence files
-- the uncertainty can be safely handled as a non-goal
-- the user explicitly requested a narrow governance update and the required fields are already known
-
-Prefer 1-3 high-impact questions over long questionnaires.
-
-## 7. Planning Output Levels
-
-Planner should distinguish four levels:
-
-| Level | Meaning | File changes allowed |
-|---|---|---|
-| Discovery | understand goal, evidence, assumptions, blockers | none unless user asks to document discovery |
-| Proposed lanes | candidate task/lane split for discussion | none by default |
-| Planned lanes | task/evidence/board draft exists but not executable | only after user approval to write planning docs |
-| Approved lanes | executable after gates and explicit user approval | board/task/evidence updates allowed by Planner |
-
-Short user approval such as "sounds good" approves the discussed direction only. Planner must still ensure the lane Definition of Ready is met before marking it `approved`.
-
-## 8. Interaction With Controlled Parallel Execution
-
-This protocol sits before `docs/project_management/PARALLEL_EXECUTION_MODEL.md`.
-
-Planner Discovery decides whether a lane is ready to be proposed, planned, or approved. The Parallel Execution Model then governs role boundaries, evidence, review, QA, and integration.
-
-Automatic orchestration must not use this protocol to silently create or approve new scope. If orchestration reaches a missing future task, it should route to Planner Discovery first.
-
-## 9. Minimal Planner Response Template
-
-```text
-Current phase:
-Current active task/lane:
-Current role:
-Why allowed:
-
-User goal restatement:
-
-Evidence read:
-
-Confirmed by user:
-
-Confirmed by repository evidence:
-
-Inferred by Planner:
-
-Not yet confirmed:
-
-Planning risk:
-
-Questions:
-
-Recommendation:
-```
-
-For very small governance-only tasks, Planner may compress this template, but must still separate confirmed facts from assumptions before creating approved lanes.
-
-## Routine Event Exclusion
-
-The four proven routine role events in
-`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md` launch zero Planner
-conversations. Planner remains required for Discovery, scope/authority/API/schema change,
-unclassifiable blockers, destructive decisions, and merge/evidence conflicts.
+After approval, call `approve --approved-request-json` through
+`scripts/connlab_personal_task.py`, exact-stage the board, make the approval commit, verify primary
+clean, and only then implement. Any new path requires stopping for new User approval.

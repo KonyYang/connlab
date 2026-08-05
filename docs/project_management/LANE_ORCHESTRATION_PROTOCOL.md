@@ -1,4 +1,6 @@
-# ConnLab Lane Orchestration Protocol
+# ConnLab Lane Orchestration Protocol — Frozen Legacy
+
+> Status: frozen legacy audit reference since 2026-08-06. It cannot authorize dispatch, lane/worktree creation, reconciliation, or state changes. Daily execution uses `scripts/connlab_personal_task.py` and `connlab.personal-serial-control`.
 
 Status: active classic permanent-role protocol. Normative WIP/Quick Fix rules are in
 `EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`; deterministic transitions, active context, maintenance,

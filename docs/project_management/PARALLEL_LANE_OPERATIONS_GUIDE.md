@@ -1,4 +1,6 @@
-# ConnLab Parallel Lane Operations Guide
+# ConnLab Parallel Lane Operations Guide — Frozen Legacy
+
+> Status: frozen legacy audit reference since 2026-08-06. Do not create or operate lanes/worktrees through this guide in personal mode.
 
 Last Updated: 2026-07-31
 Status: active operational policy

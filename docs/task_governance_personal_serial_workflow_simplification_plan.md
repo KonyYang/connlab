@@ -1,6 +1,6 @@
 # ConnLab Personal Serial Workflow Simplification Plan
 
-Status: `APPROVED_IMPLEMENTATION_RUNNING`
+Status: `IMPLEMENTED_PENDING_HUMAN_REVIEW`
 Task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
 Date: 2026-08-06
 Original planning base: `ae33faa38894c26245397226d8e4357512c77b91`
@@ -649,4 +649,6 @@ Implementation is complete only when:
 - no old role/worktree/V2 dispatch occurred, no push occurred, and no queue item started.
 
 Then stop for User review. Only `关闭` may create the later closeout board commit and release the
-slot. This plan remains non-executable until the User explicitly approves this revision.
+slot. Validation completed with 56 focused tests passing, both PowerShell entry points parsing,
+both inspect paths returning `ALLOW_INSPECT`, exact allowlist equality, and protected archive/index
+hashes unchanged.

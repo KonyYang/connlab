@@ -1,4 +1,6 @@
-# ConnLab Role Thread Registry
+# ConnLab Role Thread Registry — Frozen Legacy
+
+> Status: frozen legacy audit reference since 2026-08-06. The listed tasks are not daily execution endpoints and must not be dispatched by the personal serial workflow.
 
 Last Updated: 2026-07-30
 Status: classic persistent-role registry

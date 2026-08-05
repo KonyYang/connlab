@@ -1,134 +1,19 @@
-# ConnLab Task Execution Skill (Enhanced)
+# ConnLab Personal Task Execution
 
-你正在为 ConnLab 项目编写代码。
+Last Updated: 2026-08-06
+Status: normative execution instructions
 
-必须严格执行以下流程，不允许跳过或简化。
+1. Read `AGENTS.md`, `docs/task_board.md`, and the active task/plan when present.
+2. State the current phase, active task ID, and why the requested action is allowed.
+3. Run `scripts/connlab_personal_task.py inspect` and respect the single active slot and FIFO.
+4. For a simple task, submit the complete classification contract. For a planned task, prepare a
+   short plan and wait for explicit User approval before `approve` and implementation.
+5. Commit the activation or approval board transition before implementation edits.
+6. Modify only `may_touch`; add or adjust tests inside that exact allowlist.
+7. Run targeted validation. On failure, keep the task active and record a blocker.
+8. On success, call `mark-review`, exact-stage changed task paths plus the board, and create one
+   local implementation commit.
+9. Stop at `implemented_pending_human_review`. Only explicit User `关闭` authorizes close.
 
----
-
-## 🔒 全局约束（最高优先级）
-
-* 必须遵守 AGENTS.md
-* 禁止实现 Task 未要求的功能
-* 禁止修改已有结构（除非 Task 明确要求）
-* 禁止跨层调用（UI → application → domain）
-* 禁止直接操作 Office（必须通过 infrastructure 层）
-
----
-
-## Step 1：理解任务（强制）
-
-输出：
-
-1. 本 Task 的目标是什么？
-2. 输入数据是什么？
-3. 输出数据是什么？
-4. 涉及哪些模块？
-5. 不允许做什么？
-
----
-
-## Step 2：设计方案（先思考再写代码）
-
-必须先输出：
-
-* 数据结构设计
-* 涉及文件列表
-* API 或函数签名
-* 依赖关系
-
-⚠️ 未完成设计，不允许写代码
-
----
-
-## Step 3：实现代码（严格范围）
-
-要求：
-
-* 只实现 Task 指定功能
-* 每个函数职责单一
-* 每个文件 < 500 行
-* 必须有类型标注（Python typing）
-* 必须有 docstring
-
----
-
-## Step 4：自检（强制执行）
-
-逐条检查：
-
-1. 是否违反 AGENTS.md？
-2. 是否实现了未要求功能？
-3. 是否跨层调用？
-4. 是否有未处理异常？
-5. 是否有硬编码路径？
-6. 是否有 TODO 未完成？
-
-必须输出检查结果。
-
----
-
-## Step 5：运行验证（必须提供）
-
-必须提供：
-
-* 启动方式
-* 测试方法
-* 示例输入
-* 示例输出
-
----
-
-## Step 6：输出格式（必须遵守）
-
-输出必须包含：
-
-1. ✅ 实现说明
-2. 📁 修改文件列表
-3. 💻 代码落地位置或关键代码摘要
-4. ▶️ 运行步骤
-5. 🧪 验证方法
-6. 🔍 自检结果
-
-说明：
-
-* 如果代码已经直接写入仓库文件，不需要在最终回复中全文粘贴完整代码。
-* 最终回复应优先说明修改了哪些文件、核心实现是什么、如何运行验证。
-* 只有在用户明确要求、代码片段很短、或无法直接写入文件时，才输出完整代码块。
-* 默认采用极简收尾格式，避免重复输出已入库代码或大段实现摘要：
-  * `TASK_XXX 已完成。`
-  * `验证：<测试命令>，结果 <X passed>。`
-  * `任务看板：下一任务 <TASK_YYY> active。`
-  * `风险/限制：仅在存在实际风险、未验证项或范围限制时说明。`
-* 默认不要主动输出 `Edited files`、逐文件修改清单、代码摘要、diff、完整代码或大段文件内容。
-* 如果用户只要求结果概述，最终回复只说明完成内容、验证结果、当前停止点和必要风险。
-* 只有用户明确要求“列出文件 / 展示代码 / 解释 diff”时，才输出具体文件清单或代码内容。
-
----
-
-## Step 7：自动测试（新增）
-
-必须执行：
-
-1. 为本 Task 写 pytest 测试
-2. 放入 tests/ 目录
-3. 测试必须可运行
-4. 覆盖核心功能
-
-输出：
-
-* 测试文件路径或关键测试摘要
-* 运行方法：pytest
-* 预期结果
-
----
-
-## Step 8：停止（关键）
-
-* 不允许进入下一个 Task
-* 等待用户确认
-
-对于已批准 lane 的永久角色接力，使用
-`ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`：callback 先经七字段校验，
-再由 primary board/evidence/Git facts 驱动至多一次 transition 和一次 dispatch。机械接力不重复
-Planner；范围或 authority 变化仍停止并返回 Planner/User。
+Never dispatch roles, create lanes/worktrees, push, destructively clean, resume frozen legacy
+automation, or start the next queued task automatically.

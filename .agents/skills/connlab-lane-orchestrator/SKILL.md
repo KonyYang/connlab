@@ -3,6 +3,15 @@ name: connlab-lane-orchestrator
 description: Orchestrate ConnLab approved lanes through permanent roles, deterministic board transitions, bounded Quick Fix routing, and local Integrator acceptance.
 ---
 
+## Frozen Legacy Override
+
+Status: frozen legacy since 2026-08-06. Do not dispatch roles, resume/reconcile lanes, create a
+branch/worktree, or invoke Controlled Lane V2. Daily work is executed in the current conversation
+under `connlab.personal-serial-control`, using `scripts/connlab_personal_task.py` as the only board
+writer. Old gate intents return `BLOCKED_LEGACY_MODE_FROZEN`.
+
+Everything below is retained historical reference and cannot authorize an action.
+
 # ConnLab Lane Orchestrator
 
 ## Purpose

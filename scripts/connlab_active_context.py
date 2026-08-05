@@ -77,7 +77,7 @@ def ensure_safe_history_path(repo: Path, path: Path) -> None:
         current = current / part
         if current.exists() and (current.is_symlink() or getattr(current, "is_junction", lambda: False)()):
             raise Blocked("BLOCKED_ARCHIVE_PATH", "history path traverses a link or junction")
-def parse_snapshot(raw: bytes) -> Snapshot:
+def parse_snapshot(raw: bytes, *, allow_personal: bool = False) -> Snapshot:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -92,17 +92,17 @@ def parse_snapshot(raw: bytes) -> Snapshot:
         control = json.loads(match.group(1))
     except json.JSONDecodeError as exc:
         raise Blocked("BLOCKED_JSON_INVALID", str(exc)) from exc
-    if control.get("schema") != "connlab.execution-control" or control.get("version") != 1 or control.get("wip_limit") != 1:
+    if not ((control.get("schema") == "connlab.execution-control" and control.get("version") == 1 and control.get("wip_limit") == 1) or (allow_personal and control.get("schema") == "connlab.personal-serial-control" and control.get("version") == 1 and control.get("mode") == "personal_serial" and control.get("wip_limit") == 1)):
         raise Blocked("BLOCKED_SCHEMA_UNSUPPORTED", "unsupported execution-control schema")
     terminal = sum(is_terminal_line(line) for line in text.splitlines())
     return Snapshot(raw, text, control, len(text.splitlines()), len(raw), terminal)
 def is_terminal_line(line: str) -> bool:
     return bool(TERMINAL.search(line)) and not bool(ACTIVE_STATUS.search(line))
-def load_snapshot(repo: Path) -> Snapshot:
+def load_snapshot(repo: Path, *, allow_personal: bool = False) -> Snapshot:
     board = repo / "docs" / "task_board.md"
     if not board.is_file():
         raise Blocked("BLOCKED_BOARD_MISSING", "docs/task_board.md is missing")
-    return parse_snapshot(board.read_bytes())
+    return parse_snapshot(board.read_bytes(), allow_personal=allow_personal)
 def threshold(snapshot: Snapshot) -> bool:
     return snapshot.lines > MAX_LINES or snapshot.bytes > MAX_BYTES or snapshot.terminal_records > MAX_TERMINAL
 def index_records(repo: Path) -> tuple[list[dict[str, Any]], bytes]:
@@ -459,7 +459,7 @@ def already_applied(repo: Path, records: list[dict[str, Any]], args: argparse.Na
 
 def execute(args: argparse.Namespace) -> dict[str, Any]:
     repo = Path(args.repo_root).resolve(); ensure_primary(repo)
-    snapshot = load_snapshot(repo)
+    snapshot = load_snapshot(repo, allow_personal=args.command == "inspect")
     if args.command == "inspect":
         return {"decision": "ALLOW_INSPECT", "reason_codes": [], "zero_write": True, "metrics": {"lines": snapshot.lines, "bytes": snapshot.bytes, "terminal_records": snapshot.terminal_records}, "changed_paths": []}
     if args.command == "prove-rollback": return prove_rollback(repo, args.generation, Path(args.temp_root), Path(args.output))

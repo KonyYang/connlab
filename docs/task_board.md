@@ -14,12 +14,12 @@
   "version": 1,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION",
     "summary": "Simplify ConnLab task execution to personal single-active FIFO mode.",
     "kind": "planned",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -82,9 +82,76 @@
     "approval_ref": "User explicitly approved adding scripts/connlab_active_context.py for read-only inspect compatibility in the current side conversation on 2026-08-06.",
     "activation_parent_sha": "a796d574bf6747ee091adbf4881aa8cb623a7a36",
     "activated_at": "2026-08-06T01:14:27+08:00",
-    "updated_at": "2026-08-05T23:01:26Z",
+    "updated_at": "2026-08-05T23:09:40Z",
     "blocker": null,
-    "validation": null
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_execution_gate_script.py tests/integration/test_connlab_execution_gate_recovery.py tests/unit/test_execution_wip_and_quick_fix_governance.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py tests/unit/test_connlab_lane_worktree_script.py tests/unit/test_connlab_active_context_governance.py tests/unit/test_connlab_active_context.py -q",
+          "exit_code": 0,
+          "summary": "56 passed in 67.39s"
+        },
+        {
+          "command": "PowerShell parser checks for scripts/connlab_execution_gate.ps1 and scripts/run_task.ps1",
+          "exit_code": 0,
+          "summary": "Both scripts parsed with zero errors."
+        },
+        {
+          "command": "py scripts/connlab_active_context.py inspect --repo-root . --json",
+          "exit_code": 0,
+          "summary": "ALLOW_INSPECT for connlab.personal-serial-control."
+        },
+        {
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/connlab_execution_gate.ps1 -Intent Inspect -RepositoryRoot D:/PythonProject/connlab -Json",
+          "exit_code": 0,
+          "summary": "ALLOW_INSPECT through the personal gate adapter."
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "No whitespace errors."
+        }
+      ],
+      "observed_paths": [
+        "AGENTS.md",
+        "docs/task_board.md",
+        "docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md",
+        "docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md",
+        "docs/project_management/TASK_EXECUTION_SKILL.md",
+        "docs/project_management/TASK_REVIEW_CHECKLIST.md",
+        "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
+        "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
+        "docs/project_management/ROLE_THREAD_REGISTRY.md",
+        "docs/project_management/PARALLEL_EXECUTION_MODEL.md",
+        "docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md",
+        ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+        ".agents/skills/connlab-planner/SKILL.md",
+        "scripts/connlab_personal_task.py",
+        "scripts/run_task.ps1",
+        "scripts/connlab_execution_gate.ps1",
+        "tests/unit/test_connlab_personal_serial_workflow.py",
+        "tests/unit/test_connlab_execution_gate_script.py",
+        "tests/integration/test_connlab_execution_gate_recovery.py",
+        "tests/unit/test_execution_wip_and_quick_fix_governance.py",
+        "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
+        "tests/unit/test_connlab_lane_worktree_script.py",
+        "tests/unit/test_connlab_active_context_governance.py",
+        "tasks/TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION.md",
+        "docs/task_governance_personal_serial_workflow_simplification_plan.md",
+        "scripts/connlab_active_context.py"
+      ],
+      "manual_checks": [
+        "Observed paths equal all 26 approved paths with no outside or missing path.",
+        "Generation-1 archive remains 798128 bytes with the frozen SHA-256 and Git blob.",
+        "Canonical index remains 6787 bytes with the frozen SHA-256 and Git blob.",
+        "Task-A lane remains clean at 85e71dfa212c57c26527fad42eaf00a83b19c935.",
+        "External governance-migration repository remains clean and was not modified."
+      ],
+      "recorded_at": "2026-08-05T23:09:40Z"
+    }
   },
   "queue": [],
   "next_enqueue_sequence": 1,

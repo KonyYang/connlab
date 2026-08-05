@@ -488,3 +488,36 @@ The primary board JSON is the sole machine authority. Routine Developer/Reviewer
 the fail-closed transition and handoff helpers, perform at most one transition and one dispatch per
 Orchestrator turn, and do not launch Planner. Every Integrator closeout plans board maintenance;
 only the authorized `gate_running/Integrator` owner may apply it before token release.
+
+## 22. Personal Serial Workflow Override (Current Normative Rule)
+
+Effective 2026-08-06, this section supersedes sections 13–21 wherever they require task plans for
+simple work, role dispatch, Quick Fixer, Reviewer/QA/Integrator gates, execution tokens, lane
+branches, sibling worktrees, parallel exceptions, deterministic handoffs, or Controlled Lane V2.
+Those mechanisms remain frozen historical references only.
+
+Daily task authority is the `connlab.personal-serial-control` JSON block in
+`docs/task_board.md`. The current conversation executes work directly on primary `master` and uses
+`scripts/connlab_personal_task.py` as the only supported control-block writer. Exactly one task is
+active; later tasks enter FIFO. No task starts automatically after close.
+
+A simple task requires a clear root cause/expected result, 1–3 total changed repository paths
+including tests and `docs/task_board.md`, and no API/database/schema/migration/persistence/
+authority/public-drive/business-semantic/destructive/external mutation. It skips plan and approval,
+but still requires an activation commit, targeted validation, a local implementation commit, and
+`implemented_pending_human_review`.
+
+All other tasks use one short committed plan in the current conversation and explicit User
+approval. The approval board transition must be committed cleanly before implementation. Scope may
+not expand beyond approved `may_touch` without new approval.
+
+Failures remain active with a typed blocker. Never automatically restore, discard, stash, clean,
+push, create a branch/worktree, dispatch another task, or resume legacy automation. Only explicit
+User `关闭` may close a clean, validated task awaiting human review and release the active slot.
+
+Normative operational references:
+
+- `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
+- `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`
+- `docs/project_management/TASK_EXECUTION_SKILL.md`
+- `docs/project_management/TASK_REVIEW_CHECKLIST.md`

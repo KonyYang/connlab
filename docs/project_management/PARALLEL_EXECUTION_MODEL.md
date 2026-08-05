@@ -1,4 +1,6 @@
-# ConnLab Parallel Execution Model
+# ConnLab Parallel Execution Model — Frozen Legacy
+
+> Status: frozen legacy audit reference since 2026-08-06. Personal mode has WIP=1 and no parallel implementation exception.
 
 Last Updated: 2026-07-31
 Status: active referencing model
