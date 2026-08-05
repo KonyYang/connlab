@@ -7,9 +7,15 @@ Original planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Revision-1 commit: `34379138df1fcd70ee305076662a502fb30389ff`
 Revision-2 commit: `37e9a4d5570fe739a6648aeb092f2d0e2e31eb46`
 Revision-3 commit: `75619c67f73ba330f8aa2085b5de120777ae64b8`
+Revision-4 commit: `a796d574bf6747ee091adbf4881aa8cb623a7a36`
 
 Approval: User approved Revision 4 for implementation on 2026-08-06 in thread
 `019fc491-21b0-77b0-bf18-53f53a366a7c`.
+
+Scope correction: after the committed `SCOPE_EXPANDED` blocker proved that the required legacy
+`inspect` command rejected the new personal board schema, the User explicitly approved adding
+`scripts/connlab_active_context.py` on 2026-08-06. The correction is limited to read-only
+`inspect` compatibility. Archive, maintenance, rollback, and mixed-EOL behavior remain frozen.
 
 ## 1. Outcome
 
@@ -42,6 +48,7 @@ Review disposition:
 | planned approval visibility | approval transition receives its own clean primary commit |
 | planned intake requires unknown scope | minimal planned intake; approval atomically binds full approved request |
 | blocker has no legal payload | independent typed `connlab.personal-task-blocker` schema |
+| legacy inspect rejects the personal board | approved scope rebind plus read-only personal-schema inspect compatibility |
 
 ## 2. Discovery And Frozen User Decisions
 
@@ -122,7 +129,10 @@ The helper exposes only:
 - `activate-next`: when idle, atomically removes and activates only the exact FIFO head after an
   explicit execute/continue command;
 - `approve`: atomically binds the complete approved scope/validation contract and moves a planned
-  task from planning to implementation after explicit plan and approval refs;
+  task from planning to implementation after explicit plan and approval refs; when an already
+  approved planned task is committed as blocked with `SCOPE_EXPANDED`, it may instead record a
+  User-approved strict path superset and new plan/approval refs while preserving the blocker until
+  a separate explicit `resume`;
 - `mark-review`: records passed validation and enters `implemented_pending_human_review`;
 - `block`: keeps `running` and records one typed blocker payload;
 - `resume`: clears a blocker only after explicit User direction while retaining the same task;
@@ -491,6 +501,8 @@ Entry points:
 - `scripts/connlab_personal_task.py` (new)
 - `scripts/run_task.ps1`
 - `scripts/connlab_execution_gate.ps1`
+- `scripts/connlab_active_context.py` (read-only `inspect` compatibility for
+  `connlab.personal-serial-control` only)
 
 Governance tests:
 
@@ -514,7 +526,8 @@ path requires stopping and obtaining new explicit User approval.
 
 - all product/backend/frontend/API/domain/database/schema/migration/Office/LTR/Matrix/Fee/report/
   release/runtime feature code and tests;
-- `scripts/connlab_active_context.py` and its existing archive/rollback logic;
+- all archive, maintenance, rollback, generation/index, reconstruction, and mixed-EOL behavior in
+  `scripts/connlab_active_context.py`; only the read-only personal-schema `inspect` path may change;
 - `docs/archive/task_board_history/**`, including generation-1 and `index.v1.jsonl`;
 - every Task-A task/plan/evidence/transition/attestation file, retained lane/worktree, branch, and
   commit;
@@ -538,6 +551,12 @@ path requires stopping and obtaining new explicit User approval.
 7. Update only allowlisted governance tests for the new contract.
 8. Run the exact behavioral, PowerShell, history, protected-state, and diff checks.
 9. On success, call `mark-review`, exact-stage the allowlist, and create the implementation commit.
+
+If implementation reaches a committed `SCOPE_EXPANDED` blocker, a new explicit User approval may
+rebind only a strict path superset through `approve`. That transition keeps the blocker and must be
+committed separately; `resume` is a second explicit transition. For the current correction the
+only added path is `scripts/connlab_active_context.py` and its behavior boundary is the read-only
+`inspect` compatibility described above.
 10. Verify clean primary and stop at `implemented_pending_human_review`; no push and no queued start.
 
 If any step needs an unlisted path, destructive action, Task-A mutation, archive/index write, or

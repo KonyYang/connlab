@@ -9,6 +9,11 @@ Current active task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
 Approval: User approved Revision 4 for implementation on 2026-08-06 in thread
 `019fc491-21b0-77b0-bf18-53f53a366a7c`.
 
+Scope correction: on 2026-08-06 the User approved adding
+`scripts/connlab_active_context.py` after the committed `SCOPE_EXPANDED` blocker. Only read-only
+`inspect` compatibility for `connlab.personal-serial-control` is authorized; archive,
+maintenance, rollback, and mixed-EOL behavior remain frozen.
+
 ## Why This Planning Task Is Allowed
 
 The board is valid `cancelled` state with no active task and no execution-token owner. The User has
@@ -95,6 +100,11 @@ Simple intake remains complete and fully classified at first submit.
 `block` requires a separate typed blocker record containing blocker code, reason, dirty paths, and
 nullable failed-validation evidence. Unknown blocker fields/codes fail closed; validation JSON is
 not overloaded with undefined blocker data.
+
+For a committed blocked planned task whose blocker code is `SCOPE_EXPANDED`, `approve` may bind a
+new User-approved strict path superset and updated plan/approval refs. It must preserve the blocker
+and blocked phase. A separate explicit `resume` transition is required before implementation can
+continue.
 
 ## Non-Goals
 
