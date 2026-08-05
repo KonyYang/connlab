@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION
 
-Status: `implemented_pending_human_review`
+Status: `blocked_corrective_implementation`
 Type: governance workflow simplification
 Planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
@@ -13,6 +13,10 @@ Scope correction: on 2026-08-06 the User approved adding
 `scripts/connlab_active_context.py` after the committed `SCOPE_EXPANDED` blocker. Only read-only
 `inspect` compatibility for `connlab.personal-serial-control` is authorized; archive,
 maintenance, rollback, and mixed-EOL behavior remain frozen.
+No side-conversation thread ID was available to the runtime and none is asserted. The durable
+approval evidence is the exact User wording `请解决` in direct response to that scope request. The
+later exact direction beginning `我也发现注意点` and ending `请按照你的建议执行下一步。` authorizes
+correcting this reference and the bounded self-review findings within the existing allowlist.
 
 ## Why This Planning Task Is Allowed
 

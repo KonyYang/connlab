@@ -1,20 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
-import hashlib
-import json
-import os
-import re
-import subprocess
-import sys
-import tempfile
+import argparse, hashlib, json, os, re, subprocess, sys, tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
-
-
 BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
 END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 BOARD_REL = "docs/task_board.md"
@@ -49,7 +40,7 @@ def sha(data: bytes) -> str:
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 def exact_keys(value: dict[str, Any], expected: set[str], code: str) -> None:
-    if set(value) != expected:
+    if not isinstance(value, dict) or set(value) != expected:
         raise Blocked(code, "JSON keys do not match the frozen schema.")
 def normalized_paths(value: Any, *, allow_empty: bool = False) -> list[str]:
     if not isinstance(value, list) or (not allow_empty and not value):
@@ -220,19 +211,28 @@ def validate_control(value: Any) -> None:
     if active is not None:
         required = {"task_id", "summary", "kind", "phase", "scope_contract", "plan_ref", "approval_ref", "activation_parent_sha", "activated_at", "updated_at", "blocker", "validation"}
         exact_keys(active, required, "BLOCKED_SCHEMA_INVALID")
-        if active.get("kind") not in {"simple", "planned"} or active.get("phase") not in {"planning", "implementation", "blocked", "human_review"} or not isinstance(active.get("task_id"), str):
-            raise Blocked("BLOCKED_SCHEMA_INVALID", "Active task fields are invalid.")
+        kind, phase, scope = active.get("kind"), active.get("phase"), active.get("scope_contract")
+        if kind not in {"simple", "planned"} or phase not in {"planning", "implementation", "blocked", "human_review"} or not all(isinstance(active.get(key), str) and active[key] for key in ("task_id", "summary", "activated_at", "updated_at")) or not re.fullmatch(r"[0-9a-f]{40}", str(active.get("activation_parent_sha"))): raise Blocked("BLOCKED_SCHEMA_INVALID", "Active task fields are invalid.")
+        if scope is None and (kind == "simple" or phase not in {"planning", "blocked"}): raise Blocked("BLOCKED_SCHEMA_INVALID", "Active scope is missing.")
+        if scope is not None:
+            exact_keys(scope, {"may_touch", "expected_file_count", "classification_reason", "targeted_validation", "forbidden_categories"}, "BLOCKED_SCHEMA_INVALID"); scope_from_payload(scope, simple=kind == "simple", code="BLOCKED_SCHEMA_INVALID")
+        if (value["state"] == "implemented_pending_human_review") != (phase == "human_review"): raise Blocked("BLOCKED_SCHEMA_INVALID", "Board state and active phase contradict.")
+        if (phase == "blocked") != isinstance(active.get("blocker"), dict): raise Blocked("BLOCKED_SCHEMA_INVALID", "Blocked phase and blocker record contradict.")
+        if active.get("blocker") is not None: blocker_payload(json.dumps(active["blocker"]))
+        if active.get("validation") is not None: validation_payload(json.dumps(active["validation"]), require_pass=phase == "human_review")
+        if kind == "planned" and scope is not None and not all(isinstance(active.get(key), str) and active[key] for key in ("plan_ref", "approval_ref")): raise Blocked("BLOCKED_SCHEMA_INVALID", "Approved planned task lacks evidence refs.")
         ids.append(active["task_id"])
     previous = 0
     for item in value["queue"]:
         if not isinstance(item, dict) or set(item) != {"task_id", "summary", "kind", "enqueue_sequence", "queued_at", "scope_contract"}:
             raise Blocked("BLOCKED_SCHEMA_INVALID", "Queue record is invalid.")
-        if item.get("kind") not in {"simple", "planned"} or type(item.get("enqueue_sequence")) is not int or item["enqueue_sequence"] <= previous:
-            raise Blocked("BLOCKED_SCHEMA_INVALID", "Queue ordering is invalid.")
+        if item.get("kind") not in {"simple", "planned"} or type(item.get("enqueue_sequence")) is not int or item["enqueue_sequence"] <= previous or not all(isinstance(item.get(key), str) and item[key] for key in ("task_id", "summary", "queued_at")): raise Blocked("BLOCKED_SCHEMA_INVALID", "Queue ordering is invalid.")
+        if item["kind"] == "planned" and item["scope_contract"] is not None: raise Blocked("BLOCKED_SCHEMA_INVALID", "Queued planned scope must remain null.")
+        if item["kind"] == "simple": exact_keys(item["scope_contract"], {"may_touch", "expected_file_count", "classification_reason", "targeted_validation", "forbidden_categories"}, "BLOCKED_SCHEMA_INVALID"); scope_from_payload(item["scope_contract"], simple=True, code="BLOCKED_SCHEMA_INVALID")
         previous = item["enqueue_sequence"]
         ids.append(item.get("task_id"))
-    if len(ids) != len(set(ids)):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Active and queued task IDs must be unique.")
+    if value["next_enqueue_sequence"] <= previous: raise Blocked("BLOCKED_SCHEMA_INVALID", "Next enqueue sequence must exceed the queue tail.")
+    if len(ids) != len(set(ids)): raise Blocked("BLOCKED_SCHEMA_INVALID", "Active and queued task IDs must be unique.")
 def render_board(prefix: str, value: dict[str, Any], suffix: str) -> bytes:
     block = BEGIN + "\n```json\n" + json.dumps(value, ensure_ascii=False, indent=2) + "\n```\n" + END
     return (prefix + block + suffix).encode("utf-8")
@@ -327,7 +327,7 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         for item in control["queue"]:
             if item["task_id"] == task_id:
                 return "QUEUED_EXISTING", False, "Task is already queued."
-        if control["state"] == "idle":
+        if control["state"] == "idle" and not control["queue"]:
             if git_dirty(root):
                 raise Blocked("BLOCKED_WORKTREE_DIRTY", "A clean primary worktree is required for activation.")
             head = run_git(root, "rev-parse", "HEAD").stdout.strip()
@@ -361,8 +361,8 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_STATE", "Only a planned task can be approved.")
         if active["phase"] == "implementation" and active["approval_ref"]:
             return "NOOP_ALREADY_APPROVED", False, "Task is already approved."
-        scope_amend = active["phase"] == "blocked" and isinstance(active.get("blocker"), dict) and active["blocker"].get("code") == "SCOPE_EXPANDED" and isinstance(active.get("scope_contract"), dict)
-        if active["phase"] != "planning" and not scope_amend:
+        blocked_reapproval = active["phase"] == "blocked" and isinstance(active.get("blocker"), dict) and isinstance(active.get("scope_contract"), dict)
+        if active["phase"] != "planning" and not blocked_reapproval:
             raise Blocked("BLOCKED_STATE", "Planned task is not in planning phase.")
         if not committed_board(root):
             raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The preceding board transition must be committed first.")
@@ -373,8 +373,12 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_PLAN_REQUIRED", "Plan reference format is invalid.")
         if not args.approval_ref:
             raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required.")
-        if scope_amend:
+        if blocked_reapproval:
             previous = active["scope_contract"]; old_paths, new_paths = set(previous["may_touch"]), set(scope["may_touch"])
+            if scope == previous:
+                active.update(summary=approved["summary"], plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
+                return "ALLOW_APPROVAL_EVIDENCE_CORRECTION", True, "Approval evidence corrected; blocker remains until explicit resume."
+            if active["blocker"].get("code") != "SCOPE_EXPANDED": raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "Only a scope-expansion blocker permits path changes.")
             if not old_paths < new_paths: raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "A scope amendment must be a strict path superset.")
             if scope["forbidden_categories"] != previous["forbidden_categories"]: raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "A scope amendment cannot change risk-category facts.")
             active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
@@ -446,24 +450,20 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("command", choices=COMMANDS)
     value.add_argument("--repo-root", required=True)
     value.add_argument("--json", action="store_true")
-    value.add_argument("--expected-board-sha256")
-    value.add_argument("--task-id")
-    value.add_argument("--request-json")
-    value.add_argument("--approved-request-json")
-    value.add_argument("--plan-ref")
-    value.add_argument("--approval-ref")
-    value.add_argument("--validation-json")
-    value.add_argument("--blocker-json")
-    value.add_argument("--decision-ref")
-    value.add_argument("--disposition")
+    for name in ("expected-board-sha256", "task-id", "request-json", "approved-request-json", "plan-ref", "approval-ref", "validation-json", "blocker-json", "decision-ref", "disposition"): value.add_argument(f"--{name}")
     value.add_argument("--intent", choices=("Inspect", "Implementation", "Close"))
     return value
+def validate_argument_combination(args: argparse.Namespace) -> None:
+    names = {"expected_board_sha256", "task_id", "request_json", "approved_request_json", "plan_ref", "approval_ref", "validation_json", "blocker_json", "decision_ref", "disposition", "intent"}
+    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}}[args.command]
+    if {name for name in names if getattr(args, name) is not None} - allowed: raise Blocked("BLOCKED_ARGUMENT_COMBINATION", "Arguments are incompatible with the selected command.")
 def main() -> int:
     args = parser().parse_args()
     root: Path | None = None
     control: dict[str, Any] | None = None
     before: str | None = None
     try:
+        validate_argument_combination(args)
         root = resolve_primary(args.repo_root)
         board = root / BOARD_REL
         data = board.read_bytes()

@@ -3,7 +3,6 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Task,
 
-    [Parameter(Mandatory = $true)]
     [string]$RequestJson,
 
     [Parameter(Mandatory = $true)]
@@ -13,7 +12,11 @@ param(
 
     [switch]$Preview,
 
-    [switch]$ControlledLaneV2
+    [switch]$ControlledLaneV2,
+
+    [switch]$ActivateNext,
+
+    [switch]$Json
 )
 
 Set-StrictMode -Version Latest
@@ -45,15 +48,28 @@ if ($Preview) {
     exit $exitCode
 }
 
-$nativeRequestJson = $RequestJson.Replace('"', '\"')
-$output = @(
-    & py $helper submit `
-        --repo-root $RepositoryRoot `
-        --expected-board-sha256 $ExpectedBoardSha256 `
-        --task-id $Task `
-        --request-json $nativeRequestJson `
-        --json
-) -join "`n"
+if ($ActivateNext) {
+    if (-not [string]::IsNullOrWhiteSpace($RequestJson)) {
+        throw "-ActivateNext reuses the queued request and does not accept -RequestJson."
+    }
+    $arguments = @(
+        $helper, "activate-next", "--repo-root", $RepositoryRoot,
+        "--expected-board-sha256", $ExpectedBoardSha256,
+        "--task-id", $Task, "--json"
+    )
+} else {
+    if ([string]::IsNullOrWhiteSpace($RequestJson)) {
+        throw "-RequestJson is required unless -ActivateNext or -Preview is used."
+    }
+    $nativeRequestJson = $RequestJson.Replace('"', '\"')
+    $arguments = @(
+        $helper, "submit", "--repo-root", $RepositoryRoot,
+        "--expected-board-sha256", $ExpectedBoardSha256,
+        "--task-id", $Task, "--request-json", $nativeRequestJson, "--json"
+    )
+}
+
+$output = @(& py @arguments) -join "`n"
 $exitCode = $LASTEXITCODE
 Write-Output $output
 exit $exitCode

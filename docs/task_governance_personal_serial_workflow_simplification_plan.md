@@ -1,6 +1,6 @@
 # ConnLab Personal Serial Workflow Simplification Plan
 
-Status: `IMPLEMENTED_PENDING_HUMAN_REVIEW`
+Status: `BLOCKED_CORRECTIVE_IMPLEMENTATION`
 Task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
 Date: 2026-08-06
 Original planning base: `ae33faa38894c26245397226d8e4357512c77b91`
@@ -16,6 +16,16 @@ Scope correction: after the committed `SCOPE_EXPANDED` blocker proved that the r
 `inspect` command rejected the new personal board schema, the User explicitly approved adding
 `scripts/connlab_active_context.py` on 2026-08-06. The correction is limited to read-only
 `inspect` compatibility. Archive, maintenance, rollback, and mixed-EOL behavior remain frozen.
+The runtime did not expose a side-conversation thread ID, so none is asserted. Durable approval
+evidence is instead the exact User wording `请解决`, sent directly in response to the selected
+scope-correction request. The later exact direction beginning `我也发现注意点` and ending
+`请按照你的建议执行下一步。` explicitly authorizes correcting this evidence and the self-review
+findings without expanding the approved path set.
+
+Self-review corrective scope remains within the existing allowlist: prevent idle-state FIFO
+bypass, expose `run_task.ps1 -ActivateNext/-Json`, validate stored nested authority fail-closed,
+reject incompatible CLI arguments, and replace the imprecise approval reference with the exact
+wording above.
 
 ## 1. Outcome
 
@@ -649,6 +659,5 @@ Implementation is complete only when:
 - no old role/worktree/V2 dispatch occurred, no push occurred, and no queue item started.
 
 Then stop for User review. Only `关闭` may create the later closeout board commit and release the
-slot. Validation completed with 56 focused tests passing, both PowerShell entry points parsing,
-both inspect paths returning `ALLOW_INSPECT`, exact allowlist equality, and protected archive/index
-hashes unchanged.
+slot. The first review run passed 56 focused tests but missed the corrective cases listed above;
+that result is retained as historical evidence rather than treated as final acceptance.

@@ -47,6 +47,18 @@ def control(repo: Path) -> dict:
     return json.loads(payload)
 
 
+def replace_control(repo: Path, value: dict) -> None:
+    board = repo / "docs" / "task_board.md"
+    text = board.read_text(encoding="utf-8")
+    prefix = text.split(BEGIN, 1)[0]
+    suffix = text.split(END, 1)[1]
+    board.write_text(
+        prefix + BEGIN + "\n```json\n" + json.dumps(value, indent=2) + "\n```\n" + END + suffix,
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
 def invoke(repo: Path, command: str, *args: str, expected_exit: int = 0) -> dict:
     completed = subprocess.run(
         [sys.executable, str(SCRIPT), command, "--repo-root", str(repo), "--json", *args],
@@ -199,6 +211,39 @@ def test_submit_activates_one_simple_task_and_queues_the_next(repo: Path) -> Non
     assert value["active"]["task_id"] == "TASK_ONE"
     assert value["active"]["phase"] == "implementation"
     assert [item["task_id"] for item in value["queue"]] == ["TASK_TWO"]
+
+
+def test_submit_cannot_bypass_an_existing_fifo_head_while_idle(repo: Path) -> None:
+    value = control(repo)
+    value["queue"] = [
+        {
+            "task_id": "TASK_QUEUED",
+            "summary": "Waiting first",
+            "kind": "planned",
+            "enqueue_sequence": 1,
+            "queued_at": "2026-08-06T02:00:00Z",
+            "scope_contract": None,
+        }
+    ]
+    value["next_enqueue_sequence"] = 2
+    replace_control(repo, value)
+    commit_board(repo, "idle queue fixture")
+
+    result = invoke(
+        repo,
+        "submit",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_NEW",
+        "--request-json",
+        request("TASK_NEW", kind="planned"),
+    )
+
+    value = control(repo)
+    assert result["code"] == "QUEUED_NEW"
+    assert value["active"] is None
+    assert [item["task_id"] for item in value["queue"]] == ["TASK_QUEUED", "TASK_NEW"]
 
 
 def test_writer_rejects_stale_board_hash_without_changing_bytes(repo: Path) -> None:
@@ -379,6 +424,152 @@ def test_scope_expansion_reapproval_preserves_blocker_until_explicit_resume(repo
     assert active["scope_contract"]["may_touch"] == expanded["may_touch"]
     assert active["phase"] == "blocked"
     assert active["blocker"] == blocker
+
+
+def test_exact_scope_reapproval_corrects_evidence_and_preserves_blocker(repo: Path) -> None:
+    invoke(
+        repo,
+        "submit",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PLAN",
+        "--request-json",
+        request("TASK_PLAN", kind="planned"),
+    )
+    commit_board(repo, "activate planning")
+    approved = {
+        "schema": "connlab.personal-task-approved-request",
+        "version": 1,
+        "task_id": "TASK_PLAN",
+        "summary": "Approved bounded summary",
+        "kind": "planned",
+        "may_touch": ["docs/task_board.md", "impl.py"],
+        "expected_file_count": 2,
+        "classification_reason": "Approved governance scope.",
+        "targeted_validation": ["pytest targeted"],
+        "forbidden_categories": {**FORBIDDEN, "authority": True},
+    }
+    invoke(
+        repo,
+        "approve",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PLAN",
+        "--approved-request-json",
+        json.dumps(approved),
+        "--plan-ref",
+        "docs/plan.md@" + "a" * 40 + "#" + "b" * 64,
+        "--approval-ref",
+        "Imprecise approval reference.",
+    )
+    commit_board(repo, "approve plan")
+    blocker = {
+        "schema": "connlab.personal-task-blocker",
+        "version": 1,
+        "code": "IMPLEMENTATION_FAILED",
+        "reason": "Approval evidence needs correction.",
+        "dirty_paths": [],
+        "failed_validation": None,
+        "recorded_at": "2026-08-06T02:10:00Z",
+    }
+    invoke(
+        repo,
+        "block",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PLAN",
+        "--blocker-json",
+        json.dumps(blocker),
+    )
+    commit_board(repo, "block plan")
+
+    result = invoke(
+        repo,
+        "approve",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PLAN",
+        "--approved-request-json",
+        json.dumps(approved),
+        "--plan-ref",
+        "docs/plan.md@" + "c" * 40 + "#" + "d" * 64,
+        "--approval-ref",
+        'User exact words: "请解决"; thread ID unavailable and not asserted.',
+    )
+
+    active = control(repo)["active"]
+    assert result["code"] == "ALLOW_APPROVAL_EVIDENCE_CORRECTION"
+    assert active["approval_ref"] == 'User exact words: "请解决"; thread ID unavailable and not asserted.'
+    assert active["phase"] == "blocked"
+    assert active["blocker"] == blocker
+
+
+def test_malformed_stored_authority_fails_closed_before_implementation(repo: Path) -> None:
+    invoke(
+        repo,
+        "submit",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_ONE",
+        "--request-json",
+        request("TASK_ONE"),
+    )
+    baseline = control(repo)
+    variants = []
+    for change in ("scope", "blocker", "state", "validation"):
+        value = json.loads(json.dumps(baseline))
+        if change == "scope":
+            value["active"]["scope_contract"] = None
+        elif change == "blocker":
+            value["active"]["phase"] = "blocked"
+        elif change == "state":
+            value["state"] = "implemented_pending_human_review"
+        else:
+            value["active"]["validation"] = {}
+        variants.append(value)
+
+    for value in variants:
+        replace_control(repo, value)
+        result = invoke(
+            repo,
+            "check",
+            "--intent",
+            "Implementation",
+            "--task-id",
+            "TASK_ONE",
+            expected_exit=2,
+        )
+        assert result["code"] in {
+            "BLOCKED_SCHEMA_INVALID",
+            "BLOCKED_BLOCKER_INVALID",
+            "BLOCKED_VALIDATION_FAILED",
+        }
+        assert result["allowed"] is False
+
+
+def test_incompatible_cli_arguments_fail_closed(repo: Path) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "inspect",
+            "--repo-root",
+            str(repo),
+            "--blocker-json",
+            "{}",
+            "--json",
+        ],
+        text=True,
+        capture_output=True,
+    )
+
+    assert completed.returncode == 2
+    assert json.loads(completed.stdout)["code"] == "BLOCKED_ARGUMENT_COMBINATION"
 
 
 def test_block_and_resume_preserve_the_active_slot(repo: Path) -> None:

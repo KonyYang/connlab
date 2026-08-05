@@ -86,14 +86,36 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def invoke(repo: Path, task_id: str, request_json: str, *, controlled: bool = False) -> tuple[int, dict]:
+def replace_control(repo: Path, value: dict) -> None:
+    board = repo / "docs" / "task_board.md"
+    board.write_text(
+        f"# Board\n\n{BEGIN}\n```json\n{json.dumps(value, indent=2)}\n```\n{END}\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def invoke(
+    repo: Path,
+    task_id: str,
+    request_json: str | None,
+    *,
+    controlled: bool = False,
+    activate_next: bool = False,
+    json_output: bool = False,
+) -> tuple[int, dict]:
     command = [
         "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(RUN_TASK),
         "-Task", task_id, "-RepositoryRoot", str(repo), "-ExpectedBoardSha256", board_hash(repo),
-        "-RequestJson", request_json,
     ]
+    if request_json is not None:
+        command.extend(["-RequestJson", request_json])
     if controlled:
         command.append("-ControlledLaneV2")
+    if activate_next:
+        command.append("-ActivateNext")
+    if json_output:
+        command.append("-Json")
     completed = subprocess.run(command, text=True, capture_output=True)
     return completed.returncode, json.loads(completed.stdout)
 
@@ -109,6 +131,30 @@ def test_run_task_activates_when_idle_then_queues_without_dispatch(repo: Path) -
     assert [item["task_id"] for item in control(repo)["queue"]] == ["TASK_TWO"]
     assert git(repo, "branch", "--show-current") == "master"
     assert git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_run_task_activate_next_starts_only_the_fifo_head_and_accepts_json(repo: Path) -> None:
+    invoke(repo, "TASK_ONE", request("TASK_ONE"))
+    invoke(repo, "TASK_TWO", request("TASK_TWO"))
+    value = control(repo)
+    value["active"] = None
+    value["state"] = "idle"
+    replace_control(repo, value)
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "closed active fixture")
+
+    code, result = invoke(
+        repo,
+        "TASK_TWO",
+        None,
+        activate_next=True,
+        json_output=True,
+    )
+
+    assert code == 0
+    assert result["code"] == "ALLOW_ACTIVATE_NEXT"
+    assert control(repo)["active"]["task_id"] == "TASK_TWO"
+    assert control(repo)["queue"] == []
 
 
 def test_controlled_lane_switch_is_stably_frozen_and_zero_write(repo: Path) -> None:
