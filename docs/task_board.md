@@ -14,148 +14,16 @@
   "version": 1,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION",
-    "summary": "Simplify ConnLab task execution to personal single-active FIFO mode.",
-    "kind": "planned",
-    "phase": "human_review",
-    "scope_contract": {
-      "may_touch": [
-        "AGENTS.md",
-        "docs/task_board.md",
-        "docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md",
-        "docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md",
-        "docs/project_management/TASK_EXECUTION_SKILL.md",
-        "docs/project_management/TASK_REVIEW_CHECKLIST.md",
-        "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
-        "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
-        "docs/project_management/ROLE_THREAD_REGISTRY.md",
-        "docs/project_management/PARALLEL_EXECUTION_MODEL.md",
-        "docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md",
-        ".agents/skills/connlab-lane-orchestrator/SKILL.md",
-        ".agents/skills/connlab-planner/SKILL.md",
-        "scripts/connlab_personal_task.py",
-        "scripts/run_task.ps1",
-        "scripts/connlab_execution_gate.ps1",
-        "tests/unit/test_connlab_personal_serial_workflow.py",
-        "tests/unit/test_connlab_execution_gate_script.py",
-        "tests/integration/test_connlab_execution_gate_recovery.py",
-        "tests/unit/test_execution_wip_and_quick_fix_governance.py",
-        "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
-        "tests/unit/test_connlab_lane_worktree_script.py",
-        "tests/unit/test_connlab_active_context_governance.py",
-        "tasks/TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION.md",
-        "docs/task_governance_personal_serial_workflow_simplification_plan.md",
-        "scripts/connlab_active_context.py"
-      ],
-      "expected_file_count": 26,
-      "classification_reason": "User-approved narrow scope correction for read-only personal-schema inspect compatibility; archive, maintenance, rollback, and mixed-EOL behavior remain frozen.",
-      "targeted_validation": [
-        "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q",
-        "py -m pytest tests/unit/test_connlab_execution_gate_script.py -q",
-        "py -m pytest tests/integration/test_connlab_execution_gate_recovery.py -q",
-        "py -m pytest tests/unit/test_execution_wip_and_quick_fix_governance.py -q",
-        "py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q",
-        "py -m pytest tests/unit/test_connlab_lane_worktree_script.py -q",
-        "py -m pytest tests/unit/test_connlab_active_context_governance.py -q",
-        "py -m pytest tests/unit/test_connlab_active_context.py -q",
-        "PowerShell parser checks for scripts/connlab_execution_gate.ps1 and scripts/run_task.ps1",
-        "py scripts/connlab_active_context.py inspect --repo-root D:/PythonProject/connlab",
-        "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/connlab_execution_gate.ps1 -Intent Inspect -RepositoryRoot D:/PythonProject/connlab -Json",
-        "git diff --check",
-        "git status --short"
-      ],
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": true,
-        "persistence": true,
-        "authority": true,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false
-      }
-    },
-    "plan_ref": "docs/task_governance_personal_serial_workflow_simplification_plan.md@cc4e368eedc3c97a9cd8fcbe87e520ed36275912#8a264b707dd2d60e72de7625cf4e1763f4c8a8f8942ed657d94ba62cb947c92b",
-    "approval_ref": "Original exact User approval wording on 2026-08-06: \"请解决\", sent directly in response to the selected request to add scripts/connlab_active_context.py for read-only inspect compatibility; the runtime did not expose a side-conversation thread ID, so no thread ID is asserted. Corrective authorization exact wording on 2026-08-06: \"我也发现注意点：提交记录声称用户曾在“side conversation”明确批准范围扩展，但没有记录具体对话 ID 或批准原话。请按照你的建议执行下一步。\"",
-    "activation_parent_sha": "a796d574bf6747ee091adbf4881aa8cb623a7a36",
-    "activated_at": "2026-08-06T01:14:27+08:00",
-    "updated_at": "2026-08-05T23:40:01Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_execution_gate_script.py tests/integration/test_connlab_execution_gate_recovery.py tests/unit/test_execution_wip_and_quick_fix_governance.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py tests/unit/test_connlab_lane_worktree_script.py tests/unit/test_connlab_active_context_governance.py tests/unit/test_connlab_active_context.py -q",
-          "exit_code": 0,
-          "summary": "62 passed in 73.65s"
-        },
-        {
-          "command": "PowerShell parser checks for scripts/connlab_execution_gate.ps1 and scripts/run_task.ps1",
-          "exit_code": 0,
-          "summary": "Both scripts parsed with zero errors."
-        },
-        {
-          "command": "py scripts/connlab_active_context.py inspect --repo-root . --json and py scripts/connlab_personal_task.py inspect --repo-root . --json",
-          "exit_code": 0,
-          "summary": "Both read-only inspect paths returned ALLOW_INSPECT."
-        },
-        {
-          "command": "run_task.ps1 -ActivateNext -Json and connlab_execution_gate.ps1 -Intent Inspect -Json without RepositoryRoot",
-          "exit_code": 0,
-          "summary": "Both entry points resolved the primary after parameter binding; ActivateNext returned the expected structured state decision."
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "No whitespace errors."
-        }
-      ],
-      "observed_paths": [
-        "AGENTS.md",
-        "docs/task_board.md",
-        "docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md",
-        "docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md",
-        "docs/project_management/TASK_EXECUTION_SKILL.md",
-        "docs/project_management/TASK_REVIEW_CHECKLIST.md",
-        "docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md",
-        "docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md",
-        "docs/project_management/ROLE_THREAD_REGISTRY.md",
-        "docs/project_management/PARALLEL_EXECUTION_MODEL.md",
-        "docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md",
-        ".agents/skills/connlab-lane-orchestrator/SKILL.md",
-        ".agents/skills/connlab-planner/SKILL.md",
-        "scripts/connlab_personal_task.py",
-        "scripts/run_task.ps1",
-        "scripts/connlab_execution_gate.ps1",
-        "tests/unit/test_connlab_personal_serial_workflow.py",
-        "tests/unit/test_connlab_execution_gate_script.py",
-        "tests/integration/test_connlab_execution_gate_recovery.py",
-        "tests/unit/test_execution_wip_and_quick_fix_governance.py",
-        "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
-        "tests/unit/test_connlab_lane_worktree_script.py",
-        "tests/unit/test_connlab_active_context_governance.py",
-        "tasks/TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION.md",
-        "docs/task_governance_personal_serial_workflow_simplification_plan.md",
-        "scripts/connlab_active_context.py"
-      ],
-      "manual_checks": [
-        "Observed paths exactly equal all 26 approved paths.",
-        "Approval evidence stores exact User wording and explicitly states that no thread ID was available or asserted.",
-        "Generation-1 archive and canonical index retain their frozen byte counts and SHA-256 values.",
-        "Task-A lane remains clean at 85e71dfa212c57c26527fad42eaf00a83b19c935.",
-        "External governance-migration repository remains clean at 7a9a27405278aad904686108de2b9aec73268870."
-      ],
-      "recorded_at": "2026-08-05T23:40:01Z"
-    }
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
-  "last_closed": null,
+  "last_closed": {
+    "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION",
+    "disposition": "closed after human review",
+    "decision_ref": "User exact wording on 2026-08-06: 关闭",
+    "closed_at": "2026-08-05T23:44:47Z"
+  },
   "retained_history": [
     {
       "task_id": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
