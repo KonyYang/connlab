@@ -1,11 +1,12 @@
 # ConnLab Personal Serial Workflow Simplification Plan
 
-Status: `DRAFT_REVISION_3_FOR_USER_REVIEW`
+Status: `DRAFT_REVISION_4_FOR_USER_REVIEW`
 Task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
 Date: 2026-08-05
 Original planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Revision-1 commit: `34379138df1fcd70ee305076662a502fb30389ff`
 Revision-2 commit: `37e9a4d5570fe739a6648aeb092f2d0e2e31eb46`
+Revision-3 commit: `75619c67f73ba330f8aa2085b5de120777ae64b8`
 
 ## 1. Outcome
 
@@ -36,6 +37,8 @@ Review disposition:
 | Git/lock contradiction | helper never stages/commits; lock moves to ignored primary `tmp/` |
 | residual migration ambiguity | four current residuals receive exact frozen migration rows |
 | planned approval visibility | approval transition receives its own clean primary commit |
+| planned intake requires unknown scope | minimal planned intake; approval atomically binds full approved request |
+| blocker has no legal payload | independent typed `connlab.personal-task-blocker` schema |
 
 ## 2. Discovery And Frozen User Decisions
 
@@ -115,9 +118,10 @@ The helper exposes only:
 - `submit`: atomically activates when idle or idempotently appends to FIFO when occupied;
 - `activate-next`: when idle, atomically removes and activates only the exact FIFO head after an
   explicit execute/continue command;
-- `approve`: moves a planned task from planning to implementation after an explicit approval ref;
+- `approve`: atomically binds the complete approved scope/validation contract and moves a planned
+  task from planning to implementation after explicit plan and approval refs;
 - `mark-review`: records passed validation and enters `implemented_pending_human_review`;
-- `block`: keeps `running`, records reason, failed validation, and observed dirty paths;
+- `block`: keeps `running` and records one typed blocker payload;
 - `resume`: clears a blocker only after explicit User direction while retaining the same task;
 - `cancel`: releases a task only after explicit User direction and a clean worktree;
 - `close`: closes only a clean, validated `implemented_pending_human_review` task.
@@ -135,8 +139,11 @@ Common helper arguments:
 - task-specific writers require `--task-id <TASK_ID>`;
 - `submit` additionally requires `--request-json <JSON-string>`;
 - `approve` additionally requires `--approval-ref <non-empty-user-approval-reference>` and
-  `--plan-ref <committed-plan-path@commit#sha256>`;
-- `mark-review` and `block` additionally require `--validation-json <JSON-string>`;
+  `--plan-ref <committed-plan-path@commit#sha256>` plus
+  `--approved-request-json <JSON-string>`;
+- `mark-review` additionally requires `--validation-json <JSON-string>`;
+- `block` additionally requires `--blocker-json <JSON-string>` and does not accept
+  `--validation-json` separately;
 - `resume`, `cancel`, and `close` additionally require
   `--decision-ref <non-empty-user-decision-reference>`;
 - `cancel` also requires `--disposition <non-empty-text>`;
@@ -145,7 +152,9 @@ Common helper arguments:
 - `activate-next` uses the complete stored FIFO-head request and accepts no replacement request
   payload.
 
-`--request-json` must use exactly schema `connlab.personal-task-request`, version `1`:
+`--request-json` uses discriminated schema `connlab.personal-task-request`, version `1`.
+
+A simple intake must provide the complete contract at first submit:
 
 ```json
 {
@@ -173,12 +182,59 @@ Common helper arguments:
 }
 ```
 
-`kind` is `simple | planned`. Planned requests use the same complete fields, may exceed three
-paths, and begin with `plan_ref:null`; `approve` atomically binds its required committed
-`--plan-ref` and approval ref. Simple requests require `plan_ref:null` permanently and the strict
-1–3-path/false-category rules. The top-level `task_id` must equal `--task-id`.
-Unknown/missing keys, duplicate/non-normalized paths, non-string validation entries, or wrong
-types fail closed.
+A planned intake has exactly the minimal keys below because scope is not known before planning:
+
+```json
+{
+  "schema": "connlab.personal-task-request",
+  "version": 1,
+  "task_id": "TASK_ID",
+  "summary": "bounded human-readable summary",
+  "kind": "planned"
+}
+```
+
+No `may_touch`, file count, validation, classification, forbidden-category, or plan field is legal
+in planned intake. It queues or activates as `running/planning` with `scope_contract:null`.
+`activate-next` preserves that minimal record and enters planning; it does not invent scope.
+
+`--approved-request-json` uses exactly schema `connlab.personal-task-approved-request`, version `1`:
+
+```json
+{
+  "schema": "connlab.personal-task-approved-request",
+  "version": 1,
+  "task_id": "TASK_ID",
+  "summary": "approved bounded summary",
+  "kind": "planned",
+  "may_touch": ["docs/task_board.md", "approved/path"],
+  "expected_file_count": 2,
+  "classification_reason": "approved scope and risk explanation",
+  "targeted_validation": ["approved validation command"],
+  "forbidden_categories": {
+    "api_contract": false,
+    "database": false,
+    "schema_or_migration": false,
+    "persistence": false,
+    "authority": false,
+    "public_drive_workflow": false,
+    "business_rule_semantics": false,
+    "destructive_action": false,
+    "external_mutation": false
+  }
+}
+```
+
+For a planned task these booleans are explicit scope facts and may be true; they are not a fast-path
+eligibility test. `approve` requires the approved request task ID to match the active planning task,
+requires normalized unique paths including `docs/task_board.md`, requires file count to equal path
+count, binds the separate committed `--plan-ref` and `--approval-ref`, and atomically replaces
+`scope_contract:null` with this complete contract. It cannot change queue order or another task.
+
+Simple requests permanently use the first full shape, require all forbidden booleans false, and
+remain subject to the strict 1–3-total-path rule. For both intake shapes the top-level `task_id`
+must equal `--task-id`. Unknown/missing keys, a mixed shape, duplicate/non-normalized paths,
+non-string validation entries, or wrong types fail closed.
 
 `--validation-json` must use exactly schema `connlab.personal-task-validation`, version `1`:
 
@@ -197,8 +253,40 @@ types fail closed.
 ```
 
 `status` is `passed | failed`. `mark-review` requires `passed`, all check exit codes `0`, and
-observed paths exactly within `may_touch`; `block` accepts `failed` or an explicit scope/blocker
-record. The helper validates the supplied evidence structure but never runs commands itself.
+observed paths exactly within approved `may_touch`. The helper validates supplied evidence but
+never runs commands itself.
+
+`--blocker-json` uses exactly schema `connlab.personal-task-blocker`, version `1`:
+
+```json
+{
+  "schema": "connlab.personal-task-blocker",
+  "version": 1,
+  "code": "VALIDATION_FAILED",
+  "reason": "bounded explanation",
+  "dirty_paths": ["path/to/partial-change"],
+  "failed_validation": {
+    "schema": "connlab.personal-task-validation",
+    "version": 1,
+    "status": "failed",
+    "checks": [
+      {"command": "exact failing command", "exit_code": 1, "summary": "observed failure"}
+    ],
+    "observed_paths": ["path/to/partial-change"],
+    "manual_checks": [],
+    "recorded_at": "RFC3339 timestamp"
+  },
+  "recorded_at": "RFC3339 timestamp"
+}
+```
+
+Allowed blocker codes are `VALIDATION_FAILED`, `UNEXPECTED_PATHS`, `SCOPE_EXPANDED`,
+`IMPLEMENTATION_FAILED`, `DIRTY_WORKTREE`, and `EXTERNAL_BLOCKER`. `reason` is always required.
+`dirty_paths` is a normalized unique string array and may include out-of-scope paths specifically
+so the board can fail closed and disclose them. `VALIDATION_FAILED` requires a complete nested
+failed validation object; every other code requires `failed_validation:null`. Unknown fields,
+unknown codes, mismatched validation status, or invalid paths return `BLOCKED_BLOCKER_INVALID`.
+The blocker payload is stored unchanged in `active.blocker` except for canonical JSON formatting.
 
 Every JSON response uses exactly schema `connlab.personal-task-result`, version `1`, with fields:
 
@@ -224,7 +312,8 @@ Stable result codes are:
   `BLOCKED_LOCKED`, `BLOCKED_LOCK_PATH`, `BLOCKED_STATE`, `BLOCKED_TASK_MISMATCH`,
   `BLOCKED_FIFO_ORDER`, `BLOCKED_CLASSIFICATION_INVALID`, `BLOCKED_APPROVAL_REQUIRED`,
   `BLOCKED_PLAN_REQUIRED`, `BLOCKED_VALIDATION_FAILED`, `BLOCKED_UNEXPECTED_PATHS`, `BLOCKED_WORKTREE_DIRTY`,
-  `BLOCKED_TRANSITION_UNCOMMITTED`, `BLOCKED_LEGACY_MODE_FROZEN`, `BLOCKED_WRITE_FAILED`.
+  `BLOCKED_APPROVED_SCOPE_INVALID`, `BLOCKED_BLOCKER_INVALID`, `BLOCKED_TRANSITION_UNCOMMITTED`,
+  `BLOCKED_LEGACY_MODE_FROZEN`, `BLOCKED_WRITE_FAILED`.
 
 `scripts/run_task.ps1 -ControlledLaneV2` and every former gate intent (`StartTask`,
 `CreateWorktree`, `ImplementationDispatch`, `QuickFixPreempt`, `Reconcile`, `Resume`) return the
@@ -247,13 +336,13 @@ An active record contains:
 
 - `task_id`, `summary`, and `kind: simple | planned`;
 - `phase: planning | implementation | blocked | human_review`;
-- exact `may_touch` and `expected_file_count`;
-- `classification_reason` and `targeted_validation`;
-- named forbidden-category checks;
+- nullable `scope_contract` containing exact `may_touch`, `expected_file_count`,
+  `classification_reason`, `targeted_validation`, and named forbidden-category checks;
 - `plan_ref` and `approval_ref` for planned implementation;
 - `activation_parent_sha`, timestamps, nullable `blocker`, and nullable validation result.
 
-For `kind=simple`, `expected_file_count` must be 1–3, equal `may_touch` length, include
+For `kind=simple`, `scope_contract` is required from initial submit; `expected_file_count` must be
+1–3, equal `may_touch` length, include
 `docs/task_board.md`, and every forbidden check must be explicitly false:
 
 - API contract;
@@ -266,13 +355,16 @@ For `kind=simple`, `expected_file_count` must be 1–3, equal `may_touch` length
 - destructive action;
 - remote/publication/service/external mutation.
 
-The helper validates complete declarations and observed paths. It does not claim to infer semantic
+For `kind=planned`, `scope_contract`, `plan_ref`, and `approval_ref` are null during queue/planning;
+the approved transition atomically makes all three non-null before phase `implementation`. The
+helper validates complete declarations and observed paths. It does not claim to infer semantic
 safety from a Task ID; the current conversation supplies the classification from repository
 evidence and stops on ambiguity.
 
-Queue records contain task ID, summary, requested kind, enqueue sequence, timestamp, and the same
-classification fields when the request is declared simple. Repeated submission of the same active
-or queued ID is idempotent. FIFO order cannot be rewritten by ordinary task commands.
+Queue records contain task ID, summary, requested kind, enqueue sequence, and timestamp. A simple
+queue record additionally contains its complete immutable `scope_contract`; a planned queue record
+contains `scope_contract:null`. Repeated submission of the same active or queued ID is idempotent.
+FIFO order cannot be rewritten by ordinary task commands.
 
 ### 4.1 Exact Retained-History Migration Table
 
@@ -312,9 +404,11 @@ request. An empty queue returns `NOOP_QUEUE_EMPTY`; a non-head ID returns
 
 ### 5.2 New planned task
 
-Under the installed personal workflow, `submit` first records `running/planning`, so planning also
-occupies the single active slot. The short plan is committed and reviewed. `approve` records the
-explicit approval before implementation. Immediately after `approve`, the current conversation
+Under the installed personal workflow, minimal planned `submit` records only task identity/summary
+and `running/planning` with `scope_contract:null`, so planning also occupies the single active slot.
+The short plan is committed and reviewed. `approve --approved-request-json` atomically freezes the
+complete approved paths, file count, classification, validation, forbidden-category results,
+plan ref, and explicit approval before implementation. Immediately after `approve`, the current conversation
 must independently inspect the new board hash, exact-stage only `docs/task_board.md`, create a
 local approval commit, and verify primary clean. No implementation edit begins until that approval
 commit is current HEAD. Implementation then follows the same validation, pending-review, and
@@ -457,13 +551,17 @@ Behavioral coverage must prove:
 - pending human review and blocked/dirty states continue to occupy the slot;
 - simple records require 1–3 total paths including tests and board, explicit classification,
   targeted validation, and all forbidden checks false;
-- planned implementation requires an explicit approval ref;
+- planned intake accepts exactly task ID, summary, and kind; queue/activate-next retain null scope;
+- planned implementation requires approved-request JSON, committed plan ref, and explicit approval
+  ref, and atomically replaces null scope with the complete approved contract;
 - planned approval remains blocked from implementation until the approval board transition is a
   clean local commit and `check --intent Implementation` proves committed board equality;
 - failed validation cannot mark review, close, cancel dirty work, or release the slot;
 - close requires explicit User direction, passed validation, clean primary, and does not auto-start;
 - no path dispatches old roles or creates a branch/worktree;
 - malformed schema, hash race, duplicate queue ID/sequence, and lock conflict fail closed;
+- blocker JSON requires a known code/reason/dirty-path shape and correctly typed nullable failed
+  validation; unknown fields or overloaded validation payloads fail closed;
 - injected pre-replace failures preserve prior bytes; replacement outcomes are verified as exactly
   prior bytes or the complete rendered bytes, never a partial board;
 - helper source contains no stage/commit/push invocation; lock resolution is confined to the

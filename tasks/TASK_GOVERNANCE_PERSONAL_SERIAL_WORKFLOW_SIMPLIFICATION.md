@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION
 
-Status: `draft_revision_3_for_user_review`
+Status: `draft_revision_4_for_user_review`
 Type: governance workflow simplification
 Planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
@@ -83,6 +83,15 @@ it. It does not pretend to infer business semantics from a Task ID.
 The helper only atomically edits `docs/task_board.md`; it never stages or commits. The current
 conversation owns exact-path staging and local commits. A planned task's `approve` transition must
 be committed and primary verified clean before implementation begins.
+
+A planned intake may enter the queue with only task ID, summary, and `kind=planned`. Its scope is
+unknown until planning. `approve --approved-request-json` must atomically replace that null scope
+with the complete approved `may_touch`, file-count, validation, and forbidden-category contract.
+Simple intake remains complete and fully classified at first submit.
+
+`block` requires a separate typed blocker record containing blocker code, reason, dirty paths, and
+nullable failed-validation evidence. Unknown blocker fields/codes fail closed; validation JSON is
+not overloaded with undefined blocker data.
 
 ## Non-Goals
 
