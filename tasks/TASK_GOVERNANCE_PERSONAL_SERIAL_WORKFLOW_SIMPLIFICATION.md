@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION
 
-Status: `draft_for_user_review`
+Status: `draft_revision_2_for_user_review`
 Type: governance workflow simplification
 Planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
@@ -31,7 +31,8 @@ developer:
 A task is simple only when all conditions are true:
 
 - root cause and expected behavior are clear;
-- implementation changes are limited to one to three files, plus bounded tests when needed;
+- the complete task changes one to three total repository files, including implementation, tests,
+  documentation, configuration, and the mandatory `docs/task_board.md` state update;
 - no API contract, database, schema, migration, persistence, authority, public-drive workflow, or
   business-rule semantic change exists;
 - no destructive action, push, publication, or external-state mutation is required;
@@ -44,6 +45,7 @@ Anything outside this boundary requires a short implementation plan and explicit
 ```text
 idle
   -> running(simple | planned)
+  -> running(blocked) when implementation or validation cannot complete
   -> implemented_pending_human_review
   -> closed by explicit User command
   -> idle; FIFO head becomes eligible
@@ -52,9 +54,30 @@ idle
 - `running` and `implemented_pending_human_review` both occupy the sole active slot.
 - New requests received in either state are queued; they do not start and do not create Git
   branches/worktrees.
-- `关闭` closes only the current task. It makes the oldest queued item eligible but does not
+- One atomic board helper is the only state writer. Natural-language handling and PowerShell entry
+  points must call that helper rather than patching the board independently.
+- Approval is followed first by a local activation commit that records this task as `running`;
+  implementation writes begin only after that commit.
+- `关闭` is allowed only for a clean, successfully validated
+  `implemented_pending_human_review` task. It makes the oldest queued item eligible but does not
   silently begin implementation.
-- A failed or scope-expanded simple task stops for User direction or conversion to a planned task.
+- Failure keeps the task active as `running` with a blocker. It cannot release the slot or enter
+  pending review. Continue, retain-and-commit, or cancel-and-resolve requires explicit User
+  direction; no helper may restore, discard, or clean modifications.
+
+## Required Simple-Task Record
+
+Before a simple task can enter `running`, its board record must contain:
+
+- exact `may_touch` paths and `expected_file_count` between one and three, counting tests and the
+  mandatory board path;
+- `classification_reason` explaining why the root cause and expected behavior are clear;
+- `targeted_validation` commands or bounded manual-smoke instructions;
+- explicit false checks for API contract, database, schema/migration, persistence, authority,
+  public-drive workflow, business-rule semantics, destructive action, and external mutation.
+
+The state helper validates that this declaration is complete and that observed paths stay within
+it. It does not pretend to infer business semantics from a Task ID.
 
 ## Non-Goals
 
