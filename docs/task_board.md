@@ -78,11 +78,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_governance_personal_serial_workflow_simplification_plan.md@b66b5eee4610f38d2a81b3fe4b7dbf795b44380a#16a8571d34f0a51be81d9e657bad78e28a63643fdf9202ddd9d30f2a29ea37dd",
-    "approval_ref": "User explicitly approved adding scripts/connlab_active_context.py for read-only inspect compatibility in the current side conversation on 2026-08-06.",
+    "plan_ref": "docs/task_governance_personal_serial_workflow_simplification_plan.md@cc4e368eedc3c97a9cd8fcbe87e520ed36275912#8a264b707dd2d60e72de7625cf4e1763f4c8a8f8942ed657d94ba62cb947c92b",
+    "approval_ref": "Original exact User approval wording on 2026-08-06: \"请解决\", sent directly in response to the selected request to add scripts/connlab_active_context.py for read-only inspect compatibility; the runtime did not expose a side-conversation thread ID, so no thread ID is asserted. Corrective authorization exact wording on 2026-08-06: \"我也发现注意点：提交记录声称用户曾在“side conversation”明确批准范围扩展，但没有记录具体对话 ID 或批准原话。请按照你的建议执行下一步。\"",
     "activation_parent_sha": "a796d574bf6747ee091adbf4881aa8cb623a7a36",
     "activated_at": "2026-08-06T01:14:27+08:00",
-    "updated_at": "2026-08-05T23:23:46Z",
+    "updated_at": "2026-08-05T23:33:06Z",
     "blocker": {
       "schema": "connlab.personal-task-blocker",
       "version": 1,
