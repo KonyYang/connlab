@@ -14,12 +14,12 @@
   "version": 1,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION",
     "summary": "Simplify ConnLab task execution to personal single-active FIFO mode.",
     "kind": "planned",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -82,7 +82,7 @@
     "approval_ref": "Original exact User approval wording on 2026-08-06: \"请解决\", sent directly in response to the selected request to add scripts/connlab_active_context.py for read-only inspect compatibility; the runtime did not expose a side-conversation thread ID, so no thread ID is asserted. Corrective authorization exact wording on 2026-08-06: \"我也发现注意点：提交记录声称用户曾在“side conversation”明确批准范围扩展，但没有记录具体对话 ID 或批准原话。请按照你的建议执行下一步。\"",
     "activation_parent_sha": "a796d574bf6747ee091adbf4881aa8cb623a7a36",
     "activated_at": "2026-08-06T01:14:27+08:00",
-    "updated_at": "2026-08-05T23:33:47Z",
+    "updated_at": "2026-08-05T23:40:01Z",
     "blocker": null,
     "validation": {
       "schema": "connlab.personal-task-validation",
@@ -92,7 +92,7 @@
         {
           "command": "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_execution_gate_script.py tests/integration/test_connlab_execution_gate_recovery.py tests/unit/test_execution_wip_and_quick_fix_governance.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py tests/unit/test_connlab_lane_worktree_script.py tests/unit/test_connlab_active_context_governance.py tests/unit/test_connlab_active_context.py -q",
           "exit_code": 0,
-          "summary": "56 passed in 67.39s"
+          "summary": "62 passed in 73.65s"
         },
         {
           "command": "PowerShell parser checks for scripts/connlab_execution_gate.ps1 and scripts/run_task.ps1",
@@ -100,14 +100,14 @@
           "summary": "Both scripts parsed with zero errors."
         },
         {
-          "command": "py scripts/connlab_active_context.py inspect --repo-root . --json",
+          "command": "py scripts/connlab_active_context.py inspect --repo-root . --json and py scripts/connlab_personal_task.py inspect --repo-root . --json",
           "exit_code": 0,
-          "summary": "ALLOW_INSPECT for connlab.personal-serial-control."
+          "summary": "Both read-only inspect paths returned ALLOW_INSPECT."
         },
         {
-          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/connlab_execution_gate.ps1 -Intent Inspect -RepositoryRoot D:/PythonProject/connlab -Json",
+          "command": "run_task.ps1 -ActivateNext -Json and connlab_execution_gate.ps1 -Intent Inspect -Json without RepositoryRoot",
           "exit_code": 0,
-          "summary": "ALLOW_INSPECT through the personal gate adapter."
+          "summary": "Both entry points resolved the primary after parameter binding; ActivateNext returned the expected structured state decision."
         },
         {
           "command": "git diff --check",
@@ -144,13 +144,13 @@
         "scripts/connlab_active_context.py"
       ],
       "manual_checks": [
-        "Observed paths equal all 26 approved paths with no outside or missing path.",
-        "Generation-1 archive remains 798128 bytes with the frozen SHA-256 and Git blob.",
-        "Canonical index remains 6787 bytes with the frozen SHA-256 and Git blob.",
+        "Observed paths exactly equal all 26 approved paths.",
+        "Approval evidence stores exact User wording and explicitly states that no thread ID was available or asserted.",
+        "Generation-1 archive and canonical index retain their frozen byte counts and SHA-256 values.",
         "Task-A lane remains clean at 85e71dfa212c57c26527fad42eaf00a83b19c935.",
-        "External governance-migration repository remains clean and was not modified."
+        "External governance-migration repository remains clean at 7a9a27405278aad904686108de2b9aec73268870."
       ],
-      "recorded_at": "2026-08-05T23:09:40Z"
+      "recorded_at": "2026-08-05T23:40:01Z"
     }
   },
   "queue": [],

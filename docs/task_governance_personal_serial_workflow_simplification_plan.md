@@ -1,6 +1,6 @@
 # ConnLab Personal Serial Workflow Simplification Plan
 
-Status: `BLOCKED_CORRECTIVE_IMPLEMENTATION`
+Status: `IMPLEMENTED_PENDING_HUMAN_REVIEW`
 Task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
 Date: 2026-08-06
 Original planning base: `ae33faa38894c26245397226d8e4357512c77b91`
@@ -660,4 +660,7 @@ Implementation is complete only when:
 
 Then stop for User review. Only `关闭` may create the later closeout board commit and release the
 slot. The first review run passed 56 focused tests but missed the corrective cases listed above;
-that result is retained as historical evidence rather than treated as final acceptance.
+that result is retained as historical evidence rather than treated as final acceptance. Corrective
+validation adds explicit FIFO-bypass, `ActivateNext/-Json`, nested-authority, incompatible-argument,
+approval-evidence, and post-parameter-binding repository-root tests; the final validation result is
+62 focused tests passing.

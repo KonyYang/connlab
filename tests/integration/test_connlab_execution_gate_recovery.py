@@ -10,6 +10,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 RUN_TASK = ROOT / "scripts" / "run_task.ps1"
+EXECUTION_GATE = ROOT / "scripts" / "connlab_execution_gate.ps1"
 BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
 END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 FORBIDDEN = {
@@ -131,6 +132,14 @@ def test_run_task_activates_when_idle_then_queues_without_dispatch(repo: Path) -
     assert [item["task_id"] for item in control(repo)["queue"]] == ["TASK_TWO"]
     assert git(repo, "branch", "--show-current") == "master"
     assert git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_entry_points_resolve_default_root_after_parameter_binding() -> None:
+    for script in (RUN_TASK, EXECUTION_GATE):
+        source = script.read_text(encoding="utf-8")
+        assert "[string]$RepositoryRoot," in source
+        assert "[string]$RepositoryRoot =" not in source
+        assert "if ([string]::IsNullOrWhiteSpace($RepositoryRoot))" in source
 
 
 def test_run_task_activate_next_starts_only_the_fifo_head_and_accepts_json(repo: Path) -> None:

@@ -10,7 +10,7 @@ param(
 
     [string]$TaskId,
 
-    [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
+    [string]$RepositoryRoot,
 
     [switch]$Json
 )
@@ -18,6 +18,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+}
 
 $helper = Join-Path $PSScriptRoot "connlab_personal_task.py"
 $legacyIntents = @(
