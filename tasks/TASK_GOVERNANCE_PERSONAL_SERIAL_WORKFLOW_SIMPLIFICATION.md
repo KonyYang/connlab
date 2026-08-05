@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION
 
-Status: `draft_revision_2_for_user_review`
+Status: `draft_revision_3_for_user_review`
 Type: governance workflow simplification
 Planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
@@ -60,7 +60,8 @@ idle
   implementation writes begin only after that commit.
 - `关闭` is allowed only for a clean, successfully validated
   `implemented_pending_human_review` task. It makes the oldest queued item eligible but does not
-  silently begin implementation.
+  silently begin implementation. A later explicit execute/continue command must call
+  `activate-next` for the exact FIFO head; no queued item may skip ahead.
 - Failure keeps the task active as `running` with a blocker. It cannot release the slot or enter
   pending review. Continue, retain-and-commit, or cancel-and-resolve requires explicit User
   direction; no helper may restore, discard, or clean modifications.
@@ -78,6 +79,10 @@ Before a simple task can enter `running`, its board record must contain:
 
 The state helper validates that this declaration is complete and that observed paths stay within
 it. It does not pretend to infer business semantics from a Task ID.
+
+The helper only atomically edits `docs/task_board.md`; it never stages or commits. The current
+conversation owns exact-path staging and local commits. A planned task's `approve` transition must
+be committed and primary verified clean before implementation begins.
 
 ## Non-Goals
 
