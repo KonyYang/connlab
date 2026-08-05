@@ -19,7 +19,7 @@
     "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION",
     "summary": "Simplify ConnLab task execution to personal single-active FIFO mode.",
     "kind": "planned",
-    "phase": "blocked",
+    "phase": "implementation",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -82,53 +82,8 @@
     "approval_ref": "Original exact User approval wording on 2026-08-06: \"请解决\", sent directly in response to the selected request to add scripts/connlab_active_context.py for read-only inspect compatibility; the runtime did not expose a side-conversation thread ID, so no thread ID is asserted. Corrective authorization exact wording on 2026-08-06: \"我也发现注意点：提交记录声称用户曾在“side conversation”明确批准范围扩展，但没有记录具体对话 ID 或批准原话。请按照你的建议执行下一步。\"",
     "activation_parent_sha": "a796d574bf6747ee091adbf4881aa8cb623a7a36",
     "activated_at": "2026-08-06T01:14:27+08:00",
-    "updated_at": "2026-08-05T23:33:06Z",
-    "blocker": {
-      "schema": "connlab.personal-task-blocker",
-      "version": 1,
-      "code": "VALIDATION_FAILED",
-      "reason": "Self-review found FIFO bypass, missing adapter parameters, incomplete stored-board validation, invalid flag acceptance, and an imprecise approval reference.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.personal-task-validation",
-        "version": 1,
-        "status": "failed",
-        "checks": [
-          {
-            "command": "idle + non-empty queue submit probe",
-            "exit_code": 1,
-            "summary": "Later task bypassed FIFO head with ALLOW_ACTIVATE."
-          },
-          {
-            "command": "run_task.ps1 -ActivateNext/-Json probes",
-            "exit_code": 1,
-            "summary": "Both approved parameters were absent."
-          },
-          {
-            "command": "malformed stored scope implementation probe",
-            "exit_code": 1,
-            "summary": "scope_contract=null still returned ALLOW_IMPLEMENTATION."
-          },
-          {
-            "command": "inspect with incompatible --blocker-json probe",
-            "exit_code": 1,
-            "summary": "Invalid flag combination was silently accepted."
-          }
-        ],
-        "observed_paths": [
-          "scripts/connlab_personal_task.py",
-          "scripts/run_task.ps1",
-          "tests/unit/test_connlab_personal_serial_workflow.py",
-          "tests/integration/test_connlab_execution_gate_recovery.py",
-          "docs/task_board.md"
-        ],
-        "manual_checks": [
-          "Approval evidence lacks a thread ID or exact quoted User wording."
-        ],
-        "recorded_at": "2026-08-05T23:23:46Z"
-      },
-      "recorded_at": "2026-08-05T23:23:46Z"
-    },
+    "updated_at": "2026-08-05T23:33:47Z",
+    "blocker": null,
     "validation": {
       "schema": "connlab.personal-task-validation",
       "version": 1,
