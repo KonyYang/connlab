@@ -1,12 +1,15 @@
 # ConnLab Personal Serial Workflow Simplification Plan
 
-Status: `DRAFT_REVISION_4_FOR_USER_REVIEW`
+Status: `APPROVED_IMPLEMENTATION_RUNNING`
 Task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
-Date: 2026-08-05
+Date: 2026-08-06
 Original planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Revision-1 commit: `34379138df1fcd70ee305076662a502fb30389ff`
 Revision-2 commit: `37e9a4d5570fe739a6648aeb092f2d0e2e31eb46`
 Revision-3 commit: `75619c67f73ba330f8aa2085b5de120777ae64b8`
+
+Approval: User approved Revision 4 for implementation on 2026-08-06 in thread
+`019fc491-21b0-77b0-bf18-53f53a366a7c`.
 
 ## 1. Outcome
 

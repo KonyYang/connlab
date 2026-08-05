@@ -1,10 +1,13 @@
 # TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION
 
-Status: `draft_revision_4_for_user_review`
+Status: `approved_implementation_running`
 Type: governance workflow simplification
 Planning base: `ae33faa38894c26245397226d8e4357512c77b91`
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-Current active task: none
+Current active task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
+
+Approval: User approved Revision 4 for implementation on 2026-08-06 in thread
+`019fc491-21b0-77b0-bf18-53f53a366a7c`.
 
 ## Why This Planning Task Is Allowed
 
