@@ -46,10 +46,11 @@
         "tests/unit/test_connlab_lane_worktree_script.py",
         "tests/unit/test_connlab_active_context_governance.py",
         "tasks/TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION.md",
-        "docs/task_governance_personal_serial_workflow_simplification_plan.md"
+        "docs/task_governance_personal_serial_workflow_simplification_plan.md",
+        "scripts/connlab_active_context.py"
       ],
-      "expected_file_count": 25,
-      "classification_reason": "Approved governance execution-authority and board-schema migration to personal serial mode.",
+      "expected_file_count": 26,
+      "classification_reason": "User-approved narrow scope correction for read-only personal-schema inspect compatibility; archive, maintenance, rollback, and mixed-EOL behavior remain frozen.",
       "targeted_validation": [
         "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q",
         "py -m pytest tests/unit/test_connlab_execution_gate_script.py -q",
@@ -77,11 +78,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_governance_personal_serial_workflow_simplification_plan.md@a796d574bf6747ee091adbf4881aa8cb623a7a36#ed5a53b3049002450957d8a38a22ce30af610c3c7f600e2f7f57c30a1c2f98db",
-    "approval_ref": "User approval in thread 019fc491-21b0-77b0-bf18-53f53a366a7c on 2026-08-06: 批准修订版实施",
+    "plan_ref": "docs/task_governance_personal_serial_workflow_simplification_plan.md@b66b5eee4610f38d2a81b3fe4b7dbf795b44380a#16a8571d34f0a51be81d9e657bad78e28a63643fdf9202ddd9d30f2a29ea37dd",
+    "approval_ref": "User explicitly approved adding scripts/connlab_active_context.py for read-only inspect compatibility in the current side conversation on 2026-08-06.",
     "activation_parent_sha": "a796d574bf6747ee091adbf4881aa8cb623a7a36",
     "activated_at": "2026-08-06T01:14:27+08:00",
-    "updated_at": "2026-08-05T22:46:37Z",
+    "updated_at": "2026-08-05T23:00:54Z",
     "blocker": {
       "schema": "connlab.personal-task-blocker",
       "version": 1,
