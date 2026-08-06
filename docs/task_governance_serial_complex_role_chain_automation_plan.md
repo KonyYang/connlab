@@ -1,8 +1,8 @@
 # ConnLab Serial Complex Role-Chain Automation Plan
 
-Status: `REVISION_6_READY_FOR_REVIEW_BLOCKER_RETAINED`
+Status: `REVISION_6_1_READY_FOR_REVIEW_BLOCKER_RETAINED`
 
-Revision: `6`
+Revision: `6.1`
 
 Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
 
@@ -20,6 +20,10 @@ Revision 6 is a planning-only correction requested on 2026-08-06. It proposes `r
 non-blocking closeout disposition for a clean integrated worktree/thread and removes native retirement,
 archive and `CLOSEOUT_ORDER` from every cutover gate. It does not approve implementation, alter the
 current blocker, enter human review, authorize cutover, or mutate any existing probe resource.
+
+Revision 6.1 is a planning-only authority-transition correction. It freezes the Revision 6 contract
+ref, the blocked-task `approve`/commit/`resume`/commit sequence, and mandatory Task synchronization
+before any other implementation edit. It grants no implementation or lifecycle authority by itself.
 
 ## 1. Outcome And Design Choice
 
@@ -1305,14 +1309,23 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
 ## 21. Approval And Stop Point
 
 The first User approval authorized only the 18-path `implementation-before-cutover` allowlist and the
-now-completed Revision 5 implementation/probe checkpoint. Revision 6 planning authority adds no
-implementation permission. Neither authority authorizes any
-cutover-only file, atomic close/migration, runtime-orchestrator message, real pilot, push, forced
-cleanup, Task-A change, legacy recovery, or archive/deletion of existing tasks.
+now-completed Revision 5 implementation/probe checkpoint. Revision 6/6.1 planning authority adds no
+implementation permission. Neither authority authorizes any cutover-only file, atomic close/migration,
+runtime-orchestrator message, real pilot, push, forced cleanup, Task-A change, legacy recovery, or
+archive/deletion of existing tasks.
 
-It must bind the exact Task JSON whose canonical SHA-256 is
-`084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`, plus the committed Revision 5
-Plan ref and exact User wording. Any JSON difference requires another planning revision.
+A new explicit User approval is required before implementing Revision 6.1. It must bind all three facts:
+
+```text
+APPROVED_REQUEST_SHA256: 084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be
+PLAN_REF: docs/task_governance_serial_complex_role_chain_automation_plan.md@ea9fc5dd6a0795e9d58d5a5697f2f89a1e5fa5f4#a83eb742ed6bd6bafcae120c526ac777e041141637118edc8fe9bd0aff882e7e
+DECISION: exact User wording that both approves Revision 6.1 implementation-before-cutover and explicitly resumes the current EXTERNAL_BLOCKER into implementation
+```
+
+The approved-request JSON remains the existing frozen 18-path object; no field or canonical SHA-256
+changes. A different request hash or Plan ref requires another planning revision. Approval still does
+not authorize cutover, second approval, permission grant, runtime message, pilot, push, cleanup or any
+native lifecycle probe.
 
 A second explicit User approval is mandatory after implementation review. It must authorize the eight
 cutover-only paths, combine governance close with v1-to-v2 cutover, quote the exact committed
@@ -1320,13 +1333,34 @@ cutover-only paths, combine governance close with v1-to-v2 cutover, quote the ex
 authorize or bind retirement/archive. Without every required binding, the task remains active in v1
 human review.
 
-After approval, first call the current helper's `approve` with the committed Plan ref, exact approved
-request JSON and exact User approval evidence; exact-stage only `docs/task_board.md`, commit it, confirm
-primary clean, and only then edit implementation files.
+Because the current task is `running/blocked`, approval and blocker release are two separate durable
+transitions. After the exact approval above, the Controller must execute this order without combining
+or skipping commits:
 
-Revision 6 changes are not approved for implementation. The Task and board intentionally remain at the
-existing blocked Revision 5 authority until review; after a future explicit approval, the Task may be
-synchronized and only the already frozen 18-path pre-cutover allowlist may be implemented. No path may
-be added implicitly.
+1. call current-helper `approve` with the frozen approved-request JSON, exact `PLAN_REF` and exact User
+   decision wording; require `ALLOW_APPROVAL_EVIDENCE_CORRECTION`, with `phase=blocked` and the existing
+   blocker still present;
+2. exact-stage only `docs/task_board.md`, create one board-only approval-correction commit and verify
+   primary clean;
+3. call current-helper `resume` with `--decision-ref` equal to the same explicit User decision (or a
+   later exact User decision that separately authorizes resume); require `ALLOW_RESUME`;
+4. exact-stage only `docs/task_board.md`, create one board-only resume commit and verify primary clean;
+5. run helper `inspect` and direct board validation; require `state=running`,
+   `active.phase=implementation`, `active.blocker=null`, the exact Revision 6 `PLAN_REF`, the unchanged
+   18-path scope and a clean primary;
+6. only after all five gates pass may any implementation file be edited.
+
+The first implementation edit must synchronize
+`tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md` to Revision 6 authority. It must replace
+every probe-approved retirement/archive-order requirement with the non-mutating retained closeout,
+remove `CLOSEOUT_ORDER` from its approval/cutover contract, and replace the old capability-probe
+validation command with read-only verification of the already committed failure evidence and unchanged
+Section 4 resources. The recorded probe failure satisfies lifecycle discovery; no native handoff,
+archive, unarchive, retirement or alternative lifecycle probe may run again.
+
+Revision 6.1 changes are not approved for implementation. The Task and board intentionally remain at
+the existing blocked Revision 5 authority until review and the exact transition sequence above. After
+approval, Task synchronization is mandatory—not optional—and only the already frozen 18-path
+pre-cutover allowlist may be implemented. No path may be added implicitly.
 
 Until then: `READY_FOR_REVIEW` and stop.
