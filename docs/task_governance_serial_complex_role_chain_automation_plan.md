@@ -2,6 +2,8 @@
 
 Status: `DRAFT_FOR_REVIEW`
 
+Revision: `2`
+
 Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
 
 Planning activation commit: `a5286688`
@@ -21,7 +23,8 @@ submachine. The runtime orchestrator classifies each intake as `simple`, `comple
 fresh role agents created only when their stage becomes eligible.
 
 Recommended role-context option: **B, permanent runtime orchestrator plus task-scoped ephemeral role
-agents**, with one task-scoped worktree host task per complex task.
+agents**, split across a pre-approval read-only Planner agent on primary and one post-approval
+task-scoped worktree host per complex task.
 
 Why not A (five task-level Codex worktree tasks): native `create_thread(...worktree...)` creates a
 worktree for each task; no current tool contract proves that five independent task threads can all be
@@ -33,14 +36,17 @@ history and weaken independent review.
 Option B uses:
 
 1. the permanent runtime orchestrator only as board router and native-tool adapter;
-2. one task-scoped Codex worktree host task, created after approval;
-3. a fresh, minimal-context agent for each Planner, Developer, Reviewer, QA, and Integrator attempt;
-4. committed role evidence and bounded callbacks as the only transition input;
-5. archive of the one task-scoped host task after User close and safe retirement.
+2. a fresh read-only Planner agent on primary before approval; it returns bounded proposed task/plan
+   content to the runtime orchestrator, which alone writes and commits planning authority;
+3. one task-scoped Codex worktree host task, created only after the approval commit;
+4. a fresh, minimal-context agent for each Developer, Reviewer, QA, and Integrator attempt in that host;
+5. committed role evidence and bounded callbacks as the only transition input;
+6. probe-approved closeout of the one task-scoped host task after User close.
 
-The worktree-host task is infrastructure for one complex Task ID, not a second authority. Role agents
-are not reused across tasks or stages. A retry creates a new attempt with the same task/worktree and
-an incremented attempt number.
+The pre-approval Planner has no implementation worktree and no write authority. The worktree-host task
+is infrastructure for one approved complex Task ID, not a second authority. Role agents are not reused
+across tasks or stages. A retry creates a new attempt with the same task/worktree and an incremented
+attempt number.
 
 ## 2. Preflight Facts
 
@@ -136,13 +142,19 @@ Before cutover, the implementation controller performs one bounded, non-product 
 1. create one disposable Codex project task in worktree mode from an exact clean commit;
 2. obtain exact thread ID, host ID, cwd, branch, worktree and HEAD;
 3. verify fresh-agent minimal-context behavior without product edits;
-4. stop the task, prove the worktree is clean, test the chosen retire/archive order;
-5. archive by exact ID, try list/read verification, then unarchive and verify history if supported;
-6. archive again and persist the exact observed results in the allowed capability-evidence file;
-7. if safe cleanup or archive semantics cannot be proven, stop before cutover.
+4. stop the task, prove the worktree is clean, and test both technically available retirement/archive
+   order candidates without assuming either one is safe;
+5. for any archive attempt, use the exact ID, try list/read verification, then unarchive and verify
+   history if supported;
+6. persist the observed order, exact commands/tool receipts, reversibility and failure behavior in the
+   allowed capability-evidence file;
+7. present exactly one proven order for the second User cutover approval; the implementer may not
+   choose or change it independently;
+8. if neither order and archive semantics can be proven safe, stop before cutover.
 
 The probe may create temporary Codex/Git state but may not change product files or push. Any destructive
-cleanup remains forbidden; an unclean probe worktree is retained and recorded as a blocker.
+cleanup remains forbidden; an unclean probe worktree is retained and recorded as a blocker. Before the
+second approval, all plan language that mentions retirement/archive order is conditional on this probe.
 
 ## 5. Unified Classification Contract
 
@@ -230,11 +242,12 @@ current_role / current_attempt
 role_invocations[] (role, attempt, exact agent/invocation ID when available, status)
 host_thread_id / host_id
 approved_code_paths / required_gates
-developer_commit / reviewed_commit / qa_commit / integrated_commit
+developer_subject_commit / reviewer_subject_commit / qa_subject_commit / integrated_commit
 evidence_refs[]
 pending_callback
 archive_target_ids[] / archived_ids[] / archive_attempts[]
 close_decision_ref
+probe_approved_closeout_order
 ```
 
 Conversation text is never stored. Arrays have bounded lengths; completed attempt detail lives in
@@ -266,11 +279,14 @@ running/integration
 implemented_pending_human_review/human_review
   -> User request-close -> running/closing
 running/closing
-  -> retire worktree -> archive host task -> finalize-close -> idle
+  -> execute the exact probe-proven, cutover-approved retirement/archive order
+  -> finalize-close -> idle
 ```
 
 `needs_discovery` activates at `planning` with a `discovery_required` reason and invokes Planner only.
-Planner completion writes a proposed complex scope and changes phase to `awaiting_user_approval`.
+The runtime orchestrator creates a fresh read-only Planner agent on primary; no host/worktree exists.
+Planner returns bounded proposed task/plan/evidence content, and the runtime orchestrator alone writes
+and commits it before changing phase to `awaiting_user_approval`.
 
 Stable blockers:
 
@@ -298,25 +314,34 @@ commit, idle. It creates no worktree, host task, role agent, archive target, or 
 ### 8.1 This governance task
 
 1. `a5286688`: board-only planning activation (complete).
-2. planning commit: Task and Plan only (this turn).
-3. after User approval: board-only approval commit with exact plan ref and allowlist.
-4. implementation commits: allowed scripts/docs/tests while current v1 remains runtime authority.
-5. capability-probe evidence commit.
-6. implementation completion commit: validation plus `implemented_pending_human_review` under v1.
-7. User close commit: close this governance task to idle under v1.
-8. separate explicit cutover commit: v1-to-v2 board migration plus entry/contract switch.
+2. `1afbfdf1`: initial Task and Plan planning commit (complete).
+3. Revision 2 planning commit: Task, Plan and board human-summary correction only.
+4. after the first User approval: board-only approval commit binding only the
+   `implementation-before-cutover` allowlist.
+5. implementation commits: only pre-cutover helpers/modules/protocol/tests while v1 remains the
+   normative runtime authority and every new complex entry stays unreachable.
+6. capability-probe evidence commit recording the one proposed closeout order.
+7. implementation completion commit: validation plus `implemented_pending_human_review` under v1.
+8. User explicitly approves **close plus cutover** and the exact probe-proven order. One cutover Git
+   commit then simultaneously migrates v1 to v2, records this governance task closed, releases active,
+   and switches all cutover-only contracts/entry points.
 
 This ordering prevents the workflow from modifying itself while it is executing itself. The target
-runtime orchestrator remains inactive until step 8 is accepted. The governance controller uses the
-already-stable v1 path through its own close; only an idle board is migrated.
+runtime orchestrator remains inactive until step 8 is committed. The parent of the cutover commit still
+has this governance task as the sole `implemented_pending_human_review` owner; the cutover commit has v2
+idle plus the exact close record. There is no committed ordinary-idle window in which another task can
+activate. During the helper-write-to-commit interval primary is deliberately dirty, so v1 activation
+also fails closed. If the cutover commit cannot be created, the governance task is not considered
+closed and no runtime message is sent.
 
 ### 8.2 Future complex tasks
 
 Each durable transition that changes active phase or authority is a board/evidence commit before the
 next role starts. Approval commit precedes worktree creation. Developer produces a clean code commit.
-Reviewer and QA bind exact commits. Integrator creates/authorizes the local integration commit. User
-close is committed before retirement begins; final closeout to idle is committed only after all
-required retirement/archive conditions pass. No push occurs.
+Reviewer and QA bind the same exact subject code commit. Integrator is read-only and emits a pass bound
+to that subject. The runtime orchestrator alone performs primary Git integration using section 10.1.
+User close is committed before the probe-approved closeout sequence begins; final closeout to idle is
+committed only after all required retirement/archive conditions pass. No push occurs.
 
 ## 9. Git And Worktree Model
 
@@ -341,7 +366,10 @@ would add synchronization and reconciliation without enabling any authorized con
 
 ## 10. Role Lifecycle, Independence And Evidence
 
-The runtime orchestrator creates roles lazily. Each role attempt receives a context-free prompt plus:
+The runtime orchestrator creates roles lazily. The pre-approval Planner is a fresh read-only agent on
+primary. It receives the active intake, repository refs and Planner contract, but no worktree or
+implementation authority. Developer and later roles are fresh agents inside the one approved host.
+Each role attempt receives a context-free prompt plus only the applicable items below:
 
 - current board active ref/digest;
 - task and approved plan refs;
@@ -350,11 +378,16 @@ The runtime orchestrator creates roles lazily. Each role attempt receives a cont
 - the role section of the new serial-complex protocol;
 - exact May Touch/Must Not Touch and validation contract.
 
-Planner is read-only discovery/planning and cannot implement. Developer writes only approved paths and
-commits cleanly. Reviewer is a fresh agent that reviews approved base..Developer commit and cannot
-reuse Developer chat. QA is another fresh agent that validates the exact reviewed code commit. The
-Integrator agent verifies approval, Reviewer/QA evidence, ancestry, clean state and exact package;
-the runtime orchestrator performs only the authorized mechanical board/native-tool action.
+Planner cannot write or implement; it returns bounded proposed content and the runtime orchestrator
+writes the task/plan subject commit and a separate Planner-evidence commit on primary. The raw Planner
+response is not itself a transition callback: after both commits exist, the runtime orchestrator
+constructs the canonical seven-line Planner capsule from those exact refs and stores the raw-response
+hash in evidence. Developer writes only approved paths and commits cleanly.
+Reviewer is a fresh agent that reviews approved base..Developer subject commit and cannot reuse
+Developer chat. QA is another fresh agent that validates the exact Reviewer-passed subject commit.
+The Integrator agent is read-only: it verifies approval, Reviewer/QA evidence, ancestry, clean state
+and exact package, then returns pass/block. It never writes primary or runs the merge. The runtime
+orchestrator owns board/native-tool actions and the exact primary integration transaction in 10.1.
 
 Formal result is one committed evidence document per role attempt. It contains one exact machine
 record and a bounded human explanation. Callback is exactly seven ordered lines and <=1024 bytes:
@@ -363,16 +396,24 @@ record and a bounded human explanation. Callback is exactly seven ordered lines 
 TASK_ID: <TASK_ID>
 ROLE: <Planner|Developer|Reviewer|QA|Integrator>
 STATUS: <allowed status>
-COMMIT: <40-hex exact commit>
-EVIDENCE: <repo-path@40-hex-commit#64-hex-sha256>
+SUBJECT_COMMIT: <40-hex exact code/planning subject commit>
+EVIDENCE: <repo-path@40-hex-evidence-commit#64-hex-sha256>
 NEXT: <role|User|closeout>
 BLOCKER: <none|bounded blocker>
 ```
 
-The board writer validates schema, Task ID, current role/attempt, commit/hash, ancestry, allowed status,
-scope, worktree cleanliness and duplicate identity. Exact duplicates are no-op; divergent duplicates
-block. A `callback_pending` state survives a process interruption. No next role starts until callback
-evidence is committed and the phase-transition commit is clean.
+`SUBJECT_COMMIT` is always the immutable content being decided: Planner uses the committed planning
+subject; Developer uses its latest code commit; Reviewer, QA and Integrator all use that same latest
+code commit until a Developer fix creates a new one. `EVIDENCE` names the separate commit containing
+the evidence document. An evidence commit must descend from its subject/current evidence chain and its
+diff may touch only the role's allowed evidence path; it must not change any approved code path. Thus
+evidence commits may advance branch HEAD without changing the reviewed code tree.
+
+The board writer validates schema, Task ID, current role/attempt, subject/evidence commit and hash,
+ancestry, evidence-only diff, allowed status, scope, worktree cleanliness and duplicate identity. Exact
+duplicates are no-op; divergent duplicates block. A `callback_pending` state survives a process
+interruption. No next role starts until callback evidence is committed and the phase-transition commit
+is clean.
 
 Reviewer blocking returns to a new Developer attempt then a new Reviewer attempt. QA blocking returns
 to Developer, then Reviewer, then QA. Integrator never accepts a commit not jointly bound by the most
@@ -381,16 +422,50 @@ recent passing Reviewer and QA evidence.
 Independent Reviewer/QA is guaranteed by fresh agent identity, no inherited task chat, immutable refs,
 read-only role contracts, and committed evidence—not by titles or conversational claims.
 
+### 10.1 Frozen Primary Integration Transaction
+
+After an Integrator pass, the runtime orchestrator—and no role agent—performs primary integration:
+
+1. require clean primary `master`, exact expected primary HEAD, clean task worktree, exact branch HEAD,
+   and no pending callback;
+2. prove the latest Reviewer, QA and Integrator evidence all bind the same `SUBJECT_COMMIT`, and that
+   branch HEAD descends from that subject through evidence-only commits;
+3. run a read-only `git merge-tree` preflight for exact primary HEAD and exact branch HEAD; any conflict
+   records `integration_blocked` without touching either worktree;
+4. if and only if preflight is clean and HEADs remain unchanged, run the single non-interactive strategy
+   `git merge --no-ff --no-edit --no-autostash <exact-task-branch>` on primary;
+5. verify the resulting merge commit has parent 1 equal to the expected primary HEAD, parent 2 equal to
+   the exact branch HEAD, and a tree equal to the preflight merge tree; also verify approved code paths
+   contain the `SUBJECT_COMMIT` content and branch evidence is present;
+6. only after those proofs, write and commit the board transition to
+   `implemented_pending_human_review`.
+
+The task worktree is never modified by primary integration. A race or unexpected merge failure is not
+reconciled automatically. If Git created the exact expected `MERGE_HEAD` from a previously clean
+primary, the controller may run only the explicitly authorized transactional `git merge --abort` and
+must prove the original HEAD/index/worktree were restored exactly. If that bounded abort fails or the
+facts differ, primary receives no further command, the task worktree is retained, and the task records
+`integration_blocked` for User direction. No cherry-pick, rebase or alternate strategy is permitted.
+
 ## 11. Archive And Closeout
 
-User close changes a complex task from human review to `closing`; it does not release active. Closeout
-then requires, in order:
+User close changes a complex task from human review to `closing`; it does not release active. Common
+closeout prerequisites are:
 
 1. all callbacks consumed and evidence committed;
 2. integrated commit verified on clean primary;
-3. task worktree clean and safely retired, or an explicit User-approved retain record;
-4. exact host task ID archived through native tooling;
-5. archive result recorded; then final board closeout to idle.
+3. task worktree clean, exact host task ID known, and no role agent running;
+4. the board contains the exact closeout order proven by the capability probe and explicitly approved
+   in the cutover authorization.
+
+Only then does the runtime orchestrator execute that one frozen sequence. The two candidate orders are
+`stop -> retire -> archive` and `stop -> archive -> retire`; Revision 2 approves neither. The capability
+probe must prove one, the second User approval must name it, and the normative cutover protocol must
+freeze it. The implementer and runtime orchestrator cannot switch orders dynamically. If neither is
+proven, cutover is blocked.
+
+After the approved sequence succeeds (or an explicit User-approved worktree retain record satisfies
+the retirement side), the archive result is recorded and final board closeout may enter idle.
 
 Archive never means delete. It never removes task/plan/evidence/Git commits. Exact IDs, not titles, are
 used. Repeated archive requests are idempotent. If native read/list can prove archived state, it is
@@ -441,32 +516,70 @@ work, has unexplained validation failure, or needs independent review/QA:
 - Helpers never stage, commit, push, message, create/archive tasks, or auto-run another command.
 - The runtime orchestrator alone calls native Codex task tools after a helper returns a narrowly
   authorized action. It records the returned exact IDs/facts through a second CAS transition.
+- Before the second cutover approval, `AGENTS.md`, the runtime-orchestrator skill, current normative
+  policy, `run_task.ps1` and the execution gate are byte-unchanged; new complex behavior is therefore
+  unreachable from the daily entry path.
 - No credentials, tokens, undocumented HTTP calls or direct Codex API emulation enter the repository.
 - Board size remains under existing 400-line/65,536-byte thresholds; completed detail goes to evidence.
 
 This split prevents a giant state machine: storage/CAS, pure complex rules, thin CLI, thin PowerShell
 and native task actions remain separate and testable.
 
-## 14. Exact Implementation Boundary
+## 14. Exact Phased Implementation Boundary
 
-The exact allowlist is the 22 paths in the Task file. It is frozen on User approval. Any additional
-file edit stops for renewed approval. Commands may change; paths may not.
+The Task file freezes two distinct authorization phases. Task, Plan and board may appear in both only
+for explicitly different lifecycle/status purposes; no cutover behavior is permitted during the first
+phase. Any additional file edit stops for renewed approval. Commands may change; paths may not.
 
-New files:
+### 14.1 First approval: implementation before cutover
 
-- serial complex protocol;
-- capability probe evidence;
-- shared serial board module;
-- pure classifier/complex transition module;
-- bounded worktree verifier;
-- four unit test modules and one recovery integration test.
+The 17 pre-cutover paths are Task, Plan, board for v1 lifecycle records only, the new non-normative
+protocol and capability evidence, the current helper plus three bounded new helper modules, and the
+eight named test files. The helper may gain v1-compatible/dormant v2 support, but the current entry,
+gate and normative instructions cannot call it. This phase ends at v1
+`implemented_pending_human_review`.
 
-Modified files:
+```text
+tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md
+docs/task_governance_serial_complex_role_chain_automation_plan.md
+docs/task_board.md
+docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md
+docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md
+scripts/connlab_personal_task.py
+scripts/connlab_serial_board.py
+scripts/connlab_serial_complex.py
+scripts/connlab_serial_worktree.ps1
+tests/unit/test_connlab_personal_serial_workflow.py
+tests/unit/test_connlab_serial_classifier.py
+tests/unit/test_connlab_serial_complex_state.py
+tests/unit/test_connlab_serial_complex_worktree.py
+tests/unit/test_connlab_serial_complex_orchestrator_contract.py
+tests/unit/test_connlab_execution_gate_script.py
+tests/unit/test_task_scoped_role_thread_lifecycle_governance.py
+tests/integration/test_connlab_serial_complex_recovery.py
+```
 
-- AGENTS/runtime orchestrator skill/personal policy at the eventual cutover contract boundary;
-- current Task/Plan/board;
-- personal helper, run entry, current gate;
-- four existing governance test files.
+### 14.2 Second approval: cutover only
+
+Only after implementation review and the capability probe may the User authorize the eight cutover
+paths: `AGENTS.md`, runtime-orchestrator skill, current policy, `run_task.ps1`, execution gate, board
+atomic migration/close, and status-only Task/Plan edits. All eight are staged into the same cutover
+commit where applicable. No earlier commit may modify them.
+
+```text
+AGENTS.md
+.agents/skills/connlab-lane-orchestrator/SKILL.md
+docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md
+scripts/run_task.ps1
+scripts/connlab_execution_gate.ps1
+docs/task_board.md
+tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md
+docs/task_governance_serial_complex_role_chain_automation_plan.md
+```
+
+New pre-cutover files are the serial complex protocol, capability probe evidence, shared serial board
+module, pure classifier/complex transition module, bounded worktree verifier, four unit modules and one
+recovery integration test.
 
 Frozen and preserved:
 
@@ -478,7 +591,7 @@ Frozen and preserved:
 
 ## 15. Test Matrix
 
-Automated or repeatable native validation must cover exactly these acceptance groups:
+Automated or repeatable native validation must cover at least these acceptance groups:
 
 1. all simple predicates classify `simple`;
 2. each forbidden category independently prevents simple;
@@ -509,6 +622,20 @@ Automated or repeatable native validation must cover exactly these acceptance gr
 27. Task-A, generation-1, index and retained evidence bytes/hashes do not change;
 28. primary ends clean;
 29. all commits are local and no push occurs.
+
+Revision 2 adds these mandatory groups:
+
+30. pre-approval Planner is read-only on primary and no worktree host exists yet;
+31. every cutover-only file remains byte-unchanged through pre-cutover human review;
+32. the cutover commit parent retains the v1 active governance task while the commit itself contains
+    v2 idle plus the exact close record—there is no intermediate committed idle state;
+33. `SUBJECT_COMMIT` remains stable across Reviewer/QA/Integrator while each `EVIDENCE` ref binds its
+    separate evidence-only commit;
+34. primary integration uses only the frozen no-ff merge, verifies both parents/tree, and a preflight
+    conflict leaves both worktrees unchanged; the bounded abort path restores the exact original
+    primary or blocks without further mutation;
+35. the capability probe, second User approval and cutover protocol all name the same one closeout
+    order, and runtime cannot substitute the other order.
 
 Additional migration checks: v1 simple fixtures migrate deterministically to v2, rollback reconstructs
 the exact pre-cutover board bytes, stale CAS/lock collision/injected replace failure are zero-write, and
@@ -541,24 +668,35 @@ capability checks follow the bounded probe in section 4 and are committed as evi
 
 ## 17. Board Migration And Rollback
 
-Implement a dry-run `plan-migration` that records current board bytes/hash/blob, proposed v2
-bytes/hash, retained-value digests and rollback bytes/hash. `apply-migration` requires idle board,
-clean primary, exact HEAD/hash, empty FIFO, no blocker/human review, accepted helper ancestry and an
-explicit cutover reference. It writes only board atomically. The cutover commit stages only exact
-allowed paths.
+Implement a dry-run `plan-cutover` that records current board bytes/hash/blob, proposed v2 bytes/hash,
+retained-value digests and rollback bytes/hash. Its required source is **not idle**: it must be the exact
+v1 `implemented_pending_human_review` record for this governance Task ID, with passed validation, no
+blocker, empty FIFO, clean primary, accepted helper ancestry and explicit combined User
+close-plus-cutover approval naming the probe-proven closeout order. An idle source is rejected.
+
+`apply-cutover` atomically writes a v2 board whose `active` is null and whose `last_closed` records this
+governance Task ID and the exact decision. The controller then stages that board together with only the
+pre-reviewed cutover-only bytes and creates one Git commit. No runtime message or new-task activation is
+legal until that commit and post-commit clean-state proof succeed. If commit assembly fails, committed
+HEAD remains the v1 active governance authority, primary stays blocked by the dirty cutover attempt,
+and only the exact rollback bytes generated by `plan-cutover` may restore the attempt before retry.
 
 Before any v2 task activation, rollback is `git revert <cutover-commit>` plus exact board-byte proof;
-it restores v1 entry contracts without touching history/index. After a v2 task activates, no automatic
-rollback is allowed. The task stays active/blockered and this governance controller fixes forward;
-parallel legacy automation is never restored.
+it restores the v1 parent with this governance task still active in human review and restores v1 entry
+contracts without touching history/index. After a v2 task activates, no automatic rollback is allowed.
+The task stays active/blockered and this governance controller fixes forward; parallel legacy
+automation is never restored.
 
 ## 18. Cutover And Pilot
 
 1. Current controller implements behind inactive entry points and runs offline tests.
 2. It completes the capability probe; any unproven critical capability blocks cutover.
 3. Current governance task enters human review under v1.
-4. User reviews and explicitly says close; v1 closes it to idle.
-5. User separately authorizes cutover; the controller creates the exact migration/cutover commit.
+4. User reviews and gives one explicit combined `close + cutover` authorization naming the exact
+   probe-proven closeout order; a plain `关闭` without cutover wording is insufficient here.
+5. The controller creates one atomic cutover commit whose parent still has the v1 active governance
+   task and whose result simultaneously closes it, migrates to v2, releases active and switches the
+   cutover-only contracts/entry points.
 6. Controller sends one bounded message to `019fb3d4...` telling it to discard chat memory as authority
    and reread exact AGENTS, board, skill, protocol and cutover commit.
 7. Runtime orchestrator first performs read-only inspect/classifier self-check; it does not restore old
@@ -577,19 +715,21 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
 
 ## 19. Direct Answers To Design Questions
 
-1. **No self-modifying loop:** the stable v1 controller plans, implements, reviews and closes this
-   governance task before an idle-only cutover. The target runtime orchestrator is inactive throughout.
+1. **No self-modifying loop:** the stable v1 controller plans, implements and reaches human review
+   while retaining active. After combined User authorization, one cutover commit simultaneously closes
+   it and switches authority; the target runtime orchestrator is inactive until that commit is clean.
 2. **One worktree:** WIP is one and roles are serial; one shared task worktree is the only mutable code
    authority. More would require forbidden synchronization/reconciliation.
 3. **No parallel/preemption/reconciliation:** a single owner and FIFO eliminate every legitimate need
    for them; interruption recovery concerns only the same active Task ID.
 4. **Independent Reviewer/QA:** each is a fresh minimal-context agent bound to immutable commits and
    committed evidence, never Developer chat.
-5. **No historical contamination:** every complex task receives a new host task and new role agents;
-   recovery uses durable refs. Old host tasks are never reused.
+5. **No historical contamination:** every complex task receives a new pre-approval Planner agent, a new
+   post-approval host and new execution-role agents; recovery uses durable refs. Old contexts are never
+   reused.
 6. **Lifecycle choice:** Option B is selected because current native thread tools do not prove multiple
-   task threads can share one existing worktree; a capability probe must validate the selected host/
-   agent lifecycle before cutover.
+   task threads can share one existing worktree. Planner is read-only on primary before approval; only
+   Developer through Integrator use the later host. A capability probe must validate that lifecycle.
 7. **Runtime recovery:** after cutover, send one exact re-read capsule and require read-only authority
    validation before accepting a pilot or ordinary task.
 8. **Controller after cutover:** keep `019fc491...` only for governance maintenance and fail-safe
@@ -598,20 +738,25 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
 ## 20. Risks And Approval Decisions
 
 1. Native archive state and Codex worktree retirement semantics are not fully observable today. Default
-   decision: require a successful reversible capability probe; otherwise block cutover.
+   decision: require a successful reversible capability probe and second User approval of one exact
+   closeout order; otherwise block cutover.
 2. Option B replaces five visible role tasks with one visible task-scoped worktree host plus ephemeral
-   fresh role agents. Default decision: approve this simpler model because it is the only current model
-   compatible with exactly one worktree without assuming unsupported thread binding.
+   fresh role agents, plus a pre-approval read-only Planner agent. Default decision: approve this model
+   because it is compatible with exactly one implementation worktree without unsupported binding.
 3. Archive success may be callable but not independently readable. Default decision: keep active in
    `archive_pending_unverifiable` until a later proof or explicit User waiver; never roll back integrated
    code or auto-release WIP.
 
 ## 21. Approval And Stop Point
 
-User approval authorizes only the 22-path implementation allowlist and the implementation/probe
-sequence up to `implemented_pending_human_review`. It does not authorize cutover, runtime-orchestrator
-messaging, a real pilot, push, forced cleanup, Task-A changes, legacy recovery, or archive/deletion of
-existing tasks.
+The first User approval authorizes only the 17-path `implementation-before-cutover` allowlist and the
+implementation/probe sequence up to v1 `implemented_pending_human_review`. It does not authorize any
+cutover-only file, atomic close/migration, runtime-orchestrator message, real pilot, push, forced
+cleanup, Task-A change, legacy recovery, or archive/deletion of existing tasks.
+
+A second explicit User approval is mandatory after implementation review. It must authorize the eight
+cutover-only paths, combine governance close with v1-to-v2 cutover, and name the exact probe-proven
+retirement/archive order. Without that wording, the task remains active in v1 human review.
 
 After approval, first call the current helper's `approve` with the committed Plan ref, exact approved
 request JSON and exact User approval evidence; exact-stage only `docs/task_board.md`, commit it, confirm

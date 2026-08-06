@@ -1,9 +1,9 @@
 # ConnLab Task Board
 
-> Status: Personal serial workflow migration is approved and active.
+> Status: Serial complex role-chain automation is active in planning; implementation is not approved.
 > Last Updated: 2026-08-06
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`
+> Current Active Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 > Execution Rule: One active task, durable FIFO queue, direct primary-worktree implementation, local commits only.
 
@@ -85,13 +85,14 @@
 
 ## Active Work
 
-- `TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION`: approved and active in implementation.
-- Work is limited to the exact allowlist stored in the machine-control block.
-- No role dispatch, lane/worktree creation, Task-A restoration, push, or external governance work is authorized.
+- `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`: active in `running/planning`.
+- Revision 2 planning is limited to the current Task, Plan, and this human-readable board summary.
+- Implementation, role dispatch, lane/worktree creation, Task-A restoration, cutover, archive, push,
+  and external governance work are not authorized.
 
 ## Queue
 
-- Empty. New tasks must be submitted to the durable FIFO queue while this task remains active.
+- Empty. New tasks must be submitted to the durable FIFO queue while this planning task remains active.
 
 ## Retained History
 
