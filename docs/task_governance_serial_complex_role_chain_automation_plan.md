@@ -1,8 +1,8 @@
 # ConnLab Serial Complex Role-Chain Automation Plan
 
-Status: `APPROVED_IMPLEMENTATION_BEFORE_CUTOVER_BLOCKED_ON_RETIREMENT_CAPABILITY`
+Status: `REVISION_6_READY_FOR_REVIEW_BLOCKER_RETAINED`
 
-Revision: `5`
+Revision: `6`
 
 Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
 
@@ -15,6 +15,11 @@ Future runtime orchestrator: `019fb3d4-12a5-73b3-be8e-e59686fa39a9`
 The User approved Revision 5 implementation-before-cutover on 2026-08-06. The approval is limited to
 the frozen 18-path first allowlist. It does not authorize cutover, second approval, actual cutover-path
 permission grants, production runtime messages, pilot, push, or cleanup.
+
+Revision 6 is a planning-only correction requested on 2026-08-06. It proposes `retained` as the legal,
+non-blocking closeout disposition for a clean integrated worktree/thread and removes native retirement,
+archive and `CLOSEOUT_ORDER` from every cutover gate. It does not approve implementation, alter the
+current blocker, enter human review, authorize cutover, or mutate any existing probe resource.
 
 ## 1. Outcome And Design Choice
 
@@ -42,7 +47,8 @@ Option B uses:
 3. one task-scoped Codex worktree host task, created only after the approval commit;
 4. a fresh, minimal-context agent for each Developer, Reviewer, QA, and Integrator attempt in that host;
 5. committed role evidence and bounded callbacks as the only transition input;
-6. probe-approved closeout of the one task-scoped host task after User close.
+6. a zero-native-action `retained` closeout record for the clean task-scoped host after User close;
+   later retirement/archive is optional manual maintenance outside task close and cutover.
 
 The pre-approval Planner has no implementation worktree and no write authority. The worktree-host task
 is infrastructure for one approved complex Task ID, not a second authority. Role agents are not reused
@@ -135,7 +141,7 @@ parallel exception, Quick Fix preemption, pause/preempt/resume, shared-path owne
 reconciliation, lease, heartbeat, V1-Lite, Controlled Lane V2, Task-A pilot/corrective, or automatic
 maintenance role rules. Frozen files continue to fail closed and remain audit references.
 
-## 4. Codex Capability Findings And Required Probe
+## 4. Codex Capability Findings And Revision 6 Decision
 
 Current native tool contracts prove callable operations for task creation, fork, list/read, send,
 wait, title, archive/unarchive, and handoff. `create_thread` can create a project worktree from an
@@ -153,24 +159,29 @@ Automatic context compaction is unrelated: it summarizes model context to contin
 it neither archives a Codex task nor proves hidden/reversible/exact-ID state. Neither compaction nor
 chat history is durable workflow authority.
 
-Before cutover, the implementation controller performs one bounded, non-product capability probe:
+The completed bounded probe proved fresh-agent/worktree isolation, but the authorized lifecycle attempt
+also proved that `handoff_thread` is checkout migration, not worktree retirement. It left the source
+worktree registered and temporarily moved the saved-project checkout away from `master`. Primary was
+restored under separate exact User authority, and the fail-closed stop rule prevented every archive and
+second-sequence action.
 
-1. create one disposable Codex project task in worktree mode from an exact clean commit;
-2. obtain exact thread ID, host ID, cwd, branch, worktree and HEAD;
-3. verify fresh-agent minimal-context behavior without product edits;
-4. stop the task, prove the worktree is clean, and test both technically available retirement/archive
-   order candidates without assuming either one is safe;
-5. for any archive attempt, use the exact ID, try list/read verification, then unarchive and verify
-   history if supported;
-6. persist the observed order, exact commands/tool receipts, reversibility and failure behavior in the
-   allowed capability-evidence file;
-7. present exactly one proven order for the second User cutover approval; the implementer may not
-   choose or change it independently;
-8. if neither order and archive semantics can be proven safe, stop before cutover.
+Revision 6 therefore makes no further lifecycle probe part of implementation, cutover or pilot. The
+following resources are immutable retained probe evidence until a separate future maintenance request
+explicitly names an action:
 
-The probe may create temporary Codex/Git state but may not change product files or push. Any destructive
-cleanup remains forbidden; an unclean probe worktree is retained and recorded as a blocker. Before the
-second approval, all plan language that mentions retirement/archive order is conditional on this probe.
+- source thread `019fd6d8-7d13-7011-bc09-77ebc790919e` and clean detached worktree
+  `C:\Users\White\.codex\worktrees\84b1\connlab` at
+  `ead61ccd2143c304a2b82aff0e3bfecdd5a6ad11`;
+- duplicate thread `019fd6d8-e5e1-7961-9423-8e205e9e02c5` and clean detached worktree
+  `C:\Users\White\.codex\worktrees\fc39\connlab` at the same commit;
+- handoff destination thread `019fd73e-6aac-74b0-b404-70ff1be70f42`;
+- branch `codex/connlabserial-complex-capability-p` at the same commit and the complete capability
+  evidence file.
+
+No closeout or cutover operation may hand off, archive, unarchive, retire, remove, prune, delete, switch
+to, reuse or otherwise mutate those resources. Their continued existence is not a blocker. The probe
+evidence establishes the reason for the retained policy; it no longer needs to establish an operation
+order.
 
 ## 5. Unified Classification Contract
 
@@ -261,9 +272,8 @@ approved_code_paths / required_gates
 developer_subject_commit / reviewer_subject_commit / qa_subject_commit / integrated_commit
 evidence_refs[]
 pending_callback
-archive_target_ids[] / archived_ids[] / archive_attempts[]
+closeout_disposition / retained_resource_refs[]
 close_decision_ref
-probe_approved_closeout_order
 ```
 
 Conversation text is never stored. Arrays have bounded lengths; completed attempt detail lives in
@@ -295,7 +305,7 @@ running/integration
 implemented_pending_human_review/human_review
   -> User request-close -> running/closing
 running/closing
-  -> execute the exact probe-proven, cutover-approved retirement/archive order
+  -> record the exact clean `retained` disposition without a native lifecycle call
   -> finalize-close -> idle
 ```
 
@@ -309,6 +319,10 @@ Stable blocker codes are the exact uppercase values frozen in section 7.4:
 `INTEGRATION_BLOCKED`, `DIRTY_WORKTREE`, `CALLBACK_PENDING`, `ARCHIVE_PENDING`,
 `ARCHIVE_PENDING_UNVERIFIABLE`, `WORKTREE_RETIREMENT_PENDING`, `SCOPE_EXPANDED`,
 `VALIDATION_FAILED`, `NATIVE_ACTION_FAILED`, and `CUTOVER_FAILED`.
+
+The three archive/retirement blocker values remain parseable only for compatibility with the already
+implemented dormant Revision 5 schema. Revision 6 normal closeout and cutover never emit them and never
+wait on them; any future cleanup automation requires a separate approved maintenance design.
 
 Every blocker retains active, Task ID, WIP, Git facts and evidence. It never starts FIFO, skips a role,
 or discards/stashes/restores. Resume requires exact corrective evidence or explicit User direction as
@@ -344,13 +358,13 @@ blocked code with zero writes.
 | `record-host` | `--native-action-id`, `--worktree-json` | yes | Bind exact host/thread/branch/worktree/base/HEAD facts. |
 | `record-integration` | `--integration-json` | yes | Record only the already-created, verified primary merge and enter human review. |
 | `request-close` | `--decision-ref` | yes | Retain active and enter complex closing after explicit User close. |
-| `record-closeout` | `--closeout-json` | yes | Record one step in the cutover-approved closeout order. |
-| `finalize-close` | `--decision-ref` | yes | Release active only after complete closeout proof; never starts FIFO. |
+| `record-closeout` | `--closeout-json` | yes | Record the exact clean `retained` disposition; performs no native lifecycle action. |
+| `finalize-close` | `--decision-ref` | yes | Release active after retained closeout proof; never starts FIFO. |
 | `block` | `--blocker-json` | yes | Persist a typed blocker without releasing active. |
 | `resume` | `--decision-ref` | yes | Resume only the blocker-recorded phase when its policy permits. |
-| `cancel` | `--decision-ref`, `--disposition` | yes | Before host creation, or after explicit clean retain/retire proof only. |
+| `cancel` | `--decision-ref`, `--disposition` | yes | Before host creation, or after explicit clean retained proof only. |
 | `mark-review`, `close` | existing v1 parameters | yes | Simple workflow only; complex use returns `BLOCKED_STATE`. |
-| `plan-cutover` | `--expected-primary-head`, `--closeout-order` | no | Intrinsically probe eight paths and emit the deterministic manifest payload; it never accepts permission JSON or writes the manifest. |
+| `plan-cutover` | `--expected-primary-head` | no | Intrinsically probe eight paths and emit the deterministic manifest payload; it never accepts permission JSON or writes the manifest. |
 | `apply-cutover` | `--cutover-manifest-ref`, `--expected-primary-head`, `--approval-ref` | yes | Re-run the intrinsic probe, then materialize and verify only the eight manifest-bound worktree targets; never stage or commit. |
 | `verify-cutover-commit` | `--cutover-manifest-ref`, `--cutover-commit`, `--approval-ref` | no | Verify the Controller-created cutover commit, parent/tree/index and approval before any runtime message. |
 
@@ -367,7 +381,6 @@ The new parser arguments are frozen as:
 --closeout-json
 --cutover-manifest-ref
 --expected-primary-head
---closeout-order
 --cutover-commit
 ```
 
@@ -393,9 +406,11 @@ All objects use exact keys and version 1:
   merge_commit, merge_tree, parents, evidence_refs, command, clean, recorded_at`. `parents` is exactly
   `[primary_parent, branch_head]`; `command` is exactly
   `["git","merge","--no-ff","--no-edit","--no-autostash",branch]`.
-- `connlab.serial-closeout`: `schema, version, action_id, step, order, thread_id, worktree,
-  receipt_sha256, status, recorded_at`. `step=retired|archived|retained`; `order` must equal the
-  manifest-approved order; status is `completed|pending|failed`.
+- `connlab.serial-closeout`: `schema, version, action_id, disposition, task_id, thread_id, worktree,
+  branch, head_sha, clean, integrated_commit, evidence_ref, reason, recorded_at`.
+  `disposition=retained`, `clean=true`, and `reason=retained_nonblocking_manual_maintenance` are the
+  only legal Revision 6 values. The exact task/thread/worktree/branch/HEAD/integrated-commit facts must
+  match current durable authority; the evidence ref must prove no callback or role remains active.
 
 There is deliberately no permission-proof CLI parameter or caller-supplied permission schema.
 `--permission-preflight-json` is unknown and returns `BLOCKED_ARGUMENT_COMBINATION`. The intrinsic
@@ -479,8 +494,8 @@ manifest source. The Controller must retain this command result until post-commi
 | integration | Integrator blocked callback | `running/blocked`, resume=`integration` | `ALLOW_CONSUME_CALLBACK` |
 | integration-ready + verified merge | `record-integration` | `implemented_pending_human_review/human_review` | `ALLOW_RECORD_INTEGRATION` |
 | human review | `request-close` | `running/closing` | `ALLOW_REQUEST_CLOSE` |
-| closing | `record-closeout` next manifest step | closing with step proof | `ALLOW_RECORD_CLOSEOUT` |
-| closing, all proofs complete | `finalize-close` | `idle`, exact last_closed | `ALLOW_FINALIZE_CLOSE` |
+| closing + exact clean host facts | `record-closeout(retained)` | closing with retained proof | `ALLOW_RECORD_CLOSEOUT` |
+| closing + retained proof | `finalize-close` | `idle`, exact retained last_closed | `ALLOW_FINALIZE_CLOSE` |
 | any occupied legal stage | `block` | `running/blocked`, same active | `ALLOW_BLOCK` |
 | blocked + satisfied policy | `resume` | exact blocker `resume_phase` | `ALLOW_RESUME` |
 | governance v1 human review + eight writable paths | `plan-cutover` | zero-write manifest payload | `ALLOW_PLAN_CUTOVER` |
@@ -615,6 +630,10 @@ recording that blocker. `BLOCKED_CUTOVER_MATERIALIZATION` is the sole file-write
 leave only the eight authorized worktree paths dirty, after which the Controller must execute the
 manifest's exact uncommitted rollback before any other action. No code is inferred from free text.
 
+`BLOCKED_CLOSEOUT_ORDER`, `BLOCKED_ARCHIVE_PENDING`, and `BLOCKED_RETIREMENT_PENDING` remain stable
+reserved outputs for backward compatibility only. Revision 6 has no legal command/state pair that
+produces them during ordinary close or cutover.
+
 ## 8. Commit Boundaries
 
 ### 8.1 This governance task
@@ -626,7 +645,8 @@ manifest's exact uncommitted rollback before any other action. No code is inferr
    `implementation-before-cutover` allowlist.
 5. implementation commits: only pre-cutover helpers/modules/protocol/tests while v1 remains the
    normative runtime authority and every new complex entry stays unreachable.
-6. capability-probe evidence commit recording the one proposed closeout order.
+6. capability-probe evidence commit recording the failed handoff-as-retirement assumption and the
+   fail-closed retained resources.
 7. implementation completion commit: validation plus `implemented_pending_human_review` under v1.
 8. after exact cutover-path permission is granted, `plan-cutover` proves it through the intrinsic
    handle probe; the Controller commits the returned manifest and obtains the manifest-bound second
@@ -650,8 +670,9 @@ Each durable transition that changes active phase or authority is a board/eviden
 next role starts. Approval commit precedes worktree creation. Developer produces a clean code commit.
 Reviewer and QA bind the same exact subject code commit. Integrator is read-only and emits a pass bound
 to that subject. The runtime orchestrator alone performs primary Git integration using section 10.1.
-User close is committed before the probe-approved closeout sequence begins; final closeout to idle is
-committed only after all required retirement/archive conditions pass. No push occurs.
+User close is committed before the zero-native-action retained record. Final closeout to idle is
+committed after exact clean host facts and the retained evidence ref pass; no retirement/archive or
+push occurs.
 
 ## 9. Git And Worktree Model
 
@@ -662,14 +683,14 @@ committed only after all required retirement/archive conditions pass. No push oc
 - Recovery with the same Task ID adopts the exact recorded clean worktree; it never creates another.
 - A different Task ID cannot create a worktree while active is occupied.
 - All role attempts use the same worktree sequentially. No per-role branch or worktree exists.
-- `scripts/connlab_serial_worktree.ps1` is a bounded `Inspect|Retire` verifier. It has JSON/dry-run,
-  exact root/path containment, Task ID/branch/HEAD/cleanliness/ancestry checks, refuses force, refuses
-  unknown paths, and does not call legacy gates.
+- `scripts/connlab_serial_worktree.ps1` retains its bounded `Inspect|Retire` implementation as dormant
+  Revision 5 compatibility. Revision 6 runtime closeout uses `Inspect` facts only and never invokes
+  `Retire`; retirement would require separate future maintenance authorization.
 - Worktree creation remains a native Codex task action. Repository scripts never call or imitate the
   Codex API and never store credentials.
-- Retirement requires integration ancestry, exact expected HEAD, clean worktree/index, no callback,
-  User close evidence, and a stopped host task. Failure records `worktree_retirement_pending` or
-  `dirty_worktree` and retains everything.
+- Retained closeout requires integration ancestry, exact expected HEAD, clean worktree/index, no
+  callback or running role, exact host identity and User close evidence. It leaves the host task,
+  branch and worktree untouched, reserved to the completed Task ID and ineligible for reuse.
 
 Only one active complex worktree is needed because WIP is one and roles are sequential. More worktrees
 would add synchronization and reconciliation without enabling any authorized concurrency.
@@ -757,34 +778,33 @@ must prove the original HEAD/index/worktree were restored exactly. If that bound
 facts differ, primary receives no further command, the task worktree is retained, and the task records
 `integration_blocked` for User direction. No cherry-pick, rebase or alternate strategy is permitted.
 
-## 11. Archive And Closeout
+## 11. Retained Closeout And Optional Maintenance
 
 User close changes a complex task from human review to `closing`; it does not release active. Common
 closeout prerequisites are:
 
 1. all callbacks consumed and evidence committed;
 2. integrated commit verified on clean primary;
-3. task worktree clean, exact host task ID known, and no role agent running;
-4. the board contains the exact closeout order proven by the capability probe and explicitly approved
-   in the cutover authorization.
+3. task worktree clean, exact host task/thread ID, branch and HEAD known, and no role agent running;
+4. a committed evidence ref proves the integrated commit, clean facts and absence of a pending callback.
 
-Only then does the runtime orchestrator execute that one frozen sequence. The two candidate orders are
-`stop -> retire -> archive` and `stop -> archive -> retire`; Revision 5 approves neither. The capability
-probe must prove one, the second User approval must name it, and the normative cutover protocol must
-freeze it. The implementer and runtime orchestrator cannot switch orders dynamically. If neither is
-proven, cutover is blocked.
+The runtime orchestrator then records exactly one `retained` disposition and finalizes close. This is a
+board-only transition after read-only verification. It makes no native task call and no Git lifecycle
+call; the host thread, branch and worktree continue to exist and remain bound to the completed Task ID.
+The retained resources are not available for a later task and their continued existence does not hold
+WIP or block cutover.
 
-After the approved sequence succeeds (or an explicit User-approved worktree retain record satisfies
-the retirement side), the archive result is recorded and final board closeout may enter idle.
+Retirement and archive are operational housekeeping, not correctness or authority gates. They are not
+part of `request-close`, `record-closeout`, `finalize-close`, cutover-manifest generation, second
+approval, cutover application, cutover verification, runtime activation or pilot acceptance. A later
+maintenance action must be separately requested and approved with exact resource IDs, current clean
+facts, an explicit mutation sequence and failure-stop rules. It cannot retroactively alter the closed
+task result.
 
-Archive never means delete. It never removes task/plan/evidence/Git commits. Exact IDs, not titles, are
-used. Repeated archive requests are idempotent. If native read/list can prove archived state, it is
-recorded. If it cannot, a successful archive call plus exact attempt receipt is recorded as
-`archive_pending_unverifiable`; active remains occupied until a later retry or explicit User waiver.
-If the API fails, record `archive_pending`; completed integrated code is not reverted or discarded.
-
-The safe fallback stores exact pending IDs and attempts, never reuses that host task for another Task
-ID, and waits for User or bounded maintenance. It does not corrupt Git or auto-start FIFO.
+The Section 4 probe resources are protected from this task, cutover and pilot by Revision 6: closeout
+records them as retained evidence but performs no handoff, archive, unarchive, retirement, removal,
+prune, branch deletion or reuse. Only a separate future maintenance authority may change that state.
+No `CLOSEOUT_ORDER` field or equivalent operation-order alias is accepted anywhere.
 
 ## 12. Failure And Recovery
 
@@ -800,7 +820,9 @@ active phase. It does not infer from its historical chat.
 - scope expansion/product-contract change -> retain active and return to User/Planner;
 - Reviewer/QA finding -> bounded Developer rework loop;
 - integration conflict -> `integration_blocked`, no automatic reconciliation;
-- retirement/archive failure -> closing blocker, integrated product commit retained.
+- retained-fact mismatch -> closing blocker, integrated product commit and all resources untouched;
+- optional later retirement/archive failure -> that separate maintenance request stops without
+  reopening or blocking the already closed product task.
 
 ### 12.1 Simple-to-complex escalation
 
@@ -872,7 +894,8 @@ tests/integration/test_connlab_serial_complex_recovery.py
 
 ### 14.2 Second approval: cutover only
 
-Only after implementation review and the capability probe may the User authorize the eight cutover
+Only after Revision 6 implementation review and verification that all Section 4 retained resources are
+unchanged may the User authorize the eight cutover
 paths: `AGENTS.md`, runtime-orchestrator skill, current policy, `run_task.ps1`, execution gate, board
 atomic migration/close, and status-only Task/Plan edits. All eight are staged into the same cutover
 commit where applicable. No earlier commit may modify them.
@@ -897,6 +920,7 @@ Frozen and preserved:
 - every product path and unrelated task/plan/protocol/skill/test;
 - history generations/index;
 - Task-A and all retained lane/evidence/worktrees;
+- the exact Section 4 probe threads, worktrees, branch, commits and evidence;
 - legacy transition/handoff/lane-worktree implementations and Controlled Lane V2;
 - external governance-migration repository and all remotes.
 
@@ -922,11 +946,11 @@ Automated or repeatable native validation must cover at least these acceptance g
 16. QA blocking returns to Developer then Reviewer then QA;
 17. Integrator rejects any commit not bound by current Reviewer and QA passes;
 18. active cannot release before User close;
-19. host task cannot archive before User close;
-20. only a clean integrated worktree can retire after close;
-21. dirty worktree is retained with blocker;
-22. archive uses exact IDs and duplicate requests are no-op;
-23. archive failure/unverifiable result records pending without Git/board corruption;
+19. host task cannot close before User close;
+20. only exact clean integrated host/worktree facts can record `retained` after close;
+21. dirty or mismatched worktree facts block retained closeout without mutation;
+22. duplicate exact retained records are no-op and make zero native lifecycle calls;
+23. retirement/archive and any order field are rejected as outside closeout and cutover;
 24. a new task's role context contains no old task chat/reference;
 25. recovery succeeds from durable refs with empty conversational memory;
 26. legacy StartTask/CreateWorktree/Reconcile/Controlled Lane V2 remain frozen;
@@ -945,8 +969,8 @@ Revision 2 adds these mandatory groups:
 34. primary integration uses only the frozen no-ff merge, verifies both parents/tree, and a preflight
     conflict leaves both worktrees unchanged; the bounded abort path restores the exact original
     primary or blocks without further mutation;
-35. the capability probe, second User approval and cutover protocol all name the same one closeout
-    order, and runtime cannot substitute the other order.
+35. capability evidence, second User approval and cutover protocol contain no closeout-order binding;
+    the runtime accepts only the exact non-mutating retained disposition.
 
 Revision 3 adds these mandatory groups:
 
@@ -992,8 +1016,21 @@ Revision 5 adds these mandatory groups:
     handle before apply, and proves `BLOCKED_CUTOVER_PATH_READ_ONLY` with zero materialization calls,
     unchanged eight target bytes, unchanged Git index and unchanged HEAD.
 
+Revision 6 adds these mandatory groups:
+
+51. closeout accepts only the exact `retained` schema with clean/integrated/current host facts and
+    releases WIP without a native thread or worktree mutation;
+52. `--closeout-order`, manifest `closeout_order`, approval `CLOSEOUT_ORDER`, retire/archive closeout
+    steps and aliases are rejected;
+53. the exact Section 4 probe threads, worktrees, branch, commits and evidence remain unchanged through
+    implementation validation, cutover planning/application/rollback and pilot;
+54. a dirty, running-role, pending-callback or identity-drift case blocks closeout while preserving the
+    integrated commit and every retained resource.
+
 Group 50 is exactly one test in the already approved
 `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`; it does not add a test path.
+Groups 51–54 remain inside the already approved serial-complex state, worktree, orchestrator-contract
+and recovery test paths; they add no repository path.
 
 Additional migration checks: v1 simple fixtures migrate deterministically to v2, rollback reconstructs
 the exact pre-cutover board bytes, stale CAS/lock collision/injected replace failure are zero-write, and
@@ -1022,15 +1059,17 @@ git status --short
 
 Also verify exact pre/post SHA-256 and Git blobs for generation-1, index, Task-A/retained evidence;
 `git diff <approved-base>..<implementation-head> --name-only` must be a subset of the allowlist. Native
-capability checks follow the bounded probe in section 4 and are committed as evidence.
+resource checks confirm the already recorded Section 4 facts without lifecycle mutation; no new
+retirement/archive probe is run.
 
 ## 17. Board Migration And Rollback
 
-`plan-cutover` runs after implementation/probe completion and an explicit exact-path tool permission
+`plan-cutover` runs after Revision 6 implementation validation, retained-resource verification and an
+explicit exact-path tool permission
 grant, but before the second approval. It is zero-write and requires the exact v1
 `implemented_pending_human_review` governance Task ID, passed validation, no blocker, empty FIFO,
-clean primary, accepted helper ancestry, the probe-approved closeout order and a current permission
-grant under which its own intrinsic handle probe proves all eight paths writable. It accepts no
+clean primary, accepted helper ancestry, the Revision 6 retained-closeout contract and a current
+permission grant under which its own intrinsic handle probe proves all eight paths writable. It accepts no
 permission proof from the caller. An idle source or any denied/unknown path is rejected before a
 manifest payload exists. The Controller writes the returned exact `payload` and commits it under the
 first approval as:
@@ -1045,7 +1084,7 @@ The manifest schema is `connlab.serial-cutover-manifest` version 1 with exact to
 
 ```text
 schema, version, task_id, authority_base_commit, authority_base_tree,
-authority_base_board_sha256, authority_base_control_digest, closeout_order,
+authority_base_board_sha256, authority_base_control_digest,
 target_set_sha256, files, index_derivation, canonical_history_index_guard,
 permission_proof, rollback, created_at
 ```
@@ -1074,8 +1113,9 @@ The base64 field makes every approved target reconstructible without chat, an am
 or implementation judgment. `target_blob` is the Git blob ID computed from decoded target bytes.
 `target_set_sha256` hashes the canonical ordered tuples
 `path,mode,target_bytes,target_sha256,target_blob`. Nulls/placeholders and duplicate/reordered paths are
-invalid. The board target must simultaneously contain v2 idle, exact governance `last_closed`, retained
-history and FIFO invariants; all seven other targets are the exact cutover contract/entry/status bytes.
+invalid. The board target must simultaneously contain v2 idle, exact governance `last_closed` with
+`disposition=retained`, its committed closeout evidence ref, retained history and FIFO invariants; all
+seven other targets are the exact cutover contract/entry/status bytes.
 
 `authority_base_commit` is the clean implementation-completion commit before the first manifest
 revision; it is not the self-referential manifest commit. `index_derivation` has exact keys
@@ -1120,18 +1160,22 @@ manifest revision, and obtain a new exact second approval; an older approval can
 
 ### 17.2 Second-Approval Binding
 
-The User's second approval must quote all three values:
+The User's second approval must quote both values:
 
 ```text
 MANIFEST_REF: docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json@<40hex>#<sha256>
 TARGET_SET_SHA256: <64hex>
-CLOSEOUT_ORDER: <the one probe-proven enum>
 ```
 
 and explicitly authorize `atomic close + v1-to-v2 cutover + manifest-defined rollback`. Missing or
 different values return `BLOCKED_CUTOVER_NOT_AUTHORIZED`. `apply-cutover` independently recomputes every
 source/target/hash/blob/index/permission/history guard before writing; a mismatch returns the specific
 blocked code with zero writes.
+
+`CLOSEOUT_ORDER`, `closeout_order`, retirement/archive wording or any equivalent third binding makes
+the approval payload invalid. The manifest-defined target board closes the governance task with the
+non-mutating `retained` disposition and preserves the Section 4 resource references through committed
+evidence; it does not perform or imply lifecycle cleanup.
 
 ### 17.3 Complete Failure Rollback Manifest
 
@@ -1187,7 +1231,8 @@ is never restored.
 ## 18. Cutover And Pilot
 
 1. Current controller implements behind inactive entry points and runs offline tests.
-2. It completes the capability probe; any unproven critical capability blocks cutover.
+2. It validates the retained-closeout contract and confirms all Section 4 resources unchanged; it runs
+   no lifecycle probe.
 3. Current governance task enters human review under v1.
 4. The current read-only orchestrator-skill path blocks here. User separately grants exact tool write
    permission; the Controller supplies no permission assertion. No repository target is written.
@@ -1195,8 +1240,8 @@ is never restored.
    intrinsic receipt plus all exact target byte bundles/hashes and the complete rollback/index
    manifest; the Controller commits the exact payload while v1 active remains in human review.
 6. User reviews and gives one explicit combined `close + cutover` authorization quoting the exact
-   manifest ref, `TARGET_SET_SHA256` and probe-proven `CLOSEOUT_ORDER`; a plain `关闭` or unbound
-   approval is insufficient.
+   manifest ref and `TARGET_SET_SHA256`; a plain `关闭`, unbound approval or any lifecycle-order
+   instruction is insufficient.
 7. In the same process that would materialize content, `apply-cutover` first runs the identical probe.
    Permission/content drift blocks before decoding/writing targets and requires a new manifest commit
    plus new approval. Otherwise it materializes/verifies eight paths without staging.
@@ -1207,8 +1252,8 @@ is never restored.
 10. Runtime orchestrator first performs read-only inspect/classifier self-check; it does not restore old
    roles or Task-A.
 11. User approves one low-risk pilot that is intentionally complex enough to exercise every role.
-12. Pilot validates Planner, approval, Developer, Reviewer, QA, Integrator, human review, User close,
-   retirement and archive.
+12. Pilot validates Planner, approval, Developer, Reviewer, QA, Integrator, human review, User close
+    and non-mutating retained closeout. It does not test retirement/archive.
 13. Pilot failure retains active/blocker and returns to this governance controller; no old-flow or
    direct-implementation fallback occurs.
 
@@ -1234,7 +1279,8 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
    reused.
 6. **Lifecycle choice:** Option B is selected because current native thread tools do not prove multiple
    task threads can share one existing worktree. Planner is read-only on primary before approval; only
-   Developer through Integrator use the later host. A capability probe must validate that lifecycle.
+   Developer through Integrator use the later host. Closeout retains that exact clean host; native
+   lifecycle cleanup is deliberately outside the workflow.
 7. **Runtime recovery:** after cutover, send one exact re-read capsule and require read-only authority
    validation before accepting a pilot or ordinary task.
 8. **Controller after cutover:** keep `019fc491...` only for governance maintenance and fail-safe
@@ -1242,15 +1288,15 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
 
 ## 20. Risks And Approval Decisions
 
-1. Native archive state and Codex worktree retirement semantics are not fully observable today. Default
-   decision: require a successful reversible capability probe and second User approval of one exact
-   closeout order; otherwise block cutover.
+1. Native archive state and Codex worktree retirement semantics are not reliable authority. Revision 6
+   decision: use a read-only-verified `retained` disposition for closeout and keep lifecycle cleanup
+   outside cutover. No capability proof or operation order is a cutover prerequisite.
 2. Option B replaces five visible role tasks with one visible task-scoped worktree host plus ephemeral
    fresh role agents, plus a pre-approval read-only Planner agent. Default decision: approve this model
    because it is compatible with exactly one implementation worktree without unsupported binding.
-3. Archive success may be callable but not independently readable. Default decision: keep active in
-   `archive_pending_unverifiable` until a later proof or explicit User waiver; additionally, current
-   Codex permissions make the orchestrator skill read-only, so manifest generation remains blocked
+3. Retained hosts consume disk and sidebar state until optional maintenance. This is an accepted,
+   visible operational cost and does not consume workflow WIP. Current Codex permissions still make
+   the orchestrator skill read-only, so manifest generation remains blocked
    until an explicit permission grant passes preflight. A manifest is never approved with read-only
    observations: the helper accepts no caller permission claim and records only its intrinsic
    handle-probe receipt. Permission drift forces regeneration/reapproval. Neither condition rolls back
@@ -1258,8 +1304,9 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
 
 ## 21. Approval And Stop Point
 
-The first User approval authorizes only the 18-path `implementation-before-cutover` allowlist and the
-implementation/probe sequence up to v1 `implemented_pending_human_review`. It does not authorize any
+The first User approval authorized only the 18-path `implementation-before-cutover` allowlist and the
+now-completed Revision 5 implementation/probe checkpoint. Revision 6 planning authority adds no
+implementation permission. Neither authority authorizes any
 cutover-only file, atomic close/migration, runtime-orchestrator message, real pilot, push, forced
 cleanup, Task-A change, legacy recovery, or archive/deletion of existing tasks.
 
@@ -1269,11 +1316,17 @@ Plan ref and exact User wording. Any JSON difference requires another planning r
 
 A second explicit User approval is mandatory after implementation review. It must authorize the eight
 cutover-only paths, combine governance close with v1-to-v2 cutover, quote the exact committed
-`MANIFEST_REF` and `TARGET_SET_SHA256`, name the exact probe-proven `CLOSEOUT_ORDER`, and authorize the
-manifest-defined failure rollback. Without every binding, the task remains active in v1 human review.
+`MANIFEST_REF` and `TARGET_SET_SHA256`, and authorize the manifest-defined failure rollback. It must not
+authorize or bind retirement/archive. Without every required binding, the task remains active in v1
+human review.
 
 After approval, first call the current helper's `approve` with the committed Plan ref, exact approved
 request JSON and exact User approval evidence; exact-stage only `docs/task_board.md`, commit it, confirm
 primary clean, and only then edit implementation files.
 
-Until then: `READY_FOR_USER_APPROVAL` and stop.
+Revision 6 changes are not approved for implementation. The Task and board intentionally remain at the
+existing blocked Revision 5 authority until review; after a future explicit approval, the Task may be
+synchronized and only the already frozen 18-path pre-cutover allowlist may be implemented. No path may
+be added implicitly.
+
+Until then: `READY_FOR_REVIEW` and stop.
