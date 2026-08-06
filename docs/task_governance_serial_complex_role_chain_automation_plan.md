@@ -17,7 +17,7 @@ and diff, after which `master` fast-forwards to it.
 
 ## Global Constraints
 
-- Status: `REVISION_7_READY_FOR_USER_APPROVAL`.
+- Status: `REVISION_7_1_READY_FOR_USER_APPROVAL`.
 - Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`.
 - Current live authority remains board v1 `implemented_pending_human_review/human_review`.
 - WIP is one; FIFO order is durable; no concurrent task or implementation owner exists.
@@ -67,7 +67,7 @@ No discovery question remains open.
 
 ## 2. Superseded Revision 6.1 Design
 
-Revision 7 supersedes every Revision 6.1 requirement for:
+Revision 7.1 supersedes every Revision 6.1 requirement for:
 
 - `plan-cutover`, `apply-cutover`, `verify-cutover-commit`;
 - a cutover manifest or `TARGET_SET_SHA256`;
@@ -77,7 +77,7 @@ Revision 7 supersedes every Revision 6.1 requirement for:
 - retirement, archive or any lifecycle ordering.
 
 Those concepts remain visible only in Git history. They must not be implemented, generated or
-required by the Revision 7 candidate.
+required by the Revision 7.1 candidate.
 
 ## 3. Exact Candidate-Cutover Allowlist
 
@@ -94,8 +94,8 @@ The direct-child candidate commit changes exactly 15 paths:
 | `scripts/connlab_personal_task.py` | Remove the unused public cutover command family and obsolete arguments while retaining v1/v2 daily commands. |
 | `scripts/connlab_serial_complex.py` | Remove permission/manifest fixture functions; retain classifier, role transitions and retained closeout. |
 | `docs/task_board.md` | Atomically migrate v1 human review to v2 idle, close this governance task and release active. |
-| `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md` | Record Revision 7 `cutover_complete`. |
-| `docs/task_governance_serial_complex_role_chain_automation_plan.md` | Record Revision 7 `cutover_complete`. |
+| `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md` | Record Revision 7.1 `cutover_complete`. |
+| `docs/task_governance_serial_complex_role_chain_automation_plan.md` | Record Revision 7.1 `cutover_complete`. |
 | `tests/unit/test_connlab_serial_complex_orchestrator_contract.py` | Delete obsolete permission/manifest tests and assert the reduced public contract. |
 | `tests/unit/test_connlab_execution_gate_script.py` | Prove v2 gate routing and legacy fail-closed behavior. |
 | `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py` | Prove normative files expose only the intended automatic serial role contract. |
@@ -135,7 +135,7 @@ no ordinary v1 close and no committed authority gap.
 
 ## 5. Candidate Construction Without Live-Worktree Activation
 
-After the User approves this Revision 7 plan, the Controller performs these bounded preparation
+After the User approves this Revision 7.1 plan, the Controller performs these bounded preparation
 steps. They do not move `master`, edit the primary worktree, or change the board.
 
 - [ ] Record the clean planning-revision HEAD as `$cutoverParent` and require it remain unchanged.
@@ -194,19 +194,43 @@ No separate manifest approval, permission proof, target hash, runtime message or
 required. If the execution environment cannot write an exact target during the approved fast-forward,
 that is an unresolved blocker: stop without trying an alternate permission or write strategy.
 
+The exact cutover approval must additionally authorize the one-time Git write across all 15 named
+paths, explicitly including `.agents/skills/connlab-lane-orchestrator/SKILL.md`. This is an execution
+condition, not a permission-receipt schema or additional approval system. If the sandbox refuses the
+approved operation, the Controller stops and reports the denial.
+
 ## 7. Apply And Rollback
 
-After exact candidate approval, apply only that commit:
+After exact candidate approval, apply only the two literal hashes quoted by the User. The Controller
+must render the final execution capsule after approval with the real 40-hex values directly inside the
+two single-quoted assignments. The metavariables below describe that required shape and are not an
+executable pre-approval command; ref-derived assignments, environment substitutions and abbreviated
+hashes are invalid.
 
 ```powershell
-$cutoverRef = 'refs/codex/cutover-candidates/serial-complex-v2'
-$cutoverCommit = (git rev-parse $cutoverRef).Trim()
-$cutoverParent = (git rev-parse "$cutoverCommit^").Trim()
-if ((git rev-parse HEAD).Trim() -ne $cutoverParent) { throw 'Cutover parent drift.' }
+$approvedCutoverCommit = '<user-approved-literal-40-hex-candidate>'
+$approvedCutoverParent = '<user-approved-literal-40-hex-parent>'
+
+if ((git rev-parse HEAD).Trim() -ne $approvedCutoverParent) {
+    throw 'Cutover parent drift.'
+}
+if ((git rev-parse "$approvedCutoverCommit^").Trim() -ne $approvedCutoverParent) {
+    throw 'Candidate parent mismatch.'
+}
+if ((git rev-parse 'refs/codex/cutover-candidates/serial-complex-v2').Trim() -ne $approvedCutoverCommit) {
+    throw 'Candidate ref drift.'
+}
 if (git status --porcelain) { throw 'Primary is dirty.' }
-git merge --ff-only $cutoverCommit
-if ((git rev-parse HEAD).Trim() -ne $cutoverCommit) { throw 'Cutover HEAD mismatch.' }
+git merge --ff-only $approvedCutoverCommit
+if ((git rev-parse HEAD).Trim() -ne $approvedCutoverCommit) {
+    throw 'Cutover HEAD mismatch.'
+}
 ```
+
+The exact User approval also authorizes that one `git merge --ff-only` operation to update the full
+15-path allowlist, including the currently restricted `.agents` skill path. If the sandbox rejects
+the write, stop. Do not retry through a ref, edit files individually, request a repository permission
+receipt, regenerate a candidate or use another Git strategy.
 
 Run section 9 immediately. No v2 request may activate until validation passes.
 
@@ -214,8 +238,8 @@ If post-cutover validation fails while HEAD still equals the candidate and no v2
 the User's exact candidate approval also authorizes only this rollback:
 
 ```powershell
-git revert --no-edit $cutoverCommit
-git diff --exit-code "$cutoverCommit^" HEAD
+git revert --no-edit $approvedCutoverCommit
+git diff --exit-code $approvedCutoverParent HEAD
 py scripts/connlab_personal_task.py inspect --repo-root D:\PythonProject\connlab --json
 git status --short --branch
 ```
@@ -264,6 +288,15 @@ WIP remains one from submit through final close. New requests append FIFO and ne
 task. Closing and activating the queue head are separate committed CAS transitions, so an activation
 failure leaves the board idle with FIFO intact rather than reviving the closed task.
 
+Repository-level cutover validation does not execute the native Codex Planner/Developer/Reviewer/QA/
+Integrator chain. After cutover the completion statement is limited to: `complex workflow enabled and
+repository-level validation passed`. It must not claim that real role handoff has passed end to end.
+
+The first ordinary complex requirement submitted under the three-interaction contract is also the
+monitored first real run. It is not a pilot, does not need a separate approval, and does not create a
+new governance task. The runtime orchestrator records each normal durable transition. Any failure
+keeps that requirement active with its typed blocker; only an unresolved blocker returns to the User.
+
 ## 9. Validation
 
 The candidate and applied commit must run:
@@ -282,8 +315,8 @@ py -m pytest `
 py scripts/connlab_personal_task.py inspect --repo-root D:\PythonProject\connlab --json
 powershell -NoProfile -ExecutionPolicy Bypass -File `
   scripts/connlab_execution_gate.ps1 -RepositoryRoot D:\PythonProject\connlab -Intent Inspect -Json
-git diff --check "$cutoverCommit^" $cutoverCommit
-git diff --name-only "$cutoverCommit^" $cutoverCommit
+git diff --check $approvedCutoverParent $approvedCutoverCommit
+git diff --name-only $approvedCutoverParent $approvedCutoverCommit
 git status --short --branch
 ```
 
@@ -313,12 +346,14 @@ The one new bounded integration test is
 - [ ] Create the one direct-child candidate commit through a temporary index.
 - [ ] Validate the candidate in the temporary repository.
 - [ ] Show the exact commit, parent, 15 paths and full diff; stop for explicit User cutover approval.
-- [ ] After approval, fast-forward only that commit and rerun validation.
+- [ ] Render a final command containing the approved candidate and parent as literal 40-hex strings.
+- [ ] Verify the mutable candidate ref still equals the approved literal, then fast-forward only the
+      literal candidate and rerun repository-level validation.
 - [ ] Stop on v2 idle; do not pilot, push, clean up, or activate another task.
 
 ## 11. Stop Point
 
-This revision changes only Task and Plan and creates one local planning commit. It does not prepare
+Revision 7.1 changes only Task and Plan and creates one local planning commit. It does not prepare
 candidate bytes, edit runtime files, touch the board, create temporary resources, cut over, close the
 task or request permission.
 

@@ -1,8 +1,8 @@
 # TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION
 
-Status: `cutover_simplification_revision_7_ready_for_user_approval`
+Status: `cutover_simplification_revision_7_1_ready_for_user_approval`
 
-Revision: `7`
+Revision: `7.1`
 
 Current phase: `implemented_pending_human_review` under board schema v1
 
@@ -17,9 +17,9 @@ Revision 6.1 implementation completion commit:
 
 The Revision 6.1 dormant implementation is validated. The v1 board remains the sole live authority
 with this Task ID active at `implemented_pending_human_review/human_review`, blocker null and FIFO
-empty. This Revision 7 planning correction does not close, reopen, resume, migrate, or edit the board.
+empty. This Revision 7.1 planning correction does not close, reopen, resume, migrate, or edit the board.
 
-The prior manifest/permission/cutover-command design is superseded by this Task and the Revision 7
+The prior manifest/permission/cutover-command design is superseded by this Task and the Revision 7.1
 Plan. Git history retains the old text for audit; it is no longer implementation authority.
 
 ## Goal
@@ -71,7 +71,8 @@ object.
 The Controller prepares a direct-child candidate commit using a temporary index and temporary target
 directory while the primary worktree and v1 board remain byte-unchanged. It runs validation in a
 bounded temporary repository, then shows the exact parent, commit, path list and full pre-cutover diff
-to the User. Only an explicit approval of that exact candidate authorizes a fast-forward of `master`.
+to the User. Only an explicit approval of that literal candidate commit and literal parent authorizes
+a fast-forward of `master`; the application command must not derive either value from a mutable ref.
 
 The candidate commit changes exactly these 15 paths:
 
@@ -112,7 +113,7 @@ has the v1 active governance task and the child has v2 idle, so no committed idl
 After successful fast-forward and before any v2 task activation, the only rollback is:
 
 ```powershell
-git revert --no-edit $cutoverCommit
+git revert --no-edit $approvedCutoverCommit
 ```
 
 The revert must restore a tree equal to the candidate parent, including v1 human review with this
@@ -133,6 +134,10 @@ attempting to embed that future hash in the candidate would create a Git self-re
 - The approved regression suite passes on the candidate commit before User approval and after
   fast-forward.
 - `inspect` and the execution gate accept v2 idle after cutover.
+- Cutover completion is reported as `complex workflow enabled and repository-level validation
+  passed`; it must not claim that the native Codex role chain has already passed end to end.
+- The first ordinary complex requirement is the monitored first real run, not a pilot gate or a new
+  governance task. Failure retains its active slot and typed blocker under the normal recovery rules.
 - Daily complex work preserves WIP=1/FIFO and needs no User approval for role dispatch, worktree-host
   creation, Reviewer/QA retry, integration, retained closeout, or FIFO-head activation.
 - generation-1, canonical index, Task-A, retained/probe resources and external repositories are
@@ -141,12 +146,17 @@ attempting to embed that future hash in the candidate would create a Git self-re
 
 ## Approval Gate
 
-Approval of this Revision 7 authorizes only preparation and validation of the exact candidate commit;
+Approval of this Revision 7.1 authorizes only preparation and validation of the exact candidate commit;
 it does not apply it. The Controller must return the real candidate commit, parent and exact diff for
 a separate explicit cutover decision. A plain `关闭` must not be interpreted as cutover approval.
 
-After the User approves the exact candidate, `git merge --ff-only` applies that same commit. No second
-routine approval, manifest approval, permission receipt, runtime activation message, or pilot is part
-of the cutover.
+The cutover decision must quote the literal 40-hex candidate and parent and explicitly authorize
+`git merge --ff-only <literal-approved-candidate>` to update all 15 allowlisted paths, including
+`.agents/skills/connlab-lane-orchestrator/SKILL.md`. If the sandbox still refuses that exact write,
+stop without an alternate write strategy; do not restore a permission probe, receipt or manifest.
+
+After that approval, the Controller verifies the candidate ref still equals the approved literal but
+executes the literal hash, never the ref-derived value. No second routine approval, manifest approval,
+permission receipt, runtime activation message or pilot is part of the cutover.
 
 `STATUS: READY_FOR_USER_APPROVAL`
