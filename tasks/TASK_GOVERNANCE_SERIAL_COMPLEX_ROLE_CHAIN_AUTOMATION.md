@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION
 
-Status: `blocked_pre_cutover_cleanup_authority`
+Status: `blocked_pre_cutover_retirement_capability`
 
 Revision: `5`
 

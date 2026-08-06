@@ -68,15 +68,15 @@
     "approval_ref": "Controller task 019fc491-21b0-77b0-bf18-53f53a366a7c exact User approval on 2026-08-06: 批准 Revision 5 首次实施。仅授权首次审批 JSON 中的 18 个 implementation-before-cutover 路径和 pre-cutover 实施；不授权 cutover、第二次审批、实际权限授予、runtime message、pilot、push 或清理。",
     "activation_parent_sha": "17207db931cbe75d31c05fa1ee58257b4e88e1a9",
     "activated_at": "2026-08-06T00:00:24Z",
-    "updated_at": "2026-08-06T12:53:28Z",
+    "updated_at": "2026-08-06T13:45:55Z",
     "blocker": {
       "schema": "connlab.personal-task-blocker",
       "version": 1,
       "code": "EXTERNAL_BLOCKER",
-      "reason": "Capability probe proved clean isolated worktree and stateless agent creation, but exact retire/archive order remains unproven because current User authority explicitly forbids cleanup. Two clean probe worktrees are retained and disclosed; no cutover manifest or human-review transition is legal.",
+      "reason": "Authorized lifecycle probe stopped after A handoff: operation exec-a6bf75db-4f86-49f8-83e0-e0d360998c1c succeeded and created destination thread 019fd73e-6aac-74b0-b404-70ff1be70f42, but the 84b1 worktree remained registered and the saved project checkout moved off master. Primary master was restored under separate User authority. Handoff cannot be treated as worktree retirement; no archive or B-sequence action is authorized.",
       "dirty_paths": [],
       "failed_validation": null,
-      "recorded_at": "2026-08-06T11:44:21Z"
+      "recorded_at": "2026-08-06T13:45:54Z"
     },
     "validation": null
   },
@@ -139,8 +139,10 @@
 - `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`: active in `running/blocked`.
 - Revision 5 implementation-before-cutover is approved; checkpoint `88006c46` is locally committed
   and validated, while the current blocker and execution slot remain retained.
-- Lifecycle closeout order is unproven because cleanup is not authorized. Cutover, second approval,
-  actual permission grant, production runtime message, pilot, push, and cleanup remain unauthorized.
+- Authorized lifecycle probing proved that `handoff_thread` does not retire its source worktree and
+  temporarily moved the saved-project checkout off master; primary was explicitly restored clean.
+- No closeout order is proven. Cutover, second approval, actual permission grant, production runtime
+  message, pilot, push, further lifecycle probing, and alternate cleanup remain unauthorized.
 
 ## Queue
 
