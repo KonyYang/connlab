@@ -14,8 +14,21 @@
   "version": 1,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
+    "summary": "Plan serial complex role-chain automation without enabling or dispatching it.",
+    "kind": "planned",
+    "phase": "planning",
+    "scope_contract": null,
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "17207db931cbe75d31c05fa1ee58257b4e88e1a9",
+    "activated_at": "2026-08-06T00:00:24Z",
+    "updated_at": "2026-08-06T00:00:24Z",
+    "blocker": null,
+    "validation": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
