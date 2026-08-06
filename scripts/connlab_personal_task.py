@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse, json, re, sys
+import argparse, hashlib, json, re, subprocess, sys
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +44,31 @@ def active_from_request(request: dict[str, Any], scope: dict[str, Any] | None, h
         "activation_parent_sha": head, "activated_at": timestamp, "updated_at": timestamp,
         "blocker": None, "validation": None,
     }
+def verify_retained_repository(root: Path, active: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]:
+    context = active.get("complex_context")
+    if not isinstance(context, dict) or context.get("pending_callback") is not None or context.get("current_role") is not None:
+        raise Blocked("BLOCKED_CALLBACK_PENDING", "A role or callback is still active.")
+    expected = (active.get("task_id"), context.get("host_thread_id"), context.get("task_worktree"), context.get("task_branch"), context.get("head_sha"), context.get("integrated_commit"))
+    actual = tuple(value.get(key) for key in ("task_id", "thread_id", "worktree", "branch", "head_sha", "integrated_commit"))
+    if expected != actual or value.get("clean") is not True or context.get("worktree_lifecycle") not in {"integrated", "retained"}:
+        raise Blocked("BLOCKED_WORKTREE_FACTS", "Retained worktree identity or clean integration facts drifted.")
+    worktree = Path(value["worktree"]).resolve()
+    records = run_git(root, "worktree", "list", "--porcelain").stdout.strip().split("\n\n")
+    record = next((item for item in records if item.splitlines() and Path(item.splitlines()[0][9:]).resolve() == worktree), None)
+    lines = set(record.splitlines()) if record else set()
+    if not record or f"HEAD {value['head_sha']}" not in lines or f"branch refs/heads/{value['branch']}" not in lines:
+        raise Blocked("BLOCKED_WORKTREE_FACTS", "Registered worktree branch or HEAD drifted.")
+    if run_git(worktree, "status", "--porcelain=v1").stdout:
+        raise Blocked("BLOCKED_WORKTREE_FACTS", "Retained worktree is not clean.")
+    if run_git(root, "merge-base", "--is-ancestor", value["head_sha"], value["integrated_commit"]).returncode != 0:
+        raise Blocked("BLOCKED_INTEGRATION_PROOF", "Retained worktree HEAD is not integrated.")
+    match = re.fullmatch(r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{64})", str(value.get("evidence_ref")))
+    if not match or ".." in Path(match.group(1)).parts:
+        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Retained closeout evidence ref is invalid.")
+    evidence = subprocess.run(["git", "-C", str(root), "show", f"{match.group(2)}:{match.group(1)}"], capture_output=True, check=False)
+    if evidence.returncode != 0 or hashlib.sha256(evidence.stdout).hexdigest() != match.group(3):
+        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Retained closeout evidence is not committed at the exact hash.")
+    return value
 def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) -> tuple[str, bool, str]:
     command, task_id = args.command, args.task_id
     active = control.get("active")
@@ -56,11 +81,15 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         if control.get("version") != 2: raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Complex commands remain dormant before cutover.")
         active = require_active(control, task_id)
         raw = {"role": args.role, "native_action": json.loads(args.native_action_json or "null"), "invocation": json.loads(args.invocation_json or "null"), "callback": json.loads(args.callback_json or "null"), "worktree": json.loads(args.worktree_json or "null"), "integration": json.loads(args.integration_json or "null"), "closeout": json.loads(args.closeout_json or "null"), "decision_ref": args.decision_ref}
-        complex_transition(active, command, raw)
-        if active.pop("_release_active", False): control["last_closed"] = {"task_id": task_id, "disposition": "complex closeout complete", "decision_ref": args.decision_ref, "closed_at": now()}; control["active"] = None; control["state"] = "idle"
+        transition_code = complex_transition(active, command, raw)
+        if command == "record-closeout": verify_retained_repository(root, active, raw["closeout"])
+        if transition_code.startswith("NOOP_"): return transition_code, False, "Exact retained closeout is already recorded."
+        if active.pop("_release_active", False):
+            closeout = active["complex_context"]["closeout_disposition"]
+            control["last_closed"] = {"task_id": task_id, "disposition": "retained", "decision_ref": args.decision_ref, "closeout_evidence_ref": closeout["evidence_ref"], "retained_resources": {key: closeout[key] for key in ("thread_id", "worktree", "branch", "head_sha")}, "closed_at": now()}; control["active"] = None; control["state"] = "idle"
         elif active["phase"] == "human_review": control["state"] = "implemented_pending_human_review"
         else: control["state"] = "running"
-        return "ALLOW_" + command.replace("-", "_").upper(), True, "Durable complex transition recorded."
+        return transition_code, True, "Durable complex transition recorded."
     if command in {"plan-cutover", "apply-cutover", "verify-cutover-commit"}: raise Blocked("BLOCKED_CUTOVER_NOT_AUTHORIZED", "Cutover requires the exact second User approval.")
     if command == "submit":
         request, scope = request_payload(args.request_json, task_id)
@@ -197,7 +226,7 @@ def parser() -> argparse.ArgumentParser:
     return value
 def validate_argument_combination(args: argparse.Namespace) -> None:
     names = {"expected_board_sha256", "task_id", "request_json", "approved_request_json", "plan_ref", "approval_ref", "validation_json", "blocker_json", "decision_ref", "disposition", "intent", "role", "native_action_json", "native_action_id", "invocation_json", "callback_json", "worktree_json", "integration_json", "closeout_json", "cutover_manifest_ref", "expected_primary_head", "closeout_order", "cutover_commit", "permission_preflight_json"}
-    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id", "request_json"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}, "plan-cutover": {"task_id", "expected_primary_head", "closeout_order"}, "apply-cutover": {"expected_board_sha256", "task_id", "cutover_manifest_ref", "expected_primary_head", "approval_ref"}, "verify-cutover-commit": {"task_id", "cutover_manifest_ref", "cutover_commit", "approval_ref"}}[args.command]
+    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id", "request_json"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}, "plan-cutover": {"task_id", "expected_primary_head"}, "apply-cutover": {"expected_board_sha256", "task_id", "cutover_manifest_ref", "expected_primary_head", "approval_ref"}, "verify-cutover-commit": {"task_id", "cutover_manifest_ref", "cutover_commit", "approval_ref"}}[args.command]
     if {name for name in names if getattr(args, name) is not None} - allowed: raise Blocked("BLOCKED_ARGUMENT_COMBINATION", "Arguments are incompatible with the selected command.")
 def main() -> int:
     args = parser().parse_args()

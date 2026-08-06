@@ -1,8 +1,8 @@
 # TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION
 
-Status: `blocked_pre_cutover_retirement_capability`
+Status: `implemented_pending_human_review_revision_6`
 
-Revision: `5`
+Revision: `6`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -12,9 +12,11 @@ Future runtime orchestrator: Codex task `019fb3d4-12a5-73b3-be8e-e59686fa39a9`
 
 Planning activation commit: `a5286688`
 
-Revision 5 implementation-before-cutover was approved in the planning controller on 2026-08-06.
+Revision 6.1 implementation-before-cutover was approved and explicitly resumed in the planning
+controller on 2026-08-06. Effective Plan ref:
+`docs/task_governance_serial_complex_role_chain_automation_plan.md@3308c0e3aeabe0d76b3535c5e33a8c4e079f187e#82467e5e1c5328f8b2e248bb09213e11526316ca73906e24ca79c21a4c49e3ca`.
 That approval does not authorize cutover, a second approval, actual cutover-path permission grants,
-production runtime messages, pilot, push, or cleanup.
+production runtime messages, pilot, push, cleanup or another native lifecycle probe.
 
 ## Why This Planning Task Is Allowed
 
@@ -36,7 +38,7 @@ simple:
 complex / needs_discovery:
   Planner -> User approval -> Developer -> Reviewer -> QA -> Integrator
   -> implemented_pending_human_review -> User close
-  -> probe-approved closeout order (retirement/archive) -> idle
+  -> exact clean non-mutating retained closeout -> idle
 ```
 
 Only one task may own the active slot. New requests wait in FIFO and never auto-start.
@@ -54,8 +56,9 @@ Only one task may own the active slot. New requests wait in FIFO and never auto-
 - One complex task owns one branch and one implementation worktree. No per-role worktrees exist.
 - Planner runs before approval as a fresh read-only agent on primary; the unique worktree host is
   created only after the approval commit, for Developer through Integrator.
-- User close is required before the active slot is released. Worktree retirement and task-context
-  archive are closeout work, not reasons to auto-start the FIFO head.
+- User close is required before the active slot is released. A verified clean host/thread/worktree may
+  use the non-mutating `retained` disposition; retirement/archive is optional future maintenance and
+  never a closeout or cutover gate.
 - No parallel execution, preemption, reconciliation, automatic discard, push, or automatic close is
   part of the new design.
 
@@ -85,17 +88,16 @@ Only one task may own the active slot. New requests wait in FIFO and never auto-
 - Preserve the current simple lifecycle byte-for-byte in behavior, even though the board schema and
   internal modules will need a controlled versioned migration.
 
-## Unproven Codex Capabilities
+## Capability-Probe Conclusion
 
-- Native tools expose create, fork, read, send, wait, title, archive, and unarchive operations.
-- Current read/list results do not expose a trustworthy `archived` field, so exact archive-state
-  verification is not yet proven.
-- The exact lifecycle of a Codex-created worktree when its task is archived or its worktree is retired
-  is not proven.
-- Fresh role-agent availability and recovery inside a task-scoped worktree are visible in the current
-  environment but must be exercised by a bounded capability probe before cutover.
-
-These are fail-closed implementation gates, not assumptions.
+- Existing evidence proves fresh role-agent/worktree isolation and also proves that `handoff_thread`
+  is checkout migration, not worktree retirement.
+- The failed lifecycle attempt and exact recovery are fully recorded in
+  `docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md`.
+- That failure evidence completes lifecycle discovery for this task. Future validation is read-only:
+  it verifies the two probe worktrees, three probe threads, retained branch and evidence are unchanged.
+- No handoff, archive, unarchive, retire, remove, prune, delete, branch cleanup or alternative native
+  lifecycle probe may run during implementation, cutover or pilot.
 
 ## Required Classifier
 
@@ -119,9 +121,12 @@ auto-starts.
   orchestrator alone performs the specified non-interactive primary merge and verifies parents/tree.
 - Blockers retain WIP and never discard/stash/restore automatically.
 - User close begins closeout; it does not immediately release active.
-- Dirty retirement or failed archive records a durable blocker and keeps the task active.
-- Retirement/archive order is not frozen until the capability probe proves one exact sequence and the
-  User authorizes that sequence at cutover.
+- Retained closeout requires exact task/thread/worktree/branch/HEAD, clean integration ancestry, no
+  running role, no pending callback and an exact evidence ref. Failure retains active and every resource.
+- `record-closeout` and `finalize-close` perform no native thread or Git lifecycle action. Duplicate
+  exact retained proof is a no-op; FIFO never auto-starts.
+- Retirement/archive and `CLOSEOUT_ORDER` are outside normal closeout, manifest, second approval,
+  cutover and pilot. Dormant legacy blocker/result codes are compatibility only.
 - The public writer's complex commands, arguments, legal source/target states, blocker schema, result
   schema and stable codes are frozen by the Plan before implementation approval.
 - Role callback status/next/subject combinations and every blocker code's required fields, retry,
@@ -210,7 +215,13 @@ boolean/string change require a new planning revision:
 Canonical JSON SHA-256 (UTF-8, sorted object keys, compact separators, array order preserved):
 `084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`.
 
-`--plan-ref` must bind the committed Revision 5 Plan as `path@commit#sha256` and
+The frozen JSON above remains byte-for-byte unchanged, including its historical capability-probe
+validation string and canonical SHA-256. That item is already satisfied by the committed failure
+evidence and must not be executed again; Revision 6 validation performs only the read-only resource
+checks stated above.
+
+`--plan-ref` must bind the approved Revision 6.1 Plan as
+`docs/task_governance_serial_complex_role_chain_automation_plan.md@3308c0e3aeabe0d76b3535c5e33a8c4e079f187e#82467e5e1c5328f8b2e248bb09213e11526316ca73906e24ca79c21a4c49e3ca` and
 `--approval-ref` must preserve the User's exact approval wording plus this controller task ID. They are
 separate CLI arguments and are intentionally not fields in the frozen v1 JSON schema.
 
@@ -240,7 +251,7 @@ daily entry point while v1 is authoritative:
 18. `tests/integration/test_connlab_serial_complex_recovery.py` (new)
 
 The following `cutover-only` paths require a **second** explicit User authorization after implementation
-human review and a successful capability probe:
+human review and read-only verification of retained resources:
 
 1. `AGENTS.md`
 2. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
@@ -278,7 +289,7 @@ another exact second approval.
 ## Acceptance
 
 - The current simple path remains behaviorally compatible and its regressions pass.
-- All 50 scenario groups in the approved plan pass or have a repeatable native-capability proof.
+- All 54 scenario groups in the approved plan pass or have the frozen existing capability evidence.
 - Board migration is CAS-protected, rollback-proven, compact, and preserves retained history exactly.
 - The first approval payload is byte-for-byte reproducible from this Task and accepted by the current
   v1 helper schema before any implementation begins.
@@ -288,18 +299,17 @@ another exact second approval.
   testable responsibilities; callback/blocker combinations have no free-text transition semantics.
 - Cutover is one Git commit that atomically migrates v1 to v2, closes this governance task and releases
   active; no committed ordinary-idle window exists before cutover.
-- Complex execution has one worktree, strict role order, independent Reviewer/QA, durable recovery,
-  close-gated retirement, and idempotent archive behavior.
+- Complex execution has one worktree, strict role order, independent Reviewer/QA, durable recovery and
+  exact non-mutating retained closeout; lifecycle cleanup is outside the workflow.
 - Legacy modes stay frozen; Task-A/history/index remain unchanged; primary ends clean with local commits.
 - Cutover and a real pilot require separate explicit User decisions after implementation review.
 
 ## User Approval Gate
 
-This task is planning-only until the User explicitly approves
-`docs/task_governance_serial_complex_role_chain_automation_plan.md`. Approval must be written with the
-current personal helper and committed before any implementation edit. That first approval authorizes
-only `implementation-before-cutover`. A later second approval is required for the exact cutover-only
-files, atomic close/migration commit, runtime-orchestrator message and probe-proven closeout order. It
-must quote the committed cutover-manifest ref, its `TARGET_SET_SHA256`, and its `CLOSEOUT_ORDER`, and
-explicitly authorize the manifest's exact rollback procedures. No approval authorizes a real pilot,
-push or destructive cleanup unless it says so explicitly.
+Revision 6.1 `implementation-before-cutover` is approved under the exact Plan ref above. Approval
+correction and explicit resume are separate committed board transitions; implementation may touch only
+the frozen 18 paths. A later second approval is required for the exact cutover-only files, atomic
+close/migration commit and runtime-orchestrator message. It must quote the committed cutover-manifest
+ref and `TARGET_SET_SHA256` and explicitly authorize the manifest's exact rollback procedures; it must
+not bind a lifecycle order. No approval authorizes a real pilot, push, cleanup or native lifecycle
+probe unless it says so explicitly.

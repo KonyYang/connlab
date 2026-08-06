@@ -1,6 +1,6 @@
 # ConnLab Serial Complex Role-Chain Automation Plan
 
-Status: `REVISION_6_1_READY_FOR_REVIEW_BLOCKER_RETAINED`
+Status: `REVISION_6_1_IMPLEMENTED_PENDING_HUMAN_REVIEW`
 
 Revision: `6.1`
 
@@ -16,14 +16,15 @@ The User approved Revision 5 implementation-before-cutover on 2026-08-06. The ap
 the frozen 18-path first allowlist. It does not authorize cutover, second approval, actual cutover-path
 permission grants, production runtime messages, pilot, push, or cleanup.
 
-Revision 6 is a planning-only correction requested on 2026-08-06. It proposes `retained` as the legal,
+Revision 6 was approved for minimal pre-cutover implementation on 2026-08-06. It defines `retained` as the legal,
 non-blocking closeout disposition for a clean integrated worktree/thread and removes native retirement,
-archive and `CLOSEOUT_ORDER` from every cutover gate. It does not approve implementation, alter the
-current blocker, enter human review, authorize cutover, or mutate any existing probe resource.
+archive and `CLOSEOUT_ORDER` from every cutover gate. It does not authorize cutover or mutation of any
+existing probe resource.
 
-Revision 6.1 is a planning-only authority-transition correction. It freezes the Revision 6 contract
+Revision 6.1 is the authority-transition correction used by this implementation. It freezes the Revision 6 contract
 ref, the blocked-task `approve`/commit/`resume`/commit sequence, and mandatory Task synchronization
-before any other implementation edit. It grants no implementation or lifecycle authority by itself.
+before any other implementation edit. The exact User decision authorized the minimal pre-cutover
+implementation and blocker resume, but no lifecycle action or cutover.
 
 ## 1. Outcome And Design Choice
 
@@ -1318,7 +1319,7 @@ A new explicit User approval is required before implementing Revision 6.1. It mu
 
 ```text
 APPROVED_REQUEST_SHA256: 084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be
-PLAN_REF: docs/task_governance_serial_complex_role_chain_automation_plan.md@ea9fc5dd6a0795e9d58d5a5697f2f89a1e5fa5f4#a83eb742ed6bd6bafcae120c526ac777e041141637118edc8fe9bd0aff882e7e
+PLAN_REF: docs/task_governance_serial_complex_role_chain_automation_plan.md@3308c0e3aeabe0d76b3535c5e33a8c4e079f187e#82467e5e1c5328f8b2e248bb09213e11526316ca73906e24ca79c21a4c49e3ca
 DECISION: exact User wording that both approves Revision 6.1 implementation-before-cutover and explicitly resumes the current EXTERNAL_BLOCKER into implementation
 ```
 
@@ -1358,9 +1359,7 @@ validation command with read-only verification of the already committed failure 
 Section 4 resources. The recorded probe failure satisfies lifecycle discovery; no native handoff,
 archive, unarchive, retirement or alternative lifecycle probe may run again.
 
-Revision 6.1 changes are not approved for implementation. The Task and board intentionally remain at
-the existing blocked Revision 5 authority until review and the exact transition sequence above. After
-approval, Task synchronization is mandatory—not optional—and only the already frozen 18-path
-pre-cutover allowlist may be implemented. No path may be added implicitly.
-
-Until then: `READY_FOR_REVIEW` and stop.
+The exact approval-correction and resume transitions were committed separately before implementation.
+Task synchronization was the first implementation edit, and only the frozen 18-path pre-cutover
+allowlist is being used. After bounded validation, the implementation stops at
+`IMPLEMENTED_PENDING_HUMAN_REVIEW`; cutover still requires the separate second approval above.

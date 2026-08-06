@@ -1,6 +1,6 @@
 # Serial Complex Native Capability Probe Evidence
 
-Status: `BLOCKED_HANDOFF_NOT_RETIREMENT`
+Status: `COMPLETE_RETAINED_NO_FURTHER_LIFECYCLE_ACTION`
 
 Date: 2026-08-06
 
@@ -37,12 +37,13 @@ created a second read-only probe task:
 The duplicate is retained and disclosed. It must not be silently archived, retired, deleted, or
 treated as production authority.
 
-## Unproven capability and blocker
+## Unproven capability and retained disposition
 
 The required exact closeout order (`retire_then_archive` or `archive_then_retire`) is not proven.
 Testing either order would mutate native task/worktree lifecycle state and constitutes cleanup, which
-the current User approval explicitly withholds. Therefore no closeout order may be frozen, no cutover
-manifest may be generated, and no second approval may be requested from this evidence alone.
+the original probe approval explicitly withheld. Revision 6 later removed lifecycle order from normal
+closeout and cutover. This evidence therefore remains a completed discovery record, not a normal
+closeout blocker.
 
 ## Authorized lifecycle attempt and fail-closed stop
 
@@ -83,6 +84,13 @@ rechecking the unexpected branch/HEAD, the preserved master ref, and clean statu
   lifecycle action occurred.
 
 Conclusion: Codex `handoff_thread` is a checkout migration/toggle, not a proven worktree-retirement
-primitive. Neither closeout order is validly proven, and the current protocol must not treat handoff
-success as retirement. No cutover manifest, second approval, human-review completion, or further
-lifecycle probe is authorized from this evidence.
+primitive. Neither closeout order is validly proven, and the protocol must not treat handoff success
+as retirement.
+
+## Revision 6 disposition
+
+The recorded failure completes lifecycle discovery. Both probe tasks and detached worktrees remain
+retained, clean, and location-addressable at the exact identities above. Revision 6 closeout verifies
+and records those resources without handoff, archive, unarchive, retirement, removal, pruning, branch
+deletion, or another lifecycle experiment. Any later cleanup is a separate maintenance request and is
+not part of implementation, human review, or cutover readiness.

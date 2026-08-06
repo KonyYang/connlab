@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from argparse import Namespace
+from pathlib import Path
+
 import pytest
 
+from scripts.connlab_personal_task import transition
 from scripts.connlab_serial_complex import (
     SerialContractError,
     callback_transition,
@@ -191,13 +195,47 @@ def active(phase: str, role: str | None = None) -> dict:
             "qa_subject_commit": None,
             "integrated_commit": None,
             "evidence_refs": [],
-            "archive_target_ids": [],
-            "archived_ids": [],
-            "archive_attempts": [],
+            "closeout_disposition": None,
+            "retained_resource_refs": [],
             "close_decision_ref": None,
-            "probe_approved_closeout_order": "retire_then_archive",
         },
     }
+
+
+def retained_closeout(**overrides: object) -> dict:
+    value = {
+        "schema": "connlab.serial-closeout",
+        "version": 1,
+        "action_id": ZERO64,
+        "disposition": "retained",
+        "task_id": "TASK_EXAMPLE",
+        "thread_id": "thread-1",
+        "worktree": "D:/tmp/task-example",
+        "branch": "codex/task-example",
+        "head_sha": "4" * 40,
+        "clean": True,
+        "integrated_commit": "5" * 40,
+        "evidence_ref": EVIDENCE,
+        "reason": "retained_nonblocking_manual_maintenance",
+        "recorded_at": "2026-08-06T00:00:00Z",
+    }
+    value.update(overrides)
+    return value
+
+
+def closing_active() -> dict:
+    value = active("closing")
+    value["complex_context"].update(
+        host_thread_id="thread-1",
+        host_id="host-1",
+        task_branch="codex/task-example",
+        task_worktree="D:/tmp/task-example",
+        head_sha="4" * 40,
+        integrated_commit="5" * 40,
+        worktree_lifecycle="integrated",
+        close_decision_ref="User close",
+    )
+    return value
 
 
 def native_action(action: str, role: str) -> dict:
@@ -246,3 +284,83 @@ def test_callback_consumption_advances_exact_phase_and_subject() -> None:
     value["dirty_paths"] = ["unexpected.py"]
     with pytest.raises(SerialContractError, match="BLOCKED_BLOCKER_INVALID"):
         validate_complex_blocker(value)
+
+
+def test_exact_retained_closeout_is_idempotent_and_releases_after_user_close() -> None:
+    value = closing_active()
+    closeout = retained_closeout()
+
+    first = complex_transition(value, "record-closeout", {"closeout": closeout})
+    second = complex_transition(value, "record-closeout", {"closeout": closeout})
+    finalized = complex_transition(value, "finalize-close", {"decision_ref": "User close"})
+
+    assert first == "ALLOW_RECORD_CLOSEOUT"
+    assert second == "NOOP_CLOSEOUT_ALREADY_RECORDED"
+    assert finalized == "ALLOW_FINALIZE_CLOSE"
+    assert value["complex_context"]["closeout_disposition"] == closeout
+    assert value["complex_context"]["retained_resource_refs"] == [EVIDENCE]
+    assert value["complex_context"]["worktree_lifecycle"] == "retained"
+    assert value["_release_active"] is True
+
+
+@pytest.mark.parametrize(
+    ("mutate", "code"),
+    [
+        (lambda active_value, proof: proof.update(clean=False), "BLOCKED_WORKTREE_FACTS"),
+        (lambda active_value, proof: proof.update(thread_id="other-thread"), "BLOCKED_WORKTREE_FACTS"),
+        (lambda active_value, proof: active_value["complex_context"].update(current_role="Integrator"), "BLOCKED_CALLBACK_PENDING"),
+        (lambda active_value, proof: active_value["complex_context"].update(pending_callback={"state": "callback_pending"}), "BLOCKED_CALLBACK_PENDING"),
+    ],
+)
+def test_retained_closeout_fails_closed_without_mutating_resources(mutate, code: str) -> None:
+    value = closing_active()
+    closeout = retained_closeout()
+    before = value["complex_context"].copy()
+    mutate(value, closeout)
+
+    with pytest.raises(SerialContractError, match=code):
+        complex_transition(value, "record-closeout", {"closeout": closeout})
+
+    assert value["phase"] == "closing"
+    assert value["complex_context"].get("closeout_disposition") is None
+    assert value["complex_context"].get("retained_resource_refs") == []
+    assert value["complex_context"]["task_worktree"] == before["task_worktree"]
+
+
+def test_finalize_retained_closeout_releases_active_without_starting_fifo() -> None:
+    active_value = closing_active()
+    closeout = retained_closeout()
+    active_value["complex_context"].update(
+        closeout_disposition=closeout,
+        retained_resource_refs=[EVIDENCE],
+        worktree_lifecycle="retained",
+    )
+    queued = {"task_id": "TASK_NEXT", "enqueue_sequence": 1}
+    control = {"version": 2, "state": "running", "active": active_value, "queue": [queued]}
+    args = Namespace(
+        command="finalize-close",
+        task_id="TASK_EXAMPLE",
+        decision_ref="User close",
+        role=None,
+        native_action_json=None,
+        invocation_json=None,
+        callback_json=None,
+        worktree_json=None,
+        integration_json=None,
+        closeout_json=None,
+    )
+
+    code, changed, _ = transition(args, Path.cwd(), control)
+
+    assert (code, changed) == ("ALLOW_FINALIZE_CLOSE", True)
+    assert control["state"] == "idle"
+    assert control["active"] is None
+    assert control["queue"] == [queued]
+    assert control["last_closed"]["disposition"] == "retained"
+    assert control["last_closed"]["closeout_evidence_ref"] == EVIDENCE
+    assert control["last_closed"]["retained_resources"] == {
+        "thread_id": "thread-1",
+        "worktree": "D:/tmp/task-example",
+        "branch": "codex/task-example",
+        "head_sha": "4" * 40,
+    }

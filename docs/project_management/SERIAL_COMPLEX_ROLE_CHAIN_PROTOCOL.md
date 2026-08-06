@@ -1,6 +1,6 @@
 # Serial Complex Role-Chain Protocol
 
-Status: `IMPLEMENTED_DORMANT_PRE_CUTOVER`
+Status: `IMPLEMENTED_DORMANT_PRE_CUTOVER_REVISION_6`
 
 This protocol describes the version-2 personal serial workflow implemented by
 `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`. It is non-normative until an exact second
@@ -20,8 +20,9 @@ execution gate, policy, `AGENTS.md`, and orchestrator skill remain authoritative
   Reviewer, QA, and Integrator must bind the same accepted subject.
 - Every failure retains active authority, Git facts, evidence, and WIP. No helper stages, commits,
   pushes, messages, restores, stashes, force-removes, or deletes a branch.
-- User close changes a complex task to `closing`; the active slot is released only after the
-  capability-proven closeout order has complete receipts.
+- User close changes a complex task to `closing`; the active slot is released only after exact,
+  read-only verification records the clean integrated host as `retained` with its task, thread,
+  worktree, branch, HEAD, integration, evidence, and User decision identity.
 
 ## Commands and phases
 
@@ -50,12 +51,15 @@ or state/command pairs fail closed.
 `scripts/connlab_serial_board.py` owns UTF-8 board parsing, version validation, CAS facts, the ignored
 primary lock, atomic replace/readback, v1-to-v2 migration, and FIFO activation. Version 2 stores only
 durable routing facts: task/worktree identity, role attempt and invocation IDs, exact subjects,
-evidence refs, pending action/callback, integration, archive, and closeout facts. Conversation text is
-never authority. Reopening from board plus Git/task/plan/evidence must be sufficient.
+evidence refs, pending action/callback, integration, retained closeout disposition, and retained
+resource refs. Conversation text is never authority. Reopening from board plus Git/task/plan/evidence
+must be sufficient.
 
-`scripts/connlab_serial_worktree.ps1` performs bounded `Inspect` or non-forced `Retire`. Retirement
-requires exact branch/HEAD, clean status, integration ancestry, User close evidence, and a stopped
-host. `-DryRun` proves prerequisites without removal. Dirty or unverifiable worktrees are retained.
+Revision 6 runtime closeout invokes no lifecycle mutation. The current helper verifies the registered
+worktree identity, clean status, integration ancestry, and committed evidence before recording the
+retained disposition. `scripts/connlab_serial_worktree.ps1` remains dormant compatibility material;
+its bounded non-forced `Retire` path is optional future maintenance requiring separate exact User
+authority. Dirty or unverifiable resources remain active and fail closed.
 
 ## Cutover safety boundary
 
@@ -73,6 +77,6 @@ parent, tree, paths, index, hashes, and approval. Any permission drift requires 
 new second approval.
 
 The atomic cutover commit must simultaneously migrate v1 to v2, close this governance task, and
-release active. There is no committed v1 idle interval. History generation 1, its canonical index,
-Task-A, retained worktrees/evidence, legacy helpers, external repositories, and remotes are never
-rewritten by this protocol.
+release active. There is no committed v1 idle interval. Retirement, archive, or closeout ordering is
+not a cutover gate. History generation 1, its canonical index, Task-A, retained worktrees/evidence,
+legacy helpers, external repositories, and remotes are never rewritten by this protocol.

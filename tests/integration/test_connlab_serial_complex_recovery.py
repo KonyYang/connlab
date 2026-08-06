@@ -98,11 +98,9 @@ def test_v2_complex_active_survives_byte_round_trip_without_conversation_memory(
             "integrated_commit": None,
             "evidence_refs": [],
             "pending_callback": None,
-            "archive_target_ids": ["thread-1"],
-            "archived_ids": [],
-            "archive_attempts": [],
+            "closeout_disposition": None,
+            "retained_resource_refs": [],
             "close_decision_ref": None,
-            "probe_approved_closeout_order": "retire_then_archive",
         },
     }
 

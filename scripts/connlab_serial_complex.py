@@ -62,6 +62,7 @@ BLOCKER_KEYS = {
     "requires_user", "resume_phase", "recorded_at",
 }
 FAILURE_KEYS = {"schema", "version", "operation", "command", "exit_code", "summary", "recorded_at"}
+CLOSEOUT_KEYS = {"schema", "version", "action_id", "disposition", "task_id", "thread_id", "worktree", "branch", "head_sha", "clean", "integrated_commit", "evidence_ref", "reason", "recorded_at"}
 BLOCKER_POLICIES = {
     "DISCOVERY_REQUIRED": ({"evidence_ref", "related_ids"}, True, True, "planning"),
     "APPROVAL_REQUIRED": ({"related_ids"}, True, True, "awaiting_user_approval"),
@@ -321,7 +322,7 @@ def apply_cutover_payload(
         materializer(relative)
     return proof
 PHASE_ROLE = {"planning": "Planner", "development": "Developer", "review": "Reviewer", "qa": "QA", "integration": "Integrator"}
-def complex_transition(active: dict[str, Any], command: str, payload: dict[str, Any]) -> dict[str, Any]:
+def complex_transition(active: dict[str, Any], command: str, payload: dict[str, Any]) -> str:
     """Apply one durable v2 transition; repository/evidence proofs remain the writer's precondition."""
     context = active.get("complex_context")
     if not isinstance(context, dict): _contract_error("BLOCKED_STATE", "Complex context is required.")
@@ -347,7 +348,7 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         if callback["role"] == "Developer" and callback["status"] == "ready": context["developer_subject_commit"] = callback["subject_commit"]
         if callback["role"] == "Reviewer" and callback["status"] == "pass": context["reviewer_subject_commit"] = callback["subject_commit"]
         if callback["role"] == "QA" and callback["status"] == "pass": context["qa_subject_commit"] = callback["subject_commit"]
-        context["evidence_refs"].append(callback["evidence"]); context["pending_callback"] = None
+        context["evidence_refs"].append(callback["evidence"]); context["pending_callback"] = None; context["current_role"] = None
         active["phase"], active["blocker"] = decision["target_phase"], callback["blocker"]
         if decision["integration_ready"]: context["worktree_lifecycle"] = "integration_ready"
     elif command == "begin-host":
@@ -365,23 +366,27 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         value = payload.get("integration"); keys = {"schema", "version", "subject_commit", "branch_head", "primary_parent", "merge_commit", "merge_tree", "parents", "evidence_refs", "command", "clean", "recorded_at"}
         if phase != "integration" or context.get("worktree_lifecycle") != "integration_ready" or not isinstance(value, dict) or set(value) != keys: _contract_error("BLOCKED_INTEGRATION_PRECONDITION", "Integration is not ready.")
         if value.get("subject_commit") != context.get("qa_subject_commit") or value.get("parents") != [value.get("primary_parent"), value.get("branch_head")] or value.get("clean") is not True: _contract_error("BLOCKED_INTEGRATION_PROOF", "Integration proof is inconsistent.")
-        context["integrated_commit"] = value["merge_commit"]; context["worktree_lifecycle"] = "integrated"; active["phase"] = "human_review"
+        context["integrated_commit"] = value["merge_commit"]; context["head_sha"] = value["branch_head"]; context["worktree_lifecycle"] = "integrated"; context["current_role"] = None; active["phase"] = "human_review"
     elif command == "request-close":
         if phase != "human_review" or not payload.get("decision_ref"): _contract_error("BLOCKED_STATE", "Human review close evidence is required.")
         active["phase"] = "closing"; context["close_decision_ref"] = payload["decision_ref"]
     elif command == "record-closeout":
-        value = payload.get("closeout"); order = context.get("probe_approved_closeout_order")
-        if phase != "closing" or not isinstance(value, dict) or value.get("order") != order or value.get("status") != "completed": _contract_error("BLOCKED_CLOSEOUT_ORDER", "Closeout proof does not match the approved order.")
-        if value.get("step") == "archived": context["archived_ids"].append(value.get("thread_id"))
-        elif value.get("step") in {"retired", "retained"}: context["worktree_lifecycle"] = value["step"]
-        else: _contract_error("BLOCKED_CLOSEOUT_ORDER", "Closeout step is invalid.")
-        context["archive_attempts"].append(value)
+        value = payload.get("closeout")
+        if phase != "closing": _contract_error("BLOCKED_STATE", "Retained closeout requires closing phase.")
+        if context.get("pending_callback") is not None or context.get("current_role") is not None: _contract_error("BLOCKED_CALLBACK_PENDING", "A role or callback is still active.")
+        if not isinstance(value, dict) or set(value) != CLOSEOUT_KEYS or value.get("schema") != "connlab.serial-closeout" or value.get("version") != 1: _contract_error("BLOCKED_WORKTREE_FACTS", "Retained closeout schema is invalid.")
+        if value.get("disposition") != "retained" or value.get("reason") != "retained_nonblocking_manual_maintenance" or value.get("clean") is not True or not _is_sha(value.get("action_id"), 64) or not _is_sha(value.get("head_sha"), 40) or not _is_sha(value.get("integrated_commit"), 40) or not _is_evidence(value.get("evidence_ref")): _contract_error("BLOCKED_WORKTREE_FACTS", "Retained closeout proof is invalid.")
+        facts = (active.get("task_id"), context.get("host_thread_id"), context.get("task_worktree"), context.get("task_branch"), context.get("head_sha"), context.get("integrated_commit"))
+        if facts != (value["task_id"], value["thread_id"], value["worktree"], value["branch"], value["head_sha"], value["integrated_commit"]): _contract_error("BLOCKED_WORKTREE_FACTS", "Retained closeout identity or integration facts drifted.")
+        if context.get("closeout_disposition") == value and context.get("worktree_lifecycle") == "retained": return "NOOP_CLOSEOUT_ALREADY_RECORDED"
+        if context.get("worktree_lifecycle") != "integrated": _contract_error("BLOCKED_WORKTREE_FACTS", "Retained closeout requires integrated worktree facts.")
+        if context.get("closeout_disposition") is not None: _contract_error("BLOCKED_WORKTREE_FACTS", "A different closeout proof is already recorded.")
+        context["closeout_disposition"] = value; context["retained_resource_refs"].append(value["evidence_ref"]); context["worktree_lifecycle"] = "retained"
     elif command == "finalize-close":
-        if phase != "closing" or payload.get("decision_ref") != context.get("close_decision_ref") or context.get("worktree_lifecycle") not in {"retired", "retained"}: _contract_error("BLOCKED_RETIREMENT_PENDING", "Closeout is incomplete.")
-        if context.get("archive_target_ids") != context.get("archived_ids"): _contract_error("BLOCKED_ARCHIVE_PENDING", "Archive receipts are incomplete.")
+        if phase != "closing" or payload.get("decision_ref") != context.get("close_decision_ref") or context.get("worktree_lifecycle") != "retained" or not isinstance(context.get("closeout_disposition"), dict): _contract_error("BLOCKED_WORKTREE_FACTS", "Retained closeout is incomplete.")
         active["_release_active"] = True
     else: _contract_error("BLOCKED_STATE", "Command is not a legal pure complex transition.")
-    return active
+    return "ALLOW_" + command.replace("-", "_").upper()
 
 
 def _normalized_paths(value: Any) -> list[str]:

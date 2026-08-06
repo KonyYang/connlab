@@ -321,8 +321,7 @@ COMPLEX_CONTEXT_KEYS = {
     "worktree_lifecycle", "current_role", "current_attempt", "role_invocations", "host_thread_id",
     "host_id", "approved_code_paths", "required_gates", "developer_subject_commit",
     "reviewer_subject_commit", "qa_subject_commit", "integrated_commit", "evidence_refs",
-    "pending_callback", "archive_target_ids", "archived_ids", "archive_attempts",
-    "close_decision_ref", "probe_approved_closeout_order",
+    "pending_callback", "closeout_disposition", "retained_resource_refs", "close_decision_ref",
 }
 V2_PHASES = {
     "planning", "awaiting_user_approval", "implementation", "development", "review", "qa",
@@ -363,9 +362,11 @@ def validate_v2_control(value: dict[str, Any]) -> None:
     exact_keys(context, COMPLEX_CONTEXT_KEYS, "BLOCKED_SCHEMA_INVALID")
     if context.get("workflow_version") != 1 or type(context.get("current_attempt")) is not int:
         raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex workflow identity is invalid.")
-    for key in ("role_invocations", "approved_code_paths", "required_gates", "evidence_refs", "archive_target_ids", "archived_ids", "archive_attempts"):
+    for key in ("role_invocations", "approved_code_paths", "required_gates", "evidence_refs", "retained_resource_refs"):
         if not isinstance(context.get(key), list):
             raise Blocked("BLOCKED_SCHEMA_INVALID", f"Complex context array is invalid: {key}.")
+    if context.get("closeout_disposition") is not None and not isinstance(context["closeout_disposition"], dict):
+        raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex closeout disposition is invalid.")
 
 
 def migrate_v1_to_v2(control: dict[str, Any], *, decision_ref: str, closed_at: str) -> dict[str, Any]:
@@ -407,8 +408,8 @@ def v2_submit(control: dict[str, Any], request: dict[str, Any], head: str) -> tu
         "role_invocations": [], "host_thread_id": None, "host_id": None, "approved_code_paths": request.get("may_touch", []),
         "required_gates": ["Reviewer", "QA", "Integrator"], "developer_subject_commit": None,
         "reviewer_subject_commit": None, "qa_subject_commit": None, "integrated_commit": None, "evidence_refs": [],
-        "pending_callback": None, "archive_target_ids": [], "archived_ids": [], "archive_attempts": [],
-        "close_decision_ref": None, "probe_approved_closeout_order": None,
+        "pending_callback": None, "closeout_disposition": None, "retained_resource_refs": [],
+        "close_decision_ref": None,
     }
     control["active"] = {"task_id": task_id, "summary": request["summary"], "kind": "simple" if classification == "simple" else "planned", "classification": classification, "phase": "implementation" if classification == "simple" else "planning", "scope_contract": request if classification == "simple" else None, "plan_ref": None, "approval_ref": None, "activation_parent_sha": head, "activated_at": timestamp, "updated_at": timestamp, "blocker": None, "validation": None, "complex_context": context}
     control["state"] = "running"
