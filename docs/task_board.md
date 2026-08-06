@@ -64,11 +64,11 @@
         "external_mutation": true
       }
     },
-    "plan_ref": "docs/task_governance_serial_complex_role_chain_automation_plan.md@d9923605a9f9e24a8aadadc5516f512fd971420f#3de6416dc8633b3e91faccaf5352ca9354440d5542e7c35bc4e24824ee1eacb2",
-    "approval_ref": "Controller task 019fc491-21b0-77b0-bf18-53f53a366a7c exact User approval on 2026-08-06: 批准 Revision 5 首次实施。仅授权首次审批 JSON 中的 18 个 implementation-before-cutover 路径和 pre-cutover 实施；不授权 cutover、第二次审批、实际权限授予、runtime message、pilot、push 或清理。",
+    "plan_ref": "docs/task_governance_serial_complex_role_chain_automation_plan.md@3308c0e3aeabe0d76b3535c5e33a8c4e079f187e#82467e5e1c5328f8b2e248bb09213e11526316ca73906e24ca79c21a4c49e3ca",
+    "approval_ref": "批准 Revision 6.1 的最小 pre-cutover 收口实施，并明确授权将当前 EXTERNAL_BLOCKER 恢复到 implementation。",
     "activation_parent_sha": "17207db931cbe75d31c05fa1ee58257b4e88e1a9",
     "activated_at": "2026-08-06T00:00:24Z",
-    "updated_at": "2026-08-06T13:45:55Z",
+    "updated_at": "2026-08-06T15:42:00Z",
     "blocker": {
       "schema": "connlab.personal-task-blocker",
       "version": 1,
