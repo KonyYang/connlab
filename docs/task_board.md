@@ -86,7 +86,7 @@
 ## Active Work
 
 - `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`: active in `running/planning`.
-- Revision 3 planning is limited to the current Task, Plan, and this human-readable board summary.
+- Revision 4 planning is limited to the current Task, Plan, and this human-readable board summary.
 - Implementation, role dispatch, lane/worktree creation, Task-A restoration, cutover, archive, push,
   and external governance work are not authorized.
 

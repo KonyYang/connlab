@@ -2,7 +2,7 @@
 
 Status: `planned`
 
-Revision: `3`
+Revision: `4`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -123,8 +123,16 @@ auto-starts.
   User authorizes that sequence at cutover.
 - The public writer's complex commands, arguments, legal source/target states, blocker schema, result
   schema and stable codes are frozen by the Plan before implementation approval.
+- Role callback status/next/subject combinations and every blocker code's required fields, retry,
+  User-decision and resume policy are frozen by the Plan before implementation approval.
+- Helpers never stage or commit. `apply-cutover` may only materialize and verify the eight approved
+  worktree targets; the Controller owns the exact-stage/commit transaction, and a later read-only
+  `verify-cutover-commit` gate must pass before any runtime message.
 - The second approval binds one committed cutover manifest containing all eight target hashes, exact
   preimages, Git-index/tree proofs, canonical-history-index guard and exact-path rollback procedure.
+- Effective write permission for all eight cutover paths must be explicitly obtained and proven before
+  manifest generation. Apply must re-prove the same writable capability; drift invalidates the
+  manifest and requires regeneration plus a new second approval.
 - Recovery reads durable authority, never conversational memory.
 
 ## Non-Goals
@@ -197,7 +205,7 @@ boolean/string change require a new planning revision:
 Canonical JSON SHA-256 (UTF-8, sorted object keys, compact separators, array order preserved):
 `084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`.
 
-`--plan-ref` must bind the committed Revision 3 Plan as `path@commit#sha256` and
+`--plan-ref` must bind the committed Revision 4 Plan as `path@commit#sha256` and
 `--approval-ref` must preserve the User's exact approval wording plus this controller task ID. They are
 separate CLI arguments and are intentionally not fields in the frozen v1 JSON schema.
 
@@ -242,11 +250,13 @@ Adding or modifying any other path requires stopping and obtaining new User appr
 approval does not authorize any cutover-only edit. Test commands may be narrowed or expanded, but
 test file paths may not.
 
-Before any cutover write, all eight paths must pass effective permission preflight. The current Codex
-permission profile treats `.agents/skills/connlab-lane-orchestrator/SKILL.md` as read-only even though
-its Windows file attribute is not read-only. That condition must return
-`BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes until a separate explicit tool permission grant is
-available; this plan does not authorize changing ACLs or file attributes.
+Before cutover-manifest generation, all eight paths must pass effective permission preflight. The
+current Codex permission profile treats `.agents/skills/connlab-lane-orchestrator/SKILL.md` as
+read-only even though its Windows file attribute is not read-only. That condition must return
+`BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes until the User separately grants the exact tool
+permission. This plan does not authorize changing ACLs or file attributes. The committed manifest may
+record only `observed_access=write`; apply rechecks that access, and any drift requires a newly
+generated manifest and another exact second approval.
 
 ## Must Not Touch
 
@@ -261,12 +271,14 @@ available; this plan does not authorize changing ACLs or file attributes.
 ## Acceptance
 
 - The current simple path remains behaviorally compatible and its regressions pass.
-- All 29 scenario groups in the approved plan pass or have a repeatable native-capability proof.
+- All 47 scenario groups in the approved plan pass or have a repeatable native-capability proof.
 - Board migration is CAS-protected, rollback-proven, compact, and preserves retained history exactly.
 - The first approval payload is byte-for-byte reproducible from this Task and accepted by the current
   v1 helper schema before any implementation begins.
 - The complex helper contract and second-approval cutover manifest are complete enough that an
   implementer does not invent commands, codes, hashes, permissions or rollback behavior.
+- Helper materialization, Controller Git commit and read-only post-commit verification have distinct,
+  testable responsibilities; callback/blocker combinations have no free-text transition semantics.
 - Cutover is one Git commit that atomically migrates v1 to v2, closes this governance task and releases
   active; no committed ordinary-idle window exists before cutover.
 - Complex execution has one worktree, strict role order, independent Reviewer/QA, durable recovery,
