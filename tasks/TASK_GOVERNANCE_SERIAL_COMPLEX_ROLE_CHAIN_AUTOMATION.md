@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION
 
-Status: `planned`
+Status: `blocked_pre_cutover_cleanup_authority`
 
 Revision: `5`
 
@@ -12,8 +12,9 @@ Future runtime orchestrator: Codex task `019fb3d4-12a5-73b3-be8e-e59686fa39a9`
 
 Planning activation commit: `a5286688`
 
-Implementation is not approved. No role dispatch, complex worktree, cutover, archive, or push is
-authorized by this task file.
+Revision 5 implementation-before-cutover was approved in the planning controller on 2026-08-06.
+That approval does not authorize cutover, a second approval, actual cutover-path permission grants,
+production runtime messages, pilot, push, or cleanup.
 
 ## Why This Planning Task Is Allowed
 

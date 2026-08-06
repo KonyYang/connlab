@@ -1,6 +1,6 @@
 # ConnLab Serial Complex Role-Chain Automation Plan
 
-Status: `DRAFT_FOR_REVIEW`
+Status: `APPROVED_IMPLEMENTATION_BEFORE_CUTOVER_BLOCKED_ON_PROBE_CLOSEOUT`
 
 Revision: `5`
 
@@ -12,8 +12,9 @@ Planning controller: `019fc491-21b0-77b0-bf18-53f53a366a7c`
 
 Future runtime orchestrator: `019fb3d4-12a5-73b3-be8e-e59686fa39a9`
 
-This document plans implementation only. It does not approve implementation, create a complex
-worktree, dispatch a role, message the runtime orchestrator, archive a task, cut over, or push.
+The User approved Revision 5 implementation-before-cutover on 2026-08-06. The approval is limited to
+the frozen 18-path first allowlist. It does not authorize cutover, second approval, actual cutover-path
+permission grants, production runtime messages, pilot, push, or cleanup.
 
 ## 1. Outcome And Design Choice
 

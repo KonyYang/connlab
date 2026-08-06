@@ -1,6 +1,6 @@
 # ConnLab Task Board
 
-> Status: Serial complex role-chain automation is active in planning; implementation is not approved.
+> Status: Pre-cutover implementation checkpoint validated; active task is blocked because probe closeout/cleanup is not authorized.
 > Last Updated: 2026-08-06
 > Current Source Of Truth: `docs/task_board.md`
 > Current Active Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
@@ -19,7 +19,7 @@
     "task_id": "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
     "summary": "Implement and verify dormant serial complex role-chain support without cutover.",
     "kind": "planned",
-    "phase": "implementation",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md",
@@ -68,8 +68,16 @@
     "approval_ref": "User exact wording on 2026-08-06: ?? Revision 5 ???????????? JSON ?? 18 ? implementation-before-cutover ??? pre-cutover ?????? cutover??????????????runtime message?pilot?push ????",
     "activation_parent_sha": "17207db931cbe75d31c05fa1ee58257b4e88e1a9",
     "activated_at": "2026-08-06T00:00:24Z",
-    "updated_at": "2026-08-06T11:03:02Z",
-    "blocker": null,
+    "updated_at": "2026-08-06T11:44:21Z",
+    "blocker": {
+      "schema": "connlab.personal-task-blocker",
+      "version": 1,
+      "code": "EXTERNAL_BLOCKER",
+      "reason": "Capability probe proved clean isolated worktree and stateless agent creation, but exact retire/archive order remains unproven because current User authority explicitly forbids cleanup. Two clean probe worktrees are retained and disclosed; no cutover manifest or human-review transition is legal.",
+      "dirty_paths": [],
+      "failed_validation": null,
+      "recorded_at": "2026-08-06T11:44:21Z"
+    },
     "validation": null
   },
   "queue": [],
