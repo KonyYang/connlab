@@ -1,315 +1,152 @@
 # TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION
 
-Status: `implemented_pending_human_review_revision_6`
+Status: `cutover_simplification_revision_7_ready_for_user_approval`
 
-Revision: `6`
+Revision: `7`
 
-Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
+Current phase: `implemented_pending_human_review` under board schema v1
 
 Planning controller: Codex task `019fc491-21b0-77b0-bf18-53f53a366a7c`
 
 Future runtime orchestrator: Codex task `019fb3d4-12a5-73b3-be8e-e59686fa39a9`
 
-Planning activation commit: `a5286688`
+Revision 6.1 implementation completion commit:
+`49c6df30f38ce7b7f0df95a9509e3d005914426a`
 
-Revision 6.1 implementation-before-cutover was approved and explicitly resumed in the planning
-controller on 2026-08-06. Effective Plan ref:
-`docs/task_governance_serial_complex_role_chain_automation_plan.md@3308c0e3aeabe0d76b3535c5e33a8c4e079f187e#82467e5e1c5328f8b2e248bb09213e11526316ca73906e24ca79c21a4c49e3ca`.
-That approval does not authorize cutover, a second approval, actual cutover-path permission grants,
-production runtime messages, pilot, push, cleanup or another native lifecycle probe.
+## Authority And Current Stop Point
 
-## Why This Planning Task Is Allowed
+The Revision 6.1 dormant implementation is validated. The v1 board remains the sole live authority
+with this Task ID active at `implemented_pending_human_review/human_review`, blocker null and FIFO
+empty. This Revision 7 planning correction does not close, reopen, resume, migrate, or edit the board.
 
-The prior personal-serial simplification is closed, the board was idle, primary `master` was clean,
-and FIFO was empty before activation. The current personal helper legally activated this task as the
-only `running/planning` task. This is an out-of-band governance migration: the controller that plans
-and later implements the change is not the runtime orchestrator being changed.
+The prior manifest/permission/cutover-command design is superseded by this Task and the Revision 7
+Plan. Git history retains the old text for audit; it is no longer implementation authority.
 
 ## Goal
 
-Add one deliberately small complex-task path beside the completed simple-task path:
+After one approved local atomic cutover, a normal complex task exposes only three User interactions:
 
-```text
-runtime orchestrator classifies simple | complex | needs_discovery
+1. submit the requirement;
+2. approve the committed Planner plan;
+3. inspect the integrated result and say `关闭`.
 
-simple:
-  retain the current direct-primary personal workflow
+After plan approval, Developer, Reviewer, QA and Integrator run serially and automatically. Reviewer
+or QA findings return automatically to Developer and repeat the required gates. Only a scope change,
+destructive action, integration conflict, ambiguous authority, or another unresolved blocker returns
+to the User.
 
-complex / needs_discovery:
-  Planner -> User approval -> Developer -> Reviewer -> QA -> Integrator
-  -> implemented_pending_human_review -> User close
-  -> exact clean non-mutating retained closeout -> idle
-```
+WIP remains one. A later request enters FIFO. After the active task is closed and its close commit is
+clean, the runtime orchestrator may activate only the exact FIFO head in a separate CAS transition;
+there is never more than one active owner.
 
-Only one task may own the active slot. New requests wait in FIFO and never auto-start.
+## Repository-Confirmed Problems Being Corrected
 
-## Confirmed User Requirements
+1. `plan-cutover` without `--expected-board-sha256` returns
+   `BLOCKED_BOARD_HASH_MISMATCH`; adding that argument returns
+   `BLOCKED_ARGUMENT_COMBINATION`.
+2. `scripts/connlab_personal_task.py` unconditionally returns
+   `BLOCKED_CUTOVER_NOT_AUTHORIZED` for all three cutover commands.
+3. No full manifest generator, materializer, commit verifier, or rollback implementation exists.
+   `apply_cutover_payload` is only a small fixture-style permission test.
+4. Ordinary v1 `close` would release active before migration and is forbidden for this governance
+   task.
+5. Current normative rules and runtime entry still keep the complex role chain dormant.
 
-- A simple task must have a clear root cause and expected result, touch one to three total repository
-  paths including tests and `docs/task_board.md`, avoid every forbidden category, and have bounded
-  validation.
-- Any missing simple-classification fact produces `needs_discovery`; it is never guessed as simple.
-- Complex work is strictly serial and always uses Planner, explicit User approval, Developer,
-  independent Reviewer, independent QA, and Integrator in that order.
-- Reviewer or QA blocking findings return to the same task and Developer; QA fixes must pass Reviewer
-  and QA again.
-- One complex task owns one branch and one implementation worktree. No per-role worktrees exist.
-- Planner runs before approval as a fresh read-only agent on primary; the unique worktree host is
-  created only after the approval commit, for Developer through Integrator.
-- User close is required before the active slot is released. A verified clean host/thread/worktree may
-  use the non-mutating `retained` disposition; retirement/archive is optional future maintenance and
-  never a closeout or cutover gate.
-- No parallel execution, preemption, reconciliation, automatic discard, push, or automatic close is
-  part of the new design.
+## Planning-Revision Scope
 
-## Repository-Proven Baseline
-
-- `scripts/connlab_personal_task.py` is the only current board writer. It has CAS, ignored lock-file,
-  atomic replacement, strict FIFO, explicit approval, blocker retention, validation, human review,
-  close, and cancel behavior.
-- The current board schema is `connlab.personal-serial-control` version 1 with WIP=`1`, state
-  `idle|running|implemented_pending_human_review`, one active record, FIFO, last close, and four
-  retained-history records.
-- The simple workflow and gate regression set passed 62 tests at preflight.
-- generation-1 history and the canonical index retain their accepted byte counts and SHA-256 values.
-- Task-A remains cancelled; all four retained worktrees are clean and unchanged.
-- legacy transition, handoff, worktree, permanent-role, parallel, preemption, and reconciliation
-  materials are explicitly frozen. They cannot authorize new execution.
-
-## Planner Inferences
-
-- Keep one board writer and extract pure complex-state/classifier logic into bounded modules; do not
-  grow the already 499-line personal helper into another monolith.
-- Prefer one pre-approval, read-only Planner agent on primary plus one post-approval task-scoped Codex
-  worktree host. The host lazily creates fresh Developer/Reviewer/QA/Integrator agents. This gives one
-  physical implementation worktree while preventing old task chats from entering a new role context.
-- Use Git/task/plan/evidence/board facts as authority. Agent callbacks are bounded inputs that must be
-  validated and committed before a transition.
-- Preserve the current simple lifecycle byte-for-byte in behavior, even though the board schema and
-  internal modules will need a controlled versioned migration.
-
-## Capability-Probe Conclusion
-
-- Existing evidence proves fresh role-agent/worktree isolation and also proves that `handoff_thread`
-  is checkout migration, not worktree retirement.
-- The failed lifecycle attempt and exact recovery are fully recorded in
-  `docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md`.
-- That failure evidence completes lifecycle discovery for this task. Future validation is read-only:
-  it verifies the two probe worktrees, three probe threads, retained branch and evidence are unchanged.
-- No handoff, archive, unarchive, retire, remove, prune, delete, branch cleanup or alternative native
-  lifecycle probe may run during implementation, cutover or pilot.
-
-## Required Classifier
-
-The classifier returns exactly `simple`, `complex`, or `needs_discovery`. Simple is allowed only when
-all required facts are explicitly supplied and all simple predicates pass. Any forbidden-category
-flag, more than three total paths, independent review need, destructive/external action, or unclear
-root cause/validation makes it non-simple. Missing facts return `needs_discovery`.
-
-Queued classification is provisional. The FIFO head is reclassified before activation; no queued task
-auto-starts.
-
-## Required Complex Invariants
-
-- Same Task ID, active owner, branch, worktree, and evidence chain survive every transition and retry.
-- Approval is committed before Developer dispatch.
-- Developer hands off a clean local commit limited to the approved allowlist.
-- Reviewer and QA receive fresh minimal context and exact immutable Git refs.
-- Integrator accepts only the exact Reviewer- and QA-bound code commit.
-- Every callback binds a `SUBJECT_COMMIT` for the reviewed code tree and an `EVIDENCE` ref whose own
-  commit contains only allowed evidence changes. Integrator is read-only; after its pass, the runtime
-  orchestrator alone performs the specified non-interactive primary merge and verifies parents/tree.
-- Blockers retain WIP and never discard/stash/restore automatically.
-- User close begins closeout; it does not immediately release active.
-- Retained closeout requires exact task/thread/worktree/branch/HEAD, clean integration ancestry, no
-  running role, no pending callback and an exact evidence ref. Failure retains active and every resource.
-- `record-closeout` and `finalize-close` perform no native thread or Git lifecycle action. Duplicate
-  exact retained proof is a no-op; FIFO never auto-starts.
-- Retirement/archive and `CLOSEOUT_ORDER` are outside normal closeout, manifest, second approval,
-  cutover and pilot. Dormant legacy blocker/result codes are compatibility only.
-- The public writer's complex commands, arguments, legal source/target states, blocker schema, result
-  schema and stable codes are frozen by the Plan before implementation approval.
-- Role callback status/next/subject combinations and every blocker code's required fields, retry,
-  User-decision and resume policy are frozen by the Plan before implementation approval.
-- Helpers never stage or commit. `apply-cutover` may only materialize and verify the eight approved
-  worktree targets; the Controller owns the exact-stage/commit transaction, and a later read-only
-  `verify-cutover-commit` gate must pass before any runtime message.
-- The second approval binds one committed cutover manifest containing all eight target hashes, exact
-  preimages, Git-index/tree proofs, canonical-history-index guard and exact-path rollback procedure.
-- Effective write permission for all eight cutover paths must be explicitly obtained and proven before
-  manifest generation. Apply must re-prove the same writable capability; drift invalidates the
-  manifest and requires regeneration plus a new second approval.
-- Permission proof is never caller-declared JSON. `plan-cutover` and `apply-cutover` run the same
-  in-process, no-content-write handle probe over all eight existing targets, verify pre/post
-  bytes/SHA-256/Git blob identity, and emit a canonically hashed proof with frozen enums. Any denied
-  handle blocks before manifest generation or content materialization.
-- Recovery reads durable authority, never conversational memory.
-
-## Non-Goals
-
-- Product, backend, frontend, API, database, persistence, authority, or business-rule changes.
-- Parallel tasks, parallel exceptions, a second implementation owner, preemption, pauses for another
-  task, multi-task recovery, cross-task reconciliation, shared-path parallel locking, leases,
-  heartbeats, or a new permanent role registry.
-- Controlled Lane V2, Task-A, old StartTask/CreateWorktree/Reconcile/Resume paths, external
-  governance-migration work, automatic push, release, deletion, or destructive cleanup.
-- Runtime-orchestrator generation rollover unless a later independent task proves it necessary.
-
-## Frozen First-Approval Payload
-
-The first approval must use this exact `--approved-request-json` value. Unknown keys or any path/order/
-boolean/string change require a new planning revision:
-
-```json
-{
-  "schema": "connlab.personal-task-approved-request",
-  "version": 1,
-  "task_id": "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
-  "summary": "Implement and verify dormant serial complex role-chain support without cutover.",
-  "kind": "planned",
-  "may_touch": [
-    "tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md",
-    "docs/task_governance_serial_complex_role_chain_automation_plan.md",
-    "docs/task_board.md",
-    "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
-    "docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md",
-    "docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json",
-    "scripts/connlab_personal_task.py",
-    "scripts/connlab_serial_board.py",
-    "scripts/connlab_serial_complex.py",
-    "scripts/connlab_serial_worktree.ps1",
-    "tests/unit/test_connlab_personal_serial_workflow.py",
-    "tests/unit/test_connlab_serial_classifier.py",
-    "tests/unit/test_connlab_serial_complex_state.py",
-    "tests/unit/test_connlab_serial_complex_worktree.py",
-    "tests/unit/test_connlab_serial_complex_orchestrator_contract.py",
-    "tests/unit/test_connlab_execution_gate_script.py",
-    "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
-    "tests/integration/test_connlab_serial_complex_recovery.py"
-  ],
-  "expected_file_count": 18,
-  "classification_reason": "This planned governance change adds dormant CLI/schema/state-machine support, persistent board migration logic, authority rules and a native Codex capability probe; the first approval excludes every cutover-only path and keeps v1 authoritative.",
-  "targeted_validation": [
-    "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_classifier.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_worktree.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_connlab_execution_gate_script.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py tests/integration/test_connlab_serial_complex_recovery.py -q",
-    "py scripts/connlab_personal_task.py inspect --repo-root D:\\PythonProject\\connlab --json",
-    "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/connlab_execution_gate.ps1 -RepositoryRoot D:\\PythonProject\\connlab -Intent Inspect -Json",
-    "git diff --check",
-    "Verify git diff <approval-commit>..<implementation-head> --name-only is a subset of the 18 approved paths.",
-    "Verify generation-1 archive, canonical history index, Task-A and retained evidence hashes are unchanged.",
-    "Execute the bounded native capability probe and commit its evidence; do not cut over."
-  ],
-  "forbidden_categories": {
-    "api_contract": true,
-    "database": false,
-    "schema_or_migration": true,
-    "persistence": true,
-    "authority": true,
-    "public_drive_workflow": false,
-    "business_rule_semantics": false,
-    "destructive_action": false,
-    "external_mutation": true
-  }
-}
-```
-
-Canonical JSON SHA-256 (UTF-8, sorted object keys, compact separators, array order preserved):
-`084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`.
-
-The frozen JSON above remains byte-for-byte unchanged, including its historical capability-probe
-validation string and canonical SHA-256. That item is already satisfied by the committed failure
-evidence and must not be executed again; Revision 6 validation performs only the read-only resource
-checks stated above.
-
-`--plan-ref` must bind the approved Revision 6.1 Plan as
-`docs/task_governance_serial_complex_role_chain_automation_plan.md@3308c0e3aeabe0d76b3535c5e33a8c4e079f187e#82467e5e1c5328f8b2e248bb09213e11526316ca73906e24ca79c21a4c49e3ca` and
-`--approval-ref` must preserve the User's exact approval wording plus this controller task ID. They are
-separate CLI arguments and are intentionally not fields in the frozen v1 JSON schema.
-
-## Exact Phased Future Allowlists
-
-The first explicit implementation approval may modify only the following 18
-`implementation-before-cutover` paths. Their new complex behavior must remain unreachable from the
-daily entry point while v1 is authoritative:
+This planning revision changes exactly two paths:
 
 1. `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md`
 2. `docs/task_governance_serial_complex_role_chain_automation_plan.md`
-3. `docs/task_board.md` (approval, blocker, validation and human-review transitions only; no v2 cutover)
-4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md` (new, non-normative before cutover)
-5. `docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md` (new)
-6. `docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json` (new)
-7. `scripts/connlab_personal_task.py` (v1-compatible commands plus disabled v2 migration support)
-8. `scripts/connlab_serial_board.py` (new)
-9. `scripts/connlab_serial_complex.py` (new)
-10. `scripts/connlab_serial_worktree.ps1` (new)
-11. `tests/unit/test_connlab_personal_serial_workflow.py`
-12. `tests/unit/test_connlab_serial_classifier.py` (new)
-13. `tests/unit/test_connlab_serial_complex_state.py` (new)
-14. `tests/unit/test_connlab_serial_complex_worktree.py` (new)
-15. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py` (new)
-16. `tests/unit/test_connlab_execution_gate_script.py`
-17. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
-18. `tests/integration/test_connlab_serial_complex_recovery.py` (new)
 
-The following `cutover-only` paths require a **second** explicit User authorization after implementation
-human review and read-only verification of retained resources:
+It changes no runtime file, board block, permission, probe resource, worktree, thread, branch, remote,
+archive, index, product code, or external repository.
+
+## One-Time Atomic Cutover Contract
+
+There is no manifest file, target-bytes bundle, permission-receipt framework, or public cutover
+command family. The immutable candidate Git commit is the complete content bundle and approval
+object.
+
+The Controller prepares a direct-child candidate commit using a temporary index and temporary target
+directory while the primary worktree and v1 board remain byte-unchanged. It runs validation in a
+bounded temporary repository, then shows the exact parent, commit, path list and full pre-cutover diff
+to the User. Only an explicit approval of that exact candidate authorizes a fast-forward of `master`.
+
+The candidate commit changes exactly these 15 paths:
 
 1. `AGENTS.md`
 2. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
 3. `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
-4. `scripts/run_task.ps1`
-5. `scripts/connlab_execution_gate.ps1`
-6. `docs/task_board.md` (the atomic v1-to-v2 migration, governance-task close and active release)
-7. `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md` (cutover status only)
-8. `docs/task_governance_serial_complex_role_chain_automation_plan.md` (cutover status only)
+4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
+5. `scripts/run_task.ps1`
+6. `scripts/connlab_execution_gate.ps1`
+7. `scripts/connlab_personal_task.py`
+8. `scripts/connlab_serial_complex.py`
+9. `docs/task_board.md`
+10. `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md`
+11. `docs/task_governance_serial_complex_role_chain_automation_plan.md`
+12. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`
+13. `tests/unit/test_connlab_execution_gate_script.py`
+14. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
+15. `tests/integration/test_connlab_serial_complex_recovery.py`
 
-Adding or modifying any other path requires stopping and obtaining new User approval. The first
-approval does not authorize any cutover-only edit. Test commands may be narrowed or expanded, but
-test file paths may not.
+No other path may differ between the candidate parent and candidate commit.
 
-Before cutover-manifest generation, all eight paths must pass the helper's intrinsic effective
-permission probe. The current Codex permission profile treats
-`.agents/skills/connlab-lane-orchestrator/SKILL.md` as
-read-only even though its Windows file attribute is not read-only. That condition must return
-`BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes until the User separately grants the exact tool
-permission. This plan does not authorize changing ACLs or file attributes. The helper accepts no
-caller-supplied permission assertion. The committed manifest may contain only a successful canonical
-probe receipt; apply runs the same probe again, and any drift requires a newly generated manifest and
-another exact second approval.
+The same candidate commit must:
 
-## Must Not Touch
+- remove the unused cutover command family and permission/manifest fixture code;
+- activate the v2 serial-complex rules, runtime skill, entry and gate;
+- migrate the board from v1 human review to v2 idle;
+- set `active=null`, preserve FIFO/sequence and retained history, and record this governance task in
+  `last_closed` using the fixed non-self-referential decision text
+  `User approved the exact pre-reviewed local atomic cutover commit in controller task 019fc491-21b0-77b0-bf18-53f53a366a7c.`;
+- mark this Task and Plan `cutover_complete`;
+- contain the bounded temporary-repository end-to-end regression.
 
-- All product/backend/frontend/API/database/persistence/authority code and unrelated tests.
-- generation-1 archive, canonical index, later archives, Task-A files, retained lane/worktree/evidence,
-  and external governance-migration repository.
-- Frozen legacy implementation files including `scripts/connlab_execution_transition.py`,
-  `scripts/connlab_handoff_contract.py`, `scripts/connlab_lane_worktree.ps1`, Controlled Lane V2,
-  legacy registry/heartbeat/pilot/corrective records, and old role threads.
-- Remote branches and services; no push.
+No ordinary v1 `close` runs before the candidate is applied. At the commit boundary the parent still
+has the v1 active governance task and the child has v2 idle, so no committed idle authority gap exists.
+
+## Rollback
+
+After successful fast-forward and before any v2 task activation, the only rollback is:
+
+```powershell
+git revert --no-edit $cutoverCommit
+```
+
+The revert must restore a tree equal to the candidate parent, including v1 human review with this
+governance task still active. No reset, restore, stash, clean, alternate patch, force operation, or
+lifecycle cleanup is authorized. If candidate application fails before HEAD changes, there is no
+cutover commit to revert; stop and report the unchanged HEAD and any dirty paths.
+
+The fixed board decision text deliberately contains neither the future candidate hash nor the later
+approval wording. The User's external approval binds the exact candidate commit, parent and diff;
+attempting to embed that future hash in the candidate would create a Git self-reference.
 
 ## Acceptance
 
-- The current simple path remains behaviorally compatible and its regressions pass.
-- All 54 scenario groups in the approved plan pass or have the frozen existing capability evidence.
-- Board migration is CAS-protected, rollback-proven, compact, and preserves retained history exactly.
-- The first approval payload is byte-for-byte reproducible from this Task and accepted by the current
-  v1 helper schema before any implementation begins.
-- The complex helper contract and second-approval cutover manifest are complete enough that an
-  implementer does not invent commands, codes, hashes, permissions or rollback behavior.
-- Helper materialization, Controller Git commit and read-only post-commit verification have distinct,
-  testable responsibilities; callback/blocker combinations have no free-text transition semantics.
-- Cutover is one Git commit that atomically migrates v1 to v2, closes this governance task and releases
-  active; no committed ordinary-idle window exists before cutover.
-- Complex execution has one worktree, strict role order, independent Reviewer/QA, durable recovery and
-  exact non-mutating retained closeout; lifecycle cleanup is outside the workflow.
-- Legacy modes stay frozen; Task-A/history/index remain unchanged; primary ends clean with local commits.
-- Cutover and a real pilot require separate explicit User decisions after implementation review.
+- The candidate parent is the clean planning-revision HEAD and the candidate has exactly one parent.
+- The candidate diff is exactly the 15-path allowlist and passes `git diff --check`.
+- The bounded temporary-repository test proves v1 human review -> one cutover commit -> v2 idle and
+  proves an exact `git revert` restores the parent tree.
+- The approved regression suite passes on the candidate commit before User approval and after
+  fast-forward.
+- `inspect` and the execution gate accept v2 idle after cutover.
+- Daily complex work preserves WIP=1/FIFO and needs no User approval for role dispatch, worktree-host
+  creation, Reviewer/QA retry, integration, retained closeout, or FIFO-head activation.
+- generation-1, canonical index, Task-A, retained/probe resources and external repositories are
+  unchanged.
+- Primary ends clean on local `master`; no push, lifecycle operation, pilot, or cleanup occurs.
 
-## User Approval Gate
+## Approval Gate
 
-Revision 6.1 `implementation-before-cutover` is approved under the exact Plan ref above. Approval
-correction and explicit resume are separate committed board transitions; implementation may touch only
-the frozen 18 paths. A later second approval is required for the exact cutover-only files, atomic
-close/migration commit and runtime-orchestrator message. It must quote the committed cutover-manifest
-ref and `TARGET_SET_SHA256` and explicitly authorize the manifest's exact rollback procedures; it must
-not bind a lifecycle order. No approval authorizes a real pilot, push, cleanup or native lifecycle
-probe unless it says so explicitly.
+Approval of this Revision 7 authorizes only preparation and validation of the exact candidate commit;
+it does not apply it. The Controller must return the real candidate commit, parent and exact diff for
+a separate explicit cutover decision. A plain `关闭` must not be interpreted as cutover approval.
+
+After the User approves the exact candidate, `git merge --ff-only` applies that same commit. No second
+routine approval, manifest approval, permission receipt, runtime activation message, or pilot is part
+of the cutover.
+
+`STATUS: READY_FOR_USER_APPROVAL`
