@@ -2,7 +2,7 @@
 
 Status: `DRAFT_FOR_REVIEW`
 
-Revision: `2`
+Revision: `3`
 
 Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
 
@@ -76,6 +76,21 @@ The current helper supports `inspect`, `check`, `submit`, `activate-next`, `appr
 - no stage, commit, push, thread, archive, worktree, or dispatch side effects.
 
 The current simple/gate/history/worktree governance regression command passed 62 tests in 75.17s.
+
+### 2.2.1 Frozen first-approval binding
+
+The complete `connlab.personal-task-approved-request` v1 object is normative in the Task section
+“Frozen First-Approval Payload”. Its canonical JSON (`UTF-8`, recursively sorted object keys, compact
+separators, array order preserved) has SHA-256:
+
+```text
+084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be
+```
+
+It contains exactly 18 ordered paths, `expected_file_count=18`, seven validation entries and all nine
+current v1 forbidden-category booleans. Approval uses that object unchanged, plus separate exact
+`--plan-ref` and `--approval-ref` arguments. The current helper already requires precisely those keys;
+there is no implementation-time discretion to add a field, path or validation.
 
 ### 2.3 Frozen history and residual facts
 
@@ -309,13 +324,190 @@ Simple continues to use its existing v1-equivalent path: activation commit, dire
 implementation, targeted validation, local implementation/board commit, human review, explicit close
 commit, idle. It creates no worktree, host task, role agent, archive target, or automatic FIFO action.
 
+### 7.1 Public Writer And Argument Contract
+
+`scripts/connlab_personal_task.py` remains the only public board writer. The existing v1 commands and
+their parameters/results remain stable. New behavior is implemented in imported bounded modules but is
+exposed only through this writer. `scripts/connlab_serial_complex.py` is not a second writer.
+
+Every command requires `--repo-root`; `--json` selects machine output. Every mutating command requires
+`--expected-board-sha256` and `--task-id`. An absent required argument, an extra incompatible argument,
+an unknown JSON key or an unknown enum returns `BLOCKED_ARGUMENT_COMBINATION` or the schema-specific
+blocked code with zero writes.
+
+| Command | Additional exact parameters | Write | Legal purpose |
+|---|---|---:|---|
+| `inspect` | none | no | Validate and report current authority. |
+| `check` | `--intent Inspect|Implementation|Close|Cutover`; Task ID required except Inspect | no | Gate one requested operation. |
+| `classify` | `--request-json` | no | Return only simple, complex or needs_discovery. |
+| `submit` | `--request-json` | yes | Activate when idle/queue-empty or append FIFO. |
+| `activate-next` | v2 additionally requires current `--request-json` for FIFO-head reclassification | yes | Activate only exact FIFO head; never automatic. |
+| `approve` | `--approved-request-json`, `--plan-ref`, `--approval-ref` | yes | Bind committed scope and explicit approval. |
+| `begin-role` | `--role`, `--native-action-json` | yes | Persist one pending Planner/Developer/Reviewer/QA/Integrator action before native dispatch. |
+| `record-invocation` | `--role`, `--native-action-id`, `--invocation-json` | yes | Bind the returned exact agent/thread identity to the pending action. |
+| `consume-callback` | `--callback-json` | yes | Validate evidence/subject and apply one legal role transition. |
+| `begin-host` | `--native-action-json` | yes | Persist the sole post-approval worktree-host creation action. |
+| `record-host` | `--native-action-id`, `--worktree-json` | yes | Bind exact host/thread/branch/worktree/base/HEAD facts. |
+| `record-integration` | `--integration-json` | yes | Record only the already-created, verified primary merge and enter human review. |
+| `request-close` | `--decision-ref` | yes | Retain active and enter complex closing after explicit User close. |
+| `record-closeout` | `--closeout-json` | yes | Record one step in the cutover-approved closeout order. |
+| `finalize-close` | `--decision-ref` | yes | Release active only after complete closeout proof; never starts FIFO. |
+| `block` | `--blocker-json` | yes | Persist a typed blocker without releasing active. |
+| `resume` | `--decision-ref` | yes | Resume only the blocker-recorded phase when its policy permits. |
+| `cancel` | `--decision-ref`, `--disposition` | yes | Before host creation, or after explicit clean retain/retire proof only. |
+| `mark-review`, `close` | existing v1 parameters | yes | Simple workflow only; complex use returns `BLOCKED_STATE`. |
+| `plan-cutover` | `--cutover-manifest-ref`, `--expected-primary-head` | no | Validate the complete committed manifest and return the exact target set. |
+| `apply-cutover` | `--cutover-manifest-ref`, `--expected-primary-head`, `--approval-ref` | yes | Materialize all eight manifest-bound targets and create the one cutover commit after every preflight passes. |
+
+The new parser arguments are frozen as:
+
+```text
+--role
+--native-action-json
+--native-action-id
+--invocation-json
+--callback-json
+--worktree-json
+--integration-json
+--closeout-json
+--cutover-manifest-ref
+--expected-primary-head
+```
+
+Existing arguments retain their current spelling. No alias or positional payload is accepted.
+
+### 7.2 Frozen Input Schemas
+
+All objects use exact keys and version 1:
+
+- `connlab.serial-native-action`: `schema, version, action_id, action, role, attempt,
+  prompt_sha256, title, recorded_at`. `action` is one of `planner_dispatch, host_create,
+  developer_dispatch, reviewer_dispatch, qa_dispatch, integrator_dispatch`; `action_id` is the
+  SHA-256 of canonical task/phase/role/attempt/board/subject facts.
+- `connlab.serial-invocation`: `schema, version, action_id, role, attempt, thread_id, agent_id,
+  host_id, status, recorded_at`. Exactly one of `thread_id` or `agent_id` is non-null; status is
+  `started|completed|unavailable`.
+- `connlab.serial-callback`: `schema, version, task_id, role, status, subject_commit, evidence,
+  next, blocker`. The last seven fields render the canonical seven-line capsule; evidence is
+  `path@40hex#sha256`; blocker is null or the exact blocker object below.
+- `connlab.serial-worktree`: `schema, version, action_id, thread_id, host_id, branch, worktree,
+  base_sha, head_sha, integration_target, clean, recorded_at`.
+- `connlab.serial-integration`: `schema, version, subject_commit, branch_head, primary_parent,
+  merge_commit, merge_tree, parents, evidence_refs, command, clean, recorded_at`. `parents` is exactly
+  `[primary_parent, branch_head]`; `command` is exactly
+  `["git","merge","--no-ff","--no-edit","--no-autostash",branch]`.
+- `connlab.serial-closeout`: `schema, version, action_id, step, order, thread_id, worktree,
+  receipt_sha256, status, recorded_at`. `step=retired|archived|retained`; `order` must equal the
+  manifest-approved order; status is `completed|pending|failed`.
+
+### 7.3 Frozen State/Command Matrix
+
+| Source authority | Command/event | Target authority | Success code |
+|---|---|---|---|
+| `idle`, queue empty | `submit(simple)` | `running/implementation` | `ALLOW_ACTIVATE` |
+| `idle`, queue empty | `submit(complex|needs_discovery)` | `running/planning` | `ALLOW_ACTIVATE` |
+| occupied | `submit(other Task ID)` | unchanged + FIFO append | `QUEUED_NEW` |
+| `idle`, FIFO non-empty | `activate-next` exact head + reclassification | simple implementation or complex planning | `ALLOW_ACTIVATE_NEXT` |
+| `running/planning`, no pending action | `begin-role(Planner)` | planning + `dispatch_pending` | `ALLOW_BEGIN_ROLE` |
+| any eligible role stage + matching pending action | `record-invocation` | same phase + `callback_pending` | `ALLOW_RECORD_INVOCATION` |
+| planning + Planner callback pass | `consume-callback` | `running/awaiting_user_approval` | `ALLOW_CONSUME_CALLBACK` |
+| awaiting approval | `approve` | `running/development`, host absent | `ALLOW_APPROVE` |
+| development, host absent | `begin-host` | development + `host_creation_pending` | `ALLOW_BEGIN_HOST` |
+| matching host action | `record-host` | development + host ready | `ALLOW_RECORD_HOST` |
+| development + host ready | `begin-role(Developer)` | development + `dispatch_pending` | `ALLOW_BEGIN_ROLE` |
+| Developer ready callback | `consume-callback` | `running/review` | `ALLOW_CONSUME_CALLBACK` |
+| Developer blocking callback | `consume-callback` | `running/blocked`, resume=`development` | `ALLOW_CONSUME_CALLBACK` |
+| review | Reviewer pass callback | `running/qa` | `ALLOW_CONSUME_CALLBACK` |
+| review | Reviewer blocked callback | `running/development` + retryable blocker | `ALLOW_CONSUME_CALLBACK` |
+| qa | QA pass callback | `running/integration` | `ALLOW_CONSUME_CALLBACK` |
+| qa | QA blocked callback | `running/development` + retryable blocker | `ALLOW_CONSUME_CALLBACK` |
+| integration | Integrator pass callback | integration + `integration_ready` | `ALLOW_CONSUME_CALLBACK` |
+| integration | Integrator blocked callback | `running/blocked`, resume=`integration` | `ALLOW_CONSUME_CALLBACK` |
+| integration-ready + verified merge | `record-integration` | `implemented_pending_human_review/human_review` | `ALLOW_RECORD_INTEGRATION` |
+| human review | `request-close` | `running/closing` | `ALLOW_REQUEST_CLOSE` |
+| closing | `record-closeout` next manifest step | closing with step proof | `ALLOW_RECORD_CLOSEOUT` |
+| closing, all proofs complete | `finalize-close` | `idle`, exact last_closed | `ALLOW_FINALIZE_CLOSE` |
+| any occupied legal stage | `block` | `running/blocked`, same active | `ALLOW_BLOCK` |
+| blocked + satisfied policy | `resume` | exact blocker `resume_phase` | `ALLOW_RESUME` |
+| governance v1 human review | `plan-cutover` | zero-write | `ALLOW_PLAN_CUTOVER` |
+| same + exact second approval/manifest | `apply-cutover` | proposed v2 idle board bytes | `ALLOW_APPLY_CUTOVER` |
+
+Any unlisted pair returns `BLOCKED_STATE` with zero writes. Routine Reviewer/QA blockers may route to
+Developer without User approval but remain attached until the next Developer attempt starts; every
+other blocker uses `running/blocked` and its frozen resume policy.
+
+### 7.4 Frozen Complex Blocker Schema
+
+```json
+{
+  "schema": "connlab.serial-task-blocker",
+  "version": 1,
+  "code": "REVIEWER_BLOCKED",
+  "stage": "review",
+  "reason": "bounded non-empty explanation",
+  "dirty_paths": [],
+  "failed_validation": null,
+  "subject_commit": "0000000000000000000000000000000000000000",
+  "evidence_ref": "path@0000000000000000000000000000000000000000#0000000000000000000000000000000000000000000000000000000000000000",
+  "native_action_id": null,
+  "related_ids": [],
+  "retryable": true,
+  "requires_user": false,
+  "resume_phase": "development",
+  "recorded_at": "RFC3339 UTC"
+}
+```
+
+Exact codes are `DISCOVERY_REQUIRED`, `APPROVAL_REQUIRED`, `DEVELOPER_BLOCKED`,
+`REVIEWER_BLOCKED`, `QA_BLOCKED`, `INTEGRATION_BLOCKED`, `DIRTY_WORKTREE`, `CALLBACK_PENDING`,
+`ARCHIVE_PENDING`, `ARCHIVE_PENDING_UNVERIFIABLE`, `WORKTREE_RETIREMENT_PENDING`,
+`SCOPE_EXPANDED`, `VALIDATION_FAILED`, `NATIVE_ACTION_FAILED`, and `CUTOVER_FAILED`. Nullable fields
+remain present. Code-specific rules freeze required evidence/dirty paths/action IDs, retryability,
+User requirement and resume phase; unknown codes or inconsistent combinations return
+`BLOCKED_BLOCKER_INVALID`.
+
+### 7.5 Stable Result Schema And Codes
+
+New complex commands return `connlab.serial-task-result` v1 with exactly:
+
+```text
+schema, version, code, allowed, changed, command, task_id, classification,
+state, phase, active_task_id, queue_position, next_action, native_action_id,
+board_sha256_before, board_sha256_after, primary_head, primary_root,
+changed_paths, reason_codes, reason
+```
+
+Non-applicable fields are null; arrays remain arrays. Existing v1 commands retain
+`connlab.personal-task-result` v1 until cutover. Stable new success codes are
+`ALLOW_CLASSIFY_SIMPLE`, `ALLOW_CLASSIFY_COMPLEX`, `ALLOW_CLASSIFY_NEEDS_DISCOVERY`,
+`ALLOW_BEGIN_ROLE`, `ALLOW_RECORD_INVOCATION`, `ALLOW_CONSUME_CALLBACK`, `ALLOW_BEGIN_HOST`,
+`ALLOW_RECORD_HOST`, `ALLOW_RECORD_INTEGRATION`, `ALLOW_REQUEST_CLOSE`,
+`ALLOW_RECORD_CLOSEOUT`, `ALLOW_FINALIZE_CLOSE`, `ALLOW_PLAN_CUTOVER`, and
+`ALLOW_APPLY_CUTOVER`.
+
+Stable idempotent codes are `NOOP_ACTION_ALREADY_BEGUN`, `NOOP_INVOCATION_ALREADY_RECORDED`,
+`NOOP_CALLBACK_ALREADY_CONSUMED`, `NOOP_HOST_ALREADY_RECORDED`,
+`NOOP_CLOSEOUT_ALREADY_RECORDED`, and `NOOP_CUTOVER_ALREADY_APPLIED`.
+
+All current v1 `ALLOW_*`, `QUEUED_*`, `NOOP_*`, and `BLOCKED_*` codes remain stable. New blocked codes
+are `BLOCKED_CALLBACK_INVALID`, `BLOCKED_CALLBACK_STALE`, `BLOCKED_EVIDENCE_INVALID`,
+`BLOCKED_SUBJECT_MISMATCH`, `BLOCKED_ROLE_ORDER`, `BLOCKED_NATIVE_ACTION_PENDING`,
+`BLOCKED_NATIVE_ID_MISMATCH`, `BLOCKED_HOST_REQUIRED`, `BLOCKED_HOST_DUPLICATE`,
+`BLOCKED_WORKTREE_FACTS`, `BLOCKED_INTEGRATION_PRECONDITION`, `BLOCKED_INTEGRATION_CONFLICT`,
+`BLOCKED_INTEGRATION_PROOF`, `BLOCKED_CLOSEOUT_ORDER`, `BLOCKED_ARCHIVE_PENDING`,
+`BLOCKED_RETIREMENT_PENDING`, `BLOCKED_CUTOVER_NOT_AUTHORIZED`, `BLOCKED_CUTOVER_MANIFEST`,
+`BLOCKED_CUTOVER_TARGET_HASH`, `BLOCKED_CUTOVER_PATH_READ_ONLY`,
+`BLOCKED_CUTOVER_INDEX_DRIFT`, `BLOCKED_CUTOVER_ROLLBACK_FAILED`, and
+`BLOCKED_LEGACY_MODE_FROZEN`. All blocked results are zero-write unless the command is explicitly
+recording that blocker; no code is inferred from free text.
+
 ## 8. Commit Boundaries
 
 ### 8.1 This governance task
 
 1. `a5286688`: board-only planning activation (complete).
 2. `1afbfdf1`: initial Task and Plan planning commit (complete).
-3. Revision 2 planning commit: Task, Plan and board human-summary correction only.
+3. Revision 3 planning commit: Task, Plan and board human-summary correction only.
 4. after the first User approval: board-only approval commit binding only the
    `implementation-before-cutover` allowlist.
 5. implementation commits: only pre-cutover helpers/modules/protocol/tests while v1 remains the
@@ -533,10 +725,10 @@ phase. Any additional file edit stops for renewed approval. Commands may change;
 
 ### 14.1 First approval: implementation before cutover
 
-The 17 pre-cutover paths are Task, Plan, board for v1 lifecycle records only, the new non-normative
-protocol and capability evidence, the current helper plus three bounded new helper modules, and the
-eight named test files. The helper may gain v1-compatible/dormant v2 support, but the current entry,
-gate and normative instructions cannot call it. This phase ends at v1
+The 18 pre-cutover paths are Task, Plan, board for v1 lifecycle records only, the new non-normative
+protocol, capability evidence and cutover manifest, the current helper plus three bounded new helper
+modules, and the eight named test files. The helper may gain v1-compatible/dormant v2 support, but the
+current entry, gate and normative instructions cannot call it. This phase ends at v1
 `implemented_pending_human_review`.
 
 ```text
@@ -545,6 +737,7 @@ docs/task_governance_serial_complex_role_chain_automation_plan.md
 docs/task_board.md
 docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md
 docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md
+docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json
 scripts/connlab_personal_task.py
 scripts/connlab_serial_board.py
 scripts/connlab_serial_complex.py
@@ -577,9 +770,9 @@ tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md
 docs/task_governance_serial_complex_role_chain_automation_plan.md
 ```
 
-New pre-cutover files are the serial complex protocol, capability probe evidence, shared serial board
-module, pure classifier/complex transition module, bounded worktree verifier, four unit modules and one
-recovery integration test.
+New pre-cutover files are the serial complex protocol, capability probe evidence, cutover manifest,
+shared serial board module, pure classifier/complex transition module, bounded worktree verifier, four
+unit modules and one recovery integration test.
 
 Frozen and preserved:
 
@@ -636,6 +829,22 @@ Revision 2 adds these mandatory groups:
     primary or blocks without further mutation;
 35. the capability probe, second User approval and cutover protocol all name the same one closeout
     order, and runtime cannot substitute the other order.
+36. the Task's canonical approved-request JSON hash is
+    `084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`, contains 18 paths and is
+    accepted unchanged by a current-v1-helper fixture;
+37. every frozen complex command accepts only its named parameters and every unlisted state/command
+    pair is zero-write `BLOCKED_STATE` or `BLOCKED_ARGUMENT_COMBINATION`;
+38. every blocker schema/code combination and stable result/no-op/blocked code is deterministic and
+    rejects unknown or inconsistent fields;
+39. the cutover manifest contains exactly eight reconstructible targets and recomputed target hashes,
+    blobs and `TARGET_SET_SHA256` equal the second approval;
+40. source Git-index entries and `git write-tree` equal the committed `MANIFEST_REF`; the target index
+    deterministically overlays only the eight target blobs on that source, while both uncommitted
+    exact-path restore and pre-activation committed revert prove the full source tree/index/board;
+41. effective read-only permission for the orchestrator skill returns
+    `BLOCKED_CUTOVER_PATH_READ_ONLY` before any board/other/index write;
+42. the canonical history index guard remains exact through apply, failure rollback and committed
+    revert.
 
 Additional migration checks: v1 simple fixtures migrate deterministically to v2, rollback reconstructs
 the exact pre-cutover board bytes, stale CAS/lock collision/injected replace failure are zero-write, and
@@ -668,47 +877,152 @@ capability checks follow the bounded probe in section 4 and are committed as evi
 
 ## 17. Board Migration And Rollback
 
-Implement a dry-run `plan-cutover` that records current board bytes/hash/blob, proposed v2 bytes/hash,
-retained-value digests and rollback bytes/hash. Its required source is **not idle**: it must be the exact
-v1 `implemented_pending_human_review` record for this governance Task ID, with passed validation, no
-blocker, empty FIFO, clean primary, accepted helper ancestry and explicit combined User
-close-plus-cutover approval naming the probe-proven closeout order. An idle source is rejected.
+`plan-cutover` runs after implementation/probe completion but before the second approval. It is
+zero-write and requires the exact v1 `implemented_pending_human_review` governance Task ID, passed
+validation, no blocker, empty FIFO, clean primary and accepted helper ancestry. An idle source is
+rejected. Its output is written and committed under the first approval as:
 
-`apply-cutover` atomically writes a v2 board whose `active` is null and whose `last_closed` records this
-governance Task ID and the exact decision. The controller then stages that board together with only the
-pre-reviewed cutover-only bytes and creates one Git commit. No runtime message or new-task activation is
-legal until that commit and post-commit clean-state proof succeed. If commit assembly fails, committed
-HEAD remains the v1 active governance authority, primary stays blocked by the dirty cutover attempt,
-and only the exact rollback bytes generated by `plan-cutover` may restore the attempt before retry.
+```text
+docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json
+```
 
-Before any v2 task activation, rollback is `git revert <cutover-commit>` plus exact board-byte proof;
-it restores the v1 parent with this governance task still active in human review and restores v1 entry
-contracts without touching history/index. After a v2 task activates, no automatic rollback is allowed.
-The task stays active/blockered and this governance controller fixes forward; parallel legacy
-automation is never restored.
+### 17.1 Exact Cutover Manifest Contract
+
+The manifest schema is `connlab.serial-cutover-manifest` version 1 with exact top-level keys:
+
+```text
+schema, version, task_id, authority_base_commit, authority_base_tree,
+authority_base_board_sha256, authority_base_control_digest, closeout_order,
+target_set_sha256, files, index_derivation, canonical_history_index_guard,
+permission_preflight, rollback, created_at
+```
+
+`files` contains exactly eight ordered records for:
+
+```text
+AGENTS.md
+.agents/skills/connlab-lane-orchestrator/SKILL.md
+docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md
+scripts/run_task.ps1
+scripts/connlab_execution_gate.ps1
+docs/task_board.md
+tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md
+docs/task_governance_serial_complex_role_chain_automation_plan.md
+```
+
+Each record has exactly:
+
+```text
+path, mode, source_exists, source_bytes, source_sha256, source_blob,
+target_exists, target_bytes, target_sha256, target_blob, target_bytes_base64
+```
+
+The base64 field makes every approved target reconstructible without chat, an ambient temp directory
+or implementation judgment. `target_blob` is the Git blob ID computed from decoded target bytes.
+`target_set_sha256` hashes the canonical ordered tuples
+`path,mode,target_bytes,target_sha256,target_blob`. Nulls/placeholders and duplicate/reordered paths are
+invalid. The board target must simultaneously contain v2 idle, exact governance `last_closed`, retained
+history and FIFO invariants; all seven other targets are the exact cutover contract/entry/status bytes.
+
+`authority_base_commit` is the clean implementation-completion commit immediately before the manifest
+commit; it is not the self-referential manifest commit. `index_derivation` has exact keys
+`authority_base_write_tree, authority_base_entries_sha256, manifest_commit_rule, source_index_rule,
+target_index_rule, authorized_paths`. The base tree and ordered stage-zero index entries must equal
+`authority_base_commit`. `manifest_commit_rule` requires the commit component of the approved
+`MANIFEST_REF` to have exactly one parent equal to that base and a diff containing only this manifest
+path. The manifest therefore never attempts to predict its own blob, tree or commit ID.
+
+At cutover, `source_index_rule` requires clean `HEAD` to equal `MANIFEST_REF.commit`, and derives the
+complete source entries plus `git write-tree` directly from that immutable commit. `target_index_rule`
+creates a temporary index from the same commit and overlays exactly the eight decoded target blobs;
+no other entry may differ. The resulting target entries hash and `git write-tree` are recomputed before
+writing and again before commit. Because the second approval binds both the exact `MANIFEST_REF` and
+`TARGET_SET_SHA256`, the complete source and target index states are deterministic without a circular
+self-hash in the manifest. `authorized_paths` is the same ordered eight-path list.
+
+`canonical_history_index_guard` freezes path, byte count, SHA-256 and Git blob for
+`docs/archive/task_board_history/index.v1.jsonl`; cutover neither stages nor rewrites it.
+
+`permission_preflight` contains one record per cutover path with exact keys `path, required_access,
+observed_access, observation_source, observed_at`. Every path must prove effective write access before
+**any** target byte is materialized. `.agents/skills/connlab-lane-orchestrator/SKILL.md` currently has
+normal Windows file attributes but the active Codex permission profile exposes `.agents` as read-only;
+therefore cutover is currently `BLOCKED_CUTOVER_PATH_READ_ONLY`. The second approval does not silently
+override that permission. A later explicit tool permission grant must be obtained and re-proven; no
+chmod/ACL edit or partial cutover is attempted.
+
+### 17.2 Second-Approval Binding
+
+The User's second approval must quote all three values:
+
+```text
+MANIFEST_REF: docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json@<40hex>#<sha256>
+TARGET_SET_SHA256: <64hex>
+CLOSEOUT_ORDER: <the one probe-proven enum>
+```
+
+and explicitly authorize `atomic close + v1-to-v2 cutover + manifest-defined rollback`. Missing or
+different values return `BLOCKED_CUTOVER_NOT_AUTHORIZED`. `apply-cutover` independently recomputes every
+source/target/hash/blob/index/permission/history guard before writing; a mismatch returns the specific
+blocked code with zero writes.
+
+### 17.3 Complete Failure Rollback Manifest
+
+`rollback` has exact keys `authorized_paths, source_ref_rule, expected_source_board_sha256,
+uncommitted_restore_argv, committed_revert_argv, post_restore_checks`. `authorized_paths` is the same
+ordered eight-path list and `source_ref_rule` is exactly `MANIFEST_REF.commit`.
+
+- Before the cutover commit exists, the only rollback is the manifest-expanded exact command
+  `git restore --source=<MANIFEST_REF.commit> --staged --worktree -- <eight exact paths>`. It is
+  authorized solely because that approved commit was clean and every preimage/index derivation is in
+  the approved manifest.
+- After the cutover commit exists but before any runtime message or v2 activation, the only rollback is
+  `git revert --no-edit <exact-cutover-commit>` while HEAD equals that commit; its result tree must
+  equal `MANIFEST_REF.commit^{tree}`.
+- Both paths must prove all eight source byte hashes/blobs, the source board/control digest, complete
+  source index entries hash, source `git write-tree`, canonical history-index guard and clean
+  `git status` against `MANIFEST_REF.commit`.
+- If rollback itself differs or fails, stop immediately with `BLOCKED_CUTOVER_ROLLBACK_FAILED`; do not
+  reset, clean, retry another strategy, message the runtime orchestrator or activate FIFO.
+
+`apply-cutover` first writes the manifest-bound board target, then the other seven decoded targets,
+stages exactly eight paths and verifies the target index/tree before creating one commit. No runtime
+message or task activation is legal until the commit, parent/target tree and post-commit clean state
+pass. The commit parent retains the v1 active governance task; the result is v2 idle with its close
+record, so there is no committed authority gap.
+
+Before any v2 task activation, a manifest-authorized committed revert restores the v1 parent with this
+governance task still active in human review. After a v2 task activates, no automatic rollback is
+allowed; the task stays active/blockered and this controller fixes forward. Parallel legacy automation
+is never restored.
 
 ## 18. Cutover And Pilot
 
 1. Current controller implements behind inactive entry points and runs offline tests.
 2. It completes the capability probe; any unproven critical capability blocks cutover.
 3. Current governance task enters human review under v1.
-4. User reviews and gives one explicit combined `close + cutover` authorization naming the exact
-   probe-proven closeout order; a plain `关闭` without cutover wording is insufficient here.
-5. The controller creates one atomic cutover commit whose parent still has the v1 active governance
+4. `plan-cutover` generates all eight exact target byte bundles/hashes and the complete rollback/index
+   manifest; the controller commits that manifest while v1 active remains in human review.
+5. User reviews and gives one explicit combined `close + cutover` authorization quoting the exact
+   manifest ref, `TARGET_SET_SHA256` and probe-proven `CLOSEOUT_ORDER`; a plain `关闭` or unbound
+   approval is insufficient.
+6. Effective write permission for all eight paths is re-proven. The current read-only orchestrator
+   skill permission blocks here until separately granted; no earlier target is written.
+7. The controller creates one atomic cutover commit whose parent still has the v1 active governance
    task and whose result simultaneously closes it, migrates to v2, releases active and switches the
    cutover-only contracts/entry points.
-6. Controller sends one bounded message to `019fb3d4...` telling it to discard chat memory as authority
+8. Controller sends one bounded message to `019fb3d4...` telling it to discard chat memory as authority
    and reread exact AGENTS, board, skill, protocol and cutover commit.
-7. Runtime orchestrator first performs read-only inspect/classifier self-check; it does not restore old
+9. Runtime orchestrator first performs read-only inspect/classifier self-check; it does not restore old
    roles or Task-A.
-8. User approves one low-risk pilot that is intentionally complex enough to exercise every role.
-9. Pilot validates Planner, approval, Developer, Reviewer, QA, Integrator, human review, User close,
+10. User approves one low-risk pilot that is intentionally complex enough to exercise every role.
+11. Pilot validates Planner, approval, Developer, Reviewer, QA, Integrator, human review, User close,
    retirement and archive.
-10. Pilot failure retains active/blocker and returns to this governance controller; no old-flow or
+12. Pilot failure retains active/blocker and returns to this governance controller; no old-flow or
     direct-implementation fallback occurs.
 
 `019fb3d4...` is currently addressable but `notLoaded` and its last content reflects frozen Task-A-era
-authority. It is therefore not safe to use before step 6. No generation rollover is justified now.
+authority. It is therefore not safe to use before step 8. No generation rollover is justified now.
 
 After successful pilot, `019fb3d4...` is the sole daily runtime orchestrator. `019fc491...` remains an
 out-of-band governance maintenance/recovery entry, not a competing daily router.
@@ -744,19 +1058,25 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
    fresh role agents, plus a pre-approval read-only Planner agent. Default decision: approve this model
    because it is compatible with exactly one implementation worktree without unsupported binding.
 3. Archive success may be callable but not independently readable. Default decision: keep active in
-   `archive_pending_unverifiable` until a later proof or explicit User waiver; never roll back integrated
-   code or auto-release WIP.
+   `archive_pending_unverifiable` until a later proof or explicit User waiver; additionally, current
+   Codex permissions make the orchestrator skill read-only, so cutover remains blocked until an explicit
+   permission grant passes preflight. Neither condition rolls back integrated code or auto-releases WIP.
 
 ## 21. Approval And Stop Point
 
-The first User approval authorizes only the 17-path `implementation-before-cutover` allowlist and the
+The first User approval authorizes only the 18-path `implementation-before-cutover` allowlist and the
 implementation/probe sequence up to v1 `implemented_pending_human_review`. It does not authorize any
 cutover-only file, atomic close/migration, runtime-orchestrator message, real pilot, push, forced
 cleanup, Task-A change, legacy recovery, or archive/deletion of existing tasks.
 
+It must bind the exact Task JSON whose canonical SHA-256 is
+`084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`, plus the committed Revision 3
+Plan ref and exact User wording. Any JSON difference requires another planning revision.
+
 A second explicit User approval is mandatory after implementation review. It must authorize the eight
-cutover-only paths, combine governance close with v1-to-v2 cutover, and name the exact probe-proven
-retirement/archive order. Without that wording, the task remains active in v1 human review.
+cutover-only paths, combine governance close with v1-to-v2 cutover, quote the exact committed
+`MANIFEST_REF` and `TARGET_SET_SHA256`, name the exact probe-proven `CLOSEOUT_ORDER`, and authorize the
+manifest-defined failure rollback. Without every binding, the task remains active in v1 human review.
 
 After approval, first call the current helper's `approve` with the committed Plan ref, exact approved
 request JSON and exact User approval evidence; exact-stage only `docs/task_board.md`, commit it, confirm

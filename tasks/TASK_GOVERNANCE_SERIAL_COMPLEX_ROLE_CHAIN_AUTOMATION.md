@@ -2,7 +2,7 @@
 
 Status: `planned`
 
-Revision: `2`
+Revision: `3`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -121,6 +121,10 @@ auto-starts.
 - Dirty retirement or failed archive records a durable blocker and keeps the task active.
 - Retirement/archive order is not frozen until the capability probe proves one exact sequence and the
   User authorizes that sequence at cutover.
+- The public writer's complex commands, arguments, legal source/target states, blocker schema, result
+  schema and stable codes are frozen by the Plan before implementation approval.
+- The second approval binds one committed cutover manifest containing all eight target hashes, exact
+  preimages, Git-index/tree proofs, canonical-history-index guard and exact-path rollback procedure.
 - Recovery reads durable authority, never conversational memory.
 
 ## Non-Goals
@@ -133,9 +137,73 @@ auto-starts.
   governance-migration work, automatic push, release, deletion, or destructive cleanup.
 - Runtime-orchestrator generation rollover unless a later independent task proves it necessary.
 
+## Frozen First-Approval Payload
+
+The first approval must use this exact `--approved-request-json` value. Unknown keys or any path/order/
+boolean/string change require a new planning revision:
+
+```json
+{
+  "schema": "connlab.personal-task-approved-request",
+  "version": 1,
+  "task_id": "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
+  "summary": "Implement and verify dormant serial complex role-chain support without cutover.",
+  "kind": "planned",
+  "may_touch": [
+    "tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md",
+    "docs/task_governance_serial_complex_role_chain_automation_plan.md",
+    "docs/task_board.md",
+    "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
+    "docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md",
+    "docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json",
+    "scripts/connlab_personal_task.py",
+    "scripts/connlab_serial_board.py",
+    "scripts/connlab_serial_complex.py",
+    "scripts/connlab_serial_worktree.ps1",
+    "tests/unit/test_connlab_personal_serial_workflow.py",
+    "tests/unit/test_connlab_serial_classifier.py",
+    "tests/unit/test_connlab_serial_complex_state.py",
+    "tests/unit/test_connlab_serial_complex_worktree.py",
+    "tests/unit/test_connlab_serial_complex_orchestrator_contract.py",
+    "tests/unit/test_connlab_execution_gate_script.py",
+    "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
+    "tests/integration/test_connlab_serial_complex_recovery.py"
+  ],
+  "expected_file_count": 18,
+  "classification_reason": "This planned governance change adds dormant CLI/schema/state-machine support, persistent board migration logic, authority rules and a native Codex capability probe; the first approval excludes every cutover-only path and keeps v1 authoritative.",
+  "targeted_validation": [
+    "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_classifier.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_worktree.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_connlab_execution_gate_script.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py tests/integration/test_connlab_serial_complex_recovery.py -q",
+    "py scripts/connlab_personal_task.py inspect --repo-root D:\\PythonProject\\connlab --json",
+    "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/connlab_execution_gate.ps1 -RepositoryRoot D:\\PythonProject\\connlab -Intent Inspect -Json",
+    "git diff --check",
+    "Verify git diff <approval-commit>..<implementation-head> --name-only is a subset of the 18 approved paths.",
+    "Verify generation-1 archive, canonical history index, Task-A and retained evidence hashes are unchanged.",
+    "Execute the bounded native capability probe and commit its evidence; do not cut over."
+  ],
+  "forbidden_categories": {
+    "api_contract": true,
+    "database": false,
+    "schema_or_migration": true,
+    "persistence": true,
+    "authority": true,
+    "public_drive_workflow": false,
+    "business_rule_semantics": false,
+    "destructive_action": false,
+    "external_mutation": true
+  }
+}
+```
+
+Canonical JSON SHA-256 (UTF-8, sorted object keys, compact separators, array order preserved):
+`084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`.
+
+`--plan-ref` must bind the committed Revision 3 Plan as `path@commit#sha256` and
+`--approval-ref` must preserve the User's exact approval wording plus this controller task ID. They are
+separate CLI arguments and are intentionally not fields in the frozen v1 JSON schema.
+
 ## Exact Phased Future Allowlists
 
-The first explicit implementation approval may modify only the following
+The first explicit implementation approval may modify only the following 18
 `implementation-before-cutover` paths. Their new complex behavior must remain unreachable from the
 daily entry point while v1 is authoritative:
 
@@ -144,18 +212,19 @@ daily entry point while v1 is authoritative:
 3. `docs/task_board.md` (approval, blocker, validation and human-review transitions only; no v2 cutover)
 4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md` (new, non-normative before cutover)
 5. `docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_capability_probe.md` (new)
-6. `scripts/connlab_personal_task.py` (v1-compatible commands plus disabled v2 migration support)
-7. `scripts/connlab_serial_board.py` (new)
-8. `scripts/connlab_serial_complex.py` (new)
-9. `scripts/connlab_serial_worktree.ps1` (new)
-10. `tests/unit/test_connlab_personal_serial_workflow.py`
-11. `tests/unit/test_connlab_serial_classifier.py` (new)
-12. `tests/unit/test_connlab_serial_complex_state.py` (new)
-13. `tests/unit/test_connlab_serial_complex_worktree.py` (new)
-14. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py` (new)
-15. `tests/unit/test_connlab_execution_gate_script.py`
-16. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
-17. `tests/integration/test_connlab_serial_complex_recovery.py` (new)
+6. `docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json` (new)
+7. `scripts/connlab_personal_task.py` (v1-compatible commands plus disabled v2 migration support)
+8. `scripts/connlab_serial_board.py` (new)
+9. `scripts/connlab_serial_complex.py` (new)
+10. `scripts/connlab_serial_worktree.ps1` (new)
+11. `tests/unit/test_connlab_personal_serial_workflow.py`
+12. `tests/unit/test_connlab_serial_classifier.py` (new)
+13. `tests/unit/test_connlab_serial_complex_state.py` (new)
+14. `tests/unit/test_connlab_serial_complex_worktree.py` (new)
+15. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py` (new)
+16. `tests/unit/test_connlab_execution_gate_script.py`
+17. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
+18. `tests/integration/test_connlab_serial_complex_recovery.py` (new)
 
 The following `cutover-only` paths require a **second** explicit User authorization after implementation
 human review and a successful capability probe:
@@ -173,6 +242,12 @@ Adding or modifying any other path requires stopping and obtaining new User appr
 approval does not authorize any cutover-only edit. Test commands may be narrowed or expanded, but
 test file paths may not.
 
+Before any cutover write, all eight paths must pass effective permission preflight. The current Codex
+permission profile treats `.agents/skills/connlab-lane-orchestrator/SKILL.md` as read-only even though
+its Windows file attribute is not read-only. That condition must return
+`BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes until a separate explicit tool permission grant is
+available; this plan does not authorize changing ACLs or file attributes.
+
 ## Must Not Touch
 
 - All product/backend/frontend/API/database/persistence/authority code and unrelated tests.
@@ -188,6 +263,10 @@ test file paths may not.
 - The current simple path remains behaviorally compatible and its regressions pass.
 - All 29 scenario groups in the approved plan pass or have a repeatable native-capability proof.
 - Board migration is CAS-protected, rollback-proven, compact, and preserves retained history exactly.
+- The first approval payload is byte-for-byte reproducible from this Task and accepted by the current
+  v1 helper schema before any implementation begins.
+- The complex helper contract and second-approval cutover manifest are complete enough that an
+  implementer does not invent commands, codes, hashes, permissions or rollback behavior.
 - Cutover is one Git commit that atomically migrates v1 to v2, closes this governance task and releases
   active; no committed ordinary-idle window exists before cutover.
 - Complex execution has one worktree, strict role order, independent Reviewer/QA, durable recovery,
@@ -201,5 +280,7 @@ This task is planning-only until the User explicitly approves
 `docs/task_governance_serial_complex_role_chain_automation_plan.md`. Approval must be written with the
 current personal helper and committed before any implementation edit. That first approval authorizes
 only `implementation-before-cutover`. A later second approval is required for the exact cutover-only
-files, atomic close/migration commit, runtime-orchestrator message and probe-proven closeout order. No
-approval authorizes a real pilot, push or destructive cleanup unless it says so explicitly.
+files, atomic close/migration commit, runtime-orchestrator message and probe-proven closeout order. It
+must quote the committed cutover-manifest ref, its `TARGET_SET_SHA256`, and its `CLOSEOUT_ORDER`, and
+explicitly authorize the manifest's exact rollback procedures. No approval authorizes a real pilot,
+push or destructive cleanup unless it says so explicitly.
