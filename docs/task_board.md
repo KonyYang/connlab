@@ -65,10 +65,10 @@
       }
     },
     "plan_ref": "docs/task_governance_serial_complex_role_chain_automation_plan.md@d9923605a9f9e24a8aadadc5516f512fd971420f#3de6416dc8633b3e91faccaf5352ca9354440d5542e7c35bc4e24824ee1eacb2",
-    "approval_ref": "User exact wording on 2026-08-06: ?? Revision 5 ???????????? JSON ?? 18 ? implementation-before-cutover ??? pre-cutover ?????? cutover??????????????runtime message?pilot?push ????",
+    "approval_ref": "Controller task 019fc491-21b0-77b0-bf18-53f53a366a7c exact User approval on 2026-08-06: 批准 Revision 5 首次实施。仅授权首次审批 JSON 中的 18 个 implementation-before-cutover 路径和 pre-cutover 实施；不授权 cutover、第二次审批、实际权限授予、runtime message、pilot、push 或清理。",
     "activation_parent_sha": "17207db931cbe75d31c05fa1ee58257b4e88e1a9",
     "activated_at": "2026-08-06T00:00:24Z",
-    "updated_at": "2026-08-06T11:44:21Z",
+    "updated_at": "2026-08-06T12:53:28Z",
     "blocker": {
       "schema": "connlab.personal-task-blocker",
       "version": 1,
@@ -136,14 +136,15 @@
 
 ## Active Work
 
-- `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`: active in `running/planning`.
-- Revision 5 planning is limited to the current Task, Plan, and this human-readable board summary.
-- Implementation, role dispatch, lane/worktree creation, Task-A restoration, cutover, archive, push,
-  and external governance work are not authorized.
+- `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`: active in `running/blocked`.
+- Revision 5 implementation-before-cutover is approved; checkpoint `88006c46` is locally committed
+  and validated, while the current blocker and execution slot remain retained.
+- Lifecycle closeout order is unproven because cleanup is not authorized. Cutover, second approval,
+  actual permission grant, production runtime message, pilot, push, and cleanup remain unauthorized.
 
 ## Queue
 
-- Empty. New tasks must be submitted to the durable FIFO queue while this planning task remains active.
+- Empty. New tasks must be submitted to the durable FIFO queue while this blocked task remains active.
 
 ## Retained History
 
