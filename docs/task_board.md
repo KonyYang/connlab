@@ -19,7 +19,7 @@
     "task_id": "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
     "summary": "Implement and verify dormant serial complex role-chain support without cutover.",
     "kind": "planned",
-    "phase": "blocked",
+    "phase": "implementation",
     "scope_contract": {
       "may_touch": [
         "tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md",
@@ -68,16 +68,8 @@
     "approval_ref": "批准 Revision 6.1 的最小 pre-cutover 收口实施，并明确授权将当前 EXTERNAL_BLOCKER 恢复到 implementation。",
     "activation_parent_sha": "17207db931cbe75d31c05fa1ee58257b4e88e1a9",
     "activated_at": "2026-08-06T00:00:24Z",
-    "updated_at": "2026-08-06T15:42:00Z",
-    "blocker": {
-      "schema": "connlab.personal-task-blocker",
-      "version": 1,
-      "code": "EXTERNAL_BLOCKER",
-      "reason": "Authorized lifecycle probe stopped after A handoff: operation exec-a6bf75db-4f86-49f8-83e0-e0d360998c1c succeeded and created destination thread 019fd73e-6aac-74b0-b404-70ff1be70f42, but the 84b1 worktree remained registered and the saved project checkout moved off master. Primary master was restored under separate User authority. Handoff cannot be treated as worktree retirement; no archive or B-sequence action is authorized.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "recorded_at": "2026-08-06T13:45:54Z"
-    },
+    "updated_at": "2026-08-06T15:42:53Z",
+    "blocker": null,
     "validation": null
   },
   "queue": [],
