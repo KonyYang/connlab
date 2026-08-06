@@ -2,7 +2,7 @@
 
 Status: `planned`
 
-Revision: `4`
+Revision: `5`
 
 Current phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -133,6 +133,10 @@ auto-starts.
 - Effective write permission for all eight cutover paths must be explicitly obtained and proven before
   manifest generation. Apply must re-prove the same writable capability; drift invalidates the
   manifest and requires regeneration plus a new second approval.
+- Permission proof is never caller-declared JSON. `plan-cutover` and `apply-cutover` run the same
+  in-process, no-content-write handle probe over all eight existing targets, verify pre/post
+  bytes/SHA-256/Git blob identity, and emit a canonically hashed proof with frozen enums. Any denied
+  handle blocks before manifest generation or content materialization.
 - Recovery reads durable authority, never conversational memory.
 
 ## Non-Goals
@@ -205,7 +209,7 @@ boolean/string change require a new planning revision:
 Canonical JSON SHA-256 (UTF-8, sorted object keys, compact separators, array order preserved):
 `084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`.
 
-`--plan-ref` must bind the committed Revision 4 Plan as `path@commit#sha256` and
+`--plan-ref` must bind the committed Revision 5 Plan as `path@commit#sha256` and
 `--approval-ref` must preserve the User's exact approval wording plus this controller task ID. They are
 separate CLI arguments and are intentionally not fields in the frozen v1 JSON schema.
 
@@ -250,13 +254,15 @@ Adding or modifying any other path requires stopping and obtaining new User appr
 approval does not authorize any cutover-only edit. Test commands may be narrowed or expanded, but
 test file paths may not.
 
-Before cutover-manifest generation, all eight paths must pass effective permission preflight. The
-current Codex permission profile treats `.agents/skills/connlab-lane-orchestrator/SKILL.md` as
+Before cutover-manifest generation, all eight paths must pass the helper's intrinsic effective
+permission probe. The current Codex permission profile treats
+`.agents/skills/connlab-lane-orchestrator/SKILL.md` as
 read-only even though its Windows file attribute is not read-only. That condition must return
 `BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes until the User separately grants the exact tool
-permission. This plan does not authorize changing ACLs or file attributes. The committed manifest may
-record only `observed_access=write`; apply rechecks that access, and any drift requires a newly
-generated manifest and another exact second approval.
+permission. This plan does not authorize changing ACLs or file attributes. The helper accepts no
+caller-supplied permission assertion. The committed manifest may contain only a successful canonical
+probe receipt; apply runs the same probe again, and any drift requires a newly generated manifest and
+another exact second approval.
 
 ## Must Not Touch
 
@@ -271,7 +277,7 @@ generated manifest and another exact second approval.
 ## Acceptance
 
 - The current simple path remains behaviorally compatible and its regressions pass.
-- All 47 scenario groups in the approved plan pass or have a repeatable native-capability proof.
+- All 50 scenario groups in the approved plan pass or have a repeatable native-capability proof.
 - Board migration is CAS-protected, rollback-proven, compact, and preserves retained history exactly.
 - The first approval payload is byte-for-byte reproducible from this Task and accepted by the current
   v1 helper schema before any implementation begins.

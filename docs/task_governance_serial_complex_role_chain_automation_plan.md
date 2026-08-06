@@ -2,7 +2,7 @@
 
 Status: `DRAFT_FOR_REVIEW`
 
-Revision: `4`
+Revision: `5`
 
 Task: `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION`
 
@@ -328,7 +328,7 @@ Every command requires `--repo-root`; `--json` selects machine output. Every mut
 an unknown JSON key or an unknown enum returns `BLOCKED_ARGUMENT_COMBINATION` or the schema-specific
 blocked code with zero writes.
 
-| Command | Additional exact parameters | Write | Legal purpose |
+| Command | Additional exact parameters | Repository-content write | Legal purpose |
 |---|---|---:|---|
 | `inspect` | none | no | Validate and report current authority. |
 | `check` | `--intent Inspect|Implementation|Close|Cutover`; Task ID required except Inspect | no | Gate one requested operation. |
@@ -349,8 +349,8 @@ blocked code with zero writes.
 | `resume` | `--decision-ref` | yes | Resume only the blocker-recorded phase when its policy permits. |
 | `cancel` | `--decision-ref`, `--disposition` | yes | Before host creation, or after explicit clean retain/retire proof only. |
 | `mark-review`, `close` | existing v1 parameters | yes | Simple workflow only; complex use returns `BLOCKED_STATE`. |
-| `plan-cutover` | `--expected-primary-head`, `--permission-preflight-json`, `--closeout-order` | no | Require eight writable paths and emit the deterministic manifest payload; it never writes the manifest. |
-| `apply-cutover` | `--cutover-manifest-ref`, `--expected-primary-head`, `--approval-ref` | yes | Materialize and verify only the eight manifest-bound worktree targets; never stage or commit. |
+| `plan-cutover` | `--expected-primary-head`, `--closeout-order` | no | Intrinsically probe eight paths and emit the deterministic manifest payload; it never accepts permission JSON or writes the manifest. |
+| `apply-cutover` | `--cutover-manifest-ref`, `--expected-primary-head`, `--approval-ref` | yes | Re-run the intrinsic probe, then materialize and verify only the eight manifest-bound worktree targets; never stage or commit. |
 | `verify-cutover-commit` | `--cutover-manifest-ref`, `--cutover-commit`, `--approval-ref` | no | Verify the Controller-created cutover commit, parent/tree/index and approval before any runtime message. |
 
 The new parser arguments are frozen as:
@@ -366,7 +366,6 @@ The new parser arguments are frozen as:
 --closeout-json
 --cutover-manifest-ref
 --expected-primary-head
---permission-preflight-json
 --closeout-order
 --cutover-commit
 ```
@@ -396,10 +395,63 @@ All objects use exact keys and version 1:
 - `connlab.serial-closeout`: `schema, version, action_id, step, order, thread_id, worktree,
   receipt_sha256, status, recorded_at`. `step=retired|archived|retained`; `order` must equal the
   manifest-approved order; status is `completed|pending|failed`.
-- `connlab.serial-cutover-permission-preflight`: `schema, version, task_id, source_head, paths,
-  observed_at`. `paths` contains exactly the eight ordered cutover paths, each with exact keys
-  `path, required_access, observed_access, observation_source`; both access fields must be `write`.
-  The payload is accepted only after an explicit User/tool permission grant and a clean source HEAD.
+
+There is deliberately no permission-proof CLI parameter or caller-supplied permission schema.
+`--permission-preflight-json` is unknown and returns `BLOCKED_ARGUMENT_COMBINATION`. The intrinsic
+proof emitted by the helper is frozen separately in section 7.2.1.
+
+### 7.2.1 Intrinsic Permission-Proof Contract
+
+Both `plan-cutover` and `apply-cutover` call the same internal function in their own helper process
+before returning a manifest or materializing any target. Its result has schema
+`connlab.serial-cutover-permission-proof` version 1 and exact top-level keys:
+
+```text
+schema, version, task_id, source_head, observation_source, algorithm,
+process_id, started_at, finished_at, paths, probe_receipt_sha256
+```
+
+`observation_source` has the sole legal value `same_process_write_handle_probe` and `algorithm` has
+the sole legal value `python_os_open_rdwr_binary_no_write_v1`; neither is free text. `process_id` is
+the actual helper PID. `probe_receipt_sha256` is SHA-256 of canonical UTF-8 JSON for every other proof
+field (sorted object keys, compact separators, ordered paths).
+
+Codex sandboxing exposes no repository-readable signed grant ID, so the contract does not accept or
+store an unverifiable caller `grant_ref`. The verifiable receipt identifier is
+`probe_receipt_sha256`, backed by actual same-process handle acquisition; apply never trusts the old
+receipt alone and must acquire new handles itself.
+
+`paths` contains the exact eight cutover paths in manifest order. Each record has exact keys:
+
+```text
+path, resolved_path, existed, regular_file, open_flags, handle_opened,
+pre_bytes, pre_sha256, pre_blob, post_bytes, post_sha256, post_blob,
+unchanged, error_code
+```
+
+For each path, the helper resolves the existing regular file inside the primary root, reads raw bytes,
+then calls `os.open(path, os.O_RDWR | os.O_BINARY)` (with `O_BINARY=0` where the platform does not
+define it), without `O_CREAT`, `O_TRUNC`, `O_APPEND` or any `os.write`/file-write call. It closes the
+handle, reads raw bytes again, and recomputes byte count, SHA-256 and Git blob. Success requires
+`existed=true`, `regular_file=true`, `handle_opened=true`, `unchanged=true`, null `error_code`, and
+identical pre/post triples. The frozen failure enums are `NOT_FOUND`, `NOT_REGULAR`, `OUTSIDE_REPO`,
+`READ_ONLY`, `CONTENT_DRIFT`, and `OS_ERROR`; any failure aborts the whole probe.
+
+`resolved_path` is `Path.resolve(strict=True)` and must remain under the resolved primary root using
+Windows case-insensitive containment. Git blob is computed locally as SHA-1 of
+`b"blob " + ascii(len(bytes)) + b"\0" + bytes`; no Git write or object creation is performed.
+
+The function catches `PermissionError`/access-denied as `READ_ONLY` and returns
+`BLOCKED_CUTOVER_PATH_READ_ONLY`; other probe failures return `BLOCKED_CUTOVER_PERMISSION_PROBE`.
+The result is derived from actual handle acquisition, not a caller assertion. `plan-cutover` embeds
+the successful proof in its manifest payload. `apply-cutover` produces a fresh proof in the same
+process that would materialize content and completes it before decoding or writing any target bytes.
+
+On success, `apply-cutover` returns `connlab.serial-cutover-apply-receipt` version 1 in `payload` with
+exact keys `schema, version, task_id, manifest_ref, permission_proof, target_set_sha256, changed_paths,
+unchanged_head, unchanged_index_tree, created_at`. `permission_proof` is the fresh complete object,
+`changed_paths` is the ordered eight-path list, and both unchanged Git fields equal the approved
+manifest source. The Controller must retain this command result until post-commit verification.
 
 ### 7.3 Frozen State/Command Matrix
 
@@ -539,8 +591,9 @@ Non-applicable fields are null; arrays remain arrays. Existing v1 commands retai
 `ALLOW_RECORD_HOST`, `ALLOW_RECORD_INTEGRATION`, `ALLOW_REQUEST_CLOSE`,
 `ALLOW_RECORD_CLOSEOUT`, `ALLOW_FINALIZE_CLOSE`, `ALLOW_PLAN_CUTOVER`, and
 `ALLOW_APPLY_CUTOVER`, and `ALLOW_VERIFY_CUTOVER_COMMIT`. `payload` is null except that
-`ALLOW_PLAN_CUTOVER` returns the exact manifest object and `ALLOW_VERIFY_CUTOVER_COMMIT` returns the
-bounded verified-commit receipt.
+`ALLOW_PLAN_CUTOVER` returns the exact manifest object, `ALLOW_APPLY_CUTOVER` returns the exact apply
+receipt from section 7.2.1, and `ALLOW_VERIFY_CUTOVER_COMMIT` returns the bounded verified-commit
+receipt.
 
 Stable idempotent codes are `NOOP_ACTION_ALREADY_BEGUN`, `NOOP_INVOCATION_ALREADY_RECORDED`,
 `NOOP_CALLBACK_ALREADY_CONSUMED`, `NOOP_HOST_ALREADY_RECORDED`,
@@ -554,7 +607,7 @@ are `BLOCKED_CALLBACK_INVALID`, `BLOCKED_CALLBACK_STALE`, `BLOCKED_EVIDENCE_INVA
 `BLOCKED_INTEGRATION_PROOF`, `BLOCKED_CLOSEOUT_ORDER`, `BLOCKED_ARCHIVE_PENDING`,
 `BLOCKED_RETIREMENT_PENDING`, `BLOCKED_CUTOVER_NOT_AUTHORIZED`, `BLOCKED_CUTOVER_MANIFEST`,
 `BLOCKED_CUTOVER_TARGET_HASH`, `BLOCKED_CUTOVER_PATH_READ_ONLY`,
-`BLOCKED_CUTOVER_INDEX_DRIFT`, `BLOCKED_CUTOVER_MATERIALIZATION`,
+`BLOCKED_CUTOVER_PERMISSION_PROBE`, `BLOCKED_CUTOVER_INDEX_DRIFT`, `BLOCKED_CUTOVER_MATERIALIZATION`,
 `BLOCKED_CUTOVER_COMMIT`, `BLOCKED_CUTOVER_ROLLBACK_FAILED`, and
 `BLOCKED_LEGACY_MODE_FROZEN`. All blocked results are zero-write unless the command is explicitly
 recording that blocker. `BLOCKED_CUTOVER_MATERIALIZATION` is the sole file-write exception: it may
@@ -567,15 +620,16 @@ manifest's exact uncommitted rollback before any other action. No code is inferr
 
 1. `a5286688`: board-only planning activation (complete).
 2. `1afbfdf1`: initial Task and Plan planning commit (complete).
-3. Revision 4 planning commit: Task, Plan and board human-summary correction only.
+3. Revision 5 planning commit: Task, Plan and board human-summary correction only.
 4. after the first User approval: board-only approval commit binding only the
    `implementation-before-cutover` allowlist.
 5. implementation commits: only pre-cutover helpers/modules/protocol/tests while v1 remains the
    normative runtime authority and every new complex entry stays unreachable.
 6. capability-probe evidence commit recording the one proposed closeout order.
 7. implementation completion commit: validation plus `implemented_pending_human_review` under v1.
-8. after exact cutover-path permission is granted, the Controller records a writable preflight,
-   generates and commits the manifest, and obtains the manifest-bound second User approval;
+8. after exact cutover-path permission is granted, `plan-cutover` proves it through the intrinsic
+   handle probe; the Controller commits the returned manifest and obtains the manifest-bound second
+   User approval;
 9. the helper materializes/verifies only the eight targets, the Controller exact-stages and creates one
    cutover Git commit, and read-only `verify-cutover-commit` must pass before any runtime message. That
    commit simultaneously migrates v1 to v2, records this governance task closed, releases active, and
@@ -714,7 +768,7 @@ closeout prerequisites are:
    in the cutover authorization.
 
 Only then does the runtime orchestrator execute that one frozen sequence. The two candidate orders are
-`stop -> retire -> archive` and `stop -> archive -> retire`; Revision 4 approves neither. The capability
+`stop -> retire -> archive` and `stop -> archive -> retire`; Revision 5 approves neither. The capability
 probe must prove one, the second User approval must name it, and the normative cutover protocol must
 freeze it. The implementer and runtime orchestrator cannot switch orders dynamically. If neither is
 proven, cutover is blocked.
@@ -926,6 +980,20 @@ Revision 4 adds these mandatory groups:
 47. apply rechecks all eight permissions against the approved manifest, and any drift forces a new
     manifest commit plus a new second approval before materialization.
 
+Revision 5 adds these mandatory groups:
+
+48. `--permission-preflight-json` and every other caller permission assertion are rejected; both
+    commands obtain permission facts only from the shared intrinsic probe;
+49. the probe opens every existing target with the exact non-truncating read/write flags, makes no
+    write call, proves pre/post bytes/SHA-256/Git blob equality, freezes enums, and validates the
+    canonical receipt hash;
+50. one bounded permission-drift test allows manifest generation, denies one target's read/write
+    handle before apply, and proves `BLOCKED_CUTOVER_PATH_READ_ONLY` with zero materialization calls,
+    unchanged eight target bytes, unchanged Git index and unchanged HEAD.
+
+Group 50 is exactly one test in the already approved
+`tests/unit/test_connlab_serial_complex_orchestrator_contract.py`; it does not add a test path.
+
 Additional migration checks: v1 simple fixtures migrate deterministically to v2, rollback reconstructs
 the exact pre-cutover board bytes, stale CAS/lock collision/injected replace failure are zero-write, and
 the board stays below 400 lines and 65,536 bytes.
@@ -961,9 +1029,10 @@ capability checks follow the bounded probe in section 4 and are committed as evi
 grant, but before the second approval. It is zero-write and requires the exact v1
 `implemented_pending_human_review` governance Task ID, passed validation, no blocker, empty FIFO,
 clean primary, accepted helper ancestry, the probe-approved closeout order and a current permission
-preflight proving all eight paths writable. An idle source or any read-only/unknown path is rejected
-before a manifest payload exists. The Controller writes the returned exact `payload` and commits it
-under the first approval as:
+grant under which its own intrinsic handle probe proves all eight paths writable. It accepts no
+permission proof from the caller. An idle source or any denied/unknown path is rejected before a
+manifest payload exists. The Controller writes the returned exact `payload` and commits it under the
+first approval as:
 
 ```text
 docs/lane_evidence/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION_cutover_manifest.json
@@ -977,7 +1046,7 @@ The manifest schema is `connlab.serial-cutover-manifest` version 1 with exact to
 schema, version, task_id, authority_base_commit, authority_base_tree,
 authority_base_board_sha256, authority_base_control_digest, closeout_order,
 target_set_sha256, files, index_derivation, canonical_history_index_guard,
-permission_preflight, rollback, created_at
+permission_proof, rollback, created_at
 ```
 
 `files` contains exactly eight ordered records for:
@@ -1028,23 +1097,25 @@ self-hash in the manifest. `authorized_paths` is the same ordered eight-path lis
 `canonical_history_index_guard` freezes path, byte count, SHA-256 and Git blob for
 `docs/archive/task_board_history/index.v1.jsonl`; cutover neither stages nor rewrites it.
 
-`permission_preflight` is the exact accepted `connlab.serial-cutover-permission-preflight` object from
-section 7.2; its `paths` records have exact keys `path, required_access, observed_access,
-observation_source`, and the shared `observed_at` is top-level. The current Codex permission profile exposes
+`permission_proof` is the exact intrinsic `connlab.serial-cutover-permission-proof` object from
+section 7.2.1. The current Codex permission profile exposes
 `.agents/skills/connlab-lane-orchestrator/SKILL.md` as read-only even though its Windows file attribute
 is normal, so `plan-cutover` currently returns `BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes and no
 manifest. The first implementation approval does not grant permission. The User must separately grant
 the exact tool write permission for that path; the Controller does not change ACLs or attributes.
 
-Only after the grant may the Controller build `connlab.serial-cutover-permission-preflight` and call
-`plan-cutover`. Every manifest record must have `required_access=write` and
-`observed_access=write`; a manifest containing read-only or unknown access is schema-invalid and can
-never reach User approval. Immediately before `apply-cutover`, the helper performs a fresh effective
-permission recheck for all eight paths and compares the access result and observation source to the
-approved manifest. Timestamps need not be equal, but effective access must still be `write` through
-the same granted capability. Any drift returns `BLOCKED_CUTOVER_PATH_READ_ONLY` with zero writes. The
-Controller must obtain/re-prove permission, regenerate and commit a new manifest revision, and obtain
-a new exact second approval; an older approval cannot authorize the new ref.
+After the grant, the Controller calls `plan-cutover` without any permission payload. The helper's own
+process performs the section-7.2.1 probe and embeds only a fully successful canonical proof. A
+manifest with a missing proof, wrong enum/receipt, failed path, caller-added field or non-identical
+pre/post content is schema-invalid and can never reach User approval.
+
+Immediately before `apply-cutover`, the new helper process runs the same internal function before
+decoding target content. The fresh proof must have the same frozen source/algorithm, path order,
+resolved paths and source byte/hash/blob triples as the approved manifest; PID/timestamps and receipt
+hash are expected to differ and are validated independently. If any read/write handle is denied or a
+source fact drifts, apply returns the applicable blocked code with zero materialization calls and zero
+content writes. The Controller must re-obtain permission if needed, regenerate and commit a new
+manifest revision, and obtain a new exact second approval; an older approval cannot authorize it.
 
 ### 17.2 Second-Approval Binding
 
@@ -1118,15 +1189,16 @@ is never restored.
 2. It completes the capability probe; any unproven critical capability blocks cutover.
 3. Current governance task enters human review under v1.
 4. The current read-only orchestrator-skill path blocks here. User separately grants exact tool write
-   permission; the Controller proves all eight paths writable. No repository target is written.
-5. `plan-cutover` consumes that writable preflight and emits all eight exact target byte bundles/hashes
-   plus the complete rollback/index manifest; the Controller commits the exact payload while v1 active
-   remains in human review.
+   permission; the Controller supplies no permission assertion. No repository target is written.
+5. In its own process, `plan-cutover` probes all eight paths, proves unchanged contents, and emits the
+   intrinsic receipt plus all exact target byte bundles/hashes and the complete rollback/index
+   manifest; the Controller commits the exact payload while v1 active remains in human review.
 6. User reviews and gives one explicit combined `close + cutover` authorization quoting the exact
    manifest ref, `TARGET_SET_SHA256` and probe-proven `CLOSEOUT_ORDER`; a plain `关闭` or unbound
    approval is insufficient.
-7. `apply-cutover` re-proves the same permission. Drift blocks with zero writes and requires a new
-   manifest commit plus new approval. Otherwise it materializes/verifies eight paths without staging.
+7. In the same process that would materialize content, `apply-cutover` first runs the identical probe.
+   Permission/content drift blocks before decoding/writing targets and requires a new manifest commit
+   plus new approval. Otherwise it materializes/verifies eight paths without staging.
 8. The Controller exact-stages and creates one cutover commit whose parent still has the v1 active
    governance task; read-only `verify-cutover-commit` must pass for the exact parent/tree/index/diff.
 9. Only after that verification, Controller sends one bounded message to `019fb3d4...` telling it to
@@ -1179,7 +1251,8 @@ out-of-band governance maintenance/recovery entry, not a competing daily router.
    `archive_pending_unverifiable` until a later proof or explicit User waiver; additionally, current
    Codex permissions make the orchestrator skill read-only, so manifest generation remains blocked
    until an explicit permission grant passes preflight. A manifest is never approved with read-only
-   observations, and permission drift forces regeneration/reapproval. Neither condition rolls back
+   observations: the helper accepts no caller permission claim and records only its intrinsic
+   handle-probe receipt. Permission drift forces regeneration/reapproval. Neither condition rolls back
    integrated code or auto-releases WIP.
 
 ## 21. Approval And Stop Point
@@ -1190,7 +1263,7 @@ cutover-only file, atomic close/migration, runtime-orchestrator message, real pi
 cleanup, Task-A change, legacy recovery, or archive/deletion of existing tasks.
 
 It must bind the exact Task JSON whose canonical SHA-256 is
-`084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`, plus the committed Revision 4
+`084ce08da66870ebde4d0bd0f929c310fce4ce8aa4204338aa95608e94fcd4be`, plus the committed Revision 5
 Plan ref and exact User wording. Any JSON difference requires another planning revision.
 
 A second explicit User approval is mandatory after implementation review. It must authorize the eight
