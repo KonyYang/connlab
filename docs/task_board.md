@@ -14,8 +14,53 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
+    "summary": "Remove the unused Templates placeholder module from Matrix Editor while preserving and widening Reference Library.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
+      "summary": "Remove the unused Templates placeholder module from Matrix Editor while preserving and widening Reference Library.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "docs/task_board.md",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "tests/unit/test_frontend_shell_files.py"
+      ],
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_frontend_shell_files.py -k matrix_editor -q",
+        "npm run build from frontend",
+        "Browser smoke confirms Templates absent and Reference Library spans the supporting row"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "60116f5af72dffb2c73e04723ba8cf30482034e2",
+    "activated_at": "2026-08-07T23:21:00Z",
+    "updated_at": "2026-08-07T23:21:00Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
