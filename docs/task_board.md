@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
     "summary": "Remove the unused Templates placeholder module from Matrix Editor while preserving and widening Reference Library.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,9 +56,40 @@
     "approval_ref": null,
     "activation_parent_sha": "60116f5af72dffb2c73e04723ba8cf30482034e2",
     "activated_at": "2026-08-07T23:21:00Z",
-    "updated_at": "2026-08-07T23:21:00Z",
+    "updated_at": "2026-08-07T23:33:17Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "py -m pytest tests/unit/test_frontend_shell_files.py -k \"task221_matrix_editor_converges_to_definition_studio_structure or task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority\" -q",
+          "exit_code": 0,
+          "summary": "2 passed, 160 deselected"
+        },
+        {
+          "command": "npm run build (frontend)",
+          "exit_code": 0,
+          "summary": "TypeScript and Vite production build passed; existing chunk-size warning only"
+        },
+        {
+          "command": "git diff --check and exact two-path implementation commit",
+          "exit_code": 0,
+          "summary": "No whitespace errors; implementation commit 2f1c9560 contains only the two approved code/test paths"
+        }
+      ],
+      "observed_paths": [
+        "docs/task_board.md",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "tests/unit/test_frontend_shell_files.py"
+      ],
+      "manual_checks": [
+        "Browser DOM: .matrix-editor-templates count 0",
+        "Reference Library visible at 574/574 supporting width with grid-column 1 / -1"
+      ],
+      "recorded_at": "2026-08-08T00:00:00+08:00"
+    },
     "complex_context": null
   },
   "queue": [],
