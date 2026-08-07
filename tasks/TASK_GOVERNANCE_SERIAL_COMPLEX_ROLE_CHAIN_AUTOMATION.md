@@ -1,10 +1,10 @@
 # TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION
 
-Status: `cutover_simplification_revision_7_1_ready_for_user_approval`
+Status: `cutover_complete`
 
-Revision: `7.1`
+Revision: `7.4.1`
 
-Current phase: `implemented_pending_human_review` under board schema v1
+Current phase: `closed atomically under board schema v2`
 
 Planning controller: Codex task `019fc491-21b0-77b0-bf18-53f53a366a7c`
 
@@ -13,13 +13,12 @@ Future runtime orchestrator: Codex task `019fb3d4-12a5-73b3-be8e-e59686fa39a9`
 Revision 6.1 implementation completion commit:
 `49c6df30f38ce7b7f0df95a9509e3d005914426a`
 
-## Authority And Current Stop Point
+## Authority And Completion State
 
-The Revision 6.1 dormant implementation is validated. The v1 board remains the sole live authority
-with this Task ID active at `implemented_pending_human_review/human_review`, blocker null and FIFO
-empty. This Revision 7.1 planning correction does not close, reopen, resume, migrate, or edit the board.
+The Revision 7.4.1 atomic cutover commit activates the version-2 serial workflow, migrates the board,
+closes this Task and releases active in one Git boundary. The version-2 board is the live authority.
 
-The prior manifest/permission/cutover-command design is superseded by this Task and the Revision 7.1
+The prior manifest/permission/cutover-command design is superseded by this Task and the Revision 7.4.1
 Plan. Git history retains the old text for audit; it is no longer implementation authority.
 
 ## Goal
@@ -35,9 +34,9 @@ or QA findings return automatically to Developer and repeat the required gates. 
 destructive action, integration conflict, ambiguous authority, or another unresolved blocker returns
 to the User.
 
-WIP remains one. A later request enters FIFO. After the active task is closed and its close commit is
-clean, the runtime orchestrator may activate only the exact FIFO head in a separate CAS transition;
-there is never more than one active owner.
+WIP remains one. Submit checks occupancy before parsing or classification. While a task is active,
+the new request receives a zero-write wait response and is not stored; after close, the User submits
+it again against the idle board. There is never more than one active owner.
 
 ## Repository-Confirmed Problems Being Corrected
 
@@ -68,13 +67,13 @@ There is no manifest file, target-bytes bundle, permission-receipt framework, or
 command family. The immutable candidate Git commit is the complete content bundle and approval
 object.
 
-The Controller prepares a direct-child candidate commit using a temporary index and temporary target
-directory while the primary worktree and v1 board remain byte-unchanged. It runs validation in a
-bounded temporary repository, then shows the exact parent, commit, path list and full pre-cutover diff
+The Controller prepares a direct-child candidate commit in a fresh isolated temporary Git repository
+whose top-level and literal parent are verified before any target bytes are copied, while the primary
+worktree and v1 board remain byte-unchanged. It then shows the exact parent, commit, path list and full pre-cutover diff
 to the User. Only an explicit approval of that literal candidate commit and literal parent authorizes
 a fast-forward of `master`; the application command must not derive either value from a mutable ref.
 
-The candidate commit changes exactly these 15 paths:
+The candidate commit changes exactly these 16 paths:
 
 1. `AGENTS.md`
 2. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
@@ -83,14 +82,15 @@ The candidate commit changes exactly these 15 paths:
 5. `scripts/run_task.ps1`
 6. `scripts/connlab_execution_gate.ps1`
 7. `scripts/connlab_personal_task.py`
-8. `scripts/connlab_serial_complex.py`
-9. `docs/task_board.md`
-10. `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md`
-11. `docs/task_governance_serial_complex_role_chain_automation_plan.md`
-12. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`
-13. `tests/unit/test_connlab_execution_gate_script.py`
-14. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
-15. `tests/integration/test_connlab_serial_complex_recovery.py`
+8. `scripts/connlab_serial_board.py`
+9. `scripts/connlab_serial_complex.py`
+10. `docs/task_board.md`
+11. `tasks/TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION.md`
+12. `docs/task_governance_serial_complex_role_chain_automation_plan.md`
+13. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`
+14. `tests/unit/test_connlab_execution_gate_script.py`
+15. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
+16. `tests/integration/test_connlab_serial_complex_recovery.py`
 
 No other path may differ between the candidate parent and candidate commit.
 
@@ -99,7 +99,8 @@ The same candidate commit must:
 - remove the unused cutover command family and permission/manifest fixture code;
 - activate the v2 serial-complex rules, runtime skill, entry and gate;
 - migrate the board from v1 human review to v2 idle;
-- set `active=null`, preserve FIFO/sequence and retained history, and record this governance task in
+- set `active=null`, require the compatibility queue fields to remain `queue=[]` and
+  `next_enqueue_sequence=1`, preserve retained history, and record this governance task in
   `last_closed` using the fixed non-self-referential decision text
   `User approved the exact pre-reviewed local atomic cutover commit in controller task 019fc491-21b0-77b0-bf18-53f53a366a7c.`;
 - mark this Task and Plan `cutover_complete`;
@@ -128,7 +129,17 @@ attempting to embed that future hash in the candidate would create a Git self-re
 ## Acceptance
 
 - The candidate parent is the clean planning-revision HEAD and the candidate has exactly one parent.
-- The candidate diff is exactly the 15-path allowlist and passes `git diff --check`.
+- The candidate diff is exactly the 16-path allowlist and passes `git diff --check`.
+- An occupied v2 submit returns `BLOCKED_ACTIVE_TASK_RUNNING`, `changed=false`, without parsing or
+  persisting the request; a later idle submit performs the first classification and activation.
+- The occupied-submit return occurs immediately after board parsing and before `resolve_primary`,
+  any Git/worktree command, `writer_lock`, JSON parsing or classifier invocation.
+- `run_task.ps1` exposes no `ActivateNext`; the v1-only helper token fails closed with zero writes
+  against every v2 board and exists solely for exact rollback compatibility.
+- The v2 `block` writer accepts only a validated `connlab.serial-task-blocker` whose stage equals the
+  current complex phase, and `resume` uses its frozen `resume_phase`.
+- `record-integration` verifies the committed board transition, primary merge commit/parents/tree,
+  exact reviewed task-worktree HEAD/clean state and committed evidence bytes before writing human review.
 - The bounded temporary-repository test proves v1 human review -> one cutover commit -> v2 idle and
   proves an exact `git revert` restores the parent tree.
 - The approved regression suite passes on the candidate commit before User approval and after
@@ -138,20 +149,20 @@ attempting to embed that future hash in the candidate would create a Git self-re
   passed`; it must not claim that the native Codex role chain has already passed end to end.
 - The first ordinary complex requirement is the monitored first real run, not a pilot gate or a new
   governance task. Failure retains its active slot and typed blocker under the normal recovery rules.
-- Daily complex work preserves WIP=1/FIFO and needs no User approval for role dispatch, worktree-host
-  creation, Reviewer/QA retry, integration, retained closeout, or FIFO-head activation.
+- Daily complex work preserves WIP=1 and needs no User approval for role dispatch, worktree-host
+  creation, Reviewer/QA retry, integration, or retained closeout.
 - generation-1, canonical index, Task-A, retained/probe resources and external repositories are
   unchanged.
 - Primary ends clean on local `master`; no push, lifecycle operation, pilot, or cleanup occurs.
 
 ## Approval Gate
 
-Approval of this Revision 7.1 authorizes only preparation and validation of the exact candidate commit;
+Approval of this Revision 7.4.1 authorizes only preparation and validation of the exact candidate commit;
 it does not apply it. The Controller must return the real candidate commit, parent and exact diff for
 a separate explicit cutover decision. A plain `关闭` must not be interpreted as cutover approval.
 
 The cutover decision must quote the literal 40-hex candidate and parent and explicitly authorize
-`git merge --ff-only <literal-approved-candidate>` to update all 15 allowlisted paths, including
+`git merge --ff-only <literal-approved-candidate>` to update all 16 allowlisted paths, including
 `.agents/skills/connlab-lane-orchestrator/SKILL.md`. If the sandbox still refuses that exact write,
 stop without an alternate write strategy; do not restore a permission probe, receipt or manifest.
 
@@ -159,4 +170,4 @@ After that approval, the Controller verifies the candidate ref still equals the 
 executes the literal hash, never the ref-derived value. No second routine approval, manifest approval,
 permission receipt, runtime activation message or pilot is part of the cutover.
 
-`STATUS: READY_FOR_USER_APPROVAL`
+`STATUS: CUTOVER_COMPLETE`

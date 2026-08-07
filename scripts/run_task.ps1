@@ -3,7 +3,18 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Task,
 
+    [ValidateSet("Submit", "Approve", "Close")]
+    [string]$Action = "Submit",
+
     [string]$RequestJson,
+
+    [string]$ApprovedRequestJson,
+
+    [string]$PlanRef,
+
+    [string]$ApprovalRef,
+
+    [string]$DecisionRef,
 
     [Parameter(Mandatory = $true)]
     [string]$ExpectedBoardSha256,
@@ -13,8 +24,6 @@ param(
     [switch]$Preview,
 
     [switch]$ControlledLaneV2,
-
-    [switch]$ActivateNext,
 
     [switch]$Json
 )
@@ -51,28 +60,53 @@ if ($Preview) {
     exit $exitCode
 }
 
-if ($ActivateNext) {
-    if (-not [string]::IsNullOrWhiteSpace($RequestJson)) {
-        throw "-ActivateNext reuses the queued request and does not accept -RequestJson."
-    }
-    $arguments = @(
-        $helper, "activate-next", "--repo-root", $RepositoryRoot,
-        "--expected-board-sha256", $ExpectedBoardSha256,
-        "--task-id", $Task, "--json"
-    )
-} else {
+switch ($Action) {
+"Submit" {
     if ([string]::IsNullOrWhiteSpace($RequestJson)) {
-        throw "-RequestJson is required unless -ActivateNext or -Preview is used."
+        throw "-RequestJson is required for Submit."
     }
-    $nativeRequestJson = $RequestJson.Replace('"', '\"')
     $arguments = @(
         $helper, "submit", "--repo-root", $RepositoryRoot,
         "--expected-board-sha256", $ExpectedBoardSha256,
-        "--task-id", $Task, "--request-json", $nativeRequestJson, "--json"
+        "--task-id", $Task, "--request-json", $RequestJson, "--json"
     )
 }
+"Approve" {
+    if ([string]::IsNullOrWhiteSpace($ApprovedRequestJson) -or
+        [string]::IsNullOrWhiteSpace($PlanRef) -or
+        [string]::IsNullOrWhiteSpace($ApprovalRef)) {
+        throw "Approve requires -ApprovedRequestJson, -PlanRef, and -ApprovalRef."
+    }
+    $arguments = @(
+        $helper, "approve", "--repo-root", $RepositoryRoot,
+        "--expected-board-sha256", $ExpectedBoardSha256,
+        "--task-id", $Task, "--approved-request-json", $ApprovedRequestJson,
+        "--plan-ref", $PlanRef, "--approval-ref", $ApprovalRef, "--json"
+    )
+}
+"Close" {
+    if ([string]::IsNullOrWhiteSpace($DecisionRef)) {
+        throw "Close requires -DecisionRef containing the explicit User decision."
+    }
+    $arguments = @(
+        $helper, "close", "--repo-root", $RepositoryRoot,
+        "--expected-board-sha256", $ExpectedBoardSha256,
+        "--task-id", $Task, "--decision-ref", $DecisionRef, "--json"
+    )
+}
+}
 
-$output = @(& py @arguments) -join "`n"
-$exitCode = $LASTEXITCODE
+$argvEnvironmentName = "CONNLAB_PERSONAL_TASK_ARGV_JSON"
+if (Test-Path "Env:$argvEnvironmentName") {
+    throw "$argvEnvironmentName is already set."
+}
+$launcher = "import json,os,runpy,sys;sys.argv=json.loads(os.environ.pop('CONNLAB_PERSONAL_TASK_ARGV_JSON'));runpy.run_path(sys.argv[0],run_name='__main__')"
+try {
+    $env:CONNLAB_PERSONAL_TASK_ARGV_JSON = ConvertTo-Json -InputObject $arguments -Compress -Depth 5
+    $output = @(& py -c $launcher) -join "`n"
+    $exitCode = $LASTEXITCODE
+} finally {
+    Remove-Item Env:CONNLAB_PERSONAL_TASK_ARGV_JSON -ErrorAction SilentlyContinue
+}
 Write-Output $output
 exit $exitCode

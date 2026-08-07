@@ -332,33 +332,23 @@ V2_PHASES = {
 def validate_v2_control(value: dict[str, Any]) -> None:
     top = {"schema", "version", "mode", "wip_limit", "state", "active", "queue", "next_enqueue_sequence", "last_closed", "retained_history"}
     exact_keys(value, top, "BLOCKED_SCHEMA_INVALID")
-    if value.get("schema") != "connlab.personal-serial-control" or value.get("version") != 2 or value.get("mode") != "personal_serial" or value.get("wip_limit") != 1:
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 board identity is invalid.")
-    if value.get("state") not in {"idle", "running", "implemented_pending_human_review"}:
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 board state is invalid.")
-    if not isinstance(value.get("queue"), list) or type(value.get("next_enqueue_sequence")) is not int or not isinstance(value.get("retained_history"), list):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 queue/history fields are invalid.")
+    if value.get("schema") != "connlab.personal-serial-control" or value.get("version") != 2 or value.get("mode") != "personal_serial" or value.get("wip_limit") != 1: raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 board identity is invalid.")
+    if value.get("state") not in {"idle", "running", "implemented_pending_human_review"}: raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 board state is invalid.")
+    if value.get("queue") != [] or value.get("next_enqueue_sequence") != 1 or not isinstance(value.get("retained_history"), list):
+        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 queue compatibility fields must remain inert.")
     active = value.get("active")
-    if (value["state"] == "idle") != (active is None):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 occupancy is contradictory.")
-    if active is None:
-        return
+    if (value["state"] == "idle") != (active is None): raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 occupancy is contradictory.")
+    if active is None: return
     exact_keys(active, V2_ACTIVE_KEYS, "BLOCKED_SCHEMA_INVALID")
-    if active.get("classification") not in {"simple", "complex", "needs_discovery"} or active.get("phase") not in V2_PHASES:
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 classification/phase is invalid.")
-    if not all(isinstance(active.get(key), str) and active[key] for key in ("task_id", "summary", "activated_at", "updated_at")):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 active identity is incomplete.")
-    if not re.fullmatch(r"[0-9a-f]{40}", str(active.get("activation_parent_sha"))):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 activation parent is invalid.")
-    if (value["state"] == "implemented_pending_human_review") != (active["phase"] == "human_review"):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 state and phase contradict.")
+    if active.get("classification") not in {"simple", "complex", "needs_discovery"} or active.get("phase") not in V2_PHASES: raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 classification/phase is invalid.")
+    if not all(isinstance(active.get(key), str) and active[key] for key in ("task_id", "summary", "activated_at", "updated_at")): raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 active identity is incomplete.")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(active.get("activation_parent_sha"))): raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 activation parent is invalid.")
+    if (value["state"] == "implemented_pending_human_review") != (active["phase"] == "human_review"): raise Blocked("BLOCKED_SCHEMA_INVALID", "Version-2 state and phase contradict.")
     context = active.get("complex_context")
     if active["classification"] == "simple":
-        if context is not None:
-            raise Blocked("BLOCKED_SCHEMA_INVALID", "Simple task cannot have complex context.")
+        if context is not None: raise Blocked("BLOCKED_SCHEMA_INVALID", "Simple task cannot have complex context.")
         return
-    if not isinstance(context, dict):
-        raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex task requires durable context.")
+    if not isinstance(context, dict): raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex task requires durable context.")
     exact_keys(context, COMPLEX_CONTEXT_KEYS, "BLOCKED_SCHEMA_INVALID")
     if context.get("workflow_version") != 1 or type(context.get("current_attempt")) is not int:
         raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex workflow identity is invalid.")
@@ -376,6 +366,8 @@ def migrate_v1_to_v2(control: dict[str, Any], *, decision_ref: str, closed_at: s
         raise Blocked("BLOCKED_CUTOVER_NOT_AUTHORIZED", "Cutover source must be the validated governance task in human review.")
     if not decision_ref or not closed_at:
         raise Blocked("BLOCKED_CUTOVER_NOT_AUTHORIZED", "Cutover close evidence is required.")
+    if control.get("queue") != [] or control.get("next_enqueue_sequence") != 1:
+        raise Blocked("BLOCKED_CUTOVER_NOT_AUTHORIZED", "Cutover requires empty inert queue compatibility fields.")
     migrated = json.loads(json.dumps(control))
     migrated["version"] = 2
     migrated["state"] = "idle"
@@ -391,16 +383,10 @@ def migrate_v1_to_v2(control: dict[str, Any], *, decision_ref: str, closed_at: s
 
 
 def v2_submit(control: dict[str, Any], request: dict[str, Any], head: str) -> tuple[str, str]:
+    if control.get("state") != "idle" or control.get("active") is not None:
+        raise Blocked("BLOCKED_ACTIVE_TASK_RUNNING", "Another task is active; submit again after it is closed.")
     from scripts.connlab_serial_complex import classify_request
     decision = classify_request(request); task_id = request["task_id"]
-    active = control.get("active")
-    if isinstance(active, dict) and active.get("task_id") == task_id: return "NOOP_ALREADY_ACTIVE", "Task is already active."
-    if any(item.get("task_id") == task_id for item in control["queue"]): return "QUEUED_EXISTING", "Task is already queued."
-    if control["state"] != "idle" or control["queue"]:
-        sequence = control["next_enqueue_sequence"]
-        control["queue"].append({"task_id": task_id, "summary": request["summary"], "classification": decision["classification"], "reason_codes": decision["reason_codes"], "enqueue_sequence": sequence, "queued_at": now()})
-        control["next_enqueue_sequence"] = sequence + 1
-        return "QUEUED_NEW", "Task appended to FIFO queue."
     classification = decision["classification"]; timestamp = now()
     context = None if classification == "simple" else {
         "workflow_version": 1, "task_branch": None, "task_worktree": None, "base_sha": head, "head_sha": head,
@@ -414,17 +400,6 @@ def v2_submit(control: dict[str, Any], request: dict[str, Any], head: str) -> tu
     control["active"] = {"task_id": task_id, "summary": request["summary"], "kind": "simple" if classification == "simple" else "planned", "classification": classification, "phase": "implementation" if classification == "simple" else "planning", "scope_contract": request if classification == "simple" else None, "plan_ref": None, "approval_ref": None, "activation_parent_sha": head, "activated_at": timestamp, "updated_at": timestamp, "blocker": None, "validation": None, "complex_context": context}
     control["state"] = "running"
     return "ALLOW_ACTIVATE", "Task activated under version-2 serial authority."
-
-
-def v2_activate_next(control: dict[str, Any], request: dict[str, Any], head: str) -> tuple[str, str]:
-    if control.get("state") != "idle": raise Blocked("BLOCKED_STATE", "Board must be idle before FIFO activation.")
-    if not control["queue"]: return "NOOP_QUEUE_EMPTY", "FIFO queue is empty."
-    if control["queue"][0].get("task_id") != request.get("task_id"): raise Blocked("BLOCKED_FIFO_ORDER", "Only the exact FIFO head may activate.")
-    remainder = control["queue"][1:]; control["queue"] = []
-    code, reason = v2_submit(control, request, head)
-    if code != "ALLOW_ACTIVATE": raise Blocked("BLOCKED_STATE", "FIFO head reclassification did not activate.")
-    control["queue"] = remainder
-    return "ALLOW_ACTIVATE_NEXT", reason
 
 
 def render_board(prefix: str, value: dict[str, Any], suffix: str) -> bytes:

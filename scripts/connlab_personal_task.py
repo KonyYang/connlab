@@ -5,15 +5,19 @@ import argparse, hashlib, json, re, subprocess, sys
 from pathlib import Path
 from typing import Any
 
+SCRIPT_REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if not sys.path or Path(sys.path[0]).resolve() != SCRIPT_REPOSITORY_ROOT:
+    sys.path.insert(0, str(SCRIPT_REPOSITORY_ROOT))
+
 from scripts.connlab_serial_board import (
     BOARD_REL, Blocked, approved_payload, blocker_payload, committed_board, git_dirty, now,
-    parse_board, request_payload, resolve_primary, run_git, sha, validation_payload, v2_activate_next,
-    v2_submit, write_board, writer_lock,
+    parse_board, request_payload, resolve_primary, run_git, sha, validation_payload, v2_submit,
+    write_board, writer_lock,
 )
-from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition
+from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
 
 COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close")
-COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS, "plan-cutover", "apply-cutover", "verify-cutover-commit")
+COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
 RESULT_FIELDS = ("schema", "version", "code", "allowed", "changed", "command", "task_id", "state", "active_task_id", "queue_position", "board_sha256_before", "board_sha256_after", "primary_root", "reason")
 
 def result(code: str, command: str, root: Path | None, before: str | None, after: str | None, control: dict[str, Any] | None, *, task_id: str | None = None, changed: bool = False, reason: str = "") -> dict[str, Any]:
@@ -44,6 +48,49 @@ def active_from_request(request: dict[str, Any], scope: dict[str, Any] | None, h
         "activation_parent_sha": head, "activated_at": timestamp, "updated_at": timestamp,
         "blocker": None, "validation": None,
     }
+def verify_evidence_ref(root: Path, value: Any) -> None:
+    match = re.fullmatch(r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{64})", str(value))
+    if not match or ".." in Path(match.group(1)).parts:
+        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Evidence ref is invalid.")
+    evidence = subprocess.run(["git", "-C", str(root), "show", f"{match.group(2)}:{match.group(1)}"], capture_output=True, check=False)
+    if evidence.returncode != 0 or hashlib.sha256(evidence.stdout).hexdigest() != match.group(3):
+        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Evidence is not committed at the exact byte hash.")
+def verify_integration_repository(root: Path, active: dict[str, Any], value: dict[str, Any]) -> None:
+    if not committed_board(root):
+        raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The integration-ready board transition must be committed first.")
+    context = active["complex_context"]
+    if git_dirty(root):
+        raise Blocked("BLOCKED_WORKTREE_FACTS", "Primary must be clean before integration is recorded.")
+    head = run_git(root, "rev-parse", "HEAD")
+    parents = run_git(root, "rev-list", "--parents", "-n", "1", value["merge_commit"])
+    tree = run_git(root, "rev-parse", f"{value['merge_commit']}^{{tree}}")
+    if (
+        head.returncode != 0
+        or head.stdout.strip() != value["merge_commit"]
+        or parents.returncode != 0
+        or parents.stdout.strip().split() != [value["merge_commit"], *value["parents"]]
+        or tree.returncode != 0
+        or tree.stdout.strip() != value["merge_tree"]
+    ):
+        raise Blocked("BLOCKED_INTEGRATION_PROOF", "Primary merge commit, parents or tree do not match Git.")
+    worktree = Path(context["task_worktree"]).resolve()
+    records = run_git(root, "worktree", "list", "--porcelain").stdout.strip().split("\n\n")
+    record = next((item for item in records if item.splitlines() and Path(item.splitlines()[0][9:]).resolve() == worktree), None)
+    lines = set(record.splitlines()) if record else set()
+    if (
+        not record
+        or f"HEAD {value['branch_head']}" not in lines
+        or f"branch refs/heads/{context['task_branch']}" not in lines
+        or run_git(worktree, "rev-parse", "HEAD").stdout.strip() != value["branch_head"]
+        or bool(run_git(worktree, "status", "--porcelain=v1", "--untracked-files=all").stdout)
+    ):
+        raise Blocked("BLOCKED_WORKTREE_FACTS", "Task worktree branch, HEAD or clean state does not match Git.")
+    if run_git(root, "merge-base", "--is-ancestor", value["subject_commit"], value["merge_commit"]).returncode != 0:
+        raise Blocked("BLOCKED_INTEGRATION_PROOF", "The reviewed subject is not integrated.")
+    if value["evidence_refs"] != context.get("evidence_refs"):
+        raise Blocked("BLOCKED_INTEGRATION_PROOF", "Integration evidence differs from accepted role evidence.")
+    for evidence_ref in value["evidence_refs"]:
+        verify_evidence_ref(root, evidence_ref)
 def verify_retained_repository(root: Path, active: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]:
     context = active.get("complex_context")
     if not isinstance(context, dict) or context.get("pending_callback") is not None or context.get("current_role") is not None:
@@ -62,25 +109,26 @@ def verify_retained_repository(root: Path, active: dict[str, Any], value: dict[s
         raise Blocked("BLOCKED_WORKTREE_FACTS", "Retained worktree is not clean.")
     if run_git(root, "merge-base", "--is-ancestor", value["head_sha"], value["integrated_commit"]).returncode != 0:
         raise Blocked("BLOCKED_INTEGRATION_PROOF", "Retained worktree HEAD is not integrated.")
-    match = re.fullmatch(r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{64})", str(value.get("evidence_ref")))
-    if not match or ".." in Path(match.group(1)).parts:
-        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Retained closeout evidence ref is invalid.")
-    evidence = subprocess.run(["git", "-C", str(root), "show", f"{match.group(2)}:{match.group(1)}"], capture_output=True, check=False)
-    if evidence.returncode != 0 or hashlib.sha256(evidence.stdout).hexdigest() != match.group(3):
-        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Retained closeout evidence is not committed at the exact hash.")
+    verify_evidence_ref(root, value.get("evidence_ref"))
     return value
 def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) -> tuple[str, bool, str]:
     command, task_id = args.command, args.task_id
     active = control.get("active")
-    if control.get("version") == 2 and command in {"submit", "activate-next"}:
-        request = json.loads(args.request_json or "")
-        action = v2_submit if command == "submit" else v2_activate_next
-        code, reason = action(control, request, run_git(root, "rev-parse", "HEAD").stdout.strip())
+    if control.get("version") == 2 and command == "submit":
+        if control.get("state") != "idle" or control.get("active") is not None:
+            raise Blocked("BLOCKED_ACTIVE_TASK_RUNNING", "Another task is active; submit again after it is closed.")
+        head = run_git(root, "rev-parse", "HEAD").stdout.strip()
+        code, reason = v2_submit(control, json.loads(args.request_json or ""), head)
         return code, not code.startswith(("NOOP_", "QUEUED_EXISTING")), reason
+    if control.get("version") == 2 and command == "activate-next":
+        raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Version-2 daily workflow does not queue tasks; submit again after close.")
     if command in COMPLEX_COMMANDS:
         if control.get("version") != 2: raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Complex commands remain dormant before cutover.")
         active = require_active(control, task_id)
         raw = {"role": args.role, "native_action": json.loads(args.native_action_json or "null"), "invocation": json.loads(args.invocation_json or "null"), "callback": json.loads(args.callback_json or "null"), "worktree": json.loads(args.worktree_json or "null"), "integration": json.loads(args.integration_json or "null"), "closeout": json.loads(args.closeout_json or "null"), "decision_ref": args.decision_ref}
+        if command == "record-integration":
+            validate_integration_transition(active, raw["integration"])
+            verify_integration_repository(root, active, raw["integration"])
         transition_code = complex_transition(active, command, raw)
         if command == "record-closeout": verify_retained_repository(root, active, raw["closeout"])
         if transition_code.startswith("NOOP_"): return transition_code, False, "Exact retained closeout is already recorded."
@@ -90,7 +138,6 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         elif active["phase"] == "human_review": control["state"] = "implemented_pending_human_review"
         else: control["state"] = "running"
         return transition_code, True, "Durable complex transition recorded."
-    if command in {"plan-cutover", "apply-cutover", "verify-cutover-commit"}: raise Blocked("BLOCKED_CUTOVER_NOT_AUTHORIZED", "Cutover requires the exact second User approval.")
     if command == "submit":
         request, scope = request_payload(args.request_json, task_id)
         if isinstance(active, dict) and active.get("task_id") == task_id:
@@ -128,13 +175,15 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         return "ALLOW_ACTIVATE_NEXT", True, "FIFO head activated."
     active = require_active(control, task_id)
     if command == "approve":
+        is_v2_complex = control.get("version") == 2 and isinstance(active.get("complex_context"), dict)
         if active["kind"] != "planned":
             raise Blocked("BLOCKED_STATE", "Only a planned task can be approved.")
-        if active["phase"] == "implementation" and active["approval_ref"]:
+        if active["phase"] in {"implementation", "development"} and active["approval_ref"]:
             return "NOOP_ALREADY_APPROVED", False, "Task is already approved."
         blocked_reapproval = active["phase"] == "blocked" and isinstance(active.get("blocker"), dict) and isinstance(active.get("scope_contract"), dict)
-        if active["phase"] != "planning" and not blocked_reapproval:
-            raise Blocked("BLOCKED_STATE", "Planned task is not in planning phase.")
+        expected_phase = "awaiting_user_approval" if is_v2_complex else "planning"
+        if active["phase"] != expected_phase and not blocked_reapproval:
+            raise Blocked("BLOCKED_STATE", f"Planned task is not in {expected_phase} phase.")
         if not committed_board(root):
             raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The preceding board transition must be committed first.")
         approved, scope = approved_payload(args.approved_request_json, task_id)
@@ -154,7 +203,10 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             if scope["forbidden_categories"] != previous["forbidden_categories"]: raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "A scope amendment cannot change risk-category facts.")
             active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
             return "ALLOW_SCOPE_AMEND", True, "User-approved scope expansion recorded; blocker remains until explicit resume."
-        active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, phase="implementation", updated_at=now())
+        target_phase = "development" if is_v2_complex else "implementation"
+        active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, phase=target_phase, updated_at=now())
+        if is_v2_complex:
+            active["complex_context"]["approved_code_paths"] = scope["may_touch"]
         return "ALLOW_APPROVE", True, "Approved scope bound to active task."
     if command == "mark-review":
         if control["state"] == "implemented_pending_human_review":
@@ -170,7 +222,12 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         control["state"] = "implemented_pending_human_review"
         return "ALLOW_MARK_REVIEW", True, "Implementation awaits human review."
     if command == "block":
-        value = blocker_payload(args.blocker_json)
+        if control.get("version") == 2 and isinstance(active.get("complex_context"), dict):
+            value = validate_complex_blocker(json.loads(args.blocker_json or ""))
+            if value["stage"] != active["phase"]:
+                raise Blocked("BLOCKED_BLOCKER_INVALID", "Complex blocker stage must match the active phase.")
+        else:
+            value = blocker_payload(args.blocker_json)
         if active["blocker"] == value and active["phase"] == "blocked":
             return "NOOP_ALREADY_BLOCKED", False, "Identical blocker is already recorded."
         active.update(blocker=value, phase="blocked", updated_at=now())
@@ -181,8 +238,19 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_STATE", "Task is not blocked.")
         if not args.decision_ref:
             raise Blocked("BLOCKED_STATE", "Explicit User decision reference is required.")
-        active.update(blocker=None, phase="implementation" if active["scope_contract"] else "planning", updated_at=now())
+        blocker = active["blocker"]
+        if isinstance(active.get("complex_context"), dict) and blocker.get("schema") == "connlab.serial-task-blocker":
+            resume_phase = validate_complex_blocker(blocker)["resume_phase"]
+        else:
+            resume_phase = "implementation" if active["scope_contract"] else "planning"
+        active.update(blocker=None, phase=resume_phase, updated_at=now())
         return "ALLOW_RESUME", True, "Blocker cleared by explicit User direction."
+    if command == "close" and control.get("version") == 2 and isinstance(active.get("complex_context"), dict):
+        if git_dirty(root):
+            raise Blocked("BLOCKED_WORKTREE_DIRTY", "A clean primary worktree is required.")
+        transition_code = complex_transition(active, "request-close", {"decision_ref": args.decision_ref})
+        control["state"] = "running"
+        return transition_code, True, "User close recorded; retained closeout continues automatically."
     if command in {"cancel", "close"}:
         if git_dirty(root):
             raise Blocked("BLOCKED_WORKTREE_DIRTY", "A clean primary worktree is required.")
@@ -221,13 +289,24 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("command", choices=COMMANDS)
     value.add_argument("--repo-root", required=True)
     value.add_argument("--json", action="store_true")
-    for name in ("expected-board-sha256", "task-id", "request-json", "approved-request-json", "plan-ref", "approval-ref", "validation-json", "blocker-json", "decision-ref", "disposition", "role", "native-action-json", "native-action-id", "invocation-json", "callback-json", "worktree-json", "integration-json", "closeout-json", "cutover-manifest-ref", "expected-primary-head", "closeout-order", "cutover-commit", "permission-preflight-json"): value.add_argument(f"--{name}")
-    value.add_argument("--intent", choices=("Inspect", "Implementation", "Close", "Cutover"))
+    for name in ("expected-board-sha256", "task-id", "request-json", "approved-request-json", "plan-ref", "approval-ref", "validation-json", "blocker-json", "decision-ref", "disposition", "role", "native-action-json", "native-action-id", "invocation-json", "callback-json", "worktree-json", "integration-json", "closeout-json"): value.add_argument(f"--{name}")
+    value.add_argument("--intent", choices=("Inspect", "Implementation", "Close"))
     return value
 def validate_argument_combination(args: argparse.Namespace) -> None:
-    names = {"expected_board_sha256", "task_id", "request_json", "approved_request_json", "plan_ref", "approval_ref", "validation_json", "blocker_json", "decision_ref", "disposition", "intent", "role", "native_action_json", "native_action_id", "invocation_json", "callback_json", "worktree_json", "integration_json", "closeout_json", "cutover_manifest_ref", "expected_primary_head", "closeout_order", "cutover_commit", "permission_preflight_json"}
-    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id", "request_json"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}, "plan-cutover": {"task_id", "expected_primary_head"}, "apply-cutover": {"expected_board_sha256", "task_id", "cutover_manifest_ref", "expected_primary_head", "approval_ref"}, "verify-cutover-commit": {"task_id", "cutover_manifest_ref", "cutover_commit", "approval_ref"}}[args.command]
+    names = {"expected_board_sha256", "task_id", "request_json", "approved_request_json", "plan_ref", "approval_ref", "validation_json", "blocker_json", "decision_ref", "disposition", "intent", "role", "native_action_json", "native_action_id", "invocation_json", "callback_json", "worktree_json", "integration_json", "closeout_json"}
+    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}}[args.command]
     if {name for name in names if getattr(args, name) is not None} - allowed: raise Blocked("BLOCKED_ARGUMENT_COMBINATION", "Arguments are incompatible with the selected command.")
+def pre_git_busy_submit(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str] | None:
+    if args.command != "submit":
+        return None
+    root = Path(args.repo_root).resolve()
+    data = (root / BOARD_REL).read_bytes()
+    _, control, _ = parse_board(data)
+    if control.get("version") == 2 and (
+        control.get("state") != "idle" or control.get("active") is not None
+    ):
+        return root, control, sha(data)
+    return None
 def main() -> int:
     args = parser().parse_args()
     root: Path | None = None
@@ -235,6 +314,15 @@ def main() -> int:
     before: str | None = None
     try:
         validate_argument_combination(args)
+        busy = pre_git_busy_submit(args)
+        if busy is not None:
+            root, control, before = busy
+            output = result(
+                "BLOCKED_ACTIVE_TASK_RUNNING", args.command, root, before, before, control,
+                task_id=args.task_id, reason="Another task is active; submit again after it is closed.",
+            )
+            print(json.dumps(output, ensure_ascii=False, separators=(",", ":")) if args.json else "\n".join(f"{key}: {value}" for key, value in output.items()))
+            return 2
         root = resolve_primary(args.repo_root)
         board = root / BOARD_REL
         data = board.read_bytes()

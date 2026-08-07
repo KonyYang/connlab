@@ -28,6 +28,9 @@ $legacyIntents = @(
     "QuickFixPreempt", "Reconcile", "Resume"
 )
 
+# Version-2 role transitions are authorized by the board writer's closed command/state matrix.
+# This adapter remains a read-only gate for Inspect, direct Implementation, and User Close only.
+
 if ($legacyIntents -contains $Intent) {
     $snapshotText = @(& py $helper inspect --repo-root $RepositoryRoot --json) -join "`n"
     if ($LASTEXITCODE -ne 0) {
@@ -39,7 +42,7 @@ if ($legacyIntents -contains $Intent) {
     $result.allowed = $false
     $result.command = "check"
     $result.task_id = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId }
-    $result.reason = "Legacy lane, role, worktree, quick-fix, and reconciliation intents are frozen."
+    $result.reason = "Legacy lane, worktree, quick-fix, dispatch, and reconciliation intents are frozen."
     if ($Json) {
         $result | ConvertTo-Json -Compress -Depth 20
     } else {

@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import hashlib
-import json
-import os
 import re
-from datetime import datetime, timezone
-from pathlib import Path, PurePosixPath
-from typing import Any, Callable
+from pathlib import PurePosixPath
+from typing import Any
 
 
 REQUEST_KEYS = {
@@ -223,104 +219,36 @@ def validate_invocation(value: Any) -> dict[str, Any]:
     if not isinstance(value.get("recorded_at"), str) or not value["recorded_at"]:
         _contract_error("BLOCKED_ARGUMENT_COMBINATION", "Invocation timestamp is required.")
     return value
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-def _bytes_sha(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-def _git_blob(data: bytes) -> str:
-    return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
-def _canonical_hash(value: dict[str, Any]) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-def intrinsic_permission_probe(
-    root: Path,
-    task_id: str,
-    source_head: str,
-    paths: list[str],
-    *,
-    opener: Callable[..., int] = os.open,
-) -> dict[str, Any]:
-    resolved_root = root.resolve(strict=True)
-    if len(paths) != 8 or len(set(paths)) != 8:
-        _contract_error("BLOCKED_CUTOVER_PERMISSION_PROBE", "Exactly eight unique cutover paths are required.")
-    started = _utc_now()
-    records: list[dict[str, Any]] = []
-    flags = os.O_RDWR | getattr(os, "O_BINARY", 0)
-    root_case = os.path.normcase(str(resolved_root))
-    for relative in paths:
-        try:
-            normalized = _normalized_paths([relative])[0]
-            candidate = (resolved_root / normalized).resolve(strict=True)
-            common = os.path.commonpath([root_case, os.path.normcase(str(candidate))])
-            if common != root_case:
-                _contract_error("BLOCKED_CUTOVER_PERMISSION_PROBE", "Cutover path is outside the repository.")
-            if not candidate.is_file():
-                _contract_error("BLOCKED_CUTOVER_PERMISSION_PROBE", "Cutover path is not a regular file.")
-            before = candidate.read_bytes()
-            descriptor = opener(candidate, flags)
-            os.close(descriptor)
-            after = candidate.read_bytes()
-        except PermissionError as exc:
-            raise SerialContractError("BLOCKED_CUTOVER_PATH_READ_ONLY", f"Cutover path is read-only: {relative}") from exc
-        except FileNotFoundError as exc:
-            raise SerialContractError("BLOCKED_CUTOVER_PERMISSION_PROBE", f"Cutover path was not found: {relative}") from exc
-        except SerialContractError:
-            raise
-        except OSError as exc:
-            raise SerialContractError("BLOCKED_CUTOVER_PERMISSION_PROBE", f"Permission probe failed: {relative}") from exc
-        unchanged = before == after
-        if not unchanged:
-            _contract_error("BLOCKED_CUTOVER_PERMISSION_PROBE", f"Permission probe observed content drift: {relative}")
-        records.append({
-            "path": relative,
-            "resolved_path": str(candidate),
-            "existed": True,
-            "regular_file": True,
-            "open_flags": flags,
-            "handle_opened": True,
-            "pre_bytes": len(before),
-            "pre_sha256": _bytes_sha(before),
-            "pre_blob": _git_blob(before),
-            "post_bytes": len(after),
-            "post_sha256": _bytes_sha(after),
-            "post_blob": _git_blob(after),
-            "unchanged": True,
-            "error_code": None,
-        })
-    proof = {
-        "schema": "connlab.serial-cutover-permission-proof",
-        "version": 1,
-        "task_id": task_id,
-        "source_head": source_head,
-        "observation_source": "same_process_write_handle_probe",
-        "algorithm": "python_os_open_rdwr_binary_no_write_v1",
-        "process_id": os.getpid(),
-        "started_at": started,
-        "finished_at": _utc_now(),
-        "paths": records,
-    }
-    proof["probe_receipt_sha256"] = _canonical_hash(proof)
-    return proof
-def apply_cutover_payload(
-    root: Path,
-    manifest: dict[str, Any],
-    *,
-    opener: Callable[..., int] = os.open,
-    materializer: Callable[[str], None],
-) -> dict[str, Any]:
-    required = {"task_id", "source_head", "paths", "permission_proof"}
-    if not isinstance(manifest, dict) or set(manifest) != required:
-        _contract_error("BLOCKED_CUTOVER_MANIFEST", "Cutover manifest fixture is invalid.")
-    proof = intrinsic_permission_probe(
-        root,
-        manifest["task_id"],
-        manifest["source_head"],
-        manifest["paths"],
-        opener=opener,
-    )
-    for relative in manifest["paths"]:
-        materializer(relative)
-    return proof
+def validate_integration_transition(active: dict[str, Any], value: Any) -> dict[str, Any]:
+    context = active.get("complex_context")
+    keys = {"schema", "version", "subject_commit", "branch_head", "primary_parent", "merge_commit", "merge_tree", "parents", "evidence_refs", "command", "clean", "recorded_at"}
+    if active.get("phase") != "integration" or not isinstance(context, dict) or context.get("worktree_lifecycle") != "integration_ready":
+        _contract_error("BLOCKED_INTEGRATION_PRECONDITION", "Integration is not ready.")
+    if not isinstance(value, dict) or set(value) != keys or value.get("schema") != "connlab.serial-integration" or value.get("version") != 1:
+        _contract_error("BLOCKED_INTEGRATION_PRECONDITION", "Integration payload schema is invalid.")
+    sha_fields = ("subject_commit", "branch_head", "primary_parent", "merge_commit", "merge_tree")
+    if any(not _is_sha(value.get(field), 40) for field in sha_fields):
+        _contract_error("BLOCKED_INTEGRATION_PROOF", "Integration commit or tree identity is invalid.")
+    if (
+        value["subject_commit"] != context.get("qa_subject_commit")
+        or value["branch_head"] != value["subject_commit"]
+        or value.get("parents") != [value["primary_parent"], value["branch_head"]]
+        or value.get("clean") is not True
+    ):
+        _contract_error("BLOCKED_INTEGRATION_PROOF", "Integration subject or parent proof is inconsistent.")
+    evidence_refs = value.get("evidence_refs")
+    command = value.get("command")
+    if (
+        not isinstance(evidence_refs, list)
+        or any(not _is_evidence(item) for item in evidence_refs)
+        or not isinstance(command, list)
+        or not command
+        or any(not isinstance(item, str) or not item for item in command)
+        or not isinstance(value.get("recorded_at"), str)
+        or not value["recorded_at"]
+    ):
+        _contract_error("BLOCKED_INTEGRATION_PROOF", "Integration evidence or command proof is invalid.")
+    return value
 PHASE_ROLE = {"planning": "Planner", "development": "Developer", "review": "Reviewer", "qa": "QA", "integration": "Integrator"}
 def complex_transition(active: dict[str, Any], command: str, payload: dict[str, Any]) -> str:
     """Apply one durable v2 transition; repository/evidence proofs remain the writer's precondition."""
@@ -363,9 +291,7 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         if worktree.get("clean") is not True or not _is_sha(worktree.get("base_sha"), 40) or not _is_sha(worktree.get("head_sha"), 40): _contract_error("BLOCKED_WORKTREE_FACTS", "Worktree Git facts are invalid.")
         context.update(host_thread_id=worktree["thread_id"], host_id=worktree["host_id"], task_branch=worktree["branch"], task_worktree=worktree["worktree"], base_sha=worktree["base_sha"], head_sha=worktree["head_sha"], integration_target=worktree["integration_target"], worktree_lifecycle="ready", pending_callback=None)
     elif command == "record-integration":
-        value = payload.get("integration"); keys = {"schema", "version", "subject_commit", "branch_head", "primary_parent", "merge_commit", "merge_tree", "parents", "evidence_refs", "command", "clean", "recorded_at"}
-        if phase != "integration" or context.get("worktree_lifecycle") != "integration_ready" or not isinstance(value, dict) or set(value) != keys: _contract_error("BLOCKED_INTEGRATION_PRECONDITION", "Integration is not ready.")
-        if value.get("subject_commit") != context.get("qa_subject_commit") or value.get("parents") != [value.get("primary_parent"), value.get("branch_head")] or value.get("clean") is not True: _contract_error("BLOCKED_INTEGRATION_PROOF", "Integration proof is inconsistent.")
+        value = validate_integration_transition(active, payload.get("integration"))
         context["integrated_commit"] = value["merge_commit"]; context["head_sha"] = value["branch_head"]; context["worktree_lifecycle"] = "integrated"; context["current_role"] = None; active["phase"] = "human_review"
     elif command == "request-close":
         if phase != "human_review" or not payload.get("decision_ref"): _contract_error("BLOCKED_STATE", "Human review close evidence is required.")

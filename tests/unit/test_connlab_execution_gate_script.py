@@ -24,6 +24,7 @@ def active(task_id: str = "TASK_ACTIVE", phase: str = "implementation") -> dict:
         "task_id": task_id,
         "summary": "Active fixture",
         "kind": "simple",
+        "classification": "simple",
         "phase": phase,
         "scope_contract": {
             "may_touch": ["docs/task_board.md"],
@@ -49,13 +50,14 @@ def active(task_id: str = "TASK_ACTIVE", phase: str = "implementation") -> dict:
         "updated_at": "2026-08-06T00:00:00Z",
         "blocker": None,
         "validation": None,
+        "complex_context": None,
     }
 
 
 def write_board(repo: Path, *, state: str = "running", active_value: dict | None = None) -> None:
     value = {
         "schema": "connlab.personal-serial-control",
-        "version": 1,
+        "version": 2,
         "mode": "personal_serial",
         "wip_limit": 1,
         "state": state,
@@ -116,6 +118,18 @@ def test_inspect_is_a_zero_write_helper_adapter(repo: Path) -> None:
     assert (repo / "docs" / "task_board.md").read_bytes() == before
 
 
+def test_v2_idle_board_is_readable_without_starting_work(repo: Path) -> None:
+    write_board(repo, state="idle", active_value=None)
+    before = (repo / "docs" / "task_board.md").read_bytes()
+
+    code, result = invoke(repo, "Inspect")
+
+    assert code == 0
+    assert result["code"] == "ALLOW_INSPECT"
+    assert result["state"] == "idle"
+    assert (repo / "docs" / "task_board.md").read_bytes() == before
+
+
 def test_active_task_is_allowed_to_implement(repo: Path) -> None:
     code, result = invoke(repo, "Implementation", "TASK_ACTIVE")
 
@@ -151,3 +165,24 @@ def test_close_gate_requires_pending_review_and_clean_primary(repo: Path) -> Non
 
     assert code == 2
     assert result["code"] == "BLOCKED_STATE"
+
+
+def test_v2_human_review_is_eligible_for_user_close(repo: Path) -> None:
+    review = active(phase="human_review")
+    review["validation"] = {
+        "schema": "connlab.personal-task-validation",
+        "version": 1,
+        "status": "passed",
+        "checks": [{"command": "targeted", "exit_code": 0, "summary": "passed"}],
+        "observed_paths": ["docs/task_board.md"],
+        "manual_checks": [],
+        "recorded_at": "2026-08-07T00:00:00Z",
+    }
+    write_board(repo, state="implemented_pending_human_review", active_value=review)
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "human review fixture")
+
+    code, result = invoke(repo, "Close", "TASK_ACTIVE")
+
+    assert code == 0
+    assert result["code"] == "ALLOW_CLOSE"

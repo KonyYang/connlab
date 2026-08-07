@@ -489,35 +489,41 @@ the fail-closed transition and handoff helpers, perform at most one transition a
 Orchestrator turn, and do not launch Planner. Every Integrator closeout plans board maintenance;
 only the authorized `gate_running/Integrator` owner may apply it before token release.
 
-## 22. Personal Serial Workflow Override (Current Normative Rule)
+## 22. Personal Serial Workflow V2 Override (Current Normative Rule)
 
-Effective 2026-08-06, this section supersedes sections 13–21 wherever they require task plans for
-simple work, role dispatch, Quick Fixer, Reviewer/QA/Integrator gates, execution tokens, lane
-branches, sibling worktrees, parallel exceptions, deterministic handoffs, or Controlled Lane V2.
-Those mechanisms remain frozen historical references only.
+Effective 2026-08-07, the personal serial complex workflow is active. This section supersedes
+sections 13–21 wherever their older daily-routing, persistent-role, Quick Fix, parallel-lane,
+Controlled Lane V2 or handoff rules conflict with this section. Historical artifacts remain
+retained but do not authorize execution.
 
-Daily task authority is the `connlab.personal-serial-control` JSON block in
-`docs/task_board.md`. The current conversation executes work directly on primary `master` and uses
-`scripts/connlab_personal_task.py` as the only supported control-block writer. Exactly one task is
-active; later tasks enter FIFO. No task starts automatically after close.
+Daily authority is the version-2 `connlab.personal-serial-control` JSON block in
+`docs/task_board.md`; `scripts/connlab_personal_task.py` is its sole writer. WIP is exactly one from
+activation through User close. A submission received while occupied returns a zero-write wait result
+immediately after board parsing and before Git/worktree inspection, lock acquisition, request parsing
+or classification; the User submits it again after close, and only then is it classified.
 
 A simple task requires a clear root cause/expected result, 1–3 total changed repository paths
-including tests and `docs/task_board.md`, and no API/database/schema/migration/persistence/
-authority/public-drive/business-semantic/destructive/external mutation. It skips plan and approval,
-but still requires an activation commit, targeted validation, a local implementation commit, and
-`implemented_pending_human_review`.
+including tests and board, and no API/database/schema/migration/persistence/authority/public-drive/
+business-semantic/destructive/external mutation. It runs directly on primary after an activation
+commit, uses targeted validation, and stops at `implemented_pending_human_review`.
 
-All other tasks use one short committed plan in the current conversation and explicit User
-approval. The approval board transition must be committed cleanly before implementation. Scope may
-not expand beyond approved `may_touch` without new approval.
+Every other task uses exactly three normal User interactions: submit the requirement, approve the
+Planner plan, and inspect the completed result and say `关闭`. Planner is read-only. Approval binds
+the exact committed plan, paths and validation contract. After approval, one task host executes
+Developer -> Reviewer -> QA -> Integrator automatically and then returns the integrated result for
+human review. Routine role handoffs, approved bounded fixes and a non-conflicting local integration
+do not require additional User approval.
 
-Failures remain active with a typed blocker. Never automatically restore, discard, stash, clean,
-push, create a branch/worktree, dispatch another task, or resume legacy automation. Only explicit
-User `关闭` may close a clean, validated task awaiting human review and release the active slot.
+Only scope/behavior/authority change, a destructive action or an unresolved blocker returns early
+to the User. Failures retain active/WIP with typed blocker and exact Git/evidence facts. Never
+silently restore, discard, stash, clean, push, rebase, force-remove, delete, archive or retire.
+User close records verified retained resources before releasing active. Version-2 queue compatibility
+fields remain empty and have no daily operation entry.
 
 Normative operational references:
 
 - `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
+- `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
 - `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`
 - `docs/project_management/TASK_EXECUTION_SKILL.md`
 - `docs/project_management/TASK_REVIEW_CHECKLIST.md`

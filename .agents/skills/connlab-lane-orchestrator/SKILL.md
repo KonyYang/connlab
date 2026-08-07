@@ -1,129 +1,66 @@
 ---
 name: connlab-lane-orchestrator
-description: Orchestrate ConnLab approved lanes through permanent roles, deterministic board transitions, bounded Quick Fix routing, and local Integrator acceptance.
+description: Run ConnLab's active personal-serial complex workflow from plan through automatic Developer, Reviewer, QA, and Integrator handoffs.
 ---
 
-## Frozen Legacy Override
+# ConnLab Personal Serial Orchestrator
 
-Status: frozen legacy since 2026-08-06. Do not dispatch roles, resume/reconcile lanes, create a
-branch/worktree, or invoke Controlled Lane V2. Daily work is executed in the current conversation
-under `connlab.personal-serial-control`, using `scripts/connlab_personal_task.py` as the only board
-writer. Old gate intents return `BLOCKED_LEGACY_MODE_FROZEN`.
+Status: active version-2 runtime.
 
-Everything below is retained historical reference and cannot authorize an action.
+Use this skill when the User submits, approves, resumes, inspects or closes a ConnLab complex task.
+Read `AGENTS.md`, `docs/task_board.md`, the active Task/Plan and relevant evidence first. The board's
+version-2 control block and Git facts override conversation memory.
 
-# ConnLab Lane Orchestrator
+## User contract
 
-## Purpose
+A normal complex task has only three User interactions:
 
-Route work through the classic permanent roles. Exact native thread IDs remain authoritative in
-`docs/project_management/ROLE_THREAD_REGISTRY.md`; repository board/task/plan/evidence and Git facts
-override chat memory.
+1. requirement submission;
+2. Planner-plan approval;
+3. completed-result inspection and `关闭`.
 
-Canonical titles include `ConnLab｜全自动编排 Orchestrator`, Planner, Developer, Reviewer, QA,
-Integrator, and Quick Fixer. Permanent role conversations are reused. Never create ordinary
-V1-Lite bundles.
+Do not request routine approvals for host creation, Developer -> Reviewer -> QA -> Integrator, an approved
+bounded fix, non-conflicting local integration, or retained closeout. Return to the User only for a
+scope/behavior/authority change, a destructive action, or an unresolved blocker.
 
-Normative references:
+## Event loop
 
-- `docs/project_management/EXECUTION_WIP_AND_QUICK_FIX_POLICY.md`
-- `docs/project_management/ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_CONTRACT.md`
-- `docs/project_management/LANE_ORCHESTRATION_PROTOCOL.md`
-- `docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md`
-- `docs/project_management/PARALLEL_LANE_OPERATIONS_GUIDE.md`
-
-## Start And Authority
-
-For “执行/启动/实施 TASK_XXX”, first read primary `AGENTS.md`, board, task, plan/evidence,
-registered roles, and `git worktree list`. Resolve the main `master` worktree. A lane board copy
-cannot authorize any action. Run `scripts/connlab_execution_gate.ps1` immediately before every
-write-capable dispatch, Quick Fix preemption, reconcile, or resume.
-
-- `BLOCKED_*`: stop and report.
-- `QUEUE_REQUIRED`: queue governance only; no Developer dispatch or worktree creation.
-- Reuse an existing exact lane; never duplicate it.
-- New approved implementation uses `lane/*` plus a sibling worktree.
-- WIP=1 token persists through Developer, Reviewer, QA, and Integrator.
-- A second owner requires the explicit User-approved parallel exception record, independent scope,
-  locks, authority/test ownership, Git facts, and end condition; maximum two owners.
-
-## Deterministic Event Loop
-
-Read the active-context contract before routing. A callback is only a wake-up signal. Re-read
-primary authority, evidence Git blob/hash, lane HEAD/status, scope, locks, ancestry, and gates.
-For routine callbacks invoke `scripts/connlab_execution_transition.py`:
-
-- `DEVELOPER_READY` -> Reviewer.
-- `REVIEWER_BLOCKED` -> bounded Developer fix.
-- `REVIEWER_PASS` -> QA, or Integrator only when approved metadata omits QA.
-- `QA_PASS` -> Integrator.
-
-Use plan first, then apply with the exact snapshot digest. Apply may modify only the primary board.
-After durable transition, run the production `ImplementationDispatch` gate when the next role can
-write. Perform at most one transition and one dispatch per Orchestrator turn, then stop. Do not
-wait for the target role in the same turn. Routine transitions launch no Planner.
-
-Use `scripts/connlab_handoff_contract.py validate-dispatch` and `resolve-read-set`. Invalid or
-unsafe omissions return `FULL_READ_REQUIRED`. Keep the dispatch template <=2048 bytes, complete
-capsule <=4096 bytes, and each role read capsule <=4096 bytes.
-
-## Planner And Quick Fix Routing
-
-Planner is required for Discovery, a formal task/plan, User or scope change, ownership/API/schema/
-authority replanning, unclassifiable blockers, destructive decisions, and merge/evidence
-conflicts. It is not a routine callback router.
-
-When all policy predicates are proven, must use the compact Quick Fix capsule and must not route an independent Planner
-or repeat User approval. The capsule contains Goal, Why Safe, May Touch,
-Must Not Touch, Locked Paths, Targeted Validation, Risk Gate, Branch / worktree / base, and
-Evidence path. QF-1 routes Quick Fixer -> Integrator; QF-2 adds Reviewer; QF-3 adds Reviewer and QA;
-QF-4 uses full Planner/User flow. No nested preemption. Resume only after accepted Quick Fix,
-master merge into the preserved lane, a new clean reconciliation checkpoint, and validation proof.
-
-## Role Packages
-
-Every dispatch names task, role/status, exact primary HEAD/snapshot, lane/branch/worktree/base/HEAD,
-immutable refs, May Touch, Must Not Touch, Locked Paths, validation, evidence path, next gate, and
-blocker boundary. Developer uses TDD and exact-path commits. Reviewer reviews base..HEAD and sends
-blocking findings back to Developer. QA uses the reviewed clean commit and writes only QA evidence.
-Integrator validates all gates, merges without rebase, records residuals, runs board maintenance,
-and releases the token only after accepted closeout.
-
-Developer/Reviewer/QA/Integrator callbacks must pass `validate-callback` and contain exactly:
+Perform one durable state transition at a time with `scripts/connlab_personal_task.py`, using the
+fresh expected board SHA-256. Exact-stage and locally commit each authority transition before the
+next write-capable action. Never use chat text as a substitute for board state.
 
 ```text
-TASK_ID: ...
-ROLE: ...
-STATUS: ...
-EVIDENCE: ...
-COMMIT: ...
-NEXT: ...
-BLOCKER: ...
+idle -> submit/classify
+planning -> fresh read-only Planner -> awaiting_user_approval
+User approval commit -> create one task branch/worktree host
+development -> Developer
+review -> Reviewer
+qa -> QA
+integration -> Integrator -> verified primary integration
+human_review -> User
+User 关闭 -> retained closeout -> idle
 ```
 
-Return callbacks to the permanent Orchestrator. Evidence and commits, not callback prose, authorize
-the next transition.
+Planner runs before the host and cannot write. After approval, Developer, Reviewer, QA and Integrator
+run sequentially in the same isolated task host. Spawn only the role required by the current durable
+phase, record its native action and returned identity, wait for its exact callback, validate the
+subject/evidence, then consume it. Reviewer or QA blocking findings route back to Developer without
+new approval when the fix remains inside approved scope.
 
-## Worktree And Residual Safety
+## Safety
 
-Never use `git add -A`, rebase an active lane, force-remove a dirty worktree, reset/restore/discard
-unknown changes, delete retained state, or push without authorization. Integrator uses non-
-destructive merge and classifies every residual as retain, duplicate, stale, format-only, or
-conflict with owner/expiry. Retire only clean accepted worktrees through the approved helper.
+WIP is one. When a task is active, a new submission returns `BLOCKED_ACTIVE_TASK_RUNNING` immediately
+after board parsing, before Git verification, lock acquisition, request parsing or classification;
+the User submits it again after close. Reuse an already-recorded
+host and never create a duplicate. Do not push, rebase, force-remove, restore, reset, stash, discard,
+delete a branch, archive or retire resources automatically. Stop and record a typed blocker on
+unprovable identity/evidence, dirty/divergent state, conflict, scope expansion, destructive work or
+repeated failure.
 
-## Maintenance, Cadence, And Stop Conditions
+Integrator must bind the accepted Developer subject, Reviewer and QA evidence, and the exact clean
+host HEAD before the runtime performs the approved local integration. The completed task remains
+`implemented_pending_human_review` until the User says `关闭`. Closeout retains clean task/thread/
+worktree/branch/HEAD/evidence references; lifecycle cleanup is outside the daily gate.
 
-Every Integrator closeout runs `connlab_active_context.py plan-maintenance`; only the sole
-`gate_running/Integrator` owner may apply. Other roles use inspect/plan/prove-rollback only.
-Commentary is limited to role start/end, blocker, material direction change, or a heartbeat after
-at least 60 seconds. Suppress unchanged waits. Controlled callback-to-dispatch pilot must be <=90s.
-
-Stop for missing approval, changed behavior/scope, shared ownership conflict, unexplained test
-failure, destructive decision, unauthorized merge/push, or helper `BLOCKED_*`. Controlled Lane V2
-is frozen legacy audit material and its heartbeat remains `PAUSED`.
-
-## Output
-
-Report task/role/status, transition decision, dispatched permanent role or paste-ready prompt,
-evidence expected, exact commit/HEAD, and stop condition. Do not claim completion without fresh
-verification.
+The first ordinary complex task is a monitored first real run, not a pilot or governance project.
+If it fails, keep it active with its blocker and report the exact stopping fact.

@@ -1,60 +1,49 @@
 # ConnLab Personal Serial Execution Policy
 
-Last Updated: 2026-08-06
-Status: normative daily execution policy
+Last Updated: 2026-08-07
+Status: normative version-2 daily execution policy
 
-## Authority
+## Authority and serial occupancy
 
-`docs/task_board.md` contains the sole machine authority in one marker-delimited
-`connlab.personal-serial-control` version 1 JSON block. The supported writer is
-`scripts/connlab_personal_task.py`; after the completed bootstrap migration, conversations and
-PowerShell adapters must not patch the control block independently.
-
-Current conversation execution is the sole daily path. There is no role dispatch, lane branch,
-sibling worktree, parallel exception, Quick Fix role, QA role, Reviewer role, or Integrator role in
-the personal workflow. Historical role/lane artifacts remain retained but non-executable.
-
-## Serial State
+The version-2 `connlab.personal-serial-control` block in `docs/task_board.md` is the sole machine
+authority. `scripts/connlab_personal_task.py` is its only writer.
 
 - `wip_limit` is 1.
-- `running` and `implemented_pending_human_review` both occupy the active slot.
-- A new request received while occupied is appended to the durable FIFO `queue`.
-- `close` releases the slot but never starts the queue head automatically.
-- Only an explicit later command may run `activate-next` for the exact FIFO head.
+- `running` and `implemented_pending_human_review` occupy the active slot.
+- A request received while active returns `BLOCKED_ACTIVE_TASK_RUNNING` immediately after board
+  parsing, before Git/worktree inspection, writer-lock acquisition, JSON parsing or classification.
+  It performs zero writes; the User submits it again after the current task closes.
+- Every write uses caller-supplied board SHA-256, the ignored lock, atomic replace and readback.
+- Helpers never stage, commit, restore, stash, clean, push, dispatch or delete.
 
-Each helper write uses the caller's expected board SHA-256, an ignored
-`tmp/connlab_personal_task.lock`, schema validation, an atomic replace, and a post-write readback.
-The helper never stages, commits, restores, cleans, pushes, creates worktrees, or dispatches tasks.
+## Simple tasks
 
-## Simple Task
-
-A task is `simple` only when its root cause and expected behavior are clear, its complete change is
-1–3 total repository paths including `docs/task_board.md` and any test, and all named forbidden
-categories are false. API contract, database, schema/migration, persistence, authority,
-public-drive workflow, business semantics, destructive action, and external mutation always make
-the task planned.
-
-A simple task needs no plan or separate approval. The flow is:
+A task is simple only when root cause and expected result are clear, the complete change uses 1–3
+repository paths including board and tests, and it changes no API, database, schema/migration,
+persistence, authority, public-drive workflow, business rule, destructive behavior or external
+state. It runs directly in the current primary worktree:
 
 ```text
-inspect/classify -> submit -> activation commit -> implement -> targeted validation
--> mark-review -> implementation commit -> implemented_pending_human_review
--> explicit User “关闭” -> close -> closeout board commit
+submit -> activation commit -> implement -> targeted validation
+-> implementation commit -> implemented_pending_human_review
+-> User 关闭 -> closeout commit -> idle
 ```
 
-## Planned Task
+## Complex tasks
 
-A planned intake initially records only task ID, summary, and `kind=planned`. Planning occupies the
-active slot. After the short plan is committed and the User explicitly approves it, `approve`
-atomically binds the exact scope, validation, plan reference, and approval reference. That board
-transition receives its own local commit and the primary must be clean before implementation.
+Every other request is complex or needs discovery. Its normal User contract is limited to three
+interactions: submit requirement, approve the Planner plan, inspect the result and say `关闭`.
 
-## Failure And Cancellation
+Planning occupies the active slot. Planner is read-only. User approval binds a committed plan,
+exact `may_touch` and validation contract. After that commit, the runtime automatically creates one
+task host and completes Developer -> Reviewer -> QA -> Integrator in order. Approved bounded fixes
+and the non-conflicting local integration transaction do not require another User approval. The
+validated integrated result enters `implemented_pending_human_review`.
 
-A failure remains active. `block` records the typed blocker and dirty paths; `resume` requires an
-explicit User decision. No automatic restore, discard, stash, cleanup, or scope expansion is
-allowed. `cancel` and `close` require a clean primary. `close` additionally requires passed
-validation and `implemented_pending_human_review`.
+Scope changes, destructive actions and unresolved blockers return to the User. All other provable
+transitions continue automatically. Failures remain active with typed blocker and durable Git/
+evidence facts; no automatic cleanup or discard is permitted.
 
-All work is local on primary `master`. Stage exact paths, create local commits, and do not push
-unless separately authorized.
+User close verifies and records retained clean resources before releasing active. The next request
+is classified only when the User submits it against the idle board. No push occurs without separate
+authorization.
