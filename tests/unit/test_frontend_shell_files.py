@@ -3607,7 +3607,6 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
     for required_label in [
         "Matrix Editor",
         "Cancel",
-        "Templates",
         "Reference Library",
         "Projection Ref:",
     ]:
@@ -3637,10 +3636,19 @@ def test_task221_matrix_editor_converges_to_definition_studio_structure() -> Non
         ".matrix-editor-grid-surface",
         ".matrix-editor-step-workspace",
         ".matrix-editor-supporting",
-        ".matrix-editor-templates",
         ".matrix-editor-reference-library",
     ]:
         assert required_style in styles_source
+
+    for removed_template_placeholder in [
+        'aria-label="Templates"',
+        "TEMPLATE_CARDS",
+        "More templates",
+        "Search templates...",
+        "Create custom template",
+    ]:
+        assert removed_template_placeholder not in matrix_editor_source
+    assert 'gridColumn: "1 / -1"' in matrix_editor_source
 
     for removed_dashboard_label in [
         "Authority Status",
@@ -3676,7 +3684,6 @@ def test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority
     for required_label in [
         "Import Matrix",
         "Group Step Workspace",
-        "Templates",
         "Reference Library",
     ]:
         assert required_label in matrix_editor_source

@@ -1659,12 +1659,6 @@ function MatrixAutoGrowTextarea({
   );
 }
 
-const TEMPLATE_CARDS = [
-  { name: "EIA-364 Connector Template", summary: "20 items / 12 groups / 186 steps", tags: ["General"] },
-  { name: "High Current Connector", summary: "18 items / 10 groups / 152 steps", tags: ["Power"] },
-  { name: "General Qualification", summary: "16 items / 8 groups / 120 steps", tags: ["Qual"] }
-];
-
 const REFERENCE_ROWS = [
   { name: "EIA-364-23E LLCR method", type: "Method", source: "EIA-364", updated: "2024-12-01" },
   { name: "EIA-364-21F insulation method", type: "Method", source: "EIA-364", updated: "2024-11-20" },
@@ -4116,35 +4110,11 @@ export function MatrixEditorWorkspace({
         </div>
       </footer>
       <section className="matrix-editor-supporting">
-        <section className="matrix-editor-templates" aria-label="Templates">
-          <header>
-            <h3>Templates</h3>
-            <button disabled type="button">More templates</button>
-          </header>
-          <input placeholder="Search templates..." type="text" />
-          <div className="matrix-editor-template-grid">
-            {TEMPLATE_CARDS.map((card) => (
-              <article key={card.name}>
-                <h4>{card.name}</h4>
-                <p>{card.summary}</p>
-                <div>
-                  {card.tags.map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
-                <footer>
-                  <button disabled type="button">Preview</button>
-                  <button disabled type="button">Use</button>
-                </footer>
-              </article>
-            ))}
-            <article className="matrix-editor-template-create">
-              <h4>Create custom template</h4>
-            </article>
-          </div>
-        </section>
-
-        <section className="matrix-editor-reference-library" aria-label="Reference Library">
+        <section
+          className="matrix-editor-reference-library"
+          aria-label="Reference Library"
+          style={{ gridColumn: "1 / -1" }}
+        >
           <header>
             <h3>Reference Library</h3>
             <button disabled type="button">More references</button>
