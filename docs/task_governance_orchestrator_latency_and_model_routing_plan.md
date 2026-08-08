@@ -2,7 +2,7 @@
 
 Task: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
-Status: `READY_FOR_USER_APPROVAL`
+Status: `REVISION_2_READY_FOR_USER_APPROVAL`
 
 Planning base: `6227acb7cfccaab276194d2a7cbda96bc1f09a89`
 
@@ -52,9 +52,11 @@ Planning base: `6227acb7cfccaab276194d2a7cbda96bc1f09a89`
   implementation paths, and requires independent Reviewer/QA/Integrator gates.
 - Model routing remains an explicit dispatch-time decision in the Orchestrator contract; it is not
   persisted in the board schema or delegated to a new routing service.
-- QA uses Terra low for bounded/static validation and Terra medium when the approved test matrix or
-  failure diagnosis requires it. Any high-risk category routes the affected role according to the
-  frozen Sol rule.
+- QA uses Terra low only for a documentation/copy-only task that changes no operational skill,
+  protocol, runtime or product behavior, has all frozen risk flags false, has no blocker/fix loop, and
+  has a fully enumerated bounded validation set. Every other non-high-risk task uses Terra medium.
+  This governance task changes operational orchestration guidance and therefore deterministically
+  routes QA to `gpt-5.6-terra / medium`. Any frozen high-risk category routes the affected role to Sol.
 - The next three simple-task durations are observational evidence toward about ten minutes, not an
   acceptance blocker and not a repository automation feature.
 
@@ -68,6 +70,8 @@ No unresolved discovery question changes scope, behavior, ownership, or validati
 2. `tasks/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING.md` — frozen task boundary.
 3. `docs/task_governance_orchestrator_latency_and_model_routing_plan.md` — this short Plan and
    approved-request contract.
+4. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md` — immutable
+   current-conversation Planner evidence used only for the genuine Planner-ready transition.
 
 ### Implementation May Touch / Locked Paths (exactly four)
 
@@ -98,13 +102,104 @@ Any additional path is scope expansion and must stop for a new Plan/User decisio
 2. Mirror the same normative contract in the serial role-chain protocol. Preserve WIP=1, the single
    complex host, independent Reviewer/QA/Integrator, fail-closed recovery, and all no-destructive/no-push
    rules.
-3. Extend the bounded unit test with executable static assertions for exact default/escalation models,
-   no Luna, no direct Python request-JSON entry, simple-path interaction count, recovery reuse, browser
-   smoke condition, and final route reporting.
+3. Extend the bounded unit test with executable contract assertions for the exact Submit/Approve/Close
+   entry shapes, rejection of `kind` in Submit, required `kind=planned` in Approve, required scalar
+   `DecisionRef` in Close, exact default/escalation models, no Luna, no direct Python request-JSON
+   entry, simple-path interaction count, recovery reuse, browser-smoke condition, evidence audit fields,
+   and final route reporting.
 4. Use only the personal serial writer for implementation-phase board transitions; do not hand-edit
    the machine JSON or change its schema.
 
-## 4. Validation And Gates
+## 4. Planner-Ready Transition Before Approval
+
+The current board is correctly `running/planning`; `Approve` is illegal until the existing state
+machine consumes a genuine `Planner/ready/User` event. No new command or runtime/schema change is
+needed, and no callback is fabricated.
+
+The legal transition is:
+
+1. Planning remains in this permanent Orchestrator conversation, as required by the active Planner
+   skill. No Planner agent, thread, branch, lane, host or worktree is created.
+2. Commit the revised Task and Plan. Then create and commit the Planner evidence path listed above,
+   binding the exact Task ID, revised committed Plan ref/hash, current primary HEAD, current board
+   digest, confirmed facts, Reviewer findings addressed, and `STATUS: ready`.
+3. Use the existing `begin-role` state-writer command with the frozen `planner_dispatch` action name,
+   a prompt digest bound to this exact revision, `role=Planner`, and the current permanent Orchestrator
+   thread as the execution identity. This records the real inline Planner action; it does not dispatch
+   or create an agent. Commit that sole board transition.
+4. Use `record-invocation` with the same action ID, `thread_id` equal to the current conversation,
+   `agent_id=null`, and status `completed`; commit that sole board transition.
+5. Submit a `connlab.serial-callback` whose exact tuple is `Planner / ready / User`, whose
+   `subject_commit` is the committed Planner-evidence HEAD, whose evidence ref is the exact committed
+   evidence blob/SHA-256, and whose blocker is null. `consume-callback` must be called once and its sole
+   board change committed.
+6. Re-run read-only Inspect and require `running/awaiting_user_approval`, no pending callback, no host,
+   no implementation path changes, and clean primary. Any mismatch stops before User approval.
+
+These three internal state-writer events are not Submit, Approve, or Close entry actions. User entry
+actions continue to use only `scripts/run_task.ps1`. The later Approve call remains forbidden until the
+User explicitly approves the new committed Plan ref and exact approved-request hash.
+
+## 5. Frozen Entry Payload Contracts
+
+The implementation must state and test these exact contracts; no alternate schema retry is allowed.
+
+### Submit
+
+`scripts/run_task.ps1 -Action Submit -RequestJson <single JSON object>` accepts exactly:
+
+```text
+schema, version, task_id, summary, root_cause_clear, expected_result_clear,
+may_touch, targeted_validation, requires_independent_review, forbidden_categories
+```
+
+`schema=connlab.serial-task-request`, `version=1`. The `kind` field is forbidden. Missing decision
+fields may classify as discovery only when the submitted object follows the classifier contract; an
+unknown key is a terminal zero-write classification error, never a signal to try another payload.
+
+### Approve
+
+`scripts/run_task.ps1 -Action Approve -ApprovedRequestJson <single JSON object>` accepts exactly:
+
+```text
+schema, version, task_id, summary, kind, may_touch, expected_file_count,
+classification_reason, targeted_validation, forbidden_categories
+```
+
+`schema=connlab.personal-task-approved-request`, `version=1`, and `kind=planned` are mandatory. It also
+requires the committed `PlanRef` and explicit `ApprovalRef`; no Submit fields are copied into it.
+
+### Close
+
+Close deliberately has no JSON payload. The exact entry is
+`scripts/run_task.ps1 -Action Close -DecisionRef <non-empty explicit User decision>`. Supplying or
+inventing a close JSON schema is forbidden; missing `DecisionRef` fails before the writer runs.
+
+The bounded tests import/call the existing classifier and approved-payload validator where applicable,
+and statically verify the PowerShell action-to-argument mapping. They include canonical positive cases
+and negatives for Submit-with-`kind`, Approve-without/wrong-`kind`, and Close-without-`DecisionRef`.
+
+## 6. Model Routing And Audit Evidence
+
+No board or invocation schema is changed. Model routing is proven at three fixed existing layers:
+
+1. **Actual dispatch action:** every complex `spawn_agent` call explicitly supplies both `model` and
+   `reasoning_effort`; inherited/default model selection is forbidden.
+2. **Role evidence:** every Developer, Reviewer, QA, and Integrator evidence document contains exactly
+   one value for each fixed field near its header:
+   `MODEL`, `REASONING_EFFORT`, and `MODEL_ROUTE_REASON`. The reason is either
+   `default_complex`, `qa_bounded_low`, or `risk:<frozen-category>`.
+3. **Acceptance summary:** Integrator evidence and the final User summary contain an
+   `ACTUAL_MODEL_ROUTING` table with role, model, effort, reason, and evidence ref. Reviewer verifies
+   the dispatch capsule against the subject role evidence; QA verifies the complete route table and
+   forbidden-Luna assertion. A missing/mismatched field blocks the gate.
+
+Because native action and board schemas have no model field, they are not falsely presented as the
+audit store. The tool dispatch record plus content-addressed role evidence is the audit proof; the
+static test proves the mandatory contract text, while Reviewer/QA/Integrator prove the actual values
+used for this run.
+
+## 7. Validation And Gates
 
 Run on the exact clean implementation HEAD:
 
@@ -115,16 +210,18 @@ git diff --check
 ```
 
 Also inspect the exact changed-path list and verify every Must Not Touch path is unchanged. The
-automatic chain remains Developer -> Reviewer -> mandatory QA -> Integrator; the final completion
-summary lists each role's actual model and reasoning effort. No browser smoke is required because this
-governance task has no user-visible UI change.
+automatic chain remains Developer -> Reviewer -> mandatory QA -> Integrator. For this Task the
+deterministic route is Developer/Reviewer/QA/Integrator = `gpt-5.6-terra / medium`; any later
+high-risk escalation must cite its frozen category. The final completion summary lists the actual
+route table and evidence refs. No browser smoke is required because this governance task has no
+user-visible UI change.
 
 Runtime acceptance additionally checks that the written contract enforces: no simple-task schema
 retry; submit-and-close only when uninterrupted; no duplicate activation on recovery; explicit complex
 role model/effort; no Luna. Three later simple-task durations are observed toward approximately ten
 minutes without making timing a hard failure.
 
-## 5. Risks And Rollback
+## 8. Risks And Rollback
 
 - **Documentation/runtime mismatch:** bounded static tests bind the skill and protocol to the same
   route table and canonical entry. Integration suites protect the unchanged runtime behavior.
@@ -133,12 +230,14 @@ minutes without making timing a hard failure.
 - **Over-routing/cost regression:** Terra remains the complex default; simple work stays on the
   permanent Sol Orchestrator without another hop.
 - **Recovery duplication:** board/Git/evidence identity is read before action; uncertainty fails closed.
-- **Rollback:** before integration, retain the clean task host and return to Developer. After a local
-  accepted integration and before any later task changes these paths, use an ordinary reviewed
-  `git revert <integration-commit>` as a separate authorized governance action. Never reset, restore,
-  stash, clean, rewrite history, or delete retained resources.
+- **Rollback:** before integration, retain the clean task host and return to Developer. After local
+  integration, first verify the target is the exact accepted two-parent merge, its first parent is the
+  recorded pre-integration primary HEAD, its second parent is the accepted clean task HEAD, and no
+  later commit has changed the four locked paths. Only a separate User-approved governance action may
+  run `git revert -m 1 <exact-merge-commit>`, followed by the full validation matrix. Never use a
+  one-parent revert, reset, restore, stash, clean, history rewrite, or retained-resource deletion.
 
-## 6. Exact Approved-Request Contract
+## 9. Exact Approved-Request Contract
 
 Canonicalization: the SHA-256 is over the exact single-line UTF-8 JSON bytes below, with no BOM and no
 trailing newline.
@@ -154,4 +253,4 @@ Explicit approval must identify this committed Plan ref and authorize this exact
 contract. Approval authorizes implementation only; it does not authorize push, cleanup, Task B, or
 any scope expansion.
 
-`STATUS: READY_FOR_USER_APPROVAL`
+`STATUS: REVISION_2_READY_FOR_USER_APPROVAL`

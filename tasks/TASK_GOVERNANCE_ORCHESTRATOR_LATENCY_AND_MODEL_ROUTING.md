@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING
 
-Status: `planned_pending_user_approval`
+Status: `revision_2_planned_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -31,7 +31,9 @@ Planning changed only:
 
 1. `docs/task_board.md` through `scripts/run_task.ps1` Submit and the activation commit;
 2. `tasks/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING.md`;
-3. `docs/task_governance_orchestrator_latency_and_model_routing_plan.md`.
+3. `docs/task_governance_orchestrator_latency_and_model_routing_plan.md`;
+4. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md` plus
+   writer-generated/committed Planner-ready board transitions.
 
 ## Must Not Touch
 
@@ -46,11 +48,16 @@ Planning changed only:
 
 - Submit, Approve, and Close guidance uses only `scripts/run_task.ps1`; no direct Python request-JSON
   construction or legacy schema probing is prescribed.
+- The exact Submit key set excludes `kind`; the exact Approve JSON includes `kind=planned`; Close has
+  no JSON payload and requires one non-empty `DecisionRef`. Contract and negative tests freeze all
+  three entry shapes.
 - Simple work keeps the direct two-interaction path: submit requirement, then inspect and close.
 - Recovery reconstructs the active task/host from board, Git, and evidence without duplicate activation.
-- Every complex role dispatch records the exact model and reasoning effort; Luna is not used.
+- Every complex role dispatch explicitly passes `model` and `reasoning_effort`; role evidence records
+  `MODEL`, `REASONING_EFFORT`, and `MODEL_ROUTE_REASON`, and Integrator/final summaries reconcile those
+  fields with the actual dispatch action. Luna is not used.
 - UI smoke is required only for user-visible UI changes and uses documented load state or deterministic
   selectors; unsupported `networkidle` probing is forbidden.
 - Reviewer, mandatory QA, and Integrator remain required after approval.
 
-`STATUS: PLANNED_PENDING_USER_APPROVAL`
+`STATUS: REVISION_2_PLANNED_PENDING_USER_APPROVAL`
