@@ -2,7 +2,7 @@
 
 Task: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
-Status: `REVISION_2_READY_FOR_USER_APPROVAL`
+Status: `REVISION_3_READY_FOR_USER_APPROVAL`
 
 Planning base: `6227acb7cfccaab276194d2a7cbda96bc1f09a89`
 
@@ -45,6 +45,11 @@ Planning base: `6227acb7cfccaab276194d2a7cbda96bc1f09a89`
   `BLOCKED_CLASSIFICATION_INVALID` and zero writes. Reading the current classifier and passing the
   tested `connlab.serial-task-request` contract then activated once. This is concrete evidence for
   documenting one canonical entry contract rather than retrying schemas.
+- The first exact Approve attempt against Revision 2 was rejected with
+  `BLOCKED_APPROVED_SCOPE_INVALID` and zero writes because the Submit classifier accepts the extra
+  `push_or_release` forbidden-category fact while the approved-scope validator forbids that key.
+  Revision 3 binds the two distinct frozen key sets and adds a cross-copy negative; runtime/schema
+  files remain unchanged.
 
 ### Planner Inference And Bounded Assumptions
 
@@ -142,7 +147,8 @@ User explicitly approves the new committed Plan ref and exact approved-request h
 
 ## 5. Frozen Entry Payload Contracts
 
-The implementation must state and test these exact contracts; no alternate schema retry is allowed.
+The implementation must state and test these exact contracts; no alternate schema retry or payload
+copy between actions is allowed.
 
 ### Submit
 
@@ -156,6 +162,10 @@ may_touch, targeted_validation, requires_independent_review, forbidden_categorie
 `schema=connlab.serial-task-request`, `version=1`. The `kind` field is forbidden. Missing decision
 fields may classify as discovery only when the submitted object follows the classifier contract; an
 unknown key is a terminal zero-write classification error, never a signal to try another payload.
+Its `forbidden_categories` object has exactly ten keys:
+`api_contract`, `database`, `schema_or_migration`, `persistence`, `authority`,
+`public_drive_workflow`, `business_rule_semantics`, `destructive_action`, `external_mutation`, and
+`push_or_release`.
 
 ### Approve
 
@@ -168,6 +178,8 @@ classification_reason, targeted_validation, forbidden_categories
 
 `schema=connlab.personal-task-approved-request`, `version=1`, and `kind=planned` are mandatory. It also
 requires the committed `PlanRef` and explicit `ApprovalRef`; no Submit fields are copied into it.
+Its `forbidden_categories` object has exactly the first nine Submit category keys and explicitly
+forbids `push_or_release`, matching `scripts/connlab_serial_board.py::FORBIDDEN_KEYS`.
 
 ### Close
 
@@ -177,7 +189,8 @@ inventing a close JSON schema is forbidden; missing `DecisionRef` fails before t
 
 The bounded tests import/call the existing classifier and approved-payload validator where applicable,
 and statically verify the PowerShell action-to-argument mapping. They include canonical positive cases
-and negatives for Submit-with-`kind`, Approve-without/wrong-`kind`, and Close-without-`DecisionRef`.
+and negatives for Submit-with-`kind`, copying the ten-key Submit categories into Approve,
+Approve-without/wrong-`kind`, and Close-without-`DecisionRef`.
 
 ## 6. Model Routing And Audit Evidence
 
@@ -243,14 +256,14 @@ Canonicalization: the SHA-256 is over the exact single-line UTF-8 JSON bytes bel
 trailing newline.
 
 ```json
-{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","summary":"Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.","kind":"planned","may_touch":[".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/unit/test_task_scoped_role_thread_lifecycle_governance.py","docs/task_board.md"],"expected_file_count":4,"classification_reason":"Governance-only four-path change with mandatory independent Reviewer, QA, and Integrator gates; no runtime, schema, product, authority, or persistence changes.","targeted_validation":["py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q","git diff --check"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":false,"authority":false,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false,"push_or_release":false}}
+{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","summary":"Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.","kind":"planned","may_touch":[".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/unit/test_task_scoped_role_thread_lifecycle_governance.py","docs/task_board.md"],"expected_file_count":4,"classification_reason":"Governance-only four-path change with mandatory independent Reviewer, QA, and Integrator gates; no runtime, schema, product, authority, or persistence changes.","targeted_validation":["py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q","git diff --check"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":false,"authority":false,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
 ```
 
 SHA-256:
-`b3caa75c1cf2678fec1b2d06ced4bb9e551b49e75767aba3564d6f7537b7b19c`
+`43d110d8f7a3e87859f59b72c62cd295d214fa86e3bb60e5d091587587a74d3a`
 
 Explicit approval must identify this committed Plan ref and authorize this exact approved-request
 contract. Approval authorizes implementation only; it does not authorize push, cleanup, Task B, or
 any scope expansion.
 
-`STATUS: REVISION_2_READY_FOR_USER_APPROVAL`
+`STATUS: REVISION_3_READY_FOR_USER_APPROVAL`

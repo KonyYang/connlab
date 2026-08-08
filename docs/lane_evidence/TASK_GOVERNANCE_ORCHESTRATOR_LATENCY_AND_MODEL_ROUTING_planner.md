@@ -2,7 +2,7 @@
 
 ROLE: Planner (inline in the permanent Orchestrator conversation)
 
-STATUS: ready
+STATUS: revision_3_contract_correction_ready
 
 TASK_ID: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
@@ -32,3 +32,19 @@ TASK_ID: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 5. Made QA low/medium selection deterministic; this Task routes QA to Terra medium.
 
 No implementation path was edited and User approval remains required.
+
+## Revision 3 Approved-Request Correction
+
+- User approved Revision 2, but the exact `scripts/run_task.ps1 -Action Approve` call returned
+  `BLOCKED_APPROVED_SCOPE_INVALID` with identical before/after board SHA-256 and no file change.
+- Repository proof: Submit classification uses the ten-key
+  `scripts/connlab_serial_complex.py::FORBIDDEN_KEYS`, while Approve validation uses the nine-key
+  `scripts/connlab_serial_board.py::FORBIDDEN_KEYS` and rejects `push_or_release`.
+- Revision 3 removes only that invalid Approve key, updates the approved-request hash, and adds the
+  precise cross-copy negative to the existing bounded test obligation.
+- Implementation May Touch, Must Not Touch, model routing, QA route, rollback, WIP, and all product/
+  runtime/schema boundaries are unchanged.
+
+The corrected approved payload was passed read-only through
+`scripts.connlab_serial_board.approved_payload` before this amendment was committed. A new exact User
+approval is required; no host or role may be created before it.

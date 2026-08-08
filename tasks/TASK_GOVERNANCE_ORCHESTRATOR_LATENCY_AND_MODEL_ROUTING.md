@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING
 
-Status: `revision_2_planned_pending_user_approval`
+Status: `revision_3_planned_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -48,9 +48,10 @@ Planning changed only:
 
 - Submit, Approve, and Close guidance uses only `scripts/run_task.ps1`; no direct Python request-JSON
   construction or legacy schema probing is prescribed.
-- The exact Submit key set excludes `kind`; the exact Approve JSON includes `kind=planned`; Close has
-  no JSON payload and requires one non-empty `DecisionRef`. Contract and negative tests freeze all
-  three entry shapes.
+- The exact Submit key set excludes `kind` and uses the classifier's ten forbidden-category keys;
+  the exact Approve JSON includes `kind=planned` and uses the approved-scope validator's nine keys
+  (no `push_or_release`); Close has no JSON payload and requires one non-empty `DecisionRef`.
+  Contract, cross-schema-copy negative, and entry negatives freeze all three shapes.
 - Simple work keeps the direct two-interaction path: submit requirement, then inspect and close.
 - Recovery reconstructs the active task/host from board, Git, and evidence without duplicate activation.
 - Every complex role dispatch explicitly passes `model` and `reasoning_effort`; role evidence records
@@ -60,4 +61,4 @@ Planning changed only:
   selectors; unsupported `networkidle` probing is forbidden.
 - Reviewer, mandatory QA, and Integrator remain required after approval.
 
-`STATUS: REVISION_2_PLANNED_PENDING_USER_APPROVAL`
+`STATUS: REVISION_3_PLANNED_PENDING_USER_APPROVAL`
