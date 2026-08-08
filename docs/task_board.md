@@ -61,8 +61,8 @@
       "base_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
-      "worktree_lifecycle": "ready",
-      "current_role": "Integrator",
+      "worktree_lifecycle": "integration_ready",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -147,14 +147,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_developer.md@ad7dac819268ae77781709b626aea4f624a7a740#0985f2ed69d88f58962b2ab3e29d100b45596647b6c9ab9423146332fb3bed7c",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_reviewer.md@d5e82f2ea6ab18c979540c226811c2a20978f48e#27488e4d5001edff3a45770d0140fe694fc43c867f7f109274b76d0291161c96",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_qa.md@d6c7eba5b7cfe8dfb41e82575dc94404e8e2f5ae#5c22e90893a4e87d3609d03f4e2c910069c53640c35b4d6f09cc02292c96915a"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_qa.md@d6c7eba5b7cfe8dfb41e82575dc94404e8e2f5ae#5c22e90893a4e87d3609d03f4e2c910069c53640c35b4d6f09cc02292c96915a",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integrator.md@f7770b6a6a82a36f946d16145a2124f6330961e1#8c15467010e3693ada5247ed3dd011c5334d736012dee7a94d1a8f9664cd05f0"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "2962f4bd190bc6cbcdaf147baf4859d402c1c5cb430c77fe86ae4a96ad374e88",
-        "role": "Integrator",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
