@@ -56,12 +56,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
-      "head_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
+      "task_branch": "codex/task-governance-orchestrator-latency-and-model-routing",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-orchestrator-latency-and-model-routing",
+      "base_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
+      "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -78,8 +78,8 @@
           "recorded_at": "2026-08-08T04:26:37Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
+      "host_id": "host-task-governance-orchestrator-latency-and-model-routing",
       "approved_code_paths": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
         "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
@@ -98,12 +98,7 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10"
       ],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "c9e74cbfe4c70de3a35e519b0e70346ce3de656e984debd01a1245736f7030d5",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
