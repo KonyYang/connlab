@@ -14,91 +14,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
-    "summary": "Remove the unused Templates placeholder module from Matrix Editor while preserving and widening Reference Library.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
-      "summary": "Remove the unused Templates placeholder module from Matrix Editor while preserving and widening Reference Library.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "docs/task_board.md",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "tests/unit/test_frontend_shell_files.py"
-      ],
-      "targeted_validation": [
-        "py -m pytest tests/unit/test_frontend_shell_files.py -k matrix_editor -q",
-        "npm run build from frontend",
-        "Browser smoke confirms Templates absent and Reference Library spans the supporting row"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "60116f5af72dffb2c73e04723ba8cf30482034e2",
-    "activated_at": "2026-08-07T23:21:00Z",
-    "updated_at": "2026-08-07T23:33:17Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "py -m pytest tests/unit/test_frontend_shell_files.py -k \"task221_matrix_editor_converges_to_definition_studio_structure or task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority\" -q",
-          "exit_code": 0,
-          "summary": "2 passed, 160 deselected"
-        },
-        {
-          "command": "npm run build (frontend)",
-          "exit_code": 0,
-          "summary": "TypeScript and Vite production build passed; existing chunk-size warning only"
-        },
-        {
-          "command": "git diff --check and exact two-path implementation commit",
-          "exit_code": 0,
-          "summary": "No whitespace errors; implementation commit 2f1c9560 contains only the two approved code/test paths"
-        }
-      ],
-      "observed_paths": [
-        "docs/task_board.md",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "tests/unit/test_frontend_shell_files.py"
-      ],
-      "manual_checks": [
-        "Browser DOM: .matrix-editor-templates count 0",
-        "Reference Library visible at 574/574 supporting width with grid-column 1 / -1"
-      ],
-      "recorded_at": "2026-08-08T00:00:00+08:00"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
-    "disposition": "closed atomically by approved v2 cutover",
-    "decision_ref": "User approved the exact pre-reviewed local atomic cutover commit in controller task 019fc491-21b0-77b0-bf18-53f53a366a7c.",
-    "closed_at": "2026-08-07T00:00:00Z"
+    "task_id": "TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
+    "disposition": "closed after human review",
+    "decision_ref": "user://explicit-close/2026-08-08/TASK_MATRIX_EDITOR_REMOVE_UNUSED_TEMPLATES_PLACEHOLDER",
+    "closed_at": "2026-08-08T00:00:28Z"
   },
   "retained_history": [
     {
