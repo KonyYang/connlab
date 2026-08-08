@@ -20,13 +20,38 @@
     "summary": "Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+        "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
+        "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 4,
+      "classification_reason": "Governance-only four-path change with mandatory independent Reviewer, QA, and Integrator gates; no runtime, schema, product, authority, or persistence changes.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q",
+        "py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q",
+        "git diff --check"
+      ],
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false
+      }
+    },
+    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@ceb7607b854038142ff50896cccfb8907b1ef2c7#f6f3041eaed7acd390ec21f787102aaad452eaa652750d9068b39c0c0df34241",
+    "approval_ref": "User explicitly approved Revision 3 for TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING in the permanent Orchestrator conversation on 2026-08-08, binding Plan ceb7607b854038142ff50896cccfb8907b1ef2c7 and approved-request SHA-256 43d110d8f7a3e87859f59b72c62cd295d214fa86e3bb60e5d091587587a74d3a.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-08T00:31:25Z",
+    "updated_at": "2026-08-08T05:17:49Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
