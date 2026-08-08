@@ -2,7 +2,7 @@
 
 ROLE: Planner (inline in the permanent Orchestrator conversation)
 
-STATUS: integration_reconciliation_amendment_pending_user_approval
+STATUS: integration_reconciliation_authority_revision_pending_user_approval
 
 TASK_ID: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
@@ -90,3 +90,45 @@ committed target proof.
 No board, runtime, test, original lane, merge, role evidence, product, remote, or retained resource was
 modified during planning. Only the Task, Plan, and this Planner evidence are authorized in the current
 turn. The amendment remains pending exact User approval.
+
+## Machine Authority Review Correction
+
+The User review correctly found that the first amendment deferred scope/host authority until final
+CAS. Read-only inspection of the current writer proved two relevant facts:
+
+1. blocked reapproval can add paths only under a truthful `SCOPE_EXPANDED` blocker and initially
+   updates `scope_contract`, but not `complex_context.approved_code_paths`;
+2. after resume to planning, a real Planner-ready callback followed by normal Approve updates both
+   arrays and enters development, while the existing durable host can own a real Developer invocation.
+
+The revised Plan therefore freezes a pre-implementation existing-command chain:
+`SCOPE_EXPANDED -> ALLOW_SCOPE_AMEND -> ALLOW_RESUME -> PLANNER_READY -> ALLOW_APPROVE`. The canonical
+eight-path strict-superset approved-request has SHA-256
+`5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34`; the version-2
+reconciliation manifest has SHA-256
+`28546d74d94f8b32f1a2ce5e57951b9855ee87692c7b2cf8c6f04746867238c7`. No reconciliation worktree or
+executor write is legal until the committed board proves the final scope, `approved_code_paths`, Plan/
+approval refs, development phase, clean facts, and null blocker/pending callback.
+
+After that checkpoint, the old durable host records a real Developer invocation that owns exactly one
+host relocation. The target worktree is created only under that invocation and exact Plan binding; the
+task-specific atomic rebind replaces host Git facts while preserving the live action and WIP. Normal
+Developer/Reviewer/QA/Integrator callbacks then provide durable role authority. Final CAS is not an
+approval mechanism.
+
+Final CAS restores the current task resource to the original integrated lane and appends the clean
+unmerged executor worktree/branch/head to retained history with permanent Orchestrator ownership and
+its Integrator evidence ref. Thus no residual is unnamed and closeout can still verify the original
+integrated lane.
+
+The revised executable negatives require direct expanded approval from the current blocker, incomplete
+two-approval authority, or unregistered/mismatched host attempts to block with zero writes and no
+worktree/executor creation. Planning still changed only the Task, Plan, and Planner evidence.
+
+A disposable minimal V2 repository using the current production writer ran the complete existing-command
+sequence and returned `AUTHORITY_CHAIN_OK`: first Approve returned `ALLOW_SCOPE_AMEND` with eight-path
+`scope_contract` while `approved_code_paths` correctly remained four; resume and a real
+`planner_dispatch` invocation/callback entered `awaiting_user_approval`; the second byte-identical
+Approve returned `ALLOW_APPROVE`, entered `development`, cleared blocker/pending callback, and made
+both authority arrays exactly the same eight paths. The disposable repository was isolated from the
+primary board and original lane.

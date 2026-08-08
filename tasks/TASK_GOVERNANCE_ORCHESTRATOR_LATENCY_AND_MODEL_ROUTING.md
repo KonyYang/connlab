@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING
 
-Status: `integration_reconciliation_amendment_pending_user_approval`
+Status: `integration_reconciliation_authority_revision_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -77,7 +77,8 @@ This amendment authorizes no implementation until the User approves its exact co
 later approval may authorize one reviewed, task-specific executor artifact that leaves the original
 lane and existing merge immutable and performs one hash-bound compare-and-swap board transition. It
 must verify the exact commits, trees, topology, evidence bytes/status, clean Git facts, blocker board
-hash, amendment Plan ref, and reconciliation role evidence before it can atomically record:
+lineage, amendment Plan ref, pre-implementation machine-authority chain, durable host relocation, and
+reconciliation role evidence before it can atomically record:
 
 - `complex_context.head_sha=f7770b6a6a82a36f946d16145a2124f6330961e1`;
 - `complex_context.integrated_commit=093d48966b15c536b7411b3cc4cdca1e1e0d4faf`;
@@ -87,7 +88,7 @@ hash, amendment Plan ref, and reconciliation role evidence before it can atomica
 - complete hash-verified evidence refs; and
 - `active.blocker=null`.
 
-For that unmerged executor artifact only, the amendment May Touch supersedes the earlier runtime
+For that unmerged executor artifact only, the executor code/test delta supersedes the earlier runtime
 prohibition and is exactly:
 
 1. `scripts/connlab_personal_task.py`
@@ -99,8 +100,25 @@ The four fixed reconciliation role-evidence paths are evidence refs, not impleme
 only primary write is the final atomic `docs/task_board.md` transition and its exact board-only commit.
 All other original Must Not Touch paths remain locked.
 
+Before any executor path or reconciliation worktree is created, the machine authority must be updated
+through existing reviewed commands only. The required sequence is: record the truthful
+`SCOPE_EXPANDED` blocker; approve the exact strict-superset eight-path request; resume to planning;
+record a real Planner ready callback using this committed amendment evidence; and approve the same
+request normally from `awaiting_user_approval`. The last approval must prove both
+`active.scope_contract.may_touch` and `complex_context.approved_code_paths` equal the eight-path
+request, and must bind the exact Plan ref and User approval ref. The approved-request SHA-256 is
+`5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34`.
+
+Only after that committed authority checkpoint may the existing durable host begin and record a real
+Developer invocation. That invocation owns one exact host relocation to the approved reconciliation
+branch/worktree. The relocation must atomically replace the host Git facts while preserving the live
+Developer action, scope, locks, Plan/approval refs, and original-lane evidence. No broader executor
+implementation may occur until the new host facts are committed and verified. Final reconciliation
+returns the primary task resource to the original integrated lane and records the clean executor
+branch/worktree as a retained same-task resource with a permanent residual owner.
+
 No second merge, resume prewrite, manual board edit, history rollback, generic validation relaxation,
 push, cleanup, product change, or mutation of the existing lane is permitted. Any mismatch is a
 zero-write blocker.
 
-`STATUS: INTEGRATION_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`
+`STATUS: INTEGRATION_RECONCILIATION_AUTHORITY_REVISION_PENDING_USER_APPROVAL`
