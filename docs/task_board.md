@@ -20,7 +20,7 @@
     "summary": "Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -37,7 +37,7 @@
       "head_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -70,13 +70,10 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "f30780aee498354fd871384b0195458dbc52e925df42e504a68d3fc5f398dca7",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10"
+      ],
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
