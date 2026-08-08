@@ -25,7 +25,16 @@ authority, public-drive, browser, remote, or lifecycle-cleanup change was made.
 
 - `py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q` — passed: 7 tests.
 - `git diff --check` — passed.
-- `py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q` — baseline fixture failure: 9 failed, 8 passed. The
-  fixture copies the current V2 board, which is already `running` for this active task; its temporary
-  repositories therefore correctly return `BLOCKED_ACTIVE_TASK_RUNNING` before the test flow can create
-  its own active task. No runtime or implementation path was changed to influence this result.
+- `py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q` — 9 failed, 8 passed. The failures split exactly:
+  - `test_run_task_activate_next_starts_only_the_fifo_head_and_accepts_json` is a stale V1 test. It
+    supplies unsupported `-ActivateNext` to the current `scripts/run_task.ps1`, receives empty stdout,
+    then fails JSON decoding.
+  - The other eight failures are in `test_connlab_serial_complex_recovery.py`. Its `init_v2_repo`
+    fixture copies the current active `docs/task_board.md`; each temporary repository therefore correctly
+    returns `BLOCKED_ACTIVE_TASK_RUNNING` before its flow can create a separate active task.
+
+## Scope proof
+
+`git diff --name-only 3d0884e12cc39e7b416da75ab01aaffd36c6418c..HEAD` contains neither integration test,
+`scripts/run_task.ps1`, any runtime helper, nor `docs/task_board.md`. The committed diff is limited to
+the three approved implementation paths and this Developer evidence path.
