@@ -20,7 +20,7 @@
     "summary": "Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -51,8 +51,34 @@
     "approval_ref": "User explicitly approved Revision 3 for TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING in the permanent Orchestrator conversation on 2026-08-08, binding Plan ceb7607b854038142ff50896cccfb8907b1ef2c7 and approved-request SHA-256 43d110d8f7a3e87859f59b72c62cd295d214fa86e3bb60e5d091587587a74d3a.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-08T05:17:49Z",
-    "blocker": null,
+    "updated_at": "2026-08-08T05:57:49Z",
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "INTEGRATION_BLOCKED",
+      "stage": "integration",
+      "reason": "The approved evidence-in-lane strategy is incompatible with the frozen record-integration proof, which requires branch_head == qa_subject_commit and physical worktree HEAD == branch_head. Local merge 093d48966b15c536b7411b3cc4cdca1e1e0d4faf is preserved but not recorded as accepted.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "record-integration precondition",
+        "command": [
+          "compare qa_subject_commit with physical task-worktree HEAD"
+        ],
+        "exit_code": 1,
+        "summary": "qa_subject_commit is ad7dac819268ae77781709b626aea4f624a7a740 while the clean registered worktree HEAD is f7770b6a6a82a36f946d16145a2124f6330961e1 after required Reviewer/QA/Integrator evidence-only commits; current runtime requires exact equality and would reject record-integration.",
+        "recorded_at": "2026-08-08T05:57:49Z"
+      },
+      "subject_commit": "f7770b6a6a82a36f946d16145a2124f6330961e1",
+      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integrator.md@f7770b6a6a82a36f946d16145a2124f6330961e1#8c15467010e3693ada5247ed3dd011c5334d736012dee7a94d1a8f9664cd05f0",
+      "native_action_id": null,
+      "related_ids": [],
+      "retryable": false,
+      "requires_user": true,
+      "resume_phase": "integration",
+      "recorded_at": "2026-08-08T05:57:49Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
