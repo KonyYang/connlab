@@ -2,7 +2,7 @@
 
 Task: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
-Status: `REVISION_3_READY_FOR_USER_APPROVAL`
+Status: `INTEGRATION_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`
 
 Planning base: `6227acb7cfccaab276194d2a7cbda96bc1f09a89`
 
@@ -266,4 +266,201 @@ Explicit approval must identify this committed Plan ref and authorize this exact
 contract. Approval authorizes implementation only; it does not authorize push, cleanup, Task B, or
 any scope expansion.
 
-`STATUS: REVISION_3_READY_FOR_USER_APPROVAL`
+Historical Revision 3 status before implementation: `REVISION_3_READY_FOR_USER_APPROVAL`.
+
+## 10. Bounded Integration Reconciliation Amendment
+
+### 10.1 Discovery And Exact Source Facts
+
+This section is a separate amendment authorization contract and supersedes only the incomplete
+integration/acceptance portion of Revision 3, including the runtime prohibition only for the exact
+unmerged executor artifact in section 10.5. Section 9 continues to describe the already completed
+original implementation and does not authorize this reconciliation. The model
+routing implementation and its original four-path scope remain unchanged and already passed the
+independent Reviewer and QA gates. The exact current statement is: `Integrator pre-integration audit
+completed; acceptance blocked.`
+
+Repository facts frozen by this amendment are:
+
+- QA subject: `ad7dac819268ae77781709b626aea4f624a7a740`.
+- Final original lane HEAD: `f7770b6a6a82a36f946d16145a2124f6330961e1`, clean on
+  `codex/task-governance-orchestrator-latency-and-model-routing` in the registered sibling worktree.
+- `ad7dac81..f7770b6a` is a linear three-commit range. It adds only the fixed Reviewer, QA, and
+  Integrator evidence paths, in that order, at `d5e82f2e`, `d6c7eba5`, and `f7770b6a`.
+- Existing merge: `093d48966b15c536b7411b3cc4cdca1e1e0d4faf`; parents are exact first parent
+  `a632f01c96de457deec901fedb271addfd0b77fb` and second parent `f7770b6a...`; merge tree is
+  `891f0cd28ebfd86d8ae8b1fff6e92160b16b71ca`.
+- Exact blocker baseline: clean `master@82370aeb1690f1a6e1ebda7d37048f5f926d7570`; it is the
+  single direct first-parent descendant of the merge, and `093d4896..82370aeb` changes only
+  `docs/task_board.md` to record `INTEGRATION_BLOCKED`.
+- The committed source board blob SHA-256 is
+  `9083399d2a3a091afc634ab3253df86e8f3c0754fd73558bdc0b959b0c336d88`; the clean Windows
+  worktree bytes consumed by the writer/CAS are CRLF-normalized and have SHA-256
+  `295974ff98e874862d2505e8ff05ebab6977d738f74e40a6937bcbe165bc6696`. Both must match. The board records phase
+  `blocked`, resume phase `integration`, stale `head_sha=3d0884e1...`, no integrated commit, and the
+  five exact Planner/Developer/Reviewer/QA/Integrator evidence refs listed in section 10.4.
+
+The committed amendment package created from this section must be one clean primary commit whose
+parent is exact `82370aeb...` and whose path delta is only the Task, this Plan, and Planner evidence.
+The later User approval must bind that resulting Plan commit and its blob SHA-256. At execution time,
+primary must still be that exact amendment commit; the helper must prove its parent and three-path
+delta back to `82370aeb...`. This resolves the unavoidable fact that committing the requested planning
+amendment advances primary without weakening the frozen blocker baseline.
+
+### 10.2 Why The Normal Integration Command Cannot Be Relaxed
+
+The normal `record-integration` contract correctly requires the physical lane HEAD to equal the QA
+subject and the physical primary HEAD to equal the merge. Here, mandatory role evidence commits moved
+the lane from the reviewed subject to `f7770b6a`, and the blocker governance commit moved primary from
+the existing merge to `82370aeb`. A general descendant allowance would weaken every future task.
+
+Therefore this amendment does not change `connlab_serial_complex.py`, `connlab_serial_board.py`, the
+normal `record-integration` payload, or the board schema. It introduces a task-ID-specific, one-time
+command in a reviewed executor artifact. The executor is run commit-addressed against the primary
+repository, calls the existing sole writer and writer lock, and is never merged or cherry-picked into
+master. The original lane remains immutable at `f7770b6a`; the existing merge remains the sole product/
+governance implementation merge.
+
+### 10.3 Post-Approval Execution Shape
+
+After explicit User approval only, create one same-task reconciliation branch and sibling worktree
+from the exact committed amendment package. The original lane is a frozen input, not a second owner.
+WIP remains one. The reconciliation branch/worktree names are fixed as:
+
+- branch: `codex/task-governance-orchestrator-latency-model-routing-reconciliation`;
+- worktree: `D:\\PythonProject\\connlab-worktrees\\task-governance-orchestrator-latency-model-routing-reconciliation`.
+
+The reconciliation artifact receives a full Developer -> Reviewer -> mandatory QA -> Integrator
+review chain. Because this is an integration-conflict repair, every role is explicitly dispatched as
+`gpt-5.6-sol / medium / risk:integration_conflict`; Luna is forbidden. No role may write the primary
+board. Integrator may execute the reviewed command only after all four reconciliation evidence commits
+are immutable, hash-addressed, linearly ordered, and the executor worktree/index is clean.
+
+The sole successful operation is one writer-lock-protected compare-and-swap of the marker-delimited
+board JSON. It consumes the exact source blocker and writes all target fields in one rendered board
+replacement. There is no preceding `resume`, HEAD prewrite, or second board mutation. The resulting
+board must then be exact-path staged and committed as one board-only durability checkpoint. If that
+commit fails, stop with the bytes preserved and report the dirty state; do not restore or retry by
+hand.
+
+### 10.4 Exact Evidence Inputs And Target State
+
+Existing immutable evidence inputs are:
+
+1. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10`
+2. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_developer.md@ad7dac819268ae77781709b626aea4f624a7a740#0985f2ed69d88f58962b2ab3e29d100b45596647b6c9ab9423146332fb3bed7c`
+3. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_reviewer.md@d5e82f2ea6ab18c979540c226811c2a20978f48e#27488e4d5001edff3a45770d0140fe694fc43c867f7f109274b76d0291161c96`
+4. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_qa.md@d6c7eba5b7cfe8dfb41e82575dc94404e8e2f5ae#5c22e90893a4e87d3609d03f4e2c910069c53640c35b4d6f09cc02292c96915a`
+5. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integrator.md@f7770b6a6a82a36f946d16145a2124f6330961e1#8c15467010e3693ada5247ed3dd011c5334d736012dee7a94d1a8f9664cd05f0`
+
+The target evidence list preserves those five refs and appends, in order, the exact committed
+amendment Planner evidence and four fixed-path reconciliation evidence refs:
+
+- `..._planner.md@<amendment-commit>#<exact-blob-sha256>`;
+- `..._integration-reconciliation_developer.md@<D>#<exact-blob-sha256>`;
+- `..._integration-reconciliation_reviewer.md@<R>#<exact-blob-sha256>`;
+- `..._integration-reconciliation_qa.md@<Q>#<exact-blob-sha256>`;
+- `..._integration-reconciliation_integrator.md@<I>#<exact-blob-sha256>`.
+
+The command must verify each future commit/path/blob hash, role `STATUS`, model-routing header,
+ancestry `amendment -> D -> R -> Q -> I`, exact path delta for each role, and a clean reconciliation
+worktree at `I`. The atomic target is exactly:
+
+- `active.plan_ref` becomes the User-approved committed amendment Plan ref;
+- `active.approval_ref` becomes the exact later User approval identity;
+- `active.updated_at` becomes the single attested reconciliation timestamp used by the rendered target;
+- `active.blocker=null` and `active.phase=human_review`;
+- top-level `control.state=implemented_pending_human_review`;
+- `complex_context.head_sha=f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- `complex_context.integrated_commit=093d48966b15c536b7411b3cc4cdca1e1e0d4faf`;
+- `complex_context.worktree_lifecycle=integrated`;
+- `complex_context.current_role=null`, `pending_callback=null`, and the complete ten-ref evidence
+  list above;
+- all unrelated control, retained-history, queue, original scope, role invocation, and task fields
+  remain byte-for-byte semantically unchanged.
+
+Exact replay may return `ALREADY_APPLIED` with zero writes only when the committed board, target state,
+Plan/approval refs, all ten evidence refs, merge proof, original lane proof, and board-only transition
+commit all match. Any partial or divergent state remains blocked.
+
+### 10.5 Exact Future May Touch And Locked Paths
+
+Implementation code/test May Touch, only after approval:
+
+1. `scripts/connlab_personal_task.py`
+2. `scripts/connlab_model_routing_integration_reconciliation.py` (new, task-specific)
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py` (new)
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py` (new)
+
+Reconciliation role evidence is restricted to the four fixed evidence paths in section 10.4 and is
+managed as evidence, not implementation scope. The only authorized primary write is the final atomic
+`docs/task_board.md` target followed by its exact-path board-only commit.
+
+Locked paths/facts are the original lane branch/worktree/ref, both Git ranges in section 10.1, the
+merge object/parents/tree, all five existing evidence objects, the amendment Task/Plan/Planner evidence,
+the candidate executor files/tests/evidence, and the primary board. No parallel owner or exception is
+allowed.
+
+Must Not Touch:
+
+- `scripts/run_task.ps1`, `scripts/connlab_serial_complex.py`, `scripts/connlab_serial_board.py`, and
+  every normal Submit/Approve/Close/record-integration contract;
+- the original four implementation files, original lane, existing role evidence bytes, merge commit,
+  blocker commit, retained/frozen/cancelled resources, registry, legacy V1/V2 assets, or Task B;
+- product/backend/frontend, API/database/schema/migration/persistence/business authority, browser,
+  remote state, publication/restart, push, cleanup, reset, restore, stash, rebase, cherry-pick, or any
+  new merge.
+
+### 10.6 Fail-Closed Proof And Validation Matrix
+
+The one-time command must return stable zero-write blockers for any task/board hash/state/blocker/
+plan/approval mismatch; dirty primary or executor; original lane branch/HEAD/index drift; non-linear or
+extra-path evidence range; evidence path/blob/status/model mismatch; merge parent/tree/ancestry drift;
+unexpected `093d4896..82370aeb` topology/path; amendment package not being the exact three-path child of
+`82370aeb`; executor manifest drift; target render drift; or duplicate proof mismatch.
+
+Required validation on the exact reconciliation Integrator evidence HEAD:
+
+```text
+py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
+py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py
+git diff --check
+```
+
+The integration tests must use disposable local clones/worktrees and cover: exact success; exact
+committed replay; every mismatch listed above; injected pre-write failure; rendered-target equality;
+one board write only; one board-only durability commit; no merge creation; unchanged original lane;
+and unchanged primary on every failed case. Before the live command, Integrator repeats all Git/evidence
+hashes against real objects and performs a zero-write plan/dry run whose source/target/manifest digests
+must equal the apply invocation.
+
+### 10.7 Risk, Recovery, And Stop Conditions
+
+The central risk is accepting a convenient descendant instead of the exact historical package. It is
+mitigated by task-specific constants, commit-addressed evidence, exact topology/path manifests, CAS on
+the source board bytes, immutable reviewed executor code, and no installation on primary. A crash or
+failure before the atomic board replacement writes nothing. A failure after replacement but before the
+board-only commit preserves the dirty board and stops; no automatic rollback is authorized. Any later
+correction requires a new User-approved governance action.
+
+No destructive rollback exists for this amendment. The old merge and original lane are preserved.
+Any scope expansion, unknown commit/path, validation failure, inability to prove clean state, need for
+a second board write, or need to merge/cherry-pick/install the executor returns to Planner/User.
+
+### 10.8 Canonical Reconciliation Manifest
+
+SHA-256 is over the exact single-line UTF-8 JSON below, with no BOM and no trailing newline.
+
+```json
+{"schema":"connlab.integration-reconciliation-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","qa_subject":"ad7dac819268ae77781709b626aea4f624a7a740","lane_head":"f7770b6a6a82a36f946d16145a2124f6330961e1","merge_commit":"093d48966b15c536b7411b3cc4cdca1e1e0d4faf","merge_parents":["a632f01c96de457deec901fedb271addfd0b77fb","f7770b6a6a82a36f946d16145a2124f6330961e1"],"merge_tree":"891f0cd28ebfd86d8ae8b1fff6e92160b16b71ca","blocker_head":"82370aeb1690f1a6e1ebda7d37048f5f926d7570","blocker_parent":"093d48966b15c536b7411b3cc4cdca1e1e0d4faf","source_board_blob_sha256":"9083399d2a3a091afc634ab3253df86e8f3c0754fd73558bdc0b959b0c336d88","source_board_worktree_sha256":"295974ff98e874862d2505e8ff05ebab6977d738f74e40a6937bcbe165bc6696","blocker_code":"INTEGRATION_BLOCKED","executor_paths":["scripts/connlab_personal_task.py","scripts/connlab_model_routing_integration_reconciliation.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"],"target_state":"implemented_pending_human_review","target_phase":"human_review","target_head":"f7770b6a6a82a36f946d16145a2124f6330961e1","target_integrated_commit":"093d48966b15c536b7411b3cc4cdca1e1e0d4faf","target_worktree_lifecycle":"integrated","forbidden":["remerge","history_rollback","manual_board_edit","generic_relaxation","push","cleanup"]}
+```
+
+SHA-256: `83479d2ade91031e9d0a03444560992ca27847e0872243ed8162693a34fcf08b`
+
+Explicit approval must bind this committed Plan ref, the manifest SHA-256, the exact May Touch and
+evidence paths, and the one-time no-merge executor design. Approval does not authorize Task B, product
+changes, push, cleanup, or any general runtime relaxation.
+
+`STATUS: INTEGRATION_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`

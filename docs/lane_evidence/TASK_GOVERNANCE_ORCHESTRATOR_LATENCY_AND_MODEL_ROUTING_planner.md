@@ -2,7 +2,7 @@
 
 ROLE: Planner (inline in the permanent Orchestrator conversation)
 
-STATUS: revision_3_contract_correction_ready
+STATUS: integration_reconciliation_amendment_pending_user_approval
 
 TASK_ID: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
@@ -48,3 +48,45 @@ No implementation path was edited and User approval remains required.
 The corrected approved payload was passed read-only through
 `scripts.connlab_serial_board.approved_payload` before this amendment was committed. A new exact User
 approval is required; no host or role may be created before it.
+
+## Bounded Integration Reconciliation Discovery
+
+User-authorized planning-only Discovery confirmed the following immutable facts:
+
+- primary was clean at `82370aeb1690f1a6e1ebda7d37048f5f926d7570` before this three-file
+  amendment, with committed board blob SHA-256
+  `9083399d2a3a091afc634ab3253df86e8f3c0754fd73558bdc0b959b0c336d88`, physical Windows
+  worktree/CAS SHA-256 `295974ff98e874862d2505e8ff05ebab6977d738f74e40a6937bcbe165bc6696`, and exact
+  `INTEGRATION_BLOCKED` authority;
+- QA subject is `ad7dac819268ae77781709b626aea4f624a7a740`;
+- the original lane is clean and immutable at
+  `f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- `ad7dac81..f7770b6a` is the exact linear Reviewer/QA/Integrator evidence-only range;
+- existing merge `093d48966b15c536b7411b3cc4cdca1e1e0d4faf` has exact parents
+  `a632f01c...` and `f7770b6a...` and tree `891f0cd2...`;
+- `82370aeb...` is the direct first-parent child of that merge and changes only
+  `docs/task_board.md` to record the blocker;
+- all five existing evidence refs in the board resolve to the exact committed bytes and declared
+  SHA-256 values.
+
+The root cause has two independent halves: the normal contract requires lane HEAD equal the QA
+subject, and repository proof requires primary HEAD equal the merge. A generic descendant allowance,
+two-step resume/record sequence, or another merge would violate the User boundary.
+
+The amendment therefore specifies one task-specific reviewed executor artifact on a new same-task
+reconciliation worktree. It preserves the original lane and merge, is not installed/merged/cherry-
+picked into primary, and can perform only one exact CAS board transition through the existing sole
+writer. The exact future code/test scope is four paths; reconciliation evidence uses four fixed
+task-derived paths. Developer, Reviewer, QA, and Integrator route to
+`gpt-5.6-sol / medium / risk:integration_conflict` and cannot write the board. Integrator alone may
+execute after the full evidence chain is committed and clean.
+
+Success atomically consumes the blocker and records `head_sha=f7770b6a`,
+`integrated_commit=093d4896`, `phase=human_review`,
+`state=implemented_pending_human_review`, `worktree_lifecycle=integrated`, complete evidence refs,
+and `blocker=null`. Every drift is zero-write blocked. Exact replay is a no-op only on complete
+committed target proof.
+
+No board, runtime, test, original lane, merge, role evidence, product, remote, or retained resource was
+modified during planning. Only the Task, Plan, and this Planner evidence are authorized in the current
+turn. The amendment remains pending exact User approval.

@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING
 
-Status: `revision_3_planned_pending_user_approval`
+Status: `integration_reconciliation_amendment_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -61,4 +61,46 @@ Planning changed only:
   selectors; unsupported `networkidle` probing is forbidden.
 - Reviewer, mandatory QA, and Integrator remain required after approval.
 
-`STATUS: REVISION_3_PLANNED_PENDING_USER_APPROVAL`
+Historical Revision 3 status before implementation: `REVISION_3_PLANNED_PENDING_USER_APPROVAL`.
+
+## Integration Reconciliation Amendment
+
+The original implementation is locally merged but is not accepted. The precise state is:
+`Integrator pre-integration audit completed; acceptance blocked.` The accepted implementation subject
+remains `ad7dac819268ae77781709b626aea4f624a7a740`; the immutable clean lane now ends at
+`f7770b6a6a82a36f946d16145a2124f6330961e1` after the required Reviewer, QA, and Integrator evidence
+commits. The existing two-parent merge is
+`093d48966b15c536b7411b3cc4cdca1e1e0d4faf`, and the exact blocker-board baseline is clean primary
+`82370aeb1690f1a6e1ebda7d37048f5f926d7570` with `INTEGRATION_BLOCKED`.
+
+This amendment authorizes no implementation until the User approves its exact committed Plan ref. A
+later approval may authorize one reviewed, task-specific executor artifact that leaves the original
+lane and existing merge immutable and performs one hash-bound compare-and-swap board transition. It
+must verify the exact commits, trees, topology, evidence bytes/status, clean Git facts, blocker board
+hash, amendment Plan ref, and reconciliation role evidence before it can atomically record:
+
+- `complex_context.head_sha=f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- `complex_context.integrated_commit=093d48966b15c536b7411b3cc4cdca1e1e0d4faf`;
+- `active.phase=human_review`;
+- `control.state=implemented_pending_human_review`;
+- `complex_context.worktree_lifecycle=integrated`;
+- complete hash-verified evidence refs; and
+- `active.blocker=null`.
+
+For that unmerged executor artifact only, the amendment May Touch supersedes the earlier runtime
+prohibition and is exactly:
+
+1. `scripts/connlab_personal_task.py`
+2. `scripts/connlab_model_routing_integration_reconciliation.py` (new)
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py` (new)
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py` (new)
+
+The four fixed reconciliation role-evidence paths are evidence refs, not implementation scope. The
+only primary write is the final atomic `docs/task_board.md` transition and its exact board-only commit.
+All other original Must Not Touch paths remain locked.
+
+No second merge, resume prewrite, manual board edit, history rollback, generic validation relaxation,
+push, cleanup, product change, or mutation of the existing lane is permitted. Any mismatch is a
+zero-write blocker.
+
+`STATUS: INTEGRATION_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`
