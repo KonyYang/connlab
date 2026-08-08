@@ -20,7 +20,7 @@
     "summary": "Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -62,7 +62,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -103,19 +103,15 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": null,
+      "developer_subject_commit": "ad7dac819268ae77781709b626aea4f624a7a740",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_developer.md@ad7dac819268ae77781709b626aea4f624a7a740#0985f2ed69d88f58962b2ab3e29d100b45596647b6c9ab9423146332fb3bed7c"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "206e249d076405df948b0c5f775d35b4f7ff0049115328f11f238b822fe543d9",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
