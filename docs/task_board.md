@@ -20,7 +20,7 @@
     "summary": "Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "review",
+    "phase": "qa",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -62,7 +62,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Reviewer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -116,19 +116,15 @@
         "Integrator"
       ],
       "developer_subject_commit": "ad7dac819268ae77781709b626aea4f624a7a740",
-      "reviewer_subject_commit": null,
+      "reviewer_subject_commit": "ad7dac819268ae77781709b626aea4f624a7a740",
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_developer.md@ad7dac819268ae77781709b626aea4f624a7a740#0985f2ed69d88f58962b2ab3e29d100b45596647b6c9ab9423146332fb3bed7c"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_developer.md@ad7dac819268ae77781709b626aea4f624a7a740#0985f2ed69d88f58962b2ab3e29d100b45596647b6c9ab9423146332fb3bed7c",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_reviewer.md@d5e82f2ea6ab18c979540c226811c2a20978f48e#27488e4d5001edff3a45770d0140fe694fc43c867f7f109274b76d0291161c96"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "78079ae12bf6a392463c4a21e4a270571fe45d978c25a012fae7a3ac1a75f5c6",
-        "role": "Reviewer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
