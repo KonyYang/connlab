@@ -47,6 +47,71 @@ phase, record its native action and returned identity, wait for its exact callba
 subject/evidence, then consume it. Reviewer or QA blocking findings route back to Developer without
 new approval when the fix remains inside approved scope.
 
+## Canonical user entry payloads
+
+Use only `scripts/run_task.ps1`; never construct request JSON for a direct Python entry, probe legacy
+schemas, or retry another schema after a validation error. Submit is exactly
+`-Action Submit -RequestJson <single JSON object>` with these ten keys:
+
+```text
+schema, version, task_id, summary, root_cause_clear, expected_result_clear,
+may_touch, targeted_validation, requires_independent_review, forbidden_categories
+```
+
+Its identity is `connlab.serial-task-request` version `1`; `kind` is forbidden. Its
+`forbidden_categories` has exactly ten keys: `api_contract`, `database`,
+`schema_or_migration`, `persistence`, `authority`, `public_drive_workflow`,
+`business_rule_semantics`, `destructive_action`, `external_mutation`, and `push_or_release`.
+Missing decision facts may classify as discovery only under that schema. An unknown field is a terminal,
+zero-write classification error, not a signal to copy or retry an alternate payload.
+
+Approve is separately `-Action Approve -ApprovedRequestJson <single JSON object> -PlanRef <committed
+Plan ref> -ApprovalRef <explicit User approval>` with exactly these nine top-level decision keys plus
+identity: `schema`, `version`, `task_id`, `summary`, `kind`, `may_touch`, `expected_file_count`,
+`classification_reason`, `targeted_validation`, and `forbidden_categories`. It requires
+`schema=connlab.personal-task-approved-request`, `version=1`, and `kind=planned`. Its forbidden map has
+only the first nine Submit category keys: `push_or_release` is explicitly forbidden. Do not copy Submit
+fields into Approve.
+
+Close has no JSON payload: use only `-Action Close -DecisionRef <non-empty explicit User decision>`.
+Do not invent a close schema; a missing `DecisionRef` fails before the writer runs.
+
+## Model routing and audit
+
+The permanent Orchestrator and direct simple task stay `gpt-5.6-sol / medium`; the shortest simple path
+is Submit, one preflight and activation commit, direct primary implementation, one bounded validation,
+then human inspection and Close. It adds no Task/Plan, role agent, branch, worktree, intermediate
+`继续`, or model-switching hop. Complex role dispatches must explicitly pass both `model` and
+`reasoning_effort` to `spawn_agent`; inherited/default selection is forbidden.
+
+| Role | Default model | Effort | Reason |
+| --- | --- | --- | --- |
+| Developer | `gpt-5.6-terra` | medium | `default_complex` |
+| Reviewer | `gpt-5.6-terra` | medium | `default_complex` |
+| QA | `gpt-5.6-terra` | low only for bounded documentation/copy-only work; otherwise medium | `qa_bounded_low` or `default_complex` |
+| Integrator | `gpt-5.6-terra` | medium | `default_complex` |
+
+QA uses low only when all frozen risk flags are false, no operational skill/protocol/runtime/product
+behavior changes, no blocker/fix loop, and validation is fully enumerated; every other non-high-risk
+case is Terra medium. The affected role escalates to `gpt-5.6-sol / medium` for API contract;
+database/schema/migration/persistence; authority/public-drive/business semantics; cross-frontend/backend
+or multi-layer work; unexplained repeated test failure; integration conflict; or security-sensitive
+change. High effort is limited to migration, authority, or a hard-to-diagnose failure. Luna is not used.
+
+Every Developer, Reviewer, QA, and Integrator evidence header contains exactly one each of `MODEL`,
+`REASONING_EFFORT`, and `MODEL_ROUTE_REASON` (`default_complex`, `qa_bounded_low`, or
+`risk:<frozen-category>`). Reviewer reconciles its dispatch capsule with subject evidence; QA verifies
+the complete route and the forbidden-Luna assertion. Integrator evidence and the final User summary
+contain an `ACTUAL_MODEL_ROUTING` table with role, model, effort, reason, and evidence reference.
+Missing or mismatched audit values block the gate.
+
+## Recovery and UI smoke
+
+Recovery first reconstructs the durable active task and host from board, Git, and evidence; it reuses
+the recorded host and never duplicates activation. If identity cannot be proved, stop fail-closed with
+the typed blocker. A browser smoke is required only for a user-visible UI change, and then uses a
+documented load state or deterministic selectors; unsupported `networkidle` probing is forbidden.
+
 ## Safety
 
 WIP is one. When a task is active, a new submission returns `BLOCKED_ACTIVE_TASK_RUNNING` immediately
