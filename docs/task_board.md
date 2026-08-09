@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -60,7 +60,7 @@
     "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded line-budget scope expansion amendment 0cf58120b5ced9580abb4a88daf5b4cc9c36f72c, Plan SHA-256 4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa, approved-request SHA-256 b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22, and manifest SHA-256 557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T14:14:16Z",
+    "updated_at": "2026-08-09T23:26:56Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -312,8 +312,10 @@
         "docs/task_board.md",
         "scripts/connlab_personal_task.py",
         "scripts/connlab_model_routing_integration_reconciliation.py",
+        "scripts/connlab_model_routing_ancestry_contract.py",
         "tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
-        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"
       ],
       "required_gates": [
         "Reviewer",
