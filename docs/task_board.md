@@ -53,11 +53,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@6eab428fce885fd62bf31f291e2cc5e42bc40596#e94f147c4d75f83a75980ae058e65dc6d682b9055572e0f6da7846e2c5663585",
-    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration reconciliation authority revision 6eab428fce885fd62bf31f291e2cc5e42bc40596, Plan SHA-256 e94f147c4d75f83a75980ae058e65dc6d682b9055572e0f6da7846e2c5663585, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and manifest SHA-256 a882f4a9eb89b342c27ade4d01db0c03b53db11a7ccc878c75abb7d8f4eab0c0 on 2026-08-09.",
+    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@7ea0f5f3b4439eab14a2fbe7d383db845617d1a6#4598a5e0f72e0ac820e57cd865117a74d1a492e1c508b305b0ad3268d1a47eaf",
+    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration ancestry reconciliation amendment 7ea0f5f3b4439eab14a2fbe7d383db845617d1a6, Plan SHA-256 4598a5e0f72e0ac820e57cd865117a74d1a492e1c508b305b0ad3268d1a47eaf, ancestry manifest SHA-256 1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4, frozen ledger SHA-256 e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and source blocker evidence docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477 on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T00:58:40Z",
+    "updated_at": "2026-08-09T12:59:04Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
