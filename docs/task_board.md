@@ -57,31 +57,26 @@
     "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration ancestry reconciliation amendment 7ea0f5f3b4439eab14a2fbe7d383db845617d1a6, Plan SHA-256 4598a5e0f72e0ac820e57cd865117a74d1a492e1c508b305b0ad3268d1a47eaf, ancestry manifest SHA-256 1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4, frozen ledger SHA-256 e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and source blocker evidence docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477 on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T12:59:04Z",
+    "updated_at": "2026-08-09T14:11:46Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
-      "code": "INTEGRATION_BLOCKED",
-      "stage": "integration",
-      "reason": "The approved single-pass ancestry contract conflicts with the legitimate multi-round Reviewer fix history.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "rebind-reconciliation-host zero-write plan",
-        "command": [],
-        "exit_code": null,
-        "summary": "BLOCKED_RECONCILIATION_EVIDENCE: approval checkpoint is not the direct parent of the final reviewed implementation subject.",
-        "recorded_at": "2026-08-09T10:16:36Z"
-      },
-      "subject_commit": "8c9f3a31ac44e03df8087684a038602e5532fefb",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477",
+      "code": "SCOPE_EXPANDED",
+      "stage": "blocked",
+      "reason": "The approved ancestry implementation requires two bounded extraction paths to satisfy the mandatory Python 500-line hard limit without changing behavior.",
+      "dirty_paths": [
+        "scripts/connlab_model_routing_ancestry_contract.py",
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"
+      ],
+      "failed_validation": null,
+      "subject_commit": null,
+      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#87c4792012cb4bfa4cbd770c296440804d0d9bf1fac45c69776446fef800a4f3",
       "native_action_id": null,
       "related_ids": [],
-      "retryable": false,
+      "retryable": true,
       "requires_user": true,
-      "resume_phase": "integration",
-      "recorded_at": "2026-08-09T10:16:36Z"
+      "resume_phase": "planning",
+      "recorded_at": "2026-08-09T14:11:46Z"
     },
     "validation": null,
     "complex_context": {
