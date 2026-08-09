@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING
 
-Status: `integration_ancestry_reconciliation_amendment_pending_user_approval`
+Status: `line_budget_scope_expansion_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -209,3 +209,38 @@ cherry-pick, manual board edit, remerge, rebind, Final CAS, push or cleanup is a
 new committed Plan is explicitly approved and all required gates pass.
 
 `STATUS: INTEGRATION_ANCESTRY_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`
+
+## Line-Budget Scope Expansion Amendment
+
+The ancestry implementation approved at Plan commit
+`7ea0f5f3b4439eab14a2fbe7d383db845617d1a6` is safely checkpointed at
+`481c5b81fc2e6457c066268ef998844d6fa3fc1d`, a direct child of the frozen candidate head
+`11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69`. It changes exactly the four approved executor paths,
+the candidate worktree/index is clean, and its bounded behavior tests pass. It is not an acceptable
+Developer subject because two Python files exceed the `AGENTS.md` 500-line hard limit:
+
+- `scripts/connlab_model_routing_integration_reconciliation.py`: 715 lines;
+- `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`:
+  578 lines.
+
+No Developer evidence `D_A` exists. Reviewer, QA, adoption, rebind and Final CAS have not started for
+this amendment. The checkpoint is retained without rewrite, reset, restore, rebase or cleanup.
+
+The smallest compliant continuation adds exactly two bounded paths:
+
+1. `scripts/connlab_model_routing_ancestry_contract.py`
+2. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+The production split moves commit-addressed Git primitives, exact evidence parsing, history
+classification, fix-loop grammar and adoption repository proof to the ancestry contract module. The
+existing reconciliation helper retains board target rendering, transition orchestration and CAS. The
+test split moves adoption-specific disposable-repository cases and only their bounded fixtures to the
+new integration module. No authority, schema, product or reconciliation behavior change is allowed.
+
+After exact User approval and committed ten-path machine authority, the same candidate worktree may
+continue from `481c5b81...` to one new clean final split subject. The final subject must keep every
+Python file at or below 500 lines, preserve the complete existing regression matrix, and be followed
+by the direct evidence tail `Developer ready -> Reviewer pass -> QA pass -> Integrator ready` before
+any adoption/rebind/Final CAS write.
+
+`STATUS: LINE_BUDGET_SCOPE_EXPANSION_PENDING_USER_APPROVAL`

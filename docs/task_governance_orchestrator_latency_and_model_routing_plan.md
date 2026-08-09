@@ -875,3 +875,190 @@ exact source blocker evidence and unchanged approved-request identity. Approval 
 implementation until its same-scope approval-evidence correction is durably committed.
 
 `STATUS: INTEGRATION_ANCESTRY_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`
+
+## 12. Bounded Line-Budget Scope Expansion Amendment
+
+### 12.1 Discovery And Frozen State
+
+Confirmed by repository evidence:
+
+- primary is clean at `36936c1426d46f7bef2062f6caaf05d466cd4a09`;
+- the physical board SHA-256 is
+  `1553b78b25da8f996f407e7863f2f226ca06eacf46a58be0f1bd38d5aa519c3b`;
+- board authority is still `running/blocked/INTEGRATION_BLOCKED`, with the exact ancestry-amendment
+  Plan/approval identity and matching ordered eight-path `scope_contract` and `approved_code_paths`;
+- the sole approval-evidence correction is already committed; no later board transition occurred;
+- candidate branch/worktree/index is clean at
+  `481c5b81fc2e6457c066268ef998844d6fa3fc1d`, whose sole parent is the frozen history head
+  `11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69`;
+- `11cf2532..481c5b81` changes exactly the four approved executor paths;
+- the candidate passes 47 reconciliation unit tests, 71 reconciliation integration tests,
+  43 compatibility tests, 13 personal-workflow tests, both `py_compile` checks and
+  `git diff --check`;
+- `scripts/connlab_model_routing_integration_reconciliation.py` is 715 lines and
+  `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py` is
+  578 lines, violating the project-wide Python 500-line hard limit;
+- no `D_A` Developer evidence exists, so `481c5b81...` is a safe intermediate checkpoint, not a
+  reviewable final subject;
+- original integrated lane remains clean at
+  `f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- adoption, rebind, Final CAS, new merge, push and cleanup have not run.
+
+Confirmed by User: resolve the blocker without discarding the safe checkpoint. Planner inference: a
+mechanical two-file split is the minimum compliant correction. Waiving the hard limit or continuing
+with an oversized subject is forbidden.
+
+### 12.2 Exact Scope Amendment
+
+The machine-approved scope must expand from eight to ten paths by adding only:
+
+1. `scripts/connlab_model_routing_ancestry_contract.py`
+2. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+The complete ten-path machine scope is:
+
+1. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+2. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
+3. `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`
+4. `docs/task_board.md`
+5. `scripts/connlab_personal_task.py`
+6. `scripts/connlab_model_routing_integration_reconciliation.py`
+7. `scripts/connlab_model_routing_ancestry_contract.py`
+8. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+9. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+10. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+The bounded Developer continuation may modify only executor paths 5-10 plus the fixed Developer
+evidence path. Paths 1-4 remain governed by the original accepted model-routing package and board-only
+writer transitions; they are not refactoring scope. Task, this Plan and Planner evidence belong only
+to the current planning commit. Reviewer, QA and Integrator may change only their fixed task-derived
+evidence paths.
+
+Locked and Must Not Touch remain: product/backend/frontend code, API/database/schema/migration/
+persistence/authority/public-drive/business semantics, normal serial state-machine behavior, board
+schema, original lane, existing merge, retained/frozen/cancelled resources, remote state and Task B.
+No path outside the ten-path authority and fixed evidence paths may be added implicitly.
+
+### 12.3 File-Level Split Contract
+
+`scripts/connlab_model_routing_ancestry_contract.py` receives the cohesive repository-proof boundary:
+
+- commit-addressed Git reads and exact changed-path checks;
+- exact one-occurrence evidence-field parsing;
+- evidence path/blob/hash/task/role/status/subject/model validation;
+- commit classification and the frozen Reviewer/QA fix-loop grammar;
+- ancestry/adoption repository verification used by the transition helper.
+
+`scripts/connlab_model_routing_integration_reconciliation.py` retains:
+
+- payload and active-context validation;
+- rebind/adoption/final target rendering;
+- live Integrator and retained-resource validation;
+- committed replay reconstruction;
+- transition/CAS orchestration.
+
+The split must use explicit imports and preserve stable blocker codes and zero-write behavior. It must
+not introduce a second state machine, a generic ancestry allowance or a compatibility fallback.
+
+`tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+receives the adoption-specific disposable-repository success/replay/drift matrix and only the minimal
+fixtures needed by those tests. The existing integration module retains rebind, Final CAS,
+retained-resource, durability and closeout coverage. Test cases may be mechanically relocated but not
+dropped or replaced by source-string assertions.
+
+Line gates at the final split subject:
+
+- every modified Python file is at most 500 physical lines;
+- the new ancestry contract and adoption integration modules target fewer than 300 lines each;
+- no semicolon compression, generated minification or test-parametrization trick may be used merely
+  to evade the line count.
+
+### 12.4 Machine Authority And Continuation
+
+The current board has eight approved paths, so neither new file may be created before a new exact User
+approval is durably reflected in machine authority. After approval, use only the existing reviewed
+writer and canonical argv-array transport:
+
+1. record a truthful `SCOPE_EXPANDED` blocker whose `dirty_paths` are exactly the two new paths and
+   whose evidence ref binds this committed Plan/Planner evidence;
+2. first Approve records the ten-path `scope_contract` while leaving the old eight
+   `approved_code_paths` unchanged;
+3. resume to planning, record the real inline Planner-ready event, and perform the byte-identical
+   second Approve;
+4. verify a committed board checkpoint with matching ordered ten-path `scope_contract` and
+   `approved_code_paths`, the new Plan/approval refs, clean primary/candidate/original lane and no
+   pending callback;
+5. only then continue the existing candidate from exact `481c5b81...`.
+
+No duplicate worktree or branch is created. `481c5b81...` remains immutable in history and is the
+continuation base. The next implementation commit must be a direct child, change only executor paths
+5-10, and produce the final line-compliant subject. Its evidence-only child is the first legal `D_A`.
+Normal independent Reviewer and mandatory QA follow. Only their pass chain may authorize the already
+planned one-use ancestry adoption, normal Integrator authority, rebind and Final CAS.
+
+If the production writer cannot express this exact scope sequence, or any board/head/hash/scope/
+evidence/cleanliness fact drifts, stop zero-write and return to User. Final CAS cannot retroactively
+approve either new path.
+
+### 12.5 Validation Matrix
+
+Required validation on the final split subject:
+
+```text
+py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py -q
+py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
+py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q
+py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py scripts/connlab_model_routing_ancestry_contract.py
+git diff --check
+```
+
+Executable assertions must additionally prove:
+
+- all modified Python files are at most 500 physical lines;
+- the complete pre-split 47/71 behavior matrix remains represented and green after relocation;
+- exact real history and multiple Reviewer-blocked fix loops pass;
+- wrong path/task/role/status/subject/model/hash, unknown commit, skipped role, merge, rewritten
+  parent, arbitrary ancestry and truncated/extended ledger remain stable zero-write blockers;
+- adoption exact plan/apply/replay remains one-use and fail-closed;
+- rebind, Final CAS, retained-resource and closeout suites remain green;
+- any failure preserves board SHA and primary/candidate/original-lane HEAD and clean status;
+- absence of either newly approved path, partial ten-path authority, or execution before the second
+  Approve blocks before candidate modification.
+
+Reviewer performs a complete re-gate of the split boundary and all moved tests. QA independently runs
+the complete matrix on the final reviewed HEAD. Integrator must repeat exact zero-write plan proof
+before any live adoption/rebind/Final CAS.
+
+### 12.6 Risk And Recovery
+
+Primary risk is behavior drift hidden by a structural split. Mitigations are an immutable continuation
+base, exact path-delta checks, full pre-split behavior preservation, explicit import boundary and
+independent Reviewer/QA gates. No automatic rollback is authorized. A failed split remains on the
+candidate branch with its exact owner and evidence; primary, original lane and existing merge remain
+untouched. Reset, restore, stash, rebase, cherry-pick, history rewrite, push and cleanup are forbidden.
+
+### 12.7 Exact Ten-Path Approved-Request
+
+Canonicalization is the exact single-line UTF-8 JSON below, without BOM or trailing newline.
+
+```json
+{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","summary":"Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.","kind":"planned","may_touch":[".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/unit/test_task_scoped_role_thread_lifecycle_governance.py","docs/task_board.md","scripts/connlab_personal_task.py","scripts/connlab_model_routing_integration_reconciliation.py","scripts/connlab_model_routing_ancestry_contract.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"expected_file_count":10,"classification_reason":"Strict superset of the approved eight paths, adding only one bounded ancestry contract module and one bounded adoption integration-test module so the reviewed implementation can satisfy the mandatory Python 500-line hard limit without changing product behavior or reconciliation authority semantics.","targeted_validation":["py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q","py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py -q","py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q","py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py scripts/connlab_model_routing_ancestry_contract.py","git diff --check"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":false,"authority":false,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
+```
+
+SHA-256: `b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22`
+
+### 12.8 Canonical Line-Budget Amendment Manifest
+
+SHA-256 is over the exact single-line UTF-8 JSON below, without BOM or trailing newline:
+`557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba`.
+
+```json
+{"schema":"connlab.model-routing-line-budget-scope-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","planning_base":"36936c1426d46f7bef2062f6caaf05d466cd4a09","source_board_sha256":"1553b78b25da8f996f407e7863f2f226ca06eacf46a58be0f1bd38d5aa519c3b","source_state":"running","source_phase":"blocked","source_blocker":"INTEGRATION_BLOCKED","source_plan_ref":"docs/task_governance_orchestrator_latency_and_model_routing_plan.md@7ea0f5f3b4439eab14a2fbe7d383db845617d1a6#4598a5e0f72e0ac820e57cd865117a74d1a492e1c508b305b0ad3268d1a47eaf","source_scope_count":8,"source_approved_count":8,"base_ancestry_manifest_sha256":"1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4","frozen_ledger_sha256":"e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40","oversized_subject":"481c5b81fc2e6457c066268ef998844d6fa3fc1d","oversized_parent":"11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69","oversized_subject_paths":["scripts/connlab_personal_task.py","scripts/connlab_model_routing_integration_reconciliation.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"],"observed_line_counts":{"scripts/connlab_model_routing_integration_reconciliation.py":715,"tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py":578},"new_paths":["scripts/connlab_model_routing_ancestry_contract.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"split_contract":{"production":"move commit-addressed Git primitives, exact evidence parsing, history classification, fix-loop grammar and adoption repository proof into the ancestry contract module; keep target rendering, transition orchestration and CAS in the reconciliation helper","tests":"move adoption-specific disposable-repository cases and only their bounded fixtures into the ancestry adoption module","behavior_change":false,"python_hard_limit":500},"continuation_base":"481c5b81fc2e6457c066268ef998844d6fa3fc1d","required_final_tail":["final_split_subject","developer_ready","reviewer_pass","qa_pass","integrator_ready"],"forbidden":["line_limit_waiver","generic_ancestor_relaxation","product_change","schema_change","manual_board_edit","remerge","rebase","push","cleanup"]}
+```
+
+This section supersedes only the implementation-path list and approved-request identity of section 11.
+The frozen historical ledger, ancestry grammar, original lane/merge, review-before-write adoption,
+retained-resource contract and all fail-closed conditions remain unchanged.
+
+`STATUS: LINE_BUDGET_SCOPE_EXPANSION_PENDING_USER_APPROVAL`

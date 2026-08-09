@@ -2,7 +2,7 @@
 
 ROLE: Planner (inline in the permanent Orchestrator conversation)
 
-STATUS: integration_ancestry_reconciliation_amendment_pending_user_approval
+STATUS: line_budget_scope_expansion_pending_user_approval
 
 TASK_ID: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
@@ -238,3 +238,44 @@ authority transition, role dispatch, rebind, Final CAS, push or cleanup. Impleme
 forbidden until User approves the exact committed Plan and manifest.
 
 `STATUS: integration_ancestry_reconciliation_amendment_pending_user_approval`
+
+## Bounded Line-Budget Scope Expansion Discovery
+
+Confirmed by User: resolve the retained ancestry implementation blocker without discarding the safe
+checkpoint.
+
+Confirmed by repository:
+
+- primary is clean at `36936c1426d46f7bef2062f6caaf05d466cd4a09`; board SHA-256 is
+  `1553b78b25da8f996f407e7863f2f226ca06eacf46a58be0f1bd38d5aa519c3b`;
+- board remains `running/blocked/INTEGRATION_BLOCKED`; its `scope_contract` and
+  `approved_code_paths` are matching ordered eight-path arrays bound to Plan `7ea0f5f3...`;
+- candidate branch/worktree/index is clean at
+  `481c5b81fc2e6457c066268ef998844d6fa3fc1d`, direct child of `11cf2532...`, and changes exactly
+  the four approved executor paths;
+- the candidate passed 47 unit, 71 integration, 43 compatibility and 13 personal-workflow tests,
+  `py_compile` and `git diff --check`;
+- the reconciliation helper is 715 lines and the integration test is 578 lines, violating the
+  `AGENTS.md` Python 500-line hard limit;
+- no Developer evidence child exists; no Reviewer/QA/Integrator/adoption/rebind/Final CAS action was
+  performed for this checkpoint;
+- original lane remains clean at `f7770b6a6a82a36f946d16145a2124f6330961e1`.
+
+Planner inference: the minimum compliant repair adds the bounded production ancestry-contract module
+and bounded adoption integration-test module named in Plan section 12. It preserves behavior and moves
+cohesive code/tests rather than compressing or waiving the line limit. The exact ten-path
+approved-request SHA-256 is
+`b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22`; the canonical line-budget
+manifest SHA-256 is `557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba`.
+The previous ancestry manifest and frozen ledger remain bound and unchanged.
+
+No blocking question remains, but this is a real scope expansion. Implementation is forbidden until
+the User approves the exact committed Plan and the production writer durably records matching ten-path
+`scope_contract` and `approved_code_paths`. The existing candidate is retained; no duplicate branch or
+worktree is authorized.
+
+This planning revision changes only the Task, Plan and Planner evidence. It does not modify board,
+runtime, tests, candidate, original lane, existing merge or retained resources; it does not run a
+role transition, adoption, rebind, Final CAS, push or cleanup.
+
+`STATUS: line_budget_scope_expansion_pending_user_approval`
