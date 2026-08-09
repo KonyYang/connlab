@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "planning",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -57,29 +57,8 @@
     "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration reconciliation authority revision 6eab428fce885fd62bf31f291e2cc5e42bc40596, Plan SHA-256 e94f147c4d75f83a75980ae058e65dc6d682b9055572e0f6da7846e2c5663585, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and manifest SHA-256 a882f4a9eb89b342c27ade4d01db0c03b53db11a7ccc878c75abb7d8f4eab0c0 on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T00:51:45Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "SCOPE_EXPANDED",
-      "stage": "blocked",
-      "reason": "User-approved bounded integration reconciliation requires the exact four-path executor strict superset before any reconciliation worktree or executor write.",
-      "dirty_paths": [
-        "scripts/connlab_personal_task.py",
-        "scripts/connlab_model_routing_integration_reconciliation.py",
-        "tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
-        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"
-      ],
-      "failed_validation": null,
-      "subject_commit": null,
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@6eab428fce885fd62bf31f291e2cc5e42bc40596#4734ae3e6a4ae67e640443e0ba49ddb7fb75a6fd6e995c3b874e5a50c7369414",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "planning",
-      "recorded_at": "2026-08-09T00:46:36Z"
-    },
+    "updated_at": "2026-08-09T00:52:19Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
