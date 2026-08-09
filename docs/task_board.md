@@ -68,7 +68,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": null,
+      "current_role": "Reviewer",
       "current_attempt": 5,
       "role_invocations": [
         {
@@ -264,7 +264,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@7231d4cc6ad03d2723c614955b8ae1c97f7e86c1#a7d23ad68bae7ce943ebcad981bca704d2f28573a106cd3cbdd311d309bc4844",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@03d49ffc92470c47feb4b8856efaf4bf26366209#4d2ac58ee4ca8ba414b6ca5ac0520db9b0d4faafb2fd94c300c6119821836cb1"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "d3b77c45832d0827d262158a6eeab6a9690d6bea5d1de9fadd95d55653bca46d",
+        "role": "Reviewer",
+        "attempt": 5
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
