@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -57,7 +57,7 @@
     "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration reconciliation authority revision 6eab428fce885fd62bf31f291e2cc5e42bc40596, Plan SHA-256 e94f147c4d75f83a75980ae058e65dc6d682b9055572e0f6da7846e2c5663585, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and manifest SHA-256 a882f4a9eb89b342c27ade4d01db0c03b53db11a7ccc878c75abb7d8f4eab0c0 on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T00:52:19Z",
+    "updated_at": "2026-08-09T00:58:40Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -150,7 +150,11 @@
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
         "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
         "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
-        "docs/task_board.md"
+        "docs/task_board.md",
+        "scripts/connlab_personal_task.py",
+        "scripts/connlab_model_routing_integration_reconciliation.py",
+        "tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"
       ],
       "required_gates": [
         "Reviewer",
