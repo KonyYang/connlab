@@ -2,7 +2,7 @@
 
 Task: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
-Status: `INTEGRATION_RECONCILIATION_AUTHORITY_REVISION_PENDING_USER_APPROVAL`
+Status: `INTEGRATION_ANCESTRY_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`
 
 Planning base: `6227acb7cfccaab276194d2a7cbda96bc1f09a89`
 
@@ -668,3 +668,210 @@ evidence paths, and the one-time no-merge executor design. Approval does not aut
 changes, push, cleanup, or any general runtime relaxation.
 
 `STATUS: INTEGRATION_RECONCILIATION_AUTHORITY_REVISION_PENDING_USER_APPROVAL`
+
+## 11. Bounded Integration Ancestry Reconciliation Amendment
+
+### 11.1 Discovery And Frozen Baseline
+
+Confirmed by the User:
+
+- approval checkpoint remains immutable authority, but the one-edge direct-parent assumption must be
+  replaced by a fail-closed Reviewer/QA fix-loop grammar;
+- every commit/path/evidence/status/subject/model/hash must be verified; arbitrary ancestry is not
+  sufficient;
+- the final direct tail remains `final B -> Developer ready -> Reviewer pass -> QA pass -> Integrator
+  ready`;
+- product code, normal workflow schema, original lane, existing merge, history and remote state remain
+  immutable; no rebind or Final CAS is authorized before this amendment is approved and reviewed.
+
+Confirmed by repository evidence:
+
+- primary is clean at `d2b9b3a3b68970d261678989b249b3a6477bfde6`;
+- raw board SHA-256 is
+  `b5c132c16762e6a1f5545a2ffc4c9af7219776067b0a254a6221c1c2817e389d`, with
+  `running/blocked/INTEGRATION_BLOCKED`, null role/pending callback, and exact blocker evidence
+  `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477`;
+- scope contract and approved code paths are the same previously approved ordered eight paths;
+- candidate and index are clean at `11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69`; original lane remains clean at
+  `f7770b6a6a82a36f946d16145a2124f6330961e1`; existing merge remains
+  `093d48966b15c536b7411b3cc4cdca1e1e0d4faf`;
+- approval checkpoint `666a20d745fd72f6cbfd280d6ed1e29c0b023dda` is an ancestor of final reviewed subject
+  `8c9f3a31ac44e03df8087684a038602e5532fefb`, but its direct child is initial implementation
+  `ee35dbc2...`, not the final subject;
+- the range is single-parent and contains only approved implementation deltas and fixed role evidence,
+  but four real Reviewer-blocked events caused four Developer fix commits before `8c9f3a31...`;
+- the reviewed helper currently constructs a literal
+  `[approval_base, B, D, R, Q, I]` direct-parent list, causing the zero-write blocker.
+
+Planner inference: no API/data/product scope change is needed. The correction belongs entirely to the
+existing task-specific executor and its bounded tests. The current `resume_phase=integration` cannot
+legally dispatch Developer, so implementation authority also needs a one-use review-before-write
+adoption transition; omitting it would reproduce an authority deadlock. No blocking question remains.
+
+### 11.2 Exact Frozen Historical Ledger
+
+The canonical ledger is a compact JSON array of `[commit, token, bound-subject]` entries. SHA-256 of
+the exact single-line UTF-8 JSON below, without BOM or trailing newline, is
+`e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40`.
+
+```json
+[["ee35dbc255962624f928a58c84bad85246171bc7","implementation","ee35dbc255962624f928a58c84bad85246171bc7"],["673a9a276209c497fbda186ac347950a7cb56abf","developer_ready","ee35dbc255962624f928a58c84bad85246171bc7"],["cfa5a5b5e765046283c60daf889e8c5586871fbb","reviewer_blocked","ee35dbc255962624f928a58c84bad85246171bc7"],["6aab0b22cc348d70bfa075126a9d8c6a0a7ec0ed","implementation","6aab0b22cc348d70bfa075126a9d8c6a0a7ec0ed"],["2e25ace1bb0600fd9c9e8fae502687734cc71574","developer_ready","6aab0b22cc348d70bfa075126a9d8c6a0a7ec0ed"],["e58e8235e24fc5a3e0a49a879f7223008b0a5933","reviewer_blocked","6aab0b22cc348d70bfa075126a9d8c6a0a7ec0ed"],["bded8f2f626f68ef9795d694e2e6a4475629a117","implementation","bded8f2f626f68ef9795d694e2e6a4475629a117"],["cd1dfb160ff2b00542002999ff890b6284886cd5","developer_ready","bded8f2f626f68ef9795d694e2e6a4475629a117"],["7231d4cc6ad03d2723c614955b8ae1c97f7e86c1","reviewer_blocked","bded8f2f626f68ef9795d694e2e6a4475629a117"],["df5ee4e1e48f8a813430ae7facbcde1af3ecbd3e","implementation","df5ee4e1e48f8a813430ae7facbcde1af3ecbd3e"],["03d49ffc92470c47feb4b8856efaf4bf26366209","developer_ready","df5ee4e1e48f8a813430ae7facbcde1af3ecbd3e"],["96ed540569bda4a105d1ec18190f519162edb8e7","reviewer_blocked","df5ee4e1e48f8a813430ae7facbcde1af3ecbd3e"],["8c9f3a31ac44e03df8087684a038602e5532fefb","implementation","8c9f3a31ac44e03df8087684a038602e5532fefb"],["a6efc77a520112107bfd7ea3313f229e0b57a47b","developer_ready","8c9f3a31ac44e03df8087684a038602e5532fefb"],["ac4ec55878b46c7c61b84fba35169322e265ba3b","reviewer_pass","8c9f3a31ac44e03df8087684a038602e5532fefb"],["3ab4b1ec0bb9ebe683deefbf7ee44d4a0cec850f","qa_pass","8c9f3a31ac44e03df8087684a038602e5532fefb"],["34afed59ae24b2790340baa29c0ac0fb00221b6b","integrator_ready","8c9f3a31ac44e03df8087684a038602e5532fefb"],["11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69","integrator_blocked","8c9f3a31ac44e03df8087684a038602e5532fefb"]]
+```
+
+The ledger is not trusted merely because the commit IDs are listed. Implementation must recompute
+every parent, changed-path set, committed evidence bytes/SHA-256 and exact evidence fields. A mismatch
+between recomputed classification and the ledger blocks the operation.
+
+### 11.3 Executable Commit Grammar
+
+The validator walks `git rev-list --reverse --topo-order --parents
+approval-authority-base..final-subject` and rejects merges or missing commits. Each commit receives
+exactly one token:
+
+- `implementation`: changes a non-empty subset of the four approved executor paths and no other path;
+- `developer_ready`: changes only the fixed Developer evidence path; exact task/role/status
+  `ready_for_review`, subject equal the immediately preceding implementation, model
+  `gpt-5.6-sol/medium/risk:integration_conflict`, and committed blob hash each occur exactly once;
+- `reviewer_blocked` or `reviewer_pass`: changes only the Reviewer evidence path and binds the same
+  subject/model tuple with exact status;
+- `qa_blocked` or `qa_pass`: changes only the QA evidence path and binds the same subject/model tuple;
+- `integrator_ready` or `integrator_blocked`: changes only the Integrator evidence path and binds the
+  same subject/model tuple.
+
+The deterministic state grammar is:
+
+```text
+implementation -> developer_ready -> reviewer_blocked -> implementation
+implementation -> developer_ready -> reviewer_pass -> qa_blocked -> implementation
+implementation -> developer_ready -> reviewer_pass -> qa_pass -> integrator_ready
+```
+
+Only the exact frozen historical prefix may additionally end
+`integrator_ready -> integrator_blocked -> user-approved ancestry-amendment implementation`. That
+edge is bound to source head `11cf2532...`, this committed Plan/approval, the source blocker evidence
+and unchanged eight-path scope. It is not a reusable Integrator-to-Developer rule.
+
+The future success tail must be a direct-parent chain:
+
+```text
+final implementation B_A -> Developer ready D_A -> Reviewer pass R_A
+-> QA pass Q_A -> Integrator ready I_A
+```
+
+An unknown token, extra path, repeated/missing field, forged suffix/prefix, wrong subject, wrong hash,
+role skip, non-linear parent, merge, post-review implementation, generic ancestor substitution or
+history rewrite returns a stable zero-write blocker.
+
+### 11.4 Review-Before-Write Adoption Authority
+
+No production board writer runs while the amendment code is only Developer-reviewed. After the User
+approves this committed Plan:
+
+1. Existing reviewed `approve` may record the byte-identical eight-path request with the new Plan and
+   approval refs; because scope is unchanged, the exact expected result is
+   `ALLOW_APPROVAL_EVIDENCE_CORRECTION`, and the blocker remains.
+2. The retained candidate at `11cf2532...` receives one bounded implementation `B_A`; its delta is
+   limited to the four executor paths. Real Developer, independent Reviewer and mandatory QA agents
+   produce the direct evidence tail `B_A -> D_A -> R_A -> Q_A`. Their capsules, actual agent IDs,
+   model route and committed evidence are recorded in those evidence files. Reviewer/QA blocking
+   findings may only route to a same-task implementation fix and restart the final tail.
+3. Only after Reviewer and QA pass may the reviewed task-specific command
+   `adopt-model-routing-ancestry-reconciliation` run. Plan mode must produce source/target/manifest
+   digests without writing. Apply must consume exactly the blocked primary/board/Plan/approval,
+   candidate start, `B_A/D_A/R_A/Q_A` chain, clean Git facts and unchanged original lane/merge.
+4. Adoption performs one atomic board replacement and one board-only durability commit. It clears the
+   exact blocker, records `developer_subject_commit=reviewer_subject_commit=qa_subject_commit=B_A`,
+   appends exact `D_A/R_A/Q_A` evidence, preserves WIP/scope/host/merge facts, and enters
+   `running/integration` with null current role and pending callback.
+5. Normal production `begin-role`/`record-invocation` then creates the real Integrator authority.
+   Integrator commits `I_A` as the direct child of `Q_A`; only then may the existing reviewed rebind
+   and Final CAS plan/apply sequence run with the new committed Plan/manifest and `B_A/D_A/R_A/Q_A/I_A`.
+
+Exact committed adoption replay may return `ALREADY_APPLIED` only after reconstructing the complete
+transition from the parent board-only commit. Partial, divergent or later descendants block. Final
+CAS cannot retroactively authorize the candidate, offline role attestations or adoption transition.
+
+### 11.5 Exact May Touch, Must Not Touch And Locks
+
+The machine-approved eight paths remain unchanged. Future implementation code may modify exactly:
+
+1. `scripts/connlab_personal_task.py` — only registration/argument routing for the one task-specific
+   adoption command;
+2. `scripts/connlab_model_routing_integration_reconciliation.py`;
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`;
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`.
+
+Role evidence is limited to the four fixed task-derived integration-reconciliation evidence paths.
+`docs/task_board.md` is locked to reviewed writer transitions and exact board-only durability commits.
+All eight approved paths are exclusive task locks; the original lane/worktree/branch, existing merge,
+product/backend/frontend, normal serial schema/state tables, `run_task.ps1`, serial-board helper,
+registry, frozen V1/V2, database/API/persistence/authority, remotes and retained resources are Must Not
+Touch. No new worktree is created; the existing clean candidate is reused.
+
+This planning turn itself changes exactly the Task, this Plan and Planner evidence. It does not modify
+board/runtime/tests/candidate/original lane.
+
+### 11.6 Validation Matrix
+
+Required bounded TDD and disposable-repository proof:
+
+- reproduce the current real `BLOCKED_RECONCILIATION_EVIDENCE` direct-parent failure before repair;
+- exact frozen ledger and multiple Reviewer-blocked/Developer-fix rounds pass;
+- Reviewer-blocked or QA-blocked followed by any token other than same-task implementation blocks;
+- implementation extra path, evidence wrong path/task/role/status/subject/model/hash, duplicate or
+  missing field, unknown commit, merge, skipped role, post-review code drift, ordinary arbitrary
+  ancestor, rewritten parent and truncated/extended ledger all block with zero writes;
+- final `B_A/D_A/R_A/Q_A/I_A` direct-parent tail is mandatory;
+- adoption before Reviewer pass, before QA pass, with wrong Plan/approval/source board/candidate base,
+  dirty worktree, wrong action/agent/model, scope mismatch or changed original lane/merge blocks;
+- exact adoption plan/apply succeeds once, makes one board write and one board-only durability commit;
+  exact committed replay is zero-write and divergent replay blocks;
+- existing rebind/final success, replay, retained-resource, closeout and all prior negative matrices
+  remain green; final CAS cannot recognize an unreviewed adoption;
+- every failed case preserves board SHA and primary/candidate/original HEAD/status.
+
+Commands:
+
+```text
+py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
+py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q
+py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py
+git diff --check
+```
+
+Reviewer performs a complete re-gate of the ancestry parser, adoption writer and all replay/negative
+proof. QA independently reruns the complete matrix on the final reviewed HEAD. Integrator repeats a
+zero-write plan whose source/target/manifest digests must be byte-identical to apply.
+
+### 11.7 Risk And Recovery
+
+The main risks are accepting arbitrary ancestry, treating evidence prose as authority, or using final
+CAS to legitimize an unreviewed state transition. Mitigation is an exact frozen prefix plus executable
+state grammar, commit-addressed evidence blobs, exact field cardinality, review-before-write adoption,
+single-write CAS and committed replay reconstruction. A crash before replace is zero-write; a failure
+after replace preserves dirty board bytes and stops without restore. No automatic rollback, rebase,
+cherry-pick, reset, cleanup or branch deletion is authorized. Any path/behavior/authority expansion or
+new unexplained failure returns to User.
+
+The planning commit itself is independently reversible only by a separately authorized normal
+single-parent `git revert <planning-commit>` after confirming it has not been approved or consumed.
+Implementation/integration history is never rewritten.
+
+### 11.8 Canonical Ancestry Amendment Manifest
+
+SHA-256 is over the exact single-line UTF-8 JSON below, without BOM or trailing newline:
+`1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4`.
+
+```json
+{"schema":"connlab.model-routing-ancestry-reconciliation-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","planning_base":"d2b9b3a3b68970d261678989b249b3a6477bfde6","source_board_sha256":"b5c132c16762e6a1f5545a2ffc4c9af7219776067b0a254a6221c1c2817e389d","source_blocker":"INTEGRATION_BLOCKED","source_blocker_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477","approval_authority_base":"666a20d745fd72f6cbfd280d6ed1e29c0b023dda","frozen_history_head":"11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69","historical_final_subject":"8c9f3a31ac44e03df8087684a038602e5532fefb","frozen_history_ledger_sha256":"e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40","implementation_paths":["scripts/connlab_personal_task.py","scripts/connlab_model_routing_integration_reconciliation.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"],"evidence_paths":{"developer":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md","reviewer":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md","qa":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md","integrator":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md"},"grammar":["implementation","developer_ready","reviewer_blocked","implementation","developer_ready","reviewer_pass","qa_blocked","implementation","developer_ready","reviewer_pass","qa_pass","integrator_ready"],"final_tail":["final_implementation","developer_ready","reviewer_pass","qa_pass","integrator_ready"],"adoption_command":"adopt-model-routing-ancestry-reconciliation","adoption_source_head":"11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69","adoption_target_phase":"integration","adoption_review_gate":["developer_ready","reviewer_pass","qa_pass"],"forbidden":["arbitrary_ancestor","unknown_commit","extra_path","forged_evidence","role_skip","history_rewrite","manual_board_edit","rebind_before_adoption_review","remerge","push","cleanup"]}
+```
+
+The existing eight-path approved-request JSON remains byte-identical with SHA-256
+`5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34`; scope and risk facts do not
+change. A later User approval must bind this new committed Plan ref, the manifest hash, ledger hash,
+exact source blocker evidence and unchanged approved-request identity. Approval authorizes no
+implementation until its same-scope approval-evidence correction is durably committed.
+
+`STATUS: INTEGRATION_ANCESTRY_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`

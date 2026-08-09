@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING
 
-Status: `integration_reconciliation_authority_revision_pending_user_approval`
+Status: `integration_ancestry_reconciliation_amendment_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -158,3 +158,54 @@ push, cleanup, product change, or mutation of the existing lane is permitted. An
 zero-write blocker.
 
 `STATUS: INTEGRATION_RECONCILIATION_AUTHORITY_REVISION_PENDING_USER_APPROVAL`
+
+## Bounded Integration Ancestry Reconciliation Amendment
+
+The latest exact state is not acceptance. Primary is clean at
+`d2b9b3a3b68970d261678989b249b3a6477bfde6`; the physical board SHA-256 is
+`b5c132c16762e6a1f5545a2ffc4c9af7219776067b0a254a6221c1c2817e389d` and the sole
+machine authority is `running/blocked/INTEGRATION_BLOCKED`. The final reviewed reconciliation
+subject is `8c9f3a31ac44e03df8087684a038602e5532fefb`. The clean candidate is retained at
+`11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69`; its exact blocker evidence is
+`docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477`.
+
+The blocker is a contract defect, not Git drift: the reviewed repository verifier treats
+`approval-authority-base -> B` as one direct-parent edge, while the legitimate same-task history
+contains four Reviewer-blocked/Developer-fix rounds before final subject `8c9f3a31...`. The approval
+checkpoint remains an immutable ancestor and must never be replaced by an arbitrary ancestor test.
+
+After a new exact User approval, one bounded continuation may replace only that single-pass ancestry
+assumption with a deterministic commit grammar. Every commit from approval checkpoint
+`666a20d745fd72f6cbfd280d6ed1e29c0b023dda` to the future final implementation must be classified and
+verified. Implementation commits may touch only the four approved executor paths; role-evidence
+commits may touch only the task-derived evidence path for that role and must bind the exact task,
+role, status, subject, model tuple, committed bytes and SHA-256. Reviewer/QA blockers may be followed
+only by another implementation commit for this same approved task. The successful terminal chain is
+always the direct-parent sequence `final B -> Developer ready -> Reviewer pass -> QA pass ->
+Integrator ready`.
+
+Because the current board blocker resumes only to `integration`, the amendment also requires one
+task-specific, one-use adoption transition. It may run only after the ancestry implementation has an
+independent Developer evidence commit, Reviewer pass and mandatory QA pass. It atomically adopts the
+reviewed final subject/evidence and clears the exact current blocker into `running/integration` with
+no role pending; only then may the normal writer begin a real Integrator invocation. This is not a
+normal-state-machine change, fabricated callback history, or generic blocked-to-development bypass.
+It must bind the exact source primary/board/blocker/candidate/Plan/approval and return zero writes on
+any mismatch or replay conflict.
+
+The already machine-approved eight-path scope remains unchanged. The future implementation delta is
+limited to:
+
+1. `scripts/connlab_personal_task.py` — register only the task-specific adoption command if required;
+2. `scripts/connlab_model_routing_integration_reconciliation.py` — implement the grammar and atomic
+   adoption proof;
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`;
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`.
+
+Task-derived Developer, Reviewer, QA and Integrator evidence files remain governance evidence, not
+implementation scope. `docs/task_board.md` remains writer-only. Product code, normal workflow schema,
+the original lane, existing merge, remote state and retained resources are locked. No rebase,
+cherry-pick, manual board edit, remerge, rebind, Final CAS, push or cleanup is authorized before the
+new committed Plan is explicitly approved and all required gates pass.
+
+`STATUS: INTEGRATION_ANCESTRY_RECONCILIATION_AMENDMENT_PENDING_USER_APPROVAL`

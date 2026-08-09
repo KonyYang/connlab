@@ -2,7 +2,7 @@
 
 ROLE: Planner (inline in the permanent Orchestrator conversation)
 
-STATUS: integration_reconciliation_authority_revision_pending_user_approval
+STATUS: integration_ancestry_reconciliation_amendment_pending_user_approval
 
 TASK_ID: `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING`
 
@@ -185,3 +185,56 @@ verification, and pre-/post-close reconciliation. The final board restores the o
 lane as the normal closeout resource and retains the unmerged executor under permanent Orchestrator
 ownership. No host/rebind test is claimed as already run; the implementation validation matrix now
 requires those executable proofs before either live task-specific write.
+
+## Bounded Integration Ancestry Reconciliation Discovery
+
+Confirmed by User: approval checkpoint remains immutable authority; the verifier must evaluate every
+commit in a fail-closed Reviewer/QA fix-loop grammar; implementation and role-evidence paths are
+closed; the final direct tail is mandatory; arbitrary ancestry, unknown commits, forged evidence,
+history rewrite and all forbidden Git/remote actions remain blocked. Only Task/Plan/Planner evidence
+may change before a new explicit approval.
+
+Confirmed by repository:
+
+- primary is clean at `d2b9b3a3b68970d261678989b249b3a6477bfde6`; physical board SHA-256 is
+  `b5c132c16762e6a1f5545a2ffc4c9af7219776067b0a254a6221c1c2817e389d`;
+- board is `running/blocked/INTEGRATION_BLOCKED` with null role/pending callback, unchanged ordered
+  eight-path scope/approved paths, subject fields `8c9f3a31...`, lifecycle `integration_ready`, and
+  exact blocker evidence at `11cf2532...#ea23c4cc...`;
+- candidate and index are clean at `11cf2532...`; original lane is clean at `f7770b6a...`; existing
+  merge remains `093d4896...` in primary ancestry;
+- approval base `666a20d7...` is an ancestor of `8c9f3a31...`; the range is a single-parent chain of
+  approved executor deltas and fixed evidence commits, including four genuine Reviewer-blocked fix
+  loops;
+- the reviewed helper's literal direct-parent chain is the sole reproduced cause of the zero-write
+  Integrator blocker;
+- normal `resume` would return this blocker to `integration`, so it cannot lawfully dispatch the
+  Developer amendment. A reviewed one-use adoption transition is required to avoid another authority
+  deadlock.
+
+Planner inference: this is bounded task-specific governance repair inside the already approved eight
+paths. No product/API/data/schema scope changes. The immutable historical ledger SHA-256 is
+`e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40`; the new canonical manifest
+SHA-256 is `1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4`. Existing approved-request
+SHA-256 remains `5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34`.
+
+The future route is review-before-write: same-scope approval evidence correction; candidate-only
+Developer implementation; independent Reviewer and mandatory QA evidence; one reviewed atomic
+adoption from the exact blocked source into clean `running/integration`; normal Integrator
+begin/invocation and evidence; then existing rebind/Final CAS plan/apply. The adoption command records
+real committed evidence and does not fabricate normal callback history or create a generic state
+bypass. Any mismatch produces zero writes.
+
+Exact future implementation paths are `scripts/connlab_personal_task.py`, the task-specific
+reconciliation helper, and its bounded unit/integration tests. Role evidence uses only four fixed
+task-derived paths. Board is writer-only; original lane, merge, product/runtime schema, remote state
+and retained resources are locked. The complete validation matrix covers the real history, grammar
+transitions, wrong paths/fields/hashes/parents, adoption review gate, one-write durability, replay,
+rebind/final compatibility and preservation on every failure.
+
+This planning turn changes exactly the Task, Plan and Planner evidence. It has not modified the board,
+runtime, tests, candidate, original lane, existing merge or retained resources; it has not run an
+authority transition, role dispatch, rebind, Final CAS, push or cleanup. Implementation remains
+forbidden until User approves the exact committed Plan and manifest.
+
+`STATUS: integration_ancestry_reconciliation_amendment_pending_user_approval`
