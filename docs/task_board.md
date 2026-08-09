@@ -68,7 +68,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": null,
+      "current_role": "Developer",
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -173,7 +173,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integrator.md@f7770b6a6a82a36f946d16145a2124f6330961e1#8c15467010e3693ada5247ed3dd011c5334d736012dee7a94d1a8f9664cd05f0",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@6eab428fce885fd62bf31f291e2cc5e42bc40596#4734ae3e6a4ae67e640443e0ba49ddb7fb75a6fd6e995c3b874e5a50c7369414"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "1bfbfbce486864c016cb52dd039301f990d93dbdefffdf1fe1ae36038d363299",
+        "role": "Developer",
+        "attempt": 2
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
