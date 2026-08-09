@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -58,33 +58,7 @@
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
     "updated_at": "2026-08-09T00:58:40Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Reviewer found committed rebind/final replay proof accepts nine classes of target drift.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "subject_commit": "df5ee4e1e48f8a813430ae7facbcde1af3ecbd3e",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@96ed540569bda4a105d1ec18190f519162edb8e7#6865b405316ce173fd095162767aa0b7abc334344aea9e96244b875c705a7650",
-      "native_action_id": null,
-      "related_ids": [
-        "REBIND_INTEGRATED_COMMIT",
-        "REBIND_RETAINED_REFS",
-        "REBIND_CLOSEOUT_STATE",
-        "REBIND_RETAINED_HISTORY",
-        "FINAL_HOST_ID",
-        "FINAL_HOST_THREAD",
-        "FINAL_ATTEMPT",
-        "FINAL_INVOCATION",
-        "FINAL_REQUIRED_GATES"
-      ],
-      "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-09T08:37:01Z"
-    },
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -94,7 +68,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 6,
       "role_invocations": [
         {
@@ -295,7 +269,7 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "df5ee4e1e48f8a813430ae7facbcde1af3ecbd3e",
+      "developer_subject_commit": "8c9f3a31ac44e03df8087684a038602e5532fefb",
       "reviewer_subject_commit": "ad7dac819268ae77781709b626aea4f624a7a740",
       "qa_subject_commit": "ad7dac819268ae77781709b626aea4f624a7a740",
       "integrated_commit": null,
@@ -313,14 +287,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@cd1dfb160ff2b00542002999ff890b6284886cd5#24f66006569714e612d82f3d59152515e1f6c15dc2f27e13f867818421baa219",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@7231d4cc6ad03d2723c614955b8ae1c97f7e86c1#a7d23ad68bae7ce943ebcad981bca704d2f28573a106cd3cbdd311d309bc4844",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@03d49ffc92470c47feb4b8856efaf4bf26366209#4d2ac58ee4ca8ba414b6ca5ac0520db9b0d4faafb2fd94c300c6119821836cb1",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@96ed540569bda4a105d1ec18190f519162edb8e7#6865b405316ce173fd095162767aa0b7abc334344aea9e96244b875c705a7650"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@96ed540569bda4a105d1ec18190f519162edb8e7#6865b405316ce173fd095162767aa0b7abc334344aea9e96244b875c705a7650",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@a6efc77a520112107bfd7ea3313f229e0b57a47b#79cc4e417d6bab76c127cd2be9184521ead25aab04a9375a3deddd7bb98c1b4e"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "ee71c4b84439488c789ec7ca0ace338744cf2fbcfb084947412aef7d91da99bb",
-        "role": "Developer",
-        "attempt": 6
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
