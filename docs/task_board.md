@@ -17,7 +17,7 @@
   "state": "running",
   "active": {
     "task_id": "TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING",
-    "summary": "Reduce Personal Serial Workflow V2 retry latency and execution cost through explicit role model routing and deterministic daily orchestration guidance.",
+    "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
     "phase": "blocked",
@@ -26,13 +26,19 @@
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
         "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
         "tests/unit/test_task_scoped_role_thread_lifecycle_governance.py",
-        "docs/task_board.md"
+        "docs/task_board.md",
+        "scripts/connlab_personal_task.py",
+        "scripts/connlab_model_routing_integration_reconciliation.py",
+        "tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"
       ],
-      "expected_file_count": 4,
-      "classification_reason": "Governance-only four-path change with mandatory independent Reviewer, QA, and Integrator gates; no runtime, schema, product, authority, or persistence changes.",
+      "expected_file_count": 8,
+      "classification_reason": "Strict superset of the already-approved four paths, adding only the task-specific unmerged reconciliation writer/helper and bounded proof tests; product behavior and normal workflow contracts remain unchanged.",
       "targeted_validation": [
-        "py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q",
-        "py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q",
+        "py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q",
+        "py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q",
+        "py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q",
+        "py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py",
         "git diff --check"
       ],
       "forbidden_categories": {
@@ -47,11 +53,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@ceb7607b854038142ff50896cccfb8907b1ef2c7#f6f3041eaed7acd390ec21f787102aaad452eaa652750d9068b39c0c0df34241",
-    "approval_ref": "User explicitly approved Revision 3 for TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING in the permanent Orchestrator conversation on 2026-08-08, binding Plan ceb7607b854038142ff50896cccfb8907b1ef2c7 and approved-request SHA-256 43d110d8f7a3e87859f59b72c62cd295d214fa86e3bb60e5d091587587a74d3a.",
+    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@6eab428fce885fd62bf31f291e2cc5e42bc40596#e94f147c4d75f83a75980ae058e65dc6d682b9055572e0f6da7846e2c5663585",
+    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration reconciliation authority revision 6eab428fce885fd62bf31f291e2cc5e42bc40596, Plan SHA-256 e94f147c4d75f83a75980ae058e65dc6d682b9055572e0f6da7846e2c5663585, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and manifest SHA-256 a882f4a9eb89b342c27ade4d01db0c03b53db11a7ccc878c75abb7d8f4eab0c0 on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T00:46:36Z",
+    "updated_at": "2026-08-09T00:51:45Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
