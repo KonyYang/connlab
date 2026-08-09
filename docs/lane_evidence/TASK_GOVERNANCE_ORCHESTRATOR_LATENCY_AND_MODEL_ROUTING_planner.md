@@ -53,6 +53,12 @@ approval is required; no host or role may be created before it.
 
 User-authorized planning-only Discovery confirmed the following immutable facts:
 
+- primary was clean at `5ce3ca0eca760314e7b26a385f681cb5c2b314e0` at the start of this final
+  planning revision;
+- board remains `state=running`, `phase=blocked`, `blocker=INTEGRATION_BLOCKED`, and
+  `resume_phase=integration`; both `scope_contract.may_touch` and `approved_code_paths` remain the
+  original four paths; board `head_sha=3d0884e12cc39e7b416da75ab01aaffd36c6418c`,
+  `integrated_commit=null`, and `worktree_lifecycle=integration_ready`;
 - primary was clean at `82370aeb1690f1a6e1ebda7d37048f5f926d7570` before this three-file
   amendment, with committed board blob SHA-256
   `9083399d2a3a091afc634ab3253df86e8f3c0754fd73558bdc0b959b0c336d88`, physical Windows
@@ -68,6 +74,14 @@ User-authorized planning-only Discovery confirmed the following immutable facts:
   `docs/task_board.md` to record the blocker;
 - all five existing evidence refs in the board resolve to the exact committed bytes and declared
   SHA-256 values.
+- merge `093d48966b15c536b7411b3cc4cdca1e1e0d4faf` exists in primary ancestry but is not recorded by
+  the board as accepted; no reconciliation branch/worktree exists, the eight-path authority chain has
+  not run, reconciliation Developer/Reviewer/QA/Integrator have not begun, and final CAS, human review,
+  and closeout have not run.
+
+The only accurate progress statement is: `Integrator pre-integration audit completed; local merge
+exists; acceptance remains blocked.` This evidence does not claim `integrator_accepted`, task complete,
+integration recorded, or ready for close.
 
 The root cause has two independent halves: the normal contract requires lane HEAD equal the QA
 subject, and repository proof requires primary HEAD equal the merge. A generic descendant allowance,
@@ -75,11 +89,12 @@ two-step resume/record sequence, or another merge would violate the User boundar
 
 The amendment therefore specifies one task-specific reviewed executor artifact on a new same-task
 reconciliation worktree. It preserves the original lane and merge, is not installed/merged/cherry-
-picked into primary, and can perform only one exact CAS board transition through the existing sole
-writer. The exact future code/test scope is four paths; reconciliation evidence uses four fixed
-task-derived paths. Developer, Reviewer, QA, and Integrator route to
-`gpt-5.6-sol / medium / risk:integration_conflict` and cannot write the board. Integrator alone may
-execute after the full evidence chain is committed and clean.
+picked into primary, and can perform only the reviewed atomic host rebind followed by the one exact
+final CAS through the existing sole writer. The exact future code/test scope is four paths;
+reconciliation evidence uses four fixed task-derived paths. Developer, Reviewer, QA, and Integrator
+route to `gpt-5.6-sol / medium / risk:integration_conflict`; they may cause only normal writer-owned
+state transitions and never hand-edit the board. Integrator alone may execute either task-specific live
+write after the full independent evidence chain is committed and clean.
 
 Success atomically consumes the blocker and records `head_sha=f7770b6a`,
 `integrated_commit=093d4896`, `phase=human_review`,
@@ -105,8 +120,8 @@ The revised Plan therefore freezes a pre-implementation existing-command chain:
 `SCOPE_EXPANDED -> ALLOW_SCOPE_AMEND -> ALLOW_RESUME -> PLANNER_READY -> ALLOW_APPROVE`. The canonical
 eight-path strict-superset approved-request has SHA-256
 `5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34`; the version-2
-reconciliation manifest has SHA-256
-`28546d74d94f8b32f1a2ce5e57951b9855ee87692c7b2cf8c6f04746867238c7`. No reconciliation worktree or
+reconciliation manifest was superseded by the final version-3 review-before-rebind manifest with
+SHA-256 `a882f4a9eb89b342c27ade4d01db0c03b53db11a7ccc878c75abb7d8f4eab0c0`. No reconciliation worktree or
 executor write is legal until the committed board proves the final scope, `approved_code_paths`, Plan/
 approval refs, development phase, clean facts, and null blocker/pending callback.
 
@@ -126,9 +141,47 @@ two-approval authority, or unregistered/mismatched host attempts to block with z
 worktree/executor creation. Planning still changed only the Task, Plan, and Planner evidence.
 
 A disposable minimal V2 repository using the current production writer ran the complete existing-command
-sequence and returned `AUTHORITY_CHAIN_OK`: first Approve returned `ALLOW_SCOPE_AMEND` with eight-path
+scope sequence and returned `AUTHORITY_CHAIN_OK`: first Approve returned `ALLOW_SCOPE_AMEND` with eight-path
 `scope_contract` while `approved_code_paths` correctly remained four; resume and a real
 `planner_dispatch` invocation/callback entered `awaiting_user_approval`; the second byte-identical
 Approve returned `ALLOW_APPROVE`, entered `development`, cleared blocker/pending callback, and made
 both authority arrays exactly the same eight paths. The disposable repository was isolated from the
-primary board and original lane.
+primary board and original lane. This proof is intentionally limited to scope approval; it does not
+claim to test branch/worktree creation, live host relocation, replay, failure zero-write behavior, or
+retained-resource closeout. Those require the not-yet-implemented task-specific writer and are frozen
+as mandatory Developer/Reviewer/QA test gates rather than being represented as completed evidence.
+
+## Review-Before-Rebind Correction
+
+The User review correctly found that the previous sequence let Developer-only writer bytes perform
+the first live host rebind. The corrected Plan chooses the strict independent-attestation option:
+
+- Developer completes the entire writer/helper/tests at immutable subject `B` in the Plan-bound
+  candidate resource and commits evidence `D` without live rebind;
+- normal callbacks dispatch independent Reviewer and mandatory QA against exact `B`, producing
+  evidence-only `R` and `Q` and blocking on any drift;
+- only after QA pass may Integrator commit pre-rebind evidence `I` and run the reviewed rebind bytes;
+- rebind preserves the pending Integrator action, and final CAS follows only after the rebind board
+  checkpoint is committed and reverified.
+
+The fixed evidence contracts are:
+
+- `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@D#sha256`, `STATUS: ready_for_review`;
+- `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@R#sha256`, `STATUS: reviewer_pass`;
+- `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@Q#sha256`, `STATUS: qa_pass`;
+- `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@I#sha256`,
+  `STATUS: pre_rebind_attestation_ready`.
+
+They must form `approval-authority-base -> B -> D -> R -> Q -> I`; every ref is commit/blob/hash/status
+bound, only Integrator may perform live rebind, and inability to express this with the existing normal
+role commands is a stop condition rather than authority for an implicit bypass.
+
+The revised retained-resource contract reuses `retained_history` and freezes fifteen exact keys:
+`schema`, `version`, `task_id`, `status`, `owner`, `disposition`, `branch`, `worktree`, `head_sha`,
+`clean`, `evidence_ref`, `integrated_commit`, `plan_ref`, `approval_ref_sha256`, and `recorded_at`.
+It also freezes an exact identity tuple,
+byte-identical replay semantics, same-identity conflict blocking, physical clean-worktree/evidence
+verification, and pre-/post-close reconciliation. The final board restores the original integrated
+lane as the normal closeout resource and retains the unmerged executor under permanent Orchestrator
+ownership. No host/rebind test is claimed as already run; the implementation validation matrix now
+requires those executable proofs before either live task-specific write.

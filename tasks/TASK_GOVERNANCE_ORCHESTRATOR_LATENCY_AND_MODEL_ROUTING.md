@@ -66,12 +66,32 @@ Historical Revision 3 status before implementation: `REVISION_3_PLANNED_PENDING_
 ## Integration Reconciliation Amendment
 
 The original implementation is locally merged but is not accepted. The precise state is:
-`Integrator pre-integration audit completed; acceptance blocked.` The accepted implementation subject
+`Integrator pre-integration audit completed; local merge exists; acceptance remains blocked.` The accepted implementation subject
 remains `ad7dac819268ae77781709b626aea4f624a7a740`; the immutable clean lane now ends at
 `f7770b6a6a82a36f946d16145a2124f6330961e1` after the required Reviewer, QA, and Integrator evidence
 commits. The existing two-parent merge is
 `093d48966b15c536b7411b3cc4cdca1e1e0d4faf`, and the exact blocker-board baseline is clean primary
 `82370aeb1690f1a6e1ebda7d37048f5f926d7570` with `INTEGRATION_BLOCKED`.
+
+The frozen planning-start state for this final revision is:
+
+- primary was clean at `5ce3ca0eca760314e7b26a385f681cb5c2b314e0`;
+- board authority remains `state=running`, `phase=blocked`, `blocker=INTEGRATION_BLOCKED`, and
+  `resume_phase=integration`;
+- `active.scope_contract.may_touch` and `complex_context.approved_code_paths` each remain the original
+  four paths;
+- board `head_sha=3d0884e12cc39e7b416da75ab01aaffd36c6418c`,
+  `integrated_commit=null`, and `worktree_lifecycle=integration_ready`;
+- QA subject remains `ad7dac819268ae77781709b626aea4f624a7a740`, and the original lane remains clean at
+  `f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- merge `093d48966b15c536b7411b3cc4cdca1e1e0d4faf` exists in primary ancestry but is not recorded by
+  the board as accepted;
+- no reconciliation branch/worktree exists; the eight-path authority chain has not run; no
+  reconciliation Developer, Reviewer, QA, or Integrator has begun; and final CAS, human review, and
+  closeout have not run.
+
+These are blocked planning facts, not completion evidence. This Task must not be described as
+`integrator_accepted`, complete, integration recorded, or ready for close.
 
 This amendment authorizes no implementation until the User approves its exact committed Plan ref. A
 later approval may authorize one reviewed, task-specific executor artifact that leaves the original
@@ -97,8 +117,9 @@ prohibition and is exactly:
 4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py` (new)
 
 The four fixed reconciliation role-evidence paths are evidence refs, not implementation scope. The
-only primary write is the final atomic `docs/task_board.md` transition and its exact board-only commit.
-All other original Must Not Touch paths remain locked.
+only task-specific primary writes after independent review are the atomic host rebind and the final
+atomic `docs/task_board.md` transition, each followed by its exact board-only durability commit. All
+other original Must Not Touch paths remain locked.
 
 Before any executor path or reconciliation worktree is created, the machine authority must be updated
 through existing reviewed commands only. The required sequence is: record the truthful
@@ -110,12 +131,27 @@ request, and must bind the exact Plan ref and User approval ref. The approved-re
 `5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34`.
 
 Only after that committed authority checkpoint may the existing durable host begin and record a real
-Developer invocation. That invocation owns one exact host relocation to the approved reconciliation
-branch/worktree. The relocation must atomically replace the host Git facts while preserving the live
-Developer action, scope, locks, Plan/approval refs, and original-lane evidence. No broader executor
-implementation may occur until the new host facts are committed and verified. Final reconciliation
-returns the primary task resource to the original integrated lane and records the clean executor
-branch/worktree as a retained same-task resource with a permanent residual owner.
+Developer invocation. The Plan-bound new worktree is initially a candidate review resource, not the
+active host. Developer must finish the complete bridge/final-reconciliation implementation and tests
+at immutable subject `B`; Developer evidence `D`, independent Reviewer evidence `R`, and mandatory QA
+evidence `Q` must all be committed and their normal callbacks accepted before live host relocation.
+Only the subsequently dispatched Integrator may use those reviewed bytes to perform the atomic rebind,
+preserving its pending invocation until final CAS. Thus no unreviewed Developer writer can change the
+primary board.
+
+The fixed pre-rebind evidence contracts are task-derived paths with exact committed byte hashes:
+`docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md` has `STATUS: ready_for_review`,
+`docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md` has `STATUS: reviewer_pass`,
+`docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md` has `STATUS: qa_pass`, and
+`docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md` has `STATUS: pre_rebind_attestation_ready`. Their
+topology is `approval-authority-base -> B -> D -> R -> Q -> I`; only Integrator may run live rebind at
+`I`. These are genuine normal role events owned by the existing durable host, not fabricated history.
+If the existing V2 role commands cannot express this sequence exactly, execution stops before rebind
+with a new authority blocker.
+
+Final reconciliation returns the primary task resource to the original integrated lane and records the
+clean executor branch/worktree as a retained same-task resource with a frozen record schema, exact
+duplicate/conflict rule, closeout reconciliation rule, and permanent residual owner.
 
 No second merge, resume prewrite, manual board edit, history rollback, generic validation relaxation,
 push, cleanup, product change, or mutation of the existing lane is permitted. Any mismatch is a
