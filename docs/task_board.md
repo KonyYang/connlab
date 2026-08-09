@@ -29,16 +29,19 @@
         "docs/task_board.md",
         "scripts/connlab_personal_task.py",
         "scripts/connlab_model_routing_integration_reconciliation.py",
+        "scripts/connlab_model_routing_ancestry_contract.py",
         "tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
-        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py"
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py",
+        "tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"
       ],
-      "expected_file_count": 8,
-      "classification_reason": "Strict superset of the already-approved four paths, adding only the task-specific unmerged reconciliation writer/helper and bounded proof tests; product behavior and normal workflow contracts remain unchanged.",
+      "expected_file_count": 10,
+      "classification_reason": "Strict superset of the approved eight paths, adding only one bounded ancestry contract module and one bounded adoption integration-test module so the reviewed implementation can satisfy the mandatory Python 500-line hard limit without changing product behavior or reconciliation authority semantics.",
       "targeted_validation": [
         "py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q",
-        "py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q",
+        "py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py -q",
         "py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q",
-        "py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py",
+        "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q",
+        "py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py scripts/connlab_model_routing_ancestry_contract.py",
         "git diff --check"
       ],
       "forbidden_categories": {
@@ -53,11 +56,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@7ea0f5f3b4439eab14a2fbe7d383db845617d1a6#4598a5e0f72e0ac820e57cd865117a74d1a492e1c508b305b0ad3268d1a47eaf",
-    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded integration ancestry reconciliation amendment 7ea0f5f3b4439eab14a2fbe7d383db845617d1a6, Plan SHA-256 4598a5e0f72e0ac820e57cd865117a74d1a492e1c508b305b0ad3268d1a47eaf, ancestry manifest SHA-256 1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4, frozen ledger SHA-256 e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40, approved-request SHA-256 5eb00a105d1e0b5a047423c46b84436d854bf9c4ee85a54546c23932cedb2d34, and source blocker evidence docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477 on 2026-08-09.",
+    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa",
+    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded line-budget scope expansion amendment 0cf58120b5ced9580abb4a88daf5b4cc9c36f72c, Plan SHA-256 4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa, approved-request SHA-256 b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22, and manifest SHA-256 557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T14:11:46Z",
+    "updated_at": "2026-08-09T14:13:19Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
