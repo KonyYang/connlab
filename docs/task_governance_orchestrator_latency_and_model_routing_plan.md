@@ -1237,10 +1237,11 @@ one evidence-only child. Independent Reviewer re-gates the P0 and complete matri
 the full matrix on the reviewed head. Reviewer and QA evidence must use the explicitly dispatched
 model/effort/reason and exact fixed fields.
 
-Neither Reviewer nor QA may run live adoption. After QA pass/callback, Integrator first verifies and
-records an evidence-only pre-adoption attestation binding `S_QA`, payload and all three digests. The
-Orchestrator then owns the single plan/apply/durability sequence. A different source after attestation
-invalidates it. Normal Integrator begin-role starts only after adoption is committed.
+Neither Reviewer nor QA may run live adoption. After QA pass/callback, the Orchestrator reconstructs
+the payload directly from committed board/Git/evidence facts, runs zero-write plan mode and owns the
+single byte-identical apply/durability sequence. No pre-adoption Integrator evidence or invocation is
+created. A different source after plan invalidates apply. Normal Integrator begin-role starts only
+after adoption is committed.
 
 ### 13.7 Executable Validation Matrix
 
