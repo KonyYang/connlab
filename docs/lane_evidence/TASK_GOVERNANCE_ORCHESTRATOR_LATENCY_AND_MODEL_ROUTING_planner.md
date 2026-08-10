@@ -279,3 +279,53 @@ runtime, tests, candidate, original lane, existing merge or retained resources; 
 role transition, adoption, rebind, Final CAS, push or cleanup.
 
 `STATUS: line_budget_scope_expansion_pending_user_approval`
+
+## Post-QA Adoption-Source Authority Reconciliation Discovery
+
+Confirmed by User: keep the ten-path scope and repair only the adoption source so it is derived from
+the normal post-QA production-writer authority rather than the obsolete pre-amendment blocked board.
+Reviewer callback must remain pending until this exact planning amendment is committed and approved.
+
+Confirmed by repository at discovery:
+
+- primary/index are clean at `34e44ad7bfa902df29d3e22e1e98a322e9648999`; raw board SHA-256 is
+  `707518c5b94daf95ba8efa6723d2891766ac98f43f18ebfb86879a505a7a9ecd`;
+- board is `running/review`, Reviewer attempt 7, callback action
+  `18bb5a4d695cbb95513be10a21cebd26b33e58cbe976ae195b1c6750a264fd5f` pending, with matching
+  ten-path `scope_contract` and `approved_code_paths`;
+- line-budget subject `f349382605ba1f372a0b43c50c331eb3573cb0b6`, Developer evidence
+  `652b41329fe880491dfa93c53d8bf1ff7cb1317b` and Reviewer blocker evidence
+  `aeb03bd9f72a68e6c66a06c788bfc0c55e19df62` form the exact direct-parent tail; candidate is clean
+  at the Reviewer evidence commit and original lane is clean at `f7770b6a...`;
+- Reviewer passed 48 unit, 71 integration, 43 compatibility and 13 workflow tests, compilation,
+  diff, scope and line-budget checks; the sole P0 is the helper's hard-coded old primary/board and
+  blocked source shape;
+- the current helper changes the old blocked board directly to integration and appends D/R/Q; this is
+  stale because lawful callbacks have already moved primary authority into the current review route.
+
+Planner inference: normal role transitions must first consume the real blocker and produce a genuine
+post-QA `running/integration` source. The one-use adoption then records only the newly approved
+amendment authority using existing fields: update Plan/approval, append the exact Planner evidence
+once and update time, preserving scope, lifecycle, host, subject and D/R/Q facts. This makes the
+transition observable and auditable without adding a board schema key or fabricating role history.
+
+The proof is stricter than ancestry. It validates the exact ordered board-only durability events from
+the frozen primary/board through post-QA, reconstructs each transition with production semantics and
+binds all actions, attempts, invocations, evidence and raw board bytes. Plan/apply/replay use one
+source/target/manifest digest triple. Any arbitrary board-only descendant, later commit, partial or
+divergent replay is zero-write blocked.
+
+The machine scope stays at ten. The bounded implementation delta is only the reconciliation helper,
+ancestry contract, bounded unit test and two bounded integration tests; `connlab_personal_task.py` and
+the other machine-approved paths are locked. Role evidence and writer-only board commits remain
+governance artifacts outside implementation scope.
+
+This planning turn changes exactly the Task, Plan and Planner evidence. It does not consume the
+Reviewer callback or modify board, runtime, tests, candidate, original lane, existing merge or
+retained resources; it does not run adoption, rebind, Final CAS, push or cleanup. No blocking question
+remains. Implementation requires the User's exact approval of the committed Plan and manifest.
+
+Canonical post-QA adoption-source manifest SHA-256:
+`7e2db615afcabf90b64e05cdd73c83ad8da89a9ade6c90b865d4ee50704366ac`.
+
+`STATUS: post_qa_adoption_source_authority_reconciliation_pending_user_approval`

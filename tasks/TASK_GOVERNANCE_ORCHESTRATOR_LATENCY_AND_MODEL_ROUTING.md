@@ -244,3 +244,48 @@ by the direct evidence tail `Developer ready -> Reviewer pass -> QA pass -> Inte
 any adoption/rebind/Final CAS write.
 
 `STATUS: LINE_BUDGET_SCOPE_EXPANSION_PENDING_USER_APPROVAL`
+
+## Post-QA Adoption-Source Authority Reconciliation Amendment
+
+The line-budget implementation is clean and fully validated at Developer evidence commit
+`652b41329fe880491dfa93c53d8bf1ff7cb1317b`, with implementation subject
+`f349382605ba1f372a0b43c50c331eb3573cb0b6`. Independent Reviewer attempt 7 reproduced one P0
+authority defect and recorded it at
+`aeb03bd9f72a68e6c66a06c788bfc0c55e19df62`: the adoption command still requires the obsolete
+pre-amendment blocked primary/board pair instead of the lawful post-QA authority created by normal
+Personal Serial Workflow V2 callbacks. The product behavior, ten-path machine scope, implementation
+split and test matrix otherwise passed review.
+
+This amendment replaces only that stale source assumption. After explicit User approval, the current
+real `REVIEWER_BLOCKED` callback must be consumed by the production writer. The same task then follows
+the normal role route `Developer fix/ready -> Reviewer pass -> QA pass`, producing an exact
+`running/integration` post-QA source with no blocker, role or callback and with
+`worktree_lifecycle=integration_ready`. Adoption may consume only that source. It must verify the
+ordered board-only durability chain from primary
+`34e44ad7bfa902df29d3e22e1e98a322e9648999`, the exact role invocations/evidence, the final direct
+`B -> D-ready -> R-pass -> Q-pass` candidate tail, the ten-path Plan/approval and raw board bytes.
+Arbitrary board-only descendants are not authority.
+
+The one-use adoption target preserves `running/integration`, the ten-path scope, host/lane facts,
+reviewed subject and D/R/Q evidence. Using only existing board fields, it atomically records the newly
+approved amendment Plan/approval, appends the exact Planner amendment evidence ref once, and updates
+`active.updated_at`. It adds no schema key and fabricates no callback or role history. Plan, apply and
+committed replay must share the same source, target and manifest digests. Any partial, stale, forged,
+divergent, later-descendant, dirty or replay-conflicting fact blocks with zero writes.
+
+The existing ten-path machine scope remains unchanged. The bounded implementation May Touch is
+narrower:
+
+1. `scripts/connlab_model_routing_integration_reconciliation.py`
+2. `scripts/connlab_model_routing_ancestry_contract.py`
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+5. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+Task-derived role evidence remains governance evidence and `docs/task_board.md` remains production-
+writer-only. `scripts/connlab_personal_task.py`, the original four implementation paths, product code,
+normal workflow schema, original lane and existing merge are locked. No implementation, callback
+consumption, adoption, rebind or Final CAS is authorized until the User approves the exact committed
+Plan and manifest.
+
+`STATUS: POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION_PENDING_USER_APPROVAL`

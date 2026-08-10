@@ -1062,3 +1062,222 @@ The frozen historical ledger, ancestry grammar, original lane/merge, review-befo
 retained-resource contract and all fail-closed conditions remain unchanged.
 
 `STATUS: LINE_BUDGET_SCOPE_EXPANSION_PENDING_USER_APPROVAL`
+
+## 13. Post-QA Adoption-Source Authority Reconciliation Amendment
+
+### 13.1 Discovery And Frozen Baseline
+
+User-confirmed objective: replace only the stale pre-amendment adoption source with a fail-closed
+post-QA source produced by the normal Personal Serial Workflow V2 role chain. This is not a new
+product behavior, state-machine bypass or scope expansion.
+
+Repository-confirmed baseline at planning start:
+
+- primary/index are clean at `34e44ad7bfa902df29d3e22e1e98a322e9648999`;
+- raw `docs/task_board.md` SHA-256 is
+  `707518c5b94daf95ba8efa6723d2891766ac98f43f18ebfb86879a505a7a9ecd`;
+- board is `running/review`, current role `Reviewer`, attempt `7`, with callback action
+  `18bb5a4d695cbb95513be10a21cebd26b33e58cbe976ae195b1c6750a264fd5f` pending;
+- the ordered `scope_contract.may_touch` and `approved_code_paths` arrays are the same ten paths and
+  are bound to Plan `0cf58120b5ced9580abb4a88daf5b4cc9c36f72c` and approved-request SHA-256
+  `b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22`;
+- final line-budget subject `f349382605ba1f372a0b43c50c331eb3573cb0b6` is followed directly by
+  Developer evidence `652b41329fe880491dfa93c53d8bf1ff7cb1317b` and Reviewer blocker evidence
+  `aeb03bd9f72a68e6c66a06c788bfc0c55e19df62`;
+- the candidate branch/worktree/index is clean at that Reviewer evidence commit; the original lane
+  remains clean at `f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- Reviewer independently passed 48 reconciliation unit tests, 71 combined integration tests, 43
+  compatibility tests, 13 personal-workflow tests, all line budgets, `py_compile` and
+  `git diff --check`, then blocked because the helper still freezes primary `36936c1426...`, board
+  SHA `1553b78b...` and `blocked/INTEGRATION_BLOCKED` as its only adoption source.
+
+The current Reviewer callback is deliberately not consumed during planning. No implementation,
+board transition, adoption, rebind or Final CAS is performed before exact User approval.
+
+### 13.2 Authority Model And Exact Route
+
+The current planning commit is a three-path primary governance commit and does not modify the board.
+After User approval, the production writer must execute the following route without omissions or
+substitutions:
+
+1. consume the exact pending Reviewer attempt-7 callback as `REVIEWER_BLOCKED`, producing one
+   board-only durability commit and entering normal development;
+2. begin and record one Developer invocation for the same task/host; create a bounded implementation
+   fix `B_POSTQA` descended from `aeb03bd9...`, then its evidence-only `D_POSTQA` child; consume the
+   exact Developer-ready callback with one board-only durability commit;
+3. begin/record an independent Reviewer invocation, create an evidence-only `R_POSTQA` pass child,
+   and consume its callback with one board-only durability commit;
+4. begin/record mandatory QA, create an evidence-only `Q_POSTQA` pass child, and consume its callback
+   with one board-only durability commit;
+5. stop at the exact post-QA source `S_QA`: `state=running`, `active.phase=integration`,
+   `active.blocker=null`, `current_role=null`, `pending_callback=null`, and
+   `worktree_lifecycle=integration_ready`;
+6. run the reviewed task-specific ancestry adoption in plan mode, then one byte-identical apply, and
+   commit its sole `docs/task_board.md` mutation before any Integrator begin-role;
+7. only after committed adoption may the normal Integrator, reviewed live rebind and Final CAS route
+   continue under the existing approved contract.
+
+Every production-writer transition from baseline `34e44ad7...` through `S_QA` is a single-parent
+primary commit whose only changed path is `docs/task_board.md`. The adoption proof must read every
+committed parent/current board blob and classify the exact ordered events:
+
+```text
+REVIEWER_BLOCKED callback
+-> Developer begin-role
+-> Developer record-invocation
+-> DEVELOPER_READY callback
+-> Reviewer begin-role
+-> Reviewer record-invocation
+-> REVIEWER_PASS callback
+-> QA begin-role
+-> QA record-invocation
+-> QA_PASS callback
+```
+
+For each event, reconstruct the expected target with the production writer contract and compare the
+complete parsed control object and rendered bytes. Commit count, order, action/attempt/role identity,
+source and target board SHA, and before/after state must match. A board-only commit is necessary but
+not sufficient; any extra, missing, reordered, repeated, unknown or later board descendant blocks.
+
+### 13.3 Post-QA Source Contract
+
+The adoption payload binds runtime facts that cannot exist at planning time. All are mandatory exact
+values, not inferred from the mutable current board:
+
+- amendment Plan ref/hash, exact User approval ref/hash, amendment Planner evidence ref/blob hash and
+  the manifest SHA-256 from section 13.8;
+- baseline primary/head/board SHA, exact Reviewer attempt-7 action and blocker evidence;
+- `S_QA` primary HEAD, its single-parent chain back to the baseline, and raw board SHA-256;
+- exact ten-path `scope_contract`, `approved_code_paths`, existing ten-path Plan/approval source and
+  approved-request SHA-256;
+- task branch/worktree/base/head, host/thread/lifecycle and primary/candidate/original-lane clean Git
+  facts;
+- every allowed role action, attempt and invocation object in the durability route;
+- `B_POSTQA`, `D_POSTQA`, `R_POSTQA`, `Q_POSTQA`, their direct-parent ancestry, exact evidence refs,
+  committed blobs/SHA-256 and task/role/status/subject/model tuple;
+- exact evidence-ref prefix before the route and exact D/R/Q suffix after it;
+- `recorded_at`, expected source digest, expected target digest and manifest digest.
+
+The final candidate tail must be direct parentage:
+
+```text
+B_POSTQA
+-> D_POSTQA (Developer ready evidence only)
+-> R_POSTQA (Reviewer pass evidence only)
+-> Q_POSTQA (QA pass evidence only)
+```
+
+Earlier approved Reviewer-blocked fix loops remain validated by the frozen ancestry ledger. The new
+route may add only the current exact Reviewer blocker followed by this one final fix/pass tail.
+Unknown commits, extra paths, skipped roles, forged evidence, merge parents, rewritten history or an
+ordinary arbitrary ancestor are not accepted.
+
+### 13.4 Atomic Adoption Target And Replay
+
+The adoption builder starts only from the verified `S_QA` committed object. It preserves state,
+phase, blocker, lifecycle, host/lane facts, subject commits, D/R/Q evidence, required gates and the
+ordered ten-path scope. Without adding a schema key, the single atomic target:
+
+- sets `active.plan_ref` to the exact newly approved amendment Plan ref;
+- sets `active.approval_ref` to the exact newly approved amendment approval identity;
+- appends the exact committed Planner amendment evidence ref once to
+  `active.complex_context.evidence_refs`;
+- sets `active.updated_at` to the attested `recorded_at`;
+- leaves `current_role` and `pending_callback` null and remains `running/integration`.
+
+Plan mode computes canonical source, target and manifest digests from immutable committed inputs and
+performs zero writes. Apply accepts those three exact digests and the identical payload, re-runs all
+repository/source proofs, requires raw current bytes to equal the planned source, writes exactly once
+through the production board writer and verifies the complete rendered target. The durability commit
+must be a single-parent, board-only commit.
+
+Exact committed replay reads `HEAD^:docs/task_board.md` and `HEAD:docs/task_board.md`, reconstructs the
+same target from the committed parent and exact payload, and returns zero-write `ALREADY_APPLIED` only
+when the complete objects, rendered bytes, source/target/manifest digests, Plan/approval/evidence refs
+and Git topology all match. Partial application, stale input, forged target, divergent payload,
+different digest or any later descendant returns a stable `BLOCKED_*` result with zero writes.
+
+### 13.5 Exact May Touch, Must Not Touch And Locks
+
+The machine scope remains the existing ordered ten paths; no Approve or scope mutation is required.
+The future bounded implementation delta is restricted further to these five paths:
+
+1. `scripts/connlab_model_routing_integration_reconciliation.py`
+2. `scripts/connlab_model_routing_ancestry_contract.py`
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+5. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+The fixed task-derived Developer evidence path is governance evidence, not implementation scope.
+Reviewer, QA and Integrator may change only their fixed task-derived evidence paths. The production
+writer alone may change `docs/task_board.md` after approval. This planning turn changes only the Task,
+Plan and Planner evidence.
+
+Locked and Must Not Touch:
+
+- `scripts/connlab_personal_task.py` (the existing command route is reused; no writer/state-machine
+  change is authorized);
+- `.agents/skills/connlab-lane-orchestrator/SKILL.md`,
+  `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`, and
+  `tests/unit/test_task_scoped_role_thread_lifecycle_governance.py`;
+- product/backend/frontend code, API/database/schema/migration/persistence/authority/business logic;
+- original lane/worktree/branch, existing merge and retained resources;
+- Task/Plan after approval, normal workflow schema and any other task.
+
+No manual board edit, reset, restore, stash, rebase, cherry-pick, remerge, push, cleanup, rebind or
+Final CAS is authorized before successful reviewed adoption. Any need to expand these paths returns to
+Planner/User.
+
+### 13.6 Implementation And Review Gates
+
+The same candidate worktree continues from Reviewer evidence `aeb03bd9...`; no second worktree is
+created. Developer uses TDD to replace only the old adoption-source constants/shape and source proof,
+keeps every Python file at or below 500 physical lines, and commits one implementation subject plus
+one evidence-only child. Independent Reviewer re-gates the P0 and complete matrix. Mandatory QA runs
+the full matrix on the reviewed head. Reviewer and QA evidence must use the explicitly dispatched
+model/effort/reason and exact fixed fields.
+
+Neither Reviewer nor QA may run live adoption. After QA pass/callback, Integrator first verifies and
+records an evidence-only pre-adoption attestation binding `S_QA`, payload and all three digests. The
+Orchestrator then owns the single plan/apply/durability sequence. A different source after attestation
+invalidates it. Normal Integrator begin-role starts only after adoption is committed.
+
+### 13.7 Executable Validation Matrix
+
+Run the complete section 12.5 matrix unchanged. Add disposable-repository tests using real Git commits
+and the real post-QA board shape for:
+
+- the exact baseline callback through Developer/Reviewer/QA production-writer sequence and exact
+  `S_QA` success;
+- exact plan, byte-identical apply, one board-only durability commit and committed replay;
+- baseline primary/board/action/evidence drift;
+- missing, extra, reordered, duplicated or forged board durability commits;
+- a board-only commit with invalid event semantics and an arbitrary later board-only descendant;
+- post-QA state, phase, blocker, role, callback, lifecycle, scope, Plan/approval, host/thread/action/
+  attempt/invocation and evidence-prefix drift;
+- B/D/R/Q path, direct-parent, task/role/status/subject/model/blob/hash drift;
+- dirty primary/candidate/original lane, wrong branch/worktree/head, merge parent or history rewrite;
+- source/target/manifest digest mismatch, partial write, injected pre-write failure, forged committed
+  replay and replay after a later commit;
+- preservation of board raw SHA, primary/candidate/original-lane HEAD and clean status for every
+  failed plan/apply/replay case;
+- preservation of all line budgets and existing rebind/Final CAS/retained-resource/closeout tests.
+
+Tests must construct the real `running/review -> development -> review -> qa -> integration` board
+sequence in a disposable repository. Monkeypatching the source to the obsolete blocked HEAD/board or
+overwriting `active.head_sha` to manufacture authority is forbidden.
+
+### 13.8 Canonical Post-QA Adoption-Source Manifest
+
+SHA-256 is over the exact single-line UTF-8 JSON below, without BOM or trailing newline:
+`7e2db615afcabf90b64e05cdd73c83ad8da89a9ade6c90b865d4ee50704366ac`.
+
+```json
+{"schema":"connlab.model-routing-post-qa-adoption-source-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","planning_baseline":{"primary_head":"34e44ad7bfa902df29d3e22e1e98a322e9648999","board_sha256":"707518c5b94daf95ba8efa6723d2891766ac98f43f18ebfb86879a505a7a9ecd","state":"running","phase":"review","role":"Reviewer","attempt":7,"action_id":"18bb5a4d695cbb95513be10a21cebd26b33e58cbe976ae195b1c6750a264fd5f","subject":"f349382605ba1f372a0b43c50c331eb3573cb0b6","developer_evidence_commit":"652b41329fe880491dfa93c53d8bf1ff7cb1317b","reviewer_blocker_commit":"aeb03bd9f72a68e6c66a06c788bfc0c55e19df62","reviewer_blocker_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229"},"scope":{"count":10,"plan_ref":"docs/task_governance_orchestrator_latency_and_model_routing_plan.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa","approved_request_sha256":"b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22","line_budget_manifest_sha256":"557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba","ancestry_manifest_sha256":"1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4","frozen_ledger_sha256":"e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40"},"required_board_route":["REVIEWER_BLOCKED_CALLBACK","DEVELOPER_BEGIN","DEVELOPER_INVOCATION","DEVELOPER_READY_CALLBACK","REVIEWER_BEGIN","REVIEWER_INVOCATION","REVIEWER_PASS_CALLBACK","QA_BEGIN","QA_INVOCATION","QA_PASS_CALLBACK"],"post_qa_source":{"runtime_bound_primary_head":true,"runtime_bound_raw_board_sha256":true,"state":"running","phase":"integration","blocker":null,"current_role":null,"pending_callback":null,"worktree_lifecycle":"integration_ready","require_exact_scope":true,"require_exact_plan_approval":true,"require_exact_invocations":true,"require_direct_candidate_tail":["B_POSTQA","D_POSTQA","R_POSTQA","Q_POSTQA"]},"adoption_target":{"preserve_state_phase_scope_host_subject_evidence":true,"set_plan_ref":"approved_amendment_plan_ref","set_approval_ref":"approved_amendment_approval_ref","append_evidence_ref":"committed_amendment_planner_evidence_ref_once","set_updated_at":"recorded_at","new_schema_keys":false},"digest_contract":["source_sha256","target_sha256","manifest_sha256"],"implementation_paths":["scripts/connlab_model_routing_integration_reconciliation.py","scripts/connlab_model_routing_ancestry_contract.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"forbidden":["obsolete_blocked_source","arbitrary_board_descendant","normal_schema_change","manual_board_edit","original_lane_change","remerge","rebase","push","cleanup","pre_review_rebind","pre_review_final_cas"]}
+```
+
+This section supersedes only the adoption source/target contract in sections 11 and 12. The ordered
+ten-path machine scope, line-budget split, frozen historical ledger, retained-resource contract,
+existing merge proof and all rebind/Final CAS fail-closed gates remain unchanged.
+
+`STATUS: POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION_PENDING_USER_APPROVAL`
