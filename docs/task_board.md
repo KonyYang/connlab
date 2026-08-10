@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -60,25 +60,25 @@
     "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded line-budget scope expansion amendment 0cf58120b5ced9580abb4a88daf5b4cc9c36f72c, Plan SHA-256 4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa, approved-request SHA-256 b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22, and manifest SHA-256 557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba on 2026-08-09.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-09T23:26:56Z",
+    "updated_at": "2026-08-10T10:11:32Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Reviewer found the adoption source authority is stale and unreachable after lawful callbacks.",
+      "code": "APPROVAL_REQUIRED",
+      "stage": "development",
+      "reason": "Bind the approved post-QA adoption-source amendment before implementation.",
       "dirty_paths": [],
       "failed_validation": null,
-      "subject_commit": "f349382605ba1f372a0b43c50c331eb3573cb0b6",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229",
+      "subject_commit": null,
+      "evidence_ref": null,
       "native_action_id": null,
       "related_ids": [
-        "P0_POST_QA_ADOPTION_SOURCE"
+        "POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION"
       ],
       "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-10T10:10:52Z"
+      "requires_user": true,
+      "resume_phase": "awaiting_user_approval",
+      "recorded_at": "2026-08-10T10:11:32Z"
     },
     "validation": null,
     "complex_context": {
