@@ -329,3 +329,31 @@ Canonical post-QA adoption-source manifest SHA-256:
 `7e2db615afcabf90b64e05cdd73c83ad8da89a9ade6c90b865d4ee50704366ac`.
 
 `STATUS: post_qa_adoption_source_authority_reconciliation_pending_user_approval`
+
+## Post-QA Authority Review Revision
+
+Review result: the first post-QA draft correctly bounded scope and adoption verification but placed
+the new Plan/approval write inside adoption, after implementation. It also described
+`34e44ad7..P_REV` as board-only even though that range lawfully contains planning commits. Both are
+P0 authority defects in the Plan, not runtime defects.
+
+Revised inference: after the User approves the new committed Plan, the exact pending Reviewer blocker
+is consumed normally, followed by the existing frozen `APPROVAL_REQUIRED` policy at development,
+resume to `awaiting_user_approval`, and a byte-identical same-ten-path `Approve`. Its durability commit
+is `S_AUTH`. Developer writes remain prohibited until `S_AUTH` binds the new Plan/approval. Adoption
+later preserves those fields and only appends the exact Planner evidence ref using existing schema.
+
+The planning range `34e44ad7..P_REV` is verified separately as changes to only Task, Plan and Planner
+evidence and no board. The pre-authority route from `P_REV` to `S_AUTH` is exactly four board-only
+writer commits. The adoption source ledger begins at `S_AUTH`; only `S_AUTH..S_QA` is required to be
+the exact normal Developer/Reviewer/QA board-only route. This removes both impossible assumptions
+without a new state-machine path, scope expansion or post-hoc approval.
+
+The Reviewer callback remains unconsumed and the board/runtime/candidate/original lane remain
+untouched during this revision. Implementation still requires explicit approval of the final
+committed Plan ref and revised manifest.
+
+Revised post-QA adoption-source manifest SHA-256:
+`76d0deb8aa4c8a81bbed7908d761ccaf8c82e606cf57264732c0dec814b51e96`.
+
+`STATUS: post_qa_adoption_source_authority_reconciliation_revision_pending_user_approval`

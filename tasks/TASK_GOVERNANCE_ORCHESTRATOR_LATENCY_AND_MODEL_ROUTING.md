@@ -257,18 +257,21 @@ Personal Serial Workflow V2 callbacks. The product behavior, ten-path machine sc
 split and test matrix otherwise passed review.
 
 This amendment replaces only that stale source assumption. After explicit User approval, the current
-real `REVIEWER_BLOCKED` callback must be consumed by the production writer. The same task then follows
-the normal role route `Developer fix/ready -> Reviewer pass -> QA pass`, producing an exact
+real `REVIEWER_BLOCKED` callback must be consumed by the production writer. Before any Developer
+write, the writer must then record `APPROVAL_REQUIRED`, resume to `awaiting_user_approval`, and apply
+the same ten-path approved-request with the newly approved Plan/approval. That committed approval
+checkpoint is `S_AUTH`; it is the first implementation authority for this amendment and prevents
+post-hoc approval. The same task then follows the normal role route
+`Developer fix/ready -> Reviewer pass -> QA pass`, producing an exact
 `running/integration` post-QA source with no blocker, role or callback and with
 `worktree_lifecycle=integration_ready`. Adoption may consume only that source. It must verify the
-ordered board-only durability chain from primary
-`34e44ad7bfa902df29d3e22e1e98a322e9648999`, the exact role invocations/evidence, the final direct
+ordered board-only durability chain from `S_AUTH`, the exact role invocations/evidence, the final direct
 `B -> D-ready -> R-pass -> Q-pass` candidate tail, the ten-path Plan/approval and raw board bytes.
 Arbitrary board-only descendants are not authority.
 
-The one-use adoption target preserves `running/integration`, the ten-path scope, host/lane facts,
-reviewed subject and D/R/Q evidence. Using only existing board fields, it atomically records the newly
-approved amendment Plan/approval, appends the exact Planner amendment evidence ref once, and updates
+The one-use adoption target preserves `running/integration`, the ten-path scope, the amendment
+Plan/approval already committed at `S_AUTH`, host/lane facts, reviewed subject and D/R/Q evidence.
+Using only existing board fields, it appends the exact Planner amendment evidence ref once and updates
 `active.updated_at`. It adds no schema key and fabricates no callback or role history. Plan, apply and
 committed replay must share the same source, target and manifest digests. Any partial, stale, forged,
 divergent, later-descendant, dirty or replay-conflicting fact blocks with zero writes.

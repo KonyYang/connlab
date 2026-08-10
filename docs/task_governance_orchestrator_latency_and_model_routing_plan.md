@@ -1096,34 +1096,55 @@ board transition, adoption, rebind or Final CAS is performed before exact User a
 
 ### 13.2 Authority Model And Exact Route
 
-The current planning commit is a three-path primary governance commit and does not modify the board.
-After User approval, the production writer must execute the following route without omissions or
-substitutions:
+The complete planning range from baseline `34e44ad7...` through `P_REV`—the commit named by the future
+approved Plan ref—changes only the Task, Plan and Planner evidence. Individual commits within that
+range need not each contain all three paths; no commit in the range changes the board. After User
+approval, the production writer must execute the following route without omissions or substitutions:
 
 1. consume the exact pending Reviewer attempt-7 callback as `REVIEWER_BLOCKED`, producing one
    board-only durability commit and entering normal development;
-2. begin and record one Developer invocation for the same task/host; create a bounded implementation
+2. record one canonical `APPROVAL_REQUIRED` blocker at stage `development`, with
+   `resume_phase=awaiting_user_approval`, `retryable=true`, `requires_user=true`, non-empty
+   `related_ids=["POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION"]`, all forbidden optional fields
+   null/empty, and commit only the board;
+3. resume that exact blocker using the same explicit User approval decision ref, enter
+   `awaiting_user_approval`, and commit only the board;
+4. run `Approve` with the byte-identical ten-path approved-request from section 12.7, the exact newly
+   approved Plan ref and exact User approval ref, then commit only the board. This commit is `S_AUTH`;
+5. begin and record one Developer invocation for the same task/host; create a bounded implementation
    fix `B_POSTQA` descended from `aeb03bd9...`, then its evidence-only `D_POSTQA` child; consume the
    exact Developer-ready callback with one board-only durability commit;
-3. begin/record an independent Reviewer invocation, create an evidence-only `R_POSTQA` pass child,
+6. begin/record an independent Reviewer invocation, create an evidence-only `R_POSTQA` pass child,
    and consume its callback with one board-only durability commit;
-4. begin/record mandatory QA, create an evidence-only `Q_POSTQA` pass child, and consume its callback
+7. begin/record mandatory QA, create an evidence-only `Q_POSTQA` pass child, and consume its callback
    with one board-only durability commit;
-5. stop at the exact post-QA source `S_QA`: `state=running`, `active.phase=integration`,
+8. stop at the exact post-QA source `S_QA`: `state=running`, `active.phase=integration`,
    `active.blocker=null`, `current_role=null`, `pending_callback=null`, and
    `worktree_lifecycle=integration_ready`;
-6. run the reviewed task-specific ancestry adoption in plan mode, then one byte-identical apply, and
+9. run the reviewed task-specific ancestry adoption in plan mode, then one byte-identical apply, and
    commit its sole `docs/task_board.md` mutation before any Integrator begin-role;
-7. only after committed adoption may the normal Integrator, reviewed live rebind and Final CAS route
+10. only after committed adoption may the normal Integrator, reviewed live rebind and Final CAS route
    continue under the existing approved contract.
 
-Every production-writer transition from baseline `34e44ad7...` through `S_QA` is a single-parent
-primary commit whose only changed path is `docs/task_board.md`. The adoption proof must read every
-committed parent/current board blob and classify the exact ordered events:
+The blocker in step 2 is the exact object below; `recorded_at` is replaced once by the attested UTC
+timestamp and every other key/value is frozen:
+
+```json
+{"schema":"connlab.serial-task-blocker","version":1,"code":"APPROVAL_REQUIRED","stage":"development","reason":"Bind the approved post-QA adoption-source amendment before implementation.","dirty_paths":[],"failed_validation":null,"subject_commit":null,"evidence_ref":null,"native_action_id":null,"related_ids":["POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION"],"retryable":true,"requires_user":true,"resume_phase":"awaiting_user_approval","recorded_at":"<ATTESTED_UTC>"}
+```
+
+`S_AUTH` must be `running/development`, blocker/current role/pending callback null, matching ten-path
+scope and approved paths, and bound to the new Plan/approval before the candidate changes. The exact
+pre-authority chain `P_REV -> REVIEWER_BLOCKED callback -> APPROVAL_REQUIRED block -> resume ->
+Approve/S_AUTH` is separately verified as four production-writer, single-parent, board-only durability
+commits. Any implementation delta before committed `S_AUTH` blocks.
+
+Every production-writer transition from `S_AUTH` through `S_QA` is a single-parent primary commit
+whose only changed path is `docs/task_board.md`. The adoption proof must read every committed
+parent/current board blob and classify the exact ordered events:
 
 ```text
-REVIEWER_BLOCKED callback
--> Developer begin-role
+Developer begin-role
 -> Developer record-invocation
 -> DEVELOPER_READY callback
 -> Reviewer begin-role
@@ -1144,11 +1165,13 @@ not sufficient; any extra, missing, reordered, repeated, unknown or later board 
 The adoption payload binds runtime facts that cannot exist at planning time. All are mandatory exact
 values, not inferred from the mutable current board:
 
-- amendment Plan ref/hash, exact User approval ref/hash, amendment Planner evidence ref/blob hash and
+- `S_AUTH` primary HEAD/raw board SHA and exact `running/development` authority, amendment Plan
+  ref/hash, exact User approval ref/hash, amendment Planner evidence ref/blob hash and
   the manifest SHA-256 from section 13.8;
-- baseline primary/head/board SHA, exact Reviewer attempt-7 action and blocker evidence;
-- `S_QA` primary HEAD, its single-parent chain back to the baseline, and raw board SHA-256;
-- exact ten-path `scope_contract`, `approved_code_paths`, existing ten-path Plan/approval source and
+- planning baseline/head/board SHA, exact planning-range path set, Reviewer attempt-7 action and
+  blocker evidence, and the four exact pre-authority writer commits;
+- `S_QA` primary HEAD, its single-parent chain back to `S_AUTH`, and raw board SHA-256;
+- exact ten-path `scope_contract`, `approved_code_paths`, newly approved amendment Plan/approval and
   approved-request SHA-256;
 - task branch/worktree/base/head, host/thread/lifecycle and primary/candidate/original-lane clean Git
   facts;
@@ -1175,11 +1198,10 @@ ordinary arbitrary ancestor are not accepted.
 ### 13.4 Atomic Adoption Target And Replay
 
 The adoption builder starts only from the verified `S_QA` committed object. It preserves state,
-phase, blocker, lifecycle, host/lane facts, subject commits, D/R/Q evidence, required gates and the
-ordered ten-path scope. Without adding a schema key, the single atomic target:
+phase, blocker, lifecycle, host/lane facts, subject commits, D/R/Q evidence, required gates, the
+ordered ten-path scope and the Plan/approval already committed at `S_AUTH`. Without adding a schema
+key, the single atomic target:
 
-- sets `active.plan_ref` to the exact newly approved amendment Plan ref;
-- sets `active.approval_ref` to the exact newly approved amendment approval identity;
 - appends the exact committed Planner amendment evidence ref once to
   `active.complex_context.evidence_refs`;
 - sets `active.updated_at` to the attested `recorded_at`;
@@ -1199,7 +1221,8 @@ different digest or any later descendant returns a stable `BLOCKED_*` result wit
 
 ### 13.5 Exact May Touch, Must Not Touch And Locks
 
-The machine scope remains the existing ordered ten paths; no Approve or scope mutation is required.
+The machine scope remains the existing ordered ten paths. One same-scope `Approve` is mandatory before
+implementation solely to bind the new committed Plan/approval; it must not change either path array.
 The future bounded implementation delta is restricted further to these five paths:
 
 1. `scripts/connlab_model_routing_integration_reconciliation.py`
@@ -1230,8 +1253,9 @@ Planner/User.
 
 ### 13.6 Implementation And Review Gates
 
-The same candidate worktree continues from Reviewer evidence `aeb03bd9...`; no second worktree is
-created. Developer uses TDD to replace only the old adoption-source constants/shape and source proof,
+Only after committed `S_AUTH` may the same candidate worktree continue from Reviewer evidence
+`aeb03bd9...`; no second worktree is created. Developer uses TDD to replace only the old
+adoption-source constants/shape and source proof,
 keeps every Python file at or below 500 physical lines, and commits one implementation subject plus
 one evidence-only child. Independent Reviewer re-gates the P0 and complete matrix. Mandatory QA runs
 the full matrix on the reviewed head. Reviewer and QA evidence must use the explicitly dispatched
@@ -1248,8 +1272,12 @@ after adoption is committed.
 Run the complete section 12.5 matrix unchanged. Add disposable-repository tests using real Git commits
 and the real post-QA board shape for:
 
-- the exact baseline callback through Developer/Reviewer/QA production-writer sequence and exact
-  `S_QA` success;
+- exact consumption of the frozen Reviewer callback, canonical `APPROVAL_REQUIRED` block, resume,
+  byte-identical same-scope Approve and exact `S_AUTH` success;
+- rejection of implementation before committed `S_AUTH`, old Plan/approval after `S_AUTH`, changed
+  scope during Approve, wrong decision ref and partial authority-chain durability;
+- the exact `S_AUTH` through Developer/Reviewer/QA production-writer sequence and exact `S_QA`
+  success;
 - exact plan, byte-identical apply, one board-only durability commit and committed replay;
 - baseline primary/board/action/evidence drift;
 - missing, extra, reordered, duplicated or forged board durability commits;
@@ -1264,17 +1292,18 @@ and the real post-QA board shape for:
   failed plan/apply/replay case;
 - preservation of all line budgets and existing rebind/Final CAS/retained-resource/closeout tests.
 
-Tests must construct the real `running/review -> development -> review -> qa -> integration` board
-sequence in a disposable repository. Monkeypatching the source to the obsolete blocked HEAD/board or
-overwriting `active.head_sha` to manufacture authority is forbidden.
+Tests must construct the real `running/review -> development -> blocked/APPROVAL_REQUIRED ->
+awaiting_user_approval -> development/S_AUTH -> review -> qa -> integration/S_QA` board sequence in a
+disposable repository. Monkeypatching the source to the obsolete blocked HEAD/board, bypassing
+Approve or overwriting `active.head_sha` to manufacture authority is forbidden.
 
 ### 13.8 Canonical Post-QA Adoption-Source Manifest
 
 SHA-256 is over the exact single-line UTF-8 JSON below, without BOM or trailing newline:
-`7e2db615afcabf90b64e05cdd73c83ad8da89a9ade6c90b865d4ee50704366ac`.
+`76d0deb8aa4c8a81bbed7908d761ccaf8c82e606cf57264732c0dec814b51e96`.
 
 ```json
-{"schema":"connlab.model-routing-post-qa-adoption-source-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","planning_baseline":{"primary_head":"34e44ad7bfa902df29d3e22e1e98a322e9648999","board_sha256":"707518c5b94daf95ba8efa6723d2891766ac98f43f18ebfb86879a505a7a9ecd","state":"running","phase":"review","role":"Reviewer","attempt":7,"action_id":"18bb5a4d695cbb95513be10a21cebd26b33e58cbe976ae195b1c6750a264fd5f","subject":"f349382605ba1f372a0b43c50c331eb3573cb0b6","developer_evidence_commit":"652b41329fe880491dfa93c53d8bf1ff7cb1317b","reviewer_blocker_commit":"aeb03bd9f72a68e6c66a06c788bfc0c55e19df62","reviewer_blocker_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229"},"scope":{"count":10,"plan_ref":"docs/task_governance_orchestrator_latency_and_model_routing_plan.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa","approved_request_sha256":"b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22","line_budget_manifest_sha256":"557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba","ancestry_manifest_sha256":"1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4","frozen_ledger_sha256":"e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40"},"required_board_route":["REVIEWER_BLOCKED_CALLBACK","DEVELOPER_BEGIN","DEVELOPER_INVOCATION","DEVELOPER_READY_CALLBACK","REVIEWER_BEGIN","REVIEWER_INVOCATION","REVIEWER_PASS_CALLBACK","QA_BEGIN","QA_INVOCATION","QA_PASS_CALLBACK"],"post_qa_source":{"runtime_bound_primary_head":true,"runtime_bound_raw_board_sha256":true,"state":"running","phase":"integration","blocker":null,"current_role":null,"pending_callback":null,"worktree_lifecycle":"integration_ready","require_exact_scope":true,"require_exact_plan_approval":true,"require_exact_invocations":true,"require_direct_candidate_tail":["B_POSTQA","D_POSTQA","R_POSTQA","Q_POSTQA"]},"adoption_target":{"preserve_state_phase_scope_host_subject_evidence":true,"set_plan_ref":"approved_amendment_plan_ref","set_approval_ref":"approved_amendment_approval_ref","append_evidence_ref":"committed_amendment_planner_evidence_ref_once","set_updated_at":"recorded_at","new_schema_keys":false},"digest_contract":["source_sha256","target_sha256","manifest_sha256"],"implementation_paths":["scripts/connlab_model_routing_integration_reconciliation.py","scripts/connlab_model_routing_ancestry_contract.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"forbidden":["obsolete_blocked_source","arbitrary_board_descendant","normal_schema_change","manual_board_edit","original_lane_change","remerge","rebase","push","cleanup","pre_review_rebind","pre_review_final_cas"]}
+{"schema":"connlab.model-routing-post-qa-adoption-source-amendment","version":2,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","planning_baseline":{"primary_head":"34e44ad7bfa902df29d3e22e1e98a322e9648999","board_sha256":"707518c5b94daf95ba8efa6723d2891766ac98f43f18ebfb86879a505a7a9ecd","state":"running","phase":"review","role":"Reviewer","attempt":7,"action_id":"18bb5a4d695cbb95513be10a21cebd26b33e58cbe976ae195b1c6750a264fd5f","subject":"f349382605ba1f372a0b43c50c331eb3573cb0b6","developer_evidence_commit":"652b41329fe880491dfa93c53d8bf1ff7cb1317b","reviewer_blocker_commit":"aeb03bd9f72a68e6c66a06c788bfc0c55e19df62","reviewer_blocker_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229"},"planning_range":{"start":"34e44ad7bfa902df29d3e22e1e98a322e9648999","end":"approved_amendment_commit","allowed_paths":["tasks/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING.md","docs/task_governance_orchestrator_latency_and_model_routing_plan.md","docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md"],"board_changed":false},"scope":{"count":10,"previous_plan_ref":"docs/task_governance_orchestrator_latency_and_model_routing_plan.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa","approved_request_sha256":"b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22","line_budget_manifest_sha256":"557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba","ancestry_manifest_sha256":"1f715cc17617f831986768a9f6ae31b63e7b6f14a38b711b61aec39a5d7144a4","frozen_ledger_sha256":"e2aa3a04075ded4d60919da10a2c530bae8832f2b60084c92a94d4fb54cbbf40"},"pre_implementation_authority":{"events":["REVIEWER_BLOCKED_CALLBACK","APPROVAL_REQUIRED_BLOCK","RESUME_AWAITING_USER_APPROVAL","APPROVE_SAME_TEN_PATHS"],"approval_required":{"stage":"development","resume_phase":"awaiting_user_approval","retryable":true,"requires_user":true,"related_ids":["POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION"]},"s_auth":{"runtime_bound_primary_head":true,"runtime_bound_raw_board_sha256":true,"state":"running","phase":"development","blocker":null,"current_role":null,"pending_callback":null,"require_exact_scope":true,"require_new_plan_approval":true},"implementation_before_s_auth":false},"required_board_route":["DEVELOPER_BEGIN","DEVELOPER_INVOCATION","DEVELOPER_READY_CALLBACK","REVIEWER_BEGIN","REVIEWER_INVOCATION","REVIEWER_PASS_CALLBACK","QA_BEGIN","QA_INVOCATION","QA_PASS_CALLBACK"],"post_qa_source":{"runtime_bound_s_auth_head":true,"runtime_bound_primary_head":true,"runtime_bound_raw_board_sha256":true,"state":"running","phase":"integration","blocker":null,"current_role":null,"pending_callback":null,"worktree_lifecycle":"integration_ready","require_exact_scope":true,"require_exact_new_plan_approval":true,"require_exact_invocations":true,"require_direct_candidate_tail":["B_POSTQA","D_POSTQA","R_POSTQA","Q_POSTQA"]},"adoption_target":{"preserve_state_phase_scope_host_subject_evidence":true,"preserve_plan_ref":true,"preserve_approval_ref":true,"append_evidence_ref":"committed_amendment_planner_evidence_ref_once","set_updated_at":"recorded_at","new_schema_keys":false},"digest_contract":["source_sha256","target_sha256","manifest_sha256"],"implementation_paths":["scripts/connlab_model_routing_integration_reconciliation.py","scripts/connlab_model_routing_ancestry_contract.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"forbidden":["implementation_before_s_auth","post_hoc_approval","obsolete_blocked_source","arbitrary_board_descendant","normal_schema_change","manual_board_edit","original_lane_change","remerge","rebase","push","cleanup","pre_review_rebind","pre_review_final_cas"]}
 ```
 
 This section supersedes only the adoption source/target contract in sections 11 and 12. The ordered
