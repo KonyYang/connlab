@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -56,11 +56,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa",
-    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING bounded line-budget scope expansion amendment 0cf58120b5ced9580abb4a88daf5b4cc9c36f72c, Plan SHA-256 4991f1619ff18d1bc41c5750c4c46faf1d7ec4b339a3418e2b3fcca9b1dc4bfa, approved-request SHA-256 b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22, and manifest SHA-256 557dcd22670eee1fcf8f5304200a9b324b734e1f533a25500ddd3cc85683e0ba on 2026-08-09.",
+    "plan_ref": "docs/task_governance_orchestrator_latency_and_model_routing_plan.md@b3429fd1ba27922d2f9149e711f8ca6a27e81d1e#fc0deda4c06f3c90c0c944e49141d79dad87e7377e974b15b4fe5bf1571c42da",
+    "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING post-QA adoption-source authority reconciliation revision at b3429fd1ba27922d2f9149e711f8ca6a27e81d1e; Plan SHA-256 fc0deda4c06f3c90c0c944e49141d79dad87e7377e974b15b4fe5bf1571c42da; approved-request SHA-256 b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22; manifest SHA-256 76d0deb8aa4c8a81bbed7908d761ccaf8c82e606cf57264732c0dec814b51e96; Planner evidence SHA-256 615fdd212e40ff4d5741ce7b6ac04443d8d95297559379b4ef2da312083c8ce0 on 2026-08-10.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-10T10:13:32Z",
+    "updated_at": "2026-08-10T10:18:24Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
