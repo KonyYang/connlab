@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -60,8 +60,26 @@
     "approval_ref": "User approved TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING post-QA adoption-source authority reconciliation revision at b3429fd1ba27922d2f9149e711f8ca6a27e81d1e; Plan SHA-256 fc0deda4c06f3c90c0c944e49141d79dad87e7377e974b15b4fe5bf1571c42da; approved-request SHA-256 b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22; manifest SHA-256 76d0deb8aa4c8a81bbed7908d761ccaf8c82e606cf57264732c0dec814b51e96; Planner evidence SHA-256 615fdd212e40ff4d5741ce7b6ac04443d8d95297559379b4ef2da312083c8ce0 on 2026-08-10.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-10T10:51:18Z",
-    "blocker": null,
+    "updated_at": "2026-08-10T22:04:31Z",
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "APPROVAL_REQUIRED",
+      "stage": "integration",
+      "reason": "Authorize the exact bounded post-QA evidence-prefix recovery before implementation.",
+      "dirty_paths": [],
+      "failed_validation": null,
+      "subject_commit": null,
+      "evidence_ref": null,
+      "native_action_id": null,
+      "related_ids": [
+        "POST_QA_EVIDENCE_PREFIX_RECOVERY"
+      ],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "awaiting_user_approval",
+      "recorded_at": "2026-08-10T22:04:31Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
