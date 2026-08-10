@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "review",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -61,7 +61,25 @@
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
     "updated_at": "2026-08-09T23:26:56Z",
-    "blocker": null,
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "REVIEWER_BLOCKED",
+      "stage": "review",
+      "reason": "Reviewer found the adoption source authority is stale and unreachable after lawful callbacks.",
+      "dirty_paths": [],
+      "failed_validation": null,
+      "subject_commit": "f349382605ba1f372a0b43c50c331eb3573cb0b6",
+      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229",
+      "native_action_id": null,
+      "related_ids": [
+        "P0_POST_QA_ADOPTION_SOURCE"
+      ],
+      "retryable": true,
+      "requires_user": false,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-10T10:10:52Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -71,7 +89,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": "Reviewer",
+      "current_role": null,
       "current_attempt": 7,
       "role_invocations": [
         {
@@ -370,14 +388,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@3ab4b1ec0bb9ebe683deefbf7ee44d4a0cec850f#e88638a33841a6a6d61f0e43b8478098b923c1f17b45f671e0ecd7dd68bffa29",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_integrator.md@11cf2532e0275d07c3fb9ba8d7a85d7d710a6e69#ea23c4cc2a0ad7a819e1c83fba78c954c50216de09108074f879a9d93904e477",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@0cf58120b5ced9580abb4a88daf5b4cc9c36f72c#87c4792012cb4bfa4cbd770c296440804d0d9bf1fac45c69776446fef800a4f3",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@652b41329fe880491dfa93c53d8bf1ff7cb1317b#79deeb990b8cf617cf8e23a547d7190dcc4539b943f01a4dd6656f5f4753aaec"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@652b41329fe880491dfa93c53d8bf1ff7cb1317b#79deeb990b8cf617cf8e23a547d7190dcc4539b943f01a4dd6656f5f4753aaec",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "18bb5a4d695cbb95513be10a21cebd26b33e58cbe976ae195b1c6750a264fd5f",
-        "role": "Reviewer",
-        "attempt": 7
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
