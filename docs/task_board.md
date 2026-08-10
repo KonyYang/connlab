@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -61,25 +61,7 @@
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
     "updated_at": "2026-08-10T22:06:26Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Committed adoption replay accepts a forged board-only later-descendant parent with an arbitrary evidence prefix.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "subject_commit": "d1ec6049286d9f6f839f0e95a4907fa28b0c9206",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@b89f0643f4e8007d4645639ff0bdd8aa4a751bfc#c13eae8a6b21640333377db308e75c58af89fce9c072a3edaf83245dbcb52f3c",
-      "native_action_id": null,
-      "related_ids": [
-        "B1"
-      ],
-      "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-11T04:18:00Z"
-    },
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -89,7 +71,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 12,
       "role_invocations": [
         {
@@ -472,7 +454,7 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "d1ec6049286d9f6f839f0e95a4907fa28b0c9206",
+      "developer_subject_commit": "8f6379d3bde0af81a1ff8e95c69238d0919826fe",
       "reviewer_subject_commit": "42e52cf7a5e1505f956ffbdd36d91a88c8b8e6d2",
       "qa_subject_commit": "42e52cf7a5e1505f956ffbdd36d91a88c8b8e6d2",
       "integrated_commit": null,
@@ -505,14 +487,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@a97c312c24ed6f3b736a8c38d21b064d50c7bf92#9b86c51e67ce909951c3c765bd6f27cc4a8e9c9a73a61e2907a796f67c8d0f02",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@61aa72f4e7a38ed6368a61bdc9bbc7bff92b05ba#86327e989f3f8013b54bdf190f4388051aadd1987b7fde0a482996bd75cd0cdb",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@e12a35fbdbf805999d143a9635a6a19a06f30c22#8e533a599ecf32bdbf058d59c65795639285e3734be435f91cecd02c0311f618",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@b89f0643f4e8007d4645639ff0bdd8aa4a751bfc#c13eae8a6b21640333377db308e75c58af89fce9c072a3edaf83245dbcb52f3c"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@b89f0643f4e8007d4645639ff0bdd8aa4a751bfc#c13eae8a6b21640333377db308e75c58af89fce9c072a3edaf83245dbcb52f3c",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@5c7993ed347cef557d248c04aa8c68fcee71782e#f0e4629e11d687b8ce05b795eae043fcc1a0aef43922e79d2bb83b1c482f23f1"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "e6545a842a85f9c35677170b07b9b8beb3e681773e5be8cc723bed677fd87be2",
-        "role": "Developer",
-        "attempt": 12
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
