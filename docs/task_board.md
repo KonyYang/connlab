@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -61,26 +61,7 @@
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
     "updated_at": "2026-08-10T10:51:18Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Reviewer attempt 8 found incomplete production-writer reconstruction for P_REV to S_AUTH and non-equivalent adoption regression coverage.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "subject_commit": "08fee8a7e0092d7f299ca298b0a4933120d1bf57",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@c2f96af22e3f505bc6b99cfaa8f61291f12c60aa#3c536576d894eef4ba28866536560d669a05b12ce5f22f5398e2610ca0c8be06",
-      "native_action_id": null,
-      "related_ids": [
-        "B1",
-        "B2"
-      ],
-      "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-10T12:08:46Z"
-    },
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -90,7 +71,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 10,
       "role_invocations": [
         {
@@ -413,7 +394,7 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "08fee8a7e0092d7f299ca298b0a4933120d1bf57",
+      "developer_subject_commit": "42e52cf7a5e1505f956ffbdd36d91a88c8b8e6d2",
       "reviewer_subject_commit": "8c9f3a31ac44e03df8087684a038602e5532fefb",
       "qa_subject_commit": "8c9f3a31ac44e03df8087684a038602e5532fefb",
       "integrated_commit": null,
@@ -441,14 +422,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aeb03bd9f72a68e6c66a06c788bfc0c55e19df62#744ab3ba706ccf43bafcde344952f25566ebd504b42c6e33998970b2cba07229",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@da835ad08d6d5024e45fbc16d5dcd49f19e44fe0#4d6d820dfa040262800485daaebaba7034ee5f39cbf37840310879953d785c07",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@6571d059f19b003033cf3c482a675604d4421507#500232570f0d65ac343358bd972fca128f105e097960f41be3827e426d8be45f",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@c2f96af22e3f505bc6b99cfaa8f61291f12c60aa#3c536576d894eef4ba28866536560d669a05b12ce5f22f5398e2610ca0c8be06"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@c2f96af22e3f505bc6b99cfaa8f61291f12c60aa#3c536576d894eef4ba28866536560d669a05b12ce5f22f5398e2610ca0c8be06",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@b93731c82e73097195966699d6af7d876a6fff80#5499c573813be840ada74d04f922cbf32cdbc55e126454282c13b9b397498b55"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "0df103206e3ab87afee96c8453f99dd187a6ad4527cfccef423d33327815ed29",
-        "role": "Developer",
-        "attempt": 10
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
