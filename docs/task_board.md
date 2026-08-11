@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "qa",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -71,7 +71,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": "QA",
+      "current_role": null,
       "current_attempt": 5,
       "role_invocations": [
         {
@@ -516,7 +516,7 @@
       ],
       "developer_subject_commit": "903d871a9a5a3c2228e414c0e188c01a197bc3fe",
       "reviewer_subject_commit": "903d871a9a5a3c2228e414c0e188c01a197bc3fe",
-      "qa_subject_commit": "8f6379d3bde0af81a1ff8e95c69238d0919826fe",
+      "qa_subject_commit": "903d871a9a5a3c2228e414c0e188c01a197bc3fe",
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md@ec7af84879a8ddd300f310af62ed46480341bee1#c1d85c2dfbb5fcb0bc39e76cf0b23e97efab9ab2c300f669495526608ff64f10",
@@ -552,14 +552,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@c4aafdad49e5a77f3a44c892211f21db1df3a9c0#7f7f09fc67a0c67358c4ca80d2c332ee3fe0db7e4884b6b7c532b88dcc01772d",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@38e453e082711d3b26a4d3d5592ed15055685493#d13abb74b029d87b26897e9bb11249b6c2cc7197cbbccdd28d757d75a042d9e7",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@49f282cfb67eb53082065148c6c9eac4afc4d101#786a66a5fde284cd8874cdeb5ba539180947cb7ba7e4cde8067c17e31c29d217",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@e8d52a2c57c6764be15a0022ac657f1b8a6a979d#d5a633dcdc938b179622fb344e39a4b290ffc07378a968505358126786868425"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@e8d52a2c57c6764be15a0022ac657f1b8a6a979d#d5a633dcdc938b179622fb344e39a4b290ffc07378a968505358126786868425",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@a2348109206cc434b8474d22e78efd4b04c77af3#8e04a55d04015685cb228ee39aef63cb3725357f8a455c70375d1d5702107eda"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "9f449ce9068e5f2bfb968a04767c1e28ef200cecac23e6172cbed4cc50c97088",
-        "role": "QA",
-        "attempt": 5
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
