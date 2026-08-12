@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -61,7 +61,37 @@
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
     "updated_at": "2026-08-12T14:15:03Z",
-    "blocker": null,
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "DEVELOPER_BLOCKED",
+      "stage": "development",
+      "reason": "The approved verifier cannot establish an immutable candidate-history trust root from current durable authority.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "final reconciliation verifier candidate-history trust-root validation",
+        "command": [
+          "py",
+          "-m",
+          "pytest",
+          "tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py",
+          "-q"
+        ],
+        "exit_code": 1,
+        "summary": "BLOCKED_CANDIDATE_HISTORY_TRUST_ROOT: S_AUTH head_sha is the original-lane head and is not an ancestor of candidate history; no separately machine-bound immutable candidate-history start exists.",
+        "recorded_at": "2026-08-12T14:57:44Z"
+      },
+      "subject_commit": "391ba567347610879a59a30da4a057dfe480de82",
+      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@c1db98600dd10770dcc5461310f606cf1db170f7#5a997086b040828989bbe05cae09eb53a701ae718666e248fe565fd5d0cf53d8",
+      "native_action_id": null,
+      "related_ids": [],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-12T14:57:44Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -71,7 +101,7 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 17,
       "role_invocations": [
         {
@@ -656,14 +686,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@aafc7758205d970eab17e7800b4350f57556a24b#d4cd0e215dc1cf39fb272ce260281a33643d0e3c1e4a4c4bcebba1b8e036991f",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@f67a9928b4db78f19e8ff0d39f9c0a53567f50f2#fc82d2fc003c8bf35a45ef33f0a897f30aa5d8fef7e171006affc2c678af4943",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@a2898d407fbd6deaa75bfadb2b0286f76f2cec39#cb01136d5967d47569b24ba2370634c80fad9439b62fe099985baf37e3aa6c6d",
-        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770"
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770",
+        "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@c1db98600dd10770dcc5461310f606cf1db170f7#5a997086b040828989bbe05cae09eb53a701ae718666e248fe565fd5d0cf53d8"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "5cc2f913cc3994fcdfddfc593fbfb936b35c69ea6e251f2dce5fd5c5cf895946",
-        "role": "Developer",
-        "attempt": 17
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
