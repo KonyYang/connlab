@@ -71,8 +71,8 @@
       "head_sha": "3d0884e12cc39e7b416da75ab01aaffd36c6418c",
       "integration_target": "master",
       "worktree_lifecycle": "integration_ready",
-      "current_role": null,
-      "current_attempt": 16,
+      "current_role": "Reviewer",
+      "current_attempt": 15,
       "role_invocations": [
         {
           "schema": "connlab.serial-invocation",
@@ -633,7 +633,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@f67a9928b4db78f19e8ff0d39f9c0a53567f50f2#fc82d2fc003c8bf35a45ef33f0a897f30aa5d8fef7e171006affc2c678af4943",
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@a2898d407fbd6deaa75bfadb2b0286f76f2cec39#cb01136d5967d47569b24ba2370634c80fad9439b62fe099985baf37e3aa6c6d"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "88eb65677db742a0e1d334e9421e78bafc473e0dd7b8723c6a243cce1009dffc",
+        "role": "Reviewer",
+        "attempt": 15
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
