@@ -62,12 +62,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
-      "head_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
+      "task_branch": "codex/task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
+      "base_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
+      "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -84,8 +84,8 @@
           "recorded_at": "2026-08-12T23:43:45Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "019ff81a-157d-7780-8efd-a115887a8997",
+      "host_id": "host-task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
       "approved_code_paths": [
         "AGENTS.md",
         ".agents/skills/connlab-controlled-lane/SKILL.md",
@@ -109,12 +109,7 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_planner.md@ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#e5e4a4291620a15554b4cb94dac62aabb9583eb406693feaefc1ac97a54e6783"
       ],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "bb50de9feebe41be6f739b6a63d2b722db71b1a34ae160cbc9a57ec17896e3d5",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
