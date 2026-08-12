@@ -20,13 +20,44 @@
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        "AGENTS.md",
+        ".agents/skills/connlab-controlled-lane/SKILL.md",
+        "scripts/connlab_controlled_lane.ps1",
+        "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md",
+        "docs/project_management/TASK_EXECUTION_SKILL.md",
+        "tests/unit/test_connlab_lane_worktree_script.py",
+        "tests/integration/test_connlab_execution_gate_recovery.py",
+        "tests/integration/test_connlab_serial_complex_recovery.py",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 9,
+      "classification_reason": "Complex governance cleanup with independent review; exact nine-path scope freezes retained legacy entry behavior and corrects only confirmed stale workflow assumptions.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_task_scoped_role_thread_lifecycle_governance.py tests/unit/test_connlab_lane_worktree_script.py -q",
+        "py -m pytest tests/integration/test_connlab_execution_gate_recovery.py tests/integration/test_connlab_serial_complex_recovery.py -q",
+        "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q",
+        "git diff --check"
+      ],
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false
+      }
+    },
+    "plan_ref": "docs/task_governance_personal_serial_v2_legacy_entry_freeze_and_stale_test_cleanup_plan.md@ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#67db77e0db767b3967235e9fccc185adad723619bfab8b904e991d93f3041bf5",
+    "approval_ref": "User approved exact Plan ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#67db77e0db767b3967235e9fccc185adad723619bfab8b904e991d93f3041bf5 and approved-request cef186b0e0251ffb668e5cb3360eba54af547b83f4130333fa377c5ddb8320ba; exact nine-path implementation; one gpt-5.6-terra/medium/default_complex Developer-Reviewer-QA-Integrator chain; no push, cleanup, archive, retire, or scope expansion.",
     "activation_parent_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
     "activated_at": "2026-08-12T23:42:04Z",
-    "updated_at": "2026-08-12T23:42:04Z",
+    "updated_at": "2026-08-12T23:51:52Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
