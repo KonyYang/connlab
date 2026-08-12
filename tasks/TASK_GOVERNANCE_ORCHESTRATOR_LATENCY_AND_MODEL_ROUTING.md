@@ -292,3 +292,60 @@ consumption, adoption, rebind or Final CAS is authorized until the User approves
 Plan and manifest.
 
 `STATUS: POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION_PENDING_USER_APPROVAL`
+
+## Final Reconciliation Verifier Architecture Amendment
+
+Repeated post-QA recovery attempts exposed a recursive-bootstrap defect in the task-specific
+reconciliation verifier: every legitimate fix loop required another fixed route length, evidence
+combination, or commit-pair exception. The current machine authority therefore remains frozen at
+clean primary `9ddf08cf992b2e67f3616adfab3e163a0ce5cff1`, raw board SHA-256
+`17bf90c1e85c9acef3cf6a0a7b856f9b5d8139508010270606b851fed81111f6`, with
+`running/review`, Reviewer attempt 15 and its callback pending. Reviewer evidence is
+`docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770`.
+The candidate remains at `391ba567347610879a59a30da4a057dfe480de82` with the exact uncommitted
+three-path patch retained, and the original lane remains clean at
+`f7770b6a6a82a36f946d16145a2124f6330961e1`. Planning does not consume the callback or change any
+board, runtime, test, candidate or lane bytes.
+
+The final architecture removes all three shadow authorities:
+
+1. fixed event-sequence/length approval in `_route_tokens_are_approved`;
+2. fixed evidence-count/combination approval in `_route_additions_are_approved`;
+3. commit-pair approval lists for recovery or test checkpoints.
+
+One fail-closed proof replaces them. For every exact commit in the payload-bound `S_AUTH..S_QA`
+route, the verifier requires a single parent and a sole `docs/task_board.md` change, derives the one
+production-writer event from the complete parent/child delta, replays that event in memory through
+the real writer contracts, and requires complete control-object and rendered-byte equality with the
+committed child. Callback evidence is derived only from successful replay and is verified against
+its task-derived path, commit, blob hash, fixed header fields and Git ancestry. The complete derived
+ordered evidence list must equal committed `S_QA.evidence_refs` after the immutable `S_AUTH` prefix.
+
+Candidate commits are independently classified by changed paths and evidence contents, not SHA
+allowlists. One bounded Developer round may contain one or more consecutive commits limited to the
+approved implementation paths. Its Developer evidence binds the final implementation subject;
+Reviewer and QA evidence bind the same subject. Reviewer- or QA-blocked evidence may open another
+bounded implementation round. Only a direct terminal
+`implementation subject -> Developer ready -> Reviewer pass -> QA pass` tail is accepted, and no
+commit may follow terminal QA evidence.
+
+The amendment is bounded by the exact task, committed Plan/approval and ordered ten-path scope,
+exact `S_AUTH` and `S_QA` commits plus raw board hashes, exact ordered route commit list, exact final
+D/R/Q evidence refs, source/target/manifest digests and clean primary/candidate/original-lane facts.
+Unknown, missing, duplicate, reordered, manual, partial, multiparent, non-board-only or later commits
+remain zero-write blockers. This is not a general descendant or workflow bypass.
+
+Future implementation May Touch is exactly:
+
+1. `scripts/connlab_model_routing_integration_reconciliation.py`
+2. `scripts/connlab_model_routing_ancestry_contract.py`
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+5. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+Task-derived Developer, Reviewer, QA and Integrator evidence paths remain role evidence outside the
+implementation path count. The production writer alone may modify `docs/task_board.md` after a new
+committed approval authority exists. No new helper, schema, state machine, product path, board writer,
+route/evidence length enumeration or commit-pair exception is authorized.
+
+`STATUS: FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE_AMENDMENT_PENDING_USER_APPROVAL`

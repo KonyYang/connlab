@@ -357,3 +357,72 @@ Revised post-QA adoption-source manifest SHA-256:
 `76d0deb8aa4c8a81bbed7908d761ccaf8c82e606cf57264732c0dec814b51e96`.
 
 `STATUS: post_qa_adoption_source_authority_reconciliation_revision_pending_user_approval`
+
+## Final Reconciliation Verifier Architecture Discovery And Plan Evidence
+
+Confirmed by User: stop recursively expanding route lengths, evidence combinations and commit-pair
+exceptions. Replace all three shadow authorities with committed production-writer replay, evidence
+derivation from successful callbacks and a finite-state candidate-history grammar. Keep the ten-path
+machine scope, five-path implementation boundary, independent Reviewer/QA/Integrator gates and all
+no-push/no-cleanup protections. This planning turn may change only Task, Plan and Planner evidence.
+
+Confirmed by repository at discovery:
+
+- primary is clean at `9ddf08cf992b2e67f3616adfab3e163a0ce5cff1`; raw board SHA-256 is
+  `17bf90c1e85c9acef3cf6a0a7b856f9b5d8139508010270606b851fed81111f6`;
+- board is `running/review`, Reviewer attempt 15, callback action
+  `88eb65677db742a0e1d334e9421e78bafc473e0dd7b8723c6a243cce1009dffc` pending;
+- Reviewer evidence ref is
+  `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770`;
+- candidate HEAD is `391ba567347610879a59a30da4a057dfe480de82`; its retained dirty patch is
+  exactly three approved paths with binary-diff SHA-256
+  `c53680e0f561d3e64f56ac180487545ce58f7e0c0c7ca5ce01be412b4c02a934`;
+- original lane is clean at `f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- ordered scope and approved paths both contain ten entries and retain the committed Plan/approval;
+- current helper source contains fixed route/evidence shape decisions and commit-pair exceptions; a
+  zero-write prospective projection of the next legitimate fix loop is rejected solely because its
+  evidence additions do not match one of the enumerated lengths/combinations.
+
+Planner inference: the single durable authority is the exact committed history itself. Replaying each
+board-only durability commit through the real writer contract proves event legality without predicting
+how many loops exist. Evidence legality follows only from successfully replayed callbacks. Candidate
+legality follows from a finite state machine over changed paths and exact evidence contents. Binding
+the endpoints, route list, evidence refs, digests and three clean repositories keeps this bounded and
+rejects later descendants.
+
+Not yet confirmed but non-blocking: exact internal function names and whether existing helper-local
+functions are renamed or replaced. The Plan freezes behavior and forbidden source patterns, not an
+unnecessary implementation name. No new module is permitted, so the work must remain within the five
+existing paths and line budgets.
+
+Risks and mitigations:
+
+- false-positive replay acceptance is mitigated by full control-object and raw rendered-byte equality;
+- evidence spoofing is mitigated by task-derived path, commit/blob hash, fixed-field and ancestry
+  checks;
+- unbounded history acceptance is mitigated by exact payload endpoints/list/digests and a terminal QA
+  state with no following commit;
+- accidental writer behavior change is prevented by locking both production writer modules and using
+  their existing contracts read-only;
+- recurrence of shadow authority is prevented by static tests forbidding the two named allowlist
+  functions, SHA-pair exceptions and route/evidence length enumeration.
+
+Planning May Touch is exactly Task, Plan and this Planner evidence. Future implementation May Touch is
+exactly the existing reconciliation/ancestry helpers plus the existing unit and two integration tests.
+Role evidence paths remain governance evidence. Board, writer, product, Task B, original lane, merge,
+retained resources and remotes remain locked.
+
+The Reviewer callback was not consumed. Candidate/runtime/tests/board were not modified. No adoption,
+rebind, Final CAS, merge, push, cleanup or destructive action was performed. Implementation requires
+explicit User approval of the exact committed Plan and a legal pre-implementation machine-authority
+transition binding that Plan.
+
+Canonical verifier-architecture manifest SHA-256:
+`5c7e3d2def36b09e4c157d6ae961cb09776f467b42f2e1b6c0db8d9892704427`.
+
+The unchanged ordered ten-path approved-request SHA-256 remains
+`b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22`. This amendment does not
+change its paths, expected count, risk facts or validation commands; approval must bind the newly
+committed Plan ref and this manifest rather than record implementation post hoc.
+
+`STATUS: final_reconciliation_verifier_architecture_amendment_pending_user_approval`

@@ -1311,3 +1311,207 @@ ten-path machine scope, line-budget split, frozen historical ledger, retained-re
 existing merge proof and all rebind/Final CAS fail-closed gates remain unchanged.
 
 `STATUS: POST_QA_ADOPTION_SOURCE_AUTHORITY_RECONCILIATION_PENDING_USER_APPROVAL`
+
+## 14. Final Bounded Reconciliation Verifier Architecture Amendment
+
+### 14.1 Discovery And Frozen State
+
+Confirmed by the User:
+
+- stop adding route lengths, evidence-count cases and commit-pair constants;
+- replace the recursive shadow authorities with one production-writer replay proof, derived evidence
+  proof and finite-state candidate-history proof;
+- retain the existing ten-path machine scope and narrow the implementation delta to the five existing
+  reconciliation helper/test paths;
+- submit only Task, Plan and Planner evidence for review before implementation.
+
+Confirmed by the repository at planning start:
+
+- primary/index are clean at `9ddf08cf992b2e67f3616adfab3e163a0ce5cff1`; raw board SHA-256 is
+  `17bf90c1e85c9acef3cf6a0a7b856f9b5d8139508010270606b851fed81111f6`;
+- the board is `running/review`, Reviewer attempt 15, callback action
+  `88eb65677db742a0e1d334e9421e78bafc473e0dd7b8723c6a243cce1009dffc` pending;
+- Reviewer evidence commit `391ba567347610879a59a30da4a057dfe480de82` is the direct evidence-only
+  child of Developer evidence `a2898d407fbd6deaa75bfadb2b0286f76f2cec39`, and its committed blob SHA-256
+  is `342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770`;
+- candidate HEAD is `391ba567347610879a59a30da4a057dfe480de82` with exactly three retained
+  uncommitted paths and frozen binary-diff SHA-256
+  `c53680e0f561d3e64f56ac180487545ce58f7e0c0c7ca5ce01be412b4c02a934`;
+- original lane is clean at `f7770b6a6a82a36f946d16145a2124f6330961e1`;
+- the board's ordered `scope_contract` and `approved_code_paths` both contain the same ten paths and
+  retain the committed Plan/approval authority;
+- a zero-write prospective check proved the current fixed evidence-combination grammar cannot express
+  another valid fix loop without another constant, confirming the architecture defect.
+
+Planner inference: the durable board history and candidate Git history already contain all facts
+needed to validate an arbitrary bounded number of legitimate Reviewer/QA fix loops. Legality must be
+derived by replaying actual writer transitions and parsing actual evidence, never by matching an
+expected count, a frozen event sequence, or a commit hash exception.
+
+No unresolved question changes scope, authority, validation or sequencing. Definition of Ready for a
+planning amendment is met. Implementation remains forbidden pending explicit approval of the exact
+committed Plan ref.
+
+### 14.2 Single Production-Writer Route Replay
+
+The adoption payload continues to bind exact `S_AUTH`, `S_AUTH` raw board SHA-256, exact `S_QA`,
+`S_QA` raw board SHA-256 and the complete ordered `route_commits` list. The verifier performs these
+steps for every adjacent parent/child pair and never searches beyond the supplied endpoint:
+
+1. require `child^ == parent`, exactly one parent, and changed paths exactly
+   `docs/task_board.md`;
+2. load `parent:docs/task_board.md` and `child:docs/task_board.md` as committed raw bytes and parse
+   both control objects;
+3. derive exactly one legal event and its complete persisted payload from the parent/child delta;
+4. for role events, call the real `complex_transition` contract in memory; for `block` and `resume`,
+   call the real `connlab_personal_task.transition` contract in memory against a detached control
+   copy, with time values derived from the committed child rather than wall-clock time;
+5. require the rebuilt complete child control object to equal the committed child control object;
+6. render the rebuilt board with the parent's immutable prefix/suffix and require exact byte equality
+   with `child:docs/task_board.md`.
+
+The derivation recognizes only contracts already owned by the production writer: `begin-role`,
+`record-invocation`, `consume-callback`, `block` and `resume`. It must prove that exactly one contract
+can produce the child. Zero matches or multiple matches return a stable `BLOCKED_*` result. Unknown
+events, missing/reordered/duplicated commits, manual edits, partial state, multiparent commits,
+non-board-only commits and later descendants are zero-write failures.
+
+No new writer command, state, schema, event ledger or workflow behavior is added. Production
+`scripts/connlab_personal_task.py` and `scripts/connlab_serial_complex.py` remain locked.
+
+### 14.3 Evidence Derivation From Replayed Callbacks
+
+`S_AUTH.evidence_refs` is the immutable prefix. The verifier does not compare later evidence to a
+fixed list or count. During successful route replay it collects the exact evidence ref from each
+`consume-callback` event, in order. For every collected ref it requires:
+
+- the Task-derived fixed evidence path for the callback role;
+- the exact commit and committed blob SHA-256 encoded in the ref;
+- exactly one each of `TASK_ID`, `ROLE`, `STATUS`, `SUBJECT`, `MODEL`, `REASONING_EFFORT` and
+  `MODEL_ROUTE_REASON`, with values matching the replayed invocation/callback and reviewed subject;
+- the evidence commit to be on the exact candidate ancestry and to change only its fixed evidence
+  path;
+- role/status/next and blocker content to satisfy the existing production callback contract.
+
+The committed `S_QA.evidence_refs` must equal `S_AUTH.evidence_refs + replayed_callback_refs` as a
+complete ordered list. Missing, duplicate, reordered, forged, additional or stale refs fail closed.
+No static evidence prefix extension, evidence-count branch or fallback is allowed.
+
+### 14.4 Candidate History Finite-State Grammar
+
+Candidate validation walks every commit from the immutable candidate-history start through the exact
+payload-bound QA evidence commit. It classifies commits solely from their committed changed paths and
+evidence content:
+
+- an implementation commit changes a non-empty subset of the approved implementation paths and no
+  other path;
+- consecutive implementation commits are one bounded round and remain in `implementation_open`;
+- Developer evidence changes only the fixed Developer evidence path, has status
+  `ready_for_review`, and binds the last implementation commit as its `SUBJECT`;
+- Reviewer evidence changes only the fixed Reviewer evidence path, binds that same subject and is
+  either `reviewer_blocked` or `reviewer_pass`;
+- Reviewer blocked opens a new implementation round; Reviewer pass advances to QA;
+- QA evidence changes only the fixed QA evidence path, binds the reviewed subject and is either
+  `qa_blocked` or `qa_pass`;
+- QA blocked opens a new implementation round; QA pass is terminal.
+
+The terminal suffix must be exactly the final implementation subject followed by its Developer-ready,
+Reviewer-pass and QA-pass evidence commits as direct parents. No implementation or evidence commit
+may follow terminal QA. The verifier rejects an evidence commit in the wrong state, an unknown path,
+empty implementation round, subject drift, role/status/model drift, divergent ancestry or history
+rewrite. It contains no event-length table, evidence-count table, commit-pair allowlist or SHA-based
+exception.
+
+### 14.5 Bounded Authority And Digest Contract
+
+The derived verifier is not a general descendant allowance. Adoption still requires all of:
+
+- exact task ID, committed Plan ref, approval identity and identical ordered ten-path
+  `scope_contract`/`approved_code_paths`;
+- exact `S_AUTH` commit plus raw board SHA-256 and exact `S_QA` commit plus raw board SHA-256;
+- exact ordered route commit list whose last item is `S_QA`;
+- exact final candidate subject and exact D/R/Q commits/evidence refs;
+- exact source, target and architecture-manifest digests;
+- clean primary, candidate branch/worktree/index and original lane at the payload-bound heads;
+- terminal `running/integration`, `worktree_lifecycle=integration_ready`, `blocker=null`,
+  `current_role=null` and `pending_callback=null`.
+
+Any commit after the payload-bound endpoint changes the primary/head or board digest and is rejected.
+Committed adoption replay remains valid only when `HEAD` is the unique single-parent, board-only
+durability commit and rebuilding the complete target from `HEAD^` plus the exact payload produces the
+committed control object and raw board bytes. Partial, divergent, forged or later replay is blocked.
+
+### 14.6 Exact May Touch, Must Not Touch And Locks
+
+Planning changes exactly:
+
+1. `tasks/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING.md`
+2. `docs/task_governance_orchestrator_latency_and_model_routing_plan.md`
+3. `docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_planner.md`
+
+After explicit approval and committed same-scope machine authority, implementation May Touch is
+exactly:
+
+1. `scripts/connlab_model_routing_ancestry_contract.py`
+2. `scripts/connlab_model_routing_integration_reconciliation.py`
+3. `tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+4. `tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py`
+5. `tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py`
+
+Fixed Task-derived Developer, Reviewer, QA and Integrator evidence paths are governance evidence, not
+implementation paths. `docs/task_board.md` is writer-only.
+
+Must Not Touch and Locked Paths include `scripts/connlab_personal_task.py`,
+`scripts/connlab_serial_complex.py`, every product/backend/frontend path, normal workflow schema,
+Task B, the original lane, existing merge, retained resources and remotes. No new helper, test module,
+schema, state machine, event ledger, route/evidence length case, SHA pair, manual board edit, remerge,
+reset, restore, stash, rebase, cherry-pick, push, cleanup or worktree deletion is authorized.
+
+The current Reviewer callback and candidate dirty patch remain frozen until approval. After approval,
+machine authority must bind this exact committed Plan before Developer implementation. If the
+production writer cannot express that approval route without a new state transition, stop with an
+authority blocker; do not implement first and record approval later.
+
+### 14.7 Executable Validation Matrix
+
+Retain the complete existing matrix:
+
+```text
+py -m pytest tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py -q
+py -m pytest tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py -q
+py -m pytest tests/unit/test_connlab_serial_complex_state.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
+py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q
+py -m py_compile scripts/connlab_personal_task.py scripts/connlab_model_routing_integration_reconciliation.py scripts/connlab_model_routing_ancestry_contract.py
+git diff --check
+```
+
+Add real disposable-Git regressions proving:
+
+- zero, one and two legitimate Reviewer/QA fix loops pass through the same replay/finite-state
+  algorithms without test-specific constants;
+- consecutive approved-path implementation commits bind to the last subject and pass;
+- an implementation commit containing any out-of-scope path blocks with zero writes;
+- missing, reordered or duplicate route/callback commits block;
+- forged evidence path, blob, hash, task, role, status, model or subject blocks;
+- a manual board-only edit blocks even when its final state shape appears valid;
+- a later descendant, multiparent or non-board-only route commit blocks;
+- exact plan/apply and committed replay pass, while partial/divergent/later replay blocks;
+- every negative preserves board SHA and primary/candidate/original-lane HEAD and clean state;
+- production source contains none of `_route_tokens_are_approved`,
+  `_route_additions_are_approved`, an exact recovery/test commit-pair SHA allowlist, or route/evidence
+  length enumeration.
+
+All governed Python files remain at or below 500 physical lines. Any need for another path, helper,
+schema, writer behavior or exception returns to User rather than weakening the verifier.
+
+### 14.8 Canonical Architecture Manifest
+
+SHA-256 over the exact single-line UTF-8 JSON below, without BOM or trailing newline, is
+`5c7e3d2def36b09e4c157d6ae961cb09776f467b42f2e1b6c0db8d9892704427`:
+
+```json
+{"schema":"connlab.model-routing-reconciliation-verifier-architecture-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","frozen_primary":"9ddf08cf992b2e67f3616adfab3e163a0ce5cff1","frozen_board_sha256":"17bf90c1e85c9acef3cf6a0a7b856f9b5d8139508010270606b851fed81111f6","frozen_candidate":"391ba567347610879a59a30da4a057dfe480de82","reviewer_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770","scope_count":10,"implementation_paths":["scripts/connlab_model_routing_ancestry_contract.py","scripts/connlab_model_routing_integration_reconciliation.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"proofs":["production_writer_route_replay","derived_callback_evidence","finite_state_candidate_history","complete_committed_replay"],"forbidden":["route_length_allowlist","evidence_count_allowlist","commit_pair_allowlist","arbitrary_descendant","manual_board_edit","new_helper","new_schema","new_state_machine","product_change","remerge","push","cleanup"]}
+```
+
+`STATUS: FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE_AMENDMENT_PENDING_USER_APPROVAL`
