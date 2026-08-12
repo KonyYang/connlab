@@ -37,8 +37,8 @@
       "head_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": null,
-      "current_attempt": 0,
+      "current_role": "Planner",
+      "current_attempt": 1,
       "role_invocations": [],
       "host_thread_id": null,
       "host_id": null,
@@ -63,7 +63,12 @@
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "b70970522e0ce37dfe37404a4798b932341b801dd6efee1a3f485ea80018fba2",
+        "role": "Planner",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
