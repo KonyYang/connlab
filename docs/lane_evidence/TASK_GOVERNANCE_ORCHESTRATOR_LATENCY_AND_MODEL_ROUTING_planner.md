@@ -426,3 +426,40 @@ change its paths, expected count, risk facts or validation commands; approval mu
 committed Plan ref and this manifest rather than record implementation post hoc.
 
 `STATUS: final_reconciliation_verifier_architecture_amendment_pending_user_approval`
+
+## Final Architecture Clarification Evidence
+
+User review identified two information-theoretic boundaries, and Planner confirms both from current
+schema/runtime:
+
+- the board does not persist full begin-role native-action input, resume `decision_ref` or external
+  writer provenance, so committed replay can prove only a unique production-writer-equivalent state
+  transition with complete control/raw-byte equality—not the real-world origin of identical bytes;
+- `connlab.serial-invocation` persists action/role/attempt/agent identity but not model, effort or
+  route reason, so adoption durably validates exact committed evidence and invocation identity while
+  Reviewer/QA independently audit the actual dispatch capsule and Integrator reconciles
+  `ACTUAL_MODEL_ROUTING`.
+
+The revised Plan preserves every full-object, rendered-byte, topology and digest gate. Non-equivalent
+manual edits, unknown/extra fields, partial edits, wrong persisted timestamps, multiparent,
+non-board-only, missing/reordered/duplicate/later commits remain zero-write blockers. It adds no
+schema, audit log, signature, invocation field or writer behavior.
+
+The pre-implementation machine-authority chain is now explicit and mandatory: real Reviewer attempt
+15 blocker callback and commit; canonical `APPROVAL_REQUIRED` with related ID
+`FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE` and commit; resume using the same User approval and
+commit; byte-identical ten-path same-scope Approve with the new Plan ref/same approval and commit
+`S_AUTH`; only then Developer implementation. Every step uses the production writer, safe argv-array
+transport and fresh raw board SHA. Any `BLOCKED_*` stops before implementation.
+
+Planning still changes only Task, Plan and Planner evidence. Board/raw SHA, Reviewer callback,
+candidate dirty patch and original lane remain frozen. No runtime/test/candidate implementation,
+adoption, rebind, Final CAS, merge, push or cleanup occurred.
+
+The unchanged approved-request SHA-256 remains
+`b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22`.
+
+Clarified architecture manifest v2 SHA-256:
+`824a3b7cb023e5af29d187444d5b5835bc32461f359dbc1ee28663dc708aa948`.
+
+`STATUS: final_reconciliation_verifier_architecture_amendment_pending_user_approval`

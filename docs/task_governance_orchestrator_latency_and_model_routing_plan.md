@@ -1352,7 +1352,7 @@ No unresolved question changes scope, authority, validation or sequencing. Defin
 planning amendment is met. Implementation remains forbidden pending explicit approval of the exact
 committed Plan ref.
 
-### 14.2 Single Production-Writer Route Replay
+### 14.2 Single Production-Writer-Equivalent Route Replay
 
 The adoption payload continues to bind exact `S_AUTH`, `S_AUTH` raw board SHA-256, exact `S_QA`,
 `S_QA` raw board SHA-256 and the complete ordered `route_commits` list. The verifier performs these
@@ -1362,24 +1362,38 @@ steps for every adjacent parent/child pair and never searches beyond the supplie
    `docs/task_board.md`;
 2. load `parent:docs/task_board.md` and `child:docs/task_board.md` as committed raw bytes and parse
    both control objects;
-3. derive exactly one legal event and its complete persisted payload from the parent/child delta;
+3. derive exactly one legal event and all of its persisted payload fields from the parent/child
+   delta;
 4. for role events, call the real `complex_transition` contract in memory; for `block` and `resume`,
    call the real `connlab_personal_task.transition` contract in memory against a detached control
-   copy, with time values derived from the committed child rather than wall-clock time;
+   copy. Use every value persisted in the child exactly. For validator inputs that the current schema
+   deliberately does not persist—such as the full begin-role native-action payload and resume
+   `decision_ref`—use fixed deterministic non-empty placeholders and never claim to recover their
+   original external values;
 5. require the rebuilt complete child control object to equal the committed child control object;
 6. render the rebuilt board with the parent's immutable prefix/suffix and require exact byte equality
    with `child:docs/task_board.md`.
 
 The derivation recognizes only contracts already owned by the production writer: `begin-role`,
-`record-invocation`, `consume-callback`, `block` and `resume`. It must prove that exactly one contract
-can produce the child. Zero matches or multiple matches return a stable `BLOCKED_*` result. Unknown
-events, missing/reordered/duplicated commits, manual edits, partial state, multiparent commits,
-non-board-only commits and later descendants are zero-write failures.
+`record-invocation`, `consume-callback`, `block` and `resume`. It proves that the committed child is a
+**production-writer-equivalent unique deterministic state transition**, not that a particular
+external process actually invoked the writer. The current board does not persist the full
+begin-role native-action payload, resume decision reference or external origin identity. Therefore,
+if an external edit is byte-for-byte identical to the unique reconstructed writer result, its origin
+is information-theoretically indistinguishable and is not rejected on provenance grounds. This task
+does not add a schema field, audit log, signature or writer provenance marker to close that gap.
+
+Exactly one existing transition contract must reconstruct the complete child. Zero matches or
+multiple matches return a stable `BLOCKED_*` result. Any manual edit that is not completely equal to
+the reconstructed control object and raw rendered bytes is blocked. Unknown or extra fields, state
+drift, partial edits, wrong persisted timestamps, missing/reordered/duplicated commits, multiparent
+commits, non-board-only commits and later descendants are zero-write failures. Full-object,
+rendered-byte, commit-topology and source/target/manifest-digest checks remain mandatory.
 
 No new writer command, state, schema, event ledger or workflow behavior is added. Production
 `scripts/connlab_personal_task.py` and `scripts/connlab_serial_complex.py` remain locked.
 
-### 14.3 Evidence Derivation From Replayed Callbacks
+### 14.3 Evidence Derivation And Model-Audit Boundary
 
 `S_AUTH.evidence_refs` is the immutable prefix. The verifier does not compare later evidence to a
 fixed list or count. During successful route replay it collects the exact evidence ref from each
@@ -1387,8 +1401,12 @@ fixed list or count. During successful route replay it collects the exact eviden
 
 - the Task-derived fixed evidence path for the callback role;
 - the exact commit and committed blob SHA-256 encoded in the ref;
-- exactly one each of `TASK_ID`, `ROLE`, `STATUS`, `SUBJECT`, `MODEL`, `REASONING_EFFORT` and
-  `MODEL_ROUTE_REASON`, with values matching the replayed invocation/callback and reviewed subject;
+- exactly one each of `TASK_ID`, `ROLE`, `STATUS`, `SUBJECT`, `MODEL`, `REASONING_EFFORT`,
+  `MODEL_ROUTE_REASON`, `ACTION_ID` and `ATTEMPT`;
+- `ACTION_ID`, `ROLE` and `ATTEMPT` exactly matching the durable board invocation and callback;
+- `MODEL=gpt-5.6-sol`, `REASONING_EFFORT=medium` and
+  `MODEL_ROUTE_REASON=risk:integration_conflict`, with no prefix, suffix, duplicate, missing or mixed
+  forged value;
 - the evidence commit to be on the exact candidate ancestry and to change only its fixed evidence
   path;
 - role/status/next and blocker content to satisfy the existing production callback contract.
@@ -1396,6 +1414,20 @@ fixed list or count. During successful route replay it collects the exact eviden
 The committed `S_QA.evidence_refs` must equal `S_AUTH.evidence_refs + replayed_callback_refs` as a
 complete ordered list. Missing, duplicate, reordered, forged, additional or stale refs fail closed.
 No static evidence prefix extension, evidence-count branch or fallback is allowed.
+
+This durable adoption proof does not claim that the board independently proves the actual spawn
+model. `connlab.serial-invocation` does not persist model, effort or route reason. The independent
+execution audit is separate:
+
+1. Reviewer reconciles the real role dispatch capsule and agent identity against the Developer
+   evidence and durable invocation identity;
+2. mandatory QA independently repeats the dispatch/evidence/model audit on the reviewed head;
+3. Reviewer and QA evidence record the audit result and their own actual route;
+4. Integrator produces the final `ACTUAL_MODEL_ROUTING` table from all committed role evidence.
+
+The adoption helper validates the independently reviewed, committed evidence and its durable
+invocation identity. It does not reconstruct or certify unpersisted spawn parameters from the board.
+Any evidence path/blob/hash/ancestry or fixed-field discrepancy remains fail closed.
 
 ### 14.4 Candidate History Finite-State Grammar
 
@@ -1468,9 +1500,28 @@ schema, state machine, event ledger, route/evidence length case, SHA pair, manua
 reset, restore, stash, rebase, cherry-pick, push, cleanup or worktree deletion is authorized.
 
 The current Reviewer callback and candidate dirty patch remain frozen until approval. After approval,
-machine authority must bind this exact committed Plan before Developer implementation. If the
-production writer cannot express that approval route without a new state transition, stop with an
-authority blocker; do not implement first and record approval later.
+machine authority must bind this exact committed Plan before Developer implementation through the
+following sole legal chain, without omissions or substitutions:
+
+1. consume the current real Reviewer attempt 15 `REVIEWER_BLOCKED` callback;
+2. exact-stage and commit that sole `docs/task_board.md` transition;
+3. record canonical `APPROVAL_REQUIRED` at `stage=development`, with
+   `resume_phase=awaiting_user_approval`, `retryable=true`, `requires_user=true`,
+   `related_ids=["FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE"]`, and every other field exactly as the
+   frozen blocker policy requires;
+4. exact-stage and commit that sole board transition;
+5. use the User's approval of this committed Plan as `decision_ref` and run production `resume`;
+6. exact-stage and commit that sole board transition;
+7. run same-scope `Approve` with the byte-identical ordered ten-path approved-request, this new
+   committed Plan ref and the same User approval identity;
+8. exact-stage and commit that sole board transition, defining the new `S_AUTH`;
+9. only after committed `S_AUTH` may Developer modify the existing five implementation paths.
+
+Every action uses the production writer, safe argv-array transport and the freshly computed raw board
+SHA-256. Any `BLOCKED_*`, payload/hash drift or non-board-only durability result stops before
+implementation. The Plan may not be recorded after implementation as post-hoc authority. If the
+production writer cannot express this exact chain without a new state transition, stop with an
+authority blocker.
 
 ### 14.7 Executable Validation Matrix
 
@@ -1494,7 +1545,9 @@ Add real disposable-Git regressions proving:
 - an implementation commit containing any out-of-scope path blocks with zero writes;
 - missing, reordered or duplicate route/callback commits block;
 - forged evidence path, blob, hash, task, role, status, model or subject blocks;
-- a manual board-only edit blocks even when its final state shape appears valid;
+- any manual board-only edit whose complete control object or raw bytes differ from the unique
+  writer-equivalent reconstruction blocks; a byte-identical edit cannot be distinguished by the
+  current persistence model and is outside this task's provenance claim;
 - a later descendant, multiparent or non-board-only route commit blocks;
 - exact plan/apply and committed replay pass, while partial/divergent/later replay blocks;
 - every negative preserves board SHA and primary/candidate/original-lane HEAD and clean state;
@@ -1505,13 +1558,13 @@ Add real disposable-Git regressions proving:
 All governed Python files remain at or below 500 physical lines. Any need for another path, helper,
 schema, writer behavior or exception returns to User rather than weakening the verifier.
 
-### 14.8 Canonical Architecture Manifest
+### 14.8 Canonical Clarified Architecture Manifest
 
 SHA-256 over the exact single-line UTF-8 JSON below, without BOM or trailing newline, is
-`5c7e3d2def36b09e4c157d6ae961cb09776f467b42f2e1b6c0db8d9892704427`:
+`824a3b7cb023e5af29d187444d5b5835bc32461f359dbc1ee28663dc708aa948`:
 
 ```json
-{"schema":"connlab.model-routing-reconciliation-verifier-architecture-amendment","version":1,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","frozen_primary":"9ddf08cf992b2e67f3616adfab3e163a0ce5cff1","frozen_board_sha256":"17bf90c1e85c9acef3cf6a0a7b856f9b5d8139508010270606b851fed81111f6","frozen_candidate":"391ba567347610879a59a30da4a057dfe480de82","reviewer_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770","scope_count":10,"implementation_paths":["scripts/connlab_model_routing_ancestry_contract.py","scripts/connlab_model_routing_integration_reconciliation.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"proofs":["production_writer_route_replay","derived_callback_evidence","finite_state_candidate_history","complete_committed_replay"],"forbidden":["route_length_allowlist","evidence_count_allowlist","commit_pair_allowlist","arbitrary_descendant","manual_board_edit","new_helper","new_schema","new_state_machine","product_change","remerge","push","cleanup"]}
+{"schema":"connlab.model-routing-reconciliation-verifier-architecture-amendment","version":2,"task_id":"TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING","frozen_primary":"9ddf08cf992b2e67f3616adfab3e163a0ce5cff1","frozen_board_sha256":"17bf90c1e85c9acef3cf6a0a7b856f9b5d8139508010270606b851fed81111f6","frozen_candidate":"391ba567347610879a59a30da4a057dfe480de82","reviewer_evidence":"docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_reviewer.md@391ba567347610879a59a30da4a057dfe480de82#342a4749edbfec8bfce804a4226a630e7744bfda9dc90f7d587ff96ed3036770","scope_count":10,"approved_request_sha256":"b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22","implementation_paths":["scripts/connlab_model_routing_ancestry_contract.py","scripts/connlab_model_routing_integration_reconciliation.py","tests/unit/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_reconciliation.py","tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py"],"proofs":["production_writer_equivalent_unique_transition","derived_callback_evidence","finite_state_candidate_history","complete_committed_replay"],"proof_limitations":["external_writer_origin_not_persisted","begin_role_full_payload_not_persisted","resume_decision_ref_not_persisted","spawn_model_not_persisted"],"model_audit":{"durable_fields":["TASK_ID","ROLE","STATUS","SUBJECT","MODEL","REASONING_EFFORT","MODEL_ROUTE_REASON","ACTION_ID","ATTEMPT"],"fixed_route":["gpt-5.6-sol","medium","risk:integration_conflict"],"independent_roles":["Reviewer","QA","Integrator"]},"pre_implementation_authority":["REVIEWER_BLOCKED_CALLBACK","APPROVAL_REQUIRED_FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE","RESUME_AWAITING_USER_APPROVAL","APPROVE_SAME_TEN_PATHS","S_AUTH_COMMITTED"],"forbidden":["route_length_allowlist","evidence_count_allowlist","commit_pair_allowlist","arbitrary_descendant","post_hoc_approval","new_helper","new_schema","new_state_machine","product_change","remerge","push","cleanup"]}
 ```
 
 `STATUS: FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE_AMENDMENT_PENDING_USER_APPROVAL`

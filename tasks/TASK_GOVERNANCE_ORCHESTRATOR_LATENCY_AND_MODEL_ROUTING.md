@@ -349,3 +349,29 @@ committed approval authority exists. No new helper, schema, state machine, produ
 route/evidence length enumeration or commit-pair exception is authorized.
 
 `STATUS: FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE_AMENDMENT_PENDING_USER_APPROVAL`
+
+### Final Architecture Clarification
+
+The verifier proves a unique **production-writer-equivalent** committed transition, not the external
+origin of the bytes. The current board does not persist the complete begin-role native action, resume
+decision ref or writer provenance. It therefore blocks every edit that differs from the complete
+writer reconstruction, but cannot distinguish a byte-identical external edit without a new schema,
+audit log or signature. Those additions remain forbidden.
+
+Model routing has the same explicit boundary. Durable proof binds each role evidence's unique
+`TASK_ID`, `ROLE`, `STATUS`, `SUBJECT`, `MODEL`, `REASONING_EFFORT`, `MODEL_ROUTE_REASON`,
+`ACTION_ID` and `ATTEMPT`; action/role/attempt match the board invocation and the frozen model tuple is
+`gpt-5.6-sol / medium / risk:integration_conflict`. Because invocation does not persist model fields,
+Reviewer and QA independently reconcile the actual dispatch capsule/agent identity, and Integrator
+records the final `ACTUAL_MODEL_ROUTING`. Adoption validates those committed audits rather than
+claiming to recover unpersisted spawn arguments.
+
+After User approval, implementation authority must be committed before Developer writes through the
+sole chain: consume current Reviewer blocker; commit; block with canonical `APPROVAL_REQUIRED` and
+`related_ids=["FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE"]`; commit; resume using the approval as
+decision ref; commit; same-scope Approve using the unchanged ten-path request, new Plan ref and same
+approval; commit `S_AUTH`; then and only then implement. Every action uses the production writer,
+safe argv-array transport and fresh raw board hash. Any blocked or divergent step stops without
+post-hoc approval.
+
+`STATUS: FINAL_RECONCILIATION_VERIFIER_ARCHITECTURE_AMENDMENT_PENDING_USER_APPROVAL`
