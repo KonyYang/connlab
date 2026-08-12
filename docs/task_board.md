@@ -20,7 +20,7 @@
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -37,7 +37,7 @@
       "head_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -75,13 +75,10 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "b70970522e0ce37dfe37404a4798b932341b801dd6efee1a3f485ea80018fba2",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_planner.md@ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#e5e4a4291620a15554b4cb94dac62aabb9583eb406693feaefc1ac97a54e6783"
+      ],
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
