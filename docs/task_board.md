@@ -589,6 +589,18 @@
           "host_id": "host-task-governance-orchestrator-latency-and-model-routing",
           "status": "started",
           "recorded_at": "2026-08-12T14:17:38Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "428982f68c69b51510f5e07c6d99992fe695f1c754cfa684c084bdbbde979e35",
+          "role": "Developer",
+          "attempt": 18,
+          "thread_id": null,
+          "agent_id": "/root/model_routing_final_verifier_developer17",
+          "host_id": "host-task-governance-orchestrator-latency-and-model-routing",
+          "status": "started",
+          "recorded_at": "2026-08-12T15:15:13Z"
         }
       ],
       "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
@@ -660,7 +672,7 @@
         "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@c1db98600dd10770dcc5461310f606cf1db170f7#5a997086b040828989bbe05cae09eb53a701ae718666e248fe565fd5d0cf53d8"
       ],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "428982f68c69b51510f5e07c6d99992fe695f1c754cfa684c084bdbbde979e35",
         "role": "Developer",
         "attempt": 18
