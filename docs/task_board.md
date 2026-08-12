@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -60,8 +60,34 @@
     "approval_ref": "User approved final reconciliation verifier architecture amendment v2: plan da1fdf78861555c346cbfdf77e99032aa65e3600#25ddc5acaf1a216350b348891e9f2ff91bd064233f4509cfdafcfc2eb63a35f7; manifest 824a3b7cb023e5af29d187444d5b5835bc32461f359dbc1ee28663dc708aa948; approved-request b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-12T15:14:05Z",
-    "blocker": null,
+    "updated_at": "2026-08-12T22:36:18Z",
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "QA_BLOCKED",
+      "stage": "integration",
+      "reason": "Architecture v2 machine identity constants require an exact same-scope bounded correction before adoption.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "post-QA adoption target preflight",
+        "command": [],
+        "exit_code": null,
+        "summary": "BLOCKED_ANCESTRY_ADOPTION_CONTEXT: reviewed helper still binds obsolete pre-architecture-v2 Plan/approval/adoption identities",
+        "recorded_at": "2026-08-12T22:36:18Z"
+      },
+      "subject_commit": "e57aefe132352a559ceca3c86b6878376e4d49cf",
+      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_qa.md@fedec9059daa6ed04240d199b911965bdc64a1d3#2d2d9bfdad1f7977a98e81080e2d6f4517faefdfcedc905970a52bf2efb9a1d6",
+      "native_action_id": null,
+      "related_ids": [
+        "ARCHITECTURE_V2_IDENTITY_BINDING"
+      ],
+      "retryable": true,
+      "requires_user": false,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-12T22:36:18Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
