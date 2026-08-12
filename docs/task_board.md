@@ -20,7 +20,7 @@
     "summary": "Complete the already-reviewed model-routing task through an exact, one-time integration reconciliation without relaxing normal workflow contracts.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         ".agents/skills/connlab-lane-orchestrator/SKILL.md",
@@ -60,38 +60,8 @@
     "approval_ref": "User approved final reconciliation verifier architecture amendment v2: plan da1fdf78861555c346cbfdf77e99032aa65e3600#25ddc5acaf1a216350b348891e9f2ff91bd064233f4509cfdafcfc2eb63a35f7; manifest 824a3b7cb023e5af29d187444d5b5835bc32461f359dbc1ee28663dc708aa948; approved-request b5490214cbd0753d24ae4d6dac944c7a07b2d38769f5e96b37362d2b457dde22.",
     "activation_parent_sha": "38372b9351a5ab84007bcde4728a07fefa2dae43",
     "activated_at": "2026-08-08T00:31:25Z",
-    "updated_at": "2026-08-12T14:15:03Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "DEVELOPER_BLOCKED",
-      "stage": "development",
-      "reason": "The approved verifier cannot establish an immutable candidate-history trust root from current durable authority.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "final reconciliation verifier candidate-history trust-root validation",
-        "command": [
-          "py",
-          "-m",
-          "pytest",
-          "tests/integration/test_task_governance_orchestrator_latency_model_routing_ancestry_adoption.py",
-          "-q"
-        ],
-        "exit_code": 1,
-        "summary": "BLOCKED_CANDIDATE_HISTORY_TRUST_ROOT: S_AUTH head_sha is the original-lane head and is not an ancestor of candidate history; no separately machine-bound immutable candidate-history start exists.",
-        "recorded_at": "2026-08-12T14:57:44Z"
-      },
-      "subject_commit": "391ba567347610879a59a30da4a057dfe480de82",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING_integration-reconciliation_developer.md@c1db98600dd10770dcc5461310f606cf1db170f7#5a997086b040828989bbe05cae09eb53a701ae718666e248fe565fd5d0cf53d8",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-12T14:57:44Z"
-    },
+    "updated_at": "2026-08-12T15:14:05Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
