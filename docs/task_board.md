@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -67,32 +67,8 @@
     "approval_ref": "User approved the above exact Plan ref and approved-request SHA-256 in this conversation on 2026-08-13.",
     "activation_parent_sha": "57a735199927387e0978a92165fd858fce435972",
     "activated_at": "2026-08-13T12:35:47Z",
-    "updated_at": "2026-08-13T12:56:39Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "DEVELOPER_BLOCKED",
-      "stage": "development",
-      "reason": "BLOCKED_SCOPE_REQUIRED: R1 needs backend/api/routes_project_test_plan.py and tests/integration/test_project_test_plan_preview_api.py.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "approved-scope preflight for Reviewer R1",
-        "command": [],
-        "exit_code": null,
-        "summary": "Required API request schema/route and its contract test are outside the approved May Touch; frontend-only changes would be ignored by the backend.",
-        "recorded_at": "2026-08-13T15:26:27Z"
-      },
-      "subject_commit": "60068858e1216e21ff5977b934625bc59d2113a8",
-      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@f1069be903e866c41be2a994b9e5593e20a64df4#e8591ca4479a53c69df2664db95a20ba3756dbd9695a9e3a7253c90610a076f2",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-13T15:26:27Z"
-    },
+    "updated_at": "2026-08-13T22:11:33Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
