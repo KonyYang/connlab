@@ -33,6 +33,10 @@ export function NewProjectCompletionDock({
     onChange({ ...values, ...patch });
   const specifiedInputInvalid =
     values.ltrMode === "specified" && !isValidSpecifiedLtrInput(values.specifiedLtrNumber);
+  const requiredInformationBlocked =
+    completionDisabled &&
+    !completionLoading &&
+    completionText !== "Required project information complete";
 
   return (
     <footer className="step-footer new-project-completion-dock">
@@ -98,6 +102,12 @@ export function NewProjectCompletionDock({
 
       {completionError ? (
         <p className="new-project-dock-error" role="alert">{completionError}</p>
+      ) : null}
+
+      {requiredInformationBlocked ? (
+        <p className="new-project-dock-error" role="status">
+          {completionText}. Complete the highlighted fields above before applying an LTR number.
+        </p>
       ) : null}
 
       <div className="new-project-dock-summary">

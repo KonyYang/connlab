@@ -5,6 +5,47 @@ import { NewProjectCompletionDock } from "./NewProjectCompletionDock";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
 describe("NewProjectCompletionDock Apply LTR busy state", () => {
+  it("shows an actionable required-information reason while Apply LTR is blocked", () => {
+    render(
+      <NewProjectCompletionDock
+        completionDisabled={true}
+        completionLoading={false}
+        completionText="3 required fields remaining"
+        disabled={false}
+        missingKeys={new Set()}
+        values={values}
+        onChange={vi.fn()}
+        onComplete={vi.fn()}
+        onCreateTemporaryProject={vi.fn()}
+      />
+    );
+
+    const reason = screen.getByRole("status");
+    expect(reason.textContent).toContain("3 required fields remaining");
+    expect(reason.textContent).toContain("Complete the highlighted fields above");
+    expect(
+      screen.getByRole("button", { name: /Apply LTR Number/ })
+    ).toHaveProperty("disabled", true);
+  });
+
+  it("does not show a blocker reason when Apply LTR is ready", () => {
+    render(
+      <NewProjectCompletionDock
+        completionDisabled={false}
+        completionLoading={false}
+        completionText="Required project information complete"
+        disabled={false}
+        missingKeys={new Set()}
+        values={values}
+        onChange={vi.fn()}
+        onComplete={vi.fn()}
+        onCreateTemporaryProject={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("shows completion errors inside the dock action area", () => {
     render(
       <NewProjectCompletionDock
