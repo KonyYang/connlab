@@ -20,7 +20,7 @@
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -57,37 +57,8 @@
     "approval_ref": "User approved exact Plan ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#67db77e0db767b3967235e9fccc185adad723619bfab8b904e991d93f3041bf5 and approved-request cef186b0e0251ffb668e5cb3360eba54af547b83f4130333fa377c5ddb8320ba; exact nine-path implementation; one gpt-5.6-terra/medium/default_complex Developer-Reviewer-QA-Integrator chain; no push, cleanup, archive, retire, or scope expansion.",
     "activation_parent_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
     "activated_at": "2026-08-12T23:42:04Z",
-    "updated_at": "2026-08-13T05:21:57Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "INTEGRATION_BLOCKED",
-      "stage": "integration",
-      "reason": "Integrator acceptance cannot satisfy both the frozen subject-as-branch-head proof and the clean evidence-descendant task worktree HEAD without a forbidden branch history rewrite.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "pre-integration identity audit",
-        "command": [
-          "git",
-          "worktree",
-          "list",
-          "--porcelain"
-        ],
-        "exit_code": 0,
-        "summary": "Frozen integration contract requires branch_head and registered task worktree HEAD to equal QA subject 4f1b8742..., but clean retained evidence chain makes the registered branch/worktree HEAD 59a181f7...; satisfying both requires forbidden history rewrite.",
-        "recorded_at": "2026-08-13T05:21:57Z"
-      },
-      "subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_integrator.md@59a181f7fa49dbe1757d3eda889a3f4962f0fba8#6829a55585ee66f4b0c86d647f491bfb43bc9ad49d4a8e74e07523a23578b631",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": false,
-      "requires_user": true,
-      "resume_phase": "integration",
-      "recorded_at": "2026-08-13T05:21:57Z"
-    },
+    "updated_at": "2026-08-13T10:04:42Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
