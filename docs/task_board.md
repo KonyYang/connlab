@@ -92,6 +92,18 @@
           "host_id": null,
           "status": "completed",
           "recorded_at": "2026-08-13T12:42:04Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "5e1c54eb73cf18d23bec23a23980d1cdd675fa8315f7a7dcbda0477ce7e07165",
+          "role": "Developer",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/matrix_import_default_source_developer",
+          "host_id": "host-task-matrix-import-default-source-directory",
+          "status": "started",
+          "recorded_at": "2026-08-13T14:45:22Z"
         }
       ],
       "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
@@ -127,7 +139,7 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e"
       ],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "5e1c54eb73cf18d23bec23a23980d1cdd675fa8315f7a7dcbda0477ce7e07165",
         "role": "Developer",
         "attempt": 1
