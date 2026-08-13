@@ -102,7 +102,6 @@ def invoke(
     request_json: str | None,
     *,
     controlled: bool = False,
-    activate_next: bool = False,
     json_output: bool = False,
 ) -> tuple[int, dict]:
     command = [
@@ -113,25 +112,18 @@ def invoke(
         command.extend(["-RequestJson", request_json])
     if controlled:
         command.append("-ControlledLaneV2")
-    if activate_next:
-        command.append("-ActivateNext")
     if json_output:
         command.append("-Json")
     completed = subprocess.run(command, text=True, capture_output=True)
     return completed.returncode, json.loads(completed.stdout)
 
 
-def test_run_task_activates_when_idle_then_queues_without_dispatch(repo: Path) -> None:
-    first_code, first = invoke(repo, "TASK_ONE", request("TASK_ONE"))
-    second_code, second = invoke(repo, "TASK_TWO", request("TASK_TWO"))
+def test_run_task_public_entry_surface_is_submit_approve_and_close_only() -> None:
+    source = RUN_TASK.read_text(encoding="utf-8")
 
-    assert first_code == second_code == 0
-    assert first["code"] == "ALLOW_ACTIVATE"
-    assert second["code"] == "QUEUED_NEW"
-    assert control(repo)["active"]["task_id"] == "TASK_ONE"
-    assert [item["task_id"] for item in control(repo)["queue"]] == ["TASK_TWO"]
-    assert git(repo, "branch", "--show-current") == "master"
-    assert git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+    assert '[ValidateSet("Submit", "Approve", "Close")]' in source
+    assert "ActivateNext" not in source
+    assert "activate-next" not in source.lower()
 
 
 def test_entry_points_resolve_default_root_after_parameter_binding() -> None:
@@ -140,30 +132,6 @@ def test_entry_points_resolve_default_root_after_parameter_binding() -> None:
         assert "[string]$RepositoryRoot," in source
         assert "[string]$RepositoryRoot =" not in source
         assert "if ([string]::IsNullOrWhiteSpace($RepositoryRoot))" in source
-
-
-def test_run_task_activate_next_starts_only_the_fifo_head_and_accepts_json(repo: Path) -> None:
-    invoke(repo, "TASK_ONE", request("TASK_ONE"))
-    invoke(repo, "TASK_TWO", request("TASK_TWO"))
-    value = control(repo)
-    value["active"] = None
-    value["state"] = "idle"
-    replace_control(repo, value)
-    git(repo, "add", "docs/task_board.md")
-    git(repo, "commit", "-m", "closed active fixture")
-
-    code, result = invoke(
-        repo,
-        "TASK_TWO",
-        None,
-        activate_next=True,
-        json_output=True,
-    )
-
-    assert code == 0
-    assert result["code"] == "ALLOW_ACTIVATE_NEXT"
-    assert control(repo)["active"]["task_id"] == "TASK_TWO"
-    assert control(repo)["queue"] == []
 
 
 def test_controlled_lane_switch_is_stably_frozen_and_zero_write(repo: Path) -> None:
@@ -175,3 +143,70 @@ def test_controlled_lane_switch_is_stably_frozen_and_zero_write(repo: Path) -> N
     assert result["code"] == "BLOCKED_LEGACY_MODE_FROZEN"
     assert result["changed"] is False
     assert (repo / "docs" / "task_board.md").read_bytes() == before
+
+
+def test_v2_busy_submit_is_zero_write_then_same_request_can_resubmit_after_close(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "v2-resubmit"
+    repo.mkdir()
+    git(repo, "init", "-b", "master")
+    git(repo, "config", "user.email", "test@example.com")
+    git(repo, "config", "user.name", "Test User")
+    (repo / ".gitignore").write_text("tmp/\n", encoding="utf-8")
+    (repo / "docs").mkdir()
+    v2 = {
+        "schema": "connlab.personal-serial-control", "version": 2,
+        "mode": "personal_serial", "wip_limit": 1, "state": "idle", "active": None,
+        "queue": [], "next_enqueue_sequence": 1, "last_closed": None,
+        "retained_history": [],
+    }
+    replace_control(repo, v2)
+    git(repo, "add", ".gitignore", "docs/task_board.md")
+    git(repo, "commit", "-m", "v2 fixture")
+    request_json = json.dumps({
+        "schema": "connlab.serial-task-request", "version": 1, "task_id": "TASK_RESUBMIT",
+        "summary": "same request after close", "root_cause_clear": True,
+        "expected_result_clear": True, "may_touch": ["docs/task_board.md"],
+        "targeted_validation": ["pytest targeted"], "requires_independent_review": False,
+        "forbidden_categories": {**FORBIDDEN, "push_or_release": False},
+    }, separators=(",", ":"))
+    first_code, first = invoke(repo, "TASK_RESUBMIT", request_json, json_output=True)
+    assert first_code == 0 and first["code"] == "ALLOW_ACTIVATE"
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "activate task")
+    before = (repo / "docs" / "task_board.md").read_bytes()
+
+    busy_code, busy = invoke(repo, "TASK_RESUBMIT", request_json, json_output=True)
+    assert busy_code == 2
+    assert busy["code"] == "BLOCKED_ACTIVE_TASK_RUNNING"
+    assert busy["changed"] is False
+    assert (repo / "docs" / "task_board.md").read_bytes() == before
+
+    validation = json.dumps({
+        "schema": "connlab.personal-task-validation", "version": 1, "status": "passed",
+        "checks": [{"command": "pytest targeted", "exit_code": 0, "summary": "passed"}],
+        "observed_paths": ["docs/task_board.md"], "manual_checks": [],
+        "recorded_at": "2026-08-07T00:00:00Z",
+    }, separators=(",", ":"))
+    reviewed = subprocess.run(
+        ["py", "-m", "scripts.connlab_personal_task", "mark-review", "--repo-root", str(repo),
+         "--expected-board-sha256", board_hash(repo), "--task-id", "TASK_RESUBMIT",
+         "--validation-json", validation, "--json"],
+        cwd=ROOT, check=False, capture_output=True, text=True,
+    )
+    assert reviewed.returncode == 0
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "mark reviewed")
+    completed = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-File", str(RUN_TASK), "-Task", "TASK_RESUBMIT",
+         "-Action", "Close", "-RepositoryRoot", str(repo), "-ExpectedBoardSha256", board_hash(repo),
+         "-DecisionRef", "User closed task.", "-Json"],
+        check=False, capture_output=True, text=True,
+    )
+    assert completed.returncode == 0
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "close task")
+    resubmit_code, resubmit = invoke(repo, "TASK_RESUBMIT", request_json, json_output=True)
+    assert resubmit_code == 0
+    assert resubmit["code"] == "ALLOW_ACTIVATE"

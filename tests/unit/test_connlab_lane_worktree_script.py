@@ -5,9 +5,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from scripts.connlab_controlled_lane.contracts import canonical_digest
-
-
 ROOT = Path(__file__).resolve().parents[2]
 BEGIN = "<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->"
 END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
@@ -169,28 +166,15 @@ def test_v2_governance_hooks_are_present_without_bootstrap_activation() -> None:
     assert "Bootstrap is not activated" in v2
 
 
-def test_powershell_adapter_dry_run_is_stable_and_zero_write(tmp_path: Path) -> None:
-    payload = {
-        "current_state": "worktree_ready",
-        "action_kind": "create_or_adopt_developer_task",
-    }
-    request = {
-        "schema_version": 2,
-        "command": "prepare-dispatch",
-        "request_id": "request-1",
-        "task_id": "TASK_1",
-        "lane_id": "lane-1",
-        "expected_registry_generation": 0,
-        "idempotency_key": "key-1",
-        "operation_id": "operation-1",
-        "route_id": "route-1",
-        "scope_fingerprint": "scope-1",
-        "payload": payload,
-        "payload_digest": canonical_digest(payload),
-    }
-    request_path = tmp_path / "request.json"
+def test_powershell_adapter_freezes_legacy_entry_before_consuming_inputs(
+    tmp_path: Path,
+) -> None:
     registry_root = tmp_path / "registry"
-    request_path.write_text(json.dumps(request), encoding="utf-8")
+    board_before = (ROOT / "docs" / "task_board.md").read_bytes()
+    head_before = _git(ROOT, "rev-parse", "HEAD")
+    status_before = _git(ROOT, "status", "--porcelain=v1", "--untracked-files=all")
+    branches_before = _git(ROOT, "branch", "--format=%(refname)")
+    worktrees_before = _git(ROOT, "worktree", "list", "--porcelain")
 
     completed = subprocess.run(
         [
@@ -201,7 +185,7 @@ def test_powershell_adapter_dry_run_is_stable_and_zero_write(tmp_path: Path) -> 
             "-Command",
             "prepare-dispatch",
             "-RequestJson",
-            str(request_path),
+            str(tmp_path / "unreadable-request.json"),
             "-RegistryRoot",
             str(registry_root),
             "-AllowTestRegistryRoot",
@@ -213,7 +197,78 @@ def test_powershell_adapter_dry_run_is_stable_and_zero_write(tmp_path: Path) -> 
     )
 
     output = json.loads(completed.stdout)
-    assert completed.returncode == 0
-    assert output["code"] == "CTL_DRY_RUN"
+    assert completed.returncode == 2
+    assert output["code"] == "BLOCKED_LEGACY_MODE_FROZEN"
+    assert output["allowed"] is False
+    assert output["changed"] is False
     assert output["zero_write"] is True
+    assert output["command"] == "prepare-dispatch"
+    assert (ROOT / "docs" / "task_board.md").read_bytes() == board_before
     assert not registry_root.exists()
+    assert _git(ROOT, "rev-parse", "HEAD") == head_before
+    assert _git(ROOT, "status", "--porcelain=v1", "--untracked-files=all") == status_before
+    assert _git(ROOT, "branch", "--format=%(refname)") == branches_before
+    assert _git(ROOT, "worktree", "list", "--porcelain") == worktrees_before
+
+
+def test_powershell_adapter_uses_only_the_marker_delimited_control_block(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "legacy-board"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "docs").mkdir()
+    shutil.copy2(ROOT / "scripts" / "connlab_controlled_lane.ps1", repo / "scripts")
+    (repo / "docs" / "task_board.md").write_text(
+        """# Historical prose
+
+\"schema\": \"connlab.personal-serial-control\"
+\"version\": 2
+\"mode\": \"personal_serial\"
+
+<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
+```json
+{"schema":"connlab.execution-control","version":1,"mode":"legacy"}
+```
+<!-- CONNLAB_EXECUTION_CONTROL_END -->
+""",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File",
+            str(repo / "scripts" / "connlab_controlled_lane.ps1"),
+            "-Command", "prepare-dispatch", "-RequestJson", "missing.json", "-DryRun",
+        ],
+        check=False, capture_output=True, text=True,
+    )
+
+    output = json.loads(completed.stdout)
+    assert completed.returncode == 2
+    assert output["code"] == "CTL_INVALID_REQUEST"
+
+
+def test_powershell_adapter_without_control_marker_keeps_legacy_path(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "unmarked-legacy-board"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "docs").mkdir()
+    shutil.copy2(ROOT / "scripts" / "connlab_controlled_lane.ps1", repo / "scripts")
+    (repo / "docs" / "task_board.md").write_text(
+        "# Historical board without a machine control marker\n",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File",
+            str(repo / "scripts" / "connlab_controlled_lane.ps1"),
+            "-Command", "prepare-dispatch", "-RequestJson", "missing.json", "-DryRun",
+        ],
+        check=False, capture_output=True, text=True,
+    )
+
+    output = json.loads(completed.stdout)
+    assert completed.returncode == 2
+    assert output["code"] == "CTL_INVALID_REQUEST"

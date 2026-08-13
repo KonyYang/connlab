@@ -34,6 +34,30 @@ $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
+$boardPath = Join-Path $repoRoot "docs\task_board.md"
+$boardText = [System.IO.File]::ReadAllText($boardPath, [System.Text.Encoding]::UTF8)
+$control = $null
+$controlBlock = [regex]::Match(
+    $boardText,
+    '(?s)<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->\s*```json\s*(.*?)\s*```\s*<!-- CONNLAB_EXECUTION_CONTROL_END -->'
+)
+if ($controlBlock.Success) {
+    $control = $controlBlock.Groups[1].Value | ConvertFrom-Json
+}
+if ($null -ne $control -and
+    $control.schema -eq "connlab.personal-serial-control" -and
+    $control.version -eq 2 -and
+    $control.mode -eq "personal_serial") {
+    [ordered]@{
+        code = "BLOCKED_LEGACY_MODE_FROZEN"
+        allowed = $false
+        changed = $false
+        zero_write = $true
+        command = $Command
+        reason = "Controlled Lane V2 is frozen while Personal Serial Workflow V2 is authoritative."
+    } | ConvertTo-Json -Compress
+    exit 2
+}
 $arguments = @(
     "-m",
     "scripts.connlab_controlled_lane.cli",

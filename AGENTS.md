@@ -1,5 +1,9 @@
 # AGENTS.md — ConnLab AI Coding Rules
 
+> **Current daily workflow authority:** section 22, Personal Serial Workflow V2, and the active
+> `connlab-lane-orchestrator` skill are the only daily routing authority. Conflicting material in
+> sections 13–21 is retained historical reference only and does not authorize execution.
+
 ## 1. Product Mission
 
 ConnLab is an offline Windows-first workbench for an electronic connector laboratory. It started with project intake, application-form precheck, LTR tracking, and project folder creation, and now has a controlled Project Workbench / Matrix / Approval Package foundation.

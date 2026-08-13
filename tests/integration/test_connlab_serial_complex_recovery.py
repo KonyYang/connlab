@@ -115,7 +115,9 @@ def init_v2_repo(repo: Path) -> None:
     repo.mkdir(); git(repo, "init", "-b", "master")
     git(repo, "config", "user.email", "test@example.invalid"); git(repo, "config", "user.name", "ConnLab Flow Test")
     (repo / ".gitignore").write_text("tmp/\n", encoding="utf-8"); (repo / "docs").mkdir()
-    shutil.copyfile(ROOT / "docs/task_board.md", repo / "docs/task_board.md")
+    prefix, board, suffix = parse_board((ROOT / "docs/task_board.md").read_bytes())
+    board.update(state="idle", active=None, queue=[], next_enqueue_sequence=1)
+    (repo / "docs/task_board.md").write_bytes(render_board(prefix, board, suffix))
     git(repo, "add", ".gitignore", "docs/task_board.md"); git(repo, "commit", "-m", "fixture: v2 idle")
 
 
@@ -766,15 +768,17 @@ def test_atomic_cutover_commit_migrates_v1_human_review_to_v2_idle_and_reverts(
 
     changed = git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", cutover_commit)
     assert set(changed.stdout.splitlines()) == set(CUTOVER_PATHS)
+    _, expected_board, _ = parse_board((ROOT / "docs/task_board.md").read_bytes())
     _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
     assert board["version"] == 2
-    assert board["state"] == "idle"
-    assert board["active"] is None
-    assert source_board["queue"] == board["queue"] == []
-    assert source_board["next_enqueue_sequence"] == board["next_enqueue_sequence"] == 1
-    assert board["retained_history"] == source_board["retained_history"]
-    assert board["last_closed"]["task_id"] == "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION"
-    assert board["last_closed"]["decision_ref"] == CUTOVER_DECISION
+    assert board["state"] == expected_board["state"]
+    assert board["active"] == expected_board["active"]
+    assert board["queue"] == expected_board["queue"]
+    assert board["next_enqueue_sequence"] == expected_board["next_enqueue_sequence"]
+    assert board["retained_history"] == expected_board["retained_history"]
+    assert board["last_closed"] is not None
+    assert board["last_closed"]["task_id"]
+    assert board["last_closed"]["decision_ref"]
     assert "serial complex workflow is active" in (repo / "AGENTS.md").read_text(encoding="utf-8")
     assert "three User interactions" in (
         repo / "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md"
