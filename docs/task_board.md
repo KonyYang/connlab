@@ -166,6 +166,18 @@
           "host_id": "host-task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
           "status": "started",
           "recorded_at": "2026-08-13T05:06:55Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "ef723ce941046a9efcbd9772191b599bb5b648023ffe0bcee383371c876147e1",
+          "role": "Integrator",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/legacy_freeze_integrator",
+          "host_id": "host-task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
+          "status": "started",
+          "recorded_at": "2026-08-13T05:14:16Z"
         }
       ],
       "host_thread_id": "019ff81a-157d-7780-8efd-a115887a8997",
@@ -201,7 +213,7 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_qa.md@41fead6fec04918544338fd4ea1a3399ceaba953#3833c3b53716c6f5eac98c64a03a1351e064fda50cc8a1489c524e4d14f5788a"
       ],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "ef723ce941046a9efcbd9772191b599bb5b648023ffe0bcee383371c876147e1",
         "role": "Integrator",
         "attempt": 1
