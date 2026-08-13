@@ -72,12 +72,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "57a735199927387e0978a92165fd858fce435972",
-      "head_sha": "57a735199927387e0978a92165fd858fce435972",
+      "task_branch": "codex/task-matrix-import-default-source-directory",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-default-source-directory",
+      "base_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
+      "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -94,8 +94,8 @@
           "recorded_at": "2026-08-13T12:42:04Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
+      "host_id": "host-task-matrix-import-default-source-directory",
       "approved_code_paths": [
         "backend/application/project_test_plan_source_candidate_service.py",
         "backend/api/routes_project_test_plan_source_candidates.py",
@@ -126,12 +126,7 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e"
       ],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "9bcec7fabd20f3b2c55ff1aa3ab8cce33a67a726ab6e0f94fac391b87ba1fa1a",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
