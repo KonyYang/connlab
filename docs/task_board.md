@@ -14,8 +14,54 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
+    "summary": "Populate empty Sample deposition from Post-Testing Sample Disposition on first Basic Information load while preserving manual Sample deposition overrides and existing explicit LTR preview/commit behavior.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
+      "summary": "Populate empty Sample deposition from Post-Testing Sample Disposition on first Basic Information load while preserving manual Sample deposition overrides and existing explicit LTR preview/commit behavior.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+        "docs/task_board.md"
+      ],
+      "targeted_validation": [
+        "npm test -- --run frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+        "npm run build",
+        "browser smoke: initial Basic Information load mirrors empty Sample deposition without manual select interaction",
+        "git diff --check"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "fab0d86bd9f37de918899f8e107bdab5ed1e0213",
+    "activated_at": "2026-08-13T11:24:42Z",
+    "updated_at": "2026-08-13T11:24:42Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
