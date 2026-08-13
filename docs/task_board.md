@@ -39,7 +39,20 @@
       "worktree_lifecycle": "absent",
       "current_role": "Planner",
       "current_attempt": 1,
-      "role_invocations": [],
+      "role_invocations": [
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "5960a14479c4f0e8d6dc63de4d4644319438c16cefec01cd5f6f7f18ac6cf633",
+          "role": "Planner",
+          "attempt": 1,
+          "thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
+          "agent_id": null,
+          "host_id": null,
+          "status": "completed",
+          "recorded_at": "2026-08-13T23:47:17.757282Z"
+        }
+      ],
       "host_thread_id": null,
       "host_id": null,
       "approved_code_paths": [
@@ -63,7 +76,7 @@
       "integrated_commit": null,
       "evidence_refs": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "5960a14479c4f0e8d6dc63de4d4644319438c16cefec01cd5f6f7f18ac6cf633",
         "role": "Planner",
         "attempt": 1
