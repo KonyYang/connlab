@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -71,22 +71,27 @@
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "R1 local-path reparse drops locator page/table/query; R2 required MatrixEditorWorkspace local-path, browser fallback, read-only and cancel regressions are absent.",
+      "code": "DEVELOPER_BLOCKED",
+      "stage": "development",
+      "reason": "BLOCKED_SCOPE_REQUIRED: R1 needs backend/api/routes_project_test_plan.py and tests/integration/test_project_test_plan_preview_api.py.",
       "dirty_paths": [],
-      "failed_validation": null,
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "approved-scope preflight for Reviewer R1",
+        "command": [],
+        "exit_code": null,
+        "summary": "Required API request schema/route and its contract test are outside the approved May Touch; frontend-only changes would be ignored by the backend.",
+        "recorded_at": "2026-08-13T15:26:27Z"
+      },
       "subject_commit": "60068858e1216e21ff5977b934625bc59d2113a8",
-      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@5c30adf890f879789b3cbb9696968f4c21a75d2d#6ca9411583ca4521fc913a2730be524f6add855573b14ce7183e7a86f9fbcaf1",
+      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@f1069be903e866c41be2a994b9e5593e20a64df4#e8591ca4479a53c69df2664db95a20ba3756dbd9695a9e3a7253c90610a076f2",
       "native_action_id": null,
-      "related_ids": [
-        "R1",
-        "R2"
-      ],
+      "related_ids": [],
       "retryable": true,
-      "requires_user": false,
+      "requires_user": true,
       "resume_phase": "development",
-      "recorded_at": "2026-08-13T15:16:29Z"
+      "recorded_at": "2026-08-13T15:26:27Z"
     },
     "validation": null,
     "complex_context": {
@@ -97,7 +102,7 @@
       "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -181,14 +186,10 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@2ab905a18feacd871c3ab92b76924e6752ff0249#2a6d6d56558439b69616dc60408e3843346910a15f418820f5838629047ed7f4",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@5c30adf890f879789b3cbb9696968f4c21a75d2d#6ca9411583ca4521fc913a2730be524f6add855573b14ce7183e7a86f9fbcaf1"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@5c30adf890f879789b3cbb9696968f4c21a75d2d#6ca9411583ca4521fc913a2730be524f6add855573b14ce7183e7a86f9fbcaf1",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@f1069be903e866c41be2a994b9e5593e20a64df4#e8591ca4479a53c69df2664db95a20ba3756dbd9695a9e3a7253c90610a076f2"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "b078cf89f9e462edb2a74a981d2708acc8f87e655bb073586e0dcc3474fabb48",
-        "role": "Developer",
-        "attempt": 2
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
