@@ -126,7 +126,12 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "host_creation_pending",
+        "action_id": "9bcec7fabd20f3b2c55ff1aa3ab8cce33a67a726ab6e0f94fac391b87ba1fa1a",
+        "role": "Host",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
