@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY",
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "human_review",
+    "phase": "closing",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -238,7 +238,7 @@
       "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
-      "close_decision_ref": null
+      "close_decision_ref": "User decision in current thread: 关闭"
     }
   },
   "queue": [],
