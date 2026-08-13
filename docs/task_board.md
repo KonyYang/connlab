@@ -20,7 +20,7 @@
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -58,26 +58,7 @@
     "activation_parent_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
     "activated_at": "2026-08-12T23:42:04Z",
     "updated_at": "2026-08-12T23:51:52Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Second Reviewer gate found F3 after the single allowed bounded fix: no-marker legacy board reads uninitialized control under StrictMode, so retained non-v2 behavior is not preserved.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "subject_commit": "6070bbd241431891579e99fc0c7d432281507c4d",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@4e4e0dc0d6ec6d2f0352c3f8ecaad96ac4c3fdef#3c1c10339f9a4875aadc14d340d39ec9d42a4f6ebde299dd67a8e170de95c96f",
-      "native_action_id": null,
-      "related_ids": [
-        "F3",
-        "BOUNDED_FIX_EXHAUSTED"
-      ],
-      "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-13T00:27:32Z"
-    },
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -87,7 +68,7 @@
       "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 3,
       "role_invocations": [
         {
@@ -181,7 +162,7 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "6070bbd241431891579e99fc0c7d432281507c4d",
+      "developer_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
@@ -190,14 +171,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@828d22b16f17d35206b37d2687d24b724e8b83b4#7d1887199eaab029efc09a8d0418da600442f5aeae3a17217bb38465cdaf271c",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@62c3915e4cf0c6766e08e21fb00e86fad19107c5#d14ce5ace87820c6804d5d264e33cbc220c5caec2b8594be68f7e0e75fbc2b7a",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@e92f087c93c92923dac8eec8e3f4519d2b5ec763#b374beae2d931023d1edf06a695b8a3251093d3f77eebecf1082ec8f58a9541a",
-        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@4e4e0dc0d6ec6d2f0352c3f8ecaad96ac4c3fdef#3c1c10339f9a4875aadc14d340d39ec9d42a4f6ebde299dd67a8e170de95c96f"
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@4e4e0dc0d6ec6d2f0352c3f8ecaad96ac4c3fdef#3c1c10339f9a4875aadc14d340d39ec9d42a4f6ebde299dd67a8e170de95c96f",
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@f6933cd358e1083e509d98b386c429705624d561#ef9ee0bcf3352aff1c3efcf741a71ab476242f39b8f21f2480987066a02addd5"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "70750b806c20cfa791187c9389e0afafc5dacc4a7fb2976743fa9731b7a5d98f",
-        "role": "Developer",
-        "attempt": 3
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
