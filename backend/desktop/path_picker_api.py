@@ -24,6 +24,9 @@ class DesktopPathPickerPort(Protocol):
     def pick_directory(self, resource_type: str) -> Path | None:
         """Return one selected directory path, or None when cancelled."""
 
+    def pick_matrix_import_source(self, initial_directory: Path | None) -> Path | None:
+        """Return a Matrix source selected from an optional initial directory."""
+
 
 class DesktopPathPickerApi:
     """JavaScript-exposed API for Settings file and folder selection."""
@@ -41,6 +44,13 @@ class DesktopPathPickerApi:
         if selected is None:
             return None
         return str(selected)
+
+    def pickMatrixImportSource(self, initial_directory: str | None) -> str | None:
+        """Return a selected Matrix source without trusting an invalid directory."""
+        candidate = Path(initial_directory) if initial_directory else None
+        safe_directory = candidate if candidate is not None and candidate.is_dir() else None
+        selected = self._picker.pick_matrix_import_source(safe_directory)
+        return str(selected) if selected is not None else None
 
 
 class PyWebViewPathPicker:
@@ -68,6 +78,21 @@ class PyWebViewPathPicker:
         selection = window.create_file_dialog(
             webview.FOLDER_DIALOG,
             allow_multiple=False,
+        )
+        return _first_selected_path(selection)
+
+    def pick_matrix_import_source(self, initial_directory: Path | None) -> Path | None:
+        """Return one Matrix source using the project directory when available."""
+        webview = _load_webview()
+        window = _require_window(self._window_provider())
+        selection = window.create_file_dialog(
+            webview.OPEN_DIALOG,
+            allow_multiple=False,
+            directory=str(initial_directory) if initial_directory is not None else "",
+            file_types=(
+                "Matrix source documents (*.pdf;*.doc;*.docx)",
+                "All files (*.*)",
+            ),
         )
         return _first_selected_path(selection)
 

@@ -17,6 +17,7 @@ import {
   isMatrixImportStandardVersionActionRequiredError,
   isProjectLifecycleReadonlyErrorDetail,
   matrixPreviewPdfUrl,
+  previewProjectTestPlanMatrixFromPath,
   previewProjectTestPlanMatrixFromUpload,
   saveMatrixEditorSessionDraft,
   saveMatrixStepQuantities,
@@ -43,6 +44,8 @@ import {
   getMatrixEditorXlsxExportDisabledReason,
 } from "./matrixEditorXlsxExportProjection";
 import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
+import { useMatrixImportSourcePicker } from "./useMatrixImportSourcePicker";
+import { hasMatrixImportSourcePicker } from "../../desktop/pathPickerBridge";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
@@ -1693,6 +1696,7 @@ export function MatrixEditorWorkspace({
   const [committingImport, setCommittingImport] = useState(false);
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [importSourcePath, setImportSourcePath] = useState<string | null>(null);
   const [committedSourceDocumentName, setCommittedSourceDocumentName] = useState<string | null>(null);
   const [locatorPage, setLocatorPage] = useState("");
   const [locatorTableOnPage, setLocatorTableOnPage] = useState("");
@@ -2585,12 +2589,65 @@ export function MatrixEditorWorkspace({
     fileInputRef.current?.click();
   };
 
-  const onChangeSourceMatrix = (): void => {
+  const openImportPreviewFromPath = async (sourcePath: string): Promise<void> => {
+    setImportFile(null);
+    setImportSourcePath(sourcePath);
+    setLocatorPage("");
+    setLocatorTableOnPage("");
+    setLocatorKeyword("");
+    setImportError(null);
+    setImportCommitWarning("");
+    setImportLookupMessage("");
+    setImportLookupTone("idle");
+    setImportPreview(null);
+    setImportPreviewPdfToken(null);
+    setLastParsedLocator(null);
+    setImportingPreview(true);
+    setOpeningImportPreview(true);
+    try {
+      const preview = await previewProjectTestPlanMatrixFromPath({
+        source_path: sourcePath,
+        project_id: projectId,
+      });
+      setImportPreview(preview);
+      setImportPreviewPdfToken(preview.preview_pdf_token ?? null);
+      setLocatorPage(preview.selected_page_number != null ? String(preview.selected_page_number) : "");
+      setLocatorTableOnPage(preview.selected_page_table_index != null ? String(preview.selected_page_table_index) : "");
+      setLastParsedLocator(previewImportLocatorSnapshot(preview));
+      setShowImportDialog(true);
+      applyImportPreviewStatus(preview);
+    } catch (error) {
+      setImportError(parseRequestError(error, "Failed to import Matrix."));
+    } finally {
+      setImportingPreview(false);
+      setOpeningImportPreview(false);
+    }
+  };
+
+  const chooseMatrixImportSource = useMatrixImportSourcePicker(projectId);
+
+  const onChangeSourceMatrix = async (): Promise<void> => {
     if (isLifecycleReadonly) {
       setImportError(lifecycleReadonlyView.message);
       return;
     }
-    openChooseDocx();
+    if (!hasMatrixImportSourcePicker()) {
+      openChooseDocx();
+      return;
+    }
+    const choice = await chooseMatrixImportSource();
+    if (choice.kind === "browser") {
+      openChooseDocx();
+      return;
+    }
+    if (choice.kind === "cancelled") {
+      return;
+    }
+    if (choice.kind === "unsupported") {
+      setImportError("Choose a PDF or Word document (.doc or .docx).");
+      return;
+    }
+    await openImportPreviewFromPath(choice.path);
   };
 
   const markUnsaved = (): void => {
@@ -2685,14 +2742,19 @@ export function MatrixEditorWorkspace({
     parsedLocator: { snapshot: ImportLocatorSnapshot; pageNumber: number | null; tableIndex: number | null },
     preservePreviewOnNoMatch: boolean,
   ): Promise<MatrixPreviewResponse | null> => {
-    if (!importFile) {
+    if (!importFile && !importSourcePath) {
       return null;
     }
-    const preview = await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
-      pageNumber: parsedLocator.pageNumber,
-      pageTableIndex: parsedLocator.tableIndex,
-      tableTextQuery: parsedLocator.snapshot.keyword || null,
-    });
+    const preview = importFile
+      ? await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
+          pageNumber: parsedLocator.pageNumber,
+          pageTableIndex: parsedLocator.tableIndex,
+          tableTextQuery: parsedLocator.snapshot.keyword || null,
+        })
+      : await previewProjectTestPlanMatrixFromPath({
+          source_path: importSourcePath as string,
+          project_id: projectId,
+        });
     if (preview.preview_pdf_token) {
       setImportPreviewPdfToken(preview.preview_pdf_token);
     }
@@ -2832,6 +2894,7 @@ export function MatrixEditorWorkspace({
       return;
     }
     setImportFile(file);
+    setImportSourcePath(null);
     setLocatorPage("");
     setLocatorTableOnPage("");
     setLocatorKeyword("");
@@ -3528,8 +3591,8 @@ export function MatrixEditorWorkspace({
             <header>
               <div className="matrix-editor-import-header-inline">
                 <h3>Import Matrix</h3>
-                <p title={importPreview?.source_document_name ?? importFile?.name ?? "Selected file"}>
-                  {importPreview?.source_document_name ?? importFile?.name ?? "Selected file"}
+                <p title={importPreview?.source_document_name ?? importFile?.name ?? importSourcePath ?? "Selected file"}>
+                  {importPreview?.source_document_name ?? importFile?.name ?? importSourcePath ?? "Selected file"}
                 </p>
               </div>
             </header>

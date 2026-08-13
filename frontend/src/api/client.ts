@@ -1990,6 +1990,11 @@ export type MatrixSourceCandidatesResponse = {
   project_id: string;
   candidates: MatrixSourceCandidate[];
   warnings: string[];
+  preferred_import_directory: string | null;
+  preferred_import_directory_source:
+    | "submitted_material"
+    | "intake_attachments"
+    | "unavailable";
 };
 
 export type ProjectTestPlanDraftCreateRequest = {

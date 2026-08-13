@@ -6145,6 +6145,23 @@ def test_task325_project_workbench_projection_hides_short_loading_copy() -> None
     assert "No active confirmed matrix yet" in projection_source
 
 
+def test_matrix_import_default_source_directory_wiring_is_bounded() -> None:
+    client_source = (FRONTEND_ROOT / "src" / "api" / "client.ts").read_text(encoding="utf-8")
+    bridge_source = (FRONTEND_ROOT / "src" / "desktop" / "pathPickerBridge.ts").read_text(encoding="utf-8")
+    hook_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "useMatrixImportSourcePicker.ts"
+    ).read_text(encoding="utf-8")
+    workspace_source = (
+        FRONTEND_ROOT / "src" / "features" / "matrix-editor" / "MatrixEditorWorkspace.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "preferred_import_directory" in client_source
+    assert "pickMatrixImportSource" in bridge_source
+    assert "listProjectTestPlanSourceCandidates" in hook_source
+    assert "previewProjectTestPlanMatrixFromPath" in workspace_source
+    assert 'accept=".pdf,.doc,.docx"' in workspace_source
+
+
 def test_task326_active_matrix_workspace_removes_duplicate_folder_details() -> None:
     """TASK_326 keeps the active Matrix workspace focused on the single Folder Action card."""
     active_workspace_source = (

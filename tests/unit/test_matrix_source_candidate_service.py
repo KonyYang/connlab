@@ -70,7 +70,68 @@ def test_get_candidate_source_path_checks_project_ownership_and_file(tmp_path: P
         missing_service.get_candidate_source_path("P1", "A2")
 
 
-def _service(assets: list[FileAsset]) -> ProjectTestPlanSourceCandidateService:
+def test_preferred_import_directory_prioritizes_submitted_material(tmp_path: Path) -> None:
+    intake = tmp_path / "intake"
+    intake.mkdir()
+    attachment = intake / "spec.pdf"
+    attachment.write_bytes(b"x")
+    official = tmp_path / "official"
+    submitted = official / "Submitted Material"
+    submitted.mkdir(parents=True)
+    service = _service(
+        assets=[_asset("A1", attachment, "spec.pdf", source_intake_asset_id="I1")],
+        official_folder=official,
+    )
+
+    result = service.list_source_candidates("P1")
+
+    assert result.preferred_import_directory == submitted
+    assert result.preferred_import_directory_source == "submitted_material"
+
+
+def test_preferred_import_directory_uses_deterministic_intake_parent(tmp_path: Path) -> None:
+    later = tmp_path / "z-intake"
+    earlier = tmp_path / "a-intake"
+    later.mkdir()
+    earlier.mkdir()
+    service = _service(
+        assets=[
+            _asset("A1", later / "b.pdf", "b.pdf", source_intake_asset_id="I1"),
+            _asset("A2", earlier / "a.docx", "a.docx", source_intake_asset_id="I2"),
+            _asset("A3", earlier / "mail.msg", "mail.msg", source_role="email_source"),
+        ]
+    )
+    for asset in service._assets._assets.values():
+        asset.path.write_bytes(b"x")
+
+    result = service.list_source_candidates("P1")
+
+    assert result.preferred_import_directory == earlier
+    assert result.preferred_import_directory_source == "intake_attachments"
+
+
+def test_preferred_import_directory_is_unavailable_for_missing_paths(tmp_path: Path) -> None:
+    service = _service(
+        assets=[
+            _asset(
+                "A1",
+                tmp_path / "missing" / "spec.pdf",
+                "spec.pdf",
+                source_intake_asset_id="I1",
+            )
+        ],
+        official_folder=tmp_path / "missing-official",
+    )
+
+    result = service.list_source_candidates("P1")
+
+    assert result.preferred_import_directory is None
+    assert result.preferred_import_directory_source == "unavailable"
+
+
+def _service(
+    assets: list[FileAsset], official_folder: Path | None = None
+) -> ProjectTestPlanSourceCandidateService:
     project = Project(
         project_id="P1",
         project_no="DL-2026-05-001",
@@ -82,10 +143,18 @@ def _service(assets: list[FileAsset]) -> ProjectTestPlanSourceCandidateService:
     return ProjectTestPlanSourceCandidateService(
         project_store=_ProjectStore({"P1": project}),
         file_asset_store=_FileAssetStore(assets),
+        official_workspace_store=_WorkspaceStore(official_folder),
     )
 
 
-def _asset(asset_id: str, path: Path, original_name: str) -> FileAsset:
+def _asset(
+    asset_id: str,
+    path: Path,
+    original_name: str,
+    *,
+    source_intake_asset_id: str | None = None,
+    source_role: str | None = None,
+) -> FileAsset:
     return FileAsset(
         asset_id=asset_id,
         project_id="P1",
@@ -93,6 +162,8 @@ def _asset(asset_id: str, path: Path, original_name: str) -> FileAsset:
         path=path,
         original_name=original_name,
         registered_on=date(2026, 5, 14),
+        source_intake_asset_id=source_intake_asset_id,
+        source_role=source_role,
     )
 
 
@@ -113,3 +184,13 @@ class _FileAssetStore:
 
     def list_by_project(self, project_id: str) -> list[FileAsset]:
         return [item for item in self._assets.values() if item.project_id == project_id]
+
+
+class _WorkspaceStore:
+    def __init__(self, official_folder: Path | None) -> None:
+        self._official_folder = official_folder
+
+    def get_by_project(self, project_id: str) -> object | None:
+        if self._official_folder is None:
+            return None
+        return type("Workspace", (), {"official_folder_path": self._official_folder})()

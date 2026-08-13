@@ -817,6 +817,7 @@ def get_project_test_plan_source_candidate_service(
     return ProjectTestPlanSourceCandidateService(
         project_store=ProjectRepository(session),
         file_asset_store=FileAssetRepository(session),
+        official_workspace_store=ProjectOfficialWorkspaceRepository(session),
     )
 
 

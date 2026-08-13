@@ -44,6 +44,24 @@ def test_desktop_path_picker_api_returns_none_when_cancelled() -> None:
     assert picker.directory_requests == ["project_output_root"]
 
 
+def test_matrix_import_picker_passes_existing_initial_directory(tmp_path: Path) -> None:
+    picker = _Picker(file_path=Path("C:/files/spec.pdf"), directory_path=None)
+    api = DesktopPathPickerApi(picker=picker)
+
+    selected = api.pickMatrixImportSource(str(tmp_path))
+
+    assert selected == "C:\\files\\spec.pdf"
+    assert picker.matrix_requests == [tmp_path]
+
+
+def test_matrix_import_picker_ignores_unavailable_initial_directory(tmp_path: Path) -> None:
+    picker = _Picker(file_path=None, directory_path=None)
+    api = DesktopPathPickerApi(picker=picker)
+
+    assert api.pickMatrixImportSource(str(tmp_path / "missing")) is None
+    assert picker.matrix_requests == [None]
+
+
 def test_desktop_shell_reports_missing_pywebview_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     """The shell fails clearly when the optional desktop runtime is absent."""
     original_import = builtins.__import__
@@ -65,6 +83,7 @@ def test_desktop_bridge_script_installs_frontend_contract() -> None:
 
     assert "window.connlabDesktopPathPicker" in script
     assert "window.pywebview.api.pickExternalResourcePath" in script
+    assert "window.pywebview.api.pickMatrixImportSource" in script
 
 
 @pytest.mark.parametrize(
@@ -91,6 +110,7 @@ class _Picker:
         self._directory_path = directory_path
         self.file_requests: list[str] = []
         self.directory_requests: list[str] = []
+        self.matrix_requests: list[Path | None] = []
 
     def pick_file(self, resource_type: str) -> Path | None:
         self.file_requests.append(resource_type)
@@ -99,3 +119,7 @@ class _Picker:
     def pick_directory(self, resource_type: str) -> Path | None:
         self.directory_requests.append(resource_type)
         return self._directory_path
+
+    def pick_matrix_import_source(self, initial_directory: Path | None) -> Path | None:
+        self.matrix_requests.append(initial_directory)
+        return self._file_path
