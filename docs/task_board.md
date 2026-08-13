@@ -14,8 +14,53 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_GOVERNANCE_SERIAL_HOST_CREATION_RELIABILITY",
+    "summary": "Add a deterministic idempotent Create action to the existing serial worktree helper and document one safe zero-write retry boundary.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_GOVERNANCE_SERIAL_HOST_CREATION_RELIABILITY",
+      "summary": "Add a deterministic idempotent Create action to the existing serial worktree helper and document one safe zero-write retry boundary.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "scripts/connlab_serial_worktree.ps1",
+        ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+        "docs/task_board.md"
+      ],
+      "targeted_validation": [
+        "temporary Git repository Create/reuse/conflict smoke",
+        "py -m pytest tests/unit/test_connlab_serial_complex_worktree.py -q",
+        "git diff --check"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "e756aa479b66837fffbfee82a7ffa8a6ca66c7a1",
+    "activated_at": "2026-08-13T23:20:57Z",
+    "updated_at": "2026-08-13T23:20:57Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
