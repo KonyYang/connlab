@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_NEW_PROJECT_APPLY_LTR_BACKEND_BLOCKER_NOTICE",
     "summary": "Surface the real Apply LTR backend blocker beside the completion action and disable repeated submissions until relevant page state changes.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -57,9 +57,38 @@
     "approval_ref": null,
     "activation_parent_sha": "7195da40c35713e4aa7848e6db4ca35095974054",
     "activated_at": "2026-08-13T11:58:24Z",
-    "updated_at": "2026-08-13T11:58:24Z",
+    "updated_at": "2026-08-13T12:02:30Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "npm test -- --run src/pages/IntakeInboxPage.test.tsx",
+          "exit_code": 0,
+          "summary": "7 passed"
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "TypeScript and Vite production build passed"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "passed"
+        }
+      ],
+      "observed_paths": [
+        "frontend/src/pages/IntakeInboxPage.tsx",
+        "frontend/src/pages/IntakeInboxPage.test.tsx"
+      ],
+      "manual_checks": [
+        "Browser smoke: the live backend error is shown beside Apply LTR Number and the button is disabled; the actual blocker reports missing pywin32 for Excel COM, while the registered LTR workbook path remains valid."
+      ],
+      "recorded_at": "2026-08-13T12:02:30Z"
+    },
     "complex_context": null
   },
   "queue": [],
