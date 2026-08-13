@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "qa",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -81,7 +81,7 @@
       "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "QA",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -210,7 +210,7 @@
       ],
       "developer_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
       "reviewer_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
-      "qa_subject_commit": null,
+      "qa_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e",
@@ -219,14 +219,10 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@f1069be903e866c41be2a994b9e5593e20a64df4#e8591ca4479a53c69df2664db95a20ba3756dbd9695a9e3a7253c90610a076f2",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@ef7b5851eda909af09f7abf2438135bc28461a9b#3b9f5849ab2e6004b43adba1687d2e7b6566c74e7f150d16f256561bb5817158",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@9cb2804d8e8d5f5f289d3a8ac2a9eb74e866fb95#062a66d52fc8bb78bf959df4facc0671d8a42142d5433b0f194a62496ca7318d",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@de12c192f02eb04ba699941cbb3fd4c7f6feb89d#655bd96da32db81157e91ce481d68e8e6a1067feb2f99e92910150aec6e3acbd"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@de12c192f02eb04ba699941cbb3fd4c7f6feb89d#655bd96da32db81157e91ce481d68e8e6a1067feb2f99e92910150aec6e3acbd",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_qa.md@61533b110b3645912570d7adbbe3ea3b4452107c#9882be7452dac6fab027c8afa66b9129a67eb9ad730813969cbb7512c32dd8d2"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "5d6159411a39c8f34843d7cbae01ac8942ae727a018d6cfb18bfbc84a2aaa2f3",
-        "role": "QA",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
