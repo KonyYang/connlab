@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   confirmMatrixEditorSession: vi.fn(),
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
+  previewProjectTestPlanMatrixFromPath: vi.fn(),
   commitMatrixImport: vi.fn(),
   previewLlcrCrRecordWorkbook: vi.fn(),
   generateLlcrCrRecordWorkbook: vi.fn(),
@@ -34,6 +35,19 @@ const apiMocks = vi.hoisted(() => ({
   saveProjectPointProfileDraft: vi.fn(),
   confirmProjectPointProfile: vi.fn(),
   matrixPreviewPdfUrl: vi.fn((token: string) => `/api/pdf/${token}`),
+}));
+
+const sourcePickerMocks = vi.hoisted(() => ({
+  hasDesktop: vi.fn(() => false),
+  choose: vi.fn(),
+}));
+
+vi.mock("../../desktop/pathPickerBridge", () => ({
+  hasMatrixImportSourcePicker: sourcePickerMocks.hasDesktop,
+}));
+
+vi.mock("./useMatrixImportSourcePicker", () => ({
+  useMatrixImportSourcePicker: () => sourcePickerMocks.choose,
 }));
 
 const runtimeModelState = vi.hoisted(() => ({
@@ -74,6 +88,7 @@ vi.mock("../../api/client", () => {
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
+    previewProjectTestPlanMatrixFromPath: apiMocks.previewProjectTestPlanMatrixFromPath,
     commitMatrixImport: apiMocks.commitMatrixImport,
     previewLlcrCrRecordWorkbook: apiMocks.previewLlcrCrRecordWorkbook,
     generateLlcrCrRecordWorkbook: apiMocks.generateLlcrCrRecordWorkbook,
@@ -299,6 +314,8 @@ function createDeferred<T>() {
 describe("MatrixEditorWorkspace TASK_279 flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sourcePickerMocks.hasDesktop.mockReturnValue(false);
+    sourcePickerMocks.choose.mockResolvedValue({ kind: "browser" });
     apiMocks.fetchMatrixStepQuantities.mockResolvedValue({
       project_id: "P1",
       project_matrix_draft_id: "draft-test",
@@ -785,6 +802,52 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(inputClickSpy).toHaveBeenCalledTimes(1);
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
     expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
+  });
+
+  it("previews a desktop local path and preserves locator values on reparse", async () => {
+    sourcePickerMocks.hasDesktop.mockReturnValue(true);
+    sourcePickerMocks.choose.mockResolvedValue({
+      kind: "selected",
+      path: "D:/project/Submitted Material/spec.pdf",
+    });
+    apiMocks.previewProjectTestPlanMatrixFromPath
+      .mockResolvedValueOnce(buildImportPreview({ selected_page_number: 2, selected_page_table_index: 1 }))
+      .mockResolvedValueOnce(buildImportPreview({ selected_page_number: 7, selected_page_table_index: 3 }));
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    expect(await screen.findByRole("button", { name: "Replace" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Page"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Table on page"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Table Title / Content Keyword"), {
+      target: { value: "qualification matrix" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+
+    await waitFor(() => expect(apiMocks.previewProjectTestPlanMatrixFromPath).toHaveBeenCalledTimes(2));
+    expect(apiMocks.previewProjectTestPlanMatrixFromPath.mock.calls[1][0]).toEqual({
+      source_path: "D:/project/Submitted Material/spec.pdf",
+      project_id: "P1",
+      page_number: 7,
+      page_table_index: 3,
+      table_text_query: "qualification matrix",
+    });
+  });
+
+  it("does not mutate import state when the desktop picker is cancelled", async () => {
+    sourcePickerMocks.hasDesktop.mockReturnValue(true);
+    sourcePickerMocks.choose.mockResolvedValue({ kind: "cancelled" });
+    const inputClickSpy = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+
+    await waitFor(() => expect(sourcePickerMocks.choose).toHaveBeenCalledTimes(1));
+    expect(inputClickSpy).not.toHaveBeenCalled();
+    expect(apiMocks.previewProjectTestPlanMatrixFromPath).not.toHaveBeenCalled();
+    expect(apiMocks.previewProjectTestPlanMatrixFromUpload).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Replace" })).toBeNull();
   });
 
   it("shows a blocking Matrix search dialog while the selected Word document is parsed", async () => {
@@ -1715,6 +1778,11 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       true
     );
     const confirmButton = screen.getByRole("button", { name: "Confirm Matrix" });
+    expect(screen.getByRole("button", { name: "Import Matrix" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(sourcePickerMocks.choose).not.toHaveBeenCalled();
     expect(confirmButton).toHaveProperty("disabled", true);
     fireEvent.click(confirmButton);
     expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();

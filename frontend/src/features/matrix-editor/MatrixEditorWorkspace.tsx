@@ -2754,6 +2754,9 @@ export function MatrixEditorWorkspace({
       : await previewProjectTestPlanMatrixFromPath({
           source_path: importSourcePath as string,
           project_id: projectId,
+          page_number: parsedLocator.pageNumber,
+          page_table_index: parsedLocator.tableIndex,
+          table_text_query: parsedLocator.snapshot.keyword || null,
         });
     if (preview.preview_pdf_token) {
       setImportPreviewPdfToken(preview.preview_pdf_token);

@@ -31,6 +31,9 @@ class MatrixPreviewFromPathRequest(BaseModel):
 
     source_path: str = Field(min_length=1)
     project_id: str | None = None
+    page_number: int | None = None
+    page_table_index: int | None = None
+    table_text_query: str | None = None
 
 
 class TestStepPreviewResponse(BaseModel):
@@ -105,6 +108,9 @@ def preview_matrix_from_path(
             MatrixPreviewFromPathCommand(
                 source_path=Path(request.source_path),
                 project_id=request.project_id,
+                page_number=request.page_number,
+                page_table_index=request.page_table_index,
+                table_text_query=request.table_text_query,
             )
         )
     except ProjectTestPlanMatrixPreviewError as exc:

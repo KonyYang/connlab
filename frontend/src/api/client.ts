@@ -1852,6 +1852,9 @@ export type ProjectTestPlanMatrixValidateResponse = {
 export type MatrixPreviewFromPathRequest = {
   source_path: string;
   project_id?: string | null;
+  page_number?: number | null;
+  page_table_index?: number | null;
+  table_text_query?: string | null;
 };
 
 export type MatrixPreviewStep = {
