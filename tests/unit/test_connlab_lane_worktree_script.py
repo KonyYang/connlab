@@ -246,3 +246,29 @@ def test_powershell_adapter_uses_only_the_marker_delimited_control_block(
     output = json.loads(completed.stdout)
     assert completed.returncode == 2
     assert output["code"] == "CTL_INVALID_REQUEST"
+
+
+def test_powershell_adapter_without_control_marker_keeps_legacy_path(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "unmarked-legacy-board"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "docs").mkdir()
+    shutil.copy2(ROOT / "scripts" / "connlab_controlled_lane.ps1", repo / "scripts")
+    (repo / "docs" / "task_board.md").write_text(
+        "# Historical board without a machine control marker\n",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File",
+            str(repo / "scripts" / "connlab_controlled_lane.ps1"),
+            "-Command", "prepare-dispatch", "-RequestJson", "missing.json", "-DryRun",
+        ],
+        check=False, capture_output=True, text=True,
+    )
+
+    output = json.loads(completed.stdout)
+    assert completed.returncode == 2
+    assert output["code"] == "CTL_INVALID_REQUEST"

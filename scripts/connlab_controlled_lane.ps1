@@ -36,6 +36,7 @@ $env:PYTHONUTF8 = "1"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
 $boardPath = Join-Path $repoRoot "docs\task_board.md"
 $boardText = [System.IO.File]::ReadAllText($boardPath, [System.Text.Encoding]::UTF8)
+$control = $null
 $controlBlock = [regex]::Match(
     $boardText,
     '(?s)<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->\s*```json\s*(.*?)\s*```\s*<!-- CONNLAB_EXECUTION_CONTROL_END -->'
