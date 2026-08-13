@@ -14,88 +14,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
-    "summary": "Populate empty Sample deposition from Post-Testing Sample Disposition on first Basic Information load while preserving manual Sample deposition overrides and existing explicit LTR preview/commit behavior.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
-      "summary": "Populate empty Sample deposition from Post-Testing Sample Disposition on first Basic Information load while preserving manual Sample deposition overrides and existing explicit LTR preview/commit behavior.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
-        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "npm test -- --run frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
-        "npm run build",
-        "browser smoke: initial Basic Information load mirrors empty Sample deposition without manual select interaction",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "fab0d86bd9f37de918899f8e107bdab5ed1e0213",
-    "activated_at": "2026-08-13T11:24:42Z",
-    "updated_at": "2026-08-13T11:28:16Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "npm test -- --run src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
-          "exit_code": 0,
-          "summary": "20 passed"
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "TypeScript and Vite production build passed"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "passed"
-        }
-      ],
-      "observed_paths": [],
-      "manual_checks": [
-        "Fresh browser reload without field interaction: API post_testing_disposition=Send Back to Requestor and sample_deposition=null; UI rendered Sample deposition=Send Back to Requestor on initial load.",
-        "No product-code change: current source and existing regression already implement the requested initial-load default."
-      ],
-      "recorded_at": "2026-08-13T11:28:15.9489699Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
+    "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
     "disposition": "closed after human review",
-    "decision_ref": "User explicitly closed TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER after inspecting the Matrix Editor placeholder removal; implementation and validation accepted; no push or cleanup.",
-    "closed_at": "2026-08-13T11:07:47Z"
+    "decision_ref": "User explicitly closed the active task after inspecting the verified initial Sample deposition default behavior; no product-code change was required; validation accepted; no push or cleanup.",
+    "closed_at": "2026-08-13T11:31:21Z"
   },
   "retained_history": [
     {
