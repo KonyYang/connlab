@@ -20,13 +20,54 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        "backend/application/project_test_plan_source_candidate_service.py",
+        "backend/api/routes_project_test_plan_source_candidates.py",
+        "backend/api/dependencies.py",
+        "backend/desktop/path_picker_api.py",
+        "backend/desktop/shell.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/desktop/pathPickerBridge.ts",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
+        "tests/unit/test_matrix_source_candidate_service.py",
+        "tests/integration/test_project_test_plan_source_candidates_api.py",
+        "tests/unit/test_desktop_path_picker_api.py",
+        "tests/unit/test_frontend_shell_files.py",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 16,
+      "classification_reason": "Complex cross-frontend/backend desktop UX change with an existing API response extension and mandatory independent Reviewer, QA, and Integrator gates; no database, schema, persistence, Matrix authority, public-drive, or business-rule change.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/unit/test_desktop_path_picker_api.py tests/unit/test_frontend_shell_files.py -q",
+        "py -m pytest tests/integration/test_project_test_plan_source_candidates_api.py -q",
+        "npm test -- --run frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "npm run build",
+        "py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/desktop/path_picker_api.py backend/desktop/shell.py",
+        "git diff --check",
+        "desktop smoke: project without workspace opens at stored attachment directory; project with workspace opens at Submitted Material; browser-only fallback remains usable"
+      ],
+      "forbidden_categories": {
+        "api_contract": true,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false
+      }
+    },
+    "plan_ref": "docs/task_matrix_import_default_source_directory_plan.md@63e3036815e4273f0d76086accab67d320bcff8e#415869f59a108ecf5365a564aa11f809478a55dff0e1bad666d3d2f29248d49e",
+    "approval_ref": "User approved the above exact Plan ref and approved-request SHA-256 in this conversation on 2026-08-13.",
     "activation_parent_sha": "57a735199927387e0978a92165fd858fce435972",
     "activated_at": "2026-08-13T12:35:47Z",
-    "updated_at": "2026-08-13T12:35:47Z",
+    "updated_at": "2026-08-13T12:56:39Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -70,7 +111,8 @@
         "tests/unit/test_desktop_path_picker_api.py",
         "tests/unit/test_frontend_shell_files.py",
         "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
-        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx"
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "docs/task_board.md"
       ],
       "required_gates": [
         "Reviewer",
