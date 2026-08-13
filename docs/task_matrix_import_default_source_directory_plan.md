@@ -1,6 +1,6 @@
 # TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY Plan
 
-Status: `ready_for_user_approval`
+Status: `bounded_scope_amendment_ready_for_user_approval`
 
 ## 1. Outcome
 
@@ -110,6 +110,12 @@ lifecycle blocking remains first and unchanged.
   - add the two nullable response fields.
 - `backend/api/dependencies.py`
   - compose the source-candidate service with the existing official-workspace repository.
+- `backend/api/routes_project_test_plan.py`
+  - extend only the existing `matrix-preview-from-path` request DTO with the locator page,
+    table-on-page index, and table-text query fields already supported by
+    `MatrixPreviewFromPathCommand`;
+  - pass those values unchanged into the existing command without changing endpoint identity,
+    parser behavior, persistence, or Matrix authority.
 
 ### Desktop boundary
 
@@ -135,6 +141,9 @@ lifecycle blocking remains first and unchanged.
   - Submitted Material priority, intake fallback, deterministic choice, missing paths.
 - `tests/integration/test_project_test_plan_source_candidates_api.py`
   - typed projection for both workspace states and not-found compatibility.
+- `tests/integration/test_project_test_plan_preview_api.py`
+  - prove the existing path-preview endpoint accepts and forwards all locator values and preserves
+    its existing defaults when they are absent.
 - `tests/unit/test_desktop_path_picker_api.py`
   - exact initial directory, filters, invalid-directory fallback, cancel.
 - `tests/unit/test_frontend_shell_files.py`
@@ -163,9 +172,10 @@ lifecycle blocking remains first and unchanged.
 ```text
 py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/unit/test_desktop_path_picker_api.py tests/unit/test_frontend_shell_files.py -q
 py -m pytest tests/integration/test_project_test_plan_source_candidates_api.py -q
+py -m pytest tests/integration/test_project_test_plan_preview_api.py -q
 npm test -- --run frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx
 npm run build
-py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/desktop/path_picker_api.py backend/desktop/shell.py
+py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/api/routes_project_test_plan.py backend/desktop/path_picker_api.py backend/desktop/shell.py
 git diff --check
 ```
 
@@ -182,7 +192,7 @@ Manual desktop smoke:
 The following code fence is the canonical single-line UTF-8 approved request for `Approve`:
 
 ```json
-{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY","summary":"Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.","kind":"planned","may_touch":["backend/application/project_test_plan_source_candidate_service.py","backend/api/routes_project_test_plan_source_candidates.py","backend/api/dependencies.py","backend/desktop/path_picker_api.py","backend/desktop/shell.py","frontend/src/api/client.ts","frontend/src/desktop/pathPickerBridge.ts","frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx","frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts","tests/unit/test_matrix_source_candidate_service.py","tests/integration/test_project_test_plan_source_candidates_api.py","tests/unit/test_desktop_path_picker_api.py","tests/unit/test_frontend_shell_files.py","frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx","frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx","docs/task_board.md"],"expected_file_count":16,"classification_reason":"Complex cross-frontend/backend desktop UX change with an existing API response extension and mandatory independent Reviewer, QA, and Integrator gates; no database, schema, persistence, Matrix authority, public-drive, or business-rule change.","targeted_validation":["py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/unit/test_desktop_path_picker_api.py tests/unit/test_frontend_shell_files.py -q","py -m pytest tests/integration/test_project_test_plan_source_candidates_api.py -q","npm test -- --run frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx","npm run build","py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/desktop/path_picker_api.py backend/desktop/shell.py","git diff --check","desktop smoke: project without workspace opens at stored attachment directory; project with workspace opens at Submitted Material; browser-only fallback remains usable"],"forbidden_categories":{"api_contract":true,"database":false,"schema_or_migration":false,"persistence":false,"authority":false,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
+{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY","summary":"Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.","kind":"planned","may_touch":["backend/application/project_test_plan_source_candidate_service.py","backend/api/routes_project_test_plan_source_candidates.py","backend/api/dependencies.py","backend/desktop/path_picker_api.py","backend/desktop/shell.py","frontend/src/api/client.ts","frontend/src/desktop/pathPickerBridge.ts","frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx","frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts","tests/unit/test_matrix_source_candidate_service.py","tests/integration/test_project_test_plan_source_candidates_api.py","tests/unit/test_desktop_path_picker_api.py","tests/unit/test_frontend_shell_files.py","frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx","frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx","backend/api/routes_project_test_plan.py","tests/integration/test_project_test_plan_preview_api.py","docs/task_board.md"],"expected_file_count":18,"classification_reason":"Minimal bounded scope amendment for the existing path-preview API contract plus its integration regression, while retaining the approved cross-frontend/backend desktop route and independent Reviewer, QA, and Integrator gates; no database, schema, persistence, Matrix authority, public-drive, parser, or business-rule change.","targeted_validation":["py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/unit/test_desktop_path_picker_api.py tests/unit/test_frontend_shell_files.py -q","py -m pytest tests/integration/test_project_test_plan_source_candidates_api.py -q","py -m pytest tests/integration/test_project_test_plan_preview_api.py -q","npm test -- --run frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx","npm run build","py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/api/routes_project_test_plan.py backend/desktop/path_picker_api.py backend/desktop/shell.py","git diff --check","desktop smoke: project without workspace opens at stored attachment directory; project with workspace opens at Submitted Material; browser-only fallback remains usable"],"forbidden_categories":{"api_contract":true,"database":false,"schema_or_migration":false,"persistence":false,"authority":false,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
 ```
 
 ## 8. Stop Point
@@ -190,3 +200,16 @@ The following code fence is the canonical single-line UTF-8 approved request for
 Wait for explicit User approval of the committed Plan ref and approved-request SHA-256. No product,
 test, branch, worktree, Developer, or implementation action is authorized before approval.
 
+## 9. Minimal Bounded Scope Amendment
+
+Reviewer R1 and Developer attempt 2 established a precise contract gap. The existing application
+command already accepts locator page, table-on-page index, and table-text query values, but the
+existing `matrix-preview-from-path` FastAPI request and route do not expose or forward them. A
+frontend-only change would therefore be silently ignored and is prohibited as a false fix.
+
+The amendment adds only `backend/api/routes_project_test_plan.py` and
+`tests/integration/test_project_test_plan_preview_api.py`. It authorizes no endpoint addition, no
+parser change, no database/schema/persistence change, no Matrix authority change, and no other path.
+R2 remains within the original approved `MatrixEditorWorkspace.test.tsx` path. The active board stays
+`DEVELOPER_BLOCKED`, and candidate `f1069be903e866c41be2a994b9e5593e20a64df4` plus all existing
+evidence remain retained until the User explicitly approves this committed amendment.
