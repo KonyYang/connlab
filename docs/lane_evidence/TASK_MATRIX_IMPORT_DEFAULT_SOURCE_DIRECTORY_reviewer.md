@@ -30,3 +30,6 @@ SAFETY:
 - Review was read-only except for this fixed Reviewer evidence path.
 - No product, test, board, primary, branch, worktree lifecycle, or retained-resource mutation was performed.
 - No push, cleanup, reset, restore, stash, rebase, merge, or integration action was performed.
+
+HASH_RECONCILIATION:
+- The authoritative evidence reference must use the committed Git blob bytes; the earlier reported digest was computed from working-tree bytes after line-ending conversion and is superseded by this evidence-only child.
