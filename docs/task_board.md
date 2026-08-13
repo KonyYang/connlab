@@ -38,16 +38,19 @@
         "tests/unit/test_frontend_shell_files.py",
         "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
         "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "backend/api/routes_project_test_plan.py",
+        "tests/integration/test_project_test_plan_preview_api.py",
         "docs/task_board.md"
       ],
-      "expected_file_count": 16,
-      "classification_reason": "Complex cross-frontend/backend desktop UX change with an existing API response extension and mandatory independent Reviewer, QA, and Integrator gates; no database, schema, persistence, Matrix authority, public-drive, or business-rule change.",
+      "expected_file_count": 18,
+      "classification_reason": "Minimal bounded scope amendment for the existing path-preview API contract plus its integration regression, while retaining the approved cross-frontend/backend desktop route and independent Reviewer, QA, and Integrator gates; no database, schema, persistence, Matrix authority, public-drive, parser, or business-rule change.",
       "targeted_validation": [
         "py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/unit/test_desktop_path_picker_api.py tests/unit/test_frontend_shell_files.py -q",
         "py -m pytest tests/integration/test_project_test_plan_source_candidates_api.py -q",
+        "py -m pytest tests/integration/test_project_test_plan_preview_api.py -q",
         "npm test -- --run frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
         "npm run build",
-        "py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/desktop/path_picker_api.py backend/desktop/shell.py",
+        "py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py backend/api/routes_project_test_plan.py backend/desktop/path_picker_api.py backend/desktop/shell.py",
         "git diff --check",
         "desktop smoke: project without workspace opens at stored attachment directory; project with workspace opens at Submitted Material; browser-only fallback remains usable"
       ],
@@ -63,11 +66,11 @@
         "external_mutation": false
       }
     },
-    "plan_ref": "docs/task_matrix_import_default_source_directory_plan.md@63e3036815e4273f0d76086accab67d320bcff8e#415869f59a108ecf5365a564aa11f809478a55dff0e1bad666d3d2f29248d49e",
-    "approval_ref": "User approved the above exact Plan ref and approved-request SHA-256 in this conversation on 2026-08-13.",
+    "plan_ref": "docs/task_matrix_import_default_source_directory_plan.md@ef7b5851eda909af09f7abf2438135bc28461a9b#c06625db9a75b84febdc51e7fd705b874f8dcb413a3e14ef918cacf32ec1aefc",
+    "approval_ref": "User approved the exact bounded scope amendment at ef7b5851 with approved-request SHA e73f8005 on 2026-08-14.",
     "activation_parent_sha": "57a735199927387e0978a92165fd858fce435972",
     "activated_at": "2026-08-13T12:35:47Z",
-    "updated_at": "2026-08-13T22:11:58Z",
+    "updated_at": "2026-08-13T22:12:22Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
