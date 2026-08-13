@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "planning",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -70,27 +70,8 @@
     "approval_ref": "User approved the exact bounded scope amendment at ef7b5851 with approved-request SHA e73f8005 on 2026-08-14.",
     "activation_parent_sha": "57a735199927387e0978a92165fd858fce435972",
     "activated_at": "2026-08-13T12:35:47Z",
-    "updated_at": "2026-08-13T22:12:22Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "SCOPE_EXPANDED",
-      "stage": "development",
-      "reason": "User-approved minimal amendment adds exactly the existing matrix-preview-from-path route and its integration regression for locator forwarding.",
-      "dirty_paths": [
-        "backend/api/routes_project_test_plan.py",
-        "tests/integration/test_project_test_plan_preview_api.py"
-      ],
-      "failed_validation": null,
-      "subject_commit": null,
-      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@ef7b5851eda909af09f7abf2438135bc28461a9b#3b9f5849ab2e6004b43adba1687d2e7b6566c74e7f150d16f256561bb5817158",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "planning",
-      "recorded_at": "2026-08-13T22:11:58Z"
-    },
+    "updated_at": "2026-08-13T22:12:47Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
