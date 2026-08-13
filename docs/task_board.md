@@ -67,7 +67,7 @@
       "base_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "head_sha": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "integration_target": "master",
-      "worktree_lifecycle": "integrated",
+      "worktree_lifecycle": "retained",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -214,8 +214,25 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_integrator.md@59a181f7fa49dbe1757d3eda889a3f4962f0fba8#6829a55585ee66f4b0c86d647f491bfb43bc9ad49d4a8e74e07523a23578b631"
       ],
       "pending_callback": null,
-      "closeout_disposition": null,
-      "retained_resource_refs": [],
+      "closeout_disposition": {
+        "schema": "connlab.serial-closeout",
+        "version": 1,
+        "action_id": "f670d11acfdc34c6bd92a5a0e0686e5901c83def520f9dffa84020aae6c5573b",
+        "disposition": "retained",
+        "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP",
+        "thread_id": "019ff81a-157d-7780-8efd-a115887a8997",
+        "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
+        "branch": "codex/task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
+        "head_sha": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
+        "clean": true,
+        "integrated_commit": "c03c50f3f8980f3df405510616682eb200b3a578",
+        "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_integrator.md@59a181f7fa49dbe1757d3eda889a3f4962f0fba8#6829a55585ee66f4b0c86d647f491bfb43bc9ad49d4a8e74e07523a23578b631",
+        "reason": "retained_nonblocking_manual_maintenance",
+        "recorded_at": "2026-08-13T10:19:41Z"
+      },
+      "retained_resource_refs": [
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_integrator.md@59a181f7fa49dbe1757d3eda889a3f4962f0fba8#6829a55585ee66f4b0c86d647f491bfb43bc9ad49d4a8e74e07523a23578b631"
+      ],
       "close_decision_ref": "User explicitly closed TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP after inspecting local Integrator acceptance; retain task worktree, task branch, evidence branch, commits and evidence; no push or cleanup."
     }
   },
