@@ -80,8 +80,8 @@
       "base_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "integration_target": "master",
-      "worktree_lifecycle": "ready",
-      "current_role": "Integrator",
+      "worktree_lifecycle": "integration_ready",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -232,14 +232,10 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@ef7b5851eda909af09f7abf2438135bc28461a9b#3b9f5849ab2e6004b43adba1687d2e7b6566c74e7f150d16f256561bb5817158",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@9cb2804d8e8d5f5f289d3a8ac2a9eb74e866fb95#062a66d52fc8bb78bf959df4facc0671d8a42142d5433b0f194a62496ca7318d",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@de12c192f02eb04ba699941cbb3fd4c7f6feb89d#655bd96da32db81157e91ce481d68e8e6a1067feb2f99e92910150aec6e3acbd",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_qa.md@61533b110b3645912570d7adbbe3ea3b4452107c#9882be7452dac6fab027c8afa66b9129a67eb9ad730813969cbb7512c32dd8d2"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_qa.md@61533b110b3645912570d7adbbe3ea3b4452107c#9882be7452dac6fab027c8afa66b9129a67eb9ad730813969cbb7512c32dd8d2",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_integrator.md@6d430544a7bd68862a01e332d8d5bd37273f8baa#b1ad035ebc3f6b50b2e811f10a80a525c166f53b03617feb064e362ba4554416"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "7eccbf9295dcf6a30e0338d4eb978676c2cd90795963dff1c4b98f704f2acfa5",
-        "role": "Integrator",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
