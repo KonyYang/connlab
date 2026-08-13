@@ -65,6 +65,28 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     vi.unstubAllGlobals();
   });
 
+  it("shows the backend completion blocker beside Apply LTR and prevents repeat submission", async () => {
+    const user = userEvent.setup();
+    vi.mocked(completeNewProject).mockRejectedValueOnce(
+      new Error("LTR workbook path is not configured.")
+    );
+
+    render(<Harness />);
+
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => {
+      expect((applyButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(applyButton);
+
+    const blocker = await screen.findByRole("alert");
+    expect(blocker.textContent).toBe("LTR workbook path is not configured.");
+    expect((applyButton as HTMLButtonElement).disabled).toBe(true);
+    await user.click(applyButton);
+    expect(completeNewProject).toHaveBeenCalledTimes(1);
+  });
+
   it("restores the imported case and apply readiness when local duplicate cancel closes the conflict", async () => {
     const user = userEvent.setup();
     vi.mocked(completeNewProject).mockRejectedValueOnce(

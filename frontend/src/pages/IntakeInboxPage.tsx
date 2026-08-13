@@ -240,6 +240,7 @@ export function IntakeInboxPage({
   const completionDisabled =
     editorLoading
     || completionLoading
+    || Boolean(completionError)
     || specifiedLtrPreviewActive
     || localDuplicateActive
     || Boolean(activeCase?.confirmed_project_id)
@@ -1042,6 +1043,7 @@ export function IntakeInboxPage({
       {packageImport && activeCase != null ? (
         <NewProjectCompletionDock
           completionDisabled={completionDisabled}
+          completionError={completionError}
           completionLoading={completionLoading}
           completionText={completionText}
           disabled={
