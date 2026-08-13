@@ -14,90 +14,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_NEW_PROJECT_APPLY_LTR_BACKEND_BLOCKER_NOTICE",
-    "summary": "Surface the real Apply LTR backend blocker beside the completion action and disable repeated submissions until relevant page state changes.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_NEW_PROJECT_APPLY_LTR_BACKEND_BLOCKER_NOTICE",
-      "summary": "Surface the real Apply LTR backend blocker beside the completion action and disable repeated submissions until relevant page state changes.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/pages/IntakeInboxPage.tsx",
-        "frontend/src/pages/IntakeInboxPage.test.tsx",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "npm test -- --run src/pages/IntakeInboxPage.test.tsx",
-        "npm run build",
-        "browser smoke: failed Apply LTR shows the backend blocker beside the action and disables repeat click",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "7195da40c35713e4aa7848e6db4ca35095974054",
-    "activated_at": "2026-08-13T11:58:24Z",
-    "updated_at": "2026-08-13T12:02:30Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "npm test -- --run src/pages/IntakeInboxPage.test.tsx",
-          "exit_code": 0,
-          "summary": "7 passed"
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "TypeScript and Vite production build passed"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "passed"
-        }
-      ],
-      "observed_paths": [
-        "frontend/src/pages/IntakeInboxPage.tsx",
-        "frontend/src/pages/IntakeInboxPage.test.tsx"
-      ],
-      "manual_checks": [
-        "Browser smoke: the live backend error is shown beside Apply LTR Number and the button is disabled; the actual blocker reports missing pywin32 for Excel COM, while the registered LTR workbook path remains valid."
-      ],
-      "recorded_at": "2026-08-13T12:02:30Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_NEW_PROJECT_APPLY_LTR_DISABLED_REASON_NOTICE",
-    "disposition": "Superseded by an explicitly authorized bounded follow-up because the original component-only scope could not wire the page-level completionError into the dock or disable repeated failed submissions.",
-    "decision_ref": "User accepted the diagnosed follow-up scope: wire completionError into the intake completion dock, show the real backend blocker, and disable repeat Apply LTR attempts until relevant input or configuration changes.",
-    "closed_at": "2026-08-13T11:54:44Z"
+    "task_id": "TASK_NEW_PROJECT_APPLY_LTR_BACKEND_BLOCKER_NOTICE",
+    "disposition": "closed after human review",
+    "decision_ref": "User confirmed the pywin32 configuration issue is resolved and explicitly requested close.",
+    "closed_at": "2026-08-13T12:22:06Z"
   },
   "retained_history": [
     {
