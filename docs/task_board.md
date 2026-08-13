@@ -67,8 +67,8 @@
       "base_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
-      "worktree_lifecycle": "ready",
-      "current_role": "Integrator",
+      "worktree_lifecycle": "integration_ready",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -210,14 +210,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@4e4e0dc0d6ec6d2f0352c3f8ecaad96ac4c3fdef#3c1c10339f9a4875aadc14d340d39ec9d42a4f6ebde299dd67a8e170de95c96f",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@f6933cd358e1083e509d98b386c429705624d561#ef9ee0bcf3352aff1c3efcf741a71ab476242f39b8f21f2480987066a02addd5",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@41597b7d96dbb91ef123339c1f7b3d0724255392#59c6769c72a8759dc17b821c13078496593880f82d5c1eed5e9a747dca155d55",
-        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_qa.md@41fead6fec04918544338fd4ea1a3399ceaba953#3833c3b53716c6f5eac98c64a03a1351e064fda50cc8a1489c524e4d14f5788a"
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_qa.md@41fead6fec04918544338fd4ea1a3399ceaba953#3833c3b53716c6f5eac98c64a03a1351e064fda50cc8a1489c524e4d14f5788a",
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_integrator.md@59a181f7fa49dbe1757d3eda889a3f4962f0fba8#6829a55585ee66f4b0c86d647f491bfb43bc9ad49d4a8e74e07523a23578b631"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "ef723ce941046a9efcbd9772191b599bb5b648023ffe0bcee383371c876147e1",
-        "role": "Integrator",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
