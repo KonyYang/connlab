@@ -20,7 +20,7 @@
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -58,26 +58,7 @@
     "activation_parent_sha": "f2e3c3c13ec4c29f156cec5d245291290a237bff",
     "activated_at": "2026-08-12T23:42:04Z",
     "updated_at": "2026-08-12T23:51:52Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Reviewer found two same-scope Plan deviations: non-authoritative whole-board regex detection and missing busy-submit/close-resubmit behavioral coverage.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "subject_commit": "6a20ae7373e2404307741e4d559b6a08e4819945",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@62c3915e4cf0c6766e08e21fb00e86fad19107c5#d14ce5ace87820c6804d5d264e33cbc220c5caec2b8594be68f7e0e75fbc2b7a",
-      "native_action_id": null,
-      "related_ids": [
-        "F1",
-        "F2"
-      ],
-      "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-13T00:17:26Z"
-    },
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -87,7 +68,7 @@
       "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -157,21 +138,17 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "6a20ae7373e2404307741e4d559b6a08e4819945",
+      "developer_subject_commit": "6070bbd241431891579e99fc0c7d432281507c4d",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_planner.md@ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#e5e4a4291620a15554b4cb94dac62aabb9583eb406693feaefc1ac97a54e6783",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@828d22b16f17d35206b37d2687d24b724e8b83b4#7d1887199eaab029efc09a8d0418da600442f5aeae3a17217bb38465cdaf271c",
-        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@62c3915e4cf0c6766e08e21fb00e86fad19107c5#d14ce5ace87820c6804d5d264e33cbc220c5caec2b8594be68f7e0e75fbc2b7a"
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@62c3915e4cf0c6766e08e21fb00e86fad19107c5#d14ce5ace87820c6804d5d264e33cbc220c5caec2b8594be68f7e0e75fbc2b7a",
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@e92f087c93c92923dac8eec8e3f4519d2b5ec763#b374beae2d931023d1edf06a695b8a3251093d3f77eebecf1082ec8f58a9541a"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "ca10514cf0b9141a2e1053e6c2a6e7e6745202258d4b9c2884a61f98582aad26",
-        "role": "Developer",
-        "attempt": 2
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
