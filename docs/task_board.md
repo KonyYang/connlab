@@ -14,90 +14,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_NEW_PROJECT_APPLY_LTR_DISABLED_REASON_NOTICE",
-    "summary": "Show a persistent, accessible reason beside Apply LTR Number when required information blocks the action, directing the operator to complete highlighted required fields instead of relying on a disabled-button tooltip.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_NEW_PROJECT_APPLY_LTR_DISABLED_REASON_NOTICE",
-      "summary": "Show a persistent, accessible reason beside Apply LTR Number when required information blocks the action, directing the operator to complete highlighted required fields instead of relying on a disabled-button tooltip.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/features/new-project/NewProjectCompletionDock.tsx",
-        "frontend/src/features/new-project/NewProjectCompletionDock.test.tsx",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "npm test -- --run src/features/new-project/NewProjectCompletionDock.test.tsx",
-        "npm run build",
-        "browser smoke: blocked Apply LTR Number shows a persistent actionable reason",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "b17abd93437dfd4e6c9047e167a31c8fc30a6cff",
-    "activated_at": "2026-08-13T11:34:40Z",
-    "updated_at": "2026-08-13T11:42:25Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "npm test -- --run src/features/new-project/NewProjectCompletionDock.test.tsx",
-          "exit_code": 0,
-          "summary": "4 passed"
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "TypeScript and Vite production build passed"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "passed"
-        }
-      ],
-      "observed_paths": [
-        "frontend/src/features/new-project/NewProjectCompletionDock.tsx",
-        "frontend/src/features/new-project/NewProjectCompletionDock.test.tsx"
-      ],
-      "manual_checks": [
-        "Browser smoke: switching to specified LTR mode with an empty value disabled Apply LTR Number and showed the persistent actionable blocker reason; restoring auto mode removed the reason and re-enabled the action."
-      ],
-      "recorded_at": "2026-08-13T11:42:25Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
-    "disposition": "closed after human review",
-    "decision_ref": "User explicitly closed the active task after inspecting the verified initial Sample deposition default behavior; no product-code change was required; validation accepted; no push or cleanup.",
-    "closed_at": "2026-08-13T11:31:21Z"
+    "task_id": "TASK_NEW_PROJECT_APPLY_LTR_DISABLED_REASON_NOTICE",
+    "disposition": "Superseded by an explicitly authorized bounded follow-up because the original component-only scope could not wire the page-level completionError into the dock or disable repeated failed submissions.",
+    "decision_ref": "User accepted the diagnosed follow-up scope: wire completionError into the intake completion dock, show the real backend blocker, and disable repeat Apply LTR attempts until relevant input or configuration changes.",
+    "closed_at": "2026-08-13T11:54:44Z"
   },
   "retained_history": [
     {
