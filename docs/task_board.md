@@ -68,7 +68,7 @@
       "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Reviewer",
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -148,7 +148,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@62c3915e4cf0c6766e08e21fb00e86fad19107c5#d14ce5ace87820c6804d5d264e33cbc220c5caec2b8594be68f7e0e75fbc2b7a",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@e92f087c93c92923dac8eec8e3f4519d2b5ec763#b374beae2d931023d1edf06a695b8a3251093d3f77eebecf1082ec8f58a9541a"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "c6a87eea908e97756dcda9fe6e4661a3bfc351d9eb7368b0e0b06abacc9c514b",
+        "role": "Reviewer",
+        "attempt": 2
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
