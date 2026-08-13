@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -37,7 +37,7 @@
       "head_sha": "57a735199927387e0978a92165fd858fce435972",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -81,13 +81,10 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "52ed7cfd1c6a00acd853e4ee75534c147b28f7e3920980d6e223c1480b5b2098",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e"
+      ],
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
