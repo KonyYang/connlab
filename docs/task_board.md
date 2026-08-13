@@ -14,8 +14,54 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_NEW_PROJECT_APPLY_LTR_BACKEND_BLOCKER_NOTICE",
+    "summary": "Surface the real Apply LTR backend blocker beside the completion action and disable repeated submissions until relevant page state changes.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_NEW_PROJECT_APPLY_LTR_BACKEND_BLOCKER_NOTICE",
+      "summary": "Surface the real Apply LTR backend blocker beside the completion action and disable repeated submissions until relevant page state changes.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "frontend/src/pages/IntakeInboxPage.tsx",
+        "frontend/src/pages/IntakeInboxPage.test.tsx",
+        "docs/task_board.md"
+      ],
+      "targeted_validation": [
+        "npm test -- --run src/pages/IntakeInboxPage.test.tsx",
+        "npm run build",
+        "browser smoke: failed Apply LTR shows the backend blocker beside the action and disables repeat click",
+        "git diff --check"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "7195da40c35713e4aa7848e6db4ca35095974054",
+    "activated_at": "2026-08-13T11:58:24Z",
+    "updated_at": "2026-08-13T11:58:24Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
