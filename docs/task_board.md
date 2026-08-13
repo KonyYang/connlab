@@ -68,8 +68,8 @@
       "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
-      "current_attempt": 3,
+      "current_role": "QA",
+      "current_attempt": 1,
       "role_invocations": [
         {
           "schema": "connlab.serial-invocation",
@@ -187,7 +187,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@f6933cd358e1083e509d98b386c429705624d561#ef9ee0bcf3352aff1c3efcf741a71ab476242f39b8f21f2480987066a02addd5",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@41597b7d96dbb91ef123339c1f7b3d0724255392#59c6769c72a8759dc17b821c13078496593880f82d5c1eed5e9a747dca155d55"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "9381e3fb7d9f2969a32ad9a8f448672f6f59d3717f104fd156ee7e04bf21e5f9",
+        "role": "QA",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
