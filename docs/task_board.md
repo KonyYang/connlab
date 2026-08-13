@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -70,7 +70,7 @@
     "approval_ref": "User approved the exact bounded scope amendment at ef7b5851 with approved-request SHA e73f8005 on 2026-08-14.",
     "activation_parent_sha": "57a735199927387e0978a92165fd858fce435972",
     "activated_at": "2026-08-13T12:35:47Z",
-    "updated_at": "2026-08-13T22:12:47Z",
+    "updated_at": "2026-08-13T22:14:31Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -163,6 +163,8 @@
         "tests/unit/test_frontend_shell_files.py",
         "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
         "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "backend/api/routes_project_test_plan.py",
+        "tests/integration/test_project_test_plan_preview_api.py",
         "docs/task_board.md"
       ],
       "required_gates": [
