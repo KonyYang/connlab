@@ -97,8 +97,8 @@
       "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
-      "current_attempt": 1,
+      "current_role": "Developer",
+      "current_attempt": 2,
       "role_invocations": [
         {
           "schema": "connlab.serial-invocation",
@@ -171,7 +171,12 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@2ab905a18feacd871c3ab92b76924e6752ff0249#2a6d6d56558439b69616dc60408e3843346910a15f418820f5838629047ed7f4",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@5c30adf890f879789b3cbb9696968f4c21a75d2d#6ca9411583ca4521fc913a2730be524f6add855573b14ce7183e7a86f9fbcaf1"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "b078cf89f9e462edb2a74a981d2708acc8f87e655bb073586e0dcc3474fabb48",
+        "role": "Developer",
+        "attempt": 2
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
