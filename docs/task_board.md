@@ -14,8 +14,53 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
+    "summary": "Remove the unused Reference Library placeholder section from Matrix Editor and update its bounded frontend source assertions.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
+      "summary": "Remove the unused Reference Library placeholder section from Matrix Editor and update its bounded frontend source assertions.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "tests/unit/test_frontend_shell_files.py",
+        "docs/task_board.md"
+      ],
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_frontend_shell_files.py -q",
+        "npm run build --prefix frontend",
+        "git diff --check"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "e487ba27ed936d7a159ec27995972eca7e61af1e",
+    "activated_at": "2026-08-13T10:29:25Z",
+    "updated_at": "2026-08-13T10:29:25Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
