@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -81,7 +81,7 @@
       "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 4,
       "role_invocations": [
         {
@@ -184,7 +184,7 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "60068858e1216e21ff5977b934625bc59d2113a8",
+      "developer_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
@@ -193,14 +193,10 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@2ab905a18feacd871c3ab92b76924e6752ff0249#2a6d6d56558439b69616dc60408e3843346910a15f418820f5838629047ed7f4",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_reviewer.md@5c30adf890f879789b3cbb9696968f4c21a75d2d#6ca9411583ca4521fc913a2730be524f6add855573b14ce7183e7a86f9fbcaf1",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@f1069be903e866c41be2a994b9e5593e20a64df4#e8591ca4479a53c69df2664db95a20ba3756dbd9695a9e3a7253c90610a076f2",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@ef7b5851eda909af09f7abf2438135bc28461a9b#3b9f5849ab2e6004b43adba1687d2e7b6566c74e7f150d16f256561bb5817158"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@ef7b5851eda909af09f7abf2438135bc28461a9b#3b9f5849ab2e6004b43adba1687d2e7b6566c74e7f150d16f256561bb5817158",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@9cb2804d8e8d5f5f289d3a8ac2a9eb74e866fb95#062a66d52fc8bb78bf959df4facc0671d8a42142d5433b0f194a62496ca7318d"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "10cc550dae39fa43c91024a541ed726b214b36394b16857e02005707b5a4b76c",
-        "role": "Developer",
-        "attempt": 4
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
