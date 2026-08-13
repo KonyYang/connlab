@@ -20,7 +20,7 @@
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -70,32 +70,8 @@
     "approval_ref": "User approved the exact bounded scope amendment at ef7b5851 with approved-request SHA e73f8005 on 2026-08-14.",
     "activation_parent_sha": "57a735199927387e0978a92165fd858fce435972",
     "activated_at": "2026-08-13T12:35:47Z",
-    "updated_at": "2026-08-13T22:49:09Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "INTEGRATION_BLOCKED",
-      "stage": "integration",
-      "reason": "The frozen production integration contract cannot accept the clean evidence-descendant task branch without an explicitly authorized topology reconciliation.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "record-integration-preflight",
-        "command": [],
-        "exit_code": null,
-        "summary": "Registered task worktree HEAD 6d430544a7bd68862a01e332d8d5bd37273f8baa is an evidence-only descendant, while the production integration contract requires the registered task worktree HEAD and branch_head to equal reviewed subject 8c9d8e50057125a5c1c34b335401251324eee851.",
-        "recorded_at": "2026-08-13T22:49:09.465903Z"
-      },
-      "subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
-      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_integrator.md@6d430544a7bd68862a01e332d8d5bd37273f8baa#b1ad035ebc3f6b50b2e811f10a80a525c166f53b03617feb064e362ba4554416",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": false,
-      "requires_user": true,
-      "resume_phase": "integration",
-      "recorded_at": "2026-08-13T22:49:09.465903Z"
-    },
+    "updated_at": "2026-08-13T22:56:31Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
