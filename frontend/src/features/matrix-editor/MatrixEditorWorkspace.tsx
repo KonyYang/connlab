@@ -1659,13 +1659,6 @@ function MatrixAutoGrowTextarea({
   );
 }
 
-const REFERENCE_ROWS = [
-  { name: "EIA-364-23E LLCR method", type: "Method", source: "EIA-364", updated: "2024-12-01" },
-  { name: "EIA-364-21F insulation method", type: "Method", source: "EIA-364", updated: "2024-11-20" },
-  { name: "20mV max, 100mA max condition", type: "Condition", source: "EIA-364-23E", updated: "2024-10-15" },
-  { name: "Initial <= 0.40mO", type: "Requirement", source: "Customer spec", updated: "2025-01-10" }
-];
-
 export function MatrixEditorWorkspace({
   projectId,
   onBackToWorkbench,
@@ -1964,7 +1957,6 @@ export function MatrixEditorWorkspace({
     committedSourceDocumentName ||
     model.matrixAuthorityDraft?.source_document_name?.trim() ||
     null;
-  const projectionRef = model.runtimeAuthoritySync.projectionMatrixReference ?? "not loaded";
   const normalizedNameMap = new Map<string, string[]>();
   const emptyGroupIds = new Set<string>();
   groupColumns.forEach((group) => {
@@ -4109,52 +4101,6 @@ export function MatrixEditorWorkspace({
           </button>
         </div>
       </footer>
-      <section className="matrix-editor-supporting">
-        <section
-          className="matrix-editor-reference-library"
-          aria-label="Reference Library"
-          style={{ gridColumn: "1 / -1" }}
-        >
-          <header>
-            <h3>Reference Library</h3>
-            <button disabled type="button">More references</button>
-          </header>
-          <nav>
-            {["Method standards", "Conditions", "Requirements", "Spec clauses"].map((tab, index) => (
-              <button className={index === 0 ? "is-active" : ""} disabled key={tab} type="button">
-                {tab}
-              </button>
-            ))}
-          </nav>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Source</th>
-                <th>Updated</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {REFERENCE_ROWS.map((row) => (
-                <tr key={row.name}>
-                  <td>{row.name}</td>
-                  <td>{row.type}</td>
-                  <td>{row.source}</td>
-                  <td>{row.updated}</td>
-                  <td>
-                    <button disabled type="button">Use</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="matrix-editor-projection-note">
-            Projection Ref: {projectionRef}
-          </p>
-        </section>
-      </section>
     </section>
   );
 }
