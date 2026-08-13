@@ -14,8 +14,53 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_GOVERNANCE_ATOMIC_COMPLEX_CLOSE",
+    "summary": "Make the normal complex Close entry verify retained Git facts and atomically release active in one board transition without new closeout evidence.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_GOVERNANCE_ATOMIC_COMPLEX_CLOSE",
+      "summary": "Make the normal complex Close entry verify retained Git facts and atomically release active in one board transition without new closeout evidence.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "scripts/connlab_personal_task.py",
+        "tests/integration/test_connlab_serial_complex_recovery.py",
+        "docs/task_board.md"
+      ],
+      "targeted_validation": [
+        "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q",
+        "py -m pytest tests/unit/test_connlab_personal_serial_workflow.py -q",
+        "git diff --check"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "f295de07ecdb4e53daf05f2a8c410e31f2284fe0",
+    "activated_at": "2026-08-13T23:37:45Z",
+    "updated_at": "2026-08-13T23:37:45Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
