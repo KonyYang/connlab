@@ -574,7 +574,7 @@ def test_v2_legacy_activate_next_token_is_frozen_without_writing(
     assert (repo / "docs/task_board.md").read_bytes() == before
 
 
-def test_real_complex_flow_uses_planner_approval_roles_and_retained_closeout(
+def test_real_complex_flow_uses_planner_approval_roles_and_atomic_retained_close(
     tmp_path: Path,
 ) -> None:
     repo = tmp_path / "daily-entry"
@@ -598,6 +598,39 @@ def test_real_complex_flow_uses_planner_approval_roles_and_retained_closeout(
     commit_board(repo, "record verified primary integration")
 
     decision_ref = "关闭：人工检查完成。"
+    board_before_close = (repo / "docs/task_board.md").read_bytes()
+    primary_dirty_path = repo / "primary-dirty.txt"
+    primary_dirty_path.write_text("retain\n", encoding="utf-8")
+    primary_dirty = invoke_run_task(
+        repo,
+        "-Task", "TASK_DAILY_COMPLEX",
+        "-Action", "Close",
+        "-RepositoryRoot", str(repo),
+        "-ExpectedBoardSha256", board_hash(repo),
+        "-DecisionRef", decision_ref,
+        "-Json",
+        expected_exit=2,
+    )
+    assert primary_dirty["code"] == "BLOCKED_WORKTREE_DIRTY"
+    assert (repo / "docs/task_board.md").read_bytes() == board_before_close
+    primary_dirty_path.unlink()
+
+    host_dirty_path = worktree / "host-dirty.txt"
+    host_dirty_path.write_text("retain\n", encoding="utf-8")
+    host_dirty = invoke_run_task(
+        repo,
+        "-Task", "TASK_DAILY_COMPLEX",
+        "-Action", "Close",
+        "-RepositoryRoot", str(repo),
+        "-ExpectedBoardSha256", board_hash(repo),
+        "-DecisionRef", decision_ref,
+        "-Json",
+        expected_exit=2,
+    )
+    assert host_dirty["code"] == "BLOCKED_WORKTREE_FACTS"
+    assert (repo / "docs/task_board.md").read_bytes() == board_before_close
+    host_dirty_path.unlink()
+
     close_result = invoke_run_task(
         repo,
         "-Task",
@@ -612,19 +645,23 @@ def test_real_complex_flow_uses_planner_approval_roles_and_retained_closeout(
         decision_ref,
         "-Json",
     )
-    assert close_result["code"] == "ALLOW_REQUEST_CLOSE"
-    _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes()); assert board["active"]["phase"] == "closing"; commit_board(repo, "record user close request")
-    evidence_path = repo / "docs/lane_evidence/closeout.md"; evidence_path.parent.mkdir(exist_ok=True); evidence = b"retained closeout proof\n"; evidence_path.write_bytes(evidence)
-    git(repo, "add", "docs/lane_evidence/closeout.md"); git(repo, "commit", "-m", "record closeout evidence"); evidence_commit = git(repo, "rev-parse", "HEAD").stdout.strip()
-    evidence_ref = f"docs/lane_evidence/closeout.md@{evidence_commit}#{hashlib.sha256(evidence).hexdigest()}"
+    assert close_result["code"] == "ALLOW_CLOSE"
     _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
-    context = board["active"]["complex_context"]
-    closeout = {"schema": "connlab.serial-closeout", "version": 1, "action_id": "9" * 64, "disposition": "retained", "task_id": "TASK_DAILY_COMPLEX", "thread_id": context["host_thread_id"], "worktree": str(worktree.resolve()), "branch": context["task_branch"], "head_sha": subject, "clean": True, "integrated_commit": integration["merge_commit"], "evidence_ref": evidence_ref, "reason": "retained_nonblocking_manual_maintenance", "recorded_at": "2026-08-07T00:00:05Z"}
-    recorded = invoke_personal(repo, "record-closeout", "--expected-board-sha256", board_hash(repo), "--task-id", "TASK_DAILY_COMPLEX", "--closeout-json", json.dumps(closeout, separators=(",", ":")))
-    assert recorded["code"] == "ALLOW_RECORD_CLOSEOUT"; commit_board(repo, "record retained closeout")
-    finalized = invoke_personal(repo, "finalize-close", "--expected-board-sha256", board_hash(repo), "--task-id", "TASK_DAILY_COMPLEX", "--decision-ref", decision_ref)
-    assert finalized["code"] == "ALLOW_FINALIZE_CLOSE"; _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
-    assert board["state"] == "idle" and board["active"] is None and board["last_closed"]["decision_ref"] == decision_ref
+    assert board["state"] == "idle" and board["active"] is None
+    assert board["last_closed"] == {
+        "task_id": "TASK_DAILY_COMPLEX",
+        "disposition": "retained",
+        "decision_ref": decision_ref,
+        "integration_commit": integration["merge_commit"],
+        "integrator_evidence_ref": integration["evidence_refs"][-1],
+        "retained_resources": {
+            "thread_id": f"thread-task_daily_complex",
+            "worktree": str(worktree.resolve()),
+            "branch": "codex/task-daily-complex",
+            "head_sha": subject,
+        },
+        "closed_at": board["last_closed"]["closed_at"],
+    }
 
 
 def test_record_integration_verifies_git_worktree_evidence_and_committed_board(

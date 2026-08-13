@@ -111,6 +111,44 @@ def verify_retained_repository(root: Path, active: dict[str, Any], value: dict[s
         raise Blocked("BLOCKED_INTEGRATION_PROOF", "Retained worktree HEAD is not integrated.")
     verify_evidence_ref(root, value.get("evidence_ref"))
     return value
+def atomic_complex_closeout(root: Path, active: dict[str, Any], decision_ref: str) -> dict[str, Any]:
+    if not decision_ref:
+        raise Blocked("BLOCKED_STATE", "Explicit User decision reference is required.")
+    if active.get("phase") != "human_review":
+        raise Blocked("BLOCKED_STATE", "Complex task is not awaiting human review.")
+    if not committed_board(root):
+        raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The human-review board transition must be committed first.")
+    if git_dirty(root):
+        raise Blocked("BLOCKED_WORKTREE_DIRTY", "Primary must be clean before close.")
+    context = active.get("complex_context")
+    evidence_refs = context.get("evidence_refs") if isinstance(context, dict) else None
+    if not isinstance(evidence_refs, list) or not evidence_refs:
+        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Accepted Integrator evidence is missing.")
+    retained = {
+        "task_id": active["task_id"],
+        "thread_id": context.get("host_thread_id"),
+        "worktree": context.get("task_worktree"),
+        "branch": context.get("task_branch"),
+        "head_sha": context.get("head_sha"),
+        "clean": True,
+        "integrated_commit": context.get("integrated_commit"),
+        "evidence_ref": evidence_refs[-1],
+    }
+    verify_retained_repository(root, active, retained)
+    return {
+        "task_id": active["task_id"],
+        "disposition": "retained",
+        "decision_ref": decision_ref,
+        "integration_commit": retained["integrated_commit"],
+        "integrator_evidence_ref": retained["evidence_ref"],
+        "retained_resources": {
+            "thread_id": retained["thread_id"],
+            "worktree": retained["worktree"],
+            "branch": retained["branch"],
+            "head_sha": retained["head_sha"],
+        },
+        "closed_at": now(),
+    }
 def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) -> tuple[str, bool, str]:
     command, task_id = args.command, args.task_id
     active = control.get("active")
@@ -246,11 +284,10 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         active.update(blocker=None, phase=resume_phase, updated_at=now())
         return "ALLOW_RESUME", True, "Blocker cleared by explicit User direction."
     if command == "close" and control.get("version") == 2 and isinstance(active.get("complex_context"), dict):
-        if git_dirty(root):
-            raise Blocked("BLOCKED_WORKTREE_DIRTY", "A clean primary worktree is required.")
-        transition_code = complex_transition(active, "request-close", {"decision_ref": args.decision_ref})
-        control["state"] = "running"
-        return transition_code, True, "User close recorded; retained closeout continues automatically."
+        control["last_closed"] = atomic_complex_closeout(root, active, args.decision_ref)
+        control["active"] = None
+        control["state"] = "idle"
+        return "ALLOW_CLOSE", True, "Complex task closed atomically with retained Git and Integrator evidence facts."
     if command in {"cancel", "close"}:
         if git_dirty(root):
             raise Blocked("BLOCKED_WORKTREE_DIRTY", "A clean primary worktree is required.")
