@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_PROJECT_BASIC_INFORMATION_INITIAL_SAMPLE_DEPOSITION_DEFAULT",
     "summary": "Populate empty Sample deposition from Post-Testing Sample Disposition on first Basic Information load while preserving manual Sample deposition overrides and existing explicit LTR preview/commit behavior.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -57,9 +57,36 @@
     "approval_ref": null,
     "activation_parent_sha": "fab0d86bd9f37de918899f8e107bdab5ed1e0213",
     "activated_at": "2026-08-13T11:24:42Z",
-    "updated_at": "2026-08-13T11:24:42Z",
+    "updated_at": "2026-08-13T11:28:16Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "npm test -- --run src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+          "exit_code": 0,
+          "summary": "20 passed"
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "TypeScript and Vite production build passed"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "passed"
+        }
+      ],
+      "observed_paths": [],
+      "manual_checks": [
+        "Fresh browser reload without field interaction: API post_testing_disposition=Send Back to Requestor and sample_deposition=null; UI rendered Sample deposition=Send Back to Requestor on initial load.",
+        "No product-code change: current source and existing regression already implement the requested initial-load default."
+      ],
+      "recorded_at": "2026-08-13T11:28:15.9489699Z"
+    },
     "complex_context": null
   },
   "queue": [],
