@@ -209,3 +209,40 @@ def test_powershell_adapter_freezes_legacy_entry_before_consuming_inputs(
     assert _git(ROOT, "status", "--porcelain=v1", "--untracked-files=all") == status_before
     assert _git(ROOT, "branch", "--format=%(refname)") == branches_before
     assert _git(ROOT, "worktree", "list", "--porcelain") == worktrees_before
+
+
+def test_powershell_adapter_uses_only_the_marker_delimited_control_block(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "legacy-board"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "docs").mkdir()
+    shutil.copy2(ROOT / "scripts" / "connlab_controlled_lane.ps1", repo / "scripts")
+    (repo / "docs" / "task_board.md").write_text(
+        """# Historical prose
+
+\"schema\": \"connlab.personal-serial-control\"
+\"version\": 2
+\"mode\": \"personal_serial\"
+
+<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
+```json
+{"schema":"connlab.execution-control","version":1,"mode":"legacy"}
+```
+<!-- CONNLAB_EXECUTION_CONTROL_END -->
+""",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File",
+            str(repo / "scripts" / "connlab_controlled_lane.ps1"),
+            "-Command", "prepare-dispatch", "-RequestJson", "missing.json", "-DryRun",
+        ],
+        check=False, capture_output=True, text=True,
+    )
+
+    output = json.loads(completed.stdout)
+    assert completed.returncode == 2
+    assert output["code"] == "CTL_INVALID_REQUEST"

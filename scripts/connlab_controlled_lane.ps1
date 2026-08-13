@@ -36,11 +36,17 @@ $env:PYTHONUTF8 = "1"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")).TrimEnd("\")
 $boardPath = Join-Path $repoRoot "docs\task_board.md"
 $boardText = [System.IO.File]::ReadAllText($boardPath, [System.Text.Encoding]::UTF8)
-if (
-    $boardText -match '(?s)"schema"\s*:\s*"connlab\.personal-serial-control"' -and
-    $boardText -match '(?s)"version"\s*:\s*2' -and
-    $boardText -match '(?s)"mode"\s*:\s*"personal_serial"'
-) {
+$controlBlock = [regex]::Match(
+    $boardText,
+    '(?s)<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->\s*```json\s*(.*?)\s*```\s*<!-- CONNLAB_EXECUTION_CONTROL_END -->'
+)
+if ($controlBlock.Success) {
+    $control = $controlBlock.Groups[1].Value | ConvertFrom-Json
+}
+if ($null -ne $control -and
+    $control.schema -eq "connlab.personal-serial-control" -and
+    $control.version -eq 2 -and
+    $control.mode -eq "personal_serial") {
     [ordered]@{
         code = "BLOCKED_LEGACY_MODE_FROZEN"
         allowed = $false

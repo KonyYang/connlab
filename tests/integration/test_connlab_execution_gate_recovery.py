@@ -143,3 +143,70 @@ def test_controlled_lane_switch_is_stably_frozen_and_zero_write(repo: Path) -> N
     assert result["code"] == "BLOCKED_LEGACY_MODE_FROZEN"
     assert result["changed"] is False
     assert (repo / "docs" / "task_board.md").read_bytes() == before
+
+
+def test_v2_busy_submit_is_zero_write_then_same_request_can_resubmit_after_close(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "v2-resubmit"
+    repo.mkdir()
+    git(repo, "init", "-b", "master")
+    git(repo, "config", "user.email", "test@example.com")
+    git(repo, "config", "user.name", "Test User")
+    (repo / ".gitignore").write_text("tmp/\n", encoding="utf-8")
+    (repo / "docs").mkdir()
+    v2 = {
+        "schema": "connlab.personal-serial-control", "version": 2,
+        "mode": "personal_serial", "wip_limit": 1, "state": "idle", "active": None,
+        "queue": [], "next_enqueue_sequence": 1, "last_closed": None,
+        "retained_history": [],
+    }
+    replace_control(repo, v2)
+    git(repo, "add", ".gitignore", "docs/task_board.md")
+    git(repo, "commit", "-m", "v2 fixture")
+    request_json = json.dumps({
+        "schema": "connlab.serial-task-request", "version": 1, "task_id": "TASK_RESUBMIT",
+        "summary": "same request after close", "root_cause_clear": True,
+        "expected_result_clear": True, "may_touch": ["docs/task_board.md"],
+        "targeted_validation": ["pytest targeted"], "requires_independent_review": False,
+        "forbidden_categories": {**FORBIDDEN, "push_or_release": False},
+    }, separators=(",", ":"))
+    first_code, first = invoke(repo, "TASK_RESUBMIT", request_json, json_output=True)
+    assert first_code == 0 and first["code"] == "ALLOW_ACTIVATE"
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "activate task")
+    before = (repo / "docs" / "task_board.md").read_bytes()
+
+    busy_code, busy = invoke(repo, "TASK_RESUBMIT", request_json, json_output=True)
+    assert busy_code == 2
+    assert busy["code"] == "BLOCKED_ACTIVE_TASK_RUNNING"
+    assert busy["changed"] is False
+    assert (repo / "docs" / "task_board.md").read_bytes() == before
+
+    validation = json.dumps({
+        "schema": "connlab.personal-task-validation", "version": 1, "status": "passed",
+        "checks": [{"command": "pytest targeted", "exit_code": 0, "summary": "passed"}],
+        "observed_paths": ["docs/task_board.md"], "manual_checks": [],
+        "recorded_at": "2026-08-07T00:00:00Z",
+    }, separators=(",", ":"))
+    reviewed = subprocess.run(
+        ["py", "-m", "scripts.connlab_personal_task", "mark-review", "--repo-root", str(repo),
+         "--expected-board-sha256", board_hash(repo), "--task-id", "TASK_RESUBMIT",
+         "--validation-json", validation, "--json"],
+        cwd=ROOT, check=False, capture_output=True, text=True,
+    )
+    assert reviewed.returncode == 0
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "mark reviewed")
+    completed = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-File", str(RUN_TASK), "-Task", "TASK_RESUBMIT",
+         "-Action", "Close", "-RepositoryRoot", str(repo), "-ExpectedBoardSha256", board_hash(repo),
+         "-DecisionRef", "User closed task.", "-Json"],
+        check=False, capture_output=True, text=True,
+    )
+    assert completed.returncode == 0
+    git(repo, "add", "docs/task_board.md")
+    git(repo, "commit", "-m", "close task")
+    resubmit_code, resubmit = invoke(repo, "TASK_RESUBMIT", request_json, json_output=True)
+    assert resubmit_code == 0
+    assert resubmit["code"] == "ALLOW_ACTIVATE"
