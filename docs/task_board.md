@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY",
     "summary": "Make Matrix Editor Import Matrix open at the project Submitted Material folder after project-folder creation, otherwise at the stored intake-attachment directory, with safe desktop and browser fallback behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -78,9 +78,9 @@
       "task_branch": "codex/task-matrix-import-default-source-directory",
       "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-default-source-directory",
       "base_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
-      "head_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
+      "head_sha": "8c9d8e50057125a5c1c34b335401251324eee851",
       "integration_target": "master",
-      "worktree_lifecycle": "integration_ready",
+      "worktree_lifecycle": "integrated",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -223,7 +223,7 @@
       "developer_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
       "reviewer_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
       "qa_subject_commit": "8c9d8e50057125a5c1c34b335401251324eee851",
-      "integrated_commit": null,
+      "integrated_commit": "43aca59d903b1a6473315b6efda90dea846820c2",
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_planner.md@63e3036815e4273f0d76086accab67d320bcff8e#4d3c85b15d52762e6f16efb92cae147ef95b5ade88a267b555a4a9952796864e",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_developer.md@2ab905a18feacd871c3ab92b76924e6752ff0249#4f0051b63933ade05005d71f2fad653d056dacff35c37910da241cbfe69b4640",
