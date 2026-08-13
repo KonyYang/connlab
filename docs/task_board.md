@@ -20,13 +20,44 @@
     "summary": "In browser Matrix Editor, show current project intake source candidates before file upload, preview only after explicit selection, preserve Upload other file, desktop picker, empty state, cancel and read-only behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "frontend/src/workbench.css",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 8,
+      "classification_reason": "Bounded browser Matrix source-selection UI using existing candidate list and preview APIs, with independent review and QA; no backend, API, database, schema, persistence, parser, attachment-storage, Matrix-authority, public-drive, or business-rule change.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_matrix_source_candidate_service.py -q",
+        "npm test -- --run frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "npm run build",
+        "git diff --check",
+        "deterministic browser smoke: API-ranked candidate list and recommendation; explicit candidate preview; upload fallback; empty/error state; cancel zero mutation; read-only zero calls; desktop native picker unchanged"
+      ],
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false
+      }
+    },
+    "plan_ref": "docs/task_matrix_import_browser_project_source_picker_plan.md@74eb8850c332afebad37536fdf1e60624613e202#e3192530a4ee0e5c1aac20b57213a09a778ec720e0b29039b3e5be48de7ecc80",
+    "approval_ref": "User approved the exact committed Plan and approved-request in this task on 2026-08-14.",
     "activation_parent_sha": "c87fa35bcb9336aa6dda8e40520f08f2624b0729",
     "activated_at": "2026-08-13T23:45:39Z",
-    "updated_at": "2026-08-13T23:45:39Z",
+    "updated_at": "2026-08-13T23:58:40Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
