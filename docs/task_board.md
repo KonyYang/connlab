@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
+  "state": "running",
   "active": {
     "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP",
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "human_review",
+    "phase": "closing",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -216,7 +216,7 @@
       "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
-      "close_decision_ref": null
+      "close_decision_ref": "User explicitly closed TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP after inspecting local Integrator acceptance; retain task worktree, task branch, evidence branch, commits and evidence; no push or cleanup."
     }
   },
   "queue": [],
