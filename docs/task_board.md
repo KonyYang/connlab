@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_NEW_PROJECT_APPLY_LTR_DISABLED_REASON_NOTICE",
     "summary": "Show a persistent, accessible reason beside Apply LTR Number when required information blocks the action, directing the operator to complete highlighted required fields instead of relying on a disabled-button tooltip.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -57,9 +57,38 @@
     "approval_ref": null,
     "activation_parent_sha": "b17abd93437dfd4e6c9047e167a31c8fc30a6cff",
     "activated_at": "2026-08-13T11:34:40Z",
-    "updated_at": "2026-08-13T11:34:40Z",
+    "updated_at": "2026-08-13T11:42:25Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "npm test -- --run src/features/new-project/NewProjectCompletionDock.test.tsx",
+          "exit_code": 0,
+          "summary": "4 passed"
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "TypeScript and Vite production build passed"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "passed"
+        }
+      ],
+      "observed_paths": [
+        "frontend/src/features/new-project/NewProjectCompletionDock.tsx",
+        "frontend/src/features/new-project/NewProjectCompletionDock.test.tsx"
+      ],
+      "manual_checks": [
+        "Browser smoke: switching to specified LTR mode with an empty value disabled Apply LTR Number and showed the persistent actionable blocker reason; restoring auto mode removed the reason and re-enabled the action."
+      ],
+      "recorded_at": "2026-08-13T11:42:25Z"
+    },
     "complex_context": null
   },
   "queue": [],
