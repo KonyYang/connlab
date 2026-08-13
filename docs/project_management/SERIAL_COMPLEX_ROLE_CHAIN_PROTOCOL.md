@@ -60,6 +60,10 @@ manifest, permission-receipt or lifecycle-cleanup command family.
 `activate-next` parser token remains only for version-1 rollback compatibility; a version-2 board
 always returns `BLOCKED_LEGACY_MODE_FROZEN` with zero writes.
 
+Controlled Lane V2 is retained historical audit material, not an alternate daily entry. Its adapter
+must fail closed before consuming legacy request or registry inputs while this version-2 board is
+authoritative.
+
 The common `block` command is also the legal non-callback failure writer for a v2 complex task. It
 accepts only `connlab.serial-task-blocker` version 1, enforces the frozen code policy and requires the
 blocker's `stage` to equal the active phase. `record-integration` writes human review only after the

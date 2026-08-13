@@ -102,7 +102,6 @@ def invoke(
     request_json: str | None,
     *,
     controlled: bool = False,
-    activate_next: bool = False,
     json_output: bool = False,
 ) -> tuple[int, dict]:
     command = [
@@ -113,25 +112,18 @@ def invoke(
         command.extend(["-RequestJson", request_json])
     if controlled:
         command.append("-ControlledLaneV2")
-    if activate_next:
-        command.append("-ActivateNext")
     if json_output:
         command.append("-Json")
     completed = subprocess.run(command, text=True, capture_output=True)
     return completed.returncode, json.loads(completed.stdout)
 
 
-def test_run_task_activates_when_idle_then_queues_without_dispatch(repo: Path) -> None:
-    first_code, first = invoke(repo, "TASK_ONE", request("TASK_ONE"))
-    second_code, second = invoke(repo, "TASK_TWO", request("TASK_TWO"))
+def test_run_task_public_entry_surface_is_submit_approve_and_close_only() -> None:
+    source = RUN_TASK.read_text(encoding="utf-8")
 
-    assert first_code == second_code == 0
-    assert first["code"] == "ALLOW_ACTIVATE"
-    assert second["code"] == "QUEUED_NEW"
-    assert control(repo)["active"]["task_id"] == "TASK_ONE"
-    assert [item["task_id"] for item in control(repo)["queue"]] == ["TASK_TWO"]
-    assert git(repo, "branch", "--show-current") == "master"
-    assert git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+    assert '[ValidateSet("Submit", "Approve", "Close")]' in source
+    assert "ActivateNext" not in source
+    assert "activate-next" not in source.lower()
 
 
 def test_entry_points_resolve_default_root_after_parameter_binding() -> None:
@@ -140,30 +132,6 @@ def test_entry_points_resolve_default_root_after_parameter_binding() -> None:
         assert "[string]$RepositoryRoot," in source
         assert "[string]$RepositoryRoot =" not in source
         assert "if ([string]::IsNullOrWhiteSpace($RepositoryRoot))" in source
-
-
-def test_run_task_activate_next_starts_only_the_fifo_head_and_accepts_json(repo: Path) -> None:
-    invoke(repo, "TASK_ONE", request("TASK_ONE"))
-    invoke(repo, "TASK_TWO", request("TASK_TWO"))
-    value = control(repo)
-    value["active"] = None
-    value["state"] = "idle"
-    replace_control(repo, value)
-    git(repo, "add", "docs/task_board.md")
-    git(repo, "commit", "-m", "closed active fixture")
-
-    code, result = invoke(
-        repo,
-        "TASK_TWO",
-        None,
-        activate_next=True,
-        json_output=True,
-    )
-
-    assert code == 0
-    assert result["code"] == "ALLOW_ACTIVATE_NEXT"
-    assert control(repo)["active"]["task_id"] == "TASK_TWO"
-    assert control(repo)["queue"] == []
 
 
 def test_controlled_lane_switch_is_stably_frozen_and_zero_write(repo: Path) -> None:

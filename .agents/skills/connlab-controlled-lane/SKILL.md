@@ -5,6 +5,12 @@ description: Execute one authorized ConnLab lane routing action using the determ
 
 # ConnLab Controlled Lane
 
+> **Hard frozen under Personal Serial Workflow V2.** This skill is retained as historical audit
+> material and is not a daily execution entry. When the authoritative board is
+> `connlab.personal-serial-control` version 2 with `mode=personal_serial`, its PowerShell adapter
+> fails closed with `BLOCKED_LEGACY_MODE_FROZEN` before consuming legacy inputs. Use only the active
+> `connlab-lane-orchestrator` workflow and its public `Submit`, `Approve`, and `Close` entry surface.
+
 Use this skill only after the repository task, plan, evidence, and board authorize the exact lane
 phase. It implements one-action orchestration; it does not grant approval.
 
