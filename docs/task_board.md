@@ -80,7 +80,7 @@
       "base_sha": "814203b96de2e9c6d61da6ebe8d1b7165eb4ed04",
       "head_sha": "8c9d8e50057125a5c1c34b335401251324eee851",
       "integration_target": "master",
-      "worktree_lifecycle": "integrated",
+      "worktree_lifecycle": "retained",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -236,8 +236,25 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_integrator.md@6d430544a7bd68862a01e332d8d5bd37273f8baa#b1ad035ebc3f6b50b2e811f10a80a525c166f53b03617feb064e362ba4554416"
       ],
       "pending_callback": null,
-      "closeout_disposition": null,
-      "retained_resource_refs": [],
+      "closeout_disposition": {
+        "schema": "connlab.serial-closeout",
+        "version": 1,
+        "action_id": "0f9671b55cda06aa6a2a3748161a06b5a7d5572ffb17f47d0dcb95ec9fd9ede6",
+        "disposition": "retained",
+        "task_id": "TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY",
+        "thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
+        "worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-default-source-directory",
+        "branch": "codex/task-matrix-import-default-source-directory",
+        "head_sha": "8c9d8e50057125a5c1c34b335401251324eee851",
+        "clean": true,
+        "integrated_commit": "43aca59d903b1a6473315b6efda90dea846820c2",
+        "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_closeout.md@08e82405b5949d3d49ae46019c31c32be6eae47b#18880de9364a9ec0b32787b75749d986cb9638826f1e1dd6d8c22d3b13317bc9",
+        "reason": "retained_nonblocking_manual_maintenance",
+        "recorded_at": "2026-08-13T23:13:50.240894Z"
+      },
+      "retained_resource_refs": [
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY_closeout.md@08e82405b5949d3d49ae46019c31c32be6eae47b#18880de9364a9ec0b32787b75749d986cb9638826f1e1dd6d8c22d3b13317bc9"
+      ],
       "close_decision_ref": "User decision in current thread: 关闭"
     }
   },
