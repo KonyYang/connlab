@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
     "summary": "Remove the unused Reference Library placeholder section from Matrix Editor and update its bounded frontend source assertions.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,9 +56,39 @@
     "approval_ref": null,
     "activation_parent_sha": "e487ba27ed936d7a159ec27995972eca7e61af1e",
     "activated_at": "2026-08-13T10:29:25Z",
-    "updated_at": "2026-08-13T10:29:25Z",
+    "updated_at": "2026-08-13T10:35:33Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "py -m pytest tests/unit/test_frontend_shell_files.py::test_task221_matrix_editor_converges_to_definition_studio_structure tests/unit/test_frontend_shell_files.py::test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority -q",
+          "exit_code": 0,
+          "summary": "2 passed"
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "TypeScript and Vite production build passed"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "passed"
+        }
+      ],
+      "observed_paths": [
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "tests/unit/test_frontend_shell_files.py"
+      ],
+      "manual_checks": [
+        "Browser smoke: Matrix Editor rendered with no Reference Library section; completion actions remain present.",
+        "Full static test file baseline: 134 passed, 28 unrelated pre-existing stale assertions failed."
+      ],
+      "recorded_at": "2026-08-13T10:35:32.8330002Z"
+    },
     "complex_context": null
   },
   "queue": [],
