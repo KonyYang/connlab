@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_SERIAL_HOST_CREATION_RELIABILITY",
     "summary": "Add a deterministic idempotent Create action to the existing serial worktree helper and document one safe zero-write retry boundary.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,9 +56,40 @@
     "approval_ref": null,
     "activation_parent_sha": "e756aa479b66837fffbfee82a7ffa8a6ca66c7a1",
     "activated_at": "2026-08-13T23:20:57Z",
-    "updated_at": "2026-08-13T23:20:57Z",
+    "updated_at": "2026-08-13T23:30:00Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "py -m pytest tests/unit/test_connlab_serial_complex_worktree.py -q",
+          "exit_code": 0,
+          "summary": "2 existing Inspect/Retire worktree tests passed."
+        },
+        {
+          "command": "PowerShell parser + git diff --check",
+          "exit_code": 0,
+          "summary": "Helper parses cleanly and diff has no whitespace errors."
+        },
+        {
+          "command": "temporary Git repository Create/reuse/conflict/boundary smoke",
+          "exit_code": 0,
+          "summary": "Create, idempotent reuse, conflict refusal and direct-child boundary passed with temporary primary clean."
+        }
+      ],
+      "observed_paths": [
+        "scripts/connlab_serial_worktree.ps1",
+        ".agents/skills/connlab-lane-orchestrator/SKILL.md",
+        "docs/task_board.md"
+      ],
+      "manual_checks": [
+        "Helper facts include branch, worktree, base_sha, head_sha and clean for record-host composition.",
+        "No Task, Plan, evidence, product code, push or cleanup was created."
+      ],
+      "recorded_at": "2026-08-13T23:29:59Z"
+    },
     "complex_context": null
   },
   "queue": [],

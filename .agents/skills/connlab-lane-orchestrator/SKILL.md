@@ -112,6 +112,19 @@ the recorded host and never duplicates activation. If identity cannot be proved,
 the typed blocker. A browser smoke is required only for a user-visible UI change, and then uses a
 documented load state or deterministic selectors; unsupported `networkidle` probing is forbidden.
 
+After the durable `begin-host` commit, create or reuse the host only through one complete
+`scripts/connlab_serial_worktree.ps1 -Action Create` call. Pass the exact primary root, active Task ID,
+approved branch, sibling worktree root, direct-child target path and approved base SHA; use named
+PowerShell splatting and request one permission boundary for the complete helper call. The helper
+returns Git facts only. Combine them mechanically with the unchanged pending `action_id` and native
+`thread_id`/`host_id` to form the existing `record-host` payload.
+
+Retry a local transport failure at most once in the same turn, only after proving `changed=false`, the
+same `host_creation_pending` action ID, unchanged board and primary HEAD, and no branch, path or
+worktree-registration drift. Use identical task/branch/path/base identity. Never retry permission,
+authority, scope, dirty, conflict or partial-state failures; retain their facts and stop. Record the
+host once, after `ALLOW_WORKTREE_CREATE` or `ALLOW_WORKTREE_REUSE`.
+
 ## Safety
 
 WIP is one. When a task is active, a new submission returns `BLOCKED_ACTIVE_TASK_RUNNING` immediately
