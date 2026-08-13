@@ -14,97 +14,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
-    "summary": "Remove the unused Reference Library placeholder section from Matrix Editor and update its bounded frontend source assertions.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
-      "summary": "Remove the unused Reference Library placeholder section from Matrix Editor and update its bounded frontend source assertions.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "tests/unit/test_frontend_shell_files.py",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "py -m pytest tests/unit/test_frontend_shell_files.py -q",
-        "npm run build --prefix frontend",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "e487ba27ed936d7a159ec27995972eca7e61af1e",
-    "activated_at": "2026-08-13T10:29:25Z",
-    "updated_at": "2026-08-13T10:35:33Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "py -m pytest tests/unit/test_frontend_shell_files.py::test_task221_matrix_editor_converges_to_definition_studio_structure tests/unit/test_frontend_shell_files.py::test_task222_matrix_editor_pixel_tuning_preserves_definition_studio_priority -q",
-          "exit_code": 0,
-          "summary": "2 passed"
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "TypeScript and Vite production build passed"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "passed"
-        }
-      ],
-      "observed_paths": [
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "tests/unit/test_frontend_shell_files.py"
-      ],
-      "manual_checks": [
-        "Browser smoke: Matrix Editor rendered with no Reference Library section; completion actions remain present.",
-        "Full static test file baseline: 134 passed, 28 unrelated pre-existing stale assertions failed."
-      ],
-      "recorded_at": "2026-08-13T10:35:32.8330002Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP",
-    "disposition": "retained",
-    "decision_ref": "User explicitly closed TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP after inspecting local Integrator acceptance; retain task worktree, task branch, evidence branch, commits and evidence; no push or cleanup.",
-    "closeout_evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_integrator.md@59a181f7fa49dbe1757d3eda889a3f4962f0fba8#6829a55585ee66f4b0c86d647f491bfb43bc9ad49d4a8e74e07523a23578b631",
-    "retained_resources": {
-      "thread_id": "019ff81a-157d-7780-8efd-a115887a8997",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
-      "branch": "codex/task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
-      "head_sha": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7"
-    },
-    "closed_at": "2026-08-13T10:20:01Z"
+    "task_id": "TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER",
+    "disposition": "closed after human review",
+    "decision_ref": "User explicitly closed TASK_MATRIX_EDITOR_REMOVE_REFERENCE_LIBRARY_PLACEHOLDER after inspecting the Matrix Editor placeholder removal; implementation and validation accepted; no push or cleanup.",
+    "closed_at": "2026-08-13T11:07:47Z"
   },
   "retained_history": [
     {
