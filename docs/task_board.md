@@ -20,7 +20,7 @@
     "summary": "In browser Matrix Editor, show current project intake source candidates before file upload, preview only after explicit selection, preserve Upload other file, desktop picker, empty state, cancel and read-only behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -37,7 +37,7 @@
       "head_sha": "c87fa35bcb9336aa6dda8e40520f08f2624b0729",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -74,13 +74,10 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "5960a14479c4f0e8d6dc63de4d4644319438c16cefec01cd5f6f7f18ac6cf633",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247"
+      ],
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
