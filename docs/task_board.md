@@ -20,7 +20,7 @@
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "qa",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -68,7 +68,7 @@
       "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "QA",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -188,7 +188,7 @@
       ],
       "developer_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "reviewer_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
-      "qa_subject_commit": null,
+      "qa_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_planner.md@ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#e5e4a4291620a15554b4cb94dac62aabb9583eb406693feaefc1ac97a54e6783",
@@ -197,14 +197,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@e92f087c93c92923dac8eec8e3f4519d2b5ec763#b374beae2d931023d1edf06a695b8a3251093d3f77eebecf1082ec8f58a9541a",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@4e4e0dc0d6ec6d2f0352c3f8ecaad96ac4c3fdef#3c1c10339f9a4875aadc14d340d39ec9d42a4f6ebde299dd67a8e170de95c96f",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@f6933cd358e1083e509d98b386c429705624d561#ef9ee0bcf3352aff1c3efcf741a71ab476242f39b8f21f2480987066a02addd5",
-        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@41597b7d96dbb91ef123339c1f7b3d0724255392#59c6769c72a8759dc17b821c13078496593880f82d5c1eed5e9a747dca155d55"
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_reviewer.md@41597b7d96dbb91ef123339c1f7b3d0724255392#59c6769c72a8759dc17b821c13078496593880f82d5c1eed5e9a747dca155d55",
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_qa.md@41fead6fec04918544338fd4ea1a3399ceaba953#3833c3b53716c6f5eac98c64a03a1351e064fda50cc8a1489c524e4d14f5788a"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "9381e3fb7d9f2969a32ad9a8f448672f6f59d3717f104fd156ee7e04bf21e5f9",
-        "role": "QA",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
