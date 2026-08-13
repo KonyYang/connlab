@@ -34,6 +34,13 @@ class FileAssetStore(Protocol):
         """Return file assets registered for one project."""
 
 
+class OfficialWorkspaceStore(Protocol):
+    """Official workspace lookup needed for the preferred import directory."""
+
+    def get_by_project(self, project_id: str) -> object | None:
+        """Return the official workspace record when one exists."""
+
+
 @dataclass(frozen=True, slots=True)
 class ProjectTestPlanSourceCandidate:
     """One candidate Matrix source file derived from Project file assets."""
@@ -54,6 +61,8 @@ class ProjectTestPlanSourceCandidatesResult:
     project_id: str
     candidates: tuple[ProjectTestPlanSourceCandidate, ...]
     warnings: tuple[str, ...]
+    preferred_import_directory: Path | None
+    preferred_import_directory_source: str
 
 
 class ProjectTestPlanSourceCandidateService:
@@ -73,10 +82,12 @@ class ProjectTestPlanSourceCandidateService:
         *,
         project_store: ProjectStore,
         file_asset_store: FileAssetStore,
+        official_workspace_store: OfficialWorkspaceStore | None = None,
     ) -> None:
         """Create the service with repository ports."""
         self._projects = project_store
         self._assets = file_asset_store
+        self._workspaces = official_workspace_store
 
     def list_source_candidates(
         self,
@@ -85,11 +96,16 @@ class ProjectTestPlanSourceCandidateService:
         """List candidate `.docx` Matrix source files for one project."""
         self._require_project(project_id)
         assets = self._assets.list_by_project(project_id)
+        preferred_directory, preferred_source = self._preferred_import_directory(
+            project_id, assets
+        )
         if not assets:
             return ProjectTestPlanSourceCandidatesResult(
                 project_id=project_id,
                 candidates=(),
                 warnings=("No project source files are registered yet.",),
+                preferred_import_directory=preferred_directory,
+                preferred_import_directory_source=preferred_source,
             )
 
         ranked: list[tuple[int, ProjectTestPlanSourceCandidate]] = []
@@ -137,7 +153,33 @@ class ProjectTestPlanSourceCandidateService:
             project_id=project_id,
             candidates=tuple(candidate for _, candidate in ranked),
             warnings=tuple(warnings),
+            preferred_import_directory=preferred_directory,
+            preferred_import_directory_source=preferred_source,
         )
+
+    def _preferred_import_directory(
+        self, project_id: str, assets: list[FileAsset]
+    ) -> tuple[Path | None, str]:
+        workspace = (
+            self._workspaces.get_by_project(project_id) if self._workspaces is not None else None
+        )
+        official_folder = getattr(workspace, "official_folder_path", None)
+        if official_folder is not None:
+            submitted_material = Path(official_folder) / "Submitted Material"
+            if submitted_material.is_dir():
+                return submitted_material, "submitted_material"
+        parents = {
+            asset.path.parent
+            for asset in assets
+            if asset.asset_type is FileAssetType.ATTACHMENT
+            and asset.source_intake_asset_id
+            and (asset.source_role or "").casefold() != "email_source"
+            and asset.path.is_file()
+            and asset.path.parent.is_dir()
+        }
+        if parents:
+            return min(parents, key=lambda path: str(path.resolve()).casefold()), "intake_attachments"
+        return None, "unavailable"
 
     def get_candidate_source_path(
         self,

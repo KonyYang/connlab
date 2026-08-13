@@ -1852,6 +1852,9 @@ export type ProjectTestPlanMatrixValidateResponse = {
 export type MatrixPreviewFromPathRequest = {
   source_path: string;
   project_id?: string | null;
+  page_number?: number | null;
+  page_table_index?: number | null;
+  table_text_query?: string | null;
 };
 
 export type MatrixPreviewStep = {
@@ -1990,6 +1993,11 @@ export type MatrixSourceCandidatesResponse = {
   project_id: string;
   candidates: MatrixSourceCandidate[];
   warnings: string[];
+  preferred_import_directory: string | null;
+  preferred_import_directory_source:
+    | "submitted_material"
+    | "intake_attachments"
+    | "unavailable";
 };
 
 export type ProjectTestPlanDraftCreateRequest = {

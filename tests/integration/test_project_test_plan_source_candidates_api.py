@@ -16,7 +16,12 @@ from backend.infrastructure.storage.database import (
     create_session_factory,
     init_db,
 )
-from backend.infrastructure.storage.repositories import FileAssetRepository, ProjectRepository
+from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.infrastructure.storage.repositories import (
+    FileAssetRepository,
+    ProjectOfficialWorkspaceRepository,
+    ProjectRepository,
+)
 from backend.shared.config import Settings
 
 
@@ -64,6 +69,25 @@ def test_source_candidate_preview_rejects_cross_project_asset(tmp_path: Path) ->
         response = client.post("/api/projects/P2/test-plan/source-candidates/A1/matrix-preview")
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_source_candidates_api_projects_submitted_material_directory(tmp_path: Path) -> None:
+    client, engine = _client(tmp_path)
+    try:
+        _create_project("P1", tmp_path)
+        official = tmp_path / "official"
+        submitted = official / "Submitted Material"
+        submitted.mkdir(parents=True)
+        _create_workspace("P1", official, tmp_path)
+
+        response = client.get("/api/projects/P1/test-plan/source-candidates")
+
+        assert response.status_code == 200
+        assert response.json()["preferred_import_directory"] == str(submitted)
+        assert response.json()["preferred_import_directory_source"] == "submitted_material"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -142,6 +166,33 @@ def _create_file_asset(
                 path=path,
                 original_name=original_name,
                 registered_on=date(2026, 5, 14),
+            )
+        )
+        session.commit()
+    engine.dispose()
+
+
+def _create_workspace(project_id: str, official: Path, tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "connlab.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    session_factory = create_session_factory(engine)
+    with session_factory() as session:
+        ProjectOfficialWorkspaceRepository(session).save(
+            OfficialWorkspaceRecord(
+                workspace_id="W1",
+                project_id=project_id,
+                dl_number="DL-2026-05-P1",
+                local_workspace_path=tmp_path / "local",
+                source_book_path=tmp_path / "source.xlsx",
+                official_folder_path=official,
+                manifest_path=tmp_path / "manifest.json",
+                template_source_path=tmp_path / "template",
+                created_at="2026-05-14T00:00:00Z",
             )
         )
         session.commit()

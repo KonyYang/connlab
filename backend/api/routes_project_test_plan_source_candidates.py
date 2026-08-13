@@ -47,6 +47,8 @@ class MatrixSourceCandidatesResponse(BaseModel):
     project_id: str
     candidates: list[MatrixSourceCandidateResponse]
     warnings: list[str]
+    preferred_import_directory: str | None
+    preferred_import_directory_source: str
 
 
 @router.get("", response_model=MatrixSourceCandidatesResponse)
@@ -65,6 +67,12 @@ def list_project_test_plan_source_candidates(
         project_id=result.project_id,
         candidates=[_candidate_response(item) for item in result.candidates],
         warnings=list(result.warnings),
+        preferred_import_directory=(
+            str(result.preferred_import_directory)
+            if result.preferred_import_directory is not None
+            else None
+        ),
+        preferred_import_directory_source=result.preferred_import_directory_source,
     )
 
 

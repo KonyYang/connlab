@@ -40,6 +40,9 @@ def desktop_bridge_script() -> str:
 window.connlabDesktopPathPicker = {
   pickExternalResourcePath: function(resourceType) {
     return window.pywebview.api.pickExternalResourcePath(resourceType);
+  },
+  pickMatrixImportSource: function(initialDirectory) {
+    return window.pywebview.api.pickMatrixImportSource(initialDirectory);
   }
 };
 """

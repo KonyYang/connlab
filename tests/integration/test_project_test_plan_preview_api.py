@@ -43,6 +43,28 @@ def test_matrix_preview_api_extracts_docx_matrix(tmp_path: Path) -> None:
     assert group_1["steps"][1]["source_section"] == "6.1"
 
 
+def test_matrix_preview_path_api_passes_locator_fields_unchanged() -> None:
+    fake_service = _FakeUploadPreviewService()
+    app.dependency_overrides[get_project_test_plan_matrix_preview_service] = lambda: fake_service
+    client = TestClient(app)
+    try:
+        response = client.post(
+            "/api/test-plan/matrix-preview-from-path",
+            json={
+                "source_path": "D:/project/Submitted Material/spec.pdf",
+                "project_id": "P-locator",
+                "page_number": 7,
+                "page_table_index": 2,
+                "table_text_query": "qualification matrix",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(get_project_test_plan_matrix_preview_service, None)
+
+    assert response.status_code == 200
+    assert fake_service.previewed_locator == (7, 2, "qualification matrix")
+
+
 def test_matrix_preview_api_extracts_cross_page_pdf_details(tmp_path: Path) -> None:
     pdf_path = tmp_path / "cross-page-mfg.pdf"
     _write_cross_page_mfg_pdf(pdf_path)
@@ -227,7 +249,7 @@ def test_matrix_preview_upload_accepts_pdf_with_preview_token() -> None:
     assert payload["source_format"] == ".pdf"
     assert fake_service.previewed_source is not None
     assert fake_service.previewed_source.suffix == ".pdf"
-    assert fake_service.previewed_locator == (2, 1)
+    assert fake_service.previewed_locator == (2, 1, None)
     assert fake_service.office.word_locations_requested == []
     assert fake_service.office.word_pdf_exports == []
     assert not fake_service.previewed_source.exists()
@@ -373,7 +395,7 @@ class _FakeUploadPreviewService:
     def __init__(self, conversion_error: Exception | None = None) -> None:
         self._office = _FakeUploadPreviewOffice(conversion_error)
         self.previewed_source: Path | None = None
-        self.previewed_locator: tuple[int | None, int | None] | None = None
+        self.previewed_locator: tuple[int | None, int | None, str | None] | None = None
 
     @property
     def office(self) -> _FakeUploadPreviewOffice:
@@ -396,7 +418,11 @@ class _FakeUploadPreviewService:
         table_locations: tuple | None = None,
     ) -> ProjectTestPlanMatrixPreview:
         self.previewed_source = Path(command.source_path)
-        self.previewed_locator = (command.page_number, command.page_table_index)
+        self.previewed_locator = (
+            command.page_number,
+            command.page_table_index,
+            command.table_text_query,
+        )
         assert self.previewed_source.suffix in {".docx", ".pdf"}
         return ProjectTestPlanMatrixPreview(
             project_id=command.project_id,
