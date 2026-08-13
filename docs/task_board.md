@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP",
     "summary": "Freeze legacy Controlled Lane entry under Personal Serial V2, remove stale ActivateNext/last_closed assumptions, and clarify the sole Submit/Approve/Close daily workflow without creating a new governance framework.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "AGENTS.md",
@@ -65,9 +65,9 @@
       "task_branch": "codex/task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
       "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-personal-serial-v2-legacy-entry-freeze-and-stale-test-cleanup",
       "base_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
-      "head_sha": "0e662928c5c57de927af75af2e56aa6883523a7a",
+      "head_sha": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "integration_target": "master",
-      "worktree_lifecycle": "integration_ready",
+      "worktree_lifecycle": "integrated",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -201,7 +201,7 @@
       "developer_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "reviewer_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
       "qa_subject_commit": "4f1b8742c5ae3b29a603795c471a7ddc28229fb7",
-      "integrated_commit": null,
+      "integrated_commit": "c03c50f3f8980f3df405510616682eb200b3a578",
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_planner.md@ca3858a8a8eafe59a3322a17a98c6e5d8684b5a7#e5e4a4291620a15554b4cb94dac62aabb9583eb406693feaefc1ac97a54e6783",
         "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP_developer.md@828d22b16f17d35206b37d2687d24b724e8b83b4#7d1887199eaab029efc09a8d0418da600442f5aeae3a17217bb38465cdaf271c",
