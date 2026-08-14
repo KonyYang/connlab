@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -63,41 +63,8 @@
     "approval_ref": "User explicitly approved implementation of Plan ref 7ee08a659172bde11f4bb1b87e1e9bac2630eaeb and approved-request SHA-256 0b36fc339ba7cc7dfa412a2608833fc403a8c41fd19051efef05a289e8851298 by saying 批准实施.",
     "activation_parent_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
     "activated_at": "2026-08-14T14:59:46Z",
-    "updated_at": "2026-08-14T21:12:40Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "NATIVE_ACTION_FAILED",
-      "stage": "development",
-      "reason": "Host creation preflight was invoked with an incorrect full expected-base SHA. The helper made zero changes; frozen retry policy requires explicit User direction before reusing the same pending host action with the exact current base.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "host_create",
-        "command": [
-          "scripts/connlab_serial_worktree.ps1",
-          "-Action",
-          "Create",
-          "-ExpectedBase",
-          "6a1e4a65218b7de4491c38d458b05a6bdf5f8e1f"
-        ],
-        "exit_code": 1,
-        "summary": "BLOCKED_PRIMARY_FACTS changed=false: caller supplied a non-current full expected base; actual clean primary HEAD is 6a1e4a656ff8af7aec60fb5f6bb828af53620f5c and no branch/path/worktree registration was created.",
-        "recorded_at": "2026-08-14T21:12:39Z"
-      },
-      "subject_commit": null,
-      "evidence_ref": null,
-      "native_action_id": "91b93e012b32ded8faf448cc6ab278aae86ee61888a4bd4c6f303a0971e41afe",
-      "related_ids": [
-        "BLOCKED_PRIMARY_FACTS",
-        "HOST_EXPECTED_BASE_TRANSCRIPTION"
-      ],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-14T21:12:39Z"
-    },
+    "updated_at": "2026-08-14T22:11:39Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
