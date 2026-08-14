@@ -115,10 +115,15 @@ def init_v2_repo(repo: Path) -> None:
     repo.mkdir(); git(repo, "init", "-b", "master")
     git(repo, "config", "user.email", "test@example.invalid"); git(repo, "config", "user.name", "ConnLab Flow Test")
     (repo / ".gitignore").write_text("tmp/\n", encoding="utf-8"); (repo / "docs").mkdir()
+    (repo / "docs/plan.md").write_text(
+        "# Fixture Plan\n\nDeveloper, Reviewer, QA and Integrator are all "
+        "`gpt-5.6-sol / medium / risk:authority`.\n",
+        encoding="utf-8",
+    )
     prefix, board, suffix = parse_board((ROOT / "docs/task_board.md").read_bytes())
     board.update(state="idle", active=None, queue=[], next_enqueue_sequence=1)
     (repo / "docs/task_board.md").write_bytes(render_board(prefix, board, suffix))
-    git(repo, "add", ".gitignore", "docs/task_board.md"); git(repo, "commit", "-m", "fixture: v2 idle")
+    git(repo, "add", ".gitignore", "docs/plan.md", "docs/task_board.md"); git(repo, "commit", "-m", "fixture: v2 idle")
 
 
 def commit_board(repo: Path, message: str) -> None:
@@ -202,7 +207,12 @@ def invoke_complex_role(
     )
     assert recorded["code"] == "ALLOW_RECORD_INVOCATION"
     commit_board(repo, f"record {role} invocation")
-    canonical_evidence = committed_evidence(repo, role.lower(), f"{role} evidence\n")
+    evidence_text = (
+        f"TASK_ID: {task_id}\nROLE: {role}\nSTATUS: {status}\nSUBJECT: {subject_commit}\n"
+        "MODEL: gpt-5.6-sol\nREASONING_EFFORT: medium\nMODEL_ROUTE_REASON: risk:authority\n"
+        f"ACTION_ID: {action_id}\nATTEMPT: 1\nNEXT: {next_role}\nBLOCKER: none\n"
+    )
+    canonical_evidence = committed_evidence(repo, f"{task_id}_{role.lower()}", evidence_text)
     evidence = evidence_override or canonical_evidence
     if evidence_digest is not None:
         evidence = canonical_evidence.rsplit("#", 1)[0] + f"#{evidence_digest}"
@@ -292,7 +302,12 @@ def prepare_complex_task_host(
         "-RepositoryRoot", str(repo),
         "-ExpectedBoardSha256", board_hash(repo),
         "-ApprovedRequestJson", json.dumps(approved, separators=(",", ":")),
-        "-PlanRef", "docs/plan.md@" + "a" * 40 + "#" + "b" * 64,
+        "-PlanRef", (
+            "docs/plan.md@"
+            + git(repo, "log", "-1", "--format=%H", "--", "docs/plan.md").stdout.strip()
+            + "#"
+            + hashlib.sha256(git(repo, "show", "HEAD:docs/plan.md").stdout.encode("utf-8")).hexdigest()
+        ),
         "-ApprovalRef", "用户批准 blocker 恢复测试。",
         "-Json",
     )

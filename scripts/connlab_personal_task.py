@@ -15,6 +15,10 @@ from scripts.connlab_serial_board import (
     write_board, writer_lock,
 )
 from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
+from scripts.connlab_serial_evidence_topology import (
+    verify_callback_evidence_topology,
+    verify_integration_evidence_topology,
+)
 
 COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close")
 COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
@@ -199,8 +203,11 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         callback = json.loads(args.callback_json or "null")
         callback, evidence_corrected = canonicalize_role_callback_evidence(root, callback) if command == "consume-callback" else (callback, False)
         raw = {"role": args.role, "native_action": json.loads(args.native_action_json or "null"), "invocation": json.loads(args.invocation_json or "null"), "callback": callback, "worktree": json.loads(args.worktree_json or "null"), "integration": json.loads(args.integration_json or "null"), "closeout": json.loads(args.closeout_json or "null"), "decision_ref": args.decision_ref}
+        if command == "consume-callback":
+            verify_callback_evidence_topology(root, active, callback)
         if command == "record-integration":
             validate_integration_transition(active, raw["integration"])
+            verify_integration_evidence_topology(root, active, raw["integration"])
             verify_integration_repository(root, active, raw["integration"])
         transition_code = complex_transition(active, command, raw)
         if command == "record-closeout": verify_retained_repository(root, active, raw["closeout"])

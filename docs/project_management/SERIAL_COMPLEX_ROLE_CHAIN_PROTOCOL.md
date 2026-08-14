@@ -44,6 +44,22 @@ sequentially by Developer, Reviewer, QA and Integrator. Reviewer or QA findings 
 to Developer within approved scope. Integrator binds the accepted subject and evidence before the
 runtime performs the approved non-conflicting local integration transaction.
 
+Primary is the sole execution-evidence owner. After the committed Planner-evidence prefix, every
+execution callback uses exactly this primary sequence:
+
+```text
+B_r  begin-role board-only commit
+-> A_r  record-invocation board-only commit
+-> E_r  one evidence-only commit at docs/lane_evidence/<TASK_ID>_<role>.md
+-> C_r  consume-callback board-only commit
+```
+
+`A_r`, `E_r`, and the working primary board have identical authority bytes. `E_r` is single-parent,
+its parent is the matching durable invocation state, and it changes exactly the fixed role evidence
+path. The shared task branch/worktree remains clean and fixed at the exact callback subject; roles run
+against that host but do not write evidence there. Fix loops append the same four-step sequence in
+actual invocation order, without a fixed evidence count or route-length allowlist.
+
 Planner `ready` enters `awaiting_user_approval`; User approval enters `development` before host
 creation. A complex blocker resumes only to its validated `resume_phase`. User `Close` records
 `request-close` and keeps WIP occupied while the Orchestrator automatically records the retained
@@ -70,6 +86,15 @@ blocker's `stage` to equal the active phase. `record-integration` writes human r
 integration-ready board is committed and Git independently proves the current primary merge commit,
 its parents/tree, the exact QA-accepted task branch/worktree HEAD and clean state, and every accepted
 evidence reference's committed byte hash.
+
+Before that transition, repository verification treats Planner evidence as the pre-host prefix and
+dynamically pairs each later evidence ref with its durable Developer/Reviewer/QA/Integrator invocation.
+It revalidates fixed path, exact identity/model headers, frozen committed-Plan route, raw SHA-256,
+single-parent evidence-only topology and ordered primary ancestry. The merge first parent is the final
+callback board commit and the second parent is the unchanged task subject; no execution evidence commit
+may be an ancestor of that subject. Code-mixed evidence, unknown commits, dirty or moved worktrees, and
+identity/order/route drift fail closed before board mutation. No reset, restore, rebase, cherry-pick or
+branch-pointer repair is part of normal execution or recovery.
 
 ## Stop and recovery
 

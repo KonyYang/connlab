@@ -127,7 +127,12 @@ def test_retained_repository_verifier_proves_identity_cleanliness_ancestry_and_e
 
 
 def test_public_writer_rejects_role_transition_without_active_v2_task() -> None:
-    board = ROOT / "docs/task_board.md"
+    worktrees = subprocess.run(
+        ["git", "-C", str(ROOT), "worktree", "list", "--porcelain"],
+        text=True, encoding="utf-8", capture_output=True, check=True,
+    ).stdout.splitlines()
+    primary = Path(worktrees[0].removeprefix("worktree ")).resolve()
+    board = primary / "docs/task_board.md"
     before = board.read_bytes()
     board_hash = hashlib.sha256(before).hexdigest()
     action = {
@@ -136,7 +141,7 @@ def test_public_writer_rejects_role_transition_without_active_v2_task() -> None:
         "prompt_sha256": ZERO64, "title": "Planner", "recorded_at": "2026-08-06T00:00:00Z",
     }
     frozen = subprocess.run(
-        ["py", str(ROOT / "scripts/connlab_personal_task.py"), "begin-role", "--repo-root", str(ROOT),
+        ["py", str(ROOT / "scripts/connlab_personal_task.py"), "begin-role", "--repo-root", str(primary),
          "--expected-board-sha256", board_hash, "--task-id", "TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION",
          "--role", "Planner", "--native-action-json", json.dumps(action), "--json"],
         text=True, encoding="utf-8", capture_output=True, check=False,
