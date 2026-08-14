@@ -19,7 +19,7 @@
     "summary": "Make complex-role evidence durable without advancing the task subject branch, so verified integration succeeds without destructive branch-pointer recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -36,7 +36,7 @@
       "head_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -77,13 +77,10 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "d9ebd4935e7cc614dd855844078e624ac28e14e6f5b0f340f53235be8cf69f77",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9"
+      ],
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
