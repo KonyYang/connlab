@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -76,7 +76,7 @@
       "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -144,14 +144,10 @@
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9",
-        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23"
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23",
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@9d7966d53896d032e3bfe546bbd0ea38659a9fbb#c14b81b0bd97048ba0e5487d151dd92d3e1cf8cf712c149768ce79e917109a2e"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "12b005e6ab8abb039ff46af5ab8d78c4e176d1079d736b039ed9a66177a2c128",
-        "role": "Planner",
-        "attempt": 2
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
