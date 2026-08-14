@@ -386,6 +386,29 @@ def test_role_callback_autocorrects_same_committed_evidence_digest_once(
     assert board["active"]["complex_context"]["worktree_lifecycle"] == "integration_ready"
 
 
+def test_role_callback_rejects_mismatched_sha256_without_board_write(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "digest-mismatched-sha256"
+    worktree = tmp_path / "digest-mismatched-sha256-host"
+    task_id = "TASK_DIGEST_MISMATCHED_SHA256"
+    subject = prepare_complex_task_host(repo, worktree, task_id=task_id)
+
+    blocked, _ = invoke_complex_role(
+        repo,
+        task_id,
+        "Developer",
+        subject,
+        "ready",
+        "Reviewer",
+        evidence_digest="f" * 64,
+        expected_exit=2,
+    )
+
+    assert blocked["code"] == "BLOCKED_CALLBACK_INVALID"
+    assert blocked["board_sha256_before"] == blocked["board_sha256_after"]
+
+
 @pytest.mark.parametrize("identity_drift", ("commit", "path"))
 def test_role_callback_digest_correction_rejects_unprovable_evidence_without_board_write(
     tmp_path: Path,
@@ -450,17 +473,19 @@ def prepare_integration_ready(
     return subject, integration
 
 
-def test_candidate_board_human_summary_matches_v2_idle_authority() -> None:
+def test_board_human_summary_defers_dynamic_status_to_machine_authority() -> None:
     text = (ROOT / "docs/task_board.md").read_text(encoding="utf-8")
+    heading = text.split("<!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->", 1)[0]
     active_work = text.split("## Active Work", 1)[1].split("## Queue", 1)[0]
     queue = text.split("## Queue", 1)[1].split("## Retained History", 1)[0]
+    human_status = heading + active_work + queue
 
-    assert "No active task" in active_work
-    assert "atomically closed by the cutover" in active_work
-    assert "implemented_pending_human_review" not in active_work
-    assert "unauthorized" not in active_work
-    assert "Idle; ready to accept a newly submitted task" in queue
-    assert "awaits explicit User" not in queue
+    assert "machine control block" in human_status.lower()
+    assert "`state` and `active`" in human_status
+    assert "no task is currently active" not in human_status.lower()
+    assert "Current Active Task:" not in human_status
+    assert "No active task" not in human_status
+    assert "Idle; ready to accept" not in human_status
 
 
 @pytest.mark.parametrize(

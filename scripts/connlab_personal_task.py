@@ -71,6 +71,9 @@ def canonical_callback_evidence(root: Path, value: Any) -> tuple[str, bool]:
     if evidence.returncode != 0:
         raise Blocked("BLOCKED_CALLBACK_INVALID", "Callback evidence is not committed at the supplied commit and path.")
     digest = hashlib.sha256(evidence.stdout).hexdigest()
+    supplied_digest = match.group(3)
+    if len(supplied_digest) == 64 and supplied_digest != digest:
+        raise Blocked("BLOCKED_CALLBACK_INVALID", "Callback evidence SHA-256 does not match the committed bytes.")
     canonical = f"{match.group(1)}@{match.group(2)}#{digest}"
     return canonical, canonical != value
 def canonicalize_role_callback_evidence(root: Path, value: Any) -> tuple[Any, bool]:

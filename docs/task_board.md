@@ -1,9 +1,8 @@
 # ConnLab Task Board
 
-> Status: Personal serial workflow v2 is active; no task is currently active.
-> Last Updated: 2026-08-07
+> Status Authority: Read `state` and `active` in the machine control block below; dynamic task status is not duplicated in human prose.
+> Last Updated: 2026-08-14
 > Current Source Of Truth: `docs/task_board.md`
-> Current Active Task: `none`
 > Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 > Execution Rule: WIP=1; occupied submissions wait with zero writes, while idle submissions classify into direct simple work or the automatic approved complex role chain.
 
@@ -14,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
     "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,7 +55,7 @@
     "approval_ref": null,
     "activation_parent_sha": "0c06d11b4d2b1067f98efab89bd41e3934a42790",
     "activated_at": "2026-08-14T13:23:16Z",
-    "updated_at": "2026-08-14T13:42:27Z",
+    "updated_at": "2026-08-14T13:46:05Z",
     "blocker": null,
     "validation": {
       "schema": "connlab.personal-task-validation",
@@ -64,9 +63,9 @@
       "status": "passed",
       "checks": [
         {
-          "command": "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q",
+          "command": "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q --basetemp=tmp/pytest-digest-review-final -p no:cacheprovider",
           "exit_code": 0,
-          "summary": "16 passed in 52.97s"
+          "summary": "17 passed in 55.22s"
         },
         {
           "command": "py -m py_compile scripts/connlab_personal_task.py",
@@ -85,10 +84,11 @@
         "docs/task_board.md"
       ],
       "manual_checks": [
-        "Temporary Git repository exercised Developer, Reviewer, QA, and Integrator callbacks with a 40-character supplied digest and reached integration_ready using canonical raw-byte SHA-256 references.",
-        "Missing commit and missing path cases returned BLOCKED_CALLBACK_INVALID with changed=false and byte-identical board state."
+        "A 40-character Git OID is canonicalized for Developer, Reviewer, QA, and Integrator callbacks.",
+        "A mismatched 64-character SHA-256 is rejected with BLOCKED_CALLBACK_INVALID and byte-identical board state.",
+        "Human-readable board sections contain no dynamic idle or active-task claim and defer to machine state/active authority."
       ],
-      "recorded_at": "2026-08-14T13:29:37Z"
+      "recorded_at": "2026-08-14T13:46:05Z"
     },
     "complex_context": null
   },
@@ -156,15 +156,14 @@
 
 ## Active Work
 
-- No active task.
-- `TASK_GOVERNANCE_SERIAL_COMPLEX_ROLE_CHAIN_AUTOMATION` was atomically closed by the cutover that
-  activated the version-2 personal serial workflow and released the active slot.
-- The prior lifecycle-probe evidence and all retained resources remain unchanged and
-  location-addressable; they do not occupy WIP.
+- The machine control block is the sole current-status authority. Read its `state` and `active`
+  fields before submitting, continuing, reviewing, or closing work.
+- This section intentionally contains no dynamic task identity or idle/running claim.
 
 ## Queue
 
-- Idle; ready to accept a newly submitted task. Version-2 queue compatibility fields are inert and empty.
+- Version-2 queue compatibility fields are inert and have no daily operation entry. Submission
+  availability is determined only by the machine control block's `state` and `active` fields.
 
 ## Retained History
 
