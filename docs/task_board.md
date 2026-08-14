@@ -62,12 +62,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "c87fa35bcb9336aa6dda8e40520f08f2624b0729",
-      "head_sha": "c87fa35bcb9336aa6dda8e40520f08f2624b0729",
+      "task_branch": "codex/task-matrix-import-browser-project-source-picker",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-browser-project-source-picker",
+      "base_sha": "d767547084fce64e4d4373818c3131cbde574d29",
+      "head_sha": "d767547084fce64e4d4373818c3131cbde574d29",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -84,8 +84,8 @@
           "recorded_at": "2026-08-13T23:47:17.757282Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
+      "host_id": "host-task-matrix-import-browser-project-source-picker",
       "approved_code_paths": [
         "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
         "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
@@ -108,12 +108,7 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247"
       ],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "46d4658672ae7c89924e733d8916ed233980e47656740d15f7f93081a8cef433",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
