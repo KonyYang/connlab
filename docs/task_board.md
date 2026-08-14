@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "planning",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -65,27 +65,8 @@
     "approval_ref": "User approved Plan docs/task_governance_nondestructive_evidence_topology_closeout_plan.md@9d7966d53896d032e3bfe546bbd0ea38659a9fbb#0892bcf16008c2be90bd6de84a065f650fb6bb5dfecff8f2fba905f4162cf57d and approved-request SHA-256 9910790e5d12df746f4c1fc3680eccbe249b6fec7762e76cd7deb340a106ee51 by saying 批准.",
     "activation_parent_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
     "activated_at": "2026-08-14T14:59:46Z",
-    "updated_at": "2026-08-14T23:01:45Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "SCOPE_EXPANDED",
-      "stage": "development",
-      "reason": "The approved fixture-only correction adds exactly the two test paths required by the Developer validation blocker.",
-      "dirty_paths": [
-        "tests/integration/test_connlab_serial_complex_recovery.py",
-        "tests/unit/test_connlab_serial_complex_orchestrator_contract.py"
-      ],
-      "failed_validation": null,
-      "subject_commit": null,
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "planning",
-      "recorded_at": "2026-08-14T23:01:10Z"
-    },
+    "updated_at": "2026-08-14T23:02:03Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
