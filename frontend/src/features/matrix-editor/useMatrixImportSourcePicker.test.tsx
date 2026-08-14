@@ -33,8 +33,17 @@ describe("chooseMatrixImportSource", () => {
 
   it("keeps browser upload when the desktop bridge is unavailable", async () => {
     bridgeMocks.hasMatrixImportSourcePicker.mockReturnValue(false);
-    await expect(chooseMatrixImportSource("P1")).resolves.toEqual({ kind: "browser" });
-    expect(apiMocks.listProjectTestPlanSourceCandidates).not.toHaveBeenCalled();
+    apiMocks.listProjectTestPlanSourceCandidates.mockResolvedValue({
+      candidates: [{ source_asset_id: "source-1" }],
+      warnings: ["Review source"],
+    });
+    await expect(chooseMatrixImportSource("P1")).resolves.toEqual({
+      kind: "browser",
+      candidates: [{ source_asset_id: "source-1" }],
+      warnings: ["Review source"],
+      error: null,
+    });
+    expect(apiMocks.listProjectTestPlanSourceCandidates).toHaveBeenCalledWith("P1");
   });
 
   it("opens the OS default when directory projection fails", async () => {

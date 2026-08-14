@@ -18,6 +18,7 @@ const apiMocks = vi.hoisted(() => ({
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
   previewProjectTestPlanMatrixFromPath: vi.fn(),
+  previewProjectTestPlanMatrixFromSourceCandidate: vi.fn(),
   commitMatrixImport: vi.fn(),
   previewLlcrCrRecordWorkbook: vi.fn(),
   generateLlcrCrRecordWorkbook: vi.fn(),
@@ -89,6 +90,7 @@ vi.mock("../../api/client", () => {
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
     previewProjectTestPlanMatrixFromPath: apiMocks.previewProjectTestPlanMatrixFromPath,
+    previewProjectTestPlanMatrixFromSourceCandidate: apiMocks.previewProjectTestPlanMatrixFromSourceCandidate,
     commitMatrixImport: apiMocks.commitMatrixImport,
     previewLlcrCrRecordWorkbook: apiMocks.previewLlcrCrRecordWorkbook,
     generateLlcrCrRecordWorkbook: apiMocks.generateLlcrCrRecordWorkbook,
@@ -789,19 +791,39 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
   });
 
-  it("opens the import file selector without native confirmation", async () => {
+  it("opens the browser project source chooser without native confirmation", async () => {
     const inputClickSpy = vi
       .spyOn(HTMLInputElement.prototype, "click")
       .mockImplementation(() => {});
 
+    sourcePickerMocks.choose.mockResolvedValue({ kind: "browser", candidates: [], warnings: [], error: null });
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
 
     expect(window.confirm).not.toHaveBeenCalled();
-    expect(inputClickSpy).toHaveBeenCalledTimes(1);
+    expect(inputClickSpy).not.toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Choose a project source" })).toBeTruthy();
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
     expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
+  });
+
+  it("previews a browser project candidate only after explicit selection", async () => {
+    sourcePickerMocks.choose.mockResolvedValue({
+      kind: "browser",
+      candidates: [{ source_asset_id: "source-1", original_name: "matrix.docx", extension: ".docx", asset_type: "attachment", candidate_kind: "likely_spec_or_matrix", reason: "Matrix keywords found.", stored_file_available: true }],
+      warnings: [],
+      error: null,
+    });
+    apiMocks.previewProjectTestPlanMatrixFromSourceCandidate.mockResolvedValue(buildImportPreview());
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    expect(await screen.findByRole("heading", { name: "Choose a project source" })).toBeTruthy();
+    expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Use this file: matrix.docx" }));
+    await waitFor(() => expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).toHaveBeenCalledWith("P1", "source-1"));
+    expect(await screen.findByRole("button", { name: "Replace" })).toBeTruthy();
   });
 
   it("previews a desktop local path and preserves locator values on reparse", async () => {

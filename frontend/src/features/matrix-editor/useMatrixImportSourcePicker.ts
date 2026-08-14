@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 
-import { listProjectTestPlanSourceCandidates } from "../../api/client";
+import { listProjectTestPlanSourceCandidates, type MatrixSourceCandidate } from "../../api/client";
 import {
   hasMatrixImportSourcePicker,
   pickMatrixImportSourceFromDesktop,
 } from "../../desktop/pathPickerBridge";
 
 export type MatrixImportSourceChoice =
-  | { kind: "browser" }
+  | { kind: "browser"; candidates?: MatrixSourceCandidate[]; warnings?: string[]; error?: string | null }
   | { kind: "cancelled" }
   | { kind: "selected"; path: string }
   | { kind: "unsupported"; path: string };
@@ -16,7 +16,22 @@ export async function chooseMatrixImportSource(
   projectId: string
 ): Promise<MatrixImportSourceChoice> {
   if (!hasMatrixImportSourcePicker()) {
-    return { kind: "browser" };
+    try {
+      const projection = await listProjectTestPlanSourceCandidates(projectId);
+      return {
+        kind: "browser",
+        candidates: projection.candidates,
+        warnings: projection.warnings,
+        error: null,
+      };
+    } catch {
+      return {
+        kind: "browser",
+        candidates: [],
+        warnings: [],
+        error: "Could not load project sources. You can upload another file instead.",
+      };
+    }
   }
   let initialDirectory: string | null = null;
   try {
