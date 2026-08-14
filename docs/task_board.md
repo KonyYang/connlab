@@ -126,6 +126,18 @@
           "host_id": "/root/nondestructive_evidence_topology_host",
           "status": "started",
           "recorded_at": "2026-08-14T23:04:49Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "fdaeb60f70e5101965831d5bf3792bc3e5d77d0fb533619a09c0eca756d9201d",
+          "role": "Reviewer",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/nondestructive_evidence_topology_reviewer",
+          "host_id": "/root/nondestructive_evidence_topology_host",
+          "status": "started",
+          "recorded_at": "2026-08-14T23:21:16Z"
         }
       ],
       "host_thread_id": "/root/nondestructive_evidence_topology_host",
@@ -163,7 +175,7 @@
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@700d26e7b3953e92162086a96dbd8604f45bee29#7ded3a425bd16c4405a2c9510e8e1479dc17020cc0c5d600f7ca2ce67c4df858"
       ],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "fdaeb60f70e5101965831d5bf3792bc3e5d77d0fb533619a09c0eca756d9201d",
         "role": "Reviewer",
         "attempt": 1
