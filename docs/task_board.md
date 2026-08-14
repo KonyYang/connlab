@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -63,38 +63,8 @@
     "approval_ref": "User explicitly approved implementation of Plan ref 7ee08a659172bde11f4bb1b87e1e9bac2630eaeb and approved-request SHA-256 0b36fc339ba7cc7dfa412a2608833fc403a8c41fd19051efef05a289e8851298 by saying 批准实施.",
     "activation_parent_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
     "activated_at": "2026-08-14T14:59:46Z",
-    "updated_at": "2026-08-14T22:21:27Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "DEVELOPER_BLOCKED",
-      "stage": "development",
-      "reason": "Mandatory recovery fixture binds an unavailable sentinel committed Plan; the compliant correction requires a test path outside the approved implementation allowlist.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "validation",
-        "command": [
-          "py",
-          "-m",
-          "pytest",
-          "tests/integration/test_connlab_serial_complex_recovery.py",
-          "-q"
-        ],
-        "exit_code": 1,
-        "summary": "13 passed, 4 failed: legacy fixture binds unavailable sentinel committed Plan; compliant fix requires excluded test path.",
-        "recorded_at": "2026-08-14T22:48:49Z"
-      },
-      "subject_commit": "56f1fe51a29d5449f1b3178257d62e90ce363601",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": true,
-      "requires_user": true,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-14T22:48:49Z"
-    },
+    "updated_at": "2026-08-14T23:00:45Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
