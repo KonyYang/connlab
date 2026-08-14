@@ -19,6 +19,10 @@ from scripts.connlab_serial_complex import SerialContractError, classification_r
 COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close")
 COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
 RESULT_FIELDS = ("schema", "version", "code", "allowed", "changed", "command", "task_id", "state", "active_task_id", "queue_position", "board_sha256_before", "board_sha256_after", "primary_root", "reason")
+ROLE_CALLBACKS = {"Developer", "Reviewer", "QA", "Integrator"}
+CALLBACK_EVIDENCE_PATTERN = re.compile(
+    r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{40}|[0-9a-f]{64})"
+)
 
 def result(code: str, command: str, root: Path | None, before: str | None, after: str | None, control: dict[str, Any] | None, *, task_id: str | None = None, changed: bool = False, reason: str = "") -> dict[str, Any]:
     active = control.get("active") if control else None
@@ -55,6 +59,32 @@ def verify_evidence_ref(root: Path, value: Any) -> None:
     evidence = subprocess.run(["git", "-C", str(root), "show", f"{match.group(2)}:{match.group(1)}"], capture_output=True, check=False)
     if evidence.returncode != 0 or hashlib.sha256(evidence.stdout).hexdigest() != match.group(3):
         raise Blocked("BLOCKED_EVIDENCE_INVALID", "Evidence is not committed at the exact byte hash.")
+def canonical_callback_evidence(root: Path, value: Any) -> tuple[str, bool]:
+    match = CALLBACK_EVIDENCE_PATTERN.fullmatch(str(value))
+    if not match or ".." in Path(match.group(1)).parts:
+        raise Blocked("BLOCKED_CALLBACK_INVALID", "Callback evidence reference is invalid.")
+    evidence = subprocess.run(
+        ["git", "-C", str(root), "show", f"{match.group(2)}:{match.group(1)}"],
+        capture_output=True,
+        check=False,
+    )
+    if evidence.returncode != 0:
+        raise Blocked("BLOCKED_CALLBACK_INVALID", "Callback evidence is not committed at the supplied commit and path.")
+    digest = hashlib.sha256(evidence.stdout).hexdigest()
+    canonical = f"{match.group(1)}@{match.group(2)}#{digest}"
+    return canonical, canonical != value
+def canonicalize_role_callback_evidence(root: Path, value: Any) -> tuple[Any, bool]:
+    if not isinstance(value, dict) or value.get("role") not in ROLE_CALLBACKS:
+        return value, False
+    callback = dict(value)
+    callback["evidence"], corrected = canonical_callback_evidence(root, callback.get("evidence"))
+    blocker = callback.get("blocker")
+    if isinstance(blocker, dict) and blocker.get("evidence_ref") is not None:
+        blocker = dict(blocker)
+        blocker["evidence_ref"], blocker_corrected = canonical_callback_evidence(root, blocker["evidence_ref"])
+        callback["blocker"] = blocker
+        corrected = corrected or blocker_corrected
+    return callback, corrected
 def verify_integration_repository(root: Path, active: dict[str, Any], value: dict[str, Any]) -> None:
     if not committed_board(root):
         raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The integration-ready board transition must be committed first.")
@@ -163,7 +193,9 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
     if command in COMPLEX_COMMANDS:
         if control.get("version") != 2: raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Complex commands remain dormant before cutover.")
         active = require_active(control, task_id)
-        raw = {"role": args.role, "native_action": json.loads(args.native_action_json or "null"), "invocation": json.loads(args.invocation_json or "null"), "callback": json.loads(args.callback_json or "null"), "worktree": json.loads(args.worktree_json or "null"), "integration": json.loads(args.integration_json or "null"), "closeout": json.loads(args.closeout_json or "null"), "decision_ref": args.decision_ref}
+        callback = json.loads(args.callback_json or "null")
+        callback, evidence_corrected = canonicalize_role_callback_evidence(root, callback) if command == "consume-callback" else (callback, False)
+        raw = {"role": args.role, "native_action": json.loads(args.native_action_json or "null"), "invocation": json.loads(args.invocation_json or "null"), "callback": callback, "worktree": json.loads(args.worktree_json or "null"), "integration": json.loads(args.integration_json or "null"), "closeout": json.loads(args.closeout_json or "null"), "decision_ref": args.decision_ref}
         if command == "record-integration":
             validate_integration_transition(active, raw["integration"])
             verify_integration_repository(root, active, raw["integration"])
@@ -175,7 +207,10 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             control["last_closed"] = {"task_id": task_id, "disposition": "retained", "decision_ref": args.decision_ref, "closeout_evidence_ref": closeout["evidence_ref"], "retained_resources": {key: closeout[key] for key in ("thread_id", "worktree", "branch", "head_sha")}, "closed_at": now()}; control["active"] = None; control["state"] = "idle"
         elif active["phase"] == "human_review": control["state"] = "implemented_pending_human_review"
         else: control["state"] = "running"
-        return transition_code, True, "Durable complex transition recorded."
+        reason = "Durable complex transition recorded."
+        if evidence_corrected:
+            reason = "Durable complex transition recorded; committed evidence SHA-256 was corrected from the supplied digest."
+        return transition_code, True, reason
     if command == "submit":
         request, scope = request_payload(args.request_json, task_id)
         if isinstance(active, dict) and active.get("task_id") == task_id:

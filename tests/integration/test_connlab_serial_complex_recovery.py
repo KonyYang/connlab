@@ -144,7 +144,11 @@ def invoke_complex_role(
     subject_commit: str,
     status: str,
     next_role: str,
-) -> None:
+    *,
+    evidence_digest: str | None = None,
+    evidence_override: str | None = None,
+    expected_exit: int = 0,
+) -> tuple[dict, str]:
     action_names = {
         "Planner": "planner_dispatch",
         "Developer": "developer_dispatch",
@@ -198,7 +202,10 @@ def invoke_complex_role(
     )
     assert recorded["code"] == "ALLOW_RECORD_INVOCATION"
     commit_board(repo, f"record {role} invocation")
-    evidence = committed_evidence(repo, role.lower(), f"{role} evidence\n")
+    canonical_evidence = committed_evidence(repo, role.lower(), f"{role} evidence\n")
+    evidence = evidence_override or canonical_evidence
+    if evidence_digest is not None:
+        evidence = canonical_evidence.rsplit("#", 1)[0] + f"#{evidence_digest}"
     callback = {
         "schema": "connlab.serial-callback",
         "version": 1,
@@ -210,15 +217,22 @@ def invoke_complex_role(
         "next": next_role,
         "blocker": None,
     }
+    board_before_callback = (repo / "docs/task_board.md").read_bytes()
     consumed = invoke_personal(
         repo,
         "consume-callback",
         "--expected-board-sha256", board_hash(repo),
         "--task-id", task_id,
         "--callback-json", json.dumps(callback, separators=(",", ":")),
+        expected_exit=expected_exit,
     )
-    assert consumed["code"] == "ALLOW_CONSUME_CALLBACK"
-    commit_board(repo, f"consume {role} callback")
+    if expected_exit == 0:
+        assert consumed["code"] == "ALLOW_CONSUME_CALLBACK"
+        commit_board(repo, f"consume {role} callback")
+    else:
+        assert consumed["changed"] is False
+        assert (repo / "docs/task_board.md").read_bytes() == board_before_callback
+    return consumed, canonical_evidence
 
 
 def prepare_complex_task_host(
@@ -337,6 +351,67 @@ def prepare_complex_task_host(
     git(worktree, "add", "a.py")
     git(worktree, "commit", "-m", "implement blocker fixture")
     return git(worktree, "rev-parse", "HEAD").stdout.strip()
+
+
+def test_role_callback_autocorrects_same_committed_evidence_digest_once(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "digest-autocorrection"
+    worktree = tmp_path / "digest-autocorrection-host"
+    task_id = "TASK_DIGEST_AUTOCORRECTION"
+    subject = prepare_complex_task_host(repo, worktree, task_id=task_id)
+
+    for role, status, next_role in (
+        ("Developer", "ready", "Reviewer"),
+        ("Reviewer", "pass", "QA"),
+        ("QA", "pass", "Integrator"),
+        ("Integrator", "pass", "User"),
+    ):
+        consumed, canonical_evidence = invoke_complex_role(
+            repo,
+            task_id,
+            role,
+            subject,
+            status,
+            next_role,
+            evidence_digest="f" * 40,
+        )
+
+        assert consumed["changed"] is True
+        assert "corrected" in consumed["reason"].lower()
+        _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
+        assert board["active"]["complex_context"]["evidence_refs"][-1] == canonical_evidence
+
+    assert board["active"]["phase"] == "integration"
+    assert board["active"]["complex_context"]["worktree_lifecycle"] == "integration_ready"
+
+
+@pytest.mark.parametrize("identity_drift", ("commit", "path"))
+def test_role_callback_digest_correction_rejects_unprovable_evidence_without_board_write(
+    tmp_path: Path,
+    identity_drift: str,
+) -> None:
+    repo = tmp_path / f"digest-{identity_drift}-drift"
+    worktree = tmp_path / f"digest-{identity_drift}-drift-host"
+    task_id = f"TASK_DIGEST_{identity_drift.upper()}_DRIFT"
+    subject = prepare_complex_task_host(repo, worktree, task_id=task_id)
+    commit = "0" * 40 if identity_drift == "commit" else git(repo, "rev-parse", "HEAD").stdout.strip()
+    path = "docs/lane_evidence/developer.md" if identity_drift == "commit" else "docs/lane_evidence/missing.md"
+    invalid_evidence = f"{path}@{commit}#{'f' * 40}"
+
+    blocked, _ = invoke_complex_role(
+        repo,
+        task_id,
+        "Developer",
+        subject,
+        "ready",
+        "Reviewer",
+        evidence_override=invalid_evidence,
+        expected_exit=2,
+    )
+
+    assert blocked["code"] == "BLOCKED_CALLBACK_INVALID"
+    assert blocked["board_sha256_before"] == blocked["board_sha256_after"]
 
 
 def prepare_integration_ready(

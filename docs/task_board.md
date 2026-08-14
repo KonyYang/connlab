@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
     "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,9 +56,40 @@
     "approval_ref": null,
     "activation_parent_sha": "0c06d11b4d2b1067f98efab89bd41e3934a42790",
     "activated_at": "2026-08-14T13:23:16Z",
-    "updated_at": "2026-08-14T13:23:16Z",
+    "updated_at": "2026-08-14T13:29:37Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q",
+          "exit_code": 0,
+          "summary": "16 passed in 52.97s"
+        },
+        {
+          "command": "py -m py_compile scripts/connlab_personal_task.py",
+          "exit_code": 0,
+          "summary": "Python syntax validation passed"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "No whitespace errors"
+        }
+      ],
+      "observed_paths": [
+        "scripts/connlab_personal_task.py",
+        "tests/integration/test_connlab_serial_complex_recovery.py",
+        "docs/task_board.md"
+      ],
+      "manual_checks": [
+        "Temporary Git repository exercised Developer, Reviewer, QA, and Integrator callbacks with a 40-character supplied digest and reached integration_ready using canonical raw-byte SHA-256 references.",
+        "Missing commit and missing path cases returned BLOCKED_CALLBACK_INVALID with changed=false and byte-identical board state."
+      ],
+      "recorded_at": "2026-08-14T13:29:37Z"
+    },
     "complex_context": null
   },
   "queue": [],
