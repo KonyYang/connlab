@@ -14,165 +14,23 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER",
-    "summary": "In browser Matrix Editor, show current project intake source candidates before file upload, preview only after explicit selection, preserve Upload other file, desktop picker, empty state, cancel and read-only behavior.",
-    "kind": "planned",
-    "classification": "complex",
-    "phase": "human_review",
-    "scope_contract": {
-      "may_touch": [
-        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
-        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
-        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
-        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
-        "frontend/src/workbench.css",
-        "docs/task_board.md"
-      ],
-      "expected_file_count": 8,
-      "classification_reason": "Bounded browser Matrix source-selection UI using existing candidate list and preview APIs, with independent review and QA; no backend, API, database, schema, persistence, parser, attachment-storage, Matrix-authority, public-drive, or business-rule change.",
-      "targeted_validation": [
-        "py -m pytest tests/unit/test_matrix_source_candidate_service.py -q",
-        "npm test -- --run frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
-        "npm run build",
-        "git diff --check",
-        "deterministic browser smoke: API-ranked candidate list and recommendation; explicit candidate preview; upload fallback; empty/error state; cancel zero mutation; read-only zero calls; desktop native picker unchanged"
-      ],
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false
-      }
-    },
-    "plan_ref": "docs/task_matrix_import_browser_project_source_picker_plan.md@74eb8850c332afebad37536fdf1e60624613e202#e3192530a4ee0e5c1aac20b57213a09a778ec720e0b29039b3e5be48de7ecc80",
-    "approval_ref": "User approved the exact committed Plan and approved-request in this task on 2026-08-14.",
-    "activation_parent_sha": "c87fa35bcb9336aa6dda8e40520f08f2624b0729",
-    "activated_at": "2026-08-13T23:45:39Z",
-    "updated_at": "2026-08-14T12:17:57Z",
-    "blocker": null,
-    "validation": null,
-    "complex_context": {
-      "workflow_version": 1,
-      "task_branch": "codex/task-matrix-import-browser-project-source-picker",
-      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-browser-project-source-picker",
-      "base_sha": "d767547084fce64e4d4373818c3131cbde574d29",
-      "head_sha": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
-      "integration_target": "master",
-      "worktree_lifecycle": "integrated",
-      "current_role": null,
-      "current_attempt": 1,
-      "role_invocations": [
-        {
-          "schema": "connlab.serial-invocation",
-          "version": 1,
-          "action_id": "5960a14479c4f0e8d6dc63de4d4644319438c16cefec01cd5f6f7f18ac6cf633",
-          "role": "Planner",
-          "attempt": 1,
-          "thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
-          "agent_id": null,
-          "host_id": null,
-          "status": "completed",
-          "recorded_at": "2026-08-13T23:47:17.757282Z"
-        },
-        {
-          "schema": "connlab.serial-invocation",
-          "version": 1,
-          "action_id": "0934ab0dc57fdec600ee8f4782df21c9cadfa87e5917fe7b66fda45bce3a8375",
-          "role": "Developer",
-          "attempt": 1,
-          "thread_id": null,
-          "agent_id": "/root/browser_source_picker_developer",
-          "host_id": "host-task-matrix-import-browser-project-source-picker",
-          "status": "started",
-          "recorded_at": "2026-08-14T00:02:13.877397Z"
-        },
-        {
-          "schema": "connlab.serial-invocation",
-          "version": 1,
-          "action_id": "962042cf69836ff7172ec8a44fc0baf4007575dc5500dc8f9407c6591d90dc32",
-          "role": "Reviewer",
-          "attempt": 1,
-          "thread_id": null,
-          "agent_id": "/root/browser_source_picker_reviewer",
-          "host_id": "host-task-matrix-import-browser-project-source-picker",
-          "status": "started",
-          "recorded_at": "2026-08-14T04:42:02.799113Z"
-        },
-        {
-          "schema": "connlab.serial-invocation",
-          "version": 1,
-          "action_id": "a1e73c2fcc90ff575edc0432e75a813c3f01045bcdffeb270415444938fdcd44",
-          "role": "QA",
-          "attempt": 1,
-          "thread_id": null,
-          "agent_id": "/root/browser_source_picker_qa",
-          "host_id": "host-task-matrix-import-browser-project-source-picker",
-          "status": "started",
-          "recorded_at": "2026-08-14T04:50:34.180014Z"
-        },
-        {
-          "schema": "connlab.serial-invocation",
-          "version": 1,
-          "action_id": "008e8aa69bbda744d894e2635623252a1081f18fca4f594fa8153ca018516dab",
-          "role": "Integrator",
-          "attempt": 1,
-          "thread_id": null,
-          "agent_id": "/root/browser_source_picker_integrator",
-          "host_id": "host-task-matrix-import-browser-project-source-picker",
-          "status": "started",
-          "recorded_at": "2026-08-14T04:59:56.803750Z"
-        }
-      ],
-      "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
-      "host_id": "host-task-matrix-import-browser-project-source-picker",
-      "approved_code_paths": [
-        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
-        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
-        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
-        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
-        "frontend/src/workbench.css",
-        "docs/task_board.md"
-      ],
-      "required_gates": [
-        "Reviewer",
-        "QA",
-        "Integrator"
-      ],
-      "developer_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
-      "reviewer_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
-      "qa_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
-      "integrated_commit": "5a53c9eeedee36a20b378b33f12861de99c71322",
-      "evidence_refs": [
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_developer.md@ba76dd8d9c5e66e60ad8d269f665dbd447c625ec#e66d9d71565ae3a0e89206eef242101c3ecf38e0c74afa3c62ea7c875d13bf7d",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_reviewer.md@42d620bd0575a6d9ca47504eb26d283befb442d7#31b612f984ea8c8aab7bc8822c5332cc4dac29a94441ae5131731c06c4b449e7",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_qa.md@fe28bf04d506f9938f927793c1e0180607e969e1#c441a3166bb45c109fefb5755dc6b7f3dad28a648f2da467d0ca4c281e053283",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_integrator.md@0ad87cd3d7b68d7e82f202a1015a015564abc7d6#5beef5ab137bf3b5e78acbcf5e764a991331d7f83ba7695dd5b58ac62d3e5909"
-      ],
-      "pending_callback": null,
-      "closeout_disposition": null,
-      "retained_resource_refs": [],
-      "close_decision_ref": null
-    }
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_GOVERNANCE_ATOMIC_COMPLEX_CLOSE",
-    "disposition": "closed after human review",
-    "decision_ref": "User decision in current thread: 关闭",
-    "closed_at": "2026-08-13T23:43:21Z"
+    "task_id": "TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER",
+    "disposition": "retained",
+    "decision_ref": "User explicitly sent 关闭 for TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER in the current thread on 2026-08-14.",
+    "integration_commit": "5a53c9eeedee36a20b378b33f12861de99c71322",
+    "integrator_evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_integrator.md@0ad87cd3d7b68d7e82f202a1015a015564abc7d6#5beef5ab137bf3b5e78acbcf5e764a991331d7f83ba7695dd5b58ac62d3e5909",
+    "retained_resources": {
+      "thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-browser-project-source-picker",
+      "branch": "codex/task-matrix-import-browser-project-source-picker",
+      "head_sha": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8"
+    },
+    "closed_at": "2026-08-14T13:11:21Z"
   },
   "retained_history": [
     {
