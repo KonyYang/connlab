@@ -20,7 +20,7 @@
     "summary": "In browser Matrix Editor, show current project intake source candidates before file upload, preview only after explicit selection, preserve Upload other file, desktop picker, empty state, cancel and read-only behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "blocked",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
@@ -57,32 +57,8 @@
     "approval_ref": "User approved the exact committed Plan and approved-request in this task on 2026-08-14.",
     "activation_parent_sha": "c87fa35bcb9336aa6dda8e40520f08f2624b0729",
     "activated_at": "2026-08-13T23:45:39Z",
-    "updated_at": "2026-08-14T05:09:39Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "INTEGRATION_BLOCKED",
-      "stage": "integration",
-      "reason": "Evidence-descendant task branch HEAD conflicts with the frozen record-integration branch_head==reviewed-subject contract; branch-pointer reconciliation is not authorized.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "integration topology preflight",
-        "command": [],
-        "exit_code": null,
-        "summary": "BLOCKED_WORKTREE_FACTS: registered task branch/worktree HEAD is Integrator evidence 0ad87cd3d7b68d7e82f202a1015a015564abc7d6, but production record-integration requires branch_head to equal reviewed subject 05be2d9ad8ebab387f1c8414805a55f14ac9cff8. No merge or record-integration was attempted.",
-        "recorded_at": "2026-08-14T05:09:39.714009Z"
-      },
-      "subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
-      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_integrator.md@0ad87cd3d7b68d7e82f202a1015a015564abc7d6#5beef5ab137bf3b5e78acbcf5e764a991331d7f83ba7695dd5b58ac62d3e5909",
-      "native_action_id": null,
-      "related_ids": [],
-      "retryable": false,
-      "requires_user": true,
-      "resume_phase": "integration",
-      "recorded_at": "2026-08-14T05:09:39.714009Z"
-    },
+    "updated_at": "2026-08-14T12:17:57Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
