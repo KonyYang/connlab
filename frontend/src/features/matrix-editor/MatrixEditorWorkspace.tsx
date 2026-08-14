@@ -18,6 +18,7 @@ import {
   isProjectLifecycleReadonlyErrorDetail,
   matrixPreviewPdfUrl,
   previewProjectTestPlanMatrixFromPath,
+  previewProjectTestPlanMatrixFromSourceCandidate,
   previewProjectTestPlanMatrixFromUpload,
   saveMatrixEditorSessionDraft,
   saveMatrixStepQuantities,
@@ -36,6 +37,7 @@ import {
   type MatrixImportCommitResponse,
   type MatrixImportStandardVersionUnavailableAction,
   type ProjectMatrixDraftSaveRequest,
+  type MatrixSourceCandidate,
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
 import { MatrixEditorXlsxExportButton } from "./MatrixEditorXlsxExportButton";
@@ -45,7 +47,7 @@ import {
 } from "./matrixEditorXlsxExportProjection";
 import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
 import { useMatrixImportSourcePicker } from "./useMatrixImportSourcePicker";
-import { hasMatrixImportSourcePicker } from "../../desktop/pathPickerBridge";
+import { MatrixImportSourceCandidatePicker } from "./MatrixImportSourceCandidatePicker";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
@@ -1686,6 +1688,9 @@ export function MatrixEditorWorkspace({
   const [lastParsedLocator, setLastParsedLocator] = useState<ImportLocatorSnapshot | null>(null);
   const [importingPreview, setImportingPreview] = useState(false);
   const [openingImportPreview, setOpeningImportPreview] = useState(false);
+  const [sourceCandidates, setSourceCandidates] = useState<MatrixSourceCandidate[] | null>(null);
+  const [sourceCandidateError, setSourceCandidateError] = useState<string | null>(null);
+  const [sourceCandidatePreviewBusy, setSourceCandidatePreviewBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importLookupMessage, setImportLookupMessage] = useState<string>("");
   const [importLookupTone, setImportLookupTone] = useState<"success" | "error" | "idle">("idle");
@@ -2626,18 +2631,49 @@ export function MatrixEditorWorkspace({
 
   const chooseMatrixImportSource = useMatrixImportSourcePicker(projectId);
 
+  const openImportPreviewFromSourceCandidate = async (sourceAssetId: string): Promise<void> => {
+    if (isLifecycleReadonly) {
+      setImportError(lifecycleReadonlyView.message);
+      return;
+    }
+    setSourceCandidatePreviewBusy(true);
+    setImportError(null);
+    try {
+      const preview = await previewProjectTestPlanMatrixFromSourceCandidate(projectId, sourceAssetId);
+      setSourceCandidates(null);
+      setImportFile(null);
+      setImportSourcePath(null);
+      setLocatorPage(preview.selected_page_number != null ? String(preview.selected_page_number) : "");
+      setLocatorTableOnPage(preview.selected_page_table_index != null ? String(preview.selected_page_table_index) : "");
+      setLocatorKeyword("");
+      setImportCommitWarning("");
+      setImportLookupMessage("");
+      setImportLookupTone("idle");
+      setImportPreview(preview);
+      setImportPreviewPdfToken(preview.preview_pdf_token ?? null);
+      setLastParsedLocator(previewImportLocatorSnapshot(preview));
+      setShowImportDialog(true);
+      applyImportPreviewStatus(preview);
+    } catch (error) {
+      setSourceCandidateError(parseRequestError(error, "Failed to preview the selected project source."));
+    } finally {
+      setSourceCandidatePreviewBusy(false);
+    }
+  };
+
   const onChangeSourceMatrix = async (): Promise<void> => {
     if (isLifecycleReadonly) {
       setImportError(lifecycleReadonlyView.message);
       return;
     }
-    if (!hasMatrixImportSourcePicker()) {
-      openChooseDocx();
-      return;
-    }
     const choice = await chooseMatrixImportSource();
     if (choice.kind === "browser") {
-      openChooseDocx();
+      if (!Array.isArray(choice.candidates)) {
+        openChooseDocx();
+        return;
+      }
+      setSourceCandidates(choice.candidates ?? []);
+      setSourceCandidateError(choice.error ?? null);
       return;
     }
     if (choice.kind === "cancelled") {
@@ -3587,6 +3623,24 @@ export function MatrixEditorWorkspace({
             </div>
           </article>
         </section>
+      ) : null}
+      {sourceCandidates ? (
+        <MatrixImportSourceCandidatePicker
+          candidates={sourceCandidates}
+          loading={false}
+          previewBusy={sourceCandidatePreviewBusy}
+          error={sourceCandidateError}
+          onCancel={() => {
+            setSourceCandidates(null);
+            setSourceCandidateError(null);
+          }}
+          onUploadOtherFile={() => {
+            setSourceCandidates(null);
+            setSourceCandidateError(null);
+            openChooseDocx();
+          }}
+          onUseCandidate={(sourceAssetId) => void openImportPreviewFromSourceCandidate(sourceAssetId)}
+        />
       ) : null}
       {showImportDialog ? (
         <section className="matrix-editor-import-modal-backdrop">
