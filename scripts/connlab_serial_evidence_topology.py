@@ -224,41 +224,47 @@ def verify_callback_evidence_topology(
 def verify_integration_evidence_topology(
     root: Path, active: dict[str, Any], integration: dict[str, Any]
 ) -> None:
-    role_invocations = [
-        item for item in active["complex_context"].get("role_invocations", [])
-        if item.get("role") in EXECUTION_ROLES
-    ]
+    role_invocations = active["complex_context"].get("role_invocations", [])
     evidence_refs = integration.get("evidence_refs", [])
     if not role_invocations:
         return
-    _plan_route(root, active, role_invocations[0]["role"])
-    prefix_count = len(evidence_refs) - len(role_invocations)
-    planning_invocations = [
-        item for item in active["complex_context"].get("role_invocations", [])
-        if item.get("role") not in EXECUTION_ROLES
-    ]
-    if prefix_count < 1 or prefix_count != len(planning_invocations):
-        _blocked("BLOCKED_INTEGRATION_PROOF", "Planner evidence prefix or execution evidence is incomplete.")
-    execution_refs = evidence_refs[prefix_count:]
+    if len(evidence_refs) != len(role_invocations):
+        _blocked("BLOCKED_INTEGRATION_PROOF", "Evidence does not map one-to-one to durable invocations.")
     commits: list[str] = []
-    for evidence_ref, invocation in zip(execution_refs, role_invocations, strict=True):
-        commit, _ = _verify_execution_evidence(root, active, evidence_ref, invocation)
+    evidence_paths: list[str] = []
+    for evidence_ref, invocation in zip(evidence_refs, role_invocations, strict=True):
+        path, commit, digest = _ref(evidence_ref)
+        if invocation.get("role") in EXECUTION_ROLES:
+            commit, _ = _verify_execution_evidence(root, active, evidence_ref, invocation)
+        elif invocation.get("role") != "Planner":
+            _blocked("BLOCKED_INTEGRATION_PROOF", "Evidence binds an unknown callback role.")
+        elif hashlib.sha256(
+            _committed_bytes(root, commit, path, code="BLOCKED_EVIDENCE_INVALID")
+        ).hexdigest() != digest:
+            _blocked("BLOCKED_EVIDENCE_INVALID", "Planner evidence bytes do not match the supplied SHA-256.")
         if run_git(root, "merge-base", "--is-ancestor", commit, integration["primary_parent"]).returncode != 0:
-            _blocked("BLOCKED_INTEGRATION_PROOF", "Execution evidence is outside the accepted primary ancestry.")
+            _blocked("BLOCKED_INTEGRATION_PROOF", "Callback evidence is outside the accepted primary ancestry.")
         commits.append(commit)
+        evidence_paths.append(path)
     if any(
         run_git(root, "merge-base", "--is-ancestor", older, newer).returncode != 0
         for older, newer in zip(commits, commits[1:])
     ):
-        _blocked("BLOCKED_INTEGRATION_PROOF", "Execution evidence order differs from durable invocation order.")
-    _, start, _ = _ref(evidence_refs[prefix_count - 1])
+        _blocked("BLOCKED_INTEGRATION_PROOF", "Evidence order differs from durable invocation order.")
+    start = _single_parent(root, commits[0])
     history = run_git(root, "rev-list", "--first-parent", "--reverse", f"{start}..{integration['primary_parent']}")
     if history.returncode != 0:
         _blocked("BLOCKED_INTEGRATION_PROOF", "Primary evidence history cannot be inspected.")
-    evidence_by_commit = dict(zip(commits, (item.split("@", 1)[0] for item in execution_refs), strict=True))
+    evidence_by_commit = {
+        commit: (path, invocation["role"])
+        for commit, path, invocation in zip(commits, evidence_paths, role_invocations, strict=True)
+    }
     for commit in history.stdout.splitlines():
         parent = _single_parent(root, commit)
-        expected = [evidence_by_commit[commit]] if commit in evidence_by_commit else [BOARD_REL]
+        evidence = evidence_by_commit.get(commit)
+        if evidence is not None and evidence[1] == "Planner":
+            continue
+        expected = [evidence[0]] if evidence is not None else [BOARD_REL]
         if _changed_paths(root, parent, commit) != expected:
             _blocked("BLOCKED_INTEGRATION_PROOF", "Primary history contains an unknown or code-mixed commit.")
     _worktree_matches(root, active, integration["subject_commit"])
