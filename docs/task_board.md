@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -63,8 +63,41 @@
     "approval_ref": "User explicitly approved implementation of Plan ref 7ee08a659172bde11f4bb1b87e1e9bac2630eaeb and approved-request SHA-256 0b36fc339ba7cc7dfa412a2608833fc403a8c41fd19051efef05a289e8851298 by saying 批准实施.",
     "activation_parent_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
     "activated_at": "2026-08-14T14:59:46Z",
-    "updated_at": "2026-08-14T22:11:39Z",
-    "blocker": null,
+    "updated_at": "2026-08-14T22:16:22Z",
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "NATIVE_ACTION_FAILED",
+      "stage": "development",
+      "reason": "The single host helper call timed out after creating the exact clean host but before returning a durable ALLOW result. Frozen policy forbids fabricating success, retrying after observable change, deleting, or rebuilding; exact host and pending action are retained for explicit recovery direction.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "host_create",
+        "command": [
+          "scripts/connlab_serial_worktree.ps1",
+          "-Action",
+          "Create",
+          "-ExpectedBase",
+          "56f1fe51a29d5449f1b3178257d62e90ce363601"
+        ],
+        "exit_code": 124,
+        "summary": "Outer command timed out after 166.9s without an ALLOW result, but read-only Git verification found the exact registered clean branch/worktree at expected HEAD. No record-host writer was called.",
+        "recorded_at": "2026-08-14T22:16:22Z"
+      },
+      "subject_commit": null,
+      "evidence_ref": null,
+      "native_action_id": "91b93e012b32ded8faf448cc6ab278aae86ee61888a4bd4c6f303a0971e41afe",
+      "related_ids": [
+        "HOST_CREATE_TIMEOUT_AFTER_EXACT_WORKTREE",
+        "EXACT_UNRECORDED_HOST"
+      ],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-14T22:16:22Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
