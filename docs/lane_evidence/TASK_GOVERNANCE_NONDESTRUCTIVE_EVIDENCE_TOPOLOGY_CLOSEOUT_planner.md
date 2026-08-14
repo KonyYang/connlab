@@ -12,6 +12,29 @@ PROMPT_SHA256: 0c902de0f0536a5b65b427051f3262b618fe8c4c62bcbae9d181b3a48e8b571e
 NEXT: User
 BLOCKER: none
 
+## Bounded Scope Amendment
+
+- STATUS: bounded_scope_amendment_pending_user_approval
+- The current durable task remains `DEVELOPER_BLOCKED`; its host, task branch and five-path dirty
+  implementation patch remain unchanged.
+- The strict verifier produced `13 passed, 4 failed` in the mandatory recovery suite because that
+  suite binds an unavailable sentinel Plan. A production exception would be an authority bypass.
+- The unit contract bundle produced `59 passed, 1 failed` because its fixture passes the linked task
+  worktree as the primary repository and now correctly receives `BLOCKED_PRIMARY_UNVERIFIED` before
+  its intended task-mismatch assertion.
+- The minimum amendment adds exactly
+  `tests/integration/test_connlab_serial_complex_recovery.py` and
+  `tests/unit/test_connlab_serial_complex_orchestrator_contract.py` for fixture-only corrections.
+- The recovery fixture will bind a real committed Plan; the unit fixture will resolve the real
+  primary. No verifier relaxation, production bypass, runtime/schema/authority behavior or third
+  path is authorized.
+- Exact implementation/test scope becomes seven paths; governance scope remains the existing eight
+  paths, for fifteen ordered paths total.
+- Canonical amended approved-request SHA-256:
+  `9910790e5d12df746f4c1fc3680eccbe249b6fec7762e76cd7deb340a106ee51`.
+- NEXT: User
+- BLOCKER: none
+
 ## Machine Authority
 
 - Canonical Submit returned `ALLOW_ACTIVATE` from idle board SHA-256

@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT Plan
 
-Status: `ready_for_user_approval`
+Status: `bounded_scope_amendment_pending_user_approval`
 
 ## 1. Outcome And Chosen Model
 
@@ -122,10 +122,22 @@ habit; no broader policy document changes.
 ### Integration regression
 
 Add `tests/integration/test_connlab_nondestructive_evidence_topology.py`, bounded to at most 500 lines,
-for the real disposable-repository end-to-end and topology negatives. Do not modify the existing
-1059-line `tests/integration/test_connlab_serial_complex_recovery.py`; run it unchanged to preserve
-digest, blocker/resume, approval, Close and retained-closeout coverage without worsening its existing
-line-budget debt.
+for the real disposable-repository end-to-end and topology negatives.
+
+The bounded scope amendment adds two fixture-only paths after the strict verifier exposed stale test
+assumptions:
+
+- In `tests/integration/test_connlab_serial_complex_recovery.py`, replace the existing uncommitted
+  `docs/plan.md@aaaa...#bbbb...` sentinel with a real committed Plan and its raw SHA-256. Keep the
+  existing recovery cases and assertions; do not add a sentinel exception to production. Avoid net
+  line growth in this already oversized historical module where mechanically possible.
+- In `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`, make
+  `test_public_writer_rejects_role_transition_without_active_v2_task` resolve the actual primary
+  repository instead of passing the linked task worktree as primary. Retain its zero-write task
+  mismatch assertion and do not weaken primary verification.
+
+These are the only newly authorized changes. They do not alter verifier semantics, runtime behavior,
+state schema or authority.
 
 ## 5. Durable And Independent Model-Routing Proof Boundary
 
@@ -188,17 +200,19 @@ HEAD and worktree content before the writer and proves they remain unchanged.
 
 ## 8. Exact Scope And Non-Goals
 
-Implementation/protocol/test allowlist is exactly five paths:
+Implementation/protocol/test allowlist is exactly seven paths:
 
 1. `scripts/connlab_personal_task.py`
 2. `scripts/connlab_serial_evidence_topology.py`
 3. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
 4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
 5. `tests/integration/test_connlab_nondestructive_evidence_topology.py`
+6. `tests/integration/test_connlab_serial_complex_recovery.py`
+7. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`
 
 The Task, Plan, fixed Planner/Developer/Reviewer/QA/Integrator evidence paths and
-`docs/task_board.md` are the only additional governance paths, for thirteen total. No change is
-needed to `scripts/connlab_serial_complex.py`, the existing 1059-line recovery test, product code,
+`docs/task_board.md` are the only additional governance paths, for fifteen total. No change is
+needed to `scripts/connlab_serial_complex.py`, product code,
 backend/frontend/API/database/schema/
 persistence/business rules, model routing, host creation, digest autocorrection, test consolidation,
 Close performance or board history.
@@ -212,7 +226,7 @@ Destructive actions, external mutation and push/release remain false.
 py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q
 py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q
 py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
-py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py
+py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py
 python line-budget check: connlab_personal_task.py <= 500, connlab_serial_evidence_topology.py <= 500, new integration test <= 500
 git diff --check
 ```
@@ -229,10 +243,11 @@ movement or cleanup.
 The following code fence is the canonical single-line UTF-8 approved request for `Approve`:
 
 ```json
-{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT","summary":"Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.","kind":"planned","may_touch":["scripts/connlab_personal_task.py","scripts/connlab_serial_evidence_topology.py",".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/integration/test_connlab_nondestructive_evidence_topology.py","tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md","docs/task_governance_nondestructive_evidence_topology_closeout_plan.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md","docs/task_board.md"],"expected_file_count":13,"classification_reason":"Complex governance persistence and integration-authority correction with independent Reviewer, mandatory QA and Integrator gates; no product, API, database, schema, business-rule, external or destructive change.","targeted_validation":["py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q","py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q","py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py","python line-budget check: connlab_personal_task.py <= 500, connlab_serial_evidence_topology.py <= 500, test_connlab_nondestructive_evidence_topology.py <= 500","git diff --check","real temporary-Git end-to-end: canonical Submit through human review with Planner prefix plus dynamic execution/fix-loop primary evidence-only commits, stable task subject HEAD, successful record-integration, frozen Plan route audit, forbidden-operation absence and zero-write drift negatives"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":true,"authority":true,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
+{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT","summary":"Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.","kind":"planned","may_touch":["scripts/connlab_personal_task.py","scripts/connlab_serial_evidence_topology.py",".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/integration/test_connlab_nondestructive_evidence_topology.py","tests/integration/test_connlab_serial_complex_recovery.py","tests/unit/test_connlab_serial_complex_orchestrator_contract.py","tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md","docs/task_governance_nondestructive_evidence_topology_closeout_plan.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md","docs/task_board.md"],"expected_file_count":15,"classification_reason":"Complex governance persistence and integration-authority correction with independent Reviewer, mandatory QA and Integrator gates; the bounded amendment only repairs two stale test fixtures and changes no product, API, database, schema, business-rule, external or destructive behavior.","targeted_validation":["py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q","py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q","py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py","python line-budget check: connlab_personal_task.py <= 500, connlab_serial_evidence_topology.py <= 500, test_connlab_nondestructive_evidence_topology.py <= 500","git diff --check","real temporary-Git end-to-end: canonical Submit through human review with Planner prefix plus dynamic execution/fix-loop primary evidence-only commits, stable task subject HEAD, successful record-integration, frozen Plan route audit, forbidden-operation absence and zero-write drift negatives"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":true,"authority":true,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
 ```
 
 ## 11. Stop Point
 
-Wait for explicit User approval of the committed Plan ref and approved-request SHA-256. Do not create
-the task host or modify runtime/protocol/tests before approval.
+Wait for explicit User approval of the committed amended Plan ref and approved-request SHA-256. Keep
+the existing host, `DEVELOPER_BLOCKED` state and five-path dirty patch unchanged. Do not resume the
+Developer or modify runtime/protocol/tests before approval.

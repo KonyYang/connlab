@@ -1,6 +1,6 @@
 # TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT
 
-Status: `planned` / `ready_for_user_approval`
+Status: `blocked` / `bounded_scope_amendment_pending_user_approval`
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 
@@ -48,20 +48,25 @@ Implementation/protocol/test paths:
 3. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
 4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
 5. `tests/integration/test_connlab_nondestructive_evidence_topology.py`
+6. `tests/integration/test_connlab_serial_complex_recovery.py`
+7. `tests/unit/test_connlab_serial_complex_orchestrator_contract.py`
 
 Task governance paths:
 
-6. `tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md`
-7. `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md`
-8. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md`
-9. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md`
-10. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md`
-11. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md`
-12. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md`
-13. `docs/task_board.md`
+8. `tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md`
+9. `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md`
+10. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md`
+11. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md`
+12. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md`
+13. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md`
+14. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md`
+15. `docs/task_board.md`
 
-`tests/integration/test_connlab_serial_complex_recovery.py` remains unchanged and is run as a
-regression. The new verifier module targets at most 300 lines and has a hard limit of 500;
+The two added test paths are fixture-only exceptions. The recovery fixture must replace its
+uncommitted sentinel Plan with a real committed Plan without adding a production bypass. The unit
+fixture must resolve the real primary rather than treating its linked task worktree as primary.
+Neither edit may change production behavior or broaden the verifier. The new verifier module targets
+at most 300 lines and has a hard limit of 500;
 `connlab_personal_task.py` must remain at or below 500 lines. The new integration test must remain at
 or below 500 lines.
 
