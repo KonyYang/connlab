@@ -20,7 +20,7 @@
     "summary": "In browser Matrix Editor, show current project intake source candidates before file upload, preview only after explicit selection, preserve Upload other file, desktop picker, empty state, cancel and read-only behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
@@ -68,7 +68,7 @@
       "head_sha": "d767547084fce64e4d4373818c3131cbde574d29",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -113,19 +113,15 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": null,
+      "developer_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_developer.md@ba76dd8d9c5e66e60ad8d269f665dbd447c625ec#e66d9d71565ae3a0e89206eef242101c3ecf38e0c74afa3c62ea7c875d13bf7d"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "0934ab0dc57fdec600ee8f4782df21c9cadfa87e5917fe7b66fda45bce3a8375",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
