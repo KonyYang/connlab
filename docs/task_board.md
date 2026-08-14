@@ -108,7 +108,12 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "host_creation_pending",
+        "action_id": "46d4658672ae7c89924e733d8916ed233980e47656740d15f7f93081a8cef433",
+        "role": "Host",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
