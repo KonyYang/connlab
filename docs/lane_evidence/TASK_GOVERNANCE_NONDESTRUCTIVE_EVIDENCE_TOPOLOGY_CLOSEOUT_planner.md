@@ -30,20 +30,27 @@ BLOCKER: none
   production orchestration does not enforce that ownership and callback-time topology.
 - The unique selected model is primary sequential evidence-only commits interleaved with existing
   board-only commits. It adds no ref, worktree, registry, command, schema or lifecycle.
-- Exact implementation scope is four paths; the Task, Plan, five fixed role evidence paths and board
-  are the only governance paths, twelve total.
+- Review clarification removes both line-budget risks: `connlab_personal_task.py` remains a thin
+  <=500-line seam; one bounded verifier module owns repository checks; one new <=500-line integration
+  test owns the E2E while the existing 1059-line recovery suite stays unchanged.
+- Board evidence is `E_P` followed by the dynamic callback evidence sequence, including bounded
+  fix-loop callbacks. No fixed role count, evidence count or route-length allowlist is authorized.
+- Durable invocation proves ACTION_ID/ROLE/ATTEMPT only. Model/effort/reason bind the committed Plan's
+  frozen `gpt-5.6-sol / medium / risk:authority` route and require independent Reviewer/QA dispatch
+  audit; the Plan does not claim those fields can be reconstructed from board invocation.
+- Exact implementation scope is five paths; the Task, Plan, five fixed role evidence paths and board
+  are the only governance paths, thirteen total.
 - `scripts/connlab_serial_complex.py` remains read-only because the state machine and callback schema
   do not change.
 
 ## Design Influence
 
-The `codebase-design` module/interface/seam discipline keeps Git and evidence verification in the
-existing repository-aware writer seam (`connlab_personal_task.py`) while leaving the pure state
-machine unchanged. This avoids a second evidence subsystem and makes the operational contract deep:
-one evidence ownership rule with strict validation and a small role-facing interface.
+The `codebase-design` module/interface/seam discipline keeps `connlab_personal_task.py` thin and
+extracts one cohesive repository-verification module while leaving the pure state machine unchanged.
+This avoids a second evidence subsystem, protects Python line budgets and makes the operational
+contract deep: one ownership rule, one verifier and a small writer-facing interface.
 
 ## Authorization Boundary
 
 No host, branch/worktree, Developer, runtime/protocol/test edit, integration, push or cleanup is
 authorized until the User approves the exact committed Plan ref and approved-request SHA-256.
-

@@ -44,20 +44,26 @@ Integrator, evidence persistence and integration.
 Implementation/protocol/test paths:
 
 1. `scripts/connlab_personal_task.py`
-2. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
-3. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
-4. `tests/integration/test_connlab_serial_complex_recovery.py`
+2. `scripts/connlab_serial_evidence_topology.py`
+3. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
+5. `tests/integration/test_connlab_nondestructive_evidence_topology.py`
 
 Task governance paths:
 
-5. `tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md`
-6. `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md`
-7. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md`
-8. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md`
-9. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md`
-10. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md`
-11. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md`
-12. `docs/task_board.md`
+6. `tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md`
+7. `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md`
+8. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md`
+9. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md`
+10. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md`
+11. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md`
+12. `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md`
+13. `docs/task_board.md`
+
+`tests/integration/test_connlab_serial_complex_recovery.py` remains unchanged and is run as a
+regression. The new verifier module targets at most 300 lines and has a hard limit of 500;
+`connlab_personal_task.py` must remain at or below 500 lines. The new integration test must remain at
+or below 500 lines.
 
 ## Must Not Touch
 
@@ -70,8 +76,10 @@ Task governance paths:
 
 ## Acceptance
 
-- Four execution-role evidence files are committed on primary with exact commit/path/raw SHA-256 and
-  identity/model audit fields.
+- Planner evidence remains the committed prefix. Every later callback evidence, including bounded
+  fix-loop evidence, is committed on primary and dynamically matched in board order to its durable
+  invocation; no role count or evidence-count allowlist is permitted.
+- Every evidence has exact commit/path/raw SHA-256 and identity/model audit fields.
 - Task branch/worktree HEAD stays at the reviewed subject after every evidence and callback step.
 - Evidence commits are absent from task-subject ancestry; verified integration succeeds normally.
 - Code-mixed evidence, wrong path/hash/identity/model/subject/action/attempt, parent drift, dirty state,
@@ -80,4 +88,3 @@ Task governance paths:
   forbidden recovery operation was used.
 - Existing evidence-digest, blocker/resume, approval, complex Close and retained-closeout regressions
   remain green.
-

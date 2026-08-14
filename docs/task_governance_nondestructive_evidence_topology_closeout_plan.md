@@ -4,10 +4,11 @@ Status: `ready_for_user_approval`
 
 ## 1. Outcome And Chosen Model
 
-Choose exactly one ownership model: **primary sequential evidence-only commits**. Each Developer,
-Reviewer, QA and Integrator evidence commit advances primary, never the task branch/worktree. Existing
-board-only authority commits remain board-only and the task worktree remains clean at the exact
-reviewed subject.
+Choose exactly one ownership model: **primary sequential evidence-only commits**. Every execution
+callback evidence commit advances primary, never the task branch/worktree. Existing board-only
+authority commits remain board-only and the task worktree remains clean at the exact reviewed
+subject. Planner evidence is the existing committed planning prefix; bounded fix loops may append
+additional Developer/Reviewer/QA evidence without changing this model.
 
 Rejected alternatives:
 
@@ -61,16 +62,28 @@ B_r  begin-role board-only commit
 ```
 
 `A_r` and `E_r` contain byte-identical `docs/task_board.md`. `E_r` is current primary HEAD when the
-callback writer validates it. Ordered board evidence refs are `E_D, E_R, E_Q, E_I`. After committed
-`C_I` is integration-ready, the local merge has parents `[C_I, S]`; `record-integration` binds
-`subject_commit=branch_head=S` and those exact evidence refs. No `E_r` is in `S` ancestry.
+callback writer validates it. The ordered board evidence list is **not** a fixed four-item list: it
+starts with committed Planner evidence `E_P`, then contains exactly one evidence ref for every
+successfully consumed execution callback in durable invocation order. Reviewer/QA fix loops append
+their actual Developer/Reviewer/QA callback evidence and require no route-length or evidence-count
+constant. After the final Integrator callback commit `C_I` is integration-ready, the local merge has
+parents `[C_I, S]`; `record-integration` binds `subject_commit=branch_head=S` and the complete dynamic
+evidence list. No execution `E_r` is in `S` ancestry.
 
 ## 4. File-Level Implementation
 
 ### `scripts/connlab_personal_task.py`
 
-Before applying an execution-role `consume-callback`, extend repository verification at the existing
-callback-evidence seam to require:
+Keep this 434-line writer as a thin orchestration seam. It may only add bounded imports and calls and
+must remain at or below the 500-line Python hard limit. Before applying an execution-role
+`consume-callback`, it calls the dedicated verifier described below; before `record-integration`, it
+revalidates the complete accepted evidence topology.
+
+### `scripts/connlab_serial_evidence_topology.py`
+
+Add one focused repository-verification module, target at most 300 lines and hard limit 500. It is not
+a writer, command, framework or second authority source. It receives the existing active/callback or
+integration facts and verifies:
 
 - primary clean and current HEAD exactly equals the supplied evidence commit;
 - evidence commit is single-parent and its parent is the immediately preceding committed
@@ -82,15 +95,20 @@ callback-evidence seam to require:
 - evidence commit is not an ancestor of the task subject;
 - committed raw bytes match the evidence SHA-256;
 - evidence contains one exact TASK_ID, ROLE, STATUS, SUBJECT, MODEL, REASONING_EFFORT,
-  MODEL_ROUTE_REASON, ACTION_ID and ATTEMPT binding matching durable invocation/callback facts.
+  MODEL_ROUTE_REASON, ACTION_ID and ATTEMPT binding;
+- ACTION_ID, ROLE and ATTEMPT match the corresponding durable board invocation;
+- MODEL, REASONING_EFFORT and MODEL_ROUTE_REASON match the frozen route in the exact committed Plan.
 
 Any mismatch raises a typed `BLOCKED_CALLBACK_INVALID`, `BLOCKED_SUBJECT_MISMATCH`,
 `BLOCKED_WORKTREE_FACTS` or `BLOCKED_EVIDENCE_INVALID` before board mutation. Planner evidence keeps
 its existing pre-host planning behavior; the strict topology applies to Developer/Reviewer/QA/
 Integrator.
 
-At integration, revalidate that accepted execution-role evidence commits are ordered primary
-ancestors before the merge parent and retain their one-path evidence-only identity.
+At integration, treat Planner evidence as the pre-host prefix, then dynamically pair every remaining
+board evidence ref with its corresponding durable execution invocation. Revalidate every execution
+evidence commit as an ordered primary ancestor before the merge parent and retain its one-path
+evidence-only identity. Equality is derived from the actual board lists, not a fixed role sequence,
+route length or evidence count.
 
 ### Orchestrator skill and normative protocol
 
@@ -103,11 +121,32 @@ habit; no broader policy document changes.
 
 ### Integration regression
 
-Extend `tests/integration/test_connlab_serial_complex_recovery.py`; do not add another test module.
-The existing file already owns the disposable repository and complex recovery fixtures, so keeping
-the end-to-end there avoids a second fixture/contract implementation.
+Add `tests/integration/test_connlab_nondestructive_evidence_topology.py`, bounded to at most 500 lines,
+for the real disposable-repository end-to-end and topology negatives. Do not modify the existing
+1059-line `tests/integration/test_connlab_serial_complex_recovery.py`; run it unchanged to preserve
+digest, blocker/resume, approval, Close and retained-closeout coverage without worsening its existing
+line-budget debt.
 
-## 5. Crash Recovery
+## 5. Durable And Independent Model-Routing Proof Boundary
+
+`connlab.serial-invocation` does not persist model, reasoning effort or route reason. The verifier
+must not claim those fields are recoverable from board invocation data.
+
+The proof is intentionally layered:
+
+1. **Durable board identity:** ACTION_ID, ROLE and ATTEMPT in evidence match the corresponding board
+   invocation exactly.
+2. **Committed Plan binding:** evidence MODEL, REASONING_EFFORT and MODEL_ROUTE_REASON equal this
+   Plan's frozen route: Developer, Reviewer, QA and Integrator are all
+   `gpt-5.6-sol / medium / risk:authority`.
+3. **Independent execution audit:** Reviewer checks actual Developer and Reviewer dispatch capsule/
+   agent identity; QA checks the complete actual dispatch set and forbidden-Luna rule; their evidence
+   records that audit. Integrator summarizes `ACTUAL_MODEL_ROUTING` from committed audited evidence.
+
+This proves committed evidence identity and independent dispatch reconciliation, not an unavailable
+board-only reconstruction of actual spawn parameters.
+
+## 6. Crash Recovery
 
 - After `A_r` and before evidence: board is callback-pending and primary is `A_r`; resume the same
   recorded role invocation to produce `E_r`, without a new action or attempt.
@@ -120,7 +159,7 @@ the end-to-end there avoids a second fixture/contract implementation.
   multiparent evidence, dirty state or unprovable identity fails closed. Recovery never moves a
   branch pointer or discards content.
 
-## 6. Real Temporary-Git End-To-End And Negatives
+## 7. Real Temporary-Git End-To-End And Negatives
 
 The formal-entry test executes:
 
@@ -136,40 +175,45 @@ run_task.ps1 Submit
 -> human review
 ```
 
-It proves all four evidence refs are readable at exact commit/path/raw SHA; task branch/worktree HEAD
-stays `S` after every evidence/callback; evidence is absent from `S` ancestry; merge and
-`record-integration` pass; and a captured Git command ledger contains no reset, restore, stash,
-rebase, cherry-pick, force update, deletion or recreation.
+It proves `E_P` plus every dynamically produced execution/fix-loop evidence ref is readable at exact
+commit/path/raw SHA and maps one-to-one, in order, to the actual durable invocations; task
+branch/worktree HEAD stays `S` after every evidence/callback; execution evidence is absent from `S`
+ancestry; merge and `record-integration` pass; and a captured Git command ledger contains no reset,
+restore, stash, rebase, cherry-pick, force update, deletion or recreation.
 
 Zero-write negatives cover evidence mixed with code, wrong path/blob/hash/header/model/status/subject/
 action/attempt, multiparent or unknown parent, evidence order drift, task branch/worktree/subject drift,
 dirty primary/task worktree and an extra commit. Every negative snapshots board bytes, primary/task
 HEAD and worktree content before the writer and proves they remain unchanged.
 
-## 7. Exact Scope And Non-Goals
+## 8. Exact Scope And Non-Goals
 
-Implementation/protocol/test allowlist is exactly four paths:
+Implementation/protocol/test allowlist is exactly five paths:
 
 1. `scripts/connlab_personal_task.py`
-2. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
-3. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
-4. `tests/integration/test_connlab_serial_complex_recovery.py`
+2. `scripts/connlab_serial_evidence_topology.py`
+3. `.agents/skills/connlab-lane-orchestrator/SKILL.md`
+4. `docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`
+5. `tests/integration/test_connlab_nondestructive_evidence_topology.py`
 
 The Task, Plan, fixed Planner/Developer/Reviewer/QA/Integrator evidence paths and
-`docs/task_board.md` are the only additional governance paths, for twelve total. No change is needed
-to `scripts/connlab_serial_complex.py`, product code, backend/frontend/API/database/schema/
+`docs/task_board.md` are the only additional governance paths, for thirteen total. No change is
+needed to `scripts/connlab_serial_complex.py`, the existing 1059-line recovery test, product code,
+backend/frontend/API/database/schema/
 persistence/business rules, model routing, host creation, digest autocorrection, test consolidation,
 Close performance or board history.
 
 All forbidden categories remain false except governance `persistence=true` and `authority=true`.
 Destructive actions, external mutation and push/release remain false.
 
-## 8. Validation
+## 9. Validation
 
 ```text
+py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q
 py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q
 py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q
 py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py
+python line-budget check: connlab_personal_task.py <= 500, connlab_serial_evidence_topology.py <= 500, new integration test <= 500
 git diff --check
 ```
 
@@ -180,16 +224,15 @@ closeout remain green. All implementation paths and Git/evidence topology are in
 Rollback is a local revert of the bounded implementation commit; there is no data migration, ref
 movement or cleanup.
 
-## 9. Exact Approved Request
+## 10. Exact Approved Request
 
 The following code fence is the canonical single-line UTF-8 approved request for `Approve`:
 
 ```json
-{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT","summary":"Persist Developer, Reviewer, QA and Integrator evidence as sequential primary evidence-only commits so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.","kind":"planned","may_touch":["scripts/connlab_personal_task.py",".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/integration/test_connlab_serial_complex_recovery.py","tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md","docs/task_governance_nondestructive_evidence_topology_closeout_plan.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md","docs/task_board.md"],"expected_file_count":12,"classification_reason":"Complex governance persistence and integration-authority correction with independent Reviewer, mandatory QA and Integrator gates; no product, API, database, schema, business-rule, external or destructive change.","targeted_validation":["py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q","py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py","git diff --check","real temporary-Git end-to-end: canonical Submit through human review with four primary evidence-only commits, stable task subject HEAD, successful record-integration, forbidden-operation absence and zero-write drift negatives"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":true,"authority":true,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
+{"schema":"connlab.personal-task-approved-request","version":1,"task_id":"TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT","summary":"Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.","kind":"planned","may_touch":["scripts/connlab_personal_task.py","scripts/connlab_serial_evidence_topology.py",".agents/skills/connlab-lane-orchestrator/SKILL.md","docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md","tests/integration/test_connlab_nondestructive_evidence_topology.py","tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md","docs/task_governance_nondestructive_evidence_topology_closeout_plan.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md","docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md","docs/task_board.md"],"expected_file_count":13,"classification_reason":"Complex governance persistence and integration-authority correction with independent Reviewer, mandatory QA and Integrator gates; no product, API, database, schema, business-rule, external or destructive change.","targeted_validation":["py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q","py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q","py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q","py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py","python line-budget check: connlab_personal_task.py <= 500, connlab_serial_evidence_topology.py <= 500, test_connlab_nondestructive_evidence_topology.py <= 500","git diff --check","real temporary-Git end-to-end: canonical Submit through human review with Planner prefix plus dynamic execution/fix-loop primary evidence-only commits, stable task subject HEAD, successful record-integration, frozen Plan route audit, forbidden-operation absence and zero-write drift negatives"],"forbidden_categories":{"api_contract":false,"database":false,"schema_or_migration":false,"persistence":true,"authority":true,"public_drive_workflow":false,"business_rule_semantics":false,"destructive_action":false,"external_mutation":false}}
 ```
 
-## 10. Stop Point
+## 11. Stop Point
 
 Wait for explicit User approval of the committed Plan ref and approved-request SHA-256. Do not create
 the task host or modify runtime/protocol/tests before approval.
-
