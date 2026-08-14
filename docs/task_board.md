@@ -14,13 +14,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER",
     "summary": "In browser Matrix Editor, show current project intake source candidates before file upload, preview only after explicit selection, preserve Upload other file, desktop picker, empty state, cancel and read-only behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
@@ -65,9 +65,9 @@
       "task_branch": "codex/task-matrix-import-browser-project-source-picker",
       "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-browser-project-source-picker",
       "base_sha": "d767547084fce64e4d4373818c3131cbde574d29",
-      "head_sha": "d767547084fce64e4d4373818c3131cbde574d29",
+      "head_sha": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
       "integration_target": "master",
-      "worktree_lifecycle": "integration_ready",
+      "worktree_lifecycle": "integrated",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -152,7 +152,7 @@
       "developer_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
       "reviewer_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
       "qa_subject_commit": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8",
-      "integrated_commit": null,
+      "integrated_commit": "5a53c9eeedee36a20b378b33f12861de99c71322",
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_planner.md@74eb8850c332afebad37536fdf1e60624613e202#e33e19803414adb65502794005404032e60c2741880afe73160a50c665fbd247",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_developer.md@ba76dd8d9c5e66e60ad8d269f665dbd447c625ec#e66d9d71565ae3a0e89206eef242101c3ecf38e0c74afa3c62ea7c875d13bf7d",
