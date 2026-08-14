@@ -68,7 +68,7 @@
       "head_sha": "d767547084fce64e4d4373818c3131cbde574d29",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "QA",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -134,7 +134,12 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_developer.md@ba76dd8d9c5e66e60ad8d269f665dbd447c625ec#e66d9d71565ae3a0e89206eef242101c3ecf38e0c74afa3c62ea7c875d13bf7d",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_reviewer.md@42d620bd0575a6d9ca47504eb26d283befb442d7#31b612f984ea8c8aab7bc8822c5332cc4dac29a94441ae5131731c06c4b449e7"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "a1e73c2fcc90ff575edc0432e75a813c3f01045bcdffeb270415444938fdcd44",
+        "role": "QA",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
