@@ -14,8 +14,53 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
+    "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
+    "kind": "simple",
+    "classification": "simple",
+    "phase": "implementation",
+    "scope_contract": {
+      "schema": "connlab.serial-task-request",
+      "version": 1,
+      "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
+      "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
+      "root_cause_clear": true,
+      "expected_result_clear": true,
+      "may_touch": [
+        "scripts/connlab_personal_task.py",
+        "tests/integration/test_connlab_serial_complex_recovery.py",
+        "docs/task_board.md"
+      ],
+      "targeted_validation": [
+        "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q",
+        "py -m py_compile scripts/connlab_personal_task.py",
+        "git diff --check"
+      ],
+      "requires_independent_review": false,
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false,
+        "push_or_release": false
+      }
+    },
+    "plan_ref": null,
+    "approval_ref": null,
+    "activation_parent_sha": "0c06d11b4d2b1067f98efab89bd41e3934a42790",
+    "activated_at": "2026-08-14T13:23:16Z",
+    "updated_at": "2026-08-14T13:23:16Z",
+    "blocker": null,
+    "validation": null,
+    "complex_context": null
+  },
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
