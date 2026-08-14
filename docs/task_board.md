@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -64,7 +64,37 @@
     "activation_parent_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
     "activated_at": "2026-08-14T14:59:46Z",
     "updated_at": "2026-08-14T22:21:27Z",
-    "blocker": null,
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "DEVELOPER_BLOCKED",
+      "stage": "development",
+      "reason": "Mandatory recovery fixture binds an unavailable sentinel committed Plan; the compliant correction requires a test path outside the approved implementation allowlist.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "validation",
+        "command": [
+          "py",
+          "-m",
+          "pytest",
+          "tests/integration/test_connlab_serial_complex_recovery.py",
+          "-q"
+        ],
+        "exit_code": 1,
+        "summary": "13 passed, 4 failed: legacy fixture binds unavailable sentinel committed Plan; compliant fix requires excluded test path.",
+        "recorded_at": "2026-08-14T22:48:49Z"
+      },
+      "subject_commit": "56f1fe51a29d5449f1b3178257d62e90ce363601",
+      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23",
+      "native_action_id": null,
+      "related_ids": [],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-14T22:48:49Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -74,7 +104,7 @@
       "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -129,14 +159,10 @@
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9"
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9",
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "e9eafbf4c20a56b507686e9059c2e1208214456a9e854301593e9e6bdcf2de34",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
