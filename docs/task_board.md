@@ -68,12 +68,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
-      "head_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
+      "task_branch": "codex/task-governance-nondestructive-evidence-topology-closeout",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-nondestructive-evidence-topology-closeout",
+      "base_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
+      "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -90,8 +90,8 @@
           "recorded_at": "2026-08-14T15:01:11Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "/root/nondestructive_evidence_topology_host",
+      "host_id": "/root/nondestructive_evidence_topology_host",
       "approved_code_paths": [
         "scripts/connlab_personal_task.py",
         "scripts/connlab_serial_evidence_topology.py",
@@ -119,12 +119,7 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9"
       ],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "91b93e012b32ded8faf448cc6ab278aae86ee61888a4bd4c6f303a0971e41afe",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
