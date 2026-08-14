@@ -119,7 +119,12 @@
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "host_creation_pending",
+        "action_id": "91b93e012b32ded8faf448cc6ab278aae86ee61888a4bd4c6f303a0971e41afe",
+        "role": "Host",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
